@@ -1,76 +1,76 @@
-use crate::iter::{TrustedLen, UncheckedIterator};
+use crate::assert_unsafe_precondition;
+use crate::marker::Destruct;
 use crate::mem::ManuallyDrop;
-use crate::ptr::drop_in_place;
-use crate::slice;
 
-/// A situationally-optimized version of `array.into_iter().for_each(func)`.
-///
-/// [`crate::array::IntoIter`]s are great when you need an owned iterator, but
-/// storing the entire array *inside* the iterator like that can sometimes
-/// pessimize code.  Notable, it can be more bytes than you really want to move
-/// around, and because the array accesses index into it SRoA has a harder time
-/// optimizing away the type than it does iterators that just hold a couple pointers.
-///
-/// Thus this function exists, which gives a way to get *moved* access to the
-/// elements of an array using a small iterator -- no bigger than a slice iterator.
-///
-/// The function-taking-a-closure structure makes it safe, as it keeps callers
-/// from looking at already-dropped elements.
-pub(crate) fn drain_array_with<T, R, const N: usize>(
-    array: [T; N],
-    func: impl for<'a> FnOnce(Drain<'a, T>) -> R,
-) -> R {
-    let mut array = ManuallyDrop::new(array);
-    // SAFETY: Now that the local won't drop it, it's ok to construct the `Drain` which will.
-    let drain = Drain(array.iter_mut());
-    func(drain)
+#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[unstable(feature = "array_try_map", issue = "79711")]
+pub(super) struct Drain<'a, T, U, const N: usize, F: FnMut(T) -> U> {
+    array: ManuallyDrop<[T; N]>,
+    moved: usize,
+    f: &'a mut F,
 }
+#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[unstable(feature = "array_try_map", issue = "79711")]
+impl<T, U, const N: usize, F> const FnOnce<(usize,)> for &mut Drain<'_, T, U, N, F>
+where
+    F: [const] FnMut(T) -> U,
+{
+    type Output = U;
 
-/// See [`drain_array_with`] -- this is `pub(crate)` only so it's allowed to be
-/// mentioned in the signature of that method.  (Otherwise it hits `E0446`.)
-// INVARIANT: It's ok to drop the remainder of the inner iterator.
-pub(crate) struct Drain<'a, T>(slice::IterMut<'a, T>);
-
-impl<T> Drop for Drain<'_, T> {
+    extern "rust-call" fn call_once(mut self, args: (usize,)) -> Self::Output {
+        self.call_mut(args)
+    }
+}
+#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[unstable(feature = "array_try_map", issue = "79711")]
+impl<T, U, const N: usize, F> const FnMut<(usize,)> for &mut Drain<'_, T, U, N, F>
+where
+    F: [const] FnMut(T) -> U,
+{
+    extern "rust-call" fn call_mut(&mut self, (i,): (usize,)) -> Self::Output {
+        // SAFETY: increment moved before moving. if `f` panics, we drop the rest.
+        self.moved += 1;
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "musnt index array out of bounds", (i: usize = i, size: usize = N) => i < size
+        );
+        // SAFETY: the `i` should also always go up, and musnt skip any, else some things will be leaked.
+        // SAFETY: if it goes down, we will drop freed elements. not good.
+        // SAFETY: caller guarantees never called with number >= N (see `Drain::new`)
+        (self.f)(unsafe { self.array.as_ptr().add(i).read() })
+    }
+}
+#[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+#[unstable(feature = "array_try_map", issue = "79711")]
+impl<T: [const] Destruct, U, const N: usize, F: FnMut(T) -> U> const Drop
+    for Drain<'_, T, U, N, F>
+{
     fn drop(&mut self) {
-        // SAFETY: By the type invariant, we're allowed to drop all these.
-        unsafe { drop_in_place(self.0.as_mut_slice()) }
+        let mut n = self.moved;
+        while n != N {
+            // SAFETY: moved must always be < N
+            unsafe { self.array.as_mut_ptr().add(n).drop_in_place() };
+            n += 1;
+        }
     }
 }
-
-impl<T> Iterator for Drain<'_, T> {
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        let p: *const T = self.0.next()?;
-        // SAFETY: The iterator was already advanced, so we won't drop this later.
-        Some(unsafe { p.read() })
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.len();
-        (n, Some(n))
-    }
-}
-
-impl<T> ExactSizeIterator for Drain<'_, T> {
-    #[inline]
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-}
-
-// SAFETY: This is a 1:1 wrapper for a slice iterator, which is also `TrustedLen`.
-unsafe impl<T> TrustedLen for Drain<'_, T> {}
-
-impl<T> UncheckedIterator for Drain<'_, T> {
-    unsafe fn next_unchecked(&mut self) -> T {
-        // SAFETY: `Drain` is 1:1 with the inner iterator, so if the caller promised
-        // that there's an element left, the inner iterator has one too.
-        let p: *const T = unsafe { self.0.next_unchecked() };
-        // SAFETY: The iterator was already advanced, so we won't drop this later.
-        unsafe { p.read() }
+impl<'a, T, U, const N: usize, F: FnMut(T) -> U> Drain<'a, T, U, N, F> {
+    /// This function returns a function that lets you index the given array in const.
+    /// As implemented it can optimize better than iterators, and can be constified.
+    /// It acts like a sort of guard and iterator combined, which can be implemented
+    /// as it is a struct that implements const fn;
+    /// in that regard it is somewhat similar to an array::Iter implementing `UncheckedIterator`.
+    /// The only method you're really allowed to call is `next()`,
+    /// anything else is more or less UB, hence this function being unsafe.
+    /// Moved elements will not be dropped.
+    ///
+    /// Previously this was implemented as a wrapper around a `slice::Iter`, which
+    /// called `read()` on the returned `&T`; gnarly stuff.
+    ///
+    /// SAFETY: must be called in order of 0..N, without indexing out of bounds. (see `Drain::call_mut`)
+    /// Potentially the function could completely disregard the supplied argument, however i think that behaviour would be unintuitive.
+    // FIXME(const-hack): this is a hack for `let guard = Guard(array); |i| f(guard[i])`.
+    pub(super) const unsafe fn new(array: [T; N], f: &'a mut F) -> Self {
+        Self { array: ManuallyDrop::new(array), moved: 0, f }
     }
 }
