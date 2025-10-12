@@ -28,7 +28,7 @@ fn main() {
     }
 }
 
-pub fn callee(x: S, mut y: S) {
+fn callee(x: S, mut y: S) {
     // With the setup above, if `x` and `y` are both moved,
     // then writing to `y` will change the value stored in `x`!
     y.0 = 0;

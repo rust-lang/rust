@@ -6,7 +6,7 @@ mod utils;
 
 use std::cell::UnsafeCell;
 
-pub fn main() {
+fn main() {
     let cell = UnsafeCell::new(42);
     let box1 = Box::new(cell);
 

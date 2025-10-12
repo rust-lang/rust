@@ -10,7 +10,7 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
-pub fn main() {
+fn main() {
     let mut a = AtomicUsize::new(0);
     let b = &mut a as *mut AtomicUsize;
     let c = EvilSend(b);

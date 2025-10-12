@@ -23,7 +23,7 @@ fn main() {
     }
 }
 
-pub fn change_arg(mut x: S, ptr: *mut S) {
+fn change_arg(mut x: S, ptr: *mut S) {
     x.0 = 0;
     // If `x` got passed in-place, we'd see the write through `ptr`!
     // Make sure we are not allowed to do that read.
