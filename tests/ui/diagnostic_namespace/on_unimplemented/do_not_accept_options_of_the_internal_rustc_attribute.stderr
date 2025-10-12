@@ -193,7 +193,11 @@ LL |     takes_bar(());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Bar` is implemented for `i32`
+help: the trait `Bar` is implemented for `i32`
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:28:1
+   |
+LL | impl Bar for i32 {}
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `takes_bar`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:61:22
    |

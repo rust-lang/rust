@@ -6,7 +6,11 @@ LL |     wants_write(x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Write` is implemented for `&mut [u8]`
+help: the trait `Write` is implemented for `&mut [u8]`
+  --> $DIR/issue-90528-unsizing-suggestion-4.rs:8:1
+   |
+LL | impl Write for &mut [u8] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
@@ -25,7 +29,11 @@ LL |     wants_write(&mut x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Write` is implemented for `&mut [u8]`
+help: the trait `Write` is implemented for `&mut [u8]`
+  --> $DIR/issue-90528-unsizing-suggestion-4.rs:8:1
+   |
+LL | impl Write for &mut [u8] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
@@ -44,7 +52,11 @@ LL |     wants_write(x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Write` is implemented for `&mut [u8]`
+help: the trait `Write` is implemented for `&mut [u8]`
+  --> $DIR/issue-90528-unsizing-suggestion-4.rs:8:1
+   |
+LL | impl Write for &mut [u8] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
@@ -63,7 +75,11 @@ LL |     wants_write(*x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Write` is implemented for `&mut [u8]`
+help: the trait `Write` is implemented for `&mut [u8]`
+  --> $DIR/issue-90528-unsizing-suggestion-4.rs:8:1
+   |
+LL | impl Write for &mut [u8] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |

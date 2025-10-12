@@ -50,7 +50,8 @@ LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                              |
    |                                              the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
    |
-   = help: the trait `Into<U>` is implemented for `T`
+help: the trait `Into<U>` is implemented for `T`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
 error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfied
@@ -61,7 +62,8 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                  |
    |                                  the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
    |
-   = help: the trait `Into<U>` is implemented for `T`
+help: the trait `Into<U>` is implemented for `T`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
 error: aborting due to 7 previous errors

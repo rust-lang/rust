@@ -7,7 +7,8 @@ LL | struct Foo<'a, T> {
 LL |     bar: &'a mut T
    |     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `&mut T`
    |
-   = help: the trait `Clone` is implemented for `&T`
+help: the trait `Clone` is implemented for `&T`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
    = note: `Clone` is implemented for `&T`, but not for `&mut T`
 
 error: aborting due to 1 previous error

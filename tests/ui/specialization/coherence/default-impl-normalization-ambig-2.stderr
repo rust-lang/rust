@@ -14,7 +14,11 @@ error[E0277]: the trait bound `u16: Assoc` is not satisfied
 LL | impl Foo for <u16 as Assoc>::Output {}
    |              ^^^^^^^^^^^^^^^^^^^^^^ the trait `Assoc` is not implemented for `u16`
    |
-   = help: the trait `Assoc` is implemented for `u8`
+help: the trait `Assoc` is implemented for `u8`
+  --> $DIR/default-impl-normalization-ambig-2.rs:12:1
+   |
+LL | impl Assoc for u8 {}
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error; 1 warning emitted
 

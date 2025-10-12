@@ -82,12 +82,14 @@ LL |     check(&mut () as *mut ());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `ConstParamTy_` is implemented for `()`
+help: the trait `ConstParamTy_` is implemented for `()`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
 LL | fn check(_: impl std::marker::ConstParamTy_) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `*const ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:12:11
@@ -97,12 +99,14 @@ LL |     check(&() as *const ());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `ConstParamTy_` is implemented for `()`
+help: the trait `ConstParamTy_` is implemented for `()`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
 LL | fn check(_: impl std::marker::ConstParamTy_) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 
