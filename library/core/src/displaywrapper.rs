@@ -187,6 +187,7 @@ impl<T: Displayable> Display for DisplayWrapper<T> {
                 buf[cur] = b'-';
             }
         }
+        // SAFETY: The buffer is initially ASCII and we only write ASCII bytes to it.
         let s = unsafe { core::str::from_utf8_unchecked(&buf[cur..]) };
         f.write_str(s)
     }
