@@ -28,13 +28,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     pub(super) fn try_handle_opaque_type_uses_next(&mut self) {
         // We clone the opaques instead of stealing them here as we still need
         // to use them after fallback.
-        let mut opaque_types: Vec<_> = self.infcx.clone_opaque_types();
-        for entry in &mut opaque_types {
-            *entry = self.resolve_vars_if_possible(*entry);
-        }
-        debug!(?opaque_types);
+        let opaque_types: Vec<_> = self.infcx.clone_opaque_types();
 
-        self.compute_definition_site_hidden_types(&opaque_types, false);
+        self.compute_definition_site_hidden_types(opaque_types, false);
     }
 
     /// This takes all the opaque type uses during HIR typeck. It first computes
@@ -49,16 +45,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     pub(super) fn handle_opaque_type_uses_next(&mut self) {
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
-        let mut opaque_types: Vec<_> = self.infcx.clone_opaque_types();
+        let opaque_types: Vec<_> = self.infcx.clone_opaque_types();
         let num_entries = self.inner.borrow_mut().opaque_types().num_entries();
         let prev = self.checked_opaque_types_storage_entries.replace(Some(num_entries));
         debug_assert_eq!(prev, None);
-        for entry in &mut opaque_types {
-            *entry = self.resolve_vars_if_possible(*entry);
-        }
-        debug!(?opaque_types);
 
-        self.compute_definition_site_hidden_types(&opaque_types, true);
+        self.compute_definition_site_hidden_types(opaque_types, true);
     }
 }
 
@@ -96,9 +88,14 @@ impl<'tcx> UsageKind<'tcx> {
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn compute_definition_site_hidden_types(
         &mut self,
-        opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
         error_on_missing_defining_use: bool,
     ) {
+        for entry in opaque_types.iter_mut() {
+            *entry = self.resolve_vars_if_possible(*entry);
+        }
+        debug!(?opaque_types);
+
         let tcx = self.tcx;
         let TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
         else {
@@ -116,7 +113,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             // store this), because we can go from `UnconstrainedHiddenType` to
             // `HasDefiningUse` (because of fallback)
             let mut usage_kind = UsageKind::None;
-            for &(opaque_type_key, hidden_type) in opaque_types {
+            for &(opaque_type_key, hidden_type) in &opaque_types {
                 if opaque_type_key.def_id != def_id {
                     continue;
                 }
@@ -129,7 +126,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
 
             if let UsageKind::HasDefiningUse(ty) = usage_kind {
-                for &(opaque_type_key, hidden_type) in opaque_types {
+                for &(opaque_type_key, hidden_type) in &opaque_types {
                     if opaque_type_key.def_id != def_id {
                         continue;
                     }
@@ -145,8 +142,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 let _ = self.typeck_results.borrow_mut().hidden_types.insert(def_id, ty);
             }
 
-            // If this the first pass (`try_handle_opaque_type_uses_next`),
-            // then do not report any errors.
+            // If we're in `fn try_handle_opaque_type_uses_next` then do not
+            // report any errors.
             if !error_on_missing_defining_use {
                 continue;
             }

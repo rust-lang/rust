@@ -23,4 +23,22 @@ impl FileSystem {
     }
 }
 
+fn build2<T, U>() -> impl Sized {
+    if false {
+        build2::<U, T>()
+    } else {
+        loop {}
+    };
+    1u32
+}
+
+fn build3<'a>() -> impl Sized + use<'a> {
+    if false {
+        build3()
+    } else {
+        loop {}
+    };
+    1u32
+}
+
 fn main() {}
