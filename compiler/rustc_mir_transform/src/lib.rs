@@ -498,7 +498,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     // We only need to borrowck non-synthetic MIR.
     let tainted_by_errors = if !tcx.is_synthetic_mir(def) {
-        tcx.mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local()).err()
+        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local()).err()
     } else {
         None
     };
@@ -798,7 +798,8 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
+        let _ =
+            tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
