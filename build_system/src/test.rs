@@ -910,6 +910,7 @@ fn test_rustc_inner<F>(
     prepare_files_callback: F,
     run_error_pattern_test: bool,
     test_type: &str,
+    run_ignored_tests: bool,
 ) -> Result<(), String>
 where
     F: Fn(&Path) -> Result<bool, String>,
@@ -1061,30 +1062,34 @@ where
 
     env.get_mut("RUSTFLAGS").unwrap().clear();
 
-    run_command_with_output_and_env(
-        &[
-            &"./x.py",
-            &"test",
-            &"--run",
-            &"always",
-            &"--stage",
-            &"0",
-            &"--set",
-            &"build.compiletest-allow-stage0=true",
-            &format!("tests/{test_type}"),
-            &"--compiletest-rustc-args",
-            &rustc_args,
-        ],
-        Some(&rust_path),
-        Some(&env),
-    )?;
+    let test_dir = format!("tests/{test_type}");
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![
+        &"./x.py",
+        &"test",
+        &"--run",
+        &"always",
+        &"--stage",
+        &"0",
+        &"--set",
+        &"build.compiletest-allow-stage0=true",
+        &test_dir,
+        &"--compiletest-rustc-args",
+        &rustc_args,
+    ];
+
+    if run_ignored_tests {
+        command.push(&"--");
+        command.push(&"--ignored");
+    }
+
+    run_command_with_output_and_env(&command, Some(&rust_path), Some(&env))?;
     Ok(())
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
-    test_rustc_inner(env, args, |_| Ok(false), false, "run-make-cargo")?;
-    test_rustc_inner(env, args, |_| Ok(false), false, "ui")
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make", false)?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make-cargo", false)?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "ui", false)
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -1094,6 +1099,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
+        true,
     );
 
     let run_make_cargo_result = test_rustc_inner(
@@ -1102,6 +1108,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
         false,
         "run-make",
+        true,
     );
 
     let ui_result = test_rustc_inner(
@@ -1110,6 +1117,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         retain_files_callback("tests/failing-ui-tests.txt", "ui"),
         false,
         "ui",
+        true,
     );
 
     run_make_result.and(run_make_cargo_result).and(ui_result)
@@ -1122,6 +1130,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         remove_files_callback("tests/failing-ui-tests.txt", "ui"),
         false,
         "ui",
+        false,
     )?;
     test_rustc_inner(
         env,
@@ -1129,6 +1138,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
+        false,
     )?;
     test_rustc_inner(
         env,
@@ -1136,6 +1146,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
         false,
         "run-make-cargo",
+        false,
     )
 }
 
@@ -1146,6 +1157,7 @@ fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String
         remove_files_callback("tests/failing-ice-tests.txt", "ui"),
         true,
         "ui",
+        false,
     )
 }
 
