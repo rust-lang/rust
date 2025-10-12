@@ -50,6 +50,7 @@ ENV SCRIPT \
     linkchecker \
     run-make-support \
     rustdoc-gui-test \
+    tidy \
     && \
   /scripts/check-default-config-profiles.sh && \
   python3 ../x.py build src/tools/build-manifest && \
