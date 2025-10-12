@@ -5,7 +5,6 @@
 use std::ops::ControlFlow;
 
 use base_db::Crate;
-use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
     AdtId, AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId, TypeAliasId,
@@ -29,8 +28,7 @@ use triomphe::Arc;
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::infer::select::ImplSource;
 use crate::{
-    CanonicalVarKinds, DebruijnIndex, GenericArgData, InEnvironment, Interner, TraitEnvironment,
-    TyBuilder, VariableKind,
+    TraitEnvironment, TyBuilder,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
@@ -42,7 +40,6 @@ use crate::{
             DbInternerInferExt, DefineOpaqueTypes,
             traits::{Obligation, ObligationCause, PredicateObligation},
         },
-        mapping::NextSolverToChalk,
         obligation_ctxt::ObligationCtxt,
     },
     traits::next_trait_solve_canonical_in_ctxt,
@@ -1390,9 +1387,8 @@ fn iterate_inherent_methods<'db>(
     match self_ty.kind() {
         TyKind::Param(_) => {
             let env = table.trait_env.clone();
-            let traits = env
-                .traits_in_scope_from_clauses(self_ty.to_chalk(table.interner()))
-                .flat_map(|t| all_super_traits(db, t));
+            let traits =
+                env.traits_in_scope_from_clauses(self_ty).flat_map(|t| all_super_traits(db, t));
             iterate_inherent_trait_methods(
                 self_ty,
                 table,
@@ -1753,50 +1749,6 @@ fn is_valid_impl_fn_candidate<'db>(
             IsValidCandidate::No
         }
     })
-}
-
-pub fn implements_trait_unique<'db>(
-    ty: &crate::Canonical<crate::Ty>,
-    db: &'db dyn HirDatabase,
-    env: &TraitEnvironment<'db>,
-    trait_: TraitId,
-) -> bool {
-    let goal = generic_implements_goal(db, env, trait_, ty);
-    db.trait_solve(env.krate, env.block, goal.cast(Interner)).certain()
-}
-
-/// This creates Substs for a trait with the given Self type and type variables
-/// for all other parameters, to query next solver with it.
-#[tracing::instrument(skip_all)]
-fn generic_implements_goal<'db>(
-    db: &'db dyn HirDatabase,
-    env: &TraitEnvironment<'db>,
-    trait_: TraitId,
-    self_ty: &crate::Canonical<crate::Ty>,
-) -> crate::Canonical<crate::InEnvironment<crate::DomainGoal>> {
-    let binders = self_ty.binders.interned();
-    let trait_ref = TyBuilder::trait_ref(db, trait_)
-        .push(self_ty.value.clone())
-        .fill_with_bound_vars(DebruijnIndex::INNERMOST, binders.len())
-        .build();
-
-    let kinds =
-        binders.iter().cloned().chain(trait_ref.substitution.iter(Interner).skip(1).map(|it| {
-            let vk = match it.data(Interner) {
-                GenericArgData::Ty(_) => VariableKind::Ty(chalk_ir::TyVariableKind::General),
-                GenericArgData::Lifetime(_) => VariableKind::Lifetime,
-                GenericArgData::Const(c) => VariableKind::Const(c.data(Interner).ty.clone()),
-            };
-            WithKind::new(vk, UniverseIndex::ROOT)
-        }));
-    let binders = CanonicalVarKinds::from_iter(Interner, kinds);
-
-    let obligation = trait_ref.cast(Interner);
-    let value = InEnvironment::new(
-        &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
-        obligation,
-    );
-    crate::Canonical { binders, value }
 }
 
 /// This creates Substs for a trait with the given Self type and type variables

@@ -69,6 +69,14 @@ impl<'db> GenericArg<'db> {
             _ => None,
         }
     }
+
+    pub fn error_from_id(interner: DbInterner<'db>, id: GenericParamId) -> GenericArg<'db> {
+        match id {
+            GenericParamId::TypeParamId(_) => Ty::new_error(interner, ErrorGuaranteed).into(),
+            GenericParamId::ConstParamId(_) => Const::error(interner).into(),
+            GenericParamId::LifetimeParamId(_) => Region::error(interner).into(),
+        }
+    }
 }
 
 impl<'db> From<Term<'db>> for GenericArg<'db> {
@@ -190,6 +198,13 @@ impl<'db> GenericArgs<'db> {
         let mut args = SmallVec::with_capacity(count);
         Self::fill_item(&mut args, interner, defs, &mut mk_kind);
         interner.mk_args(&args)
+    }
+
+    /// Creates an all-error `GenericArgs`.
+    pub fn error_for_item(interner: DbInterner<'db>, def_id: SolverDefId) -> GenericArgs<'db> {
+        GenericArgs::for_item(interner, def_id, |_, _, id, _| {
+            GenericArg::error_from_id(interner, id)
+        })
     }
 
     /// Like `for_item`, but prefers the default of a parameter if it has any.

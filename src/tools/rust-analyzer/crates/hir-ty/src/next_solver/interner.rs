@@ -304,6 +304,7 @@ impl<'db> DbInterner<'db> {
         DbInterner { db, krate, block }
     }
 
+    #[inline]
     pub fn db(&self) -> &'db dyn HirDatabase {
         self.db
     }
@@ -1952,7 +1953,6 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         false
     }
 
-    // FIXME(next-solver): Make this a query? Can this make cycles?
     fn impl_specializes(
         self,
         specializing_impl_def_id: Self::ImplId,

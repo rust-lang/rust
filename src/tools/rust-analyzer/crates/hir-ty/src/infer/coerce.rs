@@ -46,7 +46,7 @@ use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     BoundVar, TypeAndMut,
     error::TypeError,
-    inherent::{Const as _, GenericArg as _, IntoKind, Region as _, Safety, SliceLike, Ty as _},
+    inherent::{Const as _, GenericArg as _, IntoKind, Safety, SliceLike, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -59,15 +59,15 @@ use crate::{
     infer::{AllowTwoPhase, InferenceContext, TypeMismatch, unify::InferenceTable},
     next_solver::{
         Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, CallableIdWrapper,
-        ClauseKind, CoercePredicate, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs,
-        PolyFnSig, PredicateKind, Region, RegionKind, SolverDefId, TraitRef, Ty, TyKind,
+        Canonical, ClauseKind, CoercePredicate, Const, ConstKind, DbInterner, ErrorGuaranteed,
+        GenericArgs, PolyFnSig, PredicateKind, Region, RegionKind, SolverDefId, TraitRef, Ty,
+        TyKind,
         infer::{
             DefineOpaqueTypes, InferCtxt, InferOk, InferResult,
             relate::RelateResult,
             select::{ImplSource, SelectionError},
             traits::{Obligation, ObligationCause, PredicateObligation, PredicateObligations},
         },
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
         obligation_ctxt::ObligationCtxt,
     },
     utils::TargetFeatureIsSafeInTarget,
@@ -1525,7 +1525,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
 pub fn could_coerce<'db>(
     db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
+    tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
     coerce(db, env, tys).is_ok()
 }
@@ -1533,12 +1533,11 @@ pub fn could_coerce<'db>(
 fn coerce<'db>(
     db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
-) -> Result<(Vec<Adjustment<'db>>, crate::Ty), TypeError<DbInterner<'db>>> {
+    tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
+) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
     let mut table = InferenceTable::new(db, env);
     let interner = table.interner();
-    let tys = tys.to_nextsolver(interner);
-    let ((ty1_with_vars, ty2_with_vars), vars) = table.infer_ctxt.instantiate_canonical(&tys);
+    let ((ty1_with_vars, ty2_with_vars), vars) = table.infer_ctxt.instantiate_canonical(tys);
 
     let cause = ObligationCause::new();
     // FIXME: Target features.
@@ -1614,5 +1613,5 @@ fn coerce<'db>(
         &mut fallback_const,
         &mut fallback_region,
     );
-    Ok((adjustments, ty.to_chalk(interner)))
+    Ok((adjustments, ty))
 }

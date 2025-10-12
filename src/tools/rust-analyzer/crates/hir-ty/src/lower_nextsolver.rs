@@ -40,7 +40,7 @@ use hir_def::{ConstId, LifetimeParamId, StaticId, TypeParamId};
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use la_arena::{Arena, ArenaMap, Idx};
-use path::{PathDiagnosticCallback, PathLoweringContext, builtin};
+use path::{PathDiagnosticCallback, PathLoweringContext};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::Captures;
@@ -105,7 +105,7 @@ impl<'db> ImplTraitLoweringState<'db> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum LifetimeElisionKind<'db> {
+pub enum LifetimeElisionKind<'db> {
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -174,7 +174,7 @@ impl<'db> LifetimeElisionKind<'db> {
 }
 
 #[derive(Debug)]
-pub(crate) struct TyLoweringContext<'db, 'a> {
+pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
     interner: DbInterner<'db>,
     resolver: &'a Resolver<'db>,
@@ -192,7 +192,7 @@ pub(crate) struct TyLoweringContext<'db, 'a> {
 }
 
 impl<'db, 'a> TyLoweringContext<'db, 'a> {
-    pub(crate) fn new(
+    pub fn new(
         db: &'db dyn HirDatabase,
         resolver: &'a Resolver<'db>,
         store: &'a ExpressionStore,
@@ -271,7 +271,7 @@ pub(crate) enum ImplTraitLoweringMode {
 }
 
 impl<'db, 'a> TyLoweringContext<'db, 'a> {
-    pub(crate) fn lower_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
+    pub fn lower_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
         self.lower_ty_ext(type_ref).0
     }
 
@@ -361,7 +361,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     #[tracing::instrument(skip(self), ret)]
-    pub(crate) fn lower_ty_ext(&mut self, type_ref_id: TypeRefId) -> (Ty<'db>, Option<TypeNs>) {
+    pub fn lower_ty_ext(&mut self, type_ref_id: TypeRefId) -> (Ty<'db>, Option<TypeNs>) {
         let interner = self.interner;
         let mut res = None;
         let type_ref = &self.store[type_ref_id];
@@ -1013,7 +1013,7 @@ pub(crate) fn type_alias_impl_traits<'db>(
 pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBinder<'db, Ty<'db>> {
     let interner = DbInterner::new_with(db, None, None);
     match def {
-        TyDefId::BuiltinType(it) => EarlyBinder::bind(builtin(interner, it)),
+        TyDefId::BuiltinType(it) => EarlyBinder::bind(Ty::from_builtin_type(interner, it)),
         TyDefId::AdtId(it) => EarlyBinder::bind(Ty::new_adt(
             interner,
             it,
@@ -1401,6 +1401,7 @@ pub(crate) fn generic_predicates_for_param_cycle_result(
 pub struct GenericPredicates<'db>(Option<Arc<[Clause<'db>]>>);
 
 impl<'db> GenericPredicates<'db> {
+    #[inline]
     pub fn instantiate(
         &self,
         interner: DbInterner<'db>,
@@ -1409,6 +1410,11 @@ impl<'db> GenericPredicates<'db> {
         self.0
             .as_ref()
             .map(|it| EarlyBinder::bind(it.iter().copied()).iter_instantiated(interner, args))
+    }
+
+    #[inline]
+    pub fn instantiate_identity(&self) -> Option<impl Iterator<Item = Clause<'db>>> {
+        self.0.as_ref().map(|it| it.iter().copied())
     }
 }
 
@@ -1458,8 +1464,7 @@ pub(crate) fn trait_environment_query<'db>(
         for pred in maybe_parent_generics.where_predicates() {
             for pred in ctx.lower_where_predicate(pred, false, &generics, PredicateFilter::All) {
                 if let rustc_type_ir::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
-                    traits_in_scope
-                        .push((convert_ty_for_result(interner, tr.self_ty()), tr.def_id().0));
+                    traits_in_scope.push((tr.self_ty(), tr.def_id().0));
                 }
                 clauses.push(pred);
             }

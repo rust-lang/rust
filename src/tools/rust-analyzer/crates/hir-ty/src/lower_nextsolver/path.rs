@@ -550,7 +550,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
     fn lower_path_inner(&mut self, typeable: TyDefId, infer_args: bool) -> Ty<'db> {
         let generic_def = match typeable {
-            TyDefId::BuiltinType(builtinty) => return builtin(self.ctx.interner, builtinty),
+            TyDefId::BuiltinType(builtinty) => {
+                return Ty::from_builtin_type(self.ctx.interner, builtinty);
+            }
             TyDefId::AdtId(it) => it.into(),
             TyDefId::TypeAliasId(it) => it.into(),
         };
@@ -1349,43 +1351,4 @@ fn unknown_subst<'db>(
             }
         }),
     )
-}
-
-pub(crate) fn builtin<'db>(interner: DbInterner<'db>, builtin: BuiltinType) -> Ty<'db> {
-    match builtin {
-        BuiltinType::Char => Ty::new(interner, rustc_type_ir::TyKind::Char),
-        BuiltinType::Bool => Ty::new_bool(interner),
-        BuiltinType::Str => Ty::new(interner, rustc_type_ir::TyKind::Str),
-        BuiltinType::Int(t) => {
-            let int_ty = match primitive::int_ty_from_builtin(t) {
-                chalk_ir::IntTy::Isize => rustc_type_ir::IntTy::Isize,
-                chalk_ir::IntTy::I8 => rustc_type_ir::IntTy::I8,
-                chalk_ir::IntTy::I16 => rustc_type_ir::IntTy::I16,
-                chalk_ir::IntTy::I32 => rustc_type_ir::IntTy::I32,
-                chalk_ir::IntTy::I64 => rustc_type_ir::IntTy::I64,
-                chalk_ir::IntTy::I128 => rustc_type_ir::IntTy::I128,
-            };
-            Ty::new_int(interner, int_ty)
-        }
-        BuiltinType::Uint(t) => {
-            let uint_ty = match primitive::uint_ty_from_builtin(t) {
-                chalk_ir::UintTy::Usize => rustc_type_ir::UintTy::Usize,
-                chalk_ir::UintTy::U8 => rustc_type_ir::UintTy::U8,
-                chalk_ir::UintTy::U16 => rustc_type_ir::UintTy::U16,
-                chalk_ir::UintTy::U32 => rustc_type_ir::UintTy::U32,
-                chalk_ir::UintTy::U64 => rustc_type_ir::UintTy::U64,
-                chalk_ir::UintTy::U128 => rustc_type_ir::UintTy::U128,
-            };
-            Ty::new_uint(interner, uint_ty)
-        }
-        BuiltinType::Float(t) => {
-            let float_ty = match primitive::float_ty_from_builtin(t) {
-                chalk_ir::FloatTy::F16 => rustc_type_ir::FloatTy::F16,
-                chalk_ir::FloatTy::F32 => rustc_type_ir::FloatTy::F32,
-                chalk_ir::FloatTy::F64 => rustc_type_ir::FloatTy::F64,
-                chalk_ir::FloatTy::F128 => rustc_type_ir::FloatTy::F128,
-            };
-            Ty::new_float(interner, float_ty)
-        }
-    }
 }

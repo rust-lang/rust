@@ -28,9 +28,10 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
-use hir_ty::diagnostics::{unsafe_operations, unsafe_operations_for_body};
-use hir_ty::next_solver::DbInterner;
-use hir_ty::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
+use hir_ty::{
+    diagnostics::{unsafe_operations, unsafe_operations_for_body},
+    next_solver::DbInterner,
+};
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1563,16 +1564,11 @@ impl<'db> SemanticsImpl<'db> {
 
         let (mut source_ty, _) = analyzer.type_of_expr(self.db, expr)?;
 
-        let interner = DbInterner::new_with(self.db, None, None);
-
         analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
-                    let target = Type::new_with_resolver(
-                        self.db,
-                        &analyzer.resolver,
-                        adjust.target.to_chalk(interner),
-                    );
+                    let target =
+                        Type::new_with_resolver(self.db, &analyzer.resolver, adjust.target);
                     let kind = match adjust.kind {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
@@ -1666,7 +1662,7 @@ impl<'db> SemanticsImpl<'db> {
             trait_.id.into(),
             |_, _, id, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
-                subst.next().expect("too few subst").ty.to_nextsolver(interner).into()
+                subst.next().expect("too few subst").ty.into()
             },
         );
         assert!(subst.next().is_none(), "too many subst");

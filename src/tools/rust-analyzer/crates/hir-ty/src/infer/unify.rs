@@ -2,29 +2,27 @@
 
 use std::fmt;
 
-use chalk_ir::cast::Cast;
-use hir_def::GenericParamId;
-use hir_def::{AdtId, lang_item::LangItem};
+use hir_def::{AdtId, GenericParamId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::{DebruijnIndex, InferConst, InferTy, RegionVid};
 use rustc_type_ir::{
-    TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UpcastFrom,
+    DebruijnIndex, InferConst, InferTy, RegionVid, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, UpcastFrom,
     inherent::{Const as _, IntoKind, Ty as _},
     solve::{Certainty, GoalSource},
 };
 use smallvec::SmallVec;
 use triomphe::Arc;
 
-use crate::next_solver::{Binder, ConstKind, GenericArgs, RegionKind, SolverDefId};
 use crate::{
-    Interner, TraitEnvironment,
+    TraitEnvironment,
     db::{HirDatabase, InternedOpaqueTyId},
     infer::InferenceContext,
     next_solver::{
-        self, AliasTy, ClauseKind, Const, DbInterner, ErrorGuaranteed, GenericArg, Predicate,
-        PredicateKind, Region, SolverDefIds, TraitRef, Ty, TyKind, TypingMode,
+        self, AliasTy, Binder, Canonical, ClauseKind, Const, ConstKind, DbInterner,
+        ErrorGuaranteed, GenericArg, GenericArgs, Predicate, PredicateKind, Region, RegionKind,
+        SolverDefId, SolverDefIds, TraitRef, Ty, TyKind, TypingMode,
         fulfill::{FulfillmentCtxt, NextSolverError},
         infer::{
             DbInternerInferExt, DefineOpaqueTypes, InferCtxt, InferOk, InferResult,
@@ -33,7 +31,6 @@ use crate::{
             traits::{Obligation, ObligationCause, PredicateObligation},
         },
         inspect::{InspectConfig, InspectGoal, ProofTreeVisitor},
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
         obligation_ctxt::ObligationCtxt,
     },
     traits::{
@@ -115,10 +112,10 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 /// This means that there may be some unresolved goals that actually set bounds for the placeholder
 /// type for the types to unify. For example `Option<T>` and `Option<U>` unify although there is
 /// unresolved goal `T = U`.
-pub fn could_unify(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment<'_>>,
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
+pub fn could_unify<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
     could_unify_impl(db, env, tys, |ctxt| ctxt.select_where_possible())
 }
@@ -127,58 +124,34 @@ pub fn could_unify(
 ///
 /// This means that placeholder types are not considered to unify if there are any bounds set on
 /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
-pub fn could_unify_deeply(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment<'_>>,
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
+pub fn could_unify_deeply<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
     could_unify_impl(db, env, tys, |ctxt| ctxt.select_all_or_error())
 }
 
-fn could_unify_impl(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment<'_>>,
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
-    select: for<'a, 'db> fn(&mut ObligationCtxt<'a, 'db>) -> Vec<NextSolverError<'db>>,
+fn could_unify_impl<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
+    select: for<'a> fn(&mut ObligationCtxt<'a, 'db>) -> Vec<NextSolverError<'db>>,
 ) -> bool {
     let interner = DbInterner::new_with(db, Some(env.krate), env.block);
     // FIXME(next-solver): I believe this should use `PostAnalysis` (this is only used for IDE things),
     // but this causes some bug because of our incorrect impl of `type_of_opaque_hir_typeck()` for TAIT
     // and async blocks.
-    let infcx = interner.infer_ctxt().build(TypingMode::Analysis {
-        defining_opaque_types_and_generators: SolverDefIds::new_from_iter(interner, []),
-    });
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::dummy();
     let at = infcx.at(&cause, env.env);
-    let vars = make_substitutions(tys, &infcx);
-    let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner).to_nextsolver(interner);
-    let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner).to_nextsolver(interner);
+    let ((ty1_with_vars, ty2_with_vars), _) = infcx.instantiate_canonical(tys);
     let mut ctxt = ObligationCtxt::new(&infcx);
     let can_unify = at
         .eq(DefineOpaqueTypes::No, ty1_with_vars, ty2_with_vars)
         .map(|infer_ok| ctxt.register_infer_ok_obligations(infer_ok))
         .is_ok();
     can_unify && select(&mut ctxt).is_empty()
-}
-
-fn make_substitutions(
-    tys: &crate::Canonical<(crate::Ty, crate::Ty)>,
-    infcx: &InferCtxt<'_>,
-) -> crate::Substitution {
-    let interner = infcx.interner;
-    crate::Substitution::from_iter(
-        Interner,
-        tys.binders.iter(Interner).map(|it| match &it.kind {
-            chalk_ir::VariableKind::Ty(_) => infcx.next_ty_var().to_chalk(interner).cast(Interner),
-            // FIXME: maybe wrong?
-            chalk_ir::VariableKind::Lifetime => {
-                infcx.next_ty_var().to_chalk(interner).cast(Interner)
-            }
-            chalk_ir::VariableKind::Const(_ty) => {
-                infcx.next_const_var().to_chalk(interner).cast(Interner)
-            }
-        }),
-    )
 }
 
 #[derive(Clone)]

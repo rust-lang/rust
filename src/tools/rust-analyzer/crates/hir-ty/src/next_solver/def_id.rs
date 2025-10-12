@@ -158,6 +158,15 @@ impl SolverDefId {
             _ => panic!("expected opaque type, found {self:?}"),
         }
     }
+
+    #[inline]
+    #[track_caller]
+    pub fn expect_type_alias(self) -> TypeAliasId {
+        match self {
+            SolverDefId::TypeAliasId(it) => it,
+            _ => panic!("expected type alias, found {self:?}"),
+        }
+    }
 }
 
 impl<'db> inherent::DefId<DbInterner<'db>> for SolverDefId {

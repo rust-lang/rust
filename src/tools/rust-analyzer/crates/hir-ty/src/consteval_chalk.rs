@@ -11,48 +11,15 @@ use stdx::never;
 
 use crate::{
     Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder,
+    TraitEnvironment, Ty,
     db::HirDatabase,
     generics::Generics,
     lower::ParamLoweringMode,
-    next_solver::{
-        DbInterner,
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
-    },
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
     to_placeholder_idx,
 };
 
-use super::mir::pad16;
-
-/// Extension trait for [`Const`]
-pub trait ConstExt {
-    /// Is a [`Const`] unknown?
-    fn is_unknown(&self) -> bool;
-}
-
-impl ConstExt for Const {
-    fn is_unknown(&self) -> bool {
-        match self.data(Interner).value {
-            // interned Unknown
-            chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
-                interned: ConstScalar::Unknown,
-            }) => true,
-
-            // interned concrete anything else
-            chalk_ir::ConstValue::Concrete(..) => false,
-
-            _ => {
-                tracing::error!(
-                    "is_unknown was called on a non-concrete constant value! {:?}",
-                    self
-                );
-                true
-            }
-        }
-    }
-}
-
-pub fn path_to_const<'g>(
+pub(crate) fn path_to_const<'g>(
     db: &dyn HirDatabase,
     resolver: &Resolver<'_>,
     path: &Path,
@@ -94,7 +61,7 @@ pub fn path_to_const<'g>(
     }
 }
 
-pub fn unknown_const(ty: Ty) -> Const {
+pub(crate) fn unknown_const(ty: Ty) -> Const {
     ConstData {
         ty,
         value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: ConstScalar::Unknown }),
@@ -102,18 +69,18 @@ pub fn unknown_const(ty: Ty) -> Const {
     .intern(Interner)
 }
 
-pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
+pub(crate) fn unknown_const_as_generic(ty: Ty) -> GenericArg {
     unknown_const(ty).cast(Interner)
 }
 
 /// Interns a constant scalar with the given type
-pub fn intern_const_scalar(value: ConstScalar, ty: Ty) -> Const {
+pub(crate) fn intern_const_scalar(value: ConstScalar, ty: Ty) -> Const {
     ConstData { ty, value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: value }) }
         .intern(Interner)
 }
 
 /// Interns a constant scalar with the given type
-pub fn intern_const_ref(
+pub(crate) fn intern_const_ref(
     db: &dyn HirDatabase,
     value: &LiteralConstRef,
     ty: Ty,
@@ -138,48 +105,4 @@ pub fn intern_const_ref(
         LiteralConstRef::Unknown => ConstScalar::Unknown,
     };
     intern_const_scalar(bytes, ty)
-}
-
-/// Interns a possibly-unknown target usize
-pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: Crate) -> Const {
-    intern_const_ref(
-        db,
-        &value.map_or(LiteralConstRef::Unknown, LiteralConstRef::UInt),
-        TyBuilder::usize(),
-        krate,
-    )
-}
-
-pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
-    let interner = DbInterner::new_with(db, None, None);
-    match &c.data(Interner).value {
-        chalk_ir::ConstValue::BoundVar(_) => None,
-        chalk_ir::ConstValue::InferenceVar(_) => None,
-        chalk_ir::ConstValue::Placeholder(_) => None,
-        chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, false))),
-            ConstScalar::UnevaluatedConst(c, subst) => {
-                let ec = db.const_eval(*c, subst.to_nextsolver(interner), None).ok()?;
-                try_const_usize(db, &ec.to_chalk(interner))
-            }
-            _ => None,
-        },
-    }
-}
-
-pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
-    let interner = DbInterner::new_with(db, None, None);
-    match &c.data(Interner).value {
-        chalk_ir::ConstValue::BoundVar(_) => None,
-        chalk_ir::ConstValue::InferenceVar(_) => None,
-        chalk_ir::ConstValue::Placeholder(_) => None,
-        chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(it, _) => Some(i128::from_le_bytes(pad16(it, true))),
-            ConstScalar::UnevaluatedConst(c, subst) => {
-                let ec = db.const_eval(*c, subst.to_nextsolver(interner), None).ok()?;
-                try_const_isize(db, &ec.to_chalk(interner))
-            }
-            _ => None,
-        },
-    }
 }
