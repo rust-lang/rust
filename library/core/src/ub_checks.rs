@@ -74,7 +74,7 @@ macro_rules! assert_unsafe_precondition {
                         ::core::panicking::panic_nounwind($message);
                     } else #[allow(unused)] {
                         $(
-                            let $name = ::core::displaywrapper::DisplayWrapper::from($name);
+                            let $name = ::core::displaywrapper::DisplayWrapper($name);
                         )*
                         ::core::panicking::panic_nounwind_fmt(format_args!($message), false);
                     }
