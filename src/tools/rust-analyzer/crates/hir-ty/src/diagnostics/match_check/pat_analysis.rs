@@ -19,6 +19,11 @@ use crate::{
     db::HirDatabase,
     infer::normalize,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
+    next_solver::{
+        DbInterner, TypingMode,
+        infer::{DbInternerInferExt, InferCtxt},
+        mapping::ChalkToNextSolver,
+    },
 };
 
 use super::{FieldPat, Pat, PatKind};
@@ -28,7 +33,7 @@ use Constructor::*;
 // Re-export r-a-specific versions of all these types.
 pub(crate) type DeconstructedPat<'db> =
     rustc_pattern_analysis::pat::DeconstructedPat<MatchCheckCtx<'db>>;
-pub(crate) type MatchArm<'db> = rustc_pattern_analysis::MatchArm<'db, MatchCheckCtx<'db>>;
+pub(crate) type MatchArm<'a, 'db> = rustc_pattern_analysis::MatchArm<'a, MatchCheckCtx<'db>>;
 pub(crate) type WitnessPat<'db> = rustc_pattern_analysis::pat::WitnessPat<MatchCheckCtx<'db>>;
 
 /// [Constructor] uses this in unimplemented variants.
@@ -71,6 +76,7 @@ pub(crate) struct MatchCheckCtx<'db> {
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
     env: Arc<TraitEnvironment<'db>>,
+    infcx: InferCtxt<'db>,
 }
 
 impl<'db> MatchCheckCtx<'db> {
@@ -82,15 +88,17 @@ impl<'db> MatchCheckCtx<'db> {
     ) -> Self {
         let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
-        Self { module, body, db, exhaustive_patterns, env }
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let infcx = interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, body.into()));
+        Self { module, body, db, exhaustive_patterns, env, infcx }
     }
 
-    pub(crate) fn compute_match_usefulness(
+    pub(crate) fn compute_match_usefulness<'a>(
         &self,
-        arms: &[MatchArm<'db>],
+        arms: &[MatchArm<'a, 'db>],
         scrut_ty: Ty,
         known_valid_scrutinee: Option<bool>,
-    ) -> Result<UsefulnessReport<'db, Self>, ()> {
+    ) -> Result<UsefulnessReport<'a, Self>, ()> {
         if scrut_ty.contains_unknown() {
             return Err(());
         }
@@ -107,7 +115,12 @@ impl<'db> MatchCheckCtx<'db> {
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
-        is_ty_uninhabited_from(self.db, ty, self.module, self.env.clone())
+        is_ty_uninhabited_from(
+            &self.infcx,
+            ty.to_nextsolver(self.infcx.interner),
+            self.module,
+            self.env.clone(),
+        )
     }
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
@@ -429,9 +442,9 @@ impl PatCx for MatchCheckCtx<'_> {
                     let mut variants = IndexVec::with_capacity(enum_data.variants.len());
                     for &(variant, _, _) in enum_data.variants.iter() {
                         let is_uninhabited = is_enum_variant_uninhabited_from(
-                            cx.db,
+                            &cx.infcx,
                             variant,
-                            subst,
+                            subst.to_nextsolver(cx.infcx.interner),
                             cx.module,
                             self.env.clone(),
                         );
