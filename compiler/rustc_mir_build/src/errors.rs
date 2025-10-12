@@ -720,6 +720,18 @@ pub(crate) struct WantedConstant {
     pub(crate) const_path: String,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(mir_build_unreachable_due_to_uninhabited)]
+pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {
+    pub descr: &'desc str,
+    #[label]
+    pub expr: Span,
+    #[label(mir_build_label_orig)]
+    #[note]
+    pub orig: Span,
+    pub ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {

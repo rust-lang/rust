@@ -882,6 +882,9 @@ pub struct VarBindingForm<'tcx> {
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
+    /// A binding can be introduced multiple times, with or patterns:
+    /// `Foo::A { x } | Foo::B { z: x }`. This stores information for each of those introductions.
+    pub introductions: Vec<VarBindingIntroduction>,
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable)]
@@ -891,7 +894,15 @@ pub enum BindingForm<'tcx> {
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
-    RefForGuard,
+    RefForGuard(Local),
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct VarBindingIntroduction {
+    /// Where this additional introduction happened.
+    pub span: Span,
+    /// Is that introduction a shorthand struct pattern, i.e. `Foo { x }`.
+    pub is_shorthand: bool,
 }
 
 mod binding_form_impl {
@@ -906,7 +917,7 @@ mod binding_form_impl {
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
                 ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
-                RefForGuard => (),
+                RefForGuard(local) => local.hash_stable(hcx, hasher),
             }
         }
     }
@@ -1092,12 +1103,8 @@ impl<'tcx> LocalDecl<'tcx> {
         matches!(
             self.local_info(),
             LocalInfo::User(
-                BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
-                }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+                BindingForm::Var(VarBindingForm { binding_mode: BindingMode(ByRef::No, _), .. })
+                    | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
             )
         )
     }
@@ -1109,12 +1116,8 @@ impl<'tcx> LocalDecl<'tcx> {
         matches!(
             self.local_info(),
             LocalInfo::User(
-                BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
-                }) | BindingForm::ImplicitSelf(_),
+                BindingForm::Var(VarBindingForm { binding_mode: BindingMode(ByRef::No, _), .. })
+                    | BindingForm::ImplicitSelf(_),
             )
         )
     }
@@ -1130,7 +1133,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard(_)))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
