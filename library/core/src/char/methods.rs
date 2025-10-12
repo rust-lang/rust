@@ -1859,8 +1859,9 @@ impl char {
     pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
         assert_unsafe_precondition!(
             check_library_ub,
-            "as_ascii_unchecked requires that the char is valid ASCII",
-            (it: &char = self) => it.is_ascii()
+            "as_ascii_unchecked requires that the char is valid ASCII \
+            (self:{it})",
+            (it: char = *self) => it.is_ascii()
         );
 
         // SAFETY: the caller promised that this char is ASCII.
