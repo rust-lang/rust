@@ -4,8 +4,8 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, rename_lint, serve, setup,
-    sync, update_lints,
+    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, serve, setup, sync,
+    update_lints,
 };
 use std::env;
 
@@ -75,7 +75,7 @@ fn main() {
         DevCommand::Serve { port, lint } => serve::run(port, lint),
         DevCommand::Lint { path, edition, args } => lint::run(&path, &edition, args.iter()),
         DevCommand::RenameLint { old_name, new_name } => new_parse_cx(|cx| {
-            rename_lint::rename(cx, clippy.version, &old_name, &new_name);
+            edit_lints::rename(cx, clippy.version, &old_name, &new_name);
         }),
         DevCommand::Uplift { old_name, new_name } => new_parse_cx(|cx| {
             edit_lints::uplift(cx, clippy.version, &old_name, new_name.as_deref().unwrap_or(&old_name));
