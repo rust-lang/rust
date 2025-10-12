@@ -19,7 +19,7 @@
 //! - Utility enums for specific configuration options.
 //! - Helper functions for managing configuration values.
 
-#[expect(clippy::module_inception)]
+#[allow(unknown_lints, module_inception)]
 mod config;
 pub mod flags;
 pub mod target_selection;
