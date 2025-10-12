@@ -73,7 +73,7 @@ impl LoggerConfig {
 
 /// Initialize the logger with the given values for the filter, coloring, and other options env variables.
 pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
-    init_logger_with_additional_layer(cfg, || Registry::default())
+    init_logger_with_additional_layer(cfg, Registry::default)
 }
 
 /// Trait alias for the complex return type of `build_subscriber` in
@@ -145,14 +145,11 @@ where
         .with_thread_ids(verbose_thread_ids)
         .with_thread_names(verbose_thread_ids);
 
-    match cfg.wraptree {
-        Ok(v) => match v.parse::<usize>() {
-            Ok(v) => {
-                layer = layer.with_wraparound(v);
-            }
+    if let Ok(v) = cfg.wraptree {
+        match v.parse::<usize>() {
+            Ok(v) => layer = layer.with_wraparound(v),
             Err(_) => return Err(Error::InvalidWraptree(v)),
-        },
-        Err(_) => {} // no wraptree
+        }
     }
 
     let subscriber = build_subscriber().with(layer.with_filter(filter));
