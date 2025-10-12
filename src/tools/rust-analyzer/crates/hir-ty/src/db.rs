@@ -96,6 +96,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> Result<i128, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
+    #[salsa::transparent]
     fn lookup_impl_method<'db>(
         &'db self,
         env: Arc<TraitEnvironment<'db>>,

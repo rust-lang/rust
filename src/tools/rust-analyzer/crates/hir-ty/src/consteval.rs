@@ -5,13 +5,12 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    EnumVariantId, GeneralConstId,
+    EnumVariantId, GeneralConstId, HasModule, StaticId,
     expr_store::{Body, HygieneId, path::Path},
     hir::{Expr, ExprId},
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
 };
-use hir_def::{HasModule, StaticId};
 use hir_expand::Lookup;
 use rustc_type_ir::{UnevaluatedConst, inherent::IntoKind};
 use stdx::never;
