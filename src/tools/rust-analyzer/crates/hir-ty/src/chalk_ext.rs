@@ -1,32 +1,22 @@
 //! Various extensions traits for Chalk types.
 
-use chalk_ir::Mutability;
 use hir_def::{FunctionId, ItemContainerId, Lookup, TraitId};
 
 use crate::{
-    AdtId, Binders, CallableDefId, CallableSig, DynTy, Interner, Lifetime, ProjectionTy,
-    Substitution, ToChalk, TraitRef, Ty, TyKind, TypeFlags, WhereClause, db::HirDatabase,
-    from_assoc_type_id, from_chalk_trait_id, generics::generics, to_chalk_trait_id,
-    utils::ClosureSubst,
+    Binders, CallableDefId, CallableSig, DynTy, Interner, ProjectionTy, Substitution, ToChalk,
+    TraitRef, Ty, TyKind, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id,
+    generics::generics, to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub(crate) trait TyExt {
     fn is_unit(&self) -> bool;
     fn is_unknown(&self) -> bool;
-    fn contains_unknown(&self) -> bool;
 
-    fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_tuple(&self) -> Option<&Substitution>;
     fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId>;
-    fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)>;
 
     fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId>;
     fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig>;
-
-    fn strip_references(&self) -> &Ty;
-
-    /// If this is a `dyn Trait`, returns that trait.
-    fn dyn_trait(&self) -> Option<TraitId>;
 }
 
 impl TyExt for Ty {
@@ -36,17 +26,6 @@ impl TyExt for Ty {
 
     fn is_unknown(&self) -> bool {
         matches!(self.kind(Interner), TyKind::Error)
-    }
-
-    fn contains_unknown(&self) -> bool {
-        self.data(Interner).flags.contains(TypeFlags::HAS_ERROR)
-    }
-
-    fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {
-        match self.kind(Interner) {
-            TyKind::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
-            _ => None,
-        }
     }
 
     fn as_tuple(&self) -> Option<&Substitution> {
@@ -60,13 +39,6 @@ impl TyExt for Ty {
         match self.callable_def(db) {
             Some(CallableDefId::FunctionId(func)) => Some(func),
             Some(CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_)) | None => None,
-        }
-    }
-
-    fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
-        match self.kind(Interner) {
-            TyKind::Ref(mutability, lifetime, ty) => Some((ty, lifetime.clone(), *mutability)),
-            _ => None,
         }
     }
 
@@ -84,31 +56,6 @@ impl TyExt for Ty {
             TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty(db).callable_sig(db),
             _ => None,
         }
-    }
-
-    fn dyn_trait(&self) -> Option<TraitId> {
-        let trait_ref = match self.kind(Interner) {
-            // The principal trait bound should be the first element of the bounds. This is an
-            // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
-            // FIXME: dyn types may not have principal trait and we don't want to return auto trait
-            // here.
-            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().first().and_then(|b| {
-                match b.skip_binders() {
-                    WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                    _ => None,
-                }
-            }),
-            _ => None,
-        }?;
-        Some(from_chalk_trait_id(trait_ref.trait_id))
-    }
-
-    fn strip_references(&self) -> &Ty {
-        let mut t: &Ty = self;
-        while let TyKind::Ref(_mutability, _lifetime, ty) = t.kind(Interner) {
-            t = ty;
-        }
-        t
     }
 }
 

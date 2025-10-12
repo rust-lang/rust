@@ -124,7 +124,7 @@ pub use utils::{
 };
 pub use variance::Variance;
 
-use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Safety, Scalar};
+use chalk_ir::{BoundVar, DebruijnIndex, Safety, Scalar};
 
 pub(crate) type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
