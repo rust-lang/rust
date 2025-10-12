@@ -1,12 +1,13 @@
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::bug;
-use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ExpnKind, Ident, Span, Symbol, sym};
 
-use crate::lints;
+use crate::{lints, session_diagnostics as diags};
+
+// TODO: Temporary.
+type TyCtxt<'tcx> = ();
 
 const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
 
@@ -64,26 +65,27 @@ fn to_check_cfg_arg(name: Ident, value: Option<Symbol>, quotes: EscapeQuotes) ->
 fn cargo_help_sub(
     sess: &Session,
     inst: &impl Fn(EscapeQuotes) -> String,
-) -> lints::UnexpectedCfgCargoHelp {
+) -> diags::UnexpectedCfgCargoHelp {
     // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
     // `build.rs`. We therefor do a best effort check (looking if the `--crate-name` is
     // `build_script_build`) to try to figure out if we are building a Cargo build script
 
     let unescaped = &inst(EscapeQuotes::No);
+    // TODO: Shouldn't this use the actual crate name?
     if matches!(&sess.opts.crate_name, Some(crate_name) if crate_name == "build_script_build") {
-        lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
+        diags::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
     } else {
-        lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
+        diags::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
     }
 }
 
-fn rustc_macro_help(span: Span) -> Option<lints::UnexpectedCfgRustcMacroHelp> {
+fn rustc_macro_help(span: Span) -> Option<diags::UnexpectedCfgRustcMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
         && def_id.krate != LOCAL_CRATE
     {
-        Some(lints::UnexpectedCfgRustcMacroHelp { macro_kind: macro_kind.descr(), macro_name })
+        Some(diags::UnexpectedCfgRustcMacroHelp { macro_kind: macro_kind.descr(), macro_name })
     } else {
         None
     }
@@ -92,29 +94,31 @@ fn rustc_macro_help(span: Span) -> Option<lints::UnexpectedCfgRustcMacroHelp> {
 fn cargo_macro_help(
     tcx: Option<TyCtxt<'_>>,
     span: Span,
-) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
+) -> Option<diags::UnexpectedCfgCargoMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
         && def_id.krate != LOCAL_CRATE
-        && let Some(tcx) = tcx
+        && let Some(_tcx) = tcx
     {
-        Some(lints::UnexpectedCfgCargoMacroHelp {
+        Some(diags::UnexpectedCfgCargoMacroHelp {
             macro_kind: macro_kind.descr(),
             macro_name,
-            crate_name: tcx.crate_name(def_id.krate),
+            // TODO: Rectify
+            // crate_name: tcx.crate_name(def_id.krate),
+            crate_name: sym::dummy,
         })
     } else {
         None
     }
 }
 
-pub(super) fn unexpected_cfg_name(
+pub(crate) fn unexpected_cfg_name(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) -> lints::UnexpectedCfgName {
+) -> diags::UnexpectedCfgName {
     #[allow(rustc::potential_query_instability)]
     let possibilities: Vec<Symbol> = sess.psess.check_config.expecteds.keys().copied().collect();
 
@@ -139,12 +143,12 @@ pub(super) fn unexpected_cfg_name(
     let mut is_feature_cfg = name == sym::feature;
 
     let code_sugg = if is_feature_cfg && is_from_cargo {
-        lints::unexpected_cfg_name::CodeSuggestion::DefineFeatures
+        diags::unexpected_cfg_name::CodeSuggestion::DefineFeatures
     // Suggest correct `version("..")` predicate syntax
     } else if let Some((_value, value_span)) = value
         && name == sym::version
     {
-        lints::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
+        diags::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
             between_name_and_value: name_span.between(value_span),
             after_value: value_span.shrink_to_hi(),
         }
@@ -164,7 +168,7 @@ pub(super) fn unexpected_cfg_name(
                 if !possibilities.is_empty() {
                     let possibilities =
                         possibilities.iter().copied().cloned().collect::<Vec<_>>().into();
-                    Some(lints::unexpected_cfg_name::ExpectedValues { best_match, possibilities })
+                    Some(diags::unexpected_cfg_name::ExpectedValues { best_match, possibilities })
                 } else {
                     None
                 }
@@ -173,37 +177,37 @@ pub(super) fn unexpected_cfg_name(
             let best_match = Ident::new(best_match, name_span);
             if let Some((value, value_span)) = value {
                 if best_match_values.contains(&Some(value)) {
-                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameAndValue {
+                    diags::unexpected_cfg_name::CodeSuggestion::SimilarNameAndValue {
                         span: name_span,
                         code: best_match.to_string(),
                     }
                 } else if best_match_values.contains(&None) {
-                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameNoValue {
+                    diags::unexpected_cfg_name::CodeSuggestion::SimilarNameNoValue {
                         span: name_span.to(value_span),
                         code: best_match.to_string(),
                     }
                 } else if let Some(first_value) = possibilities.first() {
-                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                    diags::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
                         span: name_span.to(value_span),
                         code: format!("{best_match} = \"{first_value}\""),
                         expected: get_possibilities_sub(),
                     }
                 } else {
-                    lints::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
+                    diags::unexpected_cfg_name::CodeSuggestion::SimilarNameDifferentValues {
                         span: name_span.to(value_span),
                         code: best_match.to_string(),
                         expected: get_possibilities_sub(),
                     }
                 }
             } else {
-                lints::unexpected_cfg_name::CodeSuggestion::SimilarName {
+                diags::unexpected_cfg_name::CodeSuggestion::SimilarName {
                     span: name_span,
                     code: best_match.to_string(),
                     expected: get_possibilities_sub(),
                 }
             }
         } else {
-            lints::unexpected_cfg_name::CodeSuggestion::SimilarName {
+            diags::unexpected_cfg_name::CodeSuggestion::SimilarName {
                 span: name_span,
                 code: best_match.to_string(),
                 expected: None,
@@ -214,7 +218,7 @@ pub(super) fn unexpected_cfg_name(
             names_possibilities.sort();
             names_possibilities
                 .iter()
-                .map(|cfg_name| lints::unexpected_cfg_name::FoundWithSimilarValue {
+                .map(|cfg_name| diags::unexpected_cfg_name::FoundWithSimilarValue {
                     span: name_span,
                     code: format!("{cfg_name} = \"{name}\""),
                 })
@@ -228,14 +232,14 @@ pub(super) fn unexpected_cfg_name(
         let expected_names = if !possibilities.is_empty() {
             let possibilities: Vec<_> =
                 possibilities.into_iter().map(|s| Ident::new(s, name_span)).collect();
-            Some(lints::unexpected_cfg_name::ExpectedNames {
+            Some(diags::unexpected_cfg_name::ExpectedNames {
                 possibilities: possibilities.into(),
                 and_more,
             })
         } else {
             None
         };
-        lints::unexpected_cfg_name::CodeSuggestion::SimilarValues {
+        diags::unexpected_cfg_name::CodeSuggestion::SimilarValues {
             with_similar_values: similar_values,
             expected_names,
         }
@@ -251,29 +255,29 @@ pub(super) fn unexpected_cfg_name(
         } else {
             None
         };
-        lints::unexpected_cfg_name::InvocationHelp::Cargo {
+        diags::unexpected_cfg_name::InvocationHelp::Cargo {
             help,
             macro_help: cargo_macro_help(tcx, name_span),
         }
     } else {
-        let help = lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
-        lints::unexpected_cfg_name::InvocationHelp::Rustc {
+        let help = diags::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
+        diags::unexpected_cfg_name::InvocationHelp::Rustc {
             help,
             macro_help: rustc_macro_help(name_span),
         }
     };
 
-    lints::UnexpectedCfgName { code_sugg, invocation_help, name }
+    diags::UnexpectedCfgName { code_sugg, invocation_help, name }
 }
 
-pub(super) fn unexpected_cfg_value(
+pub(crate) fn unexpected_cfg_value(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
-) -> lints::UnexpectedCfgValue {
+) -> diags::UnexpectedCfgValue {
     let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name) else {
-        bug!(
+        panic!(
             "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
         );
     };
@@ -300,7 +304,7 @@ pub(super) fn unexpected_cfg_value(
                 possibilities.clone(),
                 FilterWellKnownNames::No,
             );
-            lints::unexpected_cfg_value::ExpectedValues {
+            diags::unexpected_cfg_value::ExpectedValues {
                 name,
                 have_none_possibility,
                 possibilities: possibilities.into(),
@@ -311,7 +315,7 @@ pub(super) fn unexpected_cfg_value(
         let suggestion = if let Some((value, value_span)) = value {
             // Suggest the most probable if we found one
             if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
+                Some(diags::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
                     span: value_span,
                     best_match,
                 })
@@ -319,7 +323,7 @@ pub(super) fn unexpected_cfg_value(
                 None
             }
         } else if let &[first_possibility] = &possibilities[..] {
-            Some(lints::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
+            Some(diags::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
                 span: name_span.shrink_to_hi(),
                 first_possibility,
             })
@@ -327,21 +331,21 @@ pub(super) fn unexpected_cfg_value(
             None
         };
 
-        lints::unexpected_cfg_value::CodeSuggestion::ChangeValue { expected_values, suggestion }
+        diags::unexpected_cfg_value::CodeSuggestion::ChangeValue { expected_values, suggestion }
     } else if have_none_possibility {
         let suggestion =
-            value.map(|(_value, value_span)| lints::unexpected_cfg_value::RemoveValueSuggestion {
+            value.map(|(_value, value_span)| diags::unexpected_cfg_value::RemoveValueSuggestion {
                 span: name_span.shrink_to_hi().to(value_span),
             });
-        lints::unexpected_cfg_value::CodeSuggestion::RemoveValue { suggestion, name }
+        diags::unexpected_cfg_value::CodeSuggestion::RemoveValue { suggestion, name }
     } else {
         let span = if let Some((_value, value_span)) = value {
             name_span.to(value_span)
         } else {
             name_span
         };
-        let suggestion = lints::unexpected_cfg_value::RemoveConditionSuggestion { span };
-        lints::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
+        let suggestion = diags::unexpected_cfg_value::RemoveConditionSuggestion { span };
+        diags::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
     };
 
     // We don't want to encourage people to add values to a well-known names, as these are
@@ -362,32 +366,32 @@ pub(super) fn unexpected_cfg_value(
     let invocation_help = if is_from_cargo {
         let help = if name == sym::feature && !is_from_external_macro {
             if let Some((value, _value_span)) = value {
-                Some(lints::unexpected_cfg_value::CargoHelp::AddFeature { value })
+                Some(diags::unexpected_cfg_value::CargoHelp::AddFeature { value })
             } else {
-                Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
+                Some(diags::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
         } else if can_suggest_adding_value && !is_from_external_macro {
-            Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
+            Some(diags::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
         };
-        lints::unexpected_cfg_value::InvocationHelp::Cargo {
+        diags::unexpected_cfg_value::InvocationHelp::Cargo {
             help,
             macro_help: cargo_macro_help(tcx, name_span),
         }
     } else {
         let help = if can_suggest_adding_value {
-            Some(lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
+            Some(diags::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
         } else {
             None
         };
-        lints::unexpected_cfg_value::InvocationHelp::Rustc {
+        diags::unexpected_cfg_value::InvocationHelp::Rustc {
             help,
             macro_help: rustc_macro_help(name_span),
         }
     };
 
-    lints::UnexpectedCfgValue {
+    diags::UnexpectedCfgValue {
         code_sugg,
         invocation_help,
         has_value: value.is_some(),

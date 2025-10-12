@@ -16,6 +16,9 @@ use crate::{
     CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
 };
 
+// NOTE: Crate-public since it's also used in sibling module `cfg_old`.
+pub(crate) mod check_cfg;
+
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute"
@@ -234,35 +237,37 @@ pub fn eval_config_entry(
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             }
         }
-        CfgEntry::NameValue { name, name_span, value, span } => {
+        &CfgEntry::NameValue { name, name_span, value, span } => {
             if let ShouldEmit::ErrorsAndLints = emit_lints {
-                match sess.psess.check_config.expecteds.get(name) {
+                match sess.psess.check_config.expecteds.get(&name) {
                     Some(ExpectedValues::Some(values))
                         if !values.contains(&value.map(|(v, _)| v)) =>
                     {
                         id.emit_span_lint(
                             sess,
                             UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgValue((*name, *name_span), *value),
+                            span,
+                            // TODO: Do it lazily! Somehow pass a TyCtxt if possible
+                            check_cfg::unexpected_cfg_value(sess, None, (name, name_span), value),
                         );
                     }
                     None if sess.psess.check_config.exhaustive_names => {
                         id.emit_span_lint(
                             sess,
                             UNEXPECTED_CFGS,
-                            *span,
-                            BuiltinLintDiag::UnexpectedCfgName((*name, *name_span), *value),
+                            span,
+                            // TODO: Do it lazily! Somehow pass a TyCtxt if possible
+                            check_cfg::unexpected_cfg_name(sess, None, (name, name_span), value),
                         );
                     }
                     _ => { /* not unexpected */ }
                 }
             }
 
-            if sess.psess.config.contains(&(*name, value.map(|(v, _)| v))) {
+            if sess.psess.config.contains(&(name, value.map(|(v, _)| v))) {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: span }
             }
         }
         CfgEntry::Version(min_version, version_span) => {

@@ -13,11 +13,9 @@ use tracing::debug;
 
 use crate::lints;
 
-mod check_cfg;
-
 pub fn decorate_builtin_lint(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
+    _tcx: Option<TyCtxt<'_>>,
     diagnostic: BuiltinLintDiag,
     diag: &mut Diag<'_, ()>,
 ) {
@@ -167,12 +165,6 @@ pub fn decorate_builtin_lint(
                 },
             }
             .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnexpectedCfgName(name, value) => {
-            check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnexpectedCfgValue(name, value) => {
-            check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag);
         }
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {

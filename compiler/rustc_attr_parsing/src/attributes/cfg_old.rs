@@ -51,7 +51,10 @@ pub fn cfg_matches(
                     sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    BuiltinLintDiag::UnexpectedCfgValue(
+                    // TODO: Do it lazily! Somehow pass a TyCtxt if possible
+                    super::cfg::check_cfg::unexpected_cfg_value(
+                        sess,
+                        None,
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
@@ -62,7 +65,10 @@ pub fn cfg_matches(
                     sess,
                     UNEXPECTED_CFGS,
                     cfg.span,
-                    BuiltinLintDiag::UnexpectedCfgName(
+                    // TODO: Do it lazily! Somehow pass a TyCtxt if possible
+                    super::cfg::check_cfg::unexpected_cfg_name(
+                        sess,
+                        None,
                         (cfg.name, cfg.name_span),
                         cfg.value.map(|v| (v, cfg.value_span.unwrap())),
                     ),
