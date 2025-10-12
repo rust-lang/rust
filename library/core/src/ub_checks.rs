@@ -68,14 +68,14 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_allow_const_fn_unstable(const_eval_select)]
             const fn precondition_check($($name:$ty),*) {
                 if $e { return; }
-                $(
-                    let $name = ::core::displaywrapper::DisplayWrapper($name);
-                )*
                 ::core::intrinsics::const_eval_select!(
-                    @capture { $($name: ::core::displaywrapper::DisplayWrapper<$ty>),* }:
+                    @capture { $($name: $ty),* }:
                     if const {
                         ::core::panicking::panic_nounwind($message);
                     } else #[allow(unused)] {
+                        $(
+                            let $name = ::core::displaywrapper::DisplayWrapper::from($name);
+                        )*
                         ::core::panicking::panic_nounwind_fmt(format_args!($message), false);
                     }
                 )
