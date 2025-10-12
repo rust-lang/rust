@@ -945,17 +945,7 @@ where
                 rust_path.join("tests/ui"),
                 &mut |dir| {
                     let dir_name = dir.file_name().and_then(|name| name.to_str()).unwrap_or("");
-                    if [
-                        "abi",
-                        "extern",
-                        "unsized-locals",
-                        "proc-macro",
-                        "threads-sendsync",
-                        "borrowck",
-                        "test-attrs",
-                    ]
-                    .contains(&dir_name)
-                    {
+                    if ["abi", "extern", "proc-macro", "threads-sendsync"].contains(&dir_name) {
                         remove_dir_all(dir).map_err(|error| {
                             format!("Failed to remove folder `{}`: {:?}", dir.display(), error)
                         })?;
