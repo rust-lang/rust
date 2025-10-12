@@ -29,6 +29,9 @@ tracing-tree = "0.3.0"
 unicode-segmentation = "1.9"
 # tidy-alphabetical-end
 
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+libtcmalloc-sys = { git = "https://github.com/0xdeafbeef/tcmalloc-better.git", rev = "781a440a0919", default-features = false, features = ["unprefixed_malloc_on_supported_platforms", "32k_pages", "override_cpp_operators"] }
+
 [dependencies.tracing-subscriber]
 version = "0.3.3"
 default-features = false
@@ -40,9 +43,6 @@ minifier = { version = "0.3.2", default-features = false }
 
 [dev-dependencies]
 expect-test = "1.4.0"
-
-[features]
-jemalloc = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true
