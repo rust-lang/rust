@@ -249,7 +249,7 @@ You will probably find that building the stage1 `std` is a bottleneck for you,
 but fear not, there is a (hacky) workaround...
 see [the section on avoiding rebuilds for std][keep-stage].
 
-[keep-stage]: ./suggested.md#faster-builds-with---keep-stage
+[keep-stage]: ./suggested.md#faster-rebuilds-with---keep-stage-std
 
 Sometimes you don't need a full build. When doing some kind of
 "type-based refactoring", like renaming a method, or changing the
