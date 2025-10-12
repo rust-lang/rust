@@ -130,7 +130,7 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CC_armv7a_none_eabi=arm-none-eabi-gcc \
     CC_armv7a_none_eabihf=arm-none-eabi-gcc \
     CFLAGS_armv7a_none_eabi=-march=armv7-a \
-    CFLAGS_armv7a_none_eabihf=-march=armv7-a+vfpv3 \
+    CFLAGS_armv7a_none_eabihf=-march=armv7-a+fp \
     CC_armv8r_none_eabihf=arm-none-eabi-gcc \
     CFLAGS_armv8r_none_eabihf="-march=armv8-r+fp.sp -mfpu=fp-armv8" \
     CC_aarch64_unknown_none_softfloat=aarch64-none-elf-gcc \
