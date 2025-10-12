@@ -323,23 +323,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
 
-    #[salsa::invoke(crate::traits::normalize_projection_query)]
-    #[salsa::transparent]
-    fn normalize_projection(
-        &self,
-        projection: crate::ProjectionTy,
-        env: Arc<TraitEnvironment<'_>>,
-    ) -> Ty;
-
-    #[salsa::invoke(crate::traits::trait_solve_query)]
-    #[salsa::transparent]
-    fn trait_solve(
-        &self,
-        krate: Crate,
-        block: Option<BlockId>,
-        goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
-    ) -> NextTraitSolveResult;
-
     // next trait solver
 
     #[salsa::invoke(crate::lower_nextsolver::const_param_ty_query)]

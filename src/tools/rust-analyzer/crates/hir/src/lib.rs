@@ -3692,7 +3692,7 @@ impl GenericDef {
         };
 
         expr_store_diagnostics(db, acc, &source_map);
-        push_ty_diagnostics(db, acc, db.generic_defaults_with_diagnostics(def).1, &source_map);
+        push_ty_diagnostics(db, acc, db.generic_defaults_ns_with_diagnostics(def).1, &source_map);
         push_ty_diagnostics(
             db,
             acc,
