@@ -789,7 +789,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
             match (&mut self_chunk, &other_chunk) {
                 (_, Zeros) | (Ones, _) => {}
-                (Zeros, Ones) | (Mixed(..), Ones) | (Zeros, Mixed(..)) => {
+                (Zeros, _) | (Mixed(..), Ones) => {
                     // `other_chunk` fully overwrites `self_chunk`
                     *self_chunk = other_chunk.clone();
                     changed = true;
@@ -853,7 +853,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
 
             match (&mut self_chunk, &other_chunk) {
                 (Zeros, _) | (_, Zeros) => {}
-                (Ones | Mixed(_, _), Ones) => {
+                (Ones | Mixed(..), Ones) => {
                     changed = true;
                     *self_chunk = Zeros;
                 }
