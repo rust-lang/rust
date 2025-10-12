@@ -1,23 +1,23 @@
 error[E0425]: cannot find value `x` in this scope
-  --> tests/ui/option_map_unit_fn_unfixable.rs:17:5
+  --> tests/ui/option_map_unit_fn_unfixable.rs:16:5
    |
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
    |     ^ not found in this scope
 
 error[E0425]: cannot find value `x` in this scope
-  --> tests/ui/option_map_unit_fn_unfixable.rs:20:5
+  --> tests/ui/option_map_unit_fn_unfixable.rs:19:5
    |
 LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
    |     ^ not found in this scope
 
 error[E0425]: cannot find value `x` in this scope
-  --> tests/ui/option_map_unit_fn_unfixable.rs:25:5
+  --> tests/ui/option_map_unit_fn_unfixable.rs:24:5
    |
 LL |     x.field.map(|value| {
    |     ^ not found in this scope
 
 error[E0425]: cannot find value `x` in this scope
-  --> tests/ui/option_map_unit_fn_unfixable.rs:30:5
+  --> tests/ui/option_map_unit_fn_unfixable.rs:29:5
    |
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
    |     ^ not found in this scope
