@@ -1315,7 +1315,8 @@ impl fmt::Debug for Duration {
             // need to perform rounding to match the semantics of printing
             // normal floating point numbers. However, we only need to do work
             // when rounding up. This happens if the first digit of the
-            // remaining ones is >= 5.
+            // remaining ones is > 5. When the first  digit is exactly 5, rounding
+            // follows IEEE-754 round-ties-to-even semantics.
             let integer_part = if fractional_part > 0 && fractional_part == divisor * 5 {
                 let last_digit_is_odd = if pos > 0 {
                     (buf[pos - 1] - b'0') % 2 == 1
