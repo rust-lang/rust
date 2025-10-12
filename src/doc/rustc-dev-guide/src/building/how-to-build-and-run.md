@@ -227,15 +227,18 @@ Once you've created a `bootstrap.toml`, you are now ready to run
 probably the best "go to" command for building a local compiler:
 
 ```console
-./x build rustc
+./x build library
 ```
 
-What this command does is build `rustc` using the stage0 compiler and stage0 `std`.
+What this command does is:
+- Build `rustc` using the stage0 compiler and stage0 `std`.
+- Build `library` (the standard libraries) with the stage1 compiler that was just built.
+- Assemble a working stage1 sysroot, containing the stage1 compiler and stage1 standard libraries.
 
 To build `rustc` with the in-tree `std`, use this command instead:
 
 ```console
-./x build rustc --stage 2
+./x build library --stage 2
 ```
 
 This final product (stage1 compiler + libs built using that compiler)
@@ -246,7 +249,7 @@ You will probably find that building the stage1 `std` is a bottleneck for you,
 but fear not, there is a (hacky) workaround...
 see [the section on avoiding rebuilds for std][keep-stage].
 
-[keep-stage]: ./suggested.md#faster-builds-with---keep-stage
+[keep-stage]: ./suggested.md#faster-rebuilds-with---keep-stage-std
 
 Sometimes you don't need a full build. When doing some kind of
 "type-based refactoring", like renaming a method, or changing the
