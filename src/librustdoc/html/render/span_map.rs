@@ -11,6 +11,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind};
 
 use crate::clean::{self, PrimitiveType, rustc_span};
+use crate::config::GenerateLinkToDefinition;
 use crate::html::sources;
 
 /// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
@@ -80,12 +81,12 @@ pub(crate) fn collect_spans_and_sources(
     krate: &clean::Crate,
     src_root: &Path,
     include_sources: bool,
-    generate_link_to_definition: bool,
+    generate_link_to_definition: GenerateLinkToDefinition,
 ) -> (FxIndexMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     if include_sources {
         let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
-        if generate_link_to_definition {
+        if generate_link_to_definition.0 {
             tcx.hir_walk_toplevel_module(&mut visitor);
         }
         let sources = sources::collect_local_sources(tcx, src_root, krate);

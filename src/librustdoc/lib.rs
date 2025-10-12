@@ -782,7 +782,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
     let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
-    let include_sources = !opt.html_no_source;
+    let include_sources = !opt.html_no_source.0;
     html::render::write_not_crate_specific(
         &crates,
         &opt.output,

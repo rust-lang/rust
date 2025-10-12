@@ -14,8 +14,8 @@ pub(crate) fn source_macro_expansion(
     source_map: &SourceMap,
 ) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
     if output_format == OutputFormat::Html
-        && !render_options.html_no_source
-        && render_options.generate_macro_expansion
+        && !render_options.html_no_source.0
+        && render_options.generate_macro_expansion.0
     {
         let mut expanded_visitor = ExpandedCodeVisitor { expanded_codes: Vec::new(), source_map };
         walk_crate(&mut expanded_visitor, krate);

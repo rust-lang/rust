@@ -21,7 +21,7 @@ use super::{AllTypes, LinkFromSrc, StylePath, collect_spans_and_sources, scrape_
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
-use crate::config::{ModuleSorting, RenderOptions, ShouldMerge};
+use crate::config::{ModuleSorting, RenderOptions, ShouldMerge, ShowTypeLayout};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -107,7 +107,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// The local file sources we've emitted and their respective url-paths.
     pub(crate) local_sources: FxIndexMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
-    pub(super) show_type_layout: bool,
+    pub(super) show_type_layout: ShowTypeLayout,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub(super) issue_tracker_base_url: Option<String>,
@@ -516,7 +516,7 @@ impl<'tcx> Context<'tcx> {
             scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
-        let mut include_sources = !html_no_source;
+        let mut include_sources = !html_no_source.0;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
@@ -569,7 +569,7 @@ impl<'tcx> Context<'tcx> {
             playground,
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
-            redirections: if generate_redirect_map { Some(Default::default()) } else { None },
+            redirections: if generate_redirect_map.0 { Some(Default::default()) } else { None },
             show_type_layout,
             span_correspondence_map: matches,
             cache,
@@ -595,7 +595,7 @@ impl<'tcx> Context<'tcx> {
             sources::render(&mut cx, &krate)?;
         }
 
-        if !no_emit_shared {
+        if !no_emit_shared.0 {
             write_shared(&mut cx, &krate, &md_opts, tcx)?;
         }
 
@@ -812,7 +812,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             {
                 self.info.is_inside_inlined_module = true;
             }
-        } else if !self.cache().document_hidden && item.is_doc_hidden() {
+        } else if !self.cache().document_hidden.0 && item.is_doc_hidden() {
             // We're not inside an inlined module anymore since this one cannot be re-exported.
             self.info.is_inside_inlined_module = false;
         }

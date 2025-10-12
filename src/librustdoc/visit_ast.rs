@@ -247,14 +247,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let use_attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
-            || (document_hidden && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
+            || (document_hidden.0 && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
 
         if is_no_inline {
             return false;
         }
 
         let is_glob = renamed.is_none();
-        let is_hidden = !document_hidden && tcx.is_doc_hidden(ori_res_did);
+        let is_hidden = !document_hidden.0 && tcx.is_doc_hidden(ori_res_did);
         let Some(res_did) = ori_res_did.as_local() else {
             // For cross-crate impl inlining we need to know whether items are
             // reachable in documentation -- a previously unreachable item can be
@@ -281,7 +281,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let item = tcx.hir_node_by_def_id(res_did);
 
         if !please_inline {
-            let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
+            let inherits_hidden = !document_hidden.0 && inherits_doc_hidden(tcx, res_did, None);
             // Only inline if requested or if the item would otherwise be stripped.
             if (!is_private && !inherits_hidden) || (
                 is_hidden &&
@@ -351,7 +351,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_def_id: LocalDefId,
         target_def_id: LocalDefId,
     ) -> bool {
-        if self.cx.render_options.document_hidden {
+        if self.cx.render_options.document_hidden.0 {
             return true;
         }
         let tcx = self.cx.tcx;

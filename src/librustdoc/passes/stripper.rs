@@ -8,6 +8,7 @@ use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemId, ItemIdSet};
+use crate::config::{DocumentHidden, DocumentPrivate};
 use crate::fold::{DocFolder, strip_item};
 use crate::formats::cache::Cache;
 use crate::visit_lib::RustdocEffectiveVisibilities;
@@ -174,8 +175,8 @@ pub(crate) struct ImplStripper<'a, 'tcx> {
     pub(crate) retained: &'a ItemIdSet,
     pub(crate) cache: &'a Cache,
     pub(crate) is_json_output: bool,
-    pub(crate) document_private: bool,
-    pub(crate) document_hidden: bool,
+    pub(crate) document_private: DocumentPrivate,
+    pub(crate) document_hidden: DocumentHidden,
 }
 
 impl ImplStripper<'_, '_> {
@@ -187,7 +188,7 @@ impl ImplStripper<'_, '_> {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
             // need to keep it.
             self.cache.effective_visibilities.is_exported(self.tcx, for_def_id)
-                && (self.document_hidden
+                && (self.document_hidden.0
                     || ((!item.is_doc_hidden()
                         && for_def_id
                             .as_local()
@@ -211,7 +212,7 @@ impl DocFolder for ImplStripper<'_, '_> {
                 // If the only items present are private ones and we're not rendering private items,
                 // we don't document it.
                 if !imp.items.is_empty()
-                    && !self.document_private
+                    && !self.document_private.0
                     && imp.items.iter().all(|i| {
                         let item_id = i.item_id;
                         item_id.is_local()
@@ -263,7 +264,7 @@ impl DocFolder for ImplStripper<'_, '_> {
 pub(crate) struct ImportStripper<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) is_json_output: bool,
-    pub(crate) document_hidden: bool,
+    pub(crate) document_hidden: DocumentHidden,
 }
 
 impl ImportStripper<'_> {
@@ -281,7 +282,7 @@ impl DocFolder for ImportStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match &i.kind {
             clean::ImportItem(imp)
-                if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
+                if !self.document_hidden.0 && self.import_should_be_hidden(&i, imp) =>
             {
                 None
             }
