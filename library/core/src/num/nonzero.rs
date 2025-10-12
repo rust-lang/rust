@@ -420,6 +420,7 @@ where
                     ub_checks::assert_unsafe_precondition!(
                         check_language_ub,
                         "NonZero::new_unchecked requires the argument to be non-zero",
+                        // FIXME: Can't print n here because of how the check is written
                         () => false,
                     );
                     intrinsics::unreachable()
@@ -461,6 +462,7 @@ where
                     ub_checks::assert_unsafe_precondition!(
                         check_library_ub,
                         "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
+                        // FIXME: Can't print n here because of how the check is written
                         () => false,
                     );
                     intrinsics::unreachable()

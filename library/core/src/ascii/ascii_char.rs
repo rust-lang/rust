@@ -516,7 +516,7 @@ impl AsciiChar {
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
             check_library_ub,
-            "`ascii::Char::digit_unchecked` input cannot exceed 9.",
+            "`ascii::Char::digit_unchecked` input cannot exceed 9. (d:{d})",
             (d: u8 = d) => d < 10
         );
 
