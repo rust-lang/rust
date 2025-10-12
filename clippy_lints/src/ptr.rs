@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(sig, trait_method) = &item.kind {
             if matches!(trait_method, TraitFn::Provided(_)) {
-                // Handled by check body.
+                // Handled by `check_body`.
                 return;
             }
 
@@ -393,10 +393,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
     hir_tys: &'tcx [hir::Ty<'tcx>],
     params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    fn_sig
-        .inputs()
-        .iter()
-        .zip(hir_tys.iter())
+    iter::zip(fn_sig.inputs(), hir_tys)
         .enumerate()
         .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()

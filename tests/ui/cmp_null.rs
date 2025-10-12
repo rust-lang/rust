@@ -1,5 +1,4 @@
 #![warn(clippy::cmp_null)]
-#![allow(unused_mut)]
 
 use std::ptr;
 
@@ -18,7 +17,7 @@ fn main() {
     }
 
     let mut y = 0;
-    let mut m: *mut usize = &mut y;
+    let m: *mut usize = &mut y;
     if m == ptr::null_mut() {
         //~^ cmp_null
 

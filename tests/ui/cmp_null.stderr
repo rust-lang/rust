@@ -1,5 +1,5 @@
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:9:8
+  --> tests/ui/cmp_null.rs:8:8
    |
 LL |     if p == ptr::null() {
    |        ^^^^^^^^^^^^^^^^ help: try: `p.is_null()`
@@ -8,31 +8,31 @@ LL |     if p == ptr::null() {
    = help: to override `-D warnings` add `#[allow(clippy::cmp_null)]`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:14:8
+  --> tests/ui/cmp_null.rs:13:8
    |
 LL |     if ptr::null() == p {
    |        ^^^^^^^^^^^^^^^^ help: try: `p.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:22:8
+  --> tests/ui/cmp_null.rs:21:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:27:8
+  --> tests/ui/cmp_null.rs:26:8
    |
 LL |     if ptr::null_mut() == m {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:33:13
+  --> tests/ui/cmp_null.rs:32:13
    |
 LL |     let _ = x as *const () == ptr::null();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(x as *const ()).is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:39:19
+  --> tests/ui/cmp_null.rs:38:19
    |
 LL |     debug_assert!(f != std::ptr::null_mut());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!f.is_null()`
