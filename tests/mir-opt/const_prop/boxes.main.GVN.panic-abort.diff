@@ -11,7 +11,10 @@
       let mut _6: *mut u8;
       let mut _7: std::boxed::Box<i32>;
       let mut _8: *const i32;
-      let mut _9: *const i32;
+      let mut _9: std::ptr::NonNull<i32>;
+      let mut _10: std::ptr::Unique<i32>;
+      let mut _11: *const i32;
+      let mut _12: *const i32;
       scope 1 {
           debug x => _1;
       }
@@ -31,13 +34,21 @@
   
       bb1: {
           StorageLive(_7);
-          _7 = ShallowInitBox(move _6, i32);
-          _8 = copy ((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
-          (*_8) = const 42_i32;
+-         _8 = move _6 as *const i32 (Transmute);
+-         _9 = NonNull::<i32> { pointer: move _8 };
+-         _10 = Unique::<i32> { pointer: move _9, _marker: const PhantomData::<i32> };
++         _8 = copy _6 as *const i32 (PtrToPtr);
++         _9 = NonNull::<i32> { pointer: copy _8 };
++         _10 = Unique::<i32> { pointer: copy _9, _marker: const PhantomData::<i32> };
+          _7 = Box::<i32>(move _10, const std::alloc::Global);
+-         _11 = copy ((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+-         (*_11) = const 42_i32;
++         _11 = copy _8;
++         (*_8) = const 42_i32;
           _3 = move _7;
           StorageDead(_7);
-          _9 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
-          _2 = copy (*_9);
+          _12 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+          _2 = copy (*_12);
 -         _1 = Add(move _2, const 0_i32);
 -         StorageDead(_2);
 +         _1 = copy _2;

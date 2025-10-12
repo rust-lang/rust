@@ -829,13 +829,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         fx.bcx.ins().nop();
                     }
                 }
-                Rvalue::ShallowInitBox(ref operand, content_ty) => {
-                    let content_ty = fx.monomorphize(content_ty);
-                    let box_layout = fx.layout_of(Ty::new_box(fx.tcx, content_ty));
-                    let operand = codegen_operand(fx, operand);
-                    let operand = operand.load_scalar(fx);
-                    lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
-                }
                 Rvalue::NullaryOp(ref null_op, ty) => {
                     assert!(lval.layout().ty.is_sized(fx.tcx, fx.typing_env()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
@@ -924,6 +917,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     lval.write_cvalue_transmute(fx, operand);
                 }
                 Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
+                Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
             }
         }
         StatementKind::StorageLive(_)
