@@ -25,8 +25,7 @@ use std::path::Path;
 /// * If either lint name has a prefix
 /// * If `old_name` doesn't name an existing lint.
 /// * If `old_name` names a deprecated or renamed lint.
-#[expect(clippy::too_many_lines)]
-pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str, new_name: &'cx str, uplift: bool) {
+pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str, new_name: &'cx str) {
     let mut updater = FileUpdater::default();
     let mut lints = cx.find_lint_decls();
     let (deprecated_lints, mut renamed_lints) = cx.read_deprecated_lints();
@@ -34,20 +33,15 @@ pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str
     let Ok(lint_idx) = lints.binary_search_by(|x| x.name.cmp(old_name)) else {
         panic!("could not find lint `{old_name}`");
     };
-    let lint = &lints[lint_idx];
 
     let old_name_prefixed = cx.str_buf.with(|buf| {
         buf.extend(["clippy::", old_name]);
         cx.arena.alloc_str(buf)
     });
-    let new_name_prefixed = if uplift {
-        new_name
-    } else {
-        cx.str_buf.with(|buf| {
-            buf.extend(["clippy::", new_name]);
-            cx.arena.alloc_str(buf)
-        })
-    };
+    let new_name_prefixed = cx.str_buf.with(|buf| {
+        buf.extend(["clippy::", new_name]);
+        cx.arena.alloc_str(buf)
+    });
 
     for lint in &mut renamed_lints {
         if lint.new_name == old_name_prefixed {
@@ -77,31 +71,7 @@ pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str
     let change_prefixed_tests = lints.get(lint_idx + 1).is_none_or(|l| !l.name.starts_with(old_name));
 
     let mut mod_edit = ModEdit::None;
-    if uplift {
-        let is_unique_mod = lints[..lint_idx].iter().any(|l| l.module == lint.module)
-            || lints[lint_idx + 1..].iter().any(|l| l.module == lint.module);
-        if is_unique_mod {
-            if delete_file_if_exists(lint.path.as_ref()) {
-                mod_edit = ModEdit::Delete;
-            }
-        } else {
-            updater.update_file(&lint.path, &mut |_, src, dst| -> UpdateStatus {
-                let mut start = &src[..lint.declaration_range.start];
-                if start.ends_with("\n\n") {
-                    start = &start[..start.len() - 1];
-                }
-                let mut end = &src[lint.declaration_range.end..];
-                if end.starts_with("\n\n") {
-                    end = &end[1..];
-                }
-                dst.push_str(start);
-                dst.push_str(end);
-                UpdateStatus::Changed
-            });
-        }
-        delete_test_files(old_name, change_prefixed_tests);
-        lints.remove(lint_idx);
-    } else if lints.binary_search_by(|x| x.name.cmp(new_name)).is_err() {
+    if lints.binary_search_by(|x| x.name.cmp(new_name)).is_err() {
         let lint = &mut lints[lint_idx];
         if lint.module.ends_with(old_name)
             && lint
@@ -139,19 +109,9 @@ pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str
     }
     generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
 
-    if uplift {
-        println!("Uplifted `clippy::{old_name}` as `{new_name}`");
-        if matches!(mod_edit, ModEdit::None) {
-            println!("Only the rename has been registered, the code will need to be edited manually");
-        } else {
-            println!("All the lint's code has been deleted");
-            println!("Make sure to inspect the results as some things may have been missed");
-        }
-    } else {
-        println!("Renamed `clippy::{old_name}` to `clippy::{new_name}`");
-        println!("All code referencing the old name has been updated");
-        println!("Make sure to inspect the results as some things may have been missed");
-    }
+    println!("Renamed `clippy::{old_name}` to `clippy::{new_name}`");
+    println!("All code referencing the old name has been updated");
+    println!("Make sure to inspect the results as some things may have been missed");
     println!("note: `cargo uibless` still needs to be run to update the test results");
 }
 
