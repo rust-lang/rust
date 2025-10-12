@@ -51,6 +51,7 @@ mod statement;
 mod syntax;
 mod terminator;
 
+pub mod loops;
 pub mod traversal;
 pub mod visit;
 

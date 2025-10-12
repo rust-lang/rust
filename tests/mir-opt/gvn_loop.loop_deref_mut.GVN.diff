@@ -71,7 +71,7 @@
           StorageLive(_12);
           _12 = copy _7;
 -         _11 = Value::V0(move _12);
-+         _11 = copy (*_3);
++         _11 = Value::V0(copy _7);
           StorageDead(_12);
           StorageLive(_13);
           StorageLive(_14);

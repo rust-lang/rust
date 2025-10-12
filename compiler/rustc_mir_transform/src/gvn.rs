@@ -126,6 +126,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let ssa = SsaLocals::new(tcx, body, typing_env);
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
+        let maybe_loop_headers = loops::maybe_loop_headers(body);
 
         let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
 
@@ -136,6 +137,11 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
         for bb in reverse_postorder {
+            // N.B. With loops, reverse postorder cannot produce a valid topological order.
+            // A statement or terminator from inside the loop, that is not processed yet, may have performed an indirect write.
+            if maybe_loop_headers.contains(bb) {
+                state.invalidate_derefs();
+            }
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             state.visit_basic_block_data(bb, data);
         }

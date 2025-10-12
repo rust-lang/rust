@@ -84,7 +84,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             body,
             arena,
             map: Map::new(tcx, body, Some(MAX_PLACES)),
-            loop_headers: loop_headers(body),
+            loop_headers: loops::maybe_loop_headers(body),
             opportunities: Vec::new(),
         };
 
@@ -831,22 +831,4 @@ fn predecessor_count(body: &Body<'_>) -> IndexVec<BasicBlock, usize> {
 enum Update {
     Incr,
     Decr,
-}
-
-/// Compute the set of loop headers in the given body. We define a loop header as a block which has
-/// at least a predecessor which it dominates. This definition is only correct for reducible CFGs.
-/// But if the CFG is already irreducible, there is no point in trying much harder.
-/// is already irreducible.
-fn loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
-    let mut loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
-    let dominators = body.basic_blocks.dominators();
-    // Only visit reachable blocks.
-    for (bb, bbdata) in traversal::preorder(body) {
-        for succ in bbdata.terminator().successors() {
-            if dominators.dominates(succ, bb) {
-                loop_headers.insert(succ);
-            }
-        }
-    }
-    loop_headers
 }

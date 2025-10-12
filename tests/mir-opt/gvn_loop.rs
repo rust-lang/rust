@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: GVN
 
 #![crate_type = "lib"]
@@ -9,8 +8,17 @@ pub enum Value {
     V1,
 }
 
+// Check that we do not use the dereferenced value of `val_alias` when returning.
+
 // EMIT_MIR gvn_loop.loop_deref_mut.GVN.diff
 fn loop_deref_mut(val: &mut Value) -> Value {
+    // CHECK-LABEL: fn loop_deref_mut(
+    // CHECK: [[VAL_REF:_.*]] = get::<Value>(
+    // CHECK: [[V:_.*]] = copy (((*[[VAL_REF]]) as V0).0: i32);
+    // CEHCK-NOT: copy (*[[VAL_REF]]);
+    // CHECK: [[RET:_*]] = Value::V0(copy [[V]]);
+    // CEHCK-NOT: copy (*[[VAL_REF]]);
+    // CHECK: _0 = move [[RET]]
     let val_alias: &Value = get(val);
     let mut stop = false;
     let Value::V0(v) = *val_alias else { unsafe { core::intrinsics::unreachable() } };
