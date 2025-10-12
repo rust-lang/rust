@@ -38,9 +38,9 @@ fn main() {
     rmeta_contains("/the/aux/lib.rs");
     rmeta_not_contains("auxiliary");
 
-    out_object.arg("-Zremap-path-scope=object");
-    out_macro.arg("-Zremap-path-scope=macro");
-    out_diagobj.arg("-Zremap-path-scope=diagnostics,object");
+    out_object.arg("--remap-path-scope=object");
+    out_macro.arg("--remap-path-scope=macro");
+    out_diagobj.arg("--remap-path-scope=diagnostics,object");
     if is_darwin() {
         out_object.arg("-Csplit-debuginfo=off");
         out_macro.arg("-Csplit-debuginfo=off");
