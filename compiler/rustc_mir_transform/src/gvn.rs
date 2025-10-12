@@ -814,21 +814,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
         let proj = match proj {
             ProjectionElem::Deref => {
-                if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
-                    && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
+                if let Value::Address { base, projection, .. } = self.get(value)
+                    && let Some(value) = self.dereference_address(base, projection)
                 {
-                    if let Value::Address { base, projection, .. } = self.get(value)
-                        && let Some(value) = self.dereference_address(base, projection)
-                    {
-                        return Some((projection_ty, value));
-                    }
-
-                    // An immutable borrow `_x` always points to the same value for the
-                    // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
-                } else {
-                    return None;
+                    return Some((projection_ty, value));
                 }
+
+                // An borrow `_x` can point to the same value for the
+                // lifetime of the borrow, so we can merge instances of `*_x`.
+                return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
             }
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
             ProjectionElem::Field(f, _) => match self.get(value) {
@@ -1933,6 +1927,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
             TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Goto { .. }
                 | TerminatorKind::Unreachable
+                | TerminatorKind::Return
         );
         if !safe_to_preserve_derefs {
             self.invalidate_derefs();
