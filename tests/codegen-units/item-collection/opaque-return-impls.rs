@@ -87,3 +87,11 @@ pub fn foo3() -> Box<dyn Iterator<Item = usize>> {
 //~ MONO_ITEM fn std::boxed::Box::<Counter>::new
 //~ MONO_ITEM fn Counter::new
 //~ MONO_ITEM fn core::fmt::rt::<impl std::fmt::Arguments<'_>>::new_const::<1>
+//~ MONO_ITEM fn <core::displaywrapper::DisplayWrapper<'_> as std::fmt::Display>::fmt
+//~ MONO_ITEM fn <std::ops::Range<usize> as std::slice::SliceIndex<[T]>>::get_unchecked::precondition_check
+//~ MONO_ITEM fn <std::ops::Range<usize> as std::slice::SliceIndex<[T]>>::get_unchecked::precondition_check::runtime
+//~ MONO_ITEM fn <std::ops::RangeFrom<usize> as std::slice::SliceIndex<[u8]>>::index
+//~ MONO_ITEM fn std::char::encode_utf8_raw
+//~ MONO_ITEM fn std::char::encode_utf8_raw_unchecked
+//~ MONO_ITEM fn std::slice::from_raw_parts_mut::precondition_check
+//~ MONO_ITEM fn std::slice::from_raw_parts_mut::precondition_check::runtime
