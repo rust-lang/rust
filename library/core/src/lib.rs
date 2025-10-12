@@ -347,12 +347,12 @@ pub mod alloc;
 
 // note: does not need to be public
 mod bool;
-mod escape;
-mod tuple;
-mod unit;
 #[doc(hidden)]
 #[unstable(feature = "ub_checks", issue = "none")]
 pub mod displaywrapper;
+mod escape;
+mod tuple;
+mod unit;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;

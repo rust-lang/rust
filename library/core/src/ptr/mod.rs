@@ -1581,7 +1581,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::replace requires that the pointer argument is aligned and non-null\
+            "ptr::replace requires that the pointer argument is aligned and non-null \
             (dst:{addr}, (align:{align}))",
             (
                 addr: *const () = dst as *const (),
