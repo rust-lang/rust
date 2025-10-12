@@ -10,13 +10,13 @@ LL |     *x = 1;
 help: the accessed tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
    |
-LL | pub fn safe(x: &mut i32, y: &i32) {
-   |             ^
+LL | fn safe(x: &mut i32, y: &i32) {
+   |         ^
 help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to a reborrow (acting as a foreign read access) at offsets [0x0..0x4]
   --> tests/fail/both_borrows/aliasing_mut3.rs:LL:CC
    |
-LL | pub fn safe(x: &mut i32, y: &i32) {
-   |                          ^
+LL | fn safe(x: &mut i32, y: &i32) {
+   |                      ^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: BACKTRACE (of the first span):
    = note: inside `safe` at tests/fail/both_borrows/aliasing_mut3.rs:LL:CC

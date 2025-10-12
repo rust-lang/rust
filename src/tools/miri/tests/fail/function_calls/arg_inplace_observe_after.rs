@@ -22,6 +22,6 @@ fn main() {
     }
 }
 
-pub fn change_arg(mut x: S) {
+fn change_arg(mut x: S) {
     x.0 = 0;
 }

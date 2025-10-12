@@ -348,7 +348,7 @@ fn test_sc_relaxed() {
     assert!(!bad);
 }
 
-pub fn main() {
+fn main() {
     for _ in 0..32 {
         test_sc_store_buffering();
         test_iriw_sc_rlx();
