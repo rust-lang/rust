@@ -15,7 +15,7 @@ use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
-use crate::core::build_steps::run::get_completion_paths;
+use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool,
@@ -28,7 +28,7 @@ use crate::core::builder::{
     crate_description,
 };
 use crate::core::config::TargetSelection;
-use crate::core::config::flags::{Subcommand, get_completion};
+use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -1291,6 +1291,23 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
             );
             crate::exit!(1);
+        }
+
+        builder.info("x.py help check");
+        if builder.config.cmd.bless() {
+            builder.ensure(crate::core::build_steps::run::GenerateHelp);
+        } else {
+            let help_path = get_help_path(builder);
+            let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
+                eprintln!("couldn't read {}: {}", help_path.display(), err);
+                crate::exit!(1);
+            });
+            let new_help = top_level_help();
+
+            if new_help != cur_help {
+                eprintln!("x.py help was changed; run `x.py run generate-help` to update it");
+                crate::exit!(1);
+            }
         }
     }
 
