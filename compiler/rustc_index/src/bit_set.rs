@@ -973,48 +973,6 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
     }
 }
 
-impl<T: Idx> BitRelations<ChunkedBitSet<T>> for DenseBitSet<T> {
-    fn union(&mut self, other: &ChunkedBitSet<T>) -> bool {
-        sequential_update(|elem| self.insert(elem), other.iter())
-    }
-
-    fn subtract(&mut self, _other: &ChunkedBitSet<T>) -> bool {
-        unimplemented!("implement if/when necessary");
-    }
-
-    fn intersect(&mut self, other: &ChunkedBitSet<T>) -> bool {
-        assert_eq!(self.domain_size(), other.domain_size);
-        let mut changed = false;
-        for (i, chunk) in other.chunks.iter().enumerate() {
-            let mut words = &mut self.words[i * CHUNK_WORDS..];
-            if words.len() > CHUNK_WORDS {
-                words = &mut words[..CHUNK_WORDS];
-            }
-            match chunk {
-                Zeros => {
-                    for word in words {
-                        if *word != 0 {
-                            changed = true;
-                            *word = 0;
-                        }
-                    }
-                }
-                Ones => (),
-                Mixed(_, data) => {
-                    for (i, word) in words.iter_mut().enumerate() {
-                        let new_val = *word & data[i];
-                        if new_val != *word {
-                            changed = true;
-                            *word = new_val;
-                        }
-                    }
-                }
-            }
-        }
-        changed
-    }
-}
-
 impl<T> Clone for ChunkedBitSet<T> {
     fn clone(&self) -> Self {
         ChunkedBitSet {
@@ -1123,15 +1081,6 @@ enum ChunkIter<'a> {
     Ones(Range<usize>),
     Mixed(BitIter<'a, usize>),
     Finished,
-}
-
-// Applies a function to mutate a bitset, and returns true if any
-// of the applications return true
-fn sequential_update<T: Idx>(
-    mut self_update: impl FnMut(T) -> bool,
-    it: impl Iterator<Item = T>,
-) -> bool {
-    it.fold(false, |changed, elem| self_update(elem) | changed)
 }
 
 impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
