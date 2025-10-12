@@ -19,6 +19,26 @@ use minicore::*;
 unsafe extern "C" {
     fn memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
     fn non_builtin_memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
+    fn test_i64_arg(s: i64) -> i64;
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn test_i64() -> i64 {
+    // REGPARM1-LABEL: test_i64
+    // REGPARM1: pushl
+    // REGPARM1: pushl
+    // REGPARM1: calll test_i64_arg
+
+    // REGPARM2-LABEL: test_i64
+    // REGPARM2: movl $42, %eax
+    // REGPARM2: xorl %edx, %edx
+    // REGPARM2: jmp test_i64_arg
+
+    // REGPARM3-LABEL: test_i64
+    // REGPARM3: movl $42, %eax
+    // REGPARM3: xorl %edx, %edx
+    // REGPARM3: jmp test_i64_arg
+    unsafe { test_i64_arg(42) }
 }
 
 #[unsafe(no_mangle)]
