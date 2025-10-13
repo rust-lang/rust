@@ -331,6 +331,13 @@ pub struct Body<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
+
+    /// Debug information for argument moves/copies in Call parameters. Stores pairs of
+    /// ((BasicBlock, argument_index), SourceInfo) for move/copy operations. Only populated when
+    /// `-Zannotate-moves` is enabled.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub call_arg_move_source_info: Vec<((BasicBlock, usize), SourceInfo)>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -374,6 +381,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
+            call_arg_move_source_info: Vec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -405,6 +413,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
+            call_arg_move_source_info: Vec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body

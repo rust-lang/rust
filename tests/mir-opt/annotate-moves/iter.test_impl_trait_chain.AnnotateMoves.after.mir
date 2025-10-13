@@ -1,0 +1,178 @@
+// MIR for `test_impl_trait_chain` after AnnotateMoves
+
+fn test_impl_trait_chain() -> Vec<u64> {
+    let mut _0: std::vec::Vec<u64>;
+    let _15: std::iter::Chain<std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>;
+    scope 1 {
+        debug iter => _15;
+        scope 32 (inlined test_impl_trait_arg::<std::iter::Chain<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>>) {
+            debug iter => _15;
+            scope 45 (inlined core::profiling::compiler_move::<std::iter::Chain<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>, 104>) {
+            }
+        }
+    }
+    scope 2 (inlined make_large_iter) {
+        let mut _1: [u64; 5];
+        let mut _4: std::array::IntoIter<u64, 5>;
+        let mut _5: fn(u64) -> u64;
+        let mut _6: std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>;
+        let mut _7: [u64; 5];
+        let mut _10: std::array::IntoIter<u64, 5>;
+        let mut _11: fn(u64) -> u64;
+        let mut _12: std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>;
+        scope 3 (inlined array::iter::<impl IntoIterator for [u64; 5]>::into_iter) {
+            debug self => _1;
+            let _2: [std::mem::MaybeUninit<u64>; 5];
+            scope 4 {
+                let _3: std::array::iter::iter_inner::PolymorphicIter<[std::mem::MaybeUninit<u64>; 5]>;
+                scope 5 {
+                    scope 22 (inlined core::profiling::compiler_copy::<array::iter::iter_inner::PolymorphicIter<[MaybeUninit<u64>; 5]>, 48>) {
+                        scope 35 (inlined core::profiling::compiler_copy::<array::iter::iter_inner::PolymorphicIter<[MaybeUninit<u64>; 5]>, 48>) {
+                        }
+                    }
+                }
+                scope 6 (inlined ops::index_range::IndexRange::zero_to) {
+                }
+                scope 7 (inlined array::iter::iter_inner::PolymorphicIter::<[MaybeUninit<u64>; 5]>::new_unchecked) {
+                    scope 21 (inlined core::profiling::compiler_copy::<[MaybeUninit<u64>; 5], 40>) {
+                        scope 34 (inlined core::profiling::compiler_copy::<[MaybeUninit<u64>; 5], 40>) {
+                        }
+                    }
+                }
+            }
+            scope 20 (inlined core::profiling::compiler_copy::<[u64; 5], 40>) {
+                scope 33 (inlined core::profiling::compiler_copy::<[u64; 5], 40>) {
+                }
+            }
+        }
+        scope 8 (inlined <std::array::IntoIter<u64, 5> as Iterator>::map::<u64, fn(u64) -> u64>) {
+            debug self => _4;
+            debug f => _5;
+            scope 9 (inlined Map::<std::array::IntoIter<u64, 5>, fn(u64) -> u64>::new) {
+                scope 23 (inlined core::profiling::compiler_copy::<std::array::IntoIter<u64, 5>, 48>) {
+                    scope 36 (inlined core::profiling::compiler_copy::<std::array::IntoIter<u64, 5>, 48>) {
+                    }
+                }
+            }
+        }
+        scope 10 (inlined array::iter::<impl IntoIterator for [u64; 5]>::into_iter) {
+            debug self => _7;
+            let _8: [std::mem::MaybeUninit<u64>; 5];
+            scope 11 {
+                let _9: std::array::iter::iter_inner::PolymorphicIter<[std::mem::MaybeUninit<u64>; 5]>;
+                scope 12 {
+                    scope 26 (inlined core::profiling::compiler_copy::<array::iter::iter_inner::PolymorphicIter<[MaybeUninit<u64>; 5]>, 48>) {
+                        scope 39 (inlined core::profiling::compiler_copy::<array::iter::iter_inner::PolymorphicIter<[MaybeUninit<u64>; 5]>, 48>) {
+                        }
+                    }
+                }
+                scope 13 (inlined ops::index_range::IndexRange::zero_to) {
+                }
+                scope 14 (inlined array::iter::iter_inner::PolymorphicIter::<[MaybeUninit<u64>; 5]>::new_unchecked) {
+                    scope 25 (inlined core::profiling::compiler_copy::<[MaybeUninit<u64>; 5], 40>) {
+                        scope 38 (inlined core::profiling::compiler_copy::<[MaybeUninit<u64>; 5], 40>) {
+                        }
+                    }
+                }
+            }
+            scope 24 (inlined core::profiling::compiler_copy::<[u64; 5], 40>) {
+                scope 37 (inlined core::profiling::compiler_copy::<[u64; 5], 40>) {
+                }
+            }
+        }
+        scope 15 (inlined <std::array::IntoIter<u64, 5> as Iterator>::map::<u64, fn(u64) -> u64>) {
+            debug self => _10;
+            debug f => _11;
+            scope 16 (inlined Map::<std::array::IntoIter<u64, 5>, fn(u64) -> u64>::new) {
+                scope 27 (inlined core::profiling::compiler_copy::<std::array::IntoIter<u64, 5>, 48>) {
+                    scope 40 (inlined core::profiling::compiler_copy::<std::array::IntoIter<u64, 5>, 48>) {
+                    }
+                }
+            }
+        }
+        scope 17 (inlined <Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64> as Iterator>::chain::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>) {
+            debug self => _6;
+            debug other => _12;
+            scope 18 (inlined std::iter::Chain::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>::new) {
+                debug a => _6;
+                debug b => _12;
+                let mut _13: std::option::Option<std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>;
+                let mut _14: std::option::Option<std::iter::Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>;
+                scope 28 (inlined core::profiling::compiler_copy::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, 52>) {
+                    scope 41 (inlined core::profiling::compiler_copy::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, 52>) {
+                    }
+                }
+                scope 29 (inlined core::profiling::compiler_copy::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, 52>) {
+                    scope 42 (inlined core::profiling::compiler_copy::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, 52>) {
+                    }
+                }
+                scope 30 (inlined core::profiling::compiler_move::<Option<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>, 52>) {
+                }
+                scope 31 (inlined core::profiling::compiler_move::<Option<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>, 52>) {
+                    scope 43 (inlined core::profiling::compiler_move::<Option<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>, 52>) {
+                    }
+                    scope 44 (inlined core::profiling::compiler_move::<Option<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>, 52>) {
+                    }
+                }
+            }
+            scope 19 (inlined <Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64> as IntoIterator>::into_iter) {
+                debug self => _12;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_12);
+        StorageLive(_6);
+        StorageLive(_4);
+        StorageLive(_1);
+        _1 = [const 1_u64, const 2_u64, const 3_u64, const 4_u64, const 5_u64];
+        StorageLive(_2);
+        StorageLive(_3);
+        _2 = copy _1 as [std::mem::MaybeUninit<u64>; 5] (Transmute);
+        _3 = array::iter::iter_inner::PolymorphicIter::<[MaybeUninit<u64>; 5]> { alive: const ops::index_range::IndexRange {{ start: 0_usize, end: 5_usize }}, data: copy _2 };
+        _4 = std::array::IntoIter::<u64, 5> { inner: copy _3 };
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_5);
+        _5 = make_large_iter::double as fn(u64) -> u64 (PointerCoercion(ReifyFnPointer, AsCast));
+        _6 = Map::<std::array::IntoIter<u64, 5>, fn(u64) -> u64> { iter: copy _4, f: copy _5 };
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageLive(_10);
+        StorageLive(_7);
+        _7 = [const 6_u64, const 7_u64, const 8_u64, const 9_u64, const 10_u64];
+        StorageLive(_8);
+        StorageLive(_9);
+        _8 = copy _7 as [std::mem::MaybeUninit<u64>; 5] (Transmute);
+        _9 = array::iter::iter_inner::PolymorphicIter::<[MaybeUninit<u64>; 5]> { alive: const ops::index_range::IndexRange {{ start: 0_usize, end: 5_usize }}, data: copy _8 };
+        _10 = std::array::IntoIter::<u64, 5> { inner: copy _9 };
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageLive(_11);
+        _11 = make_large_iter::double as fn(u64) -> u64 (PointerCoercion(ReifyFnPointer, AsCast));
+        _12 = Map::<std::array::IntoIter<u64, 5>, fn(u64) -> u64> { iter: copy _10, f: copy _11 };
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageLive(_13);
+        _13 = Option::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>::Some(copy _6);
+        StorageLive(_14);
+        _14 = Option::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>>::Some(copy _12);
+        _15 = std::iter::Chain::<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>> { a: move _13, b: move _14 };
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageDead(_6);
+        StorageDead(_12);
+        _0 = <std::iter::Chain<Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>, Map<std::array::IntoIter<u64, 5>, fn(u64) -> u64>> as Iterator>::collect::<Vec<u64>>(move _15) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 05 00 00 00                         │ ........
+}

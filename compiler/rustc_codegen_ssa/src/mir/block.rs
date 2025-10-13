@@ -1151,6 +1151,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => {}
             }
 
+            // Look up stored SourceInfo for this argument if it exists (from annotate_moves pass)
+            let bb_info = self
+                .mir
+                .call_arg_move_source_info
+                .iter()
+                .find(|&&((block, idx), _)| block == helper.bb && idx == i);
+            if let Some((_, arg_source_info)) = bb_info {
+                self.set_debug_loc(bx, *arg_source_info);
+            }
+
             self.codegen_argument(
                 bx,
                 op,

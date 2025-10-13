@@ -147,6 +147,7 @@ declare_passes! {
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
     mod impossible_predicates : ImpossiblePredicates;
+    mod annotate_moves : AnnotateMoves;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -730,6 +731,9 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,
+            // Annotate move/copy operations for profiler visibility.
+            // Late so we're annotating any Move/Copy that survived all the previous passes.
+            &annotate_moves::AnnotateMoves::new(tcx),
             // Dump the end result for testing and debugging purposes.
             &dump_mir::Marker("PreCodegen"),
         ],
