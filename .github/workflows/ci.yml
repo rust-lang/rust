@@ -246,6 +246,8 @@ jobs:
         run: src/ci/scripts/create-doc-artifacts.sh
 
       - name: print disk usage
+        # We also want to know the disk usage when the job fails.
+        if: always()
         run: |
           echo "disk usage:"
           df -h
