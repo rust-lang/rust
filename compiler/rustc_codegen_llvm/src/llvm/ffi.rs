@@ -19,15 +19,16 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
+use rustc_llvm::RustString;
 
-use super::RustString;
-use super::debuginfo::{
+use self::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
     DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::TryFromU32;
+use crate::coverageinfo::coverage_ffi;
 use crate::llvm::MetadataKindId;
-use crate::{TryFromU32, llvm};
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -75,13 +76,13 @@ impl Debug for Bool {
 /// Being able to write `b.to_llvm_bool()` is less noisy than `llvm::Bool::from(b)`,
 /// while being more explicit and less mistake-prone than something like `b.into()`.
 pub(crate) trait ToLlvmBool: Copy {
-    fn to_llvm_bool(self) -> llvm::Bool;
+    fn to_llvm_bool(self) -> Bool;
 }
 
 impl ToLlvmBool for bool {
     #[inline(always)]
-    fn to_llvm_bool(self) -> llvm::Bool {
-        llvm::Bool::from_bool(self)
+    fn to_llvm_bool(self) -> Bool {
+        Bool::from_bool(self)
     }
 }
 
@@ -358,33 +359,6 @@ pub(crate) enum TypeKind {
     ScalableVector = 17,
     BFloat = 18,
     X86_AMX = 19,
-}
-
-impl TypeKind {
-    pub(crate) fn to_generic(self) -> rustc_codegen_ssa::common::TypeKind {
-        use rustc_codegen_ssa::common::TypeKind as Common;
-        match self {
-            Self::Void => Common::Void,
-            Self::Half => Common::Half,
-            Self::Float => Common::Float,
-            Self::Double => Common::Double,
-            Self::X86_FP80 => Common::X86_FP80,
-            Self::FP128 => Common::FP128,
-            Self::PPC_FP128 => Common::PPC_FP128,
-            Self::Label => Common::Label,
-            Self::Integer => Common::Integer,
-            Self::Function => Common::Function,
-            Self::Struct => Common::Struct,
-            Self::Array => Common::Array,
-            Self::Pointer => Common::Pointer,
-            Self::Vector => Common::Vector,
-            Self::Metadata => Common::Metadata,
-            Self::Token => Common::Token,
-            Self::ScalableVector => Common::ScalableVector,
-            Self::BFloat => Common::BFloat,
-            Self::X86_AMX => Common::X86_AMX,
-        }
-    }
 }
 
 /// LLVMAtomicRmwBinOp
@@ -725,12 +699,9 @@ unsafe extern "C" {
 pub(crate) type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 
 pub(crate) mod debuginfo {
-    use std::ptr;
-
     use bitflags::bitflags;
 
     use super::{InvariantOpaque, Metadata};
-    use crate::llvm::{self, Module};
 
     /// Opaque target type for references to an LLVM debuginfo builder.
     ///
@@ -742,33 +713,6 @@ pub(crate) mod debuginfo {
     /// session (`'ll`) that it participates in.
     #[repr(C)]
     pub(crate) struct DIBuilder<'ll>(InvariantOpaque<'ll>);
-
-    /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
-    /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
-    /// needed for debuginfo FFI calls.
-    pub(crate) struct DIBuilderBox<'ll> {
-        raw: ptr::NonNull<DIBuilder<'ll>>,
-    }
-
-    impl<'ll> DIBuilderBox<'ll> {
-        pub(crate) fn new(llmod: &'ll Module) -> Self {
-            let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
-            let raw = ptr::NonNull::new(raw).unwrap();
-            Self { raw }
-        }
-
-        pub(crate) fn as_ref(&self) -> &DIBuilder<'ll> {
-            // SAFETY: This is an owning pointer, so `&DIBuilder` is valid
-            // for as long as `&self` is.
-            unsafe { self.raw.as_ref() }
-        }
-    }
-
-    impl<'ll> Drop for DIBuilderBox<'ll> {
-        fn drop(&mut self) {
-            unsafe { llvm::LLVMDisposeDIBuilder(self.raw) };
-        }
-    }
 
     pub(crate) type DIDescriptor = Metadata;
     pub(crate) type DILocation = Metadata;
@@ -941,10 +885,10 @@ unsafe extern "C" {
         AsmStringSize: size_t,
         Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsSize: size_t,
-        HasSideEffects: llvm::Bool,
-        IsAlignStack: llvm::Bool,
+        HasSideEffects: Bool,
+        IsAlignStack: Bool,
         Dialect: AsmDialect,
-        CanThrow: llvm::Bool,
+        CanThrow: Bool,
     ) -> &'ll Value;
 
     pub(crate) safe fn LLVMGetTypeKind(Ty: &Type) -> RawEnum<TypeKind>;
@@ -1715,7 +1659,7 @@ unsafe extern "C" {
         ParentScope: Option<&'ll Metadata>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        ExportSymbols: llvm::Bool,
+        ExportSymbols: Bool,
     ) -> &'ll Metadata;
 
     pub(crate) fn LLVMDIBuilderCreateLexicalBlock<'ll>(
@@ -1903,7 +1847,7 @@ unsafe extern "C" {
         File: &'ll Metadata,
         LineNo: c_uint,
         Ty: &'ll Metadata,
-        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        AlwaysPreserve: Bool, // "If true, this descriptor will survive optimizations."
         Flags: DIFlags,
         AlignInBits: u32,
     ) -> &'ll Metadata;
@@ -1917,7 +1861,7 @@ unsafe extern "C" {
         File: &'ll Metadata,
         LineNo: c_uint,
         Ty: &'ll Metadata,
-        AlwaysPreserve: llvm::Bool, // "If true, this descriptor will survive optimizations."
+        AlwaysPreserve: Bool, // "If true, this descriptor will survive optimizations."
         Flags: DIFlags,
     ) -> &'ll Metadata;
 }
@@ -2077,13 +2021,13 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustCoverageWriteFunctionMappingsToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: size_t,
-        Expressions: *const crate::coverageinfo::ffi::CounterExpression,
+        Expressions: *const coverage_ffi::CounterExpression,
         NumExpressions: size_t,
-        CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
+        CodeRegions: *const coverage_ffi::CodeRegion,
         NumCodeRegions: size_t,
-        ExpansionRegions: *const crate::coverageinfo::ffi::ExpansionRegion,
+        ExpansionRegions: *const coverage_ffi::ExpansionRegion,
         NumExpansionRegions: size_t,
-        BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
+        BranchRegions: *const coverage_ffi::BranchRegion,
         NumBranchRegions: size_t,
         BufferOut: &RustString,
     );

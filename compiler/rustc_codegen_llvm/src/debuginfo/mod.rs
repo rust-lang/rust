@@ -28,6 +28,7 @@ use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use self::di_builder::DIBuilderBox;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
@@ -36,12 +37,13 @@ use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
     DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::llvm::{self, Value};
 
 mod create_scope_map;
+mod di_builder;
 mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
