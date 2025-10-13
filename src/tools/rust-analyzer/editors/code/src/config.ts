@@ -19,10 +19,11 @@ type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSel
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
-    readonly workspaceState: vscode.Memento;
-    configureLang: vscode.Disposable | undefined;
 
-    readonly rootSection = "rust-analyzer";
+    configureLang: vscode.Disposable | undefined;
+    workspaceState: vscode.Memento;
+
+    private readonly rootSection = "rust-analyzer";
     private readonly requiresServerReloadOpts = ["cargo", "server", "files", "showSyntaxTree"].map(
         (opt) => `${this.rootSection}.${opt}`,
     );
@@ -42,11 +43,14 @@ export class Config {
         this.configureLang?.dispose();
     }
 
+    private readonly extensionConfigurationStateKey = "extensionConfigurations";
+
     /// Returns the rust-analyzer-specific workspace configuration, incl. any
     /// configuration items overridden by (present) extensions.
     get extensionConfigurations(): Record<string, Record<string, unknown>> {
         return pickBy(
             this.workspaceState.get<Record<string, ConfigurationTree>>("extensionConfigurations", {}),
+            // ignore configurations from disabled/removed extensions
             (_, extensionId) => vscode.extensions.getExtension(extensionId) !== undefined,
         );
     }
@@ -56,7 +60,7 @@ export class Config {
 
         const extCfgs = this.extensionConfigurations;
         extCfgs[extensionId] = configuration;
-        await this.workspaceState.update("extensionConfigurations", extCfgs);
+        await this.workspaceState.update(this.extensionConfigurationStateKey, extCfgs);
 
         const newConfiguration = this.cfg;
         const prefix = `${this.rootSection}.`;
@@ -207,10 +211,14 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
+    // Returns the raw configuration for rust-analyzer as returned by vscode. This
+    // should only be used when modifications to the user/workspace configuration
+    // are required.
     private get rawCfg(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration(this.rootSection);
     }
 
+    // Returns the final configuration to use, with extension configuration overrides merged in.
     public get cfg(): ConfigurationTree {
         return merge(cloneDeep(this.rawCfg), ...Object.values(this.extensionConfigurations));
     }
