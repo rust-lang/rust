@@ -1510,11 +1510,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
     // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
     // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
-        let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
@@ -1526,11 +1526,16 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
             t: Ty<'tcx>,
         ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
+            // We can encounter projections during traversal, so ensure the type is normalized.
+            let t = tcx.try_normalize_erasing_regions(typing_env, t).unwrap_or(t);
             match t.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
-                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Tuple(list) => {
+                    list.iter().try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
+                }
+                ty::Array(ty, _) => check_non_exhaustive(tcx, typing_env, *ty),
                 ty::Adt(def, args) => {
                     if !def.did().is_local()
                         && !find_attr!(
@@ -1555,13 +1560,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     }
                     def.all_fields()
                         .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, t))
+                        .try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
                 }
                 _ => ControlFlow::Continue(()),
             }
         }
 
-        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, check_non_exhaustive(tcx, typing_env, ty).break_value())
     });
 
     let non_trivial_fields = field_infos
