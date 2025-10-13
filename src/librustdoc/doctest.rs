@@ -30,6 +30,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
+use test::test::{RustdocResult, get_rustdoc_result};
 use tracing::debug;
 
 use self::rust::HirCollector;
@@ -445,25 +446,6 @@ fn scrape_test_config(
     opts
 }
 
-/// Documentation test failure modes.
-enum TestFailure {
-    /// The test failed to compile.
-    CompileError,
-    /// The test is marked `compile_fail` but compiled successfully.
-    UnexpectedCompilePass,
-    /// The test failed to compile (as expected) but the compiler output did not contain all
-    /// expected error codes.
-    MissingErrorCodes(Vec<String>),
-    /// The test binary was unable to be executed.
-    ExecutionError(io::Error),
-    /// The test binary exited with a non-zero exit code.
-    ///
-    /// This typically means an assertion in the test failed or another form of panic occurred.
-    ExecutionFailure(process::Output),
-    /// The test is marked `should_panic` but the test binary executed successfully.
-    UnexpectedRunPass,
-}
-
 enum DirState {
     Temp(TempDir),
     Perm(PathBuf),
@@ -553,7 +535,7 @@ fn run_test(
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
-) -> (Duration, Result<(), TestFailure>) {
+) -> (Duration, Result<(), RustdocResult>) {
     let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
     let rust_out = add_exe_suffix("rust_out".to_owned(), &rustdoc_options.target);
@@ -642,7 +624,7 @@ fn run_test(
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return (Duration::default(), Err(TestFailure::CompileError));
+            return (Duration::default(), Err(RustdocResult::CompileError));
         }
         if !rustdoc_options.no_capture {
             // If `no_capture` is disabled, then we don't display rustc's output when compiling
@@ -719,7 +701,7 @@ fn run_test(
         if std::fs::write(&runner_input_file, merged_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
-            return (instant.elapsed(), Err(TestFailure::CompileError));
+            return (instant.elapsed(), Err(RustdocResult::CompileError));
         }
         if !rustdoc_options.no_capture {
             // If `no_capture` is disabled, then we don't display rustc's output when compiling
@@ -772,7 +754,7 @@ fn run_test(
     let _bomb = Bomb(&out);
     match (output.status.success(), langstr.compile_fail) {
         (true, true) => {
-            return (instant.elapsed(), Err(TestFailure::UnexpectedCompilePass));
+            return (instant.elapsed(), Err(RustdocResult::UnexpectedCompilePass));
         }
         (true, false) => {}
         (false, true) => {
@@ -788,12 +770,15 @@ fn run_test(
                     .collect();
 
                 if !missing_codes.is_empty() {
-                    return (instant.elapsed(), Err(TestFailure::MissingErrorCodes(missing_codes)));
+                    return (
+                        instant.elapsed(),
+                        Err(RustdocResult::MissingErrorCodes(missing_codes)),
+                    );
                 }
             }
         }
         (false, false) => {
-            return (instant.elapsed(), Err(TestFailure::CompileError));
+            return (instant.elapsed(), Err(RustdocResult::CompileError));
         }
     }
 
@@ -831,17 +816,9 @@ fn run_test(
         cmd.output()
     };
     match result {
-        Err(e) => return (duration, Err(TestFailure::ExecutionError(e))),
-        Ok(out) => {
-            if langstr.should_panic && out.status.success() {
-                return (duration, Err(TestFailure::UnexpectedRunPass));
-            } else if !langstr.should_panic && !out.status.success() {
-                return (duration, Err(TestFailure::ExecutionFailure(out)));
-            }
-        }
+        Err(e) => (duration, Err(RustdocResult::ExecutionError(e))),
+        Ok(output) => (duration, get_rustdoc_result(output, langstr.should_panic)),
     }
-
-    (duration, Ok(()))
 }
 
 /// Converts a path intended to use as a command to absolute if it is
@@ -1132,54 +1109,7 @@ fn doctest_run_fn(
         run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
 
     if let Err(err) = res {
-        match err {
-            TestFailure::CompileError => {
-                eprint!("Couldn't compile the test.");
-            }
-            TestFailure::UnexpectedCompilePass => {
-                eprint!("Test compiled successfully, but it's marked `compile_fail`.");
-            }
-            TestFailure::UnexpectedRunPass => {
-                eprint!("Test executable succeeded, but it's marked `should_panic`.");
-            }
-            TestFailure::MissingErrorCodes(codes) => {
-                eprint!("Some expected error codes were not found: {codes:?}");
-            }
-            TestFailure::ExecutionError(err) => {
-                eprint!("Couldn't run the test: {err}");
-                if err.kind() == io::ErrorKind::PermissionDenied {
-                    eprint!(" - maybe your tempdir is mounted with noexec?");
-                }
-            }
-            TestFailure::ExecutionFailure(out) => {
-                eprintln!("Test executable failed ({reason}).", reason = out.status);
-
-                // FIXME(#12309): An unfortunate side-effect of capturing the test
-                // executable's output is that the relative ordering between the test's
-                // stdout and stderr is lost. However, this is better than the
-                // alternative: if the test executable inherited the parent's I/O
-                // handles the output wouldn't be captured at all, even on success.
-                //
-                // The ordering could be preserved if the test process' stderr was
-                // redirected to stdout, but that functionality does not exist in the
-                // standard library, so it may not be portable enough.
-                let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
-                let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
-
-                if !stdout.is_empty() || !stderr.is_empty() {
-                    eprintln!();
-
-                    if !stdout.is_empty() {
-                        eprintln!("stdout:\n{stdout}");
-                    }
-
-                    if !stderr.is_empty() {
-                        eprintln!("stderr:\n{stderr}");
-                    }
-                }
-            }
-        }
-
+        eprint!("{err}");
         panic::resume_unwind(Box::new(()));
     }
     Ok(())
