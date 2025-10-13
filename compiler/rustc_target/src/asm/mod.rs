@@ -1,12 +1,11 @@
 use std::fmt;
-use std::str::FromStr;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::spec::{RelocModel, Target};
+use crate::spec::{Architecture, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -245,38 +244,36 @@ pub enum InlineAsmArch {
     CSKY,
 }
 
-impl FromStr for InlineAsmArch {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<InlineAsmArch, ()> {
-        match s {
-            "x86" => Ok(Self::X86),
-            "x86_64" => Ok(Self::X86_64),
-            "arm" => Ok(Self::Arm),
-            "aarch64" => Ok(Self::AArch64),
-            "arm64ec" => Ok(Self::Arm64EC),
-            "riscv32" => Ok(Self::RiscV32),
-            "riscv64" => Ok(Self::RiscV64),
-            "nvptx64" => Ok(Self::Nvptx64),
-            "powerpc" => Ok(Self::PowerPC),
-            "powerpc64" => Ok(Self::PowerPC64),
-            "hexagon" => Ok(Self::Hexagon),
-            "loongarch32" => Ok(Self::LoongArch32),
-            "loongarch64" => Ok(Self::LoongArch64),
-            "mips" | "mips32r6" => Ok(Self::Mips),
-            "mips64" | "mips64r6" => Ok(Self::Mips64),
-            "s390x" => Ok(Self::S390x),
-            "sparc" => Ok(Self::Sparc),
-            "sparc64" => Ok(Self::Sparc64),
-            "spirv" => Ok(Self::SpirV),
-            "wasm32" => Ok(Self::Wasm32),
-            "wasm64" => Ok(Self::Wasm64),
-            "bpf" => Ok(Self::Bpf),
-            "avr" => Ok(Self::Avr),
-            "msp430" => Ok(Self::Msp430),
-            "m68k" => Ok(Self::M68k),
-            "csky" => Ok(Self::CSKY),
-            _ => Err(()),
+impl InlineAsmArch {
+    pub fn from_arch(arch: Architecture) -> Option<Self> {
+        match arch {
+            Architecture::X86 => Some(Self::X86),
+            Architecture::X86_64 => Some(Self::X86_64),
+            Architecture::Arm => Some(Self::Arm),
+            Architecture::Arm64EC => Some(Self::Arm64EC),
+            Architecture::AArch64 => Some(Self::AArch64),
+            Architecture::RiscV32 => Some(Self::RiscV32),
+            Architecture::RiscV64 => Some(Self::RiscV64),
+            Architecture::Nvptx64 => Some(Self::Nvptx64),
+            Architecture::Hexagon => Some(Self::Hexagon),
+            Architecture::LoongArch32 => Some(Self::LoongArch32),
+            Architecture::LoongArch64 => Some(Self::LoongArch64),
+            Architecture::Mips | Architecture::Mips32r6 => Some(Self::Mips),
+            Architecture::Mips64 | Architecture::Mips64r6 => Some(Self::Mips64),
+            Architecture::PowerPC => Some(Self::PowerPC),
+            Architecture::PowerPC64 | Architecture::PowerPC64LE => Some(Self::PowerPC64),
+            Architecture::S390x => Some(Self::S390x),
+            Architecture::Sparc => Some(Self::Sparc),
+            Architecture::Sparc64 => Some(Self::Sparc64),
+            Architecture::SpirV => Some(Self::SpirV),
+            Architecture::Wasm32 => Some(Self::Wasm32),
+            Architecture::Wasm64 => Some(Self::Wasm64),
+            Architecture::Bpf => Some(Self::Bpf),
+            Architecture::Avr => Some(Self::Avr),
+            Architecture::Msp430 => Some(Self::Msp430),
+            Architecture::M68k => Some(Self::M68k),
+            Architecture::CSKY => Some(Self::CSKY),
+            Architecture::AmdGpu | Architecture::Xtensa => None,
         }
     }
 }

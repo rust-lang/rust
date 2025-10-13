@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Architecture, Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
         // used widely in the source base. If we ever needed ABI
         // differentiation from the sparc64, we could, but that would probably
         // just be confusing.
-        arch: "sparc64".into(),
+        arch: Architecture::Sparc64,
         options: base,
     }
 }

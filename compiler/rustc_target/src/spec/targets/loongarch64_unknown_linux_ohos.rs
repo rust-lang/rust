@@ -1,4 +1,6 @@
-use crate::spec::{CodeModel, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Architecture, CodeModel, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -11,7 +13,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
-        arch: "loongarch64".into(),
+        arch: Architecture::LoongArch64,
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic".into(),

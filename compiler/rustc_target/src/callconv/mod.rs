@@ -7,7 +7,7 @@ use rustc_abi::{
 use rustc_macros::HashStable_Generic;
 
 pub use crate::spec::AbiMap;
-use crate::spec::{HasTargetSpec, HasX86AbiOpt};
+use crate::spec::{Architecture, HasTargetSpec, HasX86AbiOpt};
 
 mod aarch64;
 mod amdgpu;
@@ -632,8 +632,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
 
         let spec = cx.target_spec();
-        match &spec.arch[..] {
-            "x86" => {
+        match spec.arch {
+            Architecture::X86 => {
                 let (flavor, regparm) = match abi {
                     ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
                         (x86::Flavor::FastcallOrVectorcall, None)
@@ -651,7 +651,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     x86::compute_abi_info(cx, self, opts);
                 }
             }
-            "x86_64" => match abi {
+            Architecture::X86_64 => match abi {
                 ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
                 ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
                     x86_win64::compute_abi_info(cx, self)
@@ -664,7 +664,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                 }
             },
-            "aarch64" | "arm64ec" => {
+            Architecture::AArch64 | Architecture::Arm64EC => {
                 let kind = if cx.target_spec().is_like_darwin {
                     aarch64::AbiKind::DarwinPCS
                 } else if cx.target_spec().is_like_windows {
@@ -674,33 +674,37 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 };
                 aarch64::compute_abi_info(cx, self, kind)
             }
-            "amdgpu" => amdgpu::compute_abi_info(cx, self),
-            "arm" => arm::compute_abi_info(cx, self),
-            "avr" => avr::compute_abi_info(self),
-            "loongarch32" | "loongarch64" => loongarch::compute_abi_info(cx, self),
-            "m68k" => m68k::compute_abi_info(self),
-            "csky" => csky::compute_abi_info(self),
-            "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
-            "mips64" | "mips64r6" => mips64::compute_abi_info(cx, self),
-            "powerpc" => powerpc::compute_abi_info(cx, self),
-            "powerpc64" => powerpc64::compute_abi_info(cx, self),
-            "s390x" => s390x::compute_abi_info(cx, self),
-            "msp430" => msp430::compute_abi_info(self),
-            "sparc" => sparc::compute_abi_info(cx, self),
-            "sparc64" => sparc64::compute_abi_info(cx, self),
-            "nvptx64" => {
+            Architecture::AmdGpu => amdgpu::compute_abi_info(cx, self),
+            Architecture::Arm => arm::compute_abi_info(cx, self),
+            Architecture::Avr => avr::compute_abi_info(self),
+            Architecture::LoongArch32 | Architecture::LoongArch64 => {
+                loongarch::compute_abi_info(cx, self)
+            }
+            Architecture::M68k => m68k::compute_abi_info(self),
+            Architecture::CSKY => csky::compute_abi_info(self),
+            Architecture::Mips | Architecture::Mips32r6 => mips::compute_abi_info(cx, self),
+            Architecture::Mips64 | Architecture::Mips64r6 => mips64::compute_abi_info(cx, self),
+            Architecture::PowerPC => powerpc::compute_abi_info(cx, self),
+            Architecture::PowerPC64 => powerpc64::compute_abi_info(cx, self),
+            Architecture::S390x => s390x::compute_abi_info(cx, self),
+            Architecture::Msp430 => msp430::compute_abi_info(self),
+            Architecture::Sparc => sparc::compute_abi_info(cx, self),
+            Architecture::Sparc64 => sparc64::compute_abi_info(cx, self),
+            Architecture::Nvptx64 => {
                 if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
                 }
             }
-            "hexagon" => hexagon::compute_abi_info(self),
-            "xtensa" => xtensa::compute_abi_info(cx, self),
-            "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" | "wasm64" => wasm::compute_abi_info(cx, self),
-            "bpf" => bpf::compute_abi_info(self),
-            arch => panic!("no lowering implemented for {arch}"),
+            Architecture::Hexagon => hexagon::compute_abi_info(self),
+            Architecture::Xtensa => xtensa::compute_abi_info(cx, self),
+            Architecture::RiscV32 | Architecture::RiscV64 => riscv::compute_abi_info(cx, self),
+            Architecture::Wasm32 | Architecture::Wasm64 => wasm::compute_abi_info(cx, self),
+            Architecture::Bpf => bpf::compute_abi_info(self),
+            arch @ (Architecture::PowerPC64LE | Architecture::SpirV) => {
+                panic!("no lowering implemented for {arch}")
+            }
         }
     }
 
@@ -710,11 +714,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         C: HasDataLayout + HasTargetSpec,
     {
         let spec = cx.target_spec();
-        match &*spec.arch {
-            "x86" => x86::compute_rust_abi_info(cx, self),
-            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self),
-            "loongarch32" | "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
-            "aarch64" => aarch64::compute_rust_abi_info(cx, self),
+        match spec.arch {
+            Architecture::X86 => x86::compute_rust_abi_info(cx, self),
+            Architecture::RiscV32 | Architecture::RiscV64 => riscv::compute_rust_abi_info(cx, self),
+            Architecture::LoongArch32 | Architecture::LoongArch64 => {
+                loongarch::compute_rust_abi_info(cx, self)
+            }
+            Architecture::AArch64 => aarch64::compute_rust_abi_info(cx, self),
             _ => {}
         };
 

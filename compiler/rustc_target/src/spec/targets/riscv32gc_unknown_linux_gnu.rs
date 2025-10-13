@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{CodeModel, SplitDebuginfo, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Architecture, CodeModel, SplitDebuginfo, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -13,7 +15,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
-        arch: "riscv32".into(),
+        arch: Architecture::RiscV32,
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv32".into(),

@@ -27,7 +27,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
+use rustc_target::spec::{Architecture, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -840,11 +840,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // operation. But it's not clear how to do that with LLVM.)
                 // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
                 // <https://github.com/llvm/llvm-project/issues/64521>.
-                const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
-                    &["aarch64", "arm", "riscv32", "riscv64"];
-
-                let use_nontemporal =
-                    WELL_BEHAVED_NONTEMPORAL_ARCHS.contains(&&*self.cx.tcx.sess.target.arch);
+                let use_nontemporal = matches!(
+                    self.cx.tcx.sess.target.arch,
+                    Architecture::AArch64
+                        | Architecture::Arm
+                        | Architecture::RiscV32
+                        | Architecture::RiscV64
+                );
                 if use_nontemporal {
                     // According to LLVM [1] building a nontemporal store must
                     // *always* point to a metadata value of the integer 1.

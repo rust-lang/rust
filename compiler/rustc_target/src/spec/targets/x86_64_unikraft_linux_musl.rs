@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+    Architecture, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
 pub(crate) fn target() -> Target {
@@ -12,7 +13,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 64,
-        arch: "x86_64".into(),
+        arch: Architecture::X86_64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
         options: TargetOptions {
