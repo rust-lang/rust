@@ -557,9 +557,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
-                    LocalRef::Place(cg_place) => {
-                        OperandRef { val: Ref(cg_place.val), layout: cg_place.layout }
-                    }
+                    LocalRef::Place(cg_place) => OperandRef {
+                        val: Ref(cg_place.val),
+                        layout: cg_place.layout,
+                        move_annotation: None,
+                    },
                     LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 };
                 let llslot = match op.val {
@@ -1155,7 +1157,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | (&mir::Operand::Constant(_), Ref(PlaceValue { llextra: None, .. })) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.val.llval, tmp.layout.size);
-                    op.val.store(bx, tmp);
+                    op.store_with_annotation(bx, tmp);
                     op.val = Ref(tmp.val);
                     lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
                 }
@@ -1563,13 +1565,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     };
                     let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                     bx.lifetime_start(scratch.llval, arg.layout.size);
-                    op.val.store(bx, scratch.with_type(arg.layout));
+                    op.store_with_annotation(bx, scratch.with_type(arg.layout));
                     lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                     (scratch.llval, scratch.align, true)
                 }
                 PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
-                    op.val.store(bx, scratch);
+                    op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
