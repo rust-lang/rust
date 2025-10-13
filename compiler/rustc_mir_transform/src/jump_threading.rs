@@ -332,8 +332,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         stmt: &Statement<'tcx>,
     ) -> Option<(Place<'tcx>, Option<TrackElem>)> {
         match stmt.kind {
-            StatementKind::Assign(box (place, _))
-            | StatementKind::Deinit(box place) => Some((place, None)),
+            StatementKind::Assign(box (place, _)) => Some((place, None)),
             StatementKind::SetDiscriminant { box place, variant_index: _ } => {
                 Some((place, Some(TrackElem::Discriminant)))
             }
@@ -455,7 +454,6 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         match rhs {
             Rvalue::Use(operand) => self.process_operand(bb, lhs, operand, state),
             // Transfer the conditions on the copy rhs.
-            Rvalue::CopyForDeref(rhs) => self.process_operand(bb, lhs, &Operand::Copy(*rhs), state),
             Rvalue::Discriminant(rhs) => {
                 let Some(rhs) = self.map.find_discr(rhs.as_ref()) else { return };
                 state.insert_place_idx(rhs, lhs, &self.map);

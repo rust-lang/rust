@@ -1785,7 +1785,7 @@ fn is_valid_trait_method_candidate(
                         let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
                         ctxt.register_obligations(infer_ok.into_obligations());
                         // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
-                        check_that!(ctxt.select_where_possible().is_empty());
+                        check_that!(ctxt.try_evaluate_obligations().is_empty());
                     }
 
                     check_that!(table.unify(receiver_ty, &expected_receiver));
@@ -1871,7 +1871,7 @@ fn is_valid_impl_fn_candidate(
             )
         }));
 
-        if ctxt.select_where_possible().is_empty() {
+        if ctxt.try_evaluate_obligations().is_empty() {
             IsValidCandidate::Yes
         } else {
             IsValidCandidate::No

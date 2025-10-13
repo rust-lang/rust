@@ -1470,7 +1470,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //
                     // we intentionally drop errors from normalization here,
                     // since the normalization is just done to improve the error message.
-                    let _ = ocx.select_where_possible();
+                    let _ = ocx.try_evaluate_obligations();
 
                     if let Err(new_err) =
                         ocx.eq(&obligation.cause, obligation.param_env, data.term, normalized_term)
@@ -2086,7 +2086,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 )
                             }),
                     );
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return false;
                     }
 
@@ -2102,7 +2102,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             terrs.push(terr);
                         }
-                        if !ocx.select_where_possible().is_empty() {
+                        if !ocx.try_evaluate_obligations().is_empty() {
                             return false;
                         }
                     }
@@ -3440,7 +3440,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
-                if ocx.select_all_or_error().is_empty() {
+                if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                     return Ok((
                         self.tcx
                             .fn_trait_kind_from_def_id(trait_def_id)

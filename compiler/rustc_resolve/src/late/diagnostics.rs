@@ -2214,10 +2214,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .collect::<Vec<_>>();
         items.sort_by_key(|(order, _, _)| *order);
         let suggestion = |name, args| {
-            format!(
-                "::{name}({})",
-                std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
-            )
+            format!("::{name}({})", std::iter::repeat_n("_", args).collect::<Vec<_>>().join(", "))
         };
         match &items[..] {
             [] => {}
@@ -3485,17 +3482,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat([existing_name.as_str(), ", "])
-                    .take(lt.count)
+                let sugg: String = std::iter::repeat_n([existing_name.as_str(), ", "], lt.count)
                     .flatten()
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)
             }
             MissingLifetimeKind::Brackets => {
                 let sugg: String = std::iter::once("<")
-                    .chain(
-                        std::iter::repeat(existing_name.as_str()).take(lt.count).intersperse(", "),
-                    )
+                    .chain(std::iter::repeat_n(existing_name.as_str(), lt.count).intersperse(", "))
                     .chain([">"])
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)

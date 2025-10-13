@@ -139,7 +139,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 ) else {
                     return false;
                 };
-                if !ocx.select_all_or_error().is_empty() {
+                if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                     return false;
                 }
                 infcx.leak_check(universe, None).is_ok()

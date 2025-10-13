@@ -24,11 +24,11 @@ fn assert_type_eq<T, U: Eq<T>>(_: T, _: U) {}
 /// only when the binding is from edition 2024.
 fn ref_binding_tests() {
     let match_ctor!(ref x) = &[0];
-    //[classic2024,structural2024]~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    //[classic2024,structural2024]~^ ERROR: cannot explicitly borrow within an implicitly-borrowing pattern
     #[cfg(any(classic2021, structural2021))] assert_type_eq(x, &0u32);
 
     let [bind_ref!(y)] = &[0];
-    //[classic2021,structural2021]~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    //[classic2021,structural2021]~^ ERROR: cannot explicitly borrow within an implicitly-borrowing pattern
     #[cfg(any(classic2024, structural2024))] assert_type_eq(y, &0u32);
 }
 

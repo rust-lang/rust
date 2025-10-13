@@ -22,6 +22,7 @@ fn main() {
     }
 }
 
+#[expect(unused_variables, unused_assignments)]
 fn change_arg(mut x: S) {
     x.0 = 0;
 }

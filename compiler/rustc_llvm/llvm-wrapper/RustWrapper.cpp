@@ -60,29 +60,6 @@ using namespace llvm::object;
 static_assert(dwarf::DW_OP_LLVM_fragment == 0x1000);
 static_assert(dwarf::DW_OP_stack_value == 0x9f);
 
-// LLVMAtomicOrdering is already an enum - don't create another
-// one.
-static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
-  switch (Ordering) {
-  case LLVMAtomicOrderingNotAtomic:
-    return AtomicOrdering::NotAtomic;
-  case LLVMAtomicOrderingUnordered:
-    return AtomicOrdering::Unordered;
-  case LLVMAtomicOrderingMonotonic:
-    return AtomicOrdering::Monotonic;
-  case LLVMAtomicOrderingAcquire:
-    return AtomicOrdering::Acquire;
-  case LLVMAtomicOrderingRelease:
-    return AtomicOrdering::Release;
-  case LLVMAtomicOrderingAcquireRelease:
-    return AtomicOrdering::AcquireRelease;
-  case LLVMAtomicOrderingSequentiallyConsistent:
-    return AtomicOrdering::SequentiallyConsistent;
-  }
-
-  report_fatal_error("Invalid LLVMAtomicOrdering value!");
-}
-
 static LLVM_THREAD_LOCAL char *LastError;
 
 // Custom error handler for fatal LLVM errors.
@@ -144,12 +121,6 @@ extern "C" char *LLVMRustGetLastError(void) {
 extern "C" void LLVMRustSetLastError(const char *Err) {
   free((void *)LastError);
   LastError = strdup(Err);
-}
-
-extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
-  auto ctx = new LLVMContext();
-  ctx->setDiscardValueNames(shouldDiscardNames);
-  return wrap(ctx);
 }
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
@@ -226,12 +197,6 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
     GV = new GlobalVariable(*Mod, unwrap(Ty), false,
                             GlobalValue::ExternalLinkage, nullptr, NameRef);
   return wrap(GV);
-}
-
-extern "C" LLVMValueRef LLVMRustInsertPrivateGlobal(LLVMModuleRef M,
-                                                    LLVMTypeRef Ty) {
-  return wrap(new GlobalVariable(*unwrap(M), unwrap(Ty), false,
-                                 GlobalValue::PrivateLinkage, nullptr));
 }
 
 // Must match the layout of `rustc_codegen_llvm::llvm::ffi::AttributeKind`.
@@ -621,24 +586,6 @@ extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setHasAllowReassoc(true);
   }
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Source,
-                        const char *Name, LLVMAtomicOrdering Order) {
-  Value *Ptr = unwrap(Source);
-  LoadInst *LI = unwrap(B)->CreateLoad(unwrap(Ty), Ptr, Name);
-  LI->setAtomic(fromRust(Order));
-  return wrap(LI);
-}
-
-extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
-                                                 LLVMValueRef V,
-                                                 LLVMValueRef Target,
-                                                 LLVMAtomicOrdering Order) {
-  StoreInst *SI = unwrap(B)->CreateStore(unwrap(V), unwrap(Target));
-  SI->setAtomic(fromRust(Order));
-  return wrap(SI);
 }
 
 extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
@@ -1520,69 +1467,6 @@ extern "C" void LLVMRustModuleInstructionStats(LLVMModuleRef M,
     JOS.attribute("module", Module->getName());
     JOS.attribute("total", Module->getInstructionCount());
   });
-}
-
-// Vector reductions:
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B,
-                                                      LLVMValueRef Acc,
-                                                      LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc), unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceFMul(LLVMBuilderRef B,
-                                                      LLVMValueRef Acc,
-                                                      LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateFMulReduce(unwrap(Acc), unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceAdd(LLVMBuilderRef B,
-                                                     LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateAddReduce(unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceMul(LLVMBuilderRef B,
-                                                     LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateMulReduce(unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceAnd(LLVMBuilderRef B,
-                                                     LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateAndReduce(unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceOr(LLVMBuilderRef B,
-                                                    LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateOrReduce(unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceXor(LLVMBuilderRef B,
-                                                     LLVMValueRef Src) {
-  return wrap(unwrap(B)->CreateXorReduce(unwrap(Src)));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceMin(LLVMBuilderRef B,
-                                                     LLVMValueRef Src,
-                                                     bool IsSigned) {
-  return wrap(unwrap(B)->CreateIntMinReduce(unwrap(Src), IsSigned));
-}
-extern "C" LLVMValueRef LLVMRustBuildVectorReduceMax(LLVMBuilderRef B,
-                                                     LLVMValueRef Src,
-                                                     bool IsSigned) {
-  return wrap(unwrap(B)->CreateIntMaxReduce(unwrap(Src), IsSigned));
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMin(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
-  Instruction *I = unwrap(B)->CreateFPMinReduce(unwrap(Src));
-  I->setHasNoNaNs(NoNaN);
-  return wrap(I);
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
-  Instruction *I = unwrap(B)->CreateFPMaxReduce(unwrap(Src));
-  I->setHasNoNaNs(NoNaN);
-  return wrap(I);
-}
-
-extern "C" LLVMValueRef LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS,
-                                            LLVMValueRef RHS) {
-  return wrap(unwrap(B)->CreateMinNum(unwrap(LHS), unwrap(RHS)));
-}
-extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
-                                            LLVMValueRef RHS) {
-  return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
 }
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.

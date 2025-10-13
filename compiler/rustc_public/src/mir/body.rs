@@ -478,7 +478,6 @@ pub enum StatementKind {
     Assign(Place, Rvalue),
     FakeRead(FakeReadCause, Place),
     SetDiscriminant { place: Place, variant_index: VariantIdx },
-    Deinit(Place),
     StorageLive(Local),
     StorageDead(Local),
     Retag(RetagKind, Place),

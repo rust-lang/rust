@@ -130,12 +130,13 @@ pub enum RuntimePhase {
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
+    /// * [`Rvalue::CopyForDeref`]
     /// * [`PlaceElem::OpaqueCast`]
+    /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
     ///
     /// And the following variants are allowed:
     /// * [`StatementKind::Retag`]
     /// * [`StatementKind::SetDiscriminant`]
-    /// * [`StatementKind::Deinit`]
     ///
     /// Furthermore, `Copy` operands are allowed for non-`Copy` types.
     Initial = 0,
@@ -361,11 +362,6 @@ pub enum StatementKind<'tcx> {
     /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
     /// the type.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
-
-    /// Deinitializes the place.
-    ///
-    /// This writes `uninit` bytes to the entire place.
-    Deinit(Box<Place<'tcx>>),
 
     /// `StorageLive` and `StorageDead` statements mark the live range of a local.
     ///
@@ -1460,11 +1456,13 @@ pub enum Rvalue<'tcx> {
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
     /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
-    /// that the only use of the returned value is a deref operation, immediately
-    /// followed by one or more projections. Drop elaboration treats this rvalue as if the
+    /// that the returned value is written into a `DerefTemp` local and that its only use is a deref operation,
+    /// immediately followed by one or more projections. Drop elaboration treats this rvalue as if the
     /// read never happened and just projects further. This allows simplifying various MIR
     /// optimizations and codegen backends that previously had to handle deref operations anywhere
     /// in a place.
+    ///
+    /// Disallowed in runtime MIR and is replaced by normal copies.
     CopyForDeref(Place<'tcx>),
 
     /// Wraps a value in an unsafe binder.

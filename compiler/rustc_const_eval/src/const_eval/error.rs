@@ -110,7 +110,7 @@ pub fn get_span_and_frames<'tcx>(
             if frame.times < 3 {
                 let times = frame.times;
                 frame.times = 0;
-                frames.extend(std::iter::repeat(frame).take(times as usize));
+                frames.extend(std::iter::repeat_n(frame, times as usize));
             } else {
                 frames.push(frame);
             }

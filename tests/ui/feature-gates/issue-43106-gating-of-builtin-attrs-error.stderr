@@ -134,7 +134,7 @@ error: `#[export_name]` attribute cannot be used on required trait methods
 LL |         #[export_name = "2200"] fn foo();
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to statics, functions, inherent methods, provided trait methods, and trait methods in impl blocks
+   = help: `#[export_name]` can be applied to functions, inherent methods, provided trait methods, statics, and trait methods in impl blocks
 
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:1

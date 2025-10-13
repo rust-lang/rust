@@ -113,7 +113,6 @@ impl RemoveNoopLandingPads {
 
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
-                | StatementKind::Deinit(..)
                 | StatementKind::Intrinsic(..)
                 | StatementKind::Retag { .. } => {
                     return false;
