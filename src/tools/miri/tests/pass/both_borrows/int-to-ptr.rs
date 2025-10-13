@@ -1,4 +1,6 @@
+//@revisions: stack tree
 //@compile-flags: -Zmiri-permissive-provenance
+//@[tree]compile-flags: -Zmiri-tree-borrows
 use std::ptr;
 
 // Just to make sure that casting a ref to raw, to int and back to raw
