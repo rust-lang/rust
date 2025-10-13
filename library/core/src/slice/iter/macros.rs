@@ -468,6 +468,21 @@ macro_rules! iterator {
             }
         }
 
+        #[unstable(feature = "peekable_iterator", issue = "132973")]
+        impl<'a, T> PeekableIterator for $name<'a, T> {
+            fn peek_with<U>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> U) -> U {
+
+                if len!(self) == 0 {
+                    func(None)
+                } else {
+                    // SAFETY: Element within bounds as len > 0.
+                    // The reference is dropped after the closure completes
+                    // and can not outlive the mutable borrow of self.
+                    let tmp = unsafe { & $( $mut_ )? *self.ptr.as_ptr() };
+                    func(Some(tmp).as_ref())
+                }
+            }
+        }
         #[stable(feature = "default_iters", since = "1.70.0")]
         impl<T> Default for $name<'_, T> {
             /// Creates an empty slice iterator.
