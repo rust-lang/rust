@@ -125,6 +125,8 @@ fn check_redundant_sizedness_bounds(
     let redundant_sized_params: DefIdMap<_> = type_param_bounds(generics)
         .filter(|bound| {
             bound.trait_bound.trait_ref.trait_def_id() == Some(redundant_bound)
+                // Here we wish to compare the variant of the enum `BoundPolarity` whilst
+                // disregarding the contents of the variant.
                 && std::mem::discriminant(&bound.trait_bound.modifiers.polarity)
                     == std::mem::discriminant(&redundant_bound_polarity)
         })
