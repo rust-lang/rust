@@ -813,6 +813,15 @@ tool_check_step!(Compiletest {
     default: false,
 });
 
+// As with compiletest, rustdoc-gui-test is automatically built when running
+// relevant tests. So being able to check it is mainly useful for people
+// working on on rustdoc-gui-test itself, or on its compiletest dependency.
+tool_check_step!(RustdocGuiTest {
+    path: "src/tools/rustdoc-gui-test",
+    mode: Mode::ToolBootstrap,
+    default: false,
+});
+
 tool_check_step!(Linkchecker {
     path: "src/tools/linkchecker",
     mode: Mode::ToolBootstrap,
@@ -824,3 +833,8 @@ tool_check_step!(BumpStage0 {
     mode: Mode::ToolBootstrap,
     default: false
 });
+
+// Tidy is implicitly checked when `./x test tidy` is executed
+// (if you set a pre-push hook, the command is called).
+// So this is mainly for people working on tidy.
+tool_check_step!(Tidy { path: "src/tools/tidy", mode: Mode::ToolBootstrap, default: false });

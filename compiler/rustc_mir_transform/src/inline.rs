@@ -20,7 +20,6 @@ use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
-use crate::deref_separator::deref_finder;
 use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
 use crate::{check_inline, util};
@@ -64,7 +63,6 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
         if inline::<NormalInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
-            deref_finder(tcx, body);
         }
     }
 
@@ -100,7 +98,6 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
         if inline::<ForceInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
-            deref_finder(tcx, body);
         }
     }
 }

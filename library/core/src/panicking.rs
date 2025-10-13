@@ -36,7 +36,8 @@ use crate::panic::{Location, PanicInfo};
 compile_error!(
     "panic_immediate_abort is now a real panic strategy! \
     Enable it with `panic = \"immediate-abort\"` in Cargo.toml, \
-    or with the compiler flags `-Zunstable-options -Cpanic=immediate-abort`"
+    or with the compiler flags `-Zunstable-options -Cpanic=immediate-abort`. \
+    In both cases, you still need to build core, e.g. with `-Zbuild-std`"
 );
 
 // First we define the two main entry points that all panics go through.

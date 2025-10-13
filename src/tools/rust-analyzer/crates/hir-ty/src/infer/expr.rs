@@ -2151,7 +2151,7 @@ impl<'db> InferenceContext<'db> {
                             expected_output.to_nextsolver(interner),
                             formal_output,
                         )?;
-                        if !ocx.select_where_possible().is_empty() {
+                        if !ocx.try_evaluate_obligations().is_empty() {
                             return Err(crate::next_solver::TypeError::Mismatch);
                         }
 

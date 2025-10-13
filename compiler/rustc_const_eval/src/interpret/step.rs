@@ -98,11 +98,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
-            Deinit(place) => {
-                let dest = self.eval_place(**place)?;
-                self.write_uninit(&dest)?;
-            }
-
             // Mark locals as alive
             StorageLive(local) => {
                 self.storage_live(*local)?;
@@ -188,10 +183,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&op, &dest)?;
             }
 
-            CopyForDeref(place) => {
-                let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
-            }
+            CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
                 let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);

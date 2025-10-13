@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getVar, nonnull, getSettingValue */
+/* global addClass, getNakedUrl, getVar, getSettingValue, hasClass, nonnull */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
 "use strict";
@@ -4804,6 +4804,15 @@ function printTab(nb) {
         if (nb === iter) {
             addClass(elem, "selected");
             foundCurrentTab = true;
+            onEachLazy(document.querySelectorAll(
+                ".search-form",
+            ), form => {
+                if (hasClass(elem.firstElementChild, "loading")) {
+                    addClass(form, "loading");
+                } else {
+                    removeClass(form, "loading");
+                }
+            });
         } else {
             removeClass(elem, "selected");
         }
@@ -5019,7 +5028,9 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
                 await Promise.all(descList);
                 // need to make sure the element is shown before
                 // running this callback
-                yieldToBrowser().then(() => finishedCallback(count, output));
+                yieldToBrowser().then(() => {
+                    finishedCallback(count, output);
+                });
             }
         });
     };
@@ -5156,6 +5167,7 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
                 count < 100 ? `\u{2007}(${count})\u{2007}` : `\u{2007}(${count})`;
             tabCount.innerHTML = fmtNbElems;
             tabCount.className = "count";
+            printTab(window.searchState.currentTab);
         }, isTypeSearch),
     ];
 }
@@ -5215,9 +5227,12 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     resultsElem.id = "results";
 
     search.innerHTML = "";
-    for (const [tab, output] of tabs) {
+    for (const [tabNb, [tab, output]] of tabs.entries()) {
         tabsElem.appendChild(tab);
+        const isCurrentTab = window.searchState.currentTab === tabNb;
         const placeholder = document.createElement("div");
+        placeholder.className = isCurrentTab ? "search-results active" : "search-results";
+        placeholder.innerHTML = "Loading...";
         output.then(output => {
             if (placeholder.parentElement) {
                 placeholder.parentElement.replaceChild(output, placeholder);
@@ -5474,11 +5489,6 @@ if (ROOT_PATH === null) {
 const database = await Stringdex.loadDatabase(hooks);
 if (typeof window !== "undefined") {
     docSearch = new DocSearch(ROOT_PATH, database);
-    onEachLazy(document.querySelectorAll(
-        ".search-form.loading",
-    ), form => {
-        removeClass(form, "loading");
-    });
     registerSearchEvents();
     // If there's a search term in the URL, execute the search now.
     if (window.searchState.getQueryStringParams().search !== undefined) {

@@ -2013,16 +2013,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let sig = ocx.normalize(&cause, param_env, sig);
 
         // proc macro is not WF.
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return;
         }
 
         let expected_sig = tcx.mk_fn_sig(
-            std::iter::repeat(token_stream).take(match kind {
-                ProcMacroKind::Attribute => 2,
-                ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
-            }),
+            std::iter::repeat_n(
+                token_stream,
+                match kind {
+                    ProcMacroKind::Attribute => 2,
+                    ProcMacroKind::Derive | ProcMacroKind::FunctionLike => 1,
+                },
+            ),
             token_stream,
             false,
             Safety::Safe,
@@ -2081,7 +2084,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.abort.set(true);
         }
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);

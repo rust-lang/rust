@@ -1368,7 +1368,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     }
 
     /// Splits the collection into two at the given key. Returns everything after the given key,
-    /// including the key.
+    /// including the key. If the key is not present, the split will occur at the nearest
+    /// greater key, or return an empty map if no such key exists.
     ///
     /// # Examples
     ///

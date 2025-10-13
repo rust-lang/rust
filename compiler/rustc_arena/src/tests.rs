@@ -19,8 +19,8 @@ impl<T> TypedArena<T> {
         unsafe {
             // Clear the last chunk, which is partially filled.
             let mut chunks_borrow = self.chunks.borrow_mut();
-            if let Some(mut last_chunk) = chunks_borrow.last_mut() {
-                self.clear_last_chunk(&mut last_chunk);
+            if let Some(last_chunk) = chunks_borrow.last_mut() {
+                self.clear_last_chunk(last_chunk);
                 let len = chunks_borrow.len();
                 // If `T` is ZST, code below has no effect.
                 for mut chunk in chunks_borrow.drain(..len - 1) {

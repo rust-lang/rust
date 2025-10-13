@@ -1917,7 +1917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // them to deal with defining uses in `method_autoderef_steps`.
             if self.next_trait_solver() {
                 ocx.register_obligations(instantiate_self_ty_obligations.iter().cloned());
-                let errors = ocx.select_where_possible();
+                let errors = ocx.try_evaluate_obligations();
                 if !errors.is_empty() {
                     unreachable!("unexpected autoderef error {errors:?}");
                 }
@@ -2114,7 +2114,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for error in ocx.select_where_possible() {
+            for error in ocx.try_evaluate_obligations() {
                 result = ProbeResult::NoMatch;
                 let nested_predicate = self.resolve_vars_if_possible(error.obligation.predicate);
                 if let Some(trait_predicate) = trait_predicate
@@ -2154,7 +2154,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 // Evaluate those obligations to see if they might possibly hold.
-                for error in ocx.select_where_possible() {
+                for error in ocx.try_evaluate_obligations() {
                     result = ProbeResult::NoMatch;
                     possibly_unsatisfied_predicates.push((
                         error.obligation.predicate,
@@ -2241,7 +2241,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     };
                     let ocx = ObligationCtxt::new(self);
                     let self_ty = ocx.register_infer_ok_obligations(ok);
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         debug!("failed to prove instantiate self_ty obligations");
                         return false;
                     }

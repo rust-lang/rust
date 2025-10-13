@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::util::{self, is_within_packed};
@@ -77,6 +78,11 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
 
         // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, typing_env, body, body) {
+            cfg_checker.fail(location, msg);
+        }
+
+        // Ensure that debuginfo records are not emitted for locals that are not in debuginfo.
+        for (location, msg) in validate_debuginfos(body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -311,11 +317,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             StatementKind::SetDiscriminant { .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
-                }
-            }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
@@ -623,7 +624,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.select_all_or_error().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 }
 
@@ -906,6 +907,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+            self.body.local_decls[place.local].local_info
+            && !place.is_indirect_first_projection()
+        {
+            if cntxt != PlaceContext::MutatingUse(MutatingUseContext::Store)
+                || place.as_local().is_none()
+            {
+                self.fail(
+                    location,
+                    format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
+                );
+            }
+        }
+
         self.super_place(place, cntxt, location);
     }
 
@@ -918,7 +933,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Use(_) => {}
+            Rvalue::CopyForDeref(_) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
+                }
+            }
             Rvalue::Aggregate(kind, fields) => match **kind {
                 AggregateKind::Tuple => {}
                 AggregateKind::Array(dest) => {
@@ -1416,13 +1436,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                if let Rvalue::CopyForDeref(place) = rvalue {
-                    if place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_none() {
-                        self.fail(
-                            location,
-                            "`CopyForDeref` should only be used for dereferenceable types",
-                        )
-                    }
+
+                if let Some(local) = dest.as_local()
+                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+                        self.body.local_decls[local].local_info
+                    && !matches!(rvalue, Rvalue::CopyForDeref(_))
+                {
+                    self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
                 }
             }
             StatementKind::AscribeUserType(..) => {
@@ -1499,11 +1519,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "`SetDiscriminant` is only allowed on ADTs and coroutines, not {pty}"
                         ),
                     );
-                }
-            }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
@@ -1593,5 +1608,50 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
+            if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should have been removed in runtime MIR",
+                );
+            } else if local_decl.ty.builtin_deref(true).is_none() {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should only be used for dereferenceable types",
+                )
+            }
+        }
+
+        self.super_local_decl(local, local_decl);
+    }
+}
+
+pub(super) fn validate_debuginfos<'tcx>(body: &Body<'tcx>) -> Vec<(Location, String)> {
+    let mut debuginfo_checker =
+        DebuginfoChecker { debuginfo_locals: debuginfo_locals(body), failures: Vec::new() };
+    debuginfo_checker.visit_body(body);
+    debuginfo_checker.failures
+}
+
+struct DebuginfoChecker {
+    debuginfo_locals: DenseBitSet<Local>,
+    failures: Vec<(Location, String)>,
+}
+
+impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        let local = match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
+        };
+        if !self.debuginfo_locals.contains(local) {
+            self.failures.push((location, format!("{local:?} is not in debuginfo")));
+        }
     }
 }

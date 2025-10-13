@@ -240,11 +240,13 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
                 });
-                llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
                 gv
             }
-            _ => self.define_private_global(self.val_ty(cv)),
+            _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
+                bug!("anonymous global symbol is already defined");
+            }),
         };
+        llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
         llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::set_unnamed_address(gv, llvm::UnnamedAddr::Global);

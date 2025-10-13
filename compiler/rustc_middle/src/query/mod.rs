@@ -116,7 +116,9 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstInput,
 };
-use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions};
+use crate::mir::mono::{
+    CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
+};
 use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::{CyclePlaceholder, DynamicQuery};
 use crate::traits::query::{
@@ -1191,8 +1193,10 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
-    query check_liveness(key: LocalDefId) {
-        desc { |tcx| "checking liveness of variables in `{}`", tcx.def_path_str(key) }
+    query check_liveness(key: LocalDefId) -> &'tcx rustc_index::bit_set::DenseBitSet<abi::FieldIdx> {
+        arena_cache
+        desc { |tcx| "checking liveness of variables in `{}`", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Return the live symbols in the crate for dead code check.
@@ -2700,7 +2704,7 @@ rustc_queries! {
         desc { "functions to skip for move-size check" }
     }
 
-    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {
         desc { "collecting items used by `{}`", key.0 }
         cache_on_disk_if { true }
     }
