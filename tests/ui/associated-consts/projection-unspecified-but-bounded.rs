@@ -1,8 +1,10 @@
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 // Issue 110549
 
 pub trait TraitWAssocConst {
+    #[type_const]
     const A: usize;
 }
 
