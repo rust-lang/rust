@@ -173,11 +173,6 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
         },
     }
 
-    // Some tests are named `lint_name_suffix` which should also be renamed,
-    // but we can't do that if the renamed lint's name overlaps with another
-    // lint. e.g. renaming 'foo' to 'bar' when a lint 'foo_bar' also exists.
-    let change_prefixed_tests = lints.get(lint_idx + 1).is_none_or(|l| !l.name.starts_with(old_name));
-
     let mut mod_edit = ModEdit::None;
     if lints.binary_search_by(|x| x.name.cmp(new_name)).is_err() {
         let lint = &mut lints[lint_idx];
@@ -199,7 +194,16 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
                 cx.arena.alloc_str(buf)
             });
         }
-        rename_test_files(old_name, new_name, change_prefixed_tests);
+
+        rename_test_files(
+            old_name,
+            new_name,
+            &lints[lint_idx + 1..]
+                .iter()
+                .map(|l| l.name)
+                .take_while(|&n| n.starts_with(old_name))
+                .collect::<Vec<_>>(),
+        );
         lints[lint_idx].name = new_name;
         lints.sort_by(|lhs, rhs| lhs.name.cmp(rhs.name));
     } else {
@@ -329,44 +333,45 @@ enum ModEdit {
     Rename,
 }
 
-fn collect_ui_test_names(lint: &str, rename_prefixed: bool, dst: &mut Vec<(OsString, bool)>) {
+fn collect_ui_test_names(lint: &str, ignored_prefixes: &[&str], dst: &mut Vec<(OsString, bool)>) {
     for e in fs::read_dir("tests/ui").expect("error reading `tests/ui`") {
         let e = e.expect("error reading `tests/ui`");
         let name = e.file_name();
-        if let Some((name_only, _)) = name.as_encoded_bytes().split_once(|&x| x == b'.') {
-            if name_only.starts_with(lint.as_bytes()) && (rename_prefixed || name_only.len() == lint.len()) {
-                dst.push((name, true));
-            }
-        } else if name.as_encoded_bytes().starts_with(lint.as_bytes()) && (rename_prefixed || name.len() == lint.len())
+        if name.as_encoded_bytes().starts_with(lint.as_bytes())
+            && !ignored_prefixes
+                .iter()
+                .any(|&pre| name.as_encoded_bytes().starts_with(pre.as_bytes()))
+            && let Ok(ty) = e.file_type()
+            && (ty.is_file() || ty.is_dir())
+        {
+            dst.push((name, ty.is_file()));
+        }
+    }
+}
+
+fn collect_ui_toml_test_names(lint: &str, ignored_prefixes: &[&str], dst: &mut Vec<(OsString, bool)>) {
+    for e in fs::read_dir("tests/ui-toml").expect("error reading `tests/ui-toml`") {
+        let e = e.expect("error reading `tests/ui-toml`");
+        let name = e.file_name();
+        if name.as_encoded_bytes().starts_with(lint.as_bytes())
+            && !ignored_prefixes
+                .iter()
+                .any(|&pre| name.as_encoded_bytes().starts_with(pre.as_bytes()))
+            && e.file_type().is_ok_and(|ty| ty.is_dir())
         {
             dst.push((name, false));
         }
     }
 }
 
-fn collect_ui_toml_test_names(lint: &str, rename_prefixed: bool, dst: &mut Vec<(OsString, bool)>) {
-    if rename_prefixed {
-        for e in fs::read_dir("tests/ui-toml").expect("error reading `tests/ui-toml`") {
-            let e = e.expect("error reading `tests/ui-toml`");
-            let name = e.file_name();
-            if name.as_encoded_bytes().starts_with(lint.as_bytes()) && e.file_type().is_ok_and(|ty| ty.is_dir()) {
-                dst.push((name, false));
-            }
-        }
-    } else {
-        dst.push((lint.into(), false));
-    }
-}
-
-/// Renames all test files for the given lint.
-///
-/// If `rename_prefixed` is `true` this will also rename tests which have the lint name as a prefix.
-fn rename_test_files(old_name: &str, new_name: &str, rename_prefixed: bool) {
-    let mut tests = Vec::new();
+/// Renames all test files for the given lint where the file name does not start with any
+/// of the given prefixes.
+fn rename_test_files(old_name: &str, new_name: &str, ignored_prefixes: &[&str]) {
+    let mut tests: Vec<(OsString, bool)> = Vec::new();
 
     let mut old_buf = OsString::from("tests/ui/");
     let mut new_buf = OsString::from("tests/ui/");
-    collect_ui_test_names(old_name, rename_prefixed, &mut tests);
+    collect_ui_test_names(old_name, ignored_prefixes, &mut tests);
     for &(ref name, is_file) in &tests {
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
@@ -384,7 +389,7 @@ fn rename_test_files(old_name: &str, new_name: &str, rename_prefixed: bool) {
     new_buf.truncate("tests/ui".len());
     old_buf.push("-toml/");
     new_buf.push("-toml/");
-    collect_ui_toml_test_names(old_name, rename_prefixed, &mut tests);
+    collect_ui_toml_test_names(old_name, ignored_prefixes, &mut tests);
     for (name, _) in &tests {
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
@@ -394,11 +399,13 @@ fn rename_test_files(old_name: &str, new_name: &str, rename_prefixed: bool) {
     }
 }
 
-fn delete_test_files(lint: &str, rename_prefixed: bool) {
+/// Deletes all test files for the given lint where the file name does not start with any
+/// of the given prefixes.
+fn delete_test_files(lint: &str, ignored_prefixes: &[&str]) {
     let mut tests = Vec::new();
 
     let mut buf = OsString::from("tests/ui/");
-    collect_ui_test_names(lint, rename_prefixed, &mut tests);
+    collect_ui_test_names(lint, ignored_prefixes, &mut tests);
     for &(ref name, is_file) in &tests {
         buf.push(name);
         if is_file {
@@ -413,7 +420,7 @@ fn delete_test_files(lint: &str, rename_prefixed: bool) {
     buf.push("-toml/");
 
     tests.clear();
-    collect_ui_toml_test_names(lint, rename_prefixed, &mut tests);
+    collect_ui_toml_test_names(lint, ignored_prefixes, &mut tests);
     for (name, _) in &tests {
         buf.push(name);
         delete_dir_if_exists(buf.as_ref());
