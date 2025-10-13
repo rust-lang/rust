@@ -6,7 +6,6 @@
 //@compile-flags: -Zmiri-disable-validation
 
 #![feature(custom_mir, core_intrinsics)]
-#![allow(unused)]
 
 use std::intrinsics::mir::*;
 
@@ -31,6 +30,7 @@ fn main() {
     }
 }
 
+#[expect(unused_variables, unused_assignments)]
 fn callee(x: S, mut y: S) {
     // With the setup above, if `x` and `y` are both moved,
     // then writing to `y` will change the value stored in `x`!
