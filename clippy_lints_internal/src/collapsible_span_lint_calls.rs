@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{SpanlessEq, is_lint_allowed, peel_blocks_with_stmt};
+use clippy_utils::{SpanlessEq, is_lint_allowed, peel_blocks_with_stmt, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -91,8 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             let and_then_snippets =
                 get_and_then_snippets(cx, call_cx.span, call_lint.span, call_sp.span, call_msg.span);
             let mut sle = SpanlessEq::new(cx).deny_side_effects();
-            match ps.ident.as_str() {
-                "span_suggestion" if sle.eq_expr(call_sp, &span_call_args[0]) => {
+            match ps.ident.name {
+                sym::span_suggestion if sle.eq_expr(call_sp, &span_call_args[0]) => {
                     suggest_suggestion(
                         cx,
                         expr,
@@ -100,19 +100,19 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
                         &span_suggestion_snippets(cx, span_call_args),
                     );
                 },
-                "span_help" if sle.eq_expr(call_sp, &span_call_args[0]) => {
+                sym::span_help if sle.eq_expr(call_sp, &span_call_args[0]) => {
                     let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
                     suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), true);
                 },
-                "span_note" if sle.eq_expr(call_sp, &span_call_args[0]) => {
+                sym::span_note if sle.eq_expr(call_sp, &span_call_args[0]) => {
                     let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
                     suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), true);
                 },
-                "help" => {
+                sym::help => {
                     let help_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                     suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false);
                 },
-                "note" => {
+                sym::note => {
                     let note_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                     suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false);
                 },
@@ -122,11 +122,11 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
     }
 }
 
-struct AndThenSnippets<'a> {
-    cx: Cow<'a, str>,
-    lint: Cow<'a, str>,
-    span: Cow<'a, str>,
-    msg: Cow<'a, str>,
+struct AndThenSnippets {
+    cx: Cow<'static, str>,
+    lint: Cow<'static, str>,
+    span: Cow<'static, str>,
+    msg: Cow<'static, str>,
 }
 
 fn get_and_then_snippets(
@@ -135,7 +135,7 @@ fn get_and_then_snippets(
     lint_span: Span,
     span_span: Span,
     msg_span: Span,
-) -> AndThenSnippets<'static> {
+) -> AndThenSnippets {
     let cx_snippet = snippet(cx, cx_span, "cx");
     let lint_snippet = snippet(cx, lint_span, "..");
     let span_snippet = snippet(cx, span_span, "span");
@@ -149,16 +149,13 @@ fn get_and_then_snippets(
     }
 }
 
-struct SpanSuggestionSnippets<'a> {
-    help: Cow<'a, str>,
-    sugg: Cow<'a, str>,
-    applicability: Cow<'a, str>,
+struct SpanSuggestionSnippets {
+    help: Cow<'static, str>,
+    sugg: Cow<'static, str>,
+    applicability: Cow<'static, str>,
 }
 
-fn span_suggestion_snippets<'a, 'hir>(
-    cx: &LateContext<'_>,
-    span_call_args: &'hir [Expr<'hir>],
-) -> SpanSuggestionSnippets<'a> {
+fn span_suggestion_snippets<'hir>(cx: &LateContext<'_>, span_call_args: &'hir [Expr<'hir>]) -> SpanSuggestionSnippets {
     let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
     let sugg_snippet = snippet(cx, span_call_args[2].span, "..");
     let applicability_snippet = snippet(cx, span_call_args[3].span, "Applicability::MachineApplicable");
@@ -173,8 +170,8 @@ fn span_suggestion_snippets<'a, 'hir>(
 fn suggest_suggestion(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
-    and_then_snippets: &AndThenSnippets<'_>,
-    span_suggestion_snippets: &SpanSuggestionSnippets<'_>,
+    and_then_snippets: &AndThenSnippets,
+    span_suggestion_snippets: &SpanSuggestionSnippets,
 ) {
     span_lint_and_sugg(
         cx,
@@ -199,7 +196,7 @@ fn suggest_suggestion(
 fn suggest_help(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
-    and_then_snippets: &AndThenSnippets<'_>,
+    and_then_snippets: &AndThenSnippets,
     help: &str,
     with_span: bool,
 ) {
@@ -226,7 +223,7 @@ fn suggest_help(
 fn suggest_note(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
-    and_then_snippets: &AndThenSnippets<'_>,
+    and_then_snippets: &AndThenSnippets,
     note: &str,
     with_span: bool,
 ) {
