@@ -55,7 +55,10 @@ pub fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
 /// Check that the operation is non-deterministic
 #[track_caller]
 pub fn check_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
-    let rounds = 50;
+    // We test some rather unlikely events with this, such as two global allocations getting the
+    // same "salt" (1/32 chance). So give this *many* shots before we consider the test to have
+    // failed.
+    let rounds = 500;
     let first = f();
     for _ in 1..rounds {
         if f() != first {
