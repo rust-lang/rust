@@ -1942,6 +1942,17 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 );
                 crate::exit!(1);
             }
+
+            if let CodegenBackendKind::Gcc = codegen_backend
+                && builder.config.rustc_debug_assertions
+            {
+                eprintln!(
+                    r#"WARNING: Running tests with the GCC codegen backend while rustc debug assertions are enabled. This might lead to test failures.
+Please disable assertions with `rust.debug-assertions = false`.
+        "#
+                );
+            }
+
             // Tells compiletest that we want to use this codegen in particular and to override
             // the default one.
             cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
