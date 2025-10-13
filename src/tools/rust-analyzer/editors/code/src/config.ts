@@ -13,7 +13,14 @@ export type RunnableEnvCfgItem = {
 };
 
 export type ConfigurationTree = { [key: string]: ConfigurationValue };
-export type ConfigurationValue = undefined | null | boolean | number | string | ConfigurationValue[] | ConfigurationTree;
+export type ConfigurationValue =
+    | undefined
+    | null
+    | boolean
+    | number
+    | string
+    | ConfigurationValue[]
+    | ConfigurationTree;
 
 type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSelector };
 
@@ -34,7 +41,11 @@ export class Config {
 
     constructor(ctx: vscode.ExtensionContext) {
         this.workspaceState = ctx.workspaceState;
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
+        vscode.workspace.onDidChangeConfiguration(
+            this.onDidChangeConfiguration,
+            this,
+            ctx.subscriptions,
+        );
         this.refreshLogging();
         this.configureLanguage();
     }
@@ -49,13 +60,19 @@ export class Config {
     /// configuration items overridden by (present) extensions.
     get extensionConfigurations(): Record<string, Record<string, unknown>> {
         return pickBy(
-            this.workspaceState.get<Record<string, ConfigurationTree>>("extensionConfigurations", {}),
+            this.workspaceState.get<Record<string, ConfigurationTree>>(
+                "extensionConfigurations",
+                {},
+            ),
             // ignore configurations from disabled/removed extensions
             (_, extensionId) => vscode.extensions.getExtension(extensionId) !== undefined,
         );
     }
 
-    async addExtensionConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void> {
+    async addExtensionConfiguration(
+        extensionId: string,
+        configuration: Record<string, unknown>,
+    ): Promise<void> {
         const oldConfiguration = this.cfg;
 
         const extCfgs = this.extensionConfigurations;
@@ -66,8 +83,11 @@ export class Config {
         const prefix = `${this.rootSection}.`;
         await this.onDidChangeConfiguration({
             affectsConfiguration(section: string, _scope?: vscode.ConfigurationScope): boolean {
-                return section.startsWith(prefix) &&
-                    get(oldConfiguration, section.slice(prefix.length)) !== get(newConfiguration, section.slice(prefix.length));
+                return (
+                    section.startsWith(prefix) &&
+                    get(oldConfiguration, section.slice(prefix.length)) !==
+                        get(newConfiguration, section.slice(prefix.length))
+                );
             },
         });
     }
@@ -224,8 +244,14 @@ export class Config {
         for (const [extensionId, items] of Object.entries(this.extensionConfigurations)) {
             for (const [k, v] of Object.entries(items)) {
                 const i = this.rawCfg.inspect(k);
-                if (i?.workspaceValue !== undefined || i?.workspaceFolderValue !== undefined || i?.globalValue !== undefined) {
-                    log.trace(`Ignoring configuration override for ${k} from extension ${extensionId}`);
+                if (
+                    i?.workspaceValue !== undefined ||
+                    i?.workspaceFolderValue !== undefined ||
+                    i?.globalValue !== undefined
+                ) {
+                    log.trace(
+                        `Ignoring configuration override for ${k} from extension ${extensionId}`,
+                    );
                     continue;
                 }
                 log.trace(`Extension ${extensionId} overrides configuration ${k} to `, v);
@@ -303,7 +329,12 @@ export class Config {
             overrideInLanguage = config.defaultLanguageValue;
             value = config.defaultValue || config.defaultLanguageValue;
         }
-        await this.rawCfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
+        await this.rawCfg.update(
+            "checkOnSave",
+            !(value || false),
+            target || null,
+            overrideInLanguage,
+        );
     }
 
     get problemMatcher(): string[] {

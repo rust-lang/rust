@@ -150,7 +150,10 @@ export class Ctx implements RustAnalyzerExtensionApi {
         });
     }
 
-    async addConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void> {
+    async addConfiguration(
+        extensionId: string,
+        configuration: Record<string, unknown>,
+    ): Promise<void> {
         await this.config.addExtensionConfiguration(extensionId, configuration);
     }
 
