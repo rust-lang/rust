@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{snippet, snippet_with_context};
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{SpanlessEq, is_lint_allowed, peel_blocks_with_stmt, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind};
@@ -147,9 +147,9 @@ fn get_and_then_snippets(
     msg_span: Span,
     app: &mut Applicability,
 ) -> AndThenSnippets {
-    let cx_snippet = snippet(cx, cx_span, "cx");
-    let lint_snippet = snippet(cx, lint_span, "..");
-    let span_snippet = snippet(cx, span_span, "span");
+    let cx_snippet = snippet_with_applicability(cx, cx_span, "cx", app);
+    let lint_snippet = snippet_with_applicability(cx, lint_span, "..", app);
+    let span_snippet = snippet_with_applicability(cx, span_span, "span", app);
     let msg_snippet = snippet_with_context(cx, msg_span, expr_ctxt, r#""...""#, app).0;
 
     AndThenSnippets {
@@ -174,7 +174,8 @@ fn span_suggestion_snippets<'hir>(
 ) -> SpanSuggestionSnippets {
     let help_snippet = snippet_with_context(cx, span_call_args[1].span, expr_ctxt, r#""...""#, app).0;
     let sugg_snippet = snippet_with_context(cx, span_call_args[2].span, expr_ctxt, "..", app).0;
-    let applicability_snippet = snippet(cx, span_call_args[3].span, "Applicability::MachineApplicable");
+    let applicability_snippet =
+        snippet_with_applicability(cx, span_call_args[3].span, "Applicability::MachineApplicable", app);
 
     SpanSuggestionSnippets {
         help: help_snippet,
