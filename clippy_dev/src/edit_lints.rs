@@ -6,9 +6,9 @@ use crate::utils::{
     expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use rustc_lexer::TokenKind;
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::ffi::OsString;
+use std::fs;
+use std::path::Path;
 
 /// Runs the `deprecate` command
 ///
@@ -23,7 +23,7 @@ pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name
     let mut lints = cx.find_lint_decls();
     let (mut deprecated_lints, renamed_lints) = cx.read_deprecated_lints();
 
-    let Some(lint) = lints.iter().find(|l| l.name == name) else {
+    let Some(lint_idx) = lints.iter().position(|l| l.name == name) else {
         eprintln!("error: failed to find lint `{name}`");
         return;
     };
@@ -47,30 +47,17 @@ pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name
         ),
     }
 
-    let mod_path = {
-        let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
-        if mod_path.is_dir() {
-            mod_path = mod_path.join("mod");
-        }
-
-        mod_path.set_extension("rs");
-        mod_path
-    };
-
-    if remove_lint_declaration(name, &mod_path, &mut lints).unwrap_or(false) {
-        generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
-        println!("info: `{name}` has successfully been deprecated");
-        println!("note: you must run `cargo uitest` to update the test results");
-    } else {
-        eprintln!("error: lint not found");
-    }
+    remove_lint_declaration(lint_idx, &mut lints, &mut FileUpdater::default());
+    generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
+    println!("info: `{name}` has successfully been deprecated");
+    println!("note: you must run `cargo uitest` to update the test results");
 }
 
 pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'env str, new_name: &'env str) {
     let mut lints = cx.find_lint_decls();
     let (deprecated_lints, mut renamed_lints) = cx.read_deprecated_lints();
 
-    let Some(lint) = lints.iter().find(|l| l.name == old_name) else {
+    let Some(lint_idx) = lints.iter().position(|l| l.name == old_name) else {
         eprintln!("error: failed to find lint `{old_name}`");
         return;
     };
@@ -99,23 +86,18 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
         ),
     }
 
-    let mod_path = {
-        let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
-        if mod_path.is_dir() {
-            mod_path = mod_path.join("mod");
+    let mut updater = FileUpdater::default();
+    let remove_mod = remove_lint_declaration(lint_idx, &mut lints, &mut updater);
+    let mut update_fn = uplift_update_fn(old_name, new_name, remove_mod);
+    for e in walk_dir_no_dot_or_target(".") {
+        let e = expect_action(e, ErrAction::Read, ".");
+        if e.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
+            updater.update_file(e.path(), &mut update_fn);
         }
-
-        mod_path.set_extension("rs");
-        mod_path
-    };
-
-    if remove_lint_declaration(old_name, &mod_path, &mut lints).unwrap_or(false) {
-        generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
-        println!("info: `{old_name}` has successfully been uplifted");
-        println!("note: you must run `cargo uitest` to update the test results");
-    } else {
-        eprintln!("error: lint not found");
     }
+    generate_lint_files(UpdateMode::Change, &lints, &deprecated_lints, &renamed_lints);
+    println!("info: `{old_name}` has successfully been uplifted as `{new_name}`");
+    println!("note: you must run `cargo uitest` to update the test results");
 }
 
 /// Runs the `rename_lint` command.
@@ -173,7 +155,7 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
         },
     }
 
-    let mut mod_edit = ModEdit::None;
+    let mut rename_mod = false;
     if lints.binary_search_by(|x| x.name.cmp(new_name)).is_err() {
         let lint = &mut lints[lint_idx];
         if lint.module.ends_with(old_name)
@@ -185,7 +167,7 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
             let mut new_path = lint.path.with_file_name(new_name).into_os_string();
             new_path.push(".rs");
             if try_rename_file(lint.path.as_ref(), new_path.as_ref()) {
-                mod_edit = ModEdit::Rename;
+                rename_mod = true;
             }
 
             lint.module = cx.str_buf.with(|buf| {
@@ -212,7 +194,7 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
         return;
     }
 
-    let mut update_fn = file_update_fn(old_name, new_name, mod_edit);
+    let mut update_fn = rename_update_fn(old_name, new_name, rename_mod);
     for e in walk_dir_no_dot_or_target(".") {
         let e = expect_action(e, ErrAction::Read, ".");
         if e.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
@@ -227,110 +209,38 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
     println!("note: `cargo uibless` still needs to be run to update the test results");
 }
 
-fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint<'_>>) -> io::Result<bool> {
-    fn remove_lint(name: &str, lints: &mut Vec<Lint<'_>>) {
-        lints.iter().position(|l| l.name == name).map(|pos| lints.remove(pos));
-    }
-
-    fn remove_test_assets(name: &str) {
-        let test_file_stem = format!("tests/ui/{name}");
-        let path = Path::new(&test_file_stem);
-
-        // Some lints have their own directories, delete them
-        if path.is_dir() {
-            let _ = fs::remove_dir_all(path);
-            return;
-        }
-
-        // Remove all related test files
-        let _ = fs::remove_file(path.with_extension("rs"));
-        let _ = fs::remove_file(path.with_extension("stderr"));
-        let _ = fs::remove_file(path.with_extension("fixed"));
-    }
-
-    fn remove_impl_lint_pass(lint_name_upper: &str, content: &mut String) {
-        let impl_lint_pass_start = content.find("impl_lint_pass!").unwrap_or_else(|| {
-            content
-                .find("declare_lint_pass!")
-                .unwrap_or_else(|| panic!("failed to find `impl_lint_pass`"))
+/// Removes a lint's declaration and test files. Returns whether the module containing the
+/// lint was deleted.
+fn remove_lint_declaration(lint_idx: usize, lints: &mut Vec<Lint<'_>>, updater: &mut FileUpdater) -> bool {
+    let lint = lints.remove(lint_idx);
+    let delete_mod = if lints.iter().all(|l| l.module != lint.module) {
+        delete_file_if_exists(lint.path.as_ref())
+    } else {
+        updater.update_file(&lint.path, &mut |_, src, dst| -> UpdateStatus {
+            let mut start = &src[..lint.declaration_range.start];
+            if start.ends_with("\n\n") {
+                start = &start[..start.len() - 1];
+            }
+            let mut end = &src[lint.declaration_range.end..];
+            if end.starts_with("\n\n") {
+                end = &end[1..];
+            }
+            dst.push_str(start);
+            dst.push_str(end);
+            UpdateStatus::Changed
         });
-        let mut impl_lint_pass_end = content[impl_lint_pass_start..]
-            .find(']')
-            .expect("failed to find `impl_lint_pass` terminator");
+        false
+    };
+    delete_test_files(
+        lint.name,
+        &lints[lint_idx..]
+            .iter()
+            .map(|l| l.name)
+            .take_while(|&n| n.starts_with(lint.name))
+            .collect::<Vec<_>>(),
+    );
 
-        impl_lint_pass_end += impl_lint_pass_start;
-        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(lint_name_upper) {
-            let mut lint_name_end = impl_lint_pass_start + (lint_name_pos + lint_name_upper.len());
-            for c in content[lint_name_end..impl_lint_pass_end].chars() {
-                // Remove trailing whitespace
-                if c == ',' || c.is_whitespace() {
-                    lint_name_end += 1;
-                } else {
-                    break;
-                }
-            }
-
-            content.replace_range(impl_lint_pass_start + lint_name_pos..lint_name_end, "");
-        }
-    }
-
-    if path.exists()
-        && let Some(lint) = lints.iter().find(|l| l.name == name)
-    {
-        if lint.module == name {
-            // The lint name is the same as the file, we can just delete the entire file
-            fs::remove_file(path)?;
-        } else {
-            // We can't delete the entire file, just remove the declaration
-
-            if let Some(Some("mod.rs")) = path.file_name().map(OsStr::to_str) {
-                // Remove clippy_lints/src/some_mod/some_lint.rs
-                let mut lint_mod_path = path.to_path_buf();
-                lint_mod_path.set_file_name(name);
-                lint_mod_path.set_extension("rs");
-
-                let _ = fs::remove_file(lint_mod_path);
-            }
-
-            let mut content =
-                fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
-
-            eprintln!(
-                "warn: you will have to manually remove any code related to `{name}` from `{}`",
-                path.display()
-            );
-
-            assert!(
-                content[lint.declaration_range].contains(&name.to_uppercase()),
-                "error: `{}` does not contain lint `{}`'s declaration",
-                path.display(),
-                lint.name
-            );
-
-            // Remove lint declaration (declare_clippy_lint!)
-            content.replace_range(lint.declaration_range, "");
-
-            // Remove the module declaration (mod xyz;)
-            let mod_decl = format!("\nmod {name};");
-            content = content.replacen(&mod_decl, "", 1);
-
-            remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
-            fs::write(path, content).unwrap_or_else(|_| panic!("failed to write to `{}`", path.to_string_lossy()));
-        }
-
-        remove_test_assets(name);
-        remove_lint(name, lints);
-        return Ok(true);
-    }
-
-    Ok(false)
-}
-
-#[derive(Clone, Copy)]
-enum ModEdit {
-    None,
-    Delete,
-    Rename,
+    delete_mod
 }
 
 fn collect_ui_test_names(lint: &str, ignored_prefixes: &[&str], dst: &mut Vec<(OsString, bool)>) {
@@ -445,12 +355,50 @@ fn snake_to_pascal(s: &str) -> String {
     String::from_utf8(dst).unwrap()
 }
 
-#[expect(clippy::too_many_lines)]
-fn file_update_fn<'a, 'b>(
+/// Creates an update function which replaces all instances of `clippy::old_name` with
+/// `new_name`.
+fn uplift_update_fn<'a>(
     old_name: &'a str,
-    new_name: &'b str,
-    mod_edit: ModEdit,
-) -> impl use<'a, 'b> + FnMut(&Path, &str, &mut String) -> UpdateStatus {
+    new_name: &'a str,
+    remove_mod: bool,
+) -> impl use<'a> + FnMut(&Path, &str, &mut String) -> UpdateStatus {
+    move |_, src, dst| {
+        let mut copy_pos = 0u32;
+        let mut changed = false;
+        let mut cursor = Cursor::new(src);
+        while let Some(ident) = cursor.find_any_ident() {
+            match cursor.get_text(ident) {
+                "mod"
+                    if remove_mod && cursor.match_all(&[cursor::Pat::Ident(old_name), cursor::Pat::Semi], &mut []) =>
+                {
+                    dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
+                    dst.push_str(new_name);
+                    copy_pos = cursor.pos();
+                    if src[copy_pos as usize..].starts_with('\n') {
+                        copy_pos += 1;
+                    }
+                    changed = true;
+                },
+                "clippy" if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::Ident(old_name)], &mut []) => {
+                    dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
+                    dst.push_str(new_name);
+                    copy_pos = cursor.pos();
+                    changed = true;
+                },
+
+                _ => {},
+            }
+        }
+        dst.push_str(&src[copy_pos as usize..]);
+        UpdateStatus::from_changed(changed)
+    }
+}
+
+fn rename_update_fn<'a>(
+    old_name: &'a str,
+    new_name: &'a str,
+    rename_mod: bool,
+) -> impl use<'a> + FnMut(&Path, &str, &mut String) -> UpdateStatus {
     let old_name_pascal = snake_to_pascal(old_name);
     let new_name_pascal = snake_to_pascal(new_name);
     let old_name_upper = old_name.to_ascii_uppercase();
@@ -481,34 +429,15 @@ fn file_update_fn<'a, 'b>(
                         },
                         // mod lint_name
                         "mod" => {
-                            if !matches!(mod_edit, ModEdit::None)
-                                && let Some(pos) = cursor.find_ident(old_name)
-                            {
-                                match mod_edit {
-                                    ModEdit::Rename => {
-                                        dst.push_str(&src[copy_pos as usize..pos as usize]);
-                                        dst.push_str(new_name);
-                                        copy_pos = cursor.pos();
-                                        changed = true;
-                                    },
-                                    ModEdit::Delete if cursor.match_pat(cursor::Pat::Semi) => {
-                                        let mut start = &src[copy_pos as usize..match_start as usize];
-                                        if start.ends_with("\n\n") {
-                                            start = &start[..start.len() - 1];
-                                        }
-                                        dst.push_str(start);
-                                        copy_pos = cursor.pos();
-                                        if src[copy_pos as usize..].starts_with("\n\n") {
-                                            copy_pos += 1;
-                                        }
-                                        changed = true;
-                                    },
-                                    ModEdit::Delete | ModEdit::None => {},
-                                }
+                            if rename_mod && let Some(pos) = cursor.match_ident(old_name) {
+                                dst.push_str(&src[copy_pos as usize..pos as usize]);
+                                dst.push_str(new_name);
+                                copy_pos = cursor.pos();
+                                changed = true;
                             }
                         },
                         // lint_name::
-                        name if matches!(mod_edit, ModEdit::Rename) && name == old_name => {
+                        name if rename_mod && name == old_name => {
                             let name_end = cursor.pos();
                             if cursor.match_pat(cursor::Pat::DoubleColon) {
                                 dst.push_str(&src[copy_pos as usize..match_start as usize]);
