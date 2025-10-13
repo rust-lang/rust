@@ -15,6 +15,7 @@ use rustc_middle::{mir, ty};
 use rustc_session::config::OomStrategy;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
@@ -800,20 +801,24 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Target-specific shims
             name if name.starts_with("llvm.x86.")
-                && (this.tcx.sess.target.arch == "x86"
-                    || this.tcx.sess.target.arch == "x86_64") =>
+                && matches!(
+                    this.tcx.sess.target.arch,
+                    Arch::X86 | Arch::X86_64
+                ) =>
             {
                 return shims::x86::EvalContextExt::emulate_x86_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
-            name if name.starts_with("llvm.aarch64.") && this.tcx.sess.target.arch == "aarch64" => {
+            name if name.starts_with("llvm.aarch64.")
+                && this.tcx.sess.target.arch == Arch::AArch64 =>
+            {
                 return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
             // FIXME: Move this to an `arm` submodule.
-            "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
+            "llvm.arm.hint" if this.tcx.sess.target.arch == Arch::Arm => {
                 let [arg] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
                 // Note that different arguments might have different target feature requirements.

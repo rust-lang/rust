@@ -17,6 +17,7 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
+use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
@@ -203,7 +204,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(g2, g1);
         g2
-    } else if cx.tcx.sess.target.arch == "x86"
+    } else if cx.tcx.sess.target.arch == Arch::X86
         && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {

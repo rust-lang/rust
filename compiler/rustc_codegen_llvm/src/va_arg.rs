@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_target::spec::Arch;
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -886,8 +887,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     // is lacking in some instances, so we should only use it as a fallback.
     let target = &bx.cx.tcx.sess.target;
 
-    match &*target.arch {
-        "x86" => emit_ptr_va_arg(
+    match target.arch {
+        Arch::X86 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
@@ -896,7 +897,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
             ForceRightAdjust::No,
         ),
-        "aarch64" | "arm64ec" if target.is_like_windows || target.is_like_darwin => {
+        Arch::AArch64 | Arch::Arm64EC if target.is_like_windows || target.is_like_darwin => {
             emit_ptr_va_arg(
                 bx,
                 addr,
@@ -907,8 +908,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 ForceRightAdjust::No,
             )
         }
-        "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
-        "arm" => {
+        Arch::AArch64 => emit_aapcs_va_arg(bx, addr, target_ty),
+        Arch::Arm => {
             // Types wider than 16 bytes are not currently supported. Clang has special logic for
             // such types, but `VaArgSafe` is not implemented for any type that is this large.
             assert!(bx.cx.size_of(target_ty).bytes() <= 16);
@@ -923,22 +924,28 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 ForceRightAdjust::No,
             )
         }
-        "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
-        "powerpc" => emit_powerpc_va_arg(bx, addr, target_ty),
-        "powerpc64" | "powerpc64le" => emit_ptr_va_arg(
+        Arch::S390x => emit_s390x_va_arg(bx, addr, target_ty),
+        Arch::PowerPC => emit_powerpc_va_arg(bx, addr, target_ty),
+        Arch::PowerPC64 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
             PassMode::Direct,
             SlotSize::Bytes8,
             AllowHigherAlign::Yes,
-            match &*target.arch {
-                "powerpc64" => ForceRightAdjust::Yes,
-                _ => ForceRightAdjust::No,
-            },
+            ForceRightAdjust::Yes,
+        ),
+        Arch::PowerPC64LE => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes8,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
         ),
         // Windows x86_64
-        "x86_64" if target.is_like_windows => {
+        Arch::X86_64 if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             emit_ptr_va_arg(
                 bx,
@@ -955,8 +962,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             )
         }
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
-        "x86_64" => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
-        "xtensa" => emit_xtensa_va_arg(bx, addr, target_ty),
+        Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
+        Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction

@@ -2388,7 +2388,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(self) -> bool {
-        self.sess.target.arch.contains("nvptx")
+        self.sess.target.llvm_target.starts_with("nvptx")
     }
 
     /// Returns `&'static core::panic::Location<'static>`.

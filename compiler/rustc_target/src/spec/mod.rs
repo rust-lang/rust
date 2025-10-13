@@ -1847,6 +1847,44 @@ enum TargetKind {
     Builtin,
 }
 
+crate::target_spec_enum! {
+    pub enum Arch {
+        AArch64 = "aarch64",
+        AmdGpu = "amdgpu",
+        Arm = "arm",
+        Arm64EC = "arm64ec",
+        Avr = "avr",
+        Bpf = "bpf",
+        CSky = "csky",
+        Hexagon = "hexagon",
+        LoongArch32 = "loongarch32",
+        LoongArch64 = "loongarch64",
+        M68k = "m68k",
+        Mips = "mips",
+        Mips32r6 = "mips32r6",
+        Mips64 = "mips64",
+        Mips64r6 = "mips64r6",
+        Msp430 = "msp430",
+        Nvptx64 = "nvptx64",
+        PowerPC = "powerpc",
+        PowerPC64 = "powerpc64",
+        PowerPC64LE = "powerpc64le",
+        RiscV32 = "riscv32",
+        RiscV64 = "riscv64",
+        S390x = "s390x",
+        Sparc = "sparc",
+        Sparc64 = "sparc64",
+        SpirV = "spirv",
+        Wasm32 = "wasm32",
+        Wasm64 = "wasm64",
+        X86 = "x86",
+        X86_64 = "x86_64",
+        Xtensa = "xtensa",
+    }
+
+    parse_error_type = "architecture";
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -1866,7 +1904,7 @@ pub struct Target {
     pub pointer_width: u16,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
-    pub arch: StaticCow<str>,
+    pub arch: Arch,
     /// [Data layout](https://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
@@ -2672,7 +2710,7 @@ impl Target {
         );
         check_eq!(
             self.is_like_wasm,
-            self.arch == "wasm32" || self.arch == "wasm64",
+            matches!(self.arch, Arch::Wasm32 | Arch::Wasm64),
             "`is_like_wasm` must be set if and only if `arch` is `wasm32` or `wasm64`"
         );
         if self.is_like_msvc {
@@ -2704,12 +2742,12 @@ impl Target {
             "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
         );
         check_eq!(
-            self.arch == "bpf",
+            self.arch == Arch::Bpf,
             matches!(self.linker_flavor, LinkerFlavor::Bpf),
             "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
         );
         check_eq!(
-            self.arch == "nvptx64",
+            self.arch == Arch::Nvptx64,
             matches!(self.linker_flavor, LinkerFlavor::Ptx),
             "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
         );
@@ -2723,7 +2761,7 @@ impl Target {
         ] {
             for (&flavor, flavor_args) in args {
                 check!(
-                    !flavor_args.is_empty() || self.arch == "avr",
+                    !flavor_args.is_empty() || self.arch == Arch::Avr,
                     "linker flavor args must not be empty"
                 );
                 // Check that flavors mentioned in link args are compatible with the default flavor.
@@ -2846,10 +2884,7 @@ impl Target {
             // hexagon: when targeting QuRT, that OS can load dynamic libraries.
             // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
             if self.os == "none"
-                && (self.arch != "bpf"
-                    && self.arch != "hexagon"
-                    && self.arch != "wasm32"
-                    && self.arch != "wasm64")
+                && !matches!(self.arch, Arch::Bpf | Arch::Hexagon | Arch::Wasm32 | Arch::Wasm64)
             {
                 check!(
                     !self.dynamic_linking,
@@ -2912,8 +2947,8 @@ impl Target {
 
         // Check that RISC-V targets always specify which ABI they use,
         // and that ARM targets specify their float ABI.
-        match &*self.arch {
-            "riscv32" => {
+        match self.arch {
+            Arch::RiscV32 => {
                 check_matches!(
                     &*self.llvm_abiname,
                     "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
@@ -2921,7 +2956,7 @@ impl Target {
                     self.llvm_abiname,
                 );
             }
-            "riscv64" => {
+            Arch::RiscV64 => {
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
                 check_matches!(
                     &*self.llvm_abiname,
@@ -2930,7 +2965,7 @@ impl Target {
                     self.llvm_abiname,
                 );
             }
-            "arm" => {
+            Arch::Arm => {
                 check!(
                     self.llvm_floatabi.is_some(),
                     "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
@@ -2943,13 +2978,13 @@ impl Target {
         if let Some(rust_abi) = self.rustc_abi {
             match rust_abi {
                 RustcAbi::X86Sse2 => check_matches!(
-                    &*self.arch,
-                    "x86",
+                    self.arch,
+                    Arch::X86,
                     "`x86-sse2` ABI is only valid for x86-32 targets"
                 ),
                 RustcAbi::X86Softfloat => check_matches!(
-                    &*self.arch,
-                    "x86" | "x86_64",
+                    self.arch,
+                    Arch::X86 | Arch::X86_64,
                     "`x86-softfloat` ABI is only valid for x86 targets"
                 ),
             }
@@ -3116,15 +3151,15 @@ impl Target {
             // Avoid having to duplicate the small data support in every
             // target file by supporting a default value for each
             // architecture.
-            SmallDataThresholdSupport::DefaultForArch => match self.arch.as_ref() {
-                "mips" | "mips64" | "mips32r6" => {
+            SmallDataThresholdSupport::DefaultForArch => match self.arch {
+                Arch::Mips | Arch::Mips64 | Arch::Mips32r6 => {
                     SmallDataThresholdSupport::LlvmArg("mips-ssection-threshold".into())
                 }
-                "hexagon" => {
+                Arch::Hexagon => {
                     SmallDataThresholdSupport::LlvmArg("hexagon-small-data-threshold".into())
                 }
-                "m68k" => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
-                "riscv32" | "riscv64" => {
+                Arch::M68k => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
+                Arch::RiscV32 | Arch::RiscV64 => {
                     SmallDataThresholdSupport::LlvmModuleFlag("SmallDataLimit".into())
                 }
                 _ => SmallDataThresholdSupport::None,
@@ -3138,9 +3173,9 @@ impl Target {
         unstable_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
-        Some(match self.arch.as_ref() {
-            "arm" => (Architecture::Arm, None),
-            "aarch64" => (
+        Some(match self.arch {
+            Arch::Arm => (Architecture::Arm, None),
+            Arch::AArch64 => (
                 if self.pointer_width == 32 {
                     Architecture::Aarch64_Ilp32
                 } else {
@@ -3148,11 +3183,11 @@ impl Target {
                 },
                 None,
             ),
-            "x86" => (Architecture::I386, None),
-            "s390x" => (Architecture::S390x, None),
-            "m68k" => (Architecture::M68k, None),
-            "mips" | "mips32r6" => (Architecture::Mips, None),
-            "mips64" | "mips64r6" => (
+            Arch::X86 => (Architecture::I386, None),
+            Arch::S390x => (Architecture::S390x, None),
+            Arch::M68k => (Architecture::M68k, None),
+            Arch::Mips | Arch::Mips32r6 => (Architecture::Mips, None),
+            Arch::Mips64 | Arch::Mips64r6 => (
                 // While there are currently no builtin targets
                 // using the N32 ABI, it is possible to specify
                 // it using a custom target specification. N32
@@ -3165,7 +3200,7 @@ impl Target {
                 },
                 None,
             ),
-            "x86_64" => (
+            Arch::X86_64 => (
                 if self.pointer_width == 32 {
                     Architecture::X86_64_X32
                 } else {
@@ -3173,11 +3208,11 @@ impl Target {
                 },
                 None,
             ),
-            "powerpc" => (Architecture::PowerPc, None),
-            "powerpc64" => (Architecture::PowerPc64, None),
-            "riscv32" => (Architecture::Riscv32, None),
-            "riscv64" => (Architecture::Riscv64, None),
-            "sparc" => {
+            Arch::PowerPC => (Architecture::PowerPc, None),
+            Arch::PowerPC64 => (Architecture::PowerPc64, None),
+            Arch::RiscV32 => (Architecture::Riscv32, None),
+            Arch::RiscV64 => (Architecture::Riscv64, None),
+            Arch::Sparc => {
                 if unstable_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
@@ -3186,18 +3221,22 @@ impl Target {
                     (Architecture::Sparc, None)
                 }
             }
-            "sparc64" => (Architecture::Sparc64, None),
-            "avr" => (Architecture::Avr, None),
-            "msp430" => (Architecture::Msp430, None),
-            "hexagon" => (Architecture::Hexagon, None),
-            "xtensa" => (Architecture::Xtensa, None),
-            "bpf" => (Architecture::Bpf, None),
-            "loongarch32" => (Architecture::LoongArch32, None),
-            "loongarch64" => (Architecture::LoongArch64, None),
-            "csky" => (Architecture::Csky, None),
-            "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
-            // Unsupported architecture.
-            _ => return None,
+            Arch::Sparc64 => (Architecture::Sparc64, None),
+            Arch::Avr => (Architecture::Avr, None),
+            Arch::Msp430 => (Architecture::Msp430, None),
+            Arch::Hexagon => (Architecture::Hexagon, None),
+            Arch::Xtensa => (Architecture::Xtensa, None),
+            Arch::Bpf => (Architecture::Bpf, None),
+            Arch::LoongArch32 => (Architecture::LoongArch32, None),
+            Arch::LoongArch64 => (Architecture::LoongArch64, None),
+            Arch::CSky => (Architecture::Csky, None),
+            Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
+            Arch::AmdGpu
+            | Arch::Nvptx64
+            | Arch::PowerPC64LE
+            | Arch::SpirV
+            | Arch::Wasm32
+            | Arch::Wasm64 => return None,
         })
     }
 
@@ -3213,7 +3252,7 @@ impl Target {
         // FIXME(#112480) MSVC on x86-32 is unsound and fails to properly align many types with
         // more-than-4-byte-alignment on the stack. This makes alignments larger than 4 generally
         // unreliable on 32bit Windows.
-        if self.is_like_windows && self.arch == "x86" {
+        if self.is_like_windows && self.arch == Arch::X86 {
             Align::from_bytes(4).unwrap()
         } else {
             Align::MAX

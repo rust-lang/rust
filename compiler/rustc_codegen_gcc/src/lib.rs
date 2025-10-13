@@ -103,7 +103,7 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
-use rustc_target::spec::RelocModel;
+use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -249,7 +249,7 @@ impl CodegenBackend for GccCodegenBackend {
 
 fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     let context = Context::default();
-    if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+    if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64) {
         context.add_command_line_option("-masm=intel");
     }
     #[cfg(feature = "master")]

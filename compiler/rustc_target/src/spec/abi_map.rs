@@ -1,6 +1,6 @@
 use rustc_abi::{ArmCall, CanonAbi, ExternAbi, InterruptKind, X86Call};
 
-use crate::spec::Target;
+use crate::spec::{Arch, Target};
 
 /// Mapping for ExternAbi to CanonAbi according to a Target
 ///
@@ -47,17 +47,20 @@ impl AbiMap {
     /// create an AbiMap according to arbitrary fields on the [Target]
     pub fn from_target(target: &Target) -> Self {
         // the purpose of this little exercise is to force listing what affects these mappings
-        let arch = match &*target.arch {
-            "aarch64" => ArchKind::Aarch64,
-            "amdgpu" => ArchKind::Amdgpu,
-            "arm" if target.llvm_target.starts_with("thumbv8m") => ArchKind::Arm(ArmVer::ThumbV8M),
-            "arm" => ArchKind::Arm(ArmVer::Other),
-            "avr" => ArchKind::Avr,
-            "msp430" => ArchKind::Msp430,
-            "nvptx64" => ArchKind::Nvptx,
-            "riscv32" | "riscv64" => ArchKind::Riscv,
-            "x86" => ArchKind::X86,
-            "x86_64" => ArchKind::X86_64,
+        let arch = match target.arch {
+            Arch::AArch64 => ArchKind::Aarch64,
+            Arch::AmdGpu => ArchKind::Amdgpu,
+            Arch::Arm => ArchKind::Arm(if target.llvm_target.starts_with("thumbv8m") {
+                ArmVer::ThumbV8M
+            } else {
+                ArmVer::Other
+            }),
+            Arch::Avr => ArchKind::Avr,
+            Arch::Msp430 => ArchKind::Msp430,
+            Arch::Nvptx64 => ArchKind::Nvptx,
+            Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::X86 => ArchKind::X86,
+            Arch::X86_64 => ArchKind::X86_64,
             _ => ArchKind::Other,
         };
 
