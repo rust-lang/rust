@@ -16,13 +16,6 @@ pub(super) enum GenmcMode {
     Verification,
 }
 
-impl GenmcMode {
-    /// Return whether warnings on unsupported features should be printed in this mode.
-    fn print_unsupported_warnings(self) -> bool {
-        self == GenmcMode::Verification
-    }
-}
-
 /// Do a complete run of the program in GenMC mode.
 /// This will call `eval_entry` multiple times, until either:
 /// - An error is detected (indicated by a `None` return value)
@@ -57,8 +50,7 @@ fn run_genmc_mode_impl<'tcx>(
     // There exists only one `global_state` per full run in GenMC mode.
     // It is shared by all `GenmcCtx` in this run.
     // FIXME(genmc): implement multithreading once GenMC supports it.
-    let global_state =
-        Arc::new(GlobalState::new(tcx.target_usize_max(), mode.print_unsupported_warnings()));
+    let global_state = Arc::new(GlobalState::new(tcx.target_usize_max()));
     let genmc_ctx = Rc::new(GenmcCtx::new(config, global_state, mode));
 
     // `rep` is used to report the progress, Miri will panic on wrap-around.

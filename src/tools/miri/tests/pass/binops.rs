@@ -71,7 +71,7 @@ fn test_class() {
     assert!(q != r);
 }
 
-pub fn main() {
+fn main() {
     test_nil();
     test_bool();
     test_ptr();

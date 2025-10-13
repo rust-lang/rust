@@ -30,11 +30,6 @@ fn miri_path() -> PathBuf {
     PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
-pub fn flagsplit(flags: &str) -> Vec<String> {
-    // This code is taken from `RUSTFLAGS` handling in cargo.
-    flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
-}
-
 // Build the shared object file for testing native function calls.
 fn build_native_lib(target: &str) -> PathBuf {
     // Loosely follow the logic of the `cc` crate for finding the compiler.

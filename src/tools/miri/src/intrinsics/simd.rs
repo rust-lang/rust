@@ -1,7 +1,7 @@
 use rand::Rng;
 use rustc_apfloat::Float;
-use rustc_middle::ty::FloatTy;
 use rustc_middle::ty;
+use rustc_middle::ty::FloatTy;
 
 use super::check_intrinsic_arg_count;
 use crate::helpers::{ToHost, ToSoft};
@@ -79,7 +79,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         FloatTy::F128 => unimplemented!("f16_f128"),
                     };
-                    
+
                     this.write_scalar(val, &dest)?;
                 }
             }

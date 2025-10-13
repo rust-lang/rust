@@ -2,7 +2,7 @@
 #![feature(core_intrinsics)]
 use std::intrinsics::{volatile_load, volatile_store};
 
-pub fn main() {
+fn main() {
     unsafe {
         let i: &mut (isize, isize) = &mut (0, 0);
         volatile_store(i, (1, 2));

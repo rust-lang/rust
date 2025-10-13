@@ -1,10 +1,12 @@
 use std::num::NonZero;
+use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
+use rustc_hash::FxHashSet;
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
@@ -649,7 +651,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                let mut emitted_warnings = this.machine.reject_in_isolation_warned.borrow_mut();
+                // Deduplicate these warnings *by shim* (not by span)
+                static DEDUP: Mutex<FxHashSet<String>> =
+                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
@@ -1058,8 +1063,8 @@ impl<'tcx> MiriMachine<'tcx> {
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
     /// It will work even when the stack is empty.
-    pub fn current_span(&self) -> Span {
-        self.threads.active_thread_ref().current_span()
+    pub fn current_user_relevant_span(&self) -> Span {
+        self.threads.active_thread_ref().current_user_relevant_span()
     }
 
     /// Returns the span of the *caller* of the current operation, again
