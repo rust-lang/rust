@@ -118,15 +118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target: _,
-                unwind: _,
-                call_source: _,
-                fn_span: _,
-            } => {
+            TerminatorKind::Call { func, args, destination, .. } => {
                 self.consume_operand(location, func);
                 for arg in args {
                     self.consume_operand(location, &arg.node);

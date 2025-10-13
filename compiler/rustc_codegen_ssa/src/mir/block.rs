@@ -1152,13 +1152,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             // Look up stored SourceInfo for this argument if it exists (from annotate_moves pass)
-            let bb_info = self
-                .mir
-                .call_arg_move_source_info
-                .iter()
-                .find(|&&((block, idx), _)| block == helper.bb && idx == i);
-            if let Some((_, arg_source_info)) = bb_info {
-                self.set_debug_loc(bx, *arg_source_info);
+            let arg_source_info = match &terminator.kind {
+                mir::TerminatorKind::Call { arg_move_source_info, .. }
+                | mir::TerminatorKind::TailCall { arg_move_source_info, .. } => {
+                    arg_move_source_info.as_ref().and_then(|infos| infos.get(i).copied().flatten())
+                }
+                _ => None,
+            };
+
+            if let Some(arg_source_info) = arg_source_info {
+                self.set_debug_loc(bx, arg_source_info);
             }
 
             self.codegen_argument(
@@ -1454,8 +1457,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 destination,
                 target,
                 unwind,
-                call_source: _,
                 fn_span,
+                ..
             } => self.codegen_call_terminator(
                 helper,
                 bx,
@@ -1469,7 +1472,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 CallKind::Normal,
                 mergeable_succ(),
             ),
-            mir::TerminatorKind::TailCall { ref func, ref args, fn_span } => self
+            mir::TerminatorKind::TailCall { ref func, ref args, fn_span, .. } => self
                 .codegen_call_terminator(
                     helper,
                     bx,

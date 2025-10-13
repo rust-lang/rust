@@ -349,16 +349,7 @@ fn check_terminator<'tcx>(
         TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn coroutines are unstable".into()))
         },
-        TerminatorKind::Call {
-            func,
-            args,
-            call_source: _,
-            destination: _,
-            target: _,
-            unwind: _,
-            fn_span: _,
-        }
-        | TerminatorKind::TailCall { func, args, fn_span: _ } => {
+        TerminatorKind::Call { func, args, .. } | TerminatorKind::TailCall { func, args, .. } => {
             let fn_ty = func.ty(body, cx.tcx);
             if let ty::FnDef(fn_def_id, fn_substs) = fn_ty.kind() {
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to

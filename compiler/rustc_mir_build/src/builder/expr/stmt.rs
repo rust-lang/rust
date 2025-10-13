@@ -135,7 +135,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.terminate(
                         block,
                         source_info,
-                        TerminatorKind::TailCall { func: fun, args, fn_span },
+                        TerminatorKind::TailCall {
+                            func: fun,
+                            args,
+                            fn_span,
+                            arg_move_source_info: None,
+                        },
                     );
 
                     this.cfg.start_new_block().unit()

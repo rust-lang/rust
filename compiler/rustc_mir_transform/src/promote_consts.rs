@@ -846,6 +846,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             target: Some(new_target),
                             call_source: desugar,
                             fn_span,
+                            arg_move_source_info: None,
                         },
                         source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator

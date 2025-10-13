@@ -65,11 +65,8 @@ impl<'tcx> crate::MirPass<'tcx> for AnnotateMoves {
             size_limit,
         };
 
-        // Storage for Call terminator argument SourceInfo
-        let mut call_arg_source_info = Vec::new();
-
         // Process each basic block
-        for (block, block_data) in body.basic_blocks.as_mut().iter_enumerated_mut() {
+        for block_data in body.basic_blocks.as_mut().iter_mut() {
             for stmt in &mut block_data.statements {
                 let source_info = &mut stmt.source_info;
 
@@ -112,21 +109,35 @@ impl<'tcx> crate::MirPass<'tcx> for AnnotateMoves {
                 // Save the original scope before processing any operands
                 let original_scope = source_info.scope;
 
-                match &terminator.kind {
-                    TerminatorKind::Call { func, args, .. }
-                    | TerminatorKind::TailCall { func, args, .. } => {
+                match &mut terminator.kind {
+                    TerminatorKind::Call { func, args, arg_move_source_info, .. }
+                    | TerminatorKind::TailCall { func, args, arg_move_source_info, .. }
+                        if arg_move_source_info.is_none() =>
+                    {
                         self.annotate_move(&mut params, source_info, original_scope, func);
 
-                        // For Call arguments, store SourceInfo separately instead of modifying the
-                        // terminator's SourceInfo (which would affect the entire Call)
-                        for (index, arg) in args.iter().enumerate() {
-                            if let Some(arg_source_info) = self.get_annotated_source_info(
+                        // For Call arguments, collect SourceInfo for the arguments
+                        let mut arg_move_infos = Vec::with_capacity(args.len());
+                        let mut has_source_info = false;
+
+                        // First collect the source info for each argument
+                        for arg in args.iter() {
+                            let arg_source_info = self.get_annotated_source_info(
                                 &mut params,
                                 original_scope,
                                 &arg.node,
-                            ) {
-                                call_arg_source_info.push(((block, index), arg_source_info));
+                            );
+
+                            if arg_source_info.is_some() {
+                                has_source_info = true;
                             }
+
+                            arg_move_infos.push(arg_source_info);
+                        }
+
+                        // If we have any source info, update the terminator
+                        if has_source_info {
+                            *arg_move_source_info = Some(arg_move_infos.into_boxed_slice());
                         }
                     }
                     TerminatorKind::SwitchInt { discr: op, .. }
@@ -155,9 +166,6 @@ impl<'tcx> crate::MirPass<'tcx> for AnnotateMoves {
                 }
             }
         }
-
-        // Store the Call argument SourceInfo in the body (only if we have any)
-        body.call_arg_move_source_info = call_arg_source_info;
     }
 
     fn is_required(&self) -> bool {
@@ -234,6 +242,14 @@ impl AnnotateMoves {
         };
         let Params { tcx, typing_env, local_decls, size_limit, source_scopes } = params;
 
+        // Check if source_info.scope is already a compiler_move/copy annotation.
+        // If so, skip it - this statement has already been annotated.
+        if let Some((instance, _)) = source_scopes[source_info.scope].inlined
+            && self.is_marker_def_id(instance.def_id())
+        {
+            return;
+        }
+
         if let Some(type_size) =
             self.should_annotate_operation(*tcx, *typing_env, local_decls, place, *size_limit)
         {
@@ -250,11 +266,10 @@ impl AnnotateMoves {
                 type_size,
             );
             source_info.scope = new_scope;
-            // Note: We deliberately do NOT modify source_info.span.
-            // Keeping the original span means profilers show the actual source location
-            // of the move/copy, which is more useful than showing profiling.rs:13.
-            // The scope change is sufficient to make the move appear as an inlined call
-            // to compiler_move/copy in the profiler.
+            // Note: We deliberately do NOT modify source_info.span. Keeping the original span means
+            // profilers show the actual source location of the move/copy, which is more useful than
+            // showing profiling.rs:XX. The scope change is sufficient to make the move appear as an
+            // inlined call to compiler_move/copy in the profiler.
         }
     }
 
@@ -279,23 +294,23 @@ impl AnnotateMoves {
 
         let size = layout.size.bytes();
 
-        // 1. Skip ZST types (no actual move/copy happens)
-        if layout.is_zst() {
+        // Skip zst and check size threshold.
+        if layout.is_zst() || size < size_limit {
             return None;
         }
 
-        // 2. Check size threshold (only annotate large moves/copies)
-        if size < size_limit {
-            return None;
-        }
-
-        // 3. Skip scalar/vector types that won't generate memcpy
+        // Skip scalar/vector types that won't generate memcpy
         match layout.layout.backend_repr {
             rustc_abi::BackendRepr::Scalar(_)
             | rustc_abi::BackendRepr::ScalarPair(_, _)
             | rustc_abi::BackendRepr::SimdVector { .. } => None,
             _ => Some(size),
         }
+    }
+
+    fn is_marker_def_id(&self, def_id: DefId) -> bool {
+        let def_id = Some(def_id);
+        def_id == self.compiler_move || def_id == self.compiler_copy
     }
 
     /// Creates an inlined scope that makes operations appear to come from
@@ -323,12 +338,11 @@ impl AnnotateMoves {
             callsite_span,
         );
 
-        // Get the profiling marker's definition span to use as the scope's span
-        // This ensures the file_start_pos/file_end_pos in the DebugScope match the DIScope's file
+        // Get the profiling marker's definition span to use as the scope's span.
         let profiling_span = tcx.def_span(profiling_def_id);
 
         // Create new inlined scope that makes the operation appear to come from the profiling
-        // marker
+        // marker.
         let inlined_scope_data = SourceScopeData {
             // Use profiling_span so file bounds match the DIScope (profiling.rs)
             // This prevents DILexicalBlockFile mismatches that would show profiling.rs
@@ -349,24 +363,21 @@ impl AnnotateMoves {
                     let scope_data = &source_scopes[scope];
                     if let Some((instance, _)) = scope_data.inlined {
                         // Check if this is a compiler_move/copy scope we created
-                        if let Some(def_id) = instance.def_id().as_local() {
-                            let def_id = Some(def_id.to_def_id());
-                            if def_id == self.compiler_move || def_id == self.compiler_copy {
-                                // This is one of our scopes, skip it and look at its inlined_parent_scope
-                                if let Some(parent) = scope_data.inlined_parent_scope {
-                                    scope = parent;
-                                    continue;
-                                } else {
-                                    // No more parents, this is fine
-                                    break None;
-                                }
+                        if self.is_marker_def_id(instance.def_id()) {
+                            // This is one of our scopes, skip it and look at its inlined_parent_scope
+                            if let Some(parent) = scope_data.inlined_parent_scope {
+                                scope = parent;
+                            } else {
+                                // No more parents, this is fine
+                                break None;
                             }
+                        } else {
+                            // This is a real inlined scope (not compiler_move/copy), use it
+                            break Some(scope);
                         }
-                        // This is a real inlined scope (not compiler_move/copy), use it
-                        break Some(scope);
                     } else {
-                        // Not an inlined scope, use its inlined_parent_scope
-                        break scope_data.inlined_parent_scope;
+                        // Not an inlined scope, so no inlined parent scope
+                        break None;
                     }
                 }
             },

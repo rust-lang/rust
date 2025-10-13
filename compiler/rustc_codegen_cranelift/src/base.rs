@@ -478,15 +478,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     switch.emit(&mut fx.bcx, discr, otherwise_block);
                 }
             }
-            TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target,
-                fn_span,
-                unwind,
-                call_source: _,
-            } => {
+            TerminatorKind::Call { func, args, destination, target, fn_span, unwind, .. } => {
                 fx.tcx.prof.generic_activity("codegen call").run(|| {
                     crate::abi::codegen_terminator_call(
                         fx,

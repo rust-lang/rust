@@ -1741,15 +1741,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
         // Checking for aliasing in terminators is probably overkill, but until we have actual
         // semantics, we should be conservative here.
         match &terminator.kind {
-            TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target: Some(_),
-                unwind: _,
-                call_source: _,
-                fn_span: _,
-            } => {
+            TerminatorKind::Call { func, args, destination, target: Some(_), .. } => {
                 self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {

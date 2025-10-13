@@ -16,7 +16,7 @@ use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 
-use super::{BasicBlock, Const, Local, UserTypeProjection};
+use super::{BasicBlock, Const, Local, SourceInfo, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
@@ -812,7 +812,7 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
-        /// The function that’s being called.
+        /// The function that's being called.
         func: Operand<'tcx>,
         /// Arguments the function is called with.
         /// These are owned by the callee, which is free to modify them.
@@ -832,6 +832,13 @@ pub enum TerminatorKind<'tcx> {
         /// This `Span` is the span of the function, without the dot and receiver
         /// e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
+        /// Optional array of source info for move operations in the arguments.
+        /// This is used to make the move operations appear in profilers as if they
+        /// were inlined from compiler_move intrinsics.
+        /// If None, no special source info is used.
+        /// If Some, the array has the same length as args, with None for arguments
+        /// that don't need special source info.
+        arg_move_source_info: Option<Box<[Option<SourceInfo>]>>,
     },
 
     /// Tail call.
@@ -851,7 +858,7 @@ pub enum TerminatorKind<'tcx> {
     /// [`Call`]: TerminatorKind::Call
     /// [`Return`]: TerminatorKind::Return
     TailCall {
-        /// The function that’s being called.
+        /// The function that's being called.
         func: Operand<'tcx>,
         /// Arguments the function is called with.
         /// These are owned by the callee, which is free to modify them.
@@ -862,6 +869,13 @@ pub enum TerminatorKind<'tcx> {
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
+        /// Optional array of source info for move operations in the arguments.
+        /// This is used to make the move operations appear in profilers as if they
+        /// were inlined from compiler_move intrinsics.
+        /// If None, no special source info is used.
+        /// If Some, the array has the same length as args, with None for arguments
+        /// that don't need special source info.
+        arg_move_source_info: Option<Box<[Option<SourceInfo>]>>,
     },
 
     /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
@@ -1734,6 +1748,6 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(TerminatorKind<'_>, 80);
+    static_assert_size!(TerminatorKind<'_>, 96);
     // tidy-alphabetical-end
 }

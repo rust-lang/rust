@@ -331,13 +331,6 @@ pub struct Body<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
-
-    /// Debug information for argument moves/copies in Call parameters. Stores pairs of
-    /// ((BasicBlock, argument_index), SourceInfo) for move/copy operations. Only populated when
-    /// `-Zannotate-moves` is enabled.
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub call_arg_move_source_info: Vec<((BasicBlock, usize), SourceInfo)>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -381,7 +374,6 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
-            call_arg_move_source_info: Vec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -413,7 +405,6 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
-            call_arg_move_source_info: Vec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -1673,11 +1664,11 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 128);
+    static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 32);
-    static_assert_size!(Terminator<'_>, 96);
+    static_assert_size!(Terminator<'_>, 112);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

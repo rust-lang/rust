@@ -61,6 +61,7 @@ fn build_poll_call<'tcx>(
         unwind,
         call_source: CallSource::Misc,
         fn_span: DUMMY_SP,
+        arg_move_source_info: None,
     };
     insert_term_block(body, call)
 }
@@ -114,6 +115,7 @@ fn build_pin_fut<'tcx>(
                 unwind,
                 call_source: CallSource::Misc,
                 fn_span: span,
+                arg_move_source_info: None,
             },
         }),
         false,

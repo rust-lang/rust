@@ -459,9 +459,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 ref args,
                 destination,
                 target,
-                unwind: _,
-                call_source: _,
-                fn_span: _,
+                ..
             } => {
                 self.gather_operand(func);
                 for arg in args {

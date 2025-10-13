@@ -678,6 +678,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 unwind: UnwindAction::Cleanup(cleanup),
                 call_source: CallSource::Normal,
                 fn_span: self.span,
+                arg_move_source_info: None,
             },
             false,
         );
@@ -974,6 +975,7 @@ fn build_call_shim<'tcx>(
             },
             call_source: CallSource::Misc,
             fn_span: span,
+            arg_move_source_info: None,
         },
         false,
     );

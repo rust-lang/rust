@@ -166,6 +166,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         unwind: UnwindAction::Continue,
                         call_source: CallSource::Misc,
                         fn_span: expr_span,
+                        arg_move_source_info: None,
                     },
                 );
                 this.diverge_from(block);

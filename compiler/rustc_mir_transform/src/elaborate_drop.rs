@@ -379,6 +379,7 @@ where
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: self.source_info.span,
+                arg_move_source_info: None,
             },
         );
 
@@ -413,6 +414,7 @@ where
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: span,
+                arg_move_source_info: None,
             },
         );
         pin_obj_bb
@@ -993,6 +995,7 @@ where
                     unwind: unwind.into_action(),
                     call_source: CallSource::Misc,
                     fn_span: self.source_info.span,
+                    arg_move_source_info: None,
                 },
                 source_info: self.source_info,
             }),

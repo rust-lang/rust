@@ -748,22 +748,16 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 target: target.as_usize(),
                 unwind: unwind.stable(tables, cx),
             },
-            mir::TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target,
-                unwind,
-                call_source: _,
-                fn_span: _,
-            } => TerminatorKind::Call {
-                func: func.stable(tables, cx),
-                args: args.iter().map(|arg| arg.node.stable(tables, cx)).collect(),
-                destination: destination.stable(tables, cx),
-                target: target.map(|t| t.as_usize()),
-                unwind: unwind.stable(tables, cx),
-            },
-            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => todo!(),
+            mir::TerminatorKind::Call { func, args, destination, target, unwind, .. } => {
+                TerminatorKind::Call {
+                    func: func.stable(tables, cx),
+                    args: args.iter().map(|arg| arg.node.stable(tables, cx)).collect(),
+                    destination: destination.stable(tables, cx),
+                    target: target.map(|t| t.as_usize()),
+                    unwind: unwind.stable(tables, cx),
+                }
+            }
+            mir::TerminatorKind::TailCall { .. } => todo!(),
             mir::TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
                 TerminatorKind::Assert {
                     cond: cond.stable(tables, cx),

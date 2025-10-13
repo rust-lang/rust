@@ -194,6 +194,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                         CallSource::OverloadedOperator
                     },
                     fn_span: *fn_span,
+                    arg_move_source_info: None,
                 })
             },
         )
@@ -213,6 +214,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     func: fun,
                     args,
                     fn_span: *fn_span,
+                    arg_move_source_info: None,
                 })
             },
         )
