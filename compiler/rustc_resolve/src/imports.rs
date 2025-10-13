@@ -374,6 +374,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
+        // "Same res different import" ambiguity hack for macros introduced in #145108.
+        // See related discussion for more info:
+        // https://rust-lang.zulipchat.com/#narrow/channel/421156-gsoc/topic/Project.3A.20Parallel.20Macro.20Expansion/near/542057918.
+        if ns == MacroNS
+            && binding.is_glob_import()
+            && binding.vis.is_public() // is a glob that reexports a macro
+            && self.macro_use_prelude.contains_key(&ident.name) // which also lives in macro_use world
+            && let Some(def_id) = res.opt_def_id()
+        {
+            self.macro_vis_hack_map.insert((module, def_id));
+        }
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
@@ -623,7 +634,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for (import, side_effect) in import_resolutions {
             let SideEffect { imported_module, bindings: side_effect_bindings } = side_effect;
             let parent = import.parent_scope.module;
-
             match (&import.kind, side_effect_bindings) {
                 (
                     ImportKind::Single { target, bindings, .. },
@@ -1662,7 +1672,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     next_binding = binding;
                 }
 
-                children.push(ModChild { ident: ident.0, res, vis: binding.vis, reexport_chain });
+                let vis = match res.opt_def_id() {
+                    Some(def_id) if self.macro_vis_hack_map.contains(&(module, def_id)) => {
+                        Visibility::Public
+                    }
+                    Some(_) | None => binding.vis,
+                };
+                children.push(ModChild { ident: ident.0, res, vis, reexport_chain });
             }
         });
 
