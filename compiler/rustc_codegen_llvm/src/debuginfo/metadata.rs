@@ -34,9 +34,9 @@ use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
 use crate::common::{AsCCharPtr, CodegenCx};
-use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
+use crate::debuginfo::{DIBuilderExt, dwarf_const};
 use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
@@ -1410,23 +1410,18 @@ pub(crate) fn build_global_var_di_node<'ll>(
 
     let global_align = cx.align_of(variable_type);
 
-    unsafe {
-        llvm::LLVMRustDIBuilderCreateStaticVariable(
-            DIB(cx),
-            Some(var_scope),
-            var_name.as_c_char_ptr(),
-            var_name.len(),
-            linkage_name.as_c_char_ptr(),
-            linkage_name.len(),
-            file_metadata,
-            line_number,
-            type_di_node,
-            is_local_to_unit,
-            global,
-            None,
-            global_align.bits() as u32,
-        );
-    }
+    DIB(cx).create_static_variable(
+        Some(var_scope),
+        var_name,
+        linkage_name,
+        file_metadata,
+        line_number,
+        type_di_node,
+        is_local_to_unit,
+        global, // (value)
+        None,   // (decl)
+        Some(global_align),
+    );
 }
 
 /// Generates LLVM debuginfo for a vtable.
@@ -1643,25 +1638,19 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     let vtable_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);
     let vtable_type_di_node = build_vtable_type_di_node(cx, ty, poly_trait_ref);
-    let linkage_name = "";
 
-    unsafe {
-        llvm::LLVMRustDIBuilderCreateStaticVariable(
-            DIB(cx),
-            NO_SCOPE_METADATA,
-            vtable_name.as_c_char_ptr(),
-            vtable_name.len(),
-            linkage_name.as_c_char_ptr(),
-            linkage_name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
-            vtable_type_di_node,
-            true,
-            vtable,
-            None,
-            0,
-        );
-    }
+    DIB(cx).create_static_variable(
+        NO_SCOPE_METADATA,
+        &vtable_name,
+        "", // (linkage_name)
+        unknown_file_metadata(cx),
+        UNKNOWN_LINE_NUMBER,
+        vtable_type_di_node,
+        true,   // (is_local_to_unit)
+        vtable, // (value)
+        None,   // (decl)
+        None::<Align>,
+    );
 }
 
 /// Creates an "extension" of an existing `DIScope` into another file.
