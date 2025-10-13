@@ -864,6 +864,8 @@ mod desc {
     pub(crate) const parse_linker_features: &str =
         "a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld`";
     pub(crate) const parse_polonius: &str = "either no value or `legacy` (the default), or `next`";
+    pub(crate) const parse_annotate_moves: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
     pub(crate) const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
@@ -947,6 +949,29 @@ pub mod parse {
             }
             _ => false,
         }
+    }
+
+    pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
+        let mut bslot = false;
+        let mut nslot = 0u64;
+
+        *slot = match v {
+            // No value provided: -Z annotate-moves (enable with default limit)
+            None => AnnotateMoves::Enabled(None),
+            // Explicit boolean value provided: -Z annotate-moves=yes/no
+            s @ Some(_) if parse_bool(&mut bslot, s) => {
+                if bslot {
+                    AnnotateMoves::Enabled(None)
+                } else {
+                    AnnotateMoves::Disabled
+                }
+            }
+            // With numeric limit provided: -Z annotate-moves=1234
+            s @ Some(_) if parse_number(&mut nslot, s) => AnnotateMoves::Enabled(Some(nslot)),
+            _ => return false,
+        };
+
+        true
     }
 
     /// Use this for any string option that has a static default.
@@ -2198,6 +2223,9 @@ options! {
         "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
+    annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
+        "emit debug info for compiler-generated move and copy operations \
+        to make them visible in profilers. Can be a boolean or a size limit in bytes (default: disabled)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
