@@ -1,8 +1,10 @@
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 pub trait Trait {
+    #[type_const]
     const ASSOC: usize;
 }
 

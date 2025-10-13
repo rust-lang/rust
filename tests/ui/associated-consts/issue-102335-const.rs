@@ -1,4 +1,5 @@
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 trait T {
     type A: S<C<X = 0i32> = 34>;
@@ -7,6 +8,7 @@ trait T {
 }
 
 trait S {
+    #[type_const]
     const C: i32;
 }
 

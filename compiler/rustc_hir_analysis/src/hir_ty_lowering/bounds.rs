@@ -4,9 +4,10 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
-use rustc_hir::PolyTraitRef;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
+use rustc_hir::{PolyTraitRef, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -602,7 +603,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 term,
                             })
                         });
-                        bounds.push((bound.upcast(tcx), constraint.span));
+
+                        if let ty::AssocTag::Const = assoc_tag
+                            && !find_attr!(
+                                self.tcx().get_all_attrs(assoc_item.def_id),
+                                AttributeKind::TypeConst(_)
+                            )
+                        {
+                            if tcx.features().min_generic_const_args()
+                                || tcx.features().associated_const_equality()
+                            {
+                                let mut err = self.dcx().struct_span_err(
+                                    constraint.span,
+                                    "use of trait associated const without `#[type_const]`",
+                                );
+                                err.note("the declaration in the trait must be marked with `#[type_const]`");
+                                return Err(err.emit());
+                            } else {
+                                let err = self.dcx().span_delayed_bug(
+                                    constraint.span,
+                                    "use of trait associated const without `#[type_const]`",
+                                );
+                                return Err(err);
+                            }
+                        } else {
+                            bounds.push((bound.upcast(tcx), constraint.span));
+                        }
                     }
                     // SelfTraitThatDefines is only interested in trait predicates.
                     PredicateFilter::SelfTraitThatDefines(_) => {}
