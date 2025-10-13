@@ -11,6 +11,7 @@
 //@ [three] compile-flags: -C target-feature=+paca,+pacg,-paca
 //@ [four] build-pass
 //@ [four] compile-flags: -C target-feature=-paca,+pacg -C target-feature=+paca
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![no_core]
 

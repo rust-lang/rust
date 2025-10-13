@@ -9,6 +9,7 @@
 //@[loongarch64_lp64d] needs-llvm-components: loongarch
 //@[loongarch64_lp64s] compile-flags: --target loongarch64-unknown-none-softfloat
 //@[loongarch64_lp64s] needs-llvm-components: loongarch
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(no_core)]

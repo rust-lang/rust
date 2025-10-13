@@ -3,6 +3,7 @@
 //@ needs-llvm-components: aarch64
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
 #![no_core]

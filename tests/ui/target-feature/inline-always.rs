@@ -4,6 +4,7 @@
 //@ revisions: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 
 #![feature(no_core, target_feature_inline_always)]
 #![no_core]
