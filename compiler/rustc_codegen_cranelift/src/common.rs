@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
@@ -373,7 +373,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             "size must be a multiple of alignment (size={size}, align={align})"
         );
 
-        let abi_align = if self.tcx.sess.target.arch == "s390x" { 8 } else { 16 };
+        let abi_align = if self.tcx.sess.target.arch == Arch::S390x { 8 } else { 16 };
         if align <= abi_align {
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
                 kind: StackSlotKind::ExplicitSlot,

@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
+use rustc_target::spec::{Arch, BinaryFormat, LinkSelfContainedComponents};
 
 use crate::errors;
 
@@ -393,7 +393,7 @@ impl<'tcx> Collector<'tcx> {
         // This logic is similar to `AbiMap::canonize_abi` (in rustc_target/src/spec/abi_map.rs) but
         // we need more detail than those adjustments, and we can't support all ABIs that are
         // generally supported.
-        let calling_convention = if self.tcx.sess.target.arch == "x86" {
+        let calling_convention = if self.tcx.sess.target.arch == Arch::X86 {
             match abi {
                 ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
                 ExternAbi::Stdcall { .. } => {

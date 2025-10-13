@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
-        arch: "mips".into(),
+        arch: Arch::Mips,
         options: TargetOptions { mcount: "_mcount".into(), ..base },
     }
 }
