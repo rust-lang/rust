@@ -1885,6 +1885,44 @@ crate::target_spec_enum! {
     parse_error_type = "architecture";
 }
 
+impl Arch {
+    pub const fn desc_symbol(&self) -> Symbol {
+        match self {
+            Self::AArch64 => sym::aarch64,
+            Self::AmdGpu => sym::amdgpu,
+            Self::Arm => sym::arm,
+            Self::Arm64EC => sym::arm64ec,
+            Self::Avr => sym::avr,
+            Self::Bpf => sym::bpf,
+            Self::CSky => sym::csky,
+            Self::Hexagon => sym::hexagon,
+            Self::LoongArch32 => sym::loongarch32,
+            Self::LoongArch64 => sym::loongarch64,
+            Self::M68k => sym::m68k,
+            Self::Mips => sym::mips,
+            Self::Mips32r6 => sym::mips32r6,
+            Self::Mips64 => sym::mips64,
+            Self::Mips64r6 => sym::mips64r6,
+            Self::Msp430 => sym::msp430,
+            Self::Nvptx64 => sym::nvptx64,
+            Self::PowerPC => sym::powerpc,
+            Self::PowerPC64 => sym::powerpc64,
+            Self::PowerPC64LE => sym::powerpc64le,
+            Self::RiscV32 => sym::riscv32,
+            Self::RiscV64 => sym::riscv64,
+            Self::S390x => sym::s390x,
+            Self::Sparc => sym::sparc,
+            Self::Sparc64 => sym::sparc64,
+            Self::SpirV => sym::spirv,
+            Self::Wasm32 => sym::wasm32,
+            Self::Wasm64 => sym::wasm64,
+            Self::X86 => sym::x86,
+            Self::X86_64 => sym::x86_64,
+            Self::Xtensa => sym::xtensa,
+        }
+    }
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
