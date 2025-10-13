@@ -39,6 +39,8 @@ The valid scopes are:
 - `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,debuginfo`.
 - `all` (default) - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 
+The scopes accepted by `--remap-path-scope` are not exhaustive - new scopes may be added in future releases for eventual stabilisation.
+
 ### Example
 
 ```sh
