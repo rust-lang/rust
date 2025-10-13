@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:57:77
+  --> $DIR/nested-rpit-hrtb.rs:56:77
    |
 LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                             ^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Siz
    |                     ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/nested-rpit-hrtb.rs:65:82
+  --> $DIR/nested-rpit-hrtb.rs:64:82
    |
 LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                                  ^^ undeclared lifetime
@@ -87,12 +87,6 @@ LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc
            but trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
-error: lifetime may not live long enough
-  --> $DIR/nested-rpit-hrtb.rs:49:93
-   |
-LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
-   |                                      -- lifetime `'b` defined here                          ^^ opaque type requires that `'b` must outlive `'static`
-
 error: implementation of `Bar` is not general enough
   --> $DIR/nested-rpit-hrtb.rs:49:93
    |
@@ -103,7 +97,7 @@ LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = 
    = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
 error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
-  --> $DIR/nested-rpit-hrtb.rs:61:64
+  --> $DIR/nested-rpit-hrtb.rs:60:64
    |
 LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
    |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
@@ -112,7 +106,7 @@ LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b>
            but trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0261, E0277, E0657.
 For more information about an error, try `rustc --explain E0261`.
