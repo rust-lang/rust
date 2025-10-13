@@ -1,4 +1,5 @@
 use core::fmt::{Display, Formatter, Result};
+use core::num::NonZeroU128;
 
 #[allow(missing_debug_implementations)]
 pub struct DisplayWrapper<T>(pub T);
@@ -55,32 +56,6 @@ impl Display for DisplayWrapper<*mut ()> {
     }
 }
 
-#[inline]
-fn format_ptr(addr: usize, f: &mut Formatter<'_>) -> Result {
-    const HEX: [u8; 16] = *b"0123456789abcdef";
-    let mut buf = [0u8; 42];
-    let mut cur = buf.len();
-
-    let mut n = addr;
-    while n >= 16 {
-        let d = n % 16;
-        n /= 16;
-        cur -= 1;
-        buf[cur] = HEX[d];
-    }
-    cur -= 1;
-    buf[cur] = HEX[n];
-
-    cur -= 1;
-    buf[cur] = b'x';
-    cur -= 1;
-    buf[cur] = b'0';
-
-    // SAFETY: The buffer is initially ASCII and we only write ASCII bytes to it.
-    let s = unsafe { core::str::from_utf8_unchecked(&buf[cur..]) };
-    f.write_str(s)
-}
-
 impl Display for DisplayWrapper<char> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -101,22 +76,43 @@ impl Display for DisplayWrapper<bool> {
     }
 }
 
-#[inline]
-fn display_int(mut n: u128, is_negative: bool, f: &mut Formatter<'_>) -> Result {
-    let mut buf = [0u8; 42];
-    let mut cur = buf.len();
+const ALPHABET: &[u8; 16] = b"0123456789abcdef";
 
-    while n >= 10 {
-        let d = n % 10;
-        n /= 10;
-        cur -= 1;
-        buf[cur] = (d as u8) + b'0';
+#[inline]
+fn format_with_radix(mut n: u128, buf: &mut [u8], radix: NonZeroU128) -> usize {
+    let mut cur = buf.len();
+    while n >= radix.get() {
+        let d = n % radix;
+        n /= radix;
+        cur = cur.wrapping_sub(1);
+        buf[cur] = ALPHABET[d as usize];
     }
-    cur -= 1;
-    buf[cur] = (n as u8) + b'0';
+    cur = cur.wrapping_sub(1);
+    buf[cur] = ALPHABET[n as usize];
+    cur
+}
+
+#[inline]
+pub fn format_ptr(addr: usize, f: &mut Formatter<'_>) -> Result {
+    let mut buf = [b'0'; 42];
+    let mut cur =
+        format_with_radix(addr as u128, &mut buf, const { NonZeroU128::new(16).unwrap() });
+
+    cur = cur.wrapping_sub(1);
+    buf[cur] = b'x';
+    cur = cur.wrapping_sub(1);
+
+    // SAFETY: The buffer is initially ASCII and we only write ASCII bytes to it.
+    let s = unsafe { core::str::from_utf8_unchecked(&buf[cur..]) };
+    f.write_str(s)
+}
+
+#[inline]
+pub fn display_int(n: u128, is_negative: bool, f: &mut Formatter<'_>) -> Result {
+    let mut buf = [b'-'; 42];
+    let mut cur = format_with_radix(n, &mut buf, const { NonZeroU128::new(10).unwrap() });
     if is_negative {
-        cur -= 1;
-        buf[cur] = b'-';
+        cur = cur.wrapping_sub(1);
     }
     // SAFETY: The buffer is initially ASCII and we only write ASCII bytes to it.
     let s = unsafe { core::str::from_utf8_unchecked(&buf[cur..]) };
