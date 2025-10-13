@@ -51,6 +51,7 @@ use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_target::spec::Arch;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
@@ -2388,7 +2389,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(self) -> bool {
-        self.sess.target.arch.contains("nvptx")
+        matches!(self.sess.target.arch, Arch::Nvptx64)
     }
 
     /// Returns `&'static core::panic::Location<'static>`.

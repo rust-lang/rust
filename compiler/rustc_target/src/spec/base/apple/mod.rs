@@ -40,13 +40,13 @@ impl Arch {
         }
     }
 
-    pub(crate) fn target_arch(self) -> Cow<'static, str> {
-        Cow::Borrowed(match self {
-            Self::Armv7k | Self::Armv7s => "arm",
-            Self::Arm64 | Self::Arm64e | Self::Arm64_32 => "aarch64",
-            Self::I386 | Self::I686 => "x86",
-            Self::X86_64 | Self::X86_64h => "x86_64",
-        })
+    pub(crate) fn target_arch(self) -> crate::spec::Arch {
+        match self {
+            Self::Armv7k | Self::Armv7s => crate::spec::Arch::Arm,
+            Self::Arm64 | Self::Arm64e | Self::Arm64_32 => crate::spec::Arch::AArch64,
+            Self::I386 | Self::I686 => crate::spec::Arch::X86,
+            Self::X86_64 | Self::X86_64h => crate::spec::Arch::X86_64,
+        }
     }
 
     fn target_cpu(self, env: TargetEnv) -> &'static str {
@@ -109,7 +109,7 @@ pub(crate) fn base(
     os: &'static str,
     arch: Arch,
     env: TargetEnv,
-) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
+) -> (TargetOptions, StaticCow<str>, crate::spec::Arch) {
     let mut opts = TargetOptions {
         llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
@@ -311,18 +311,22 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.env) {
-            ("macos", "aarch64", _) => (11, 0, 0),
-            ("ios", "aarch64", "macabi") => (14, 0, 0),
-            ("ios", "aarch64", "sim") => (14, 0, 0),
+        let (major, minor, patch) = match (&*target.os, target.arch, &*target.env) {
+            ("macos", crate::spec::Arch::AArch64, _) => (11, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, "macabi") => (14, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
             ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
             // Mac Catalyst defaults to 13.1 in Clang.
             ("ios", _, "macabi") => (13, 1, 0),
-            ("tvos", "aarch64", "sim") => (14, 0, 0),
-            ("watchos", "aarch64", "sim") => (7, 0, 0),
+            ("tvos", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
+            ("watchos", crate::spec::Arch::AArch64, "sim") => (7, 0, 0),
             // True Aarch64 on watchOS (instead of their Aarch64 Ilp32 called `arm64_32`) has been
             // available since Xcode 14, but it's only actually used more recently in watchOS 26.
-            ("watchos", "aarch64", "") if !target.llvm_target.starts_with("arm64_32") => (26, 0, 0),
+            ("watchos", crate::spec::Arch::AArch64, "")
+                if !target.llvm_target.starts_with("arm64_32") =>
+            {
+                (26, 0, 0)
+            }
             (os, _, _) => return Self::os_minimum_deployment_target(os),
         };
         Self { major, minor, patch }

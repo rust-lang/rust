@@ -50,6 +50,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_span::{Symbol, sym};
+use rustc_target::spec::Arch;
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -186,20 +187,20 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
-        let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
-            // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
-            vec![sym::fxsr, sym::sse, sym::sse2, Symbol::intern("x87")]
-        } else if sess.target.arch == "aarch64" {
-            match &*sess.target.os {
+        let target_features = match sess.target.arch {
+            Arch::X86_64 if sess.target.os != "none" => {
+                // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
+                vec![sym::fxsr, sym::sse, sym::sse2, Symbol::intern("x87")]
+            }
+            Arch::AArch64 => match &*sess.target.os {
                 "none" => vec![],
                 // On macOS the aes, sha2 and sha3 features are enabled by default and ring
                 // fails to compile on macOS when they are not present.
                 "macos" => vec![sym::neon, sym::aes, sym::sha2, sym::sha3],
                 // AArch64 mandates Neon support
                 _ => vec![sym::neon],
-            }
-        } else {
-            vec![]
+            },
+            _ => vec![],
         };
         // FIXME do `unstable_target_features` properly
         let unstable_target_features = target_features.clone();
@@ -208,14 +209,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         // Windows, whereas LLVM 21+ and Cranelift pass it indirectly. This means that `f128` won't
         // work when linking against a LLVM-built sysroot.
         let has_reliable_f128 = !sess.target.is_like_windows;
-        let has_reliable_f16 = match &*sess.target.arch {
+        let has_reliable_f16 = match sess.target.arch {
             // FIXME(f16_f128): LLVM 20 does not support `f16` on s390x, meaning the required
             // builtins are not available in `compiler-builtins`.
-            "s390x" => false,
+            Arch::S390x => false,
             // FIXME(f16_f128): `rustc_codegen_llvm` currently disables support on Windows GNU
             // targets due to GCC using a different ABI than LLVM. Therefore `f16` won't be
             // available when using a LLVM-built sysroot.
-            "x86_64"
+            Arch::X86_64
                 if sess.target.os == "windows"
                     && sess.target.env == "gnu"
                     && sess.target.abi != "llvm" =>

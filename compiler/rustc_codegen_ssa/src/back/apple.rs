@@ -5,8 +5,8 @@ use std::process::Command;
 use itertools::Itertools;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::Session;
-use rustc_target::spec::Target;
 pub(super) use rustc_target::spec::apple::OSVersion;
+use rustc_target::spec::{Arch, Target};
 use tracing::debug;
 
 use crate::errors::{XcrunError, XcrunSdkPathWarning};
@@ -95,7 +95,7 @@ pub(super) fn add_data_and_relocation(
         pointer_width => unimplemented!("unsupported Apple pointer width {pointer_width:?}"),
     };
 
-    if target.arch == "x86_64" {
+    if target.arch == Arch::X86_64 {
         // Force alignment for the entire section to be 16 on x86_64.
         file.section_mut(section).append_data(&[], 16);
     } else {
@@ -111,7 +111,7 @@ pub(super) fn add_data_and_relocation(
             r_pcrel: false,
             r_length: 3,
         }
-    } else if target.arch == "arm" {
+    } else if target.arch == Arch::Arm {
         // FIXME(madsmtm): Remove once `object` supports 32-bit ARM relocations:
         // https://github.com/gimli-rs/object/pull/757
         object::write::RelocationFlags::MachO {
