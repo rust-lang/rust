@@ -1,8 +1,10 @@
 // Regression test for issue #108271.
 // Detect and reject generic params in the type of assoc consts used in an equality bound.
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 trait Trait<'a, T: 'a, const N: usize> {
+    #[type_const]
     const K: &'a [T; N];
 }
 
@@ -21,6 +23,7 @@ fn take0<'r, A: 'r, const Q: usize>(_: impl Trait<'r, A, Q, K = { loop {} }>) {}
 //~| NOTE `K` has type `&'r [A; Q]`
 
 trait Project {
+    #[type_const]
     const SELF: Self;
 }
 

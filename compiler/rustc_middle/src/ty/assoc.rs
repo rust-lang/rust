@@ -1,9 +1,7 @@
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, Ident, Symbol};
 
@@ -172,24 +170,6 @@ impl AssocItem {
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
         matches!(self.kind, AssocKind::Type { data: AssocTypeData::Rpitit(_) })
-    }
-
-    /// Returns true if:
-    /// - This trait associated item has the `#[type_const]` attribute,
-    /// - If it is in a trait impl, the item from the original trait has this attribute, or
-    /// - It is an inherent assoc const.
-    pub fn is_type_const_capable(&self, tcx: TyCtxt<'_>) -> bool {
-        if !matches!(self.kind, ty::AssocKind::Const { .. }) {
-            return false;
-        }
-
-        let def_id = match self.container {
-            AssocContainer::Trait => self.def_id,
-            AssocContainer::TraitImpl(Ok(trait_item_did)) => trait_item_did,
-            AssocContainer::TraitImpl(Err(_)) => return false,
-            AssocContainer::InherentImpl => return true,
-        };
-        find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_))
     }
 }
 
