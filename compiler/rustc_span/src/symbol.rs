@@ -219,6 +219,7 @@ symbols! {
         Decoder,
         Default,
         Deref,
+        DerefMut,
         DiagMessage,
         Diagnostic,
         DirBuilder,

@@ -266,6 +266,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[lang = "deref_mut"]
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "DerefMut"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub const trait DerefMut: [const] Deref + PointeeSized {
     /// Mutably dereferences the value.
