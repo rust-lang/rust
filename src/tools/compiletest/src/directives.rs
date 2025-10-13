@@ -1545,7 +1545,7 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -
                 }
             }
         }) {
-            if config.default_codegen_backend == backend {
+            if !config.bypass_ignore_backends && config.default_codegen_backend == backend {
                 return IgnoreDecision::Ignore {
                     reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
