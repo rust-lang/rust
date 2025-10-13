@@ -47,8 +47,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             );
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref =
-                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
+            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args);
             let impl_trait_ref =
                 ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 

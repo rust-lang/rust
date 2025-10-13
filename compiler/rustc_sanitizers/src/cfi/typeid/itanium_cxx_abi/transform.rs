@@ -470,7 +470,7 @@ fn implemented_method<'tcx>(
     let assoc = tcx.opt_associated_item(instance.def_id())?;
     let ancestor = if let AssocContainer::TraitImpl(Ok(trait_method_id)) = assoc.container {
         let impl_id = tcx.parent(instance.def_id());
-        trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
+        trait_ref = tcx.impl_trait_ref(impl_id);
         method_id = trait_method_id;
         trait_method = tcx.associated_item(method_id);
         trait_id = trait_ref.skip_binder().def_id;

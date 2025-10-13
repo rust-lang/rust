@@ -219,8 +219,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
                 if let Some(parent) = self.tcx.trait_impl_of_assoc(self.item.to_def_id()) {
-                    let impl_trait_ref =
-                        self.tcx.impl_trait_ref(parent).unwrap().instantiate_identity();
+                    let impl_trait_ref = self.tcx.impl_trait_ref(parent).instantiate_identity();
                     // If the trait ref of the associated item and the impl differs,
                     // then we can't use the impl's identity args below, so
                     // just skip.

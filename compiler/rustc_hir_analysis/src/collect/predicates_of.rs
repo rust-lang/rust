@@ -118,8 +118,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             let impl_assoc_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
             let impl_def_id = tcx.parent(fn_def_id);
-            let impl_trait_ref_args =
-                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity().args;
+            let impl_trait_ref_args = tcx.impl_trait_ref(impl_def_id).instantiate_identity().args;
 
             let impl_assoc_args =
                 impl_assoc_identity_args.rebase_onto(tcx, impl_def_id, impl_trait_ref_args);
@@ -162,9 +161,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 if let Some(of_trait) = impl_.of_trait
                     && of_trait.defaultness.is_default()
                 {
-                    is_default_impl_trait = tcx
-                        .impl_trait_ref(def_id)
-                        .map(|t| ty::Binder::dummy(t.instantiate_identity()));
+                    is_default_impl_trait =
+                        Some(ty::Binder::dummy(tcx.impl_trait_ref(def_id).instantiate_identity()));
                 }
             }
             ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
@@ -352,10 +350,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl(impl_), .. }) = node {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
-        let trait_ref = impl_
-            .of_trait
-            .is_some()
-            .then(|| tcx.impl_trait_ref(def_id).unwrap().instantiate_identity());
+        let trait_ref =
+            impl_.of_trait.is_some().then(|| tcx.impl_trait_ref(def_id).instantiate_identity());
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
@@ -467,7 +463,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     {
         if impl_.of_trait.is_some() {
             debug!("visit impl trait_ref");
-            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(def_id);
             trait_ref.instantiate_identity().visit_with(&mut collector);
         }
 

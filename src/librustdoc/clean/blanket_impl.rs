@@ -34,7 +34,7 @@ pub(crate) fn synthesize_blanket_impls(
         'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
             trace!("considering impl `{impl_def_id:?}` for trait `{trait_def_id:?}`");
 
-            let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(impl_def_id);
             if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                 continue;
             }

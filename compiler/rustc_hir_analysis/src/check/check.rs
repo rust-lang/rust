@@ -1191,9 +1191,7 @@ fn check_impl_items_against_trait<'tcx>(
                         tcx,
                         ty_impl_item,
                         ty_trait_item,
-                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
-                            .unwrap()
-                            .instantiate_identity(),
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx)).instantiate_identity(),
                     );
                 }
                 ty::AssocKind::Const { .. } => {}

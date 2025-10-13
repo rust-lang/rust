@@ -210,8 +210,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
 
     let fresh_impl_args = infcx.fresh_args_for_item(impl_span, impl_def_id.to_def_id());
-    let fresh_adt_ty =
-        tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, fresh_impl_args).self_ty();
+    let fresh_adt_ty = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_impl_args).self_ty();
 
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");

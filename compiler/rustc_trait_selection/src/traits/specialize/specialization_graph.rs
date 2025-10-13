@@ -38,7 +38,7 @@ enum Inserted<'tcx> {
 impl<'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         if let Some(st) =
             fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
         {
@@ -54,7 +54,7 @@ impl<'tcx> Children {
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         let vec: &mut Vec<DefId>;
         if let Some(st) =
             fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
@@ -164,7 +164,7 @@ impl<'tcx> Children {
             if le && !ge {
                 debug!(
                     "descending as child of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
+                    tcx.impl_trait_ref(possible_sibling).instantiate_identity()
                 );
 
                 // The impl specializes `possible_sibling`.
@@ -172,7 +172,7 @@ impl<'tcx> Children {
             } else if ge && !le {
                 debug!(
                     "placing as parent of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
+                    tcx.impl_trait_ref(possible_sibling).instantiate_identity()
                 );
 
                 replace_children.push(possible_sibling);
@@ -242,7 +242,7 @@ impl<'tcx> Graph {
         assert!(impl_def_id.is_local());
 
         // FIXME: use `EarlyBinder` in `self.children`
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         let trait_def_id = trait_ref.def_id;
 
         debug!(

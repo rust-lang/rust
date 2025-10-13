@@ -1962,8 +1962,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else nothing.
                     let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
-                        let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
-                        self.associated_value(impl_trait_ref.skip_binder().def_id, item_name)
+                        let impl_trait_id = self.tcx.impl_opt_trait_id(impl_did)?;
+                        self.associated_value(impl_trait_id, item_name)
                     }) else {
                         continue;
                     };
@@ -1978,7 +1978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let impl_ty = self.tcx.at(span).type_of(impl_did).instantiate_identity();
 
-                    let insertion = match self.tcx.impl_trait_ref(impl_did) {
+                    let insertion = match self.tcx.impl_opt_trait_ref(impl_did) {
                         None => String::new(),
                         Some(trait_ref) => {
                             format!(
@@ -2013,7 +2013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(note_str);
                     }
                     if let Some(sugg_span) = sugg_span
-                        && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did)
+                        && let Some(trait_ref) = self.tcx.impl_opt_trait_ref(impl_did)
                         && let Some(sugg) = print_disambiguation_help(
                             self.tcx,
                             err,

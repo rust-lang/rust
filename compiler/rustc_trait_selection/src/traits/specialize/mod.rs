@@ -117,7 +117,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, source_args);
+        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args);
 
     // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
@@ -176,11 +176,7 @@ fn fulfill_implication<'tcx>(
     let target_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx
-            .tcx
-            .impl_trait_ref(target_impl)
-            .expect("expected source impl to be a trait impl")
-            .instantiate(infcx.tcx, target_args),
+        infcx.tcx.impl_trait_ref(target_impl).instantiate(infcx.tcx, target_args),
     );
 
     // do the impls unify? If not, no specialization.
@@ -307,11 +303,7 @@ pub(super) fn specializes(
     let parent_impl_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx
-            .tcx
-            .impl_trait_ref(parent_impl_def_id)
-            .expect("expected source impl to be a trait impl")
-            .instantiate(infcx.tcx, parent_args),
+        infcx.tcx.impl_trait_ref(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
     );
 
     // do the impls unify? If not, no specialization.

@@ -679,7 +679,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn impl_trait_ref(self, impl_def_id: DefId) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
-        self.impl_trait_ref(impl_def_id).unwrap()
+        self.impl_trait_ref(impl_def_id)
     }
 
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {

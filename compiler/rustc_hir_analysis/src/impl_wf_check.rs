@@ -85,8 +85,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
 
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref =
-        of_trait.then(|| tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity());
+    let impl_trait_ref = of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate_identity());
 
     impl_trait_ref.error_reported()?;
 
@@ -174,7 +173,8 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
 
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+    let impl_trait_ref =
+        tcx.impl_opt_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
 
     impl_trait_ref.error_reported()?;
 

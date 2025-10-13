@@ -1937,6 +1937,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn impl_is_of_trait(self, def_id: impl IntoQueryParam<DefId>) -> bool {
+        let def_id = def_id.into_query_param();
+        let DefKind::Impl { of_trait } = self.def_kind(def_id) else {
+            panic!("expected Impl for {def_id:?}");
+        };
+        of_trait
+    }
+
     /// If the given `DefId` is an associated item of an impl,
     /// returns the `DefId` of the impl; otherwise returns `None`.
     pub fn impl_of_assoc(self, def_id: DefId) -> Option<DefId> {
@@ -1969,24 +1977,32 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Given an `impl_id`, return the trait it implements.
-    /// Return `None` if this is an inherent impl.
     pub fn impl_trait_ref(
         self,
         def_id: impl IntoQueryParam<DefId>,
+    ) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
+        self.impl_opt_trait_ref(def_id).unwrap()
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Returns `None` if it is an inherent impl.
+    pub fn impl_opt_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.trait_ref)
+        self.impl_trait_header(def_id).map(|header| header.trait_ref)
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
-    pub fn impl_trait_id(self, def_id: DefId) -> DefId {
-        self.impl_opt_trait_id(def_id)
-            .unwrap_or_else(|| panic!("expected impl of trait for {def_id:?}"))
+    pub fn impl_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> DefId {
+        self.impl_trait_ref(def_id).skip_binder().def_id
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
-    /// If it implements no trait, returns `None`.
-    pub fn impl_opt_trait_id(self, def_id: DefId) -> Option<DefId> {
-        self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
+    /// Returns `None` if it is an inherent impl.
+    pub fn impl_opt_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
+        let def_id = def_id.into_query_param();
+        self.impl_is_of_trait(def_id).then(|| self.impl_trait_id(def_id))
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
