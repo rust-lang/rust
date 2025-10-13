@@ -32,6 +32,8 @@ impl Session {
         let opt_path = out_path.with_extension("optimized.o");
         let sym_path = out_path.with_extension("symbols.txt");
 
+        tracing::debug!(%target, ?cpu, ?feature, ?out_path, "new session created");
+
         Session {
             target,
             cpu,
@@ -89,10 +91,34 @@ impl Session {
     fn optimize(&mut self, optimization: Optimization, mut debug: bool) -> anyhow::Result<()> {
         let mut passes = format!("default<{}>", optimization);
 
-        // FIXME(@kjetilkjeka) Debug symbol generation is broken for nvptx64 so we must remove them even in debug mode
+        // Debug symbol generation is broken for ptx ISA versions older than 7.0.
+        // See issue: https://github.com/rust-lang/rust/issues/99248
         if debug && self.target == crate::Target::Nvptx64NvidiaCuda {
-            tracing::warn!("nvptx64 target detected - stripping debug symbols");
-            debug = false;
+            // The reason it's sufficient to check for `ptx70` is that
+            // - ptx versions are controlled by target features in llvm
+            // - In rust, newer ptx versions automatically actives older ones
+            let explicit_sufficient_version =
+                self.feature.as_ref().is_some_and(|feat| feat.contains("ptx70"));
+
+            // When an SM version is specified, LLVM will choose a corresponding PTX ISA version.
+            // The list below contains SM versions that LLVM maps to PTX ISA versions older than 7.0.
+            // If LLVM updates its defaults, these entries can be removed.
+            // Likewise, if debug info generation is fixed for PTX < 7.0,
+            // any SM versions that start working can also be removed.
+            // Note: newly introduced SM versions will always map to a PTX ISA ≥ 7.0,
+            // so they do not need to be listed here.
+            let implicit_sufficient_version = self.cpu.as_ref().is_some_and(|cpu| {
+                ![
+                    "sm_20", "sm_30", "sm_35", "sm_50", "sm_52", "sm_53", "sm_60", "sm_61",
+                    "sm_62", "sm_70", "sm_72", "sm_75",
+                ]
+                .contains(&cpu.as_str())
+            });
+
+            if !explicit_sufficient_version && !implicit_sufficient_version {
+                tracing::warn!("PTX version < 7.0 - stripping debug symbols");
+                debug = false;
+            }
         }
 
         // We add an internalize pass as the rust compiler as we require exported symbols to be explicitly marked
