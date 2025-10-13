@@ -1,0 +1,39 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/late-bound-misuse-issue-135845.rs:7:26
+   |
+LL | fn b<'a>() -> S<'static, _> {
+   |                          ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn b<'a>() -> S<'static, _> {
+LL + fn b<'a>() -> S<'_, i32> {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/late-bound-misuse-issue-135845.rs:12:70
+   |
+LL | fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'a _ {
+   |                                                                      ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'a _ {
+LL + fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &u32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/late-bound-misuse-issue-135845.rs:18:54
+   |
+LL | fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'a _ {
+   |                                                      ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'a _ {
+LL + fn opt_str2<'a>(maybestr: &'a Option<String>) -> &str {
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0121`.
