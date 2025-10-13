@@ -6,7 +6,7 @@ use rustc_span::edition::Edition;
 
 use crate::doctest::{
     DocTestBuilder, GlobalTestOptions, IndividualTestOptions, RunnableDocTest, RustdocOptions,
-    ScrapedDocTest, TestFailure, UnusedExterns, run_test,
+    RustdocResult, ScrapedDocTest, UnusedExterns, run_test,
 };
 use crate::html::markdown::{Ignore, LangString};
 
@@ -136,29 +136,14 @@ mod __doctest_mod {{
     }}
 
     #[allow(unused)]
-    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> ExitCode {{
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize, should_panic: bool) -> ExitCode {{
         let out = std::process::Command::new(bin)
             .env(self::RUN_OPTION, test_nb.to_string())
             .args(std::env::args().skip(1).collect::<Vec<_>>())
             .output()
             .expect(\"failed to run command\");
-        if !out.status.success() {{
-            if let Some(code) = out.status.code() {{
-                eprintln!(\"Test executable failed (exit status: {{code}}).\");
-            }} else {{
-                eprintln!(\"Test executable failed (terminated by signal).\");
-            }}
-            if !out.stdout.is_empty() || !out.stderr.is_empty() {{
-                eprintln!();
-            }}
-            if !out.stdout.is_empty() {{
-                eprintln!(\"stdout:\");
-                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stdout));
-            }}
-            if !out.stderr.is_empty() {{
-                eprintln!(\"stderr:\");
-                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
-            }}
+        if let Err(err) = test::test::get_rustdoc_result(out, should_panic) {{
+            eprint!(\"{{err}}\");
             ExitCode::FAILURE
         }} else {{
             ExitCode::SUCCESS
@@ -213,7 +198,10 @@ std::process::Termination::report(test::test_main(test_args, tests, None))
         };
         let (duration, ret) =
             run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
-        (duration, if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) })
+        (
+            duration,
+            if let Err(RustdocResult::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) },
+        )
     }
 }
 
@@ -265,7 +253,7 @@ fn main() {returns_result} {{
         "
 mod {test_id} {{
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
-{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
+{test_name:?}, {ignore}, {file:?}, {line}, {no_run}, false,
 test::StaticTestFn(
     || {{{runner}}},
 ));
@@ -274,7 +262,6 @@ test::StaticTestFn(
         file = scraped_test.path(),
         line = scraped_test.line,
         no_run = scraped_test.no_run(opts),
-        should_panic = !scraped_test.langstr.no_run && scraped_test.langstr.should_panic,
         // Setting `no_run` to `true` in `TestDesc` still makes the test run, so we simply
         // don't give it the function to run.
         runner = if not_running {
@@ -283,11 +270,12 @@ test::StaticTestFn(
             format!(
                 "
 if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
-    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}))
+    test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
 }}
 ",
+                should_panic = scraped_test.langstr.should_panic,
             )
         },
     )

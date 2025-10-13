@@ -45,7 +45,9 @@ pub mod test {
     pub use crate::cli::{TestOpts, parse_opts};
     pub use crate::helpers::metrics::{Metric, MetricMap};
     pub use crate::options::{Options, RunIgnored, RunStrategy, ShouldPanic};
-    pub use crate::test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
+    pub use crate::test_result::{
+        RustdocResult, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk, get_rustdoc_result,
+    };
     pub use crate::time::{TestExecTime, TestTimeOptions};
     pub use crate::types::{
         DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
