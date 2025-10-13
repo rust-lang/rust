@@ -715,6 +715,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self),
             "loongarch32" | "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
             "aarch64" => aarch64::compute_rust_abi_info(cx, self),
+            "bpf" => bpf::compute_rust_abi_info(self),
             _ => {}
         };
 
