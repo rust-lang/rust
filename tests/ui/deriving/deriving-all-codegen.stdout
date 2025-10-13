@@ -29,45 +29,45 @@ use std::from::From;
 struct Empty;
 #[automatically_derived]
 impl ::core::clone::Clone for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Empty { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Empty { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "Empty")
     }
 }
 #[automatically_derived]
 impl ::core::default::Default for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Empty { Empty {} }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 #[automatically_derived]
 impl ::core::marker::StructuralPartialEq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Empty) -> bool { true }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Empty)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ordering::Equal)
@@ -75,7 +75,7 @@ impl ::core::cmp::PartialOrd for Empty {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Empty {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Empty) -> ::core::cmp::Ordering {
         ::core::cmp::Ordering::Equal
     }
@@ -89,7 +89,7 @@ struct Point {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Point {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -99,7 +99,7 @@ impl ::core::clone::Clone for Point {
 impl ::core::marker::Copy for Point { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
             &self.x, "y", &&self.y)
@@ -107,7 +107,7 @@ impl ::core::fmt::Debug for Point {
 }
 #[automatically_derived]
 impl ::core::default::Default for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Point {
         Point {
             x: ::core::default::Default::default(),
@@ -117,7 +117,7 @@ impl ::core::default::Default for Point {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.x, state);
         ::core::hash::Hash::hash(&self.y, state)
@@ -127,14 +127,14 @@ impl ::core::hash::Hash for Point {
 impl ::core::marker::StructuralPartialEq for Point { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -143,7 +143,7 @@ impl ::core::cmp::Eq for Point {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Point)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
@@ -155,7 +155,7 @@ impl ::core::cmp::PartialOrd for Point {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Point {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Point) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.x, &other.x) {
             ::core::cmp::Ordering::Equal =>
@@ -174,7 +174,7 @@ struct PackedPoint {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> PackedPoint {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -184,7 +184,7 @@ impl ::core::clone::Clone for PackedPoint {
 impl ::core::marker::Copy for PackedPoint { }
 #[automatically_derived]
 impl ::core::fmt::Debug for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
             "x", &{ self.x }, "y", &&{ self.y })
@@ -192,7 +192,7 @@ impl ::core::fmt::Debug for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::default::Default for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> PackedPoint {
         PackedPoint {
             x: ::core::default::Default::default(),
@@ -202,7 +202,7 @@ impl ::core::default::Default for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&{ self.x }, state);
         ::core::hash::Hash::hash(&{ self.y }, state)
@@ -212,14 +212,14 @@ impl ::core::hash::Hash for PackedPoint {
 impl ::core::marker::StructuralPartialEq for PackedPoint { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &PackedPoint) -> bool {
         ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
     }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -228,7 +228,7 @@ impl ::core::cmp::Eq for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &PackedPoint)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&{ self.x }, &{ other.x })
@@ -242,7 +242,7 @@ impl ::core::cmp::PartialOrd for PackedPoint {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for PackedPoint {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &PackedPoint) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&{ self.x }, &{ other.x }) {
             ::core::cmp::Ordering::Equal =>
@@ -255,7 +255,7 @@ impl ::core::cmp::Ord for PackedPoint {
 struct TupleSingleField(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> TupleSingleField {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -265,7 +265,7 @@ impl ::core::clone::Clone for TupleSingleField {
 impl ::core::marker::Copy for TupleSingleField { }
 #[automatically_derived]
 impl ::core::fmt::Debug for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f,
             "TupleSingleField", &&self.0)
@@ -273,19 +273,19 @@ impl ::core::fmt::Debug for TupleSingleField {
 }
 #[automatically_derived]
 impl ::core::default::Default for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> TupleSingleField {
         TupleSingleField(::core::default::Default::default())
     }
 }
 #[automatically_derived]
 impl ::core::convert::From<u32> for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn from(value: u32) -> TupleSingleField { Self(value) }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.0, state)
     }
@@ -294,12 +294,12 @@ impl ::core::hash::Hash for TupleSingleField {
 impl ::core::marker::StructuralPartialEq for TupleSingleField { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &TupleSingleField) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -308,7 +308,7 @@ impl ::core::cmp::Eq for TupleSingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &TupleSingleField)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
@@ -316,7 +316,7 @@ impl ::core::cmp::PartialOrd for TupleSingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for TupleSingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &TupleSingleField) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
@@ -327,7 +327,7 @@ struct SingleField {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> SingleField {
         let _: ::core::clone::AssertParamIsClone<bool>;
         *self
@@ -337,7 +337,7 @@ impl ::core::clone::Clone for SingleField {
 impl ::core::marker::Copy for SingleField { }
 #[automatically_derived]
 impl ::core::fmt::Debug for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field1_finish(f, "SingleField",
             "foo", &&self.foo)
@@ -345,19 +345,19 @@ impl ::core::fmt::Debug for SingleField {
 }
 #[automatically_derived]
 impl ::core::default::Default for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> SingleField {
         SingleField { foo: ::core::default::Default::default() }
     }
 }
 #[automatically_derived]
 impl ::core::convert::From<bool> for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn from(value: bool) -> SingleField { Self { foo: value } }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.foo, state)
     }
@@ -366,12 +366,12 @@ impl ::core::hash::Hash for SingleField {
 impl ::core::marker::StructuralPartialEq for SingleField { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &SingleField) -> bool { self.foo == other.foo }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -380,7 +380,7 @@ impl ::core::cmp::Eq for SingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &SingleField)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::cmp::PartialOrd::partial_cmp(&self.foo, &other.foo)
@@ -388,7 +388,7 @@ impl ::core::cmp::PartialOrd for SingleField {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for SingleField {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &SingleField) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.foo, &other.foo)
     }
@@ -408,7 +408,7 @@ struct Big {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Big {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
@@ -418,7 +418,7 @@ impl ::core::clone::Clone for Big {
 impl ::core::marker::Copy for Big { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let names: &'static _ =
             &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
@@ -431,7 +431,7 @@ impl ::core::fmt::Debug for Big {
 }
 #[automatically_derived]
 impl ::core::default::Default for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Big {
         Big {
             b1: ::core::default::Default::default(),
@@ -447,7 +447,7 @@ impl ::core::default::Default for Big {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.b1, state);
         ::core::hash::Hash::hash(&self.b2, state);
@@ -463,7 +463,7 @@ impl ::core::hash::Hash for Big {
 impl ::core::marker::StructuralPartialEq for Big { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Big) -> bool {
         self.b1 == other.b1 && self.b2 == other.b2 && self.b3 == other.b3 &&
                             self.b4 == other.b4 && self.b5 == other.b5 &&
@@ -473,7 +473,7 @@ impl ::core::cmp::PartialEq for Big {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -482,7 +482,7 @@ impl ::core::cmp::Eq for Big {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Big)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
@@ -530,7 +530,7 @@ impl ::core::cmp::PartialOrd for Big {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Big {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Big) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.b1, &other.b1) {
             ::core::cmp::Ordering::Equal =>
@@ -582,7 +582,7 @@ struct Reorder {
 impl ::core::marker::StructuralPartialEq for Reorder { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Reorder {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Reorder) -> bool {
         self.b2 == other.b2 && self.b4 == other.b4 && self.b5 == other.b5 &&
                                         self.b6 == other.b6 && self.b7 == other.b7 &&
@@ -593,7 +593,7 @@ impl ::core::cmp::PartialEq for Reorder {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Reorder {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Reorder)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
@@ -663,7 +663,7 @@ impl ::core::cmp::PartialOrd for Reorder {
 struct NonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for NonCopy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> NonCopy {
         NonCopy(::core::clone::Clone::clone(&self.0))
     }
@@ -675,7 +675,7 @@ impl ::core::clone::Clone for NonCopy {
 struct PackedNonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedNonCopy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> PackedNonCopy {
         PackedNonCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
@@ -686,7 +686,7 @@ impl ::core::clone::Clone for PackedNonCopy {
 struct ManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for ManualCopy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> ManualCopy {
         ManualCopy(::core::clone::Clone::clone(&self.0))
     }
@@ -699,7 +699,7 @@ impl Copy for ManualCopy {}
 struct PackedManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedManualCopy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> PackedManualCopy {
         PackedManualCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
@@ -710,7 +710,7 @@ impl Copy for PackedManualCopy {}
 struct Unsized([u32]);
 #[automatically_derived]
 impl ::core::fmt::Debug for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
             &&self.0)
@@ -718,12 +718,12 @@ impl ::core::fmt::Debug for Unsized {
 }
 #[automatically_derived]
 impl ::core::convert::From<[u32]> for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn from(value: [u32]) -> Unsized { Self(value) }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.0, state)
     }
@@ -732,12 +732,12 @@ impl ::core::hash::Hash for Unsized {
 impl ::core::marker::StructuralPartialEq for Unsized { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -746,7 +746,7 @@ impl ::core::cmp::Eq for Unsized {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Unsized)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
@@ -754,7 +754,7 @@ impl ::core::cmp::PartialOrd for Unsized {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Unsized {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
@@ -773,7 +773,7 @@ struct Generic<T: Trait, U> {
 #[automatically_derived]
 impl<T: ::core::clone::Clone + Trait, U: ::core::clone::Clone>
     ::core::clone::Clone for Generic<T, U> where T::A: ::core::clone::Clone {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Generic<T, U> {
         Generic {
             t: ::core::clone::Clone::clone(&self.t),
@@ -789,7 +789,7 @@ impl<T: ::core::marker::Copy + Trait, U: ::core::marker::Copy>
 #[automatically_derived]
 impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
     for Generic<T, U> where T::A: ::core::fmt::Debug {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
             &self.t, "ta", &self.ta, "u", &&self.u)
@@ -799,7 +799,7 @@ impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
 impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     ::core::default::Default for Generic<T, U> where
     T::A: ::core::default::Default {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Generic<T, U> {
         Generic {
             t: ::core::default::Default::default(),
@@ -811,7 +811,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
 #[automatically_derived]
 impl<T: ::core::hash::Hash + Trait, U: ::core::hash::Hash> ::core::hash::Hash
     for Generic<T, U> where T::A: ::core::hash::Hash {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.t, state);
         ::core::hash::Hash::hash(&self.ta, state);
@@ -824,7 +824,7 @@ impl<T: Trait, U> ::core::marker::StructuralPartialEq for Generic<T, U> { }
 impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for Generic<T, U> where
     T::A: ::core::cmp::PartialEq {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Generic<T, U>) -> bool {
         self.t == other.t && self.ta == other.ta && self.u == other.u
     }
@@ -832,7 +832,7 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     Generic<T, U> where T::A: ::core::cmp::Eq {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -845,7 +845,7 @@ impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
 impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for Generic<T, U> where
     T::A: ::core::cmp::PartialOrd {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Generic<T, U>)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.t, &other.t) {
@@ -863,7 +863,7 @@ impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
 #[automatically_derived]
 impl<T: ::core::cmp::Ord + Trait, U: ::core::cmp::Ord> ::core::cmp::Ord for
     Generic<T, U> where T::A: ::core::cmp::Ord {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Generic<T, U>) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.t, &other.t) {
             ::core::cmp::Ordering::Equal =>
@@ -889,7 +889,7 @@ impl<T: ::core::clone::Clone + ::core::marker::Copy + Trait,
     U: ::core::clone::Clone + ::core::marker::Copy> ::core::clone::Clone for
     PackedGeneric<T, U> where T::A: ::core::clone::Clone +
     ::core::marker::Copy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> PackedGeneric<T, U> {
         PackedGeneric(::core::clone::Clone::clone(&{ self.0 }),
             ::core::clone::Clone::clone(&{ self.1 }),
@@ -906,7 +906,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
     U: ::core::fmt::Debug + ::core::marker::Copy> ::core::fmt::Debug for
     PackedGeneric<T, U> where T::A: ::core::fmt::Debug + ::core::marker::Copy
     {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
             &{ self.0 }, &{ self.1 }, &&{ self.2 })
@@ -916,7 +916,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
 impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     ::core::default::Default for PackedGeneric<T, U> where
     T::A: ::core::default::Default {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> PackedGeneric<T, U> {
         PackedGeneric(::core::default::Default::default(),
             ::core::default::Default::default(),
@@ -928,7 +928,7 @@ impl<T: ::core::hash::Hash + ::core::marker::Copy + Trait,
     U: ::core::hash::Hash + ::core::marker::Copy> ::core::hash::Hash for
     PackedGeneric<T, U> where T::A: ::core::hash::Hash + ::core::marker::Copy
     {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&{ self.0 }, state);
         ::core::hash::Hash::hash(&{ self.1 }, state);
@@ -944,7 +944,7 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     U: ::core::cmp::PartialEq + ::core::marker::Copy> ::core::cmp::PartialEq
     for PackedGeneric<T, U> where T::A: ::core::cmp::PartialEq +
     ::core::marker::Copy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
         ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
             ({ self.2 }) == ({ other.2 })
@@ -954,7 +954,7 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
 impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     ::core::marker::Copy> ::core::cmp::Eq for PackedGeneric<T, U> where
     T::A: ::core::cmp::Eq + ::core::marker::Copy {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -968,7 +968,7 @@ impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
     U: ::core::cmp::PartialOrd + ::core::marker::Copy> ::core::cmp::PartialOrd
     for PackedGeneric<T, U> where T::A: ::core::cmp::PartialOrd +
     ::core::marker::Copy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &PackedGeneric<T, U>)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
@@ -990,7 +990,7 @@ impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
 impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
     ::core::marker::Copy> ::core::cmp::Ord for PackedGeneric<T, U> where
     T::A: ::core::cmp::Ord + ::core::marker::Copy {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &PackedGeneric<T, U>) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&{ self.0 }, &{ other.0 }) {
             ::core::cmp::Ordering::Equal =>
@@ -1008,21 +1008,21 @@ impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
 enum Enum0 {}
 #[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Enum0 { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Enum0 { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match *self {}
     }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match *self {}
     }
@@ -1031,19 +1031,19 @@ impl ::core::hash::Hash for Enum0 {
 impl ::core::marker::StructuralPartialEq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Enum0) -> bool { match *self {} }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Enum0)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match *self {}
@@ -1051,7 +1051,7 @@ impl ::core::cmp::PartialOrd for Enum0 {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Enum0 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering { match *self {} }
 }
 
@@ -1063,7 +1063,7 @@ enum Enum1 {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Enum1 {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -1073,7 +1073,7 @@ impl ::core::clone::Clone for Enum1 {
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -1084,7 +1084,7 @@ impl ::core::fmt::Debug for Enum1 {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -1096,7 +1096,7 @@ impl ::core::hash::Hash for Enum1 {
 impl ::core::marker::StructuralPartialEq for Enum1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Enum1) -> bool {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
@@ -1106,7 +1106,7 @@ impl ::core::cmp::PartialEq for Enum1 {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -1115,7 +1115,7 @@ impl ::core::cmp::Eq for Enum1 {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Enum1)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match (self, other) {
@@ -1126,7 +1126,7 @@ impl ::core::cmp::PartialOrd for Enum1 {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Enum1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
@@ -1143,43 +1143,43 @@ enum Fieldless1 {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Fieldless1 { Fieldless1::A }
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "A")
     }
 }
 #[automatically_derived]
 impl ::core::default::Default for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Fieldless1 { Self::A }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 #[automatically_derived]
 impl ::core::marker::StructuralPartialEq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Fieldless1)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ordering::Equal)
@@ -1187,7 +1187,7 @@ impl ::core::cmp::PartialOrd for Fieldless1 {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Fieldless1 {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
         ::core::cmp::Ordering::Equal
     }
@@ -1203,14 +1203,14 @@ enum Fieldless {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Fieldless { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
             match self {
@@ -1222,12 +1222,12 @@ impl ::core::fmt::Debug for Fieldless {
 }
 #[automatically_derived]
 impl ::core::default::Default for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Fieldless { Self::A }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state)
@@ -1237,7 +1237,7 @@ impl ::core::hash::Hash for Fieldless {
 impl ::core::marker::StructuralPartialEq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Fieldless) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1246,14 +1246,14 @@ impl ::core::cmp::PartialEq for Fieldless {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Fieldless)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
@@ -1263,7 +1263,7 @@ impl ::core::cmp::PartialOrd for Fieldless {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Fieldless {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1285,7 +1285,7 @@ enum Mixed {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Mixed {
         let _: ::core::clone::AssertParamIsClone<u32>;
         let _: ::core::clone::AssertParamIsClone<Option<u32>>;
@@ -1297,7 +1297,7 @@ impl ::core::clone::Clone for Mixed {
 impl ::core::marker::Copy for Mixed { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
@@ -1313,12 +1313,12 @@ impl ::core::fmt::Debug for Mixed {
 }
 #[automatically_derived]
 impl ::core::default::Default for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn default() -> Mixed { Self::P }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
@@ -1336,7 +1336,7 @@ impl ::core::hash::Hash for Mixed {
 impl ::core::marker::StructuralPartialEq for Mixed { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Mixed) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1353,7 +1353,7 @@ impl ::core::cmp::PartialEq for Mixed {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -1364,7 +1364,7 @@ impl ::core::cmp::Eq for Mixed {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Mixed)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
@@ -1388,7 +1388,7 @@ impl ::core::cmp::PartialOrd for Mixed {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Mixed {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1427,7 +1427,7 @@ enum ReorderEnum {
 impl ::core::marker::StructuralPartialEq for ReorderEnum { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for ReorderEnum {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &ReorderEnum) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1447,7 +1447,7 @@ impl ::core::cmp::PartialEq for ReorderEnum {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for ReorderEnum {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &ReorderEnum)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
@@ -1487,7 +1487,7 @@ impl ::core::cmp::PartialOrd for ReorderEnum {
 enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 #[automatically_derived]
 impl ::core::clone::Clone for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Fielded {
         match self {
             Fielded::X(__self_0) =>
@@ -1501,7 +1501,7 @@ impl ::core::clone::Clone for Fielded {
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Fielded::X(__self_0) =>
@@ -1518,7 +1518,7 @@ impl ::core::fmt::Debug for Fielded {
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
@@ -1533,7 +1533,7 @@ impl ::core::hash::Hash for Fielded {
 impl ::core::marker::StructuralPartialEq for Fielded { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &Fielded) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1551,7 +1551,7 @@ impl ::core::cmp::PartialEq for Fielded {
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -1562,7 +1562,7 @@ impl ::core::cmp::Eq for Fielded {
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &Fielded)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
@@ -1582,7 +1582,7 @@ impl ::core::cmp::PartialOrd for Fielded {
 }
 #[automatically_derived]
 impl ::core::cmp::Ord for Fielded {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1607,7 +1607,7 @@ enum EnumGeneric<T, U> { One(T), Two(U), }
 #[automatically_derived]
 impl<T: ::core::clone::Clone, U: ::core::clone::Clone> ::core::clone::Clone
     for EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> EnumGeneric<T, U> {
         match self {
             EnumGeneric::One(__self_0) =>
@@ -1624,7 +1624,7 @@ impl<T: ::core::marker::Copy, U: ::core::marker::Copy> ::core::marker::Copy
 #[automatically_derived]
 impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             EnumGeneric::One(__self_0) =>
@@ -1639,7 +1639,7 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
 #[automatically_derived]
 impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
     EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         ::core::hash::Hash::hash(&__self_discr, state);
@@ -1656,7 +1656,7 @@ impl<T, U> ::core::marker::StructuralPartialEq for EnumGeneric<T, U> { }
 #[automatically_derived]
 impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &EnumGeneric<T, U>) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1673,7 +1673,7 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
 #[automatically_derived]
 impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     #[doc(hidden)]
     #[coverage(off)]
     fn assert_receiver_is_total_eq(&self) -> () {
@@ -1684,7 +1684,7 @@ impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
 #[automatically_derived]
 impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn partial_cmp(&self, other: &EnumGeneric<T, U>)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
@@ -1703,7 +1703,7 @@ impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
 #[automatically_derived]
 impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
     EnumGeneric<T, U> {
-    #[inline]
+    #[rustc_defer_codegen]
     fn cmp(&self, other: &EnumGeneric<T, U>) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1732,7 +1732,7 @@ enum NonCopyEnum {
 impl ::core::marker::StructuralPartialEq for NonCopyEnum { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for NonCopyEnum {
-    #[inline]
+    #[rustc_defer_codegen]
     fn eq(&self, other: &NonCopyEnum) -> bool {
         match (self, other) {
             (NonCopyEnum::NonCopyField(__self_0),
@@ -1753,7 +1753,7 @@ pub union Union {
 }
 #[automatically_derived]
 impl ::core::clone::Clone for Union {
-    #[inline]
+    #[rustc_defer_codegen]
     fn clone(&self) -> Union {
         let _: ::core::clone::AssertParamIsCopy<Self>;
         *self

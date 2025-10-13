@@ -86,7 +86,7 @@ pub(crate) fn expand_deriving_from(
             explicit_self: false,
             nonself_args: vec![(from_type, sym::value)],
             ret_ty: Ty::Self_,
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes: thin_vec![cx.attr_word(sym::rustc_defer_codegen, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|cx, span, substructure| {
                 let field = match field {

@@ -1779,6 +1779,7 @@ pub(crate) mod builtin {
     // `std::convert::From`.
     #[rustc_builtin_macro]
     #[unstable(feature = "derive_from", issue = "144889")]
+    #[allow_internal_unstable(rustc_attrs)]
     pub macro From($item: item) {
         /* compiler built-in */
     }
