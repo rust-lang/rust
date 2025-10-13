@@ -1,6 +1,10 @@
 #![feature(pointer_is_aligned_to)]
 use std::{mem, ptr, slice};
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 fn test_memcpy() {
     unsafe {
         let src = [1i8, 2, 3];
@@ -120,13 +124,12 @@ fn test_memset() {
 }
 
 fn test_malloc() {
-    // Test that small allocations sometimes *are* not very aligned.
-    let saw_unaligned = (0..64).any(|_| unsafe {
+    // Test that small allocations sometimes are *not* very aligned (and sometimes they are).
+    check_nondet(|| unsafe {
         let p = libc::malloc(3);
         libc::free(p);
-        (p as usize) % 4 != 0 // find any that this is *not* 4-aligned
+        (p as usize) % 4 == 0
     });
-    assert!(saw_unaligned);
 
     unsafe {
         let p1 = libc::malloc(20);
