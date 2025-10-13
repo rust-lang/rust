@@ -39,11 +39,11 @@ use std::io::{self, IsTerminal};
 
 use tracing::dispatcher::SetGlobalDefaultError;
 use tracing::{Event, Subscriber};
+use tracing_subscriber::Registry;
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{Layer, Registry};
 
 /// The values of all the environment variables that matter for configuring a logger.
 /// Errors are explicitly preserved so that we can share error handling.
@@ -152,18 +152,19 @@ where
         }
     }
 
-    let subscriber = build_subscriber().with(layer.with_filter(filter));
+    let subscriber = build_subscriber();
+    // NOTE: It is important to make sure that the filter is applied on the last layer
     match cfg.backtrace {
         Ok(backtrace_target) => {
             let fmt_layer = tracing_subscriber::fmt::layer()
                 .with_writer(io::stderr)
                 .without_time()
                 .event_format(BacktraceFormatter { backtrace_target });
-            let subscriber = subscriber.with(fmt_layer);
+            let subscriber = subscriber.with(layer).with(fmt_layer).with(filter);
             tracing::subscriber::set_global_default(subscriber)?;
         }
         Err(_) => {
-            tracing::subscriber::set_global_default(subscriber)?;
+            tracing::subscriber::set_global_default(subscriber.with(layer).with(filter))?;
         }
     };
 
