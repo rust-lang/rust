@@ -38,6 +38,7 @@ impl LanguageItems {
         }
     }
 
+    #[inline]
     pub fn get(&self, item: LangItem) -> Option<DefId> {
         self.items[item as usize]
     }

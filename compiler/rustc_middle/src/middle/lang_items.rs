@@ -23,6 +23,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    #[inline]
     pub fn is_lang_item(self, def_id: DefId, lang_item: LangItem) -> bool {
         self.lang_items().get(lang_item) == Some(def_id)
     }
