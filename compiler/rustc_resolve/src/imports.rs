@@ -454,6 +454,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
+        // "Same res different import" ambiguity hack for macros introduced in #145108.
+        // See related discussion for more info:
+        // https://rust-lang.zulipchat.com/#narrow/channel/421156-gsoc/topic/Project.3A.20Parallel.20Macro.20Expansion/near/542057918.
+        if ns == MacroNS
+            && decl.is_glob_import()
+            && decl.vis.get().is_public() // is a glob that reexports a macro
+            && self.macro_use_prelude.contains_key(&ident.name) // which also lives in macro_use world
+            && let Some(def_id) = res.opt_def_id()
+        {
+            self.macro_vis_hack_map.insert((module, def_id));
+        }
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
             if let Some(old_decl) = resolution.best_decl() {
                 assert_ne!(decl, old_decl);
@@ -642,7 +653,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for (import, side_effect) in import_resolutions {
             let SideEffect { imported_module, decls: side_effect_bindings } = side_effect;
             let parent = import.parent_scope.module;
-
             match (&import.kind, side_effect_bindings) {
                 (
                     ImportKind::Single { target, decls, .. },
@@ -1677,12 +1687,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
             if res != def::Res::Err {
-                let child = |reexport_chain| ModChild {
-                    ident: ident.0,
-                    res,
-                    vis: binding.vis(),
-                    reexport_chain,
+                let vis = match res.opt_def_id() {
+                    Some(def_id) if self.macro_vis_hack_map.contains(&(module, def_id)) => {
+                        Visibility::Public
+                    }
+                    Some(_) | None => binding.vis.get(),
                 };
+                let child = |reexport_chain| ModChild { ident: ident.0, res, vis, reexport_chain };
                 if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
                     let main = child(ambig_binding1.reexport_chain(this));
                     let second = ModChild {
