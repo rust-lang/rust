@@ -585,8 +585,7 @@ impl<T: Idx> ChunkedBitSet<T> {
     }
 
     pub fn clear(&mut self) {
-        let domain_size = self.domain_size();
-        *self = ChunkedBitSet::new_empty(domain_size);
+        self.chunks.fill_with(|| Chunk::Zeros);
     }
 
     #[cfg(test)]
@@ -684,9 +683,7 @@ impl<T: Idx> ChunkedBitSet<T> {
 
     /// Sets all bits to true.
     pub fn insert_all(&mut self) {
-        for chunk in self.chunks.iter_mut() {
-            *chunk = Ones;
-        }
+        self.chunks.fill_with(|| Chunk::Ones);
     }
 
     /// Returns `true` if the set has changed.
