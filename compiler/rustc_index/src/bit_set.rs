@@ -800,27 +800,28 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // words, and this happens often enough that it's a
                     // performance win. Also, we only need to operate on the
                     // in-use words, hence the slicing.
-                    let op = |a, b| a | b;
                     let num_words = num_words(chunk_domain_size as usize);
-                    if bitwise_changes(
+                    let op = |a, b| a | b;
+                    if !bitwise_changes(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     ) {
-                        let self_chunk_words = Rc::make_mut(self_chunk_words);
-                        let has_changed = bitwise(
-                            &mut self_chunk_words[0..num_words],
-                            &other_chunk_words[0..num_words],
-                            op,
-                        );
-                        debug_assert!(has_changed);
-                        *self_chunk_count =
-                            count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                        if *self_chunk_count == chunk_domain_size {
-                            *self_chunk = Ones;
-                        }
-                        changed = true;
+                        continue;
                     }
+
+                    let self_chunk_words = Rc::make_mut(self_chunk_words);
+                    let has_changed = bitwise(
+                        &mut self_chunk_words[0..num_words],
+                        &other_chunk_words[0..num_words],
+                        op,
+                    );
+                    debug_assert!(has_changed);
+                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_count == chunk_domain_size {
+                        *self_chunk = Ones;
+                    }
+                    changed = true;
                 }
             }
         }
@@ -874,28 +875,29 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     Mixed(self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_count, other_chunk_words),
                 ) => {
-                    // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
-                    let op = |a: u64, b: u64| a & !b;
+                    // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
-                    if bitwise_changes(
+                    let op = |a: u64, b: u64| a & !b;
+                    if !bitwise_changes(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     ) {
-                        let self_chunk_words = Rc::make_mut(self_chunk_words);
-                        let has_changed = bitwise(
-                            &mut self_chunk_words[0..num_words],
-                            &other_chunk_words[0..num_words],
-                            op,
-                        );
-                        debug_assert!(has_changed);
-                        *self_chunk_count =
-                            count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                        if *self_chunk_count == 0 {
-                            *self_chunk = Zeros;
-                        }
-                        changed = true;
+                        continue;
                     }
+
+                    let self_chunk_words = Rc::make_mut(self_chunk_words);
+                    let has_changed = bitwise(
+                        &mut self_chunk_words[0..num_words],
+                        &other_chunk_words[0..num_words],
+                        op,
+                    );
+                    debug_assert!(has_changed);
+                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_count == 0 {
+                        *self_chunk = Zeros;
+                    }
+                    changed = true;
                 }
             }
         }
@@ -931,28 +933,29 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     Mixed(self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_count, other_chunk_words),
                 ) => {
-                    // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
-                    let op = |a, b| a & b;
+                    // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
-                    if bitwise_changes(
+                    let op = |a, b| a & b;
+                    if !bitwise_changes(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
                         op,
                     ) {
-                        let self_chunk_words = Rc::make_mut(self_chunk_words);
-                        let has_changed = bitwise(
-                            &mut self_chunk_words[0..num_words],
-                            &other_chunk_words[0..num_words],
-                            op,
-                        );
-                        debug_assert!(has_changed);
-                        *self_chunk_count =
-                            count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
-                        if *self_chunk_count == 0 {
-                            *self_chunk = Zeros;
-                        }
-                        changed = true;
+                        continue;
                     }
+
+                    let self_chunk_words = Rc::make_mut(self_chunk_words);
+                    let has_changed = bitwise(
+                        &mut self_chunk_words[0..num_words],
+                        &other_chunk_words[0..num_words],
+                        op,
+                    );
+                    debug_assert!(has_changed);
+                    *self_chunk_count = count_ones(&self_chunk_words[0..num_words]) as ChunkSize;
+                    if *self_chunk_count == 0 {
+                        *self_chunk = Zeros;
+                    }
+                    changed = true;
                 }
             }
         }
