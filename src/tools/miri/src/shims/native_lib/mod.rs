@@ -1,11 +1,13 @@
 //! Implements calling functions from a native library.
 
 use std::ops::Deref;
+use std::sync::atomic::AtomicBool;
 
 use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
-use rustc_middle::ty::{self as ty, IntTy, Ty, UintTy};
+use rustc_middle::ty::layout::HasTypingEnv;
+use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
 use serde::{Deserialize, Serialize};
 
@@ -219,11 +221,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // so we cannot assume 1 access = 1 allocation. :(
             let mut rg = evt_rg.addr..evt_rg.end();
             while let Some(curr) = rg.next() {
-                let Some(alloc_id) = this.alloc_id_from_addr(
-                    curr.to_u64(),
-                    rg.len().try_into().unwrap(),
-                    /* only_exposed_allocations */ true,
-                ) else {
+                let Some(alloc_id) =
+                    this.alloc_id_from_addr(curr.to_u64(), rg.len().try_into().unwrap())
+                else {
                     throw_ub_format!("Foreign code did an out-of-bounds access!")
                 };
                 let alloc = this.get_alloc_raw(alloc_id)?;
@@ -281,8 +281,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Helper to print a warning when a pointer is shared with the native code.
         let expose = |prov: Provenance| -> InterpResult<'tcx> {
-            // The first time this happens, print a warning.
-            if !this.machine.native_call_mem_warned.replace(true) {
+            static DEDUP: AtomicBool = AtomicBool::new(false);
+            if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
                 // Newly set, so first time we get here.
                 this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
             }
@@ -374,15 +374,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> InterpResult<'tcx, FfiType> {
-        // TODO: Certain non-C reprs should be okay also.
-        if !adt_def.repr().c() {
-            throw_unsup_format!("passing a non-#[repr(C)] struct over FFI: {orig_ty}")
-        }
         // TODO: unions, etc.
         if !adt_def.is_struct() {
-            throw_unsup_format!(
-                "unsupported argument type for native call: {orig_ty} is an enum or union"
-            );
+            throw_unsup_format!("passing an enum or union over FFI: {orig_ty}");
+        }
+        // TODO: Certain non-C reprs should be okay also.
+        if !adt_def.repr().c() {
+            throw_unsup_format!("passing a non-#[repr(C)] {} over FFI: {orig_ty}", adt_def.descr())
         }
 
         let this = self.eval_context_ref();
@@ -396,19 +394,24 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Gets the matching libffi type for a given Ty.
     fn ty_to_ffitype(&self, ty: Ty<'tcx>) -> InterpResult<'tcx, FfiType> {
+        let this = self.eval_context_ref();
         interp_ok(match ty.kind() {
             ty::Int(IntTy::I8) => FfiType::i8(),
             ty::Int(IntTy::I16) => FfiType::i16(),
             ty::Int(IntTy::I32) => FfiType::i32(),
             ty::Int(IntTy::I64) => FfiType::i64(),
             ty::Int(IntTy::Isize) => FfiType::isize(),
-            // the uints
             ty::Uint(UintTy::U8) => FfiType::u8(),
             ty::Uint(UintTy::U16) => FfiType::u16(),
             ty::Uint(UintTy::U32) => FfiType::u32(),
             ty::Uint(UintTy::U64) => FfiType::u64(),
             ty::Uint(UintTy::Usize) => FfiType::usize(),
-            ty::RawPtr(..) => FfiType::pointer(),
+            ty::RawPtr(pointee_ty, _mut) => {
+                if !pointee_ty.is_sized(*this.tcx, this.typing_env()) {
+                    throw_unsup_format!("passing a pointer to an unsized type over FFI: {}", ty);
+                }
+                FfiType::pointer()
+            }
             ty::Adt(adt_def, args) => self.adt_to_ffitype(ty, *adt_def, args)?,
             _ => throw_unsup_format!("unsupported argument type for native call: {}", ty),
         })

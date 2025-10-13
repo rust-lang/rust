@@ -11,7 +11,7 @@ struct Foo {
     field2: Cell<u32>,
 }
 
-pub fn main() {
+fn main() {
     let root = Foo { field1: 42, field2: Cell::new(88) };
     unsafe {
         let a = &root;

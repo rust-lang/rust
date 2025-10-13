@@ -188,6 +188,11 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         // Run in GenMC mode if enabled.
         if config.genmc_config.is_some() {
+            // Validate GenMC settings.
+            if let Err(err) = GenmcConfig::validate(&mut config, tcx) {
+                fatal_error!("Invalid settings: {err}");
+            }
+
             // This is the entry point used in GenMC mode.
             // This closure will be called multiple times to explore the concurrent execution space of the program.
             let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
@@ -352,6 +357,7 @@ fn fatal_error_(msg: &impl std::fmt::Display) -> ! {
 macro_rules! fatal_error {
     ($($tt:tt)*) => { $crate::fatal_error_(&format_args!($($tt)*)) };
 }
+#[allow(unused)] // use depends on cfg
 use fatal_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
@@ -743,11 +749,6 @@ fn main() {
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
-
-    // Validate settings for data race detection and GenMC mode.
-    if let Err(err) = GenmcConfig::validate_genmc_mode_settings(&mut miri_config) {
-        fatal_error!("Invalid settings: {err}");
-    }
 
     if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(

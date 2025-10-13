@@ -12,7 +12,7 @@
 // doing region-folding, when really all clients of the region-folding
 // case only want to see *free* lifetime variables, not bound ones.
 
-pub fn main() {
+fn main() {
     fn explicit() {
         fn test<F>(_x: Option<Box<F>>)
         where

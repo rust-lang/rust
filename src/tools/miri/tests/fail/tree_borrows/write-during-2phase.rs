@@ -14,7 +14,7 @@ impl Foo {
     }
 }
 
-pub fn main() {
+fn main() {
     let mut f = Foo(0);
     let alias = &mut f.0 as *mut u64;
     let res = f.add(unsafe {

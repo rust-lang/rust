@@ -296,6 +296,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
                             attr,
+                            attr.span(),
                             attr_item.style,
                             hir_id,
                             target,
@@ -1089,18 +1090,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks that an attribute is used at the crate level. Returns `true` if valid.
     fn check_attr_crate_level(
         &self,
-        attr: &Attribute,
+        attr_span: Span,
         style: AttrStyle,
         meta: &MetaItemInner,
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
             // insert a bang between `#` and `[...`
-            let bang_span = attr.span().lo() + BytePos(1);
+            let bang_span = attr_span.lo() + BytePos(1);
             let sugg = (style == AttrStyle::Outer
                 && self.tcx.hir_get_parent_item(hir_id) == CRATE_OWNER_ID)
                 .then_some(errors::AttrCrateLevelOnlySugg {
-                    attr: attr.span().with_lo(bang_span).with_hi(bang_span),
+                    attr: attr_span.with_lo(bang_span).with_hi(bang_span),
                 });
             self.tcx.emit_node_span_lint(
                 INVALID_DOC_ATTRIBUTES,
@@ -1116,7 +1117,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
     fn check_test_attr(
         &self,
-        attr: &Attribute,
+        attr_span: Span,
         style: AttrStyle,
         meta: &MetaItemInner,
         hir_id: HirId,
@@ -1128,7 +1129,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         // Allowed everywhere like `#[doc]`
                     }
                     (Some(sym::no_crate_inject), _) => {
-                        self.check_attr_crate_level(attr, style, meta, hir_id);
+                        self.check_attr_crate_level(attr_span, style, meta, hir_id);
                     }
                     (_, Some(m)) => {
                         self.tcx.emit_node_span_lint(
@@ -1225,6 +1226,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_doc_attrs(
         &self,
         attr: &Attribute,
+        attr_span: Span,
         style: AttrStyle,
         hir_id: HirId,
         target: Target,
@@ -1274,7 +1276,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
 
                         Some(sym::test) => {
-                            self.check_test_attr(attr, style, meta, hir_id);
+                            self.check_test_attr(attr_span, style, meta, hir_id);
                         }
 
                         Some(
@@ -1285,7 +1287,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::html_root_url
                             | sym::html_no_source,
                         ) => {
-                            self.check_attr_crate_level(attr, style, meta, hir_id);
+                            self.check_attr_crate_level(attr_span, style, meta, hir_id);
                         }
 
                         Some(sym::auto_cfg) => {
@@ -1301,7 +1303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         Some(sym::cfg | sym::hidden | sym::notable_trait) => {}
 
                         Some(sym::rust_logo) => {
-                            if self.check_attr_crate_level(attr, style, meta, hir_id)
+                            if self.check_attr_crate_level(attr_span, style, meta, hir_id)
                                 && !self.tcx.features().rustdoc_internals()
                             {
                                 feature_err(

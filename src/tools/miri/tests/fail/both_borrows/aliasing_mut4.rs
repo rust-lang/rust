@@ -5,7 +5,7 @@ use std::cell::Cell;
 use std::mem;
 
 // Make sure &mut UnsafeCell also is exclusive
-pub fn safe(x: &i32, y: &mut Cell<i32>) {
+fn safe(x: &i32, y: &mut Cell<i32>) {
     //~[stack]^ ERROR: protect
     y.set(1);
     let _load = *x;

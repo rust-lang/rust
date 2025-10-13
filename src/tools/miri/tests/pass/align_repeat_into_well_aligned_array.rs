@@ -25,7 +25,7 @@ pub const KEYBYTES: usize = 8 * size_of::<u64>();
 pub const BLOCKBYTES: usize = 16 * size_of::<u64>();
 
 impl Params {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             hash_length: OUTBYTES as u8,
             key_length: 0,
