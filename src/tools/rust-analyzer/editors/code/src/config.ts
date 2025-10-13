@@ -4,7 +4,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
-import { cloneDeep, get, merge, pickBy } from "lodash";
+import { cloneDeep, get, pickBy, set } from "lodash";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
@@ -220,7 +220,19 @@ export class Config {
 
     // Returns the final configuration to use, with extension configuration overrides merged in.
     public get cfg(): ConfigurationTree {
-        return merge(cloneDeep(this.rawCfg), ...Object.values(this.extensionConfigurations));
+        const finalConfig = cloneDeep<ConfigurationTree>(this.rawCfg);
+        for (const [extensionId, items] of Object.entries(this.extensionConfigurations)) {
+            for (const [k, v] of Object.entries(items)) {
+                const i = this.rawCfg.inspect(k);
+                if (i?.workspaceValue !== undefined || i?.workspaceFolderValue !== undefined || i?.globalValue !== undefined) {
+                    log.trace(`Ignoring configuration override for ${k} from extension ${extensionId}`);
+                    continue;
+                }
+                log.trace(`Extension ${extensionId} overrides configuration ${k} to `, v);
+                set(finalConfig, k, v);
+            }
+        }
+        return finalConfig;
     }
 
     /**

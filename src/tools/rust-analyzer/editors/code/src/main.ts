@@ -15,9 +15,9 @@ export interface RustAnalyzerExtensionApi {
     readonly client?: lc.LanguageClient;
 
     // Allows adding a configuration override from another extension.
-    // `configuration` is a `rust-analyzer` subtree of the vscode configuration
-    // that gets merged with the workspace/user configuration. `extensionId` is
-    // used to only merge configuration override from present extensions.
+    // `extensionId` is used to only merge configuration override from present
+    // extensions. `configuration` is map of rust-analyzer-specific setting
+    // overrides, e.g., `{"cargo.cfgs": ["foo", "bar"]}`.
     addConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void>;
 }
 
