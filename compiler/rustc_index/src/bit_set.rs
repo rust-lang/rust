@@ -801,6 +801,16 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     // performance win. Also, we only need to operate on the
                     // in-use words, hence the slicing.
                     let num_words = num_words(chunk_domain_size as usize);
+
+                    // If both sides are the same, nothing will change. This
+                    // case is very common and it's a pretty fast check, so
+                    // it's a performance win to do it.
+                    if self_chunk_words[0..num_words] == other_chunk_words[0..num_words] {
+                        continue;
+                    }
+
+                    // Do a more precise "will anything change?" test. Also a
+                    // performance win.
                     let op = |a, b| a | b;
                     if !bitwise_changes(
                         &self_chunk_words[0..num_words],
@@ -810,6 +820,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         continue;
                     }
 
+                    // If we reach here, `self_chunk_words` is definitely changing.
                     let self_chunk_words = Rc::make_mut(self_chunk_words);
                     let has_changed = bitwise(
                         &mut self_chunk_words[0..num_words],
