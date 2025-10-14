@@ -310,15 +310,17 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(attr) = AttributeParser::parse_limited(
-                    cx.builder.sess(),
-                    &it.attrs,
-                    sym::allow_internal_unsafe,
-                    it.span,
-                    DUMMY_NODE_ID,
-                    Some(cx.builder.features()),
-                ) {
-                    self.report_unsafe(cx, attr.span(), BuiltinUnsafe::AllowInternalUnsafe);
+                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
+                    AttributeParser::parse_limited(
+                        cx.builder.sess(),
+                        &it.attrs,
+                        sym::allow_internal_unsafe,
+                        it.span,
+                        DUMMY_NODE_ID,
+                        Some(cx.builder.features()),
+                    )
+                {
+                    self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 
