@@ -416,6 +416,13 @@ impl<'hir> ConstItemRhs<'hir> {
             ConstItemRhs::TypeConst(ct_arg) => ct_arg.hir_id,
         }
     }
+
+    pub fn span<'tcx>(&self, tcx: impl crate::intravisit::HirTyCtxt<'tcx>) -> Span {
+        match self {
+            ConstItemRhs::Body(body_id) => tcx.hir_body(*body_id).value.span,
+            ConstItemRhs::TypeConst(ct_arg) => ct_arg.span(),
+        }
+    }
 }
 
 /// A constant that enters the type system, used for arguments to const generics (e.g. array lengths).

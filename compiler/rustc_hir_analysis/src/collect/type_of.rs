@@ -166,6 +166,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                             def_id,
                             ct_arg.hir_id(),
                             ty.span,
+                            ct_arg.span(tcx),
                             item.ident,
                             "associated constant",
                         )
@@ -190,6 +191,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         def_id,
                         ct_arg.hir_id(),
                         ty.span,
+                        ct_arg.span(tcx),
                         item.ident,
                         "associated constant",
                     )
@@ -214,6 +216,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         def_id,
                         body_id.hir_id,
                         ty.span,
+                        tcx.hir_body(body_id).value.span,
                         ident,
                         "static variable",
                     )
@@ -236,6 +239,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         def_id,
                         body.hir_id(),
                         ty.span,
+                        body.span(tcx),
                         ident,
                         "constant",
                     )
@@ -426,7 +430,8 @@ fn infer_placeholder_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
     hir_id: HirId,
-    span: Span,
+    ty_span: Span,
+    body_span: Span,
     item_ident: Ident,
     kind: &'static str,
 ) -> Ty<'tcx> {
@@ -439,10 +444,10 @@ fn infer_placeholder_type<'tcx>(
     // us to improve in typeck so we do that now.
     let guar = cx
         .dcx()
-        .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
+        .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
-                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
@@ -452,14 +457,14 @@ fn infer_placeholder_type<'tcx>(
 
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
-                        span,
+                        ty_span,
                         format!("provide a type for the {kind}"),
                         format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
-                        tcx.hir_span(hir_id),
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
@@ -473,7 +478,7 @@ fn infer_placeholder_type<'tcx>(
             }
             // If we didn't find any infer tys, then just fallback to `span`.
             if visitor.spans.is_empty() {
-                visitor.spans.push(span);
+                visitor.spans.push(ty_span);
             }
             let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
@@ -482,20 +487,20 @@ fn infer_placeholder_type<'tcx>(
             // same span. If this happens, we will fall through to this arm, so
             // we need to suppress the suggestion since it's invalid. Ideally we
             // would suppress the duplicated error too, but that's really hard.
-            if span.is_empty() && span.from_expansion() {
+            if ty_span.is_empty() && ty_span.from_expansion() {
                 // An approximately better primary message + no suggestion...
                 diag.primary_message("missing type for item");
             } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion_verbose(
-                        span,
+                        ty_span,
                         "replace this with a fully-specified type",
                         ty,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
-                        tcx.hir_span(hir_id),
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
