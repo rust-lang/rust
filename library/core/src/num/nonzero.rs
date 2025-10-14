@@ -666,8 +666,8 @@ macro_rules! nonzero_integer {
                 // and self.leading_zeros() is always < $INT::BITS since
                 // at least one of the bits in the number is not zero
                 unsafe {
-                    let bit = (((1 as $Int) << (<$Int>::BITS - 1)).unchecked_shr(self.leading_zeros()));
-                    NonZero::new_unchecked(bit)
+                    let bit = (((1 as $UInt) << (<$UInt>::BITS - 1)).unchecked_shr(self.leading_zeros()));
+                    NonZero::new_unchecked(bit as $Int)
                 }
             }
 
