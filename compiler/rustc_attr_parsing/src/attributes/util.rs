@@ -28,7 +28,8 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 }
 
 pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
-    attr.is_doc_comment() || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
+    attr.is_doc_comment().is_some()
+        || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
 
 pub fn is_doc_alias_attrs_contain_symbol<'tcx, T: AttributeExt + 'tcx>(
