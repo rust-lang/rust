@@ -293,6 +293,19 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `#[type_const]`.
+    ///
+    /// When a const item is used in a type-level expression, like in equality for an assoc const
+    /// projection, this allows us to retrieve the typesystem-appropriate representation of the
+    /// const value.
+    ///
+    /// This query will ICE if given a const that is not marked with `#[type_const]`.
+    query const_of_item(def_id: DefId) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+        desc { |tcx| "computing the type-level value for `{}`", tcx.def_path_str(def_id)  }
+        cache_on_disk_if { def_id.is_local() }
+        separate_provide_extern
+    }
+
     /// Returns the *type* of the definition given by `DefId`.
     ///
     /// For type aliases (whether eager or lazy) and associated types, this returns

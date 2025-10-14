@@ -1,6 +1,12 @@
 //@ edition: 2024
 
-#![feature(associated_const_equality, type_alias_impl_trait, return_type_notation)]
+#![feature(
+    associated_const_equality,
+    min_generic_const_args,
+    type_alias_impl_trait,
+    return_type_notation
+)]
+#![expect(incomplete_features)]
 #![allow(refining_impl_trait_internal)]
 
 use std::iter;
@@ -45,6 +51,7 @@ fn mismatch_2() -> impl Iterator<Item: Copy, Item: Send> {
 trait Trait {
     type Gat<T>;
 
+    #[type_const]
     const ASSOC: i32;
 
     fn foo() -> impl Sized;
@@ -53,6 +60,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
+    #[type_const]
     const ASSOC: i32 = 3;
 
     fn foo() {}
@@ -61,6 +69,7 @@ impl Trait for () {
 impl Trait for u32 {
     type Gat<T> = ();
 
+    #[type_const]
     const ASSOC: i32 = 4;
 
     fn foo() -> u32 {
@@ -79,6 +88,7 @@ type MustFail = dyn Iterator<Item = i32, Item = u32>;
 //~| ERROR conflicting associated type bounds
 
 trait Trait2 {
+    #[type_const]
     const ASSOC: u32;
 }
 
