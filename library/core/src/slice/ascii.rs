@@ -61,8 +61,15 @@ impl [u8] {
         }
 
         #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
-        if self.len() >= 16 {
-            return self.eq_ignore_ascii_case_chunks(other);
+        {
+            const CHUNK_SIZE: usize = 16;
+            // The following function has two invariants:
+            // 1. The slice lengths must be equal, which we checked above.
+            // 2. The slice lengths must greater than or equal to N, which this
+            //    if-statement is checking.
+            if self.len() >= CHUNK_SIZE {
+                return self.eq_ignore_ascii_case_chunks::<CHUNK_SIZE>(other);
+            }
         }
 
         self.eq_ignore_ascii_case_simple(other)
@@ -90,24 +97,30 @@ impl [u8] {
         true
     }
 
-    /// Optimized version of `eq_ignore_ascii_case` for byte lengths of at least
-    /// 16 bytes, which processes chunks at a time.
+    /// Optimized version of `eq_ignore_ascii_case` to process chunks at a time.
     ///
     /// Platforms that have SIMD instructions may benefit from this
     /// implementation over `eq_ignore_ascii_case_simple`.
+    ///
+    /// # Invariants
+    ///
+    /// The caller must guarantee that the slices are equal in length, and the
+    /// slice lengths are greater than or equal to `N` bytes.
     #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
     #[inline]
-    const fn eq_ignore_ascii_case_chunks(&self, other: &[u8]) -> bool {
-        const N: usize = 16;
+    const fn eq_ignore_ascii_case_chunks<const N: usize>(&self, other: &[u8]) -> bool {
+        // FIXME(const-hack): The while-loops that follow should be replaced by
+        // for-loops when available in const.
+
         let (self_chunks, self_rem) = self.as_chunks::<N>();
         let (other_chunks, _) = other.as_chunks::<N>();
 
         // Branchless check to encourage auto-vectorization
         #[inline(always)]
-        const fn eq_ignore_ascii_inner(lhs: &[u8; N], rhs: &[u8; N]) -> bool {
+        const fn eq_ignore_ascii_inner<const L: usize>(lhs: &[u8; L], rhs: &[u8; L]) -> bool {
             let mut equal_ascii = true;
             let mut j = 0;
-            while j < N {
+            while j < L {
                 equal_ascii &= lhs[j].eq_ignore_ascii_case(&rhs[j]);
                 j += 1;
             }
@@ -123,6 +136,12 @@ impl [u8] {
             }
             i += 1;
         }
+
+        // Check the length invariant which is necessary for the tail-handling
+        // logic to be correct. This should have been upheld by the caller,
+        // otherwise lengths less than N will compare as true without any
+        // checking.
+        debug_assert!(self.len() >= N);
 
         // If there are remaining tails, load the last N bytes in the slices to
         // avoid falling back to per-byte checking.
