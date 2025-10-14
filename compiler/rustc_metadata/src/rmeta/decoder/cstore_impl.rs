@@ -403,6 +403,7 @@ provide! { tcx, def_id, other, cdata,
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
     }
     anon_const_kind => { table }
+    const_of_item => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {

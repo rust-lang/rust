@@ -89,7 +89,7 @@ fn normalize_canonicalized_free_alias<'tcx>(
             let normalized_term = if goal.kind(tcx).is_type() {
                 tcx.type_of(goal.def_id).instantiate(tcx, goal.args).into()
             } else {
-                todo!()
+                tcx.const_of_item(goal.def_id).instantiate(tcx, goal.args).into()
             };
             Ok(NormalizationResult { normalized_term })
         },
