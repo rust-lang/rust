@@ -283,6 +283,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
+                    | AttributeKind::RustcMain,
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -2397,14 +2398,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     // Check for builtin attributes at the crate level
     // which were unsuccessfully resolved due to cannot determine
     // resolution for the attribute macro error.
-    const ATTRS_TO_CHECK: &[Symbol] = &[
-        sym::rustc_main,
-        sym::derive,
-        sym::test,
-        sym::test_case,
-        sym::global_allocator,
-        sym::bench,
-    ];
+    const ATTRS_TO_CHECK: &[Symbol] =
+        &[sym::derive, sym::test, sym::test_case, sym::global_allocator, sym::bench];
 
     for attr in attrs {
         // FIXME(jdonszelmann): all attrs should be combined here cleaning this up some day.
