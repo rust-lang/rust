@@ -644,7 +644,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ImportKind::Single { target, bindings, .. },
                     SideEffectBindings::Single { import_bindings },
                 ) => {
-                    debug!("{import_bindings:#?}");
                     self.per_ns(|this, ns| {
                         match import_bindings[ns] {
                             Some(Some(binding)) => {
@@ -703,7 +702,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .resolution(import.parent_scope.module, key)
                             .and_then(|r| r.binding())
                             .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                        debug!("defining binding from glob: {imported_binding:#?}");
                         let _ = self.try_define_local(
                             parent,
                             key.ident.0,
@@ -1681,7 +1679,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 let vis = match res.opt_def_id() {
                     Some(def_id) => {
-                        self.greatest_vis_map.get(&def_id).copied().unwrap_or(binding.vis)
+                        let vis =
+                            self.greatest_vis_map.get(&def_id).copied().unwrap_or(binding.vis);
+                        // macros exported through `macro_export` are not placed in this map, so
+                        // hack the hack and make sure we still keep the best visibility.
+                        if !vis.is_at_least(binding.vis, self.tcx()) { binding.vis } else { vis }
                     }
                     None => binding.vis,
                 };
