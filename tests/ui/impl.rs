@@ -84,4 +84,26 @@ impl OneExpected {}
 impl OneExpected {}
 //~^ multiple_inherent_impl
 
+// issue #8714
+struct Lifetime<'s> {
+    s: &'s str,
+}
+
+impl Lifetime<'_> {}
+impl Lifetime<'_> {} // false negative
+
+impl<'a> Lifetime<'a> {}
+impl<'a> Lifetime<'a> {} // false negative
+
+impl<'b> Lifetime<'b> {} // false negative?
+
+impl Lifetime<'static> {}
+
+struct Generic<G> {
+    g: Vec<G>,
+}
+
+impl<G> Generic<G> {}
+impl<G> Generic<G> {} // false negative
+
 fn main() {}
