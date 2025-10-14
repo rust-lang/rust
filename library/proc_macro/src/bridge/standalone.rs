@@ -1,9 +1,12 @@
 #![allow(unused_variables)]
+#![warn(warnings)]
 use std::cell::RefCell;
 use std::ops::{Bound, Range};
 
+use crate::Delimiter;
 use crate::bridge::client::Symbol;
-use crate::bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree, server};
+use crate::bridge::fxhash::FxHashMap;
+use crate::bridge::{Diagnostic, ExpnGlobals, LitKind, Literal, TokenTree, server};
 
 pub struct NoRustc;
 
@@ -21,7 +24,7 @@ impl server::Span for NoRustc {
     }
 
     fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
-        todo!()
+        span.lo as usize..span.hi as usize
     }
 
     fn start(&mut self, span: Self::Span) -> Self::Span {
@@ -111,14 +114,18 @@ impl server::Span for NoRustc {
 
 thread_local! {
     static SAVED_SPANS: RefCell<Vec<Span>> = const { RefCell::new(Vec::new()) };
+    static TRACKED_ENV_VARS: RefCell<FxHashMap<String, Option<String>>> = RefCell::new(FxHashMap::default());
 }
 
 impl server::FreeFunctions for NoRustc {
     fn injected_env_var(&mut self, var: &str) -> Option<String> {
-        todo!()
+        TRACKED_ENV_VARS.with_borrow(|vars| vars.get(var)?.clone())
     }
 
-    fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {}
+    fn track_env_var(&mut self, var: &str, value: Option<&str>) {
+        TRACKED_ENV_VARS
+            .with_borrow_mut(|vars| vars.insert(var.to_string(), value.map(ToString::to_string)));
+    }
 
     fn track_path(&mut self, _path: &str) {}
 
@@ -145,7 +152,72 @@ impl server::TokenStream for NoRustc {
     }
 
     fn to_string(&mut self, tokens: &Self::TokenStream) -> String {
-        todo!()
+        /// Returns a string containing exactly `num` '#' characters.
+        /// Uses a 256-character source string literal which is always safe to
+        /// index with a `u8` index.
+        fn get_hashes_str(num: u8) -> &'static str {
+            const HASHES: &str = "\
+            ################################################################\
+            ################################################################\
+            ################################################################\
+            ################################################################\
+            ";
+            const _: () = assert!(HASHES.len() == 256);
+            &HASHES[..num as usize]
+        }
+
+        let mut s = String::new();
+        for tree in &tokens.0 {
+            s.push_str(&match tree {
+                TokenTree::Group(group) => {
+                    let inner = if let Some(stream) = &group.stream {
+                        self.to_string(stream)
+                    } else {
+                        String::new()
+                    };
+                    match group.delimiter {
+                        Delimiter::Parenthesis => format!("({inner})"),
+                        Delimiter::Brace => format!("{{{inner}}}"),
+                        Delimiter::Bracket => format!("[{inner}]"),
+                        Delimiter::None => inner,
+                    }
+                }
+                TokenTree::Ident(ident) => {
+                    if ident.is_raw {
+                        format!("r#{}", ident.sym)
+                    } else {
+                        ident.sym.to_string()
+                    }
+                }
+                TokenTree::Literal(lit) => {
+                    let inner = if let Some(suffix) = lit.suffix {
+                        format!("{}{suffix}", lit.symbol)
+                    } else {
+                        lit.symbol.to_string()
+                    };
+                    match lit.kind {
+                        LitKind::Byte => todo!(),
+                        LitKind::ByteStr => format!("b\"{inner}\""),
+                        LitKind::ByteStrRaw(raw) => {
+                            format!("br{0}\"{inner}\"{0}", get_hashes_str(raw))
+                        }
+                        LitKind::CStr => format!("c\"{inner}\""),
+                        LitKind::CStrRaw(raw) => {
+                            format!("cr{0}\"{inner}\"{0}", get_hashes_str(raw))
+                        }
+                        LitKind::Char => format!("'{inner}'"),
+                        LitKind::ErrWithGuar => unreachable!(),
+                        LitKind::Float | LitKind::Integer => inner,
+                        LitKind::Str => format!("\"{inner}\""),
+                        LitKind::StrRaw(raw) => format!("r{0}\"{inner}\"{0}", get_hashes_str(raw)),
+                    }
+                }
+                TokenTree::Punct(punct) => (punct.ch as char).to_string(),
+            });
+            s.push(' ');
+        }
+        s.pop();
+        s
     }
 
     fn from_token_tree(
