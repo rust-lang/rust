@@ -53,7 +53,7 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
-    RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
+    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser, RustcMainParser,
     RustcObjectLifetimeDefaultParser, RustcSimdMonomorphizeLaneLimitParser,
 };
 use crate::attributes::semantics::MayDangleParser;
@@ -197,8 +197,8 @@ attribute_parsers!(
         Single<RecursionLimitParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
-        Single<RustcLayoutScalarValidRangeEnd>,
-        Single<RustcLayoutScalarValidRangeStart>,
+        Single<RustcLayoutScalarValidRangeEndParser>,
+        Single<RustcLayoutScalarValidRangeStartParser>,
         Single<RustcObjectLifetimeDefaultParser>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<SanitizeParser>,
@@ -238,6 +238,7 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
+        Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
