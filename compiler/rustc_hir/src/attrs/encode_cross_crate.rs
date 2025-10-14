@@ -147,6 +147,7 @@ impl AttributeKind {
             TargetFeature { .. } => No,
             ThreadLocal => No,
             TrackCaller(..) => Yes,
+            Transparent(..) => No,
             TypeConst(..) => Yes,
             TypeLengthLimit { .. } => No,
             UnsafeSpecializationMarker(..) => No,

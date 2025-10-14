@@ -164,7 +164,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let expn_id = self.cstore().expn_that_defined_untracked(self.tcx, def_id);
                     return Some(self.new_extern_module(
                         parent,
-                        ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
+                        ModuleKind::Def(
+                            def_kind,
+                            def_id,
+                            Some((self.tcx.item_name(def_id), false)),
+                        ),
                         expn_id,
                         self.def_span(def_id),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
@@ -665,14 +669,14 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     // Disallow `use $crate;`
                     if source.ident.name == kw::DollarCrate && module_path.is_empty() {
                         let crate_root = self.r.resolve_crate_root(source.ident);
-                        let crate_name = match crate_root.kind {
-                            ModuleKind::Def(.., name) => name,
+                        let crate_name_and_transparent = match crate_root.kind {
+                            ModuleKind::Def(.., name_and_transparent) => name_and_transparent,
                             ModuleKind::Block => unreachable!(),
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `tests/ui/imports/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
-                        if let Some(crate_name) = crate_name {
+                        if let Some((crate_name, _transparent)) = crate_name_and_transparent {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment::from_ident_and_id(
                                 Ident::new(kw::PathRoot, source.ident.span),
@@ -853,9 +857,18 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
+                let transparent = AttributeParser::parse_limited(
+                    self.r.tcx.sess,
+                    &item.attrs,
+                    sym::transparent,
+                    item.span,
+                    item.id,
+                    None,
+                )
+                .is_some();
                 self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
+                    ModuleKind::Def(def_kind, def_id, Some((ident.name, transparent))),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude
@@ -888,7 +901,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
                 self.parent_scope.module = self.r.new_local_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
+                    ModuleKind::Def(def_kind, def_id, Some((ident.name, false))),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
