@@ -44,7 +44,6 @@ use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
-mod deduce_param_attrs;
 mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
@@ -147,6 +146,7 @@ declare_passes! {
         Initial,
         Final
     };
+    mod deduce_param_attrs : RecoverDeducedParamAttrs;
     mod deref_separator : Derefer;
     mod dest_prop : DestinationPropagation;
     mod early_otherwise_branch : EarlyOtherwiseBranch;
@@ -962,6 +962,7 @@ fn transform_to_codegen_mir<'tcx>(
             &o1(simplify_branches::SimplifyConstCondition::PostMono),
             &o1(simplify::SimplifyCfg::PostMono),
             &add_call_guards::CriticalCallEdges,
+            &deduce_param_attrs::RecoverDeducedParamAttrs,
         ],
         Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
         pm::Optimizations::Allowed,
