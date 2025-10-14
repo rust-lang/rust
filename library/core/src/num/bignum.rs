@@ -38,9 +38,8 @@ macro_rules! impl_full_ops {
                 fn full_mul_add(self, other: $ty, other2: $ty, carry: $ty) -> ($ty, $ty) {
                     // This cannot overflow;
                     // the output is between `0` and `2^nbits * (2^nbits - 1)`.
-                    let v = (self as $bigty) * (other as $bigty) + (other2 as $bigty) +
-                            (carry as $bigty);
-                    ((v >> <$ty>::BITS) as $ty, v as $ty)
+                    let (lo, hi) = self.carrying_mul_add(other, other2, carry);
+                    (hi, lo)
                 }
 
                 fn full_div_rem(self, other: $ty, borrow: $ty) -> ($ty, $ty) {
