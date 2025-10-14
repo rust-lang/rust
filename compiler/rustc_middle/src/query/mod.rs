@@ -2411,7 +2411,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_projection_ty(
+    query normalize_canonicalized_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
@@ -2439,7 +2439,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_inherent_projection_ty(
+    query normalize_canonicalized_inherent_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
