@@ -22,35 +22,50 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// inference variables.
     ///
     /// It then uses these defining uses to guide inference for all other uses.
+    ///
+    /// Unlike `handle_opaque_type_uses_next`, this does not report errors.
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn try_handle_opaque_type_uses_next(&mut self) {
+        // We clone the opaques instead of stealing them here as we still need
+        // to use them after fallback.
+        let opaque_types: Vec<_> = self.infcx.clone_opaque_types();
+
+        self.compute_definition_site_hidden_types(opaque_types, false);
+    }
+
+    /// This takes all the opaque type uses during HIR typeck. It first computes
+    /// the concrete hidden type by iterating over all defining uses.
+    ///
+    /// A use during HIR typeck is defining if all non-lifetime arguments are
+    /// unique generic parameters and the hidden type does not reference any
+    /// inference variables.
+    ///
+    /// It then uses these defining uses to guide inference for all other uses.
     #[instrument(level = "debug", skip(self))]
     pub(super) fn handle_opaque_type_uses_next(&mut self) {
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
-        let mut opaque_types: Vec<_> = self.infcx.clone_opaque_types();
+        let opaque_types: Vec<_> = self.infcx.clone_opaque_types();
         let num_entries = self.inner.borrow_mut().opaque_types().num_entries();
         let prev = self.checked_opaque_types_storage_entries.replace(Some(num_entries));
         debug_assert_eq!(prev, None);
-        for entry in &mut opaque_types {
-            *entry = self.resolve_vars_if_possible(*entry);
-        }
-        debug!(?opaque_types);
 
-        self.compute_definition_site_hidden_types(&opaque_types);
-        self.apply_definition_site_hidden_types(&opaque_types);
+        self.compute_definition_site_hidden_types(opaque_types, true);
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 enum UsageKind<'tcx> {
     None,
     NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
     UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
-    HasDefiningUse,
+    HasDefiningUse(OpaqueHiddenType<'tcx>),
 }
 
 impl<'tcx> UsageKind<'tcx> {
     fn merge(&mut self, other: UsageKind<'tcx>) {
         match (&*self, &other) {
-            (UsageKind::HasDefiningUse, _) | (_, UsageKind::None) => unreachable!(),
+            (UsageKind::HasDefiningUse(_), _) | (_, UsageKind::None) => unreachable!(),
             (UsageKind::None, _) => *self = other,
             // When mergining non-defining uses, prefer earlier ones. This means
             // the error happens as early as possible.
@@ -64,7 +79,7 @@ impl<'tcx> UsageKind<'tcx> {
             // intended to be defining.
             (
                 UsageKind::NonDefiningUse(..) | UsageKind::UnconstrainedHiddenType(..),
-                UsageKind::UnconstrainedHiddenType(..) | UsageKind::HasDefiningUse,
+                UsageKind::UnconstrainedHiddenType(..) | UsageKind::HasDefiningUse(_),
             ) => *self = other,
         }
     }
@@ -73,8 +88,14 @@ impl<'tcx> UsageKind<'tcx> {
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn compute_definition_site_hidden_types(
         &mut self,
-        opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
+        error_on_missing_defining_use: bool,
     ) {
+        for entry in opaque_types.iter_mut() {
+            *entry = self.resolve_vars_if_possible(*entry);
+        }
+        debug!(?opaque_types);
+
         let tcx = self.tcx;
         let TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
         else {
@@ -88,19 +109,47 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 _ => unreachable!("not opaque or generator: {def_id:?}"),
             }
 
+            // We do actually need to check this the second pass (we can't just
+            // store this), because we can go from `UnconstrainedHiddenType` to
+            // `HasDefiningUse` (because of fallback)
             let mut usage_kind = UsageKind::None;
-            for &(opaque_type_key, hidden_type) in opaque_types {
+            for &(opaque_type_key, hidden_type) in &opaque_types {
                 if opaque_type_key.def_id != def_id {
                     continue;
                 }
 
                 usage_kind.merge(self.consider_opaque_type_use(opaque_type_key, hidden_type));
-                if let UsageKind::HasDefiningUse = usage_kind {
+
+                if let UsageKind::HasDefiningUse(..) = usage_kind {
                     break;
                 }
             }
 
+            if let UsageKind::HasDefiningUse(ty) = usage_kind {
+                for &(opaque_type_key, hidden_type) in &opaque_types {
+                    if opaque_type_key.def_id != def_id {
+                        continue;
+                    }
+
+                    let expected = EarlyBinder::bind(ty.ty).instantiate(tcx, opaque_type_key.args);
+                    self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
+                }
+
+                // Being explicit here: it may be possible that we in a
+                // previous call to this function we did an insert, but this
+                // should be just fine, since they all get equated anyways and
+                // we shouldn't ever go from `HasDefiningUse` to anyway else.
+                let _ = self.typeck_results.borrow_mut().hidden_types.insert(def_id, ty);
+            }
+
+            // If we're in `fn try_handle_opaque_type_uses_next` then do not
+            // report any errors.
+            if !error_on_missing_defining_use {
+                continue;
+            }
+
             let guar = match usage_kind {
+                UsageKind::HasDefiningUse(_) => continue,
                 UsageKind::None => {
                     if let Some(guar) = self.tainted_by_errors() {
                         guar
@@ -137,7 +186,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                             .emit()
                     }
                 }
-                UsageKind::HasDefiningUse => continue,
             };
 
             self.typeck_results
@@ -148,8 +196,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
     }
 
+    #[tracing::instrument(skip(self), ret)]
     fn consider_opaque_type_use(
-        &mut self,
+        &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         hidden_type: OpaqueHiddenType<'tcx>,
     ) -> UsageKind<'tcx> {
@@ -161,11 +210,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         ) {
             match err {
                 NonDefiningUseReason::Tainted(guar) => {
-                    self.typeck_results.borrow_mut().hidden_types.insert(
-                        opaque_type_key.def_id,
-                        OpaqueHiddenType::new_error(self.tcx, guar),
-                    );
-                    return UsageKind::HasDefiningUse;
+                    return UsageKind::HasDefiningUse(OpaqueHiddenType::new_error(self.tcx, guar));
                 }
                 _ => return UsageKind::NonDefiningUse(opaque_type_key, hidden_type),
             };
@@ -193,27 +238,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.tcx,
             DefiningScopeKind::HirTypeck,
         );
-
-        let prev = self
-            .typeck_results
-            .borrow_mut()
-            .hidden_types
-            .insert(opaque_type_key.def_id, hidden_type);
-        assert!(prev.is_none());
-        UsageKind::HasDefiningUse
-    }
-
-    fn apply_definition_site_hidden_types(
-        &mut self,
-        opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
-    ) {
-        let tcx = self.tcx;
-        for &(key, hidden_type) in opaque_types {
-            let expected = *self.typeck_results.borrow_mut().hidden_types.get(&key.def_id).unwrap();
-
-            let expected = EarlyBinder::bind(expected.ty).instantiate(tcx, key.args);
-            self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
-        }
+        UsageKind::HasDefiningUse(hidden_type)
     }
 
     /// We may in theory add further uses of an opaque after cloning the opaque
