@@ -58,7 +58,7 @@ macro_rules! define_client_handles {
                 }
             }
 
-            impl<S> DecodeMut<'_, '_, S> for $oty {
+            impl<S> Decode<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty {
                         handle: handle::Handle::decode(r, s),
@@ -82,7 +82,7 @@ macro_rules! define_client_handles {
                 }
             }
 
-            impl<S> DecodeMut<'_, '_, S> for $ity {
+            impl<S> Decode<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity {
                         handle: handle::Handle::decode(r, s),
@@ -276,7 +276,7 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
-fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
+fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
     config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer {

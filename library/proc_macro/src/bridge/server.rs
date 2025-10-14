@@ -32,7 +32,7 @@ macro_rules! define_server_handles {
                 }
             }
 
-            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
+            impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>>
                 for Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
@@ -40,7 +40,7 @@ macro_rules! define_server_handles {
                 }
             }
 
-            impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<MarkedTypes<S>>>
+            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
                 for &'s Marked<S::$oty, client::$oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &'s mut HandleStore<MarkedTypes<S>>) -> Self {
@@ -48,7 +48,7 @@ macro_rules! define_server_handles {
                 }
             }
 
-            impl<'s, S: Types> DecodeMut<'_, 's, HandleStore<MarkedTypes<S>>>
+            impl<'s, S: Types> Decode<'_, 's, HandleStore<MarkedTypes<S>>>
                 for &'s mut Marked<S::$oty, client::$oty>
             {
                 fn decode(
@@ -67,7 +67,7 @@ macro_rules! define_server_handles {
                 }
             }
 
-            impl<S: Types> DecodeMut<'_, '_, HandleStore<MarkedTypes<S>>>
+            impl<S: Types> Decode<'_, '_, HandleStore<MarkedTypes<S>>>
                 for Marked<S::$ity, client::$ity>
             {
                 fn decode(r: &mut Reader<'_>, s: &mut HandleStore<MarkedTypes<S>>) -> Self {
@@ -355,7 +355,7 @@ pub trait MessagePipe<T>: Sized {
 fn run_server<
     S: Server,
     I: Encode<HandleStore<MarkedTypes<S>>>,
-    O: for<'a, 's> DecodeMut<'a, 's, HandleStore<MarkedTypes<S>>>,
+    O: for<'a, 's> Decode<'a, 's, HandleStore<MarkedTypes<S>>>,
 >(
     strategy: &impl ExecutionStrategy,
     handle_counters: &'static client::HandleCounters,
