@@ -3,7 +3,7 @@
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_index::IndexVec;
+use rustc_index::{IndexVec, indexvec};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -124,7 +124,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                 nonnull.into(),
                 Rvalue::Aggregate(
                     adt_kind(self.nonnull_def, args),
-                    IndexVec::from_raw(vec![Operand::Move(constptr.into())]),
+                    indexvec![Operand::Move(constptr.into())],
                 ),
             );
 
@@ -136,7 +136,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                 unique.into(),
                 Rvalue::Aggregate(
                     adt_kind(self.unique_def, args),
-                    IndexVec::from_raw(vec![Operand::Move(nonnull.into()), zst(phantomdata_ty)]),
+                    indexvec![Operand::Move(nonnull.into()), zst(phantomdata_ty)],
                 ),
             );
 
@@ -144,7 +144,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                 box_adt.non_enum_variant().fields[FieldIdx::ONE].ty(tcx, box_args);
             *rvalue = Rvalue::Aggregate(
                 adt_kind(*box_adt, box_args),
-                IndexVec::from_raw(vec![Operand::Move(unique.into()), zst(global_alloc_ty)]),
+                indexvec![Operand::Move(unique.into()), zst(global_alloc_ty)],
             );
         }
     }
