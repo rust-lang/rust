@@ -99,19 +99,23 @@ where
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
 
-    fn is_ambiguous_result(result: QueryResult<I>) -> bool {
-        result.is_ok_and(|response| {
-            has_no_inference_or_external_constraints(response)
+    fn is_ambiguous_result(result: QueryResult<I>) -> Option<Certainty> {
+        result.ok().and_then(|response| {
+            if has_no_inference_or_external_constraints(response)
                 && matches!(response.value.certainty, Certainty::Maybe { .. })
+            {
+                Some(response.value.certainty)
+            } else {
+                None
+            }
         })
     }
 
     fn propagate_ambiguity(
         cx: I,
         for_input: CanonicalInput<I>,
-        from_result: QueryResult<I>,
+        certainty: Certainty,
     ) -> QueryResult<I> {
-        let certainty = from_result.unwrap().value.certainty;
         response_no_constraints(cx, for_input, certainty)
     }
 

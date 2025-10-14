@@ -1,4 +1,5 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // The new trait solver does not return region constraints if the goal
@@ -21,9 +22,10 @@ impl Id<u16> for u16 {}
 
 trait LeakCheckFailure<'a, 'b, V: ?Sized> {}
 impl<'a, 'b: 'a, V: ?Sized + Ambig> LeakCheckFailure<'a, 'b, V> for () {}
+impl<'a, 'b, V: ?Sized, T: LeakCheckFailure<'a, 'b, V>> LeakCheckFailure<'a, 'b, V> for (T,) {}
 
 trait Trait<U, V> {}
-impl<V> Trait<u32, V> for () where for<'b> (): LeakCheckFailure<'static, 'b, V> {}
+impl<V> Trait<u32, V> for () where for<'b> ((),): LeakCheckFailure<'static, 'b, V> {}
 impl<V> Trait<u16, V> for () {}
 fn impls_trait<T: Trait<U, V>, U: Id<V>, V>() {}
 fn main() {
