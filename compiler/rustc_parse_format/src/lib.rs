@@ -655,7 +655,15 @@ impl<'input> Parser<'input> {
                 spec.precision = self.count();
             }
             let span = range.start..self.input_vec_index2range(self.input_vec_index).start;
-            if spec.precision == CountImplied {
+            if spec.precision == CountImplied &&
+            // make an exception for "{:.}":
+            // broad exception:
+            // !self.input.contains("{:.}")
+            // narrow exception:
+            // !self.input.starts_with("{:.}")
+            // very narrow exception:
+                self.input != "{:.}" && self.input != "{:.}\n"
+            {
                 self.warnings.push(ParseError {
                     description: "expected numerical precision after precision specifier"
                         .to_string(),
