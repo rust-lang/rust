@@ -7,8 +7,7 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
-use rustc_hir as hir;
-use rustc_hir::{Block, BlockCheckMode, Impl, ItemKind, Node, UnsafeSource};
+use rustc_hir::{self as hir, AnonConst, Block, BlockCheckMode, ConstArg, ConstArgKind, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -202,6 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         };
 
         let item_has_safety_comment = item_has_safety_comment(cx, item);
+<<<<<<< HEAD
         match item_has_safety_comment {
             HasSafetyComment::Yes(pos) => check_has_safety_comment(cx, item, mk_spans(pos)),
             HasSafetyComment::No => check_has_no_safety_comment(cx, item),
@@ -209,6 +209,163 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         }
     }
 }
+||||||| parent of ed062304ce5 (mgca: Add ConstArg representation for const items)
+        match (&item.kind, item_has_safety_comment) {
+            // lint unsafe impl without safety comment
+            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.safety.is_unsafe() => {
+                if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
+                    && !is_unsafe_from_proc_macro(cx, item.span)
+                {
+                    let source_map = cx.tcx.sess.source_map();
+                    let span = if source_map.is_multiline(item.span) {
+                        source_map.span_until_char(item.span, '\n')
+                    } else {
+                        item.span
+                    };
+
+                    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                    span_lint_and_then(
+                        cx,
+                        UNDOCUMENTED_UNSAFE_BLOCKS,
+                        span,
+                        "unsafe impl missing a safety comment",
+                        |diag| {
+                            diag.help("consider adding a safety comment on the preceding line");
+                        },
+                    );
+                }
+            },
+            // lint safe impl with unnecessary safety comment
+            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.safety.is_safe() => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                    let (span, help_span) = mk_spans(pos);
+
+                    span_lint_and_then(
+                        cx,
+                        UNNECESSARY_SAFETY_COMMENT,
+                        span,
+                        "impl has unnecessary safety comment",
+                        |diag| {
+                            diag.span_help(help_span, "consider removing the safety comment");
+                        },
+                    );
+                }
+            },
+            (ItemKind::Impl(_), _) => {},
+            // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
+            (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
+                    let body = cx.tcx.hir_body(body);
+                    if !matches!(
+                        body.value.kind, hir::ExprKind::Block(block, _)
+                        if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                    ) {
+                        let (span, help_span) = mk_spans(pos);
+
+                        span_lint_and_then(
+                            cx,
+                            UNNECESSARY_SAFETY_COMMENT,
+                            span,
+                            format!(
+                                "{} has unnecessary safety comment",
+                                cx.tcx.def_descr(item.owner_id.to_def_id()),
+                            ),
+                            |diag| {
+                                diag.span_help(help_span, "consider removing the safety comment");
+                            },
+                        );
+                    }
+                }
+            },
+            // Aside from unsafe impls and consts/statics with an unsafe block, items in general
+            // do not have safety invariants that need to be documented, so lint those.
+            (_, HasSafetyComment::Yes(pos)) => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                    let (span, help_span) = mk_spans(pos);
+=======
+        match (&item.kind, item_has_safety_comment) {
+            // lint unsafe impl without safety comment
+            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.safety.is_unsafe() => {
+                if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
+                    && !is_unsafe_from_proc_macro(cx, item.span)
+                {
+                    let source_map = cx.tcx.sess.source_map();
+                    let span = if source_map.is_multiline(item.span) {
+                        source_map.span_until_char(item.span, '\n')
+                    } else {
+                        item.span
+                    };
+
+                    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                    span_lint_and_then(
+                        cx,
+                        UNDOCUMENTED_UNSAFE_BLOCKS,
+                        span,
+                        "unsafe impl missing a safety comment",
+                        |diag| {
+                            diag.help("consider adding a safety comment on the preceding line");
+                        },
+                    );
+                }
+            },
+            // lint safe impl with unnecessary safety comment
+            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.safety.is_safe() => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                    let (span, help_span) = mk_spans(pos);
+
+                    span_lint_and_then(
+                        cx,
+                        UNNECESSARY_SAFETY_COMMENT,
+                        span,
+                        "impl has unnecessary safety comment",
+                        |diag| {
+                            diag.span_help(help_span, "consider removing the safety comment");
+                        },
+                    );
+                }
+            },
+            (ItemKind::Impl(_), _) => {},
+            // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
+            (
+                &ItemKind::Const(
+                    ..,
+                    &ConstArg {
+                        kind: ConstArgKind::Anon(&AnonConst { body, .. }),
+                        ..
+                    },
+                )
+                | &ItemKind::Static(.., body),
+                HasSafetyComment::Yes(pos),
+            ) => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
+                    let body = cx.tcx.hir_body(body);
+                    if !matches!(
+                        body.value.kind, hir::ExprKind::Block(block, _)
+                        if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                    ) {
+                        let (span, help_span) = mk_spans(pos);
+
+                        span_lint_and_then(
+                            cx,
+                            UNNECESSARY_SAFETY_COMMENT,
+                            span,
+                            format!(
+                                "{} has unnecessary safety comment",
+                                cx.tcx.def_descr(item.owner_id.to_def_id()),
+                            ),
+                            |diag| {
+                                diag.span_help(help_span, "consider removing the safety comment");
+                            },
+                        );
+                    }
+                }
+            },
+            // Aside from unsafe impls and consts/statics with an unsafe block, items in general
+            // do not have safety invariants that need to be documented, so lint those.
+            (_, HasSafetyComment::Yes(pos)) => {
+                if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
+                    let (span, help_span) = mk_spans(pos);
+>>>>>>> ed062304ce5 (mgca: Add ConstArg representation for const items)
 
 fn check_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>, (span, help_span): (Span, Span)) {
     match &item.kind {
