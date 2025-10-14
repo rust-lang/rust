@@ -1930,7 +1930,9 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
         // Currently, only preserving derefs for trivial terminators like SwitchInt and Goto.
         let safe_to_preserve_derefs = matches!(
             terminator.kind,
-            TerminatorKind::SwitchInt { .. } | TerminatorKind::Goto { .. }
+            TerminatorKind::SwitchInt { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::Unreachable
         );
         if !safe_to_preserve_derefs {
             self.invalidate_derefs();
