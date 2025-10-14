@@ -136,77 +136,34 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
 }
 
 #[derive(Debug)]
-struct Content<'a> {
-    text: Cow<'a, str>,
-    /// If `Some` and the `span` is different from the parent, then it might generate a link so we
-    /// need to keep this information.
-    class: Option<Class>,
-    needs_escape: bool,
+struct ClassInfo {
+    class: Class,
+    /// Set to true only when an item was written inside this tag.
+    open: bool,
+    /// Set to true when leaving the current item. The closing tag will be
+    /// written if:
+    ///
+    /// 1. `self.open` is true
+    /// 2. Only when the first non-mergeable item is pushed.
+    pending_exit: bool,
+    /// If `true`, it means it's `</a>`, otherwise it's `</span>`.
+    link_closing_tag: bool,
 }
 
-#[derive(Debug)]
-struct Element<'a> {
-    /// If `class` is `None`, then it's just plain text with no HTML tag.
-    class: Option<Class>,
-    /// Content for the current element.
-    content: Vec<Content<'a>>,
-}
-
-impl<'a> Element<'a> {
-    fn new(class: Option<Class>, text: Cow<'a, str>, needs_escape: bool) -> Self {
-        Self { class, content: vec![Content { text, class, needs_escape }] }
+impl ClassInfo {
+    fn new(class: Class, pending_exit: bool) -> Self {
+        Self { class, open: pending_exit, pending_exit, link_closing_tag: false }
     }
 
-    fn can_merge(&self, other: &Self) -> bool {
-        other.content.iter().all(|c| can_merge(self.class, other.class, &c.text))
-    }
-
-    fn write_elem_to<W: Write>(
-        &self,
-        out: &mut W,
-        href_context: &Option<HrefContext<'_, '_>>,
-        parent_class: Option<Class>,
-    ) {
-        let mut prev = parent_class;
-        let mut closing_tag = None;
-        for part in &self.content {
-            let text = if part.needs_escape {
-                Either::Left(&EscapeBodyText(&part.text))
+    fn close_tag<W: Write>(&self, out: &mut W) {
+        if self.open {
+            if self.link_closing_tag {
+                out.write_str("</a>").unwrap();
             } else {
-                Either::Right(&part.text)
-            };
-            if part.class.is_some() {
-                // We only try to generate links as the `<span>` should have already be generated
-                // by the caller of `write_elem_to`.
-                if let Some(new_closing_tag) = string_without_closing_tag(
-                    out,
-                    text,
-                    part.class,
-                    href_context,
-                    prev != part.class,
-                ) {
-                    if new_closing_tag == "</a>" {
-                        out.write_str(new_closing_tag).unwrap();
-                        closing_tag = None;
-                    } else {
-                        closing_tag = Some(new_closing_tag);
-                    }
-                }
-                prev = part.class;
-            } else {
-                write!(out, "{text}").unwrap();
+                out.write_str("</span>").unwrap();
             }
         }
-        if let Some(closing_tag) = closing_tag {
-            out.write_str(closing_tag).unwrap();
-        }
     }
-}
-
-#[derive(Debug)]
-enum ElementOrStack<'a> {
-    Element(Element<'a>),
-    Stack(ElementStack<'a>),
 }
 
 /// This represents the stack of HTML elements. For example a macro expansion
@@ -216,166 +173,164 @@ enum ElementOrStack<'a> {
 /// This allows to easily handle HTML tags instead of having a more complicated
 /// state machine to keep track of which tags are open.
 #[derive(Debug)]
-struct ElementStack<'a> {
-    elements: Vec<ElementOrStack<'a>>,
-    parent: Option<Box<ElementStack<'a>>>,
-    class: Option<Class>,
-    pending_exit: bool,
+struct ClassStack {
+    open_classes: Vec<ClassInfo>,
 }
 
-impl<'a> ElementStack<'a> {
+impl ClassStack {
     fn new() -> Self {
-        Self::new_with_class(None)
+        Self { open_classes: Vec::new() }
     }
 
-    fn new_with_class(class: Option<Class>) -> Self {
-        Self { elements: Vec::new(), parent: None, class, pending_exit: false }
-    }
-
-    fn push_element(&mut self, mut elem: Element<'a>) {
-        if self.pending_exit
-            && !can_merge(self.class, elem.class, elem.content.first().map_or("", |c| &c.text))
-        {
-            self.exit_current_stack();
-        }
-        if let Some(ElementOrStack::Element(last)) = self.elements.last_mut()
-            && last.can_merge(&elem)
-        {
-            last.content.append(&mut elem.content);
-        } else {
-            self.elements.push(ElementOrStack::Element(elem));
-        }
-    }
-
-    fn empty_stack_and_set_new_heads(&mut self, class: Class, element: Element<'a>) {
-        self.elements.clear();
-        if let Some(parent) = &mut self.parent {
-            parent.empty_stack_and_set_new_heads(class, element);
-        } else {
-            let mut new_stack = ElementStack::new_with_class(Some(class));
-            new_stack.elements.push(ElementOrStack::Element(element));
-            self.parent.replace(Box::new(new_stack));
-        }
-    }
-
-    fn enter_stack(
+    fn enter_elem<W: Write>(
         &mut self,
-        ElementStack { elements, parent, class, pending_exit }: ElementStack<'a>,
+        out: &mut W,
+        href_context: &Option<HrefContext<'_, '_>>,
+        new_class: Class,
+        pending_exit: bool,
     ) {
-        if self.pending_exit {
-            if can_merge(self.class, class, "") {
-                self.pending_exit = false;
-                self.elements.extend(elements);
-                // Compatible stacks, nothing to be done here!
+        if let Some(current_class) = self.open_classes.last_mut() {
+            if can_merge(Some(current_class.class), Some(new_class), "") {
+                current_class.pending_exit = false;
                 return;
+            } else if current_class.pending_exit {
+                current_class.close_tag(out);
+                self.open_classes.pop();
             }
-            self.exit_current_stack();
         }
-        assert!(parent.is_none(), "`enter_stack` used with a non empty parent");
-        let parent_elements = std::mem::take(&mut self.elements);
-        let parent_parent = std::mem::take(&mut self.parent);
-        self.parent = Some(Box::new(ElementStack {
-            elements: parent_elements,
-            parent: parent_parent,
-            class: self.class,
-            pending_exit: self.pending_exit,
-        }));
-        self.class = class;
-        self.elements = elements;
-        self.pending_exit = pending_exit;
+        let mut class_info = ClassInfo::new(new_class, pending_exit);
+        if pending_exit {
+            class_info.open = true;
+        } else if matches!(new_class, Class::Decoration(_) | Class::Original) {
+            // We open it right away to ensure it always come at the expected location.
+            // FIXME: Should we instead add a new boolean field to `ClassInfo` to force a non-open
+            // tags to be added if another one comes before it's open?
+            write!(out, "<span class=\"{}\">", new_class.as_html()).unwrap();
+            class_info.open = true;
+        } else if new_class.get_span().is_some()
+            && let Some(closing_tag) =
+                string_without_closing_tag(out, "", Some(class_info.class), href_context, false)
+            && !closing_tag.is_empty()
+        {
+            class_info.open = true;
+            class_info.link_closing_tag = closing_tag == "</a>";
+        }
+
+        self.open_classes.push(class_info);
     }
 
     /// This sets the `pending_exit` field to `true`. Meaning that if we try to push another stack
     /// which is not compatible with this one, it will exit the current one before adding the new
     /// one.
     fn exit_elem(&mut self) {
-        self.pending_exit = true;
-    }
-
-    /// Unlike `exit_elem`, this method directly exits the current stack. It is called when the
-    /// current stack is not compatible with a new one pushed or if an expansion was ended.
-    fn exit_current_stack(&mut self) {
-        let Some(element) = std::mem::take(&mut self.parent) else {
-            panic!("exiting an element where there is no parent");
-        };
-        let ElementStack { elements, parent, class, pending_exit } = Box::into_inner(element);
-
-        let old_elements = std::mem::take(&mut self.elements);
-        self.elements = elements;
-        self.elements.push(ElementOrStack::Stack(ElementStack {
-            elements: old_elements,
-            class: self.class,
-            parent: None,
-            pending_exit: false,
-        }));
-        self.parent = parent;
-        self.class = class;
-        self.pending_exit = pending_exit;
-    }
-
-    fn write_content<W: Write>(&self, out: &mut W, href_context: &Option<HrefContext<'_, '_>>) {
-        let mut elem = self;
-
-        // We get the top most item.
-        while let Some(parent) = &elem.parent {
-            elem = parent;
+        let current_class =
+            self.open_classes.last_mut().expect("`exit_elem` called on empty class stack");
+        if !current_class.pending_exit {
+            current_class.pending_exit = true;
+            return;
         }
-        // Now we can output the whole content.
-        elem.write_to(out, href_context, None);
+        // If the current class was already closed, it means we are actually closing its parent.
+        self.open_classes.pop();
+        let current_class =
+            self.open_classes.last_mut().expect("`exit_elem` called on empty class stack parent");
+        current_class.pending_exit = true;
     }
 
-    fn write_to<W: Write>(
-        &self,
+    fn last_class(&self) -> Option<Class> {
+        self.open_classes.last().map(|c| c.class)
+    }
+
+    fn last_class_is_open(&self) -> bool {
+        if let Some(last) = self.open_classes.last() {
+            last.open
+        } else {
+            // If there is no class, then it's already open.
+            true
+        }
+    }
+
+    fn close_last_if_needed<W: Write>(&mut self, out: &mut W) {
+        if let Some(last) = self.open_classes.last()
+            && last.pending_exit
+            && last.open
+        {
+            last.close_tag(out);
+            self.open_classes.pop();
+        }
+    }
+
+    fn push<W: Write>(
+        &mut self,
         out: &mut W,
         href_context: &Option<HrefContext<'_, '_>>,
-        parent_class: Option<Class>,
+        class: Option<Class>,
+        text: Cow<'_, str>,
+        needs_escape: bool,
     ) {
-        // If it only contains stack, it means it has no content of its own so no need to generate
-        // a tag.
-        let closing_tag = if let Some(Class::Expansion) = self.class {
-            out.write_str("<span class=expansion>").unwrap();
-            "</span>"
-        } else if let Some(class) = self.class
-            // `PreludeTy` can never include more than an ident so it should not generate
-            // a wrapping `span`.
-            && !matches!(class, Class::PreludeTy(_))
-        {
-            // Macro is the only `ElementStack` that can generate a link to definition to its
-            // whole content, so to prevent having `<span class="macro"><a class="macro">`,
-            // we generate the `<a>` directly here.
-            //
-            // For other elements, the links will be generated in `write_elem_to`.
-            let href_context = if matches!(class, Class::Macro(_)) { href_context } else { &None };
-            string_without_closing_tag(
-                out,
-                "",
-                Some(class),
-                href_context,
-                self.class != parent_class,
-            )
-            .expect(
-                "internal error: enter_span was called with Some(class) but did not \
-                    return a closing HTML tag",
-            )
-        } else {
-            ""
-        };
-
-        for child_elem in self.elements.iter() {
-            let child_elem = match child_elem {
-                ElementOrStack::Element(elem) => elem,
-                ElementOrStack::Stack(stack) => {
-                    stack.write_to(out, href_context, parent_class);
-                    continue;
-                }
-            };
-            if child_elem.content.is_empty() {
-                continue;
-            }
-            child_elem.write_elem_to(out, href_context, parent_class);
+        // If the new token cannot be merged with the currently open `Class`, we close the `Class`
+        // if possible.
+        if !can_merge(self.last_class(), class, &text) {
+            self.close_last_if_needed(out)
         }
 
-        out.write_str(closing_tag).unwrap();
+        let current_class = self.last_class();
+
+        // If we have a `Class` that hasn't been "open" yet (ie, we received only an `EnterSpan`
+        // event), we need to open the `Class` before going any further so the new token will be
+        // written inside it.
+        if class.is_none() && !self.last_class_is_open() {
+            if let Some(current_class_info) = self.open_classes.last_mut() {
+                let class_s = current_class_info.class.as_html();
+                if !class_s.is_empty() {
+                    write!(out, "<span class=\"{class_s}\">").unwrap();
+                }
+                current_class_info.open = true;
+            }
+        }
+
+        let current_class_is_open = self.open_classes.last().is_some_and(|c| c.open);
+        let can_merge = can_merge(class, current_class, &text);
+        let should_open_tag = !current_class_is_open || !can_merge;
+
+        let text =
+            if needs_escape { Either::Left(&EscapeBodyText(&text)) } else { Either::Right(text) };
+
+        let closing_tag =
+            string_without_closing_tag(out, &text, class, href_context, should_open_tag);
+        if class.is_some() && should_open_tag && closing_tag.is_none() {
+            panic!(
+                "called `string_without_closing_tag` with a class but no closing tag was returned"
+            );
+        } else if let Some(closing_tag) = closing_tag
+            && !closing_tag.is_empty()
+        {
+            // If this is a link, we need to close it right away and not open a new `Class`,
+            // otherwise extra content would go into the `<a>` HTML tag.
+            if closing_tag == "</a>" {
+                out.write_str(closing_tag).unwrap();
+            // If the current `Class` is not compatible with this one, we create a new `Class`.
+            } else if let Some(class) = class
+                && !can_merge
+            {
+                self.enter_elem(out, href_context, class, true);
+            // Otherwise, we consider the actual `Class` to have been open.
+            } else if let Some(current_class_info) = self.open_classes.last_mut() {
+                current_class_info.open = true;
+            }
+        }
+    }
+
+    fn empty_stack<W: Write>(&mut self, out: &mut W) -> Vec<Class> {
+        let mut classes = Vec::with_capacity(self.open_classes.len());
+
+        // We close all open tags and only keep the ones that were not already waiting to be closed.
+        while let Some(class_info) = self.open_classes.pop() {
+            class_info.close_tag(out);
+            if !class_info.pending_exit {
+                classes.push(class_info.class);
+            }
+        }
+        classes
     }
 }
 
@@ -383,7 +338,7 @@ impl<'a> ElementStack<'a> {
 /// the various functions (which became its methods).
 struct TokenHandler<'a, 'tcx, F: Write> {
     out: &'a mut F,
-    element_stack: ElementStack<'a>,
+    class_stack: ClassStack,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
     href_context: Option<HrefContext<'a, 'tcx>>,
@@ -394,7 +349,7 @@ struct TokenHandler<'a, 'tcx, F: Write> {
 
 impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TokenHandler").field("element_stack", &self.element_stack).finish()
+        f.debug_struct("TokenHandler").field("class_stack", &self.class_stack).finish()
     }
 }
 
@@ -407,111 +362,77 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
         None
     }
 
-    fn maybe_write_content(&mut self) {
-        if self.element_stack.parent.is_none()
-            && self.element_stack.class.is_none()
-            && !self.element_stack.pending_exit
-            // Completely random number.
-            && self.element_stack.elements.len() > 30
-        {
-            self.element_stack.write_content(self.out, &self.href_context);
-            self.element_stack.elements.clear();
-        }
-    }
-
-    fn push_element_without_backline_check(
+    fn push_token_without_backline_check(
         &mut self,
         class: Option<Class>,
         text: Cow<'a, str>,
         needs_escape: bool,
     ) {
-        self.element_stack.push_element(Element::new(class, text, needs_escape));
-        self.maybe_write_content();
+        self.class_stack.push(self.out, &self.href_context, class, text, needs_escape);
     }
 
-    fn push_element(&mut self, class: Option<Class>, text: Cow<'a, str>) {
-        let (needs_escape, text) = if text == "\n"
+    fn push_token(&mut self, class: Option<Class>, text: Cow<'a, str>) {
+        if text == "\n"
             && let Some(backline) = self.handle_backline()
         {
-            let mut text = text.into_owned();
-            text.push_str(&backline);
-            (false, Cow::Owned(text))
+            self.out.write_str(&text).unwrap();
+            self.out.write_str(&backline).unwrap();
         } else {
-            (true, text)
-        };
-
-        self.push_element_without_backline_check(class, text, needs_escape);
+            self.push_token_without_backline_check(class, text, true);
+        }
     }
 
     fn start_expansion(&mut self) {
-        // We display everything.
-        self.element_stack.write_content(self.out, &self.href_context);
+        // We close all open tags.
+        let classes = self.class_stack.empty_stack(self.out);
 
-        // We remove everything and recreate the stack with the expansion at its head.
-        self.element_stack.empty_stack_and_set_new_heads(
-            Class::Expansion,
-            Element {
-                class: None,
-                content: vec![Content {
-                    text: Cow::Owned(format!(
-                        "<input id=expand-{} \
+        // We start the expansion tag.
+        self.class_stack.enter_elem(self.out, &self.href_context, Class::Expansion, false);
+        self.push_token_without_backline_check(
+            Some(Class::Expansion),
+            Cow::Owned(format!(
+                "<input id=expand-{} \
                      tabindex=0 \
                      type=checkbox \
                      aria-label=\"Collapse/expand macro\" \
                      title=\"Collapse/expand macro\">",
-                        self.line,
-                    )),
-                    class: None,
-                    needs_escape: false,
-                }],
-            },
+                self.line,
+            )),
+            false,
         );
+
+        // We re-open all tags.
+        for class in classes.into_iter().rev() {
+            self.class_stack.enter_elem(self.out, &self.href_context, class, false);
+        }
     }
 
     fn add_expanded_code(&mut self, expanded_code: &ExpandedCode) {
-        self.element_stack.push_element(Element::new(
+        self.push_token_without_backline_check(
             None,
             Cow::Owned(format!("<span class=expanded>{}</span>", expanded_code.code)),
             false,
-        ));
-        self.element_stack.enter_stack(ElementStack::new_with_class(Some(Class::Original)));
+        );
+        self.class_stack.enter_elem(self.out, &self.href_context, Class::Original, false);
     }
 
     fn close_expansion(&mut self) {
-        let mut old_stack = Vec::new();
+        // We close all open tags.
+        let classes = self.class_stack.empty_stack(self.out);
 
-        // We inline everything into the top-most element.
-        while self.element_stack.parent.is_some() {
-            self.element_stack.exit_current_stack();
-            if let Some(ElementOrStack::Stack(stack)) = self.element_stack.elements.last()
-                && let Some(class) = stack.class
-                && class != Class::Original
-            {
-                old_stack.push(class);
+        // We re-open all tags without expansion-related ones.
+        for class in classes.into_iter().rev() {
+            if !matches!(class, Class::Expansion | Class::Original) {
+                self.class_stack.enter_elem(self.out, &self.href_context, class, false);
             }
         }
-        // We display everything.
-        self.element_stack.write_content(self.out, &self.href_context);
-
-        // We recreate the tree but without the expansion node.
-        self.element_stack.elements.clear();
-        self.element_stack.class = None;
-        for class in old_stack.iter().rev() {
-            self.element_stack.enter_stack(ElementStack::new_with_class(Some(*class)));
-        }
-        self.maybe_write_content();
     }
 }
 
 impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
-        // We need to clean the hierarchy before displaying it, otherwise the parents won't see
-        // the last child.
-        while self.element_stack.parent.is_some() {
-            self.element_stack.exit_current_stack();
-        }
-        self.element_stack.write_content(self.out, &self.href_context);
+        self.class_stack.empty_stack(self.out);
     }
 }
 
@@ -554,7 +475,7 @@ fn end_expansion<'a, W: Write>(
     expanded_codes: &'a [ExpandedCode],
     span: Span,
 ) -> Option<&'a ExpandedCode> {
-    token_handler.element_stack.exit_current_stack();
+    token_handler.class_stack.exit_elem();
     let expansion = get_next_expansion(expanded_codes, token_handler.line, span);
     if expansion.is_none() {
         token_handler.close_expansion();
@@ -624,14 +545,14 @@ pub(super) fn write_code(
         },
         line: 0,
         max_lines: u32::MAX,
-        element_stack: ElementStack::new(),
+        class_stack: ClassStack::new(),
     };
 
     if let Some(line_info) = line_info {
         token_handler.line = line_info.start_line - 1;
         token_handler.max_lines = line_info.max_lines;
         if let Some(text) = token_handler.handle_backline() {
-            token_handler.push_element_without_backline_check(None, Cow::Owned(text), false);
+            token_handler.push_token_without_backline_check(None, Cow::Owned(text), false);
         }
     }
 
@@ -651,7 +572,7 @@ pub(super) fn write_code(
     )
     .highlight(&mut |span, highlight| match highlight {
         Highlight::Token { text, class } => {
-            token_handler.push_element(class, Cow::Borrowed(text));
+            token_handler.push_token(class, Cow::Borrowed(text));
 
             if text == "\n" {
                 if current_expansion.is_none() {
@@ -679,9 +600,16 @@ pub(super) fn write_code(
             }
         }
         Highlight::EnterSpan { class } => {
-            token_handler.element_stack.enter_stack(ElementStack::new_with_class(Some(class)))
+            token_handler.class_stack.enter_elem(
+                token_handler.out,
+                &token_handler.href_context,
+                class,
+                false,
+            );
         }
-        Highlight::ExitSpan => token_handler.element_stack.exit_elem(),
+        Highlight::ExitSpan => {
+            token_handler.class_stack.exit_elem();
+        }
     });
 }
 
@@ -872,12 +800,15 @@ impl<'a> PeekIter<'a> {
             None
         }
     }
+
+    fn stop_peeking(&mut self) {
+        self.peek_pos = 0;
+    }
 }
 
 impl<'a> Iterator for PeekIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<Self::Item> {
-        self.peek_pos = 0;
         if let Some(first) = self.stored.pop_front() { Some(first) } else { self.iter.next() }
     }
 }
@@ -1257,31 +1188,35 @@ impl<'src> Classifier<'src> {
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
-            TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
+            TokenKind::Ident | TokenKind::RawIdent
+                if self.peek_non_whitespace() == Some(TokenKind::Bang) =>
+            {
                 self.in_macro = true;
                 let span = new_span(before, text, file_span);
                 sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Macro(span) });
                 sink(span, Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => match get_real_ident_class(text, false) {
-                None => match text {
-                    "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
-                    "Some" | "None" | "Ok" | "Err" => {
-                        Class::PreludeVal(new_span(before, text, file_span))
-                    }
-                    // "union" is a weak keyword and is only considered as a keyword when declaring
-                    // a union type.
-                    "union" if self.check_if_is_union_keyword() => Class::KeyWord,
-                    _ if self.in_macro_nonterminal => {
-                        self.in_macro_nonterminal = false;
-                        Class::MacroNonTerminal
-                    }
-                    "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
-                    _ => Class::Ident(new_span(before, text, file_span)),
-                },
-                Some(c) => c,
-            },
+            TokenKind::Ident => {
+                match get_real_ident_class(text, false) {
+                    None => match text {
+                        "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
+                        "Some" | "None" | "Ok" | "Err" => {
+                            Class::PreludeVal(new_span(before, text, file_span))
+                        }
+                        // "union" is a weak keyword and is only considered as a keyword when declaring
+                        // a union type.
+                        "union" if self.check_if_is_union_keyword() => Class::KeyWord,
+                        _ if self.in_macro_nonterminal => {
+                            self.in_macro_nonterminal = false;
+                            Class::MacroNonTerminal
+                        }
+                        "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
+                        _ => Class::Ident(new_span(before, text, file_span)),
+                    },
+                    Some(c) => c,
+                }
+            }
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
@@ -1306,14 +1241,20 @@ impl<'src> Classifier<'src> {
         self.tokens.peek().map(|(token_kind, _text)| *token_kind)
     }
 
-    fn check_if_is_union_keyword(&mut self) -> bool {
-        while let Some(kind) = self.tokens.peek_next().map(|(token_kind, _text)| token_kind) {
-            if *kind == TokenKind::Whitespace {
-                continue;
+    fn peek_non_whitespace(&mut self) -> Option<TokenKind> {
+        while let Some((token_kind, _)) = self.tokens.peek_next() {
+            if *token_kind != TokenKind::Whitespace {
+                let token_kind = *token_kind;
+                self.tokens.stop_peeking();
+                return Some(token_kind);
             }
-            return *kind == TokenKind::Ident;
         }
-        false
+        self.tokens.stop_peeking();
+        None
+    }
+
+    fn check_if_is_union_keyword(&mut self) -> bool {
+        self.peek_non_whitespace().is_some_and(|kind| kind == TokenKind::Ident)
     }
 }
 
