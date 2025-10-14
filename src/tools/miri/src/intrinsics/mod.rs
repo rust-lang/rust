@@ -118,7 +118,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.emulate_atomic_intrinsic(name, generic_args, args, dest);
         }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
-            return this.emulate_simd_intrinsic(name, generic_args, args, dest);
+            return this.emulate_simd_intrinsic(name, args, dest);
         }
 
         match intrinsic_name {

@@ -39,7 +39,7 @@ pub(super) fn apply_member_constraints<'tcx>(
     debug!(?member_constraints);
     for scc_a in rcx.constraint_sccs.all_sccs() {
         debug!(?scc_a);
-        // Start by  adding the region values required by outlives constraints. This
+        // Start by adding the region values required by outlives constraints. This
         // matches how we compute the final region values in `fn compute_regions`.
         //
         // We need to do this here to get a lower bound when applying member constraints.
@@ -64,6 +64,7 @@ fn apply_member_constraint<'tcx>(
     // If the member region lives in a higher universe, we currently choose
     // the most conservative option by leaving it unchanged.
     if !rcx.max_placeholder_universe_reached(member).is_root() {
+        debug!("member region reached non root universe, bailing");
         return;
     }
 

@@ -822,7 +822,7 @@ pub(crate) fn find_matching_impl<'db>(
     let mut ocx = ObligationCtxt::new(infcx);
     let impl_source = selection.map(|obligation| ocx.register_obligation(obligation));
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         return None;
     }
@@ -1663,7 +1663,7 @@ fn is_valid_trait_method_candidate<'db>(
                         let mut ctxt = ObligationCtxt::new(&table.infer_ctxt);
                         ctxt.register_obligations(infer_ok.into_obligations());
                         // FIXME: Are we doing this correctly? Probably better to follow rustc more closely.
-                        check_that!(ctxt.select_where_possible().is_empty());
+                        check_that!(ctxt.try_evaluate_obligations().is_empty());
                     }
 
                     check_that!(table.unify(receiver_ty, expected_receiver));
@@ -1743,7 +1743,7 @@ fn is_valid_impl_fn_candidate<'db>(
             )
         }));
 
-        if ctxt.select_where_possible().is_empty() {
+        if ctxt.try_evaluate_obligations().is_empty() {
             IsValidCandidate::Yes
         } else {
             IsValidCandidate::No

@@ -33,7 +33,7 @@ impl<'tcx> Tree {
         machine: &MiriMachine<'tcx>,
     ) -> Self {
         let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         Tree::new(tag, size, span)
     }
 
@@ -61,7 +61,7 @@ impl<'tcx> Tree {
             ProvenanceExtra::Wildcard => return interp_ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         self.perform_access(
             tag,
             Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
@@ -86,7 +86,7 @@ impl<'tcx> Tree {
             ProvenanceExtra::Wildcard => return interp_ok(()),
         };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
@@ -107,7 +107,7 @@ impl<'tcx> Tree {
         tag: BorTag,
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         // `None` makes it the magic on-protector-end operation
         self.perform_access(tag, None, global, alloc_id, span)
     }
@@ -360,7 +360,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Some((range_in_alloc, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
-                    this.machine.current_span(),
+                    this.machine.current_user_relevant_span(),
                 )?;
 
                 // Also inform the data race model (but only if any bytes are actually affected).
@@ -386,7 +386,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             inside_perms,
             new_perm.outside_perm,
             protected,
-            this.machine.current_span(),
+            this.machine.current_user_relevant_span(),
         )?;
         drop(tree_borrows);
 

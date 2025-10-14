@@ -453,7 +453,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 TyKind::Alias(alias_kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
-            ty::Bound(debruijn_idx, bound_ty) => {
+            ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
+                unreachable!()
+            }
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn_idx), bound_ty) => {
                 TyKind::Bound(debruijn_idx.as_usize(), bound_ty.stable(tables, cx))
             }
             ty::CoroutineWitness(def_id, args) => TyKind::RigidTy(RigidTy::CoroutineWitness(
@@ -907,7 +910,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db_index), bound_reg) => RegionKind::ReBound(
                 db_index.as_u32(),
                 BoundRegion {
                     var: bound_reg.var.as_u32(),

@@ -600,11 +600,6 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::CopyForDeref(place) => {
-                    let cplace = codegen_place(fx, place);
-                    let val = cplace.to_cvalue(fx);
-                    lval.write_cvalue(fx, val)
-                }
                 Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
@@ -789,7 +784,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
-                Rvalue::Cast(CastKind::Transmute, ref operand, _to_ty) => {
+                Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }
@@ -928,11 +923,11 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }
+                Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
             }
         }
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        | StatementKind::Deinit(_)
         | StatementKind::ConstEvalCounter
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
@@ -996,7 +991,7 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::Subtype(ty) | PlaceElem::UnwrapUnsafeBinder(ty) => {
+            PlaceElem::UnwrapUnsafeBinder(ty) => {
                 cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
             }
             PlaceElem::Field(field, _ty) => {

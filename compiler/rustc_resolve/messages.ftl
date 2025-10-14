@@ -93,9 +93,6 @@ resolve_consider_adding_a_derive =
 resolve_consider_adding_macro_export =
     consider adding a `#[macro_export]` to the macro in the imported module
 
-resolve_consider_marking_as_pub_crate =
-    in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
-
 resolve_consider_declaring_with_pub =
     consider declaring type or module `{$ident}` with `pub`
 
@@ -107,6 +104,9 @@ resolve_consider_making_the_field_public =
 
 resolve_consider_marking_as_pub =
     consider marking `{$ident}` as `pub` in the imported module
+
+resolve_consider_marking_as_pub_crate =
+    in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
 
 resolve_consider_move_macro_position =
     consider moving the definition of `{$ident}` before this call
@@ -248,14 +248,14 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
-resolve_macro_cannot_use_as_fn_like =
-    `{$ident}` exists, but has no rules for function-like invocation
-
 resolve_macro_cannot_use_as_attr =
     `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
      `{$ident}` exists, but has no `derive` rules
+
+resolve_macro_cannot_use_as_fn_like =
+    `{$ident}` exists, but has no rules for function-like invocation
 
 resolve_macro_defined_later =
     a macro with the same name exists, but it appears later

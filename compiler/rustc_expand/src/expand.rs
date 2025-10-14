@@ -812,11 +812,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.get_normal_item();
+                    let safety = attr_item.unsafety;
                     if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    match expander.expand(self.cx, span, inner_tokens, tokens) {
+                    match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
                                 tok_result,
@@ -840,6 +841,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 } else if let SyntaxExtensionKind::LegacyAttr(expander) = ext {
+                    // `LegacyAttr` is only used for builtin attribute macros, which have their
+                    // safety checked by `check_builtin_meta_item`, so we don't need to check
+                    // `unsafety` here.
                     match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let item_clone = macro_stats.then(|| item.clone());
@@ -882,6 +886,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                     }
                 } else if let SyntaxExtensionKind::NonMacroAttr = ext {
+                    if let ast::Safety::Unsafe(span) = attr.get_normal_item().unsafety {
+                        self.cx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
+                    }
                     // `-Zmacro-stats` ignores these because they don't do any real expansion.
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));

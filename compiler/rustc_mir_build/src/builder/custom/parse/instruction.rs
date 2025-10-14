@@ -24,9 +24,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let op = self.parse_operand(args[0])?;
                 Ok(StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(op))))
             },
-            @call(mir_deinit, args) => {
-                Ok(StatementKind::Deinit(Box::new(self.parse_place(args[0])?)))
-            },
             @call(mir_retag, args) => {
                 Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
@@ -253,7 +250,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 Ok(Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, offset))))
             },
             @call(mir_ptr_metadata, args) => Ok(Rvalue::UnaryOp(UnOp::PtrMetadata, self.parse_operand(args[0])?)),
-            @call(mir_copy_for_deref, args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
             ),

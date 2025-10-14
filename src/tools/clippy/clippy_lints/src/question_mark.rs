@@ -6,7 +6,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
     is_path_lang_item, is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id,
@@ -483,6 +484,13 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             .filter(|e| *e)
             .is_none()
     {
+        if !is_copy(cx, caller_ty)
+            && let Some(hir_id) = path_to_local(let_expr)
+            && local_used_after_expr(cx, hir_id, expr)
+        {
+            return;
+        }
+
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
         let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));

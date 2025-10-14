@@ -719,6 +719,11 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
         let mut current_location = Location { block, statement_index: 0 };
         for statement in &data.statements {
             (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
+
+            for debuginfo in statement.debuginfos.iter() {
+                writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
+            }
+
             let indented_body = format!("{INDENT}{INDENT}{statement:?};");
             if self.options.include_extra_comments {
                 writeln!(
@@ -747,6 +752,10 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
             (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
 
             current_location.statement_index += 1;
+        }
+
+        for debuginfo in data.after_last_stmt_debuginfos.iter() {
+            writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
         }
 
         // Terminator at the bottom.
@@ -809,7 +818,6 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }
-            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
             PlaceMention(ref place) => {
                 write!(fmt, "PlaceMention({place:?})")
             }
@@ -824,6 +832,19 @@ impl Debug for Statement<'_> {
                 // For now, we don't record the reason because there is only one use case,
                 // which is to report breaking change in drop order by Edition 2024
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
+            }
+        }
+    }
+}
+
+impl Debug for StmtDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StmtDebugInfo::AssignRef(local, place) => {
+                write!(fmt, "{local:?} = &{place:?}")
+            }
+            StmtDebugInfo::InvalidAssign(local) => {
+                write!(fmt, "{local:?} = &?")
             }
         }
     }
@@ -1274,7 +1295,6 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
     for &elem in projection.iter().rev() {
         match elem {
             ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Field(_, _) => {
                 write!(fmt, "(")?;
@@ -1299,9 +1319,6 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
         match elem {
             ProjectionElem::OpaqueCast(ty) => {
                 write!(fmt, " as {ty})")?;
-            }
-            ProjectionElem::Subtype(ty) => {
-                write!(fmt, " as subtype {ty})")?;
             }
             ProjectionElem::Downcast(Some(name), _index) => {
                 write!(fmt, " as {name})")?;

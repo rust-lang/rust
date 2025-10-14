@@ -17,8 +17,8 @@ impl<T: Copy> Wrapper<T> {
     }
 
     extern "cmse-nonsecure-entry" fn ambient_generic_nested(
-        //~^ ERROR [E0798]
         _: Wrapper<T>,
+        //~^ ERROR [E0798]
         _: u32,
         _: u32,
         _: u32,
@@ -28,17 +28,12 @@ impl<T: Copy> Wrapper<T> {
 }
 
 extern "cmse-nonsecure-entry" fn introduced_generic<U: Copy>(
-    //~^ ERROR [E0798]
     _: U,
+    //~^ ERROR [E0798]
     _: u32,
     _: u32,
     _: u32,
 ) -> u64 {
-    0
-}
-
-extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
-    //~^ ERROR [E0798]
     0
 }
 
@@ -64,4 +59,33 @@ struct WrapperTransparent<'a>(&'a dyn Trait);
 extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> WrapperTransparent {
     //~^ ERROR return value of `"cmse-nonsecure-entry"` function too large to pass via registers [E0798]
     x
+}
+
+extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
+    //~^ ERROR [E0798]
+    0
+}
+
+extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+    0u128
+}
+
+extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+    (0u128, 0i32)
+}
+
+extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
+    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+    //~| ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+    v
+}
+
+extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
+    v: (impl Copy, i32),
+    //~^ ERROR generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+) -> (impl Copy, i32) {
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+    v
 }

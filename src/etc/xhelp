@@ -1,0 +1,96 @@
+
+Usage: x.py <subcommand> [options] [<paths>...]
+
+Commands:
+  build    Compile either the compiler or libraries
+  check    Compile either the compiler or libraries, using cargo check
+  clippy   Run Clippy (uses rustup/cargo-installed clippy binary)
+  fix      Run cargo fix
+  fmt      Run rustfmt
+  doc      Build documentation
+  test     Build and run some test suites
+  miri     Build and run some test suites *in Miri*
+  bench    Build and run some benchmarks
+  clean    Clean out build directories
+  dist     Build distribution artifacts
+  install  Install distribution artifacts
+  run      Run tools contained in this repository
+  setup    Set up the environment for development
+  vendor   Vendor dependencies
+  perf     Perform profiling and benchmarking of the compiler using `rustc-perf`
+
+Arguments:
+  [PATHS]...  paths for the subcommand
+  [ARGS]...   arguments passed to subcommands
+
+Options:
+  -v, --verbose...
+          use verbose output (-vv for very verbose)
+  -i, --incremental
+          use incremental compilation
+      --config <FILE>
+          TOML configuration file for build
+      --build-dir <DIR>
+          Build directory, overrides `build.build-dir` in `bootstrap.toml`
+      --build <BUILD>
+          host target of the stage0 compiler
+      --host <HOST>
+          host targets to build
+      --target <TARGET>
+          target targets to build
+      --exclude <PATH>
+          build paths to exclude
+      --skip <PATH>
+          build paths to skip
+      --include-default-paths
+          include default paths in addition to the provided ones
+      --rustc-error-format <RUSTC_ERROR_FORMAT>
+          rustc error format
+      --on-fail <CMD>
+          command to run on failure
+      --dry-run
+          dry run; don't build anything
+      --dump-bootstrap-shims
+          Indicates whether to dump the work done from bootstrap shims
+      --stage <N>
+          stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)
+      --keep-stage <N>
+          stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)
+      --keep-stage-std <N>
+          stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)
+      --src <DIR>
+          path to the root of the rust checkout
+  -j, --jobs <JOBS>
+          number of jobs to run in parallel
+      --warnings <deny|warn>
+          if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour [default: default] [possible values: deny, warn, default]
+      --json-output
+          use message-format=json
+      --compile-time-deps
+          only build proc-macros and build scripts (for rust-analyzer)
+      --color <STYLE>
+          whether to use color in cargo and rustc output [default: auto] [possible values: always, never, auto]
+      --bypass-bootstrap-lock
+          Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)
+      --rust-profile-generate <PROFILE>
+          generate PGO profile with rustc build
+      --rust-profile-use <PROFILE>
+          use PGO profile for rustc build
+      --llvm-profile-use <PROFILE>
+          use PGO profile for LLVM build
+      --llvm-profile-generate
+          generate PGO profile with llvm built for rustc
+      --enable-bolt-settings
+          Enable BOLT link flags
+      --skip-stage0-validation
+          Skip stage0 compiler validation
+      --reproducible-artifact <REPRODUCIBLE_ARTIFACT>
+          Additional reproducible artifacts that should be added to the reproducible artifacts archive
+      --set <section.option=value>
+          override options in bootstrap.toml
+      --ci <bool>
+          Make bootstrap to behave as it's running on the CI environment or not [possible values: true, false]
+      --skip-std-check-if-no-download-rustc
+          Skip checking the standard library if `rust.download-rustc` isn't available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers
+  -h, --help
+          Print help (see more with '--help')

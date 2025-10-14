@@ -458,6 +458,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scopeguard",
     "self_cell",
     "serde",
+    "serde_core",
     "serde_derive",
     "serde_derive_internals",
     "serde_json",

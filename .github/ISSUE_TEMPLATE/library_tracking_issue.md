@@ -51,6 +51,7 @@ If the feature is changed later, please add those PRs here as well.
 
 (Remember to update the `S-tracking-*` label when checking boxes.)
 
+- [ ] ACP: rust-lang/libs-team#...
 - [ ] Implementation: #...
 - [ ] Final comment period (FCP)[^1]
 - [ ] Stabilization PR

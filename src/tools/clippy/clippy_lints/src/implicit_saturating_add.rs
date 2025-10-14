@@ -117,10 +117,11 @@ fn get_int_max(ty: Ty<'_>) -> Option<u128> {
 fn get_const<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(u128, BinOpKind, &'tcx Expr<'tcx>)> {
     if let ExprKind::Binary(op, l, r) = expr.kind {
         let ecx = ConstEvalCtxt::new(cx);
-        if let Some(Constant::Int(c)) = ecx.eval(r) {
+        let ctxt = expr.span.ctxt();
+        if let Some(Constant::Int(c)) = ecx.eval_local(r, ctxt) {
             return Some((c, op.node, l));
         }
-        if let Some(Constant::Int(c)) = ecx.eval(l) {
+        if let Some(Constant::Int(c)) = ecx.eval_local(l, ctxt) {
             return Some((c, invert_op(op.node)?, r));
         }
     }

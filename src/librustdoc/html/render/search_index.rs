@@ -1,9 +1,13 @@
 pub(crate) mod encode;
+mod serde;
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
 use std::path::Path;
 
+use ::serde::de::{self, Deserializer, Error as _};
+use ::serde::ser::{SerializeSeq, Serializer};
+use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir::attrs::AttributeKind;
@@ -12,9 +16,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, kw};
-use serde::de::{self, Deserializer, Error as _};
-use serde::ser::{SerializeSeq, Serializer};
-use serde::{Deserialize, Serialize};
 use stringdex::internals as stringdex_internals;
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -34,7 +35,7 @@ pub(crate) struct SerializedSearchIndex {
     path_data: Vec<Option<PathData>>,
     entry_data: Vec<Option<EntryData>>,
     descs: Vec<String>,
-    function_data: Vec<Option<FunctionData>>,
+    function_data: Vec<Option<IndexItemFunctionType>>,
     alias_pointers: Vec<Option<usize>>,
     // inverted index for concrete types and generics
     type_data: Vec<Option<TypeData>>,
@@ -61,7 +62,7 @@ impl SerializedSearchIndex {
         let mut path_data: Vec<Option<PathData>> = Vec::new();
         let mut entry_data: Vec<Option<EntryData>> = Vec::new();
         let mut descs: Vec<String> = Vec::new();
-        let mut function_data: Vec<Option<FunctionData>> = Vec::new();
+        let mut function_data: Vec<Option<IndexItemFunctionType>> = Vec::new();
         let mut type_data: Vec<Option<TypeData>> = Vec::new();
         let mut alias_pointers: Vec<Option<usize>> = Vec::new();
 
@@ -207,7 +208,7 @@ impl SerializedSearchIndex {
         path_data: Option<PathData>,
         entry_data: Option<EntryData>,
         desc: String,
-        function_data: Option<FunctionData>,
+        function_data: Option<IndexItemFunctionType>,
         type_data: Option<TypeData>,
         alias_pointer: Option<usize>,
     ) -> usize {
@@ -446,73 +447,62 @@ impl SerializedSearchIndex {
                         ..other_entry_data.clone()
                     }),
                     other.descs[other_entryid].clone(),
-                    other.function_data[other_entryid].as_ref().map(|function_data| FunctionData {
-                        function_signature: {
-                            let (mut func, _offset) =
-                                IndexItemFunctionType::read_from_string_without_param_names(
-                                    function_data.function_signature.as_bytes(),
-                                );
-                            fn map_fn_sig_item(
-                                map_other_pathid_to_self_pathid: &mut Vec<usize>,
-                                ty: &mut RenderType,
-                            ) {
-                                match ty.id {
-                                    None => {}
-                                    Some(RenderTypeId::Index(generic)) if generic < 0 => {}
-                                    Some(RenderTypeId::Index(id)) => {
-                                        let id = usize::try_from(id).unwrap();
-                                        let id = map_other_pathid_to_self_pathid[id];
-                                        assert!(id != !0);
-                                        ty.id =
-                                            Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
-                                    }
-                                    _ => unreachable!(),
+                    other.function_data[other_entryid].clone().map(|mut func| {
+                        fn map_fn_sig_item(
+                            map_other_pathid_to_self_pathid: &mut Vec<usize>,
+                            ty: &mut RenderType,
+                        ) {
+                            match ty.id {
+                                None => {}
+                                Some(RenderTypeId::Index(generic)) if generic < 0 => {}
+                                Some(RenderTypeId::Index(id)) => {
+                                    let id = usize::try_from(id).unwrap();
+                                    let id = map_other_pathid_to_self_pathid[id];
+                                    assert!(id != !0);
+                                    ty.id = Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
                                 }
-                                if let Some(generics) = &mut ty.generics {
-                                    for generic in generics {
-                                        map_fn_sig_item(map_other_pathid_to_self_pathid, generic);
-                                    }
+                                _ => unreachable!(),
+                            }
+                            if let Some(generics) = &mut ty.generics {
+                                for generic in generics {
+                                    map_fn_sig_item(map_other_pathid_to_self_pathid, generic);
                                 }
-                                if let Some(bindings) = &mut ty.bindings {
-                                    for (param, constraints) in bindings {
-                                        *param = match *param {
-                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
-                                                param
-                                            }
-                                            RenderTypeId::Index(id) => {
-                                                let id = usize::try_from(id).unwrap();
-                                                let id = map_other_pathid_to_self_pathid[id];
-                                                assert!(id != !0);
-                                                RenderTypeId::Index(isize::try_from(id).unwrap())
-                                            }
-                                            _ => unreachable!(),
-                                        };
-                                        for constraint in constraints {
-                                            map_fn_sig_item(
-                                                map_other_pathid_to_self_pathid,
-                                                constraint,
-                                            );
+                            }
+                            if let Some(bindings) = &mut ty.bindings {
+                                for (param, constraints) in bindings {
+                                    *param = match *param {
+                                        param @ RenderTypeId::Index(generic) if generic < 0 => {
+                                            param
                                         }
+                                        RenderTypeId::Index(id) => {
+                                            let id = usize::try_from(id).unwrap();
+                                            let id = map_other_pathid_to_self_pathid[id];
+                                            assert!(id != !0);
+                                            RenderTypeId::Index(isize::try_from(id).unwrap())
+                                        }
+                                        _ => unreachable!(),
+                                    };
+                                    for constraint in constraints {
+                                        map_fn_sig_item(
+                                            map_other_pathid_to_self_pathid,
+                                            constraint,
+                                        );
                                     }
                                 }
                             }
-                            for input in &mut func.inputs {
-                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, input);
+                        }
+                        for input in &mut func.inputs {
+                            map_fn_sig_item(&mut map_other_pathid_to_self_pathid, input);
+                        }
+                        for output in &mut func.output {
+                            map_fn_sig_item(&mut map_other_pathid_to_self_pathid, output);
+                        }
+                        for clause in &mut func.where_clause {
+                            for entry in clause {
+                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, entry);
                             }
-                            for output in &mut func.output {
-                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, output);
-                            }
-                            for clause in &mut func.where_clause {
-                                for entry in clause {
-                                    map_fn_sig_item(&mut map_other_pathid_to_self_pathid, entry);
-                                }
-                            }
-                            let mut result =
-                                String::with_capacity(function_data.function_signature.len());
-                            func.write_to_string_without_param_names(&mut result);
-                            result
-                        },
-                        param_names: function_data.param_names.clone(),
+                        }
+                        func
                     }),
                     other.type_data[other_entryid].as_ref().map(|type_data| TypeData {
                         inverted_function_inputs_index: type_data
@@ -610,6 +600,7 @@ impl SerializedSearchIndex {
                          module_path,
                          exact_module_path,
                          parent,
+                         trait_parent,
                          deprecated,
                          associated_item_disambiguator,
                      }| EntryData {
@@ -619,74 +610,61 @@ impl SerializedSearchIndex {
                         exact_module_path: exact_module_path
                             .and_then(|path_id| map.get(&path_id).copied()),
                         parent: parent.and_then(|path_id| map.get(&path_id).copied()),
+                        trait_parent: trait_parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
                         associated_item_disambiguator: associated_item_disambiguator.clone(),
                     },
                 ),
                 self.descs[id].clone(),
-                self.function_data[id].as_ref().map(
-                    |FunctionData { function_signature, param_names }| FunctionData {
-                        function_signature: {
-                            let (mut func, _offset) =
-                                IndexItemFunctionType::read_from_string_without_param_names(
-                                    function_signature.as_bytes(),
-                                );
-                            fn map_fn_sig_item(map: &FxHashMap<usize, usize>, ty: &mut RenderType) {
-                                match ty.id {
-                                    None => {}
-                                    Some(RenderTypeId::Index(generic)) if generic < 0 => {}
-                                    Some(RenderTypeId::Index(id)) => {
+                self.function_data[id].clone().map(|mut func| {
+                    fn map_fn_sig_item(map: &FxHashMap<usize, usize>, ty: &mut RenderType) {
+                        match ty.id {
+                            None => {}
+                            Some(RenderTypeId::Index(generic)) if generic < 0 => {}
+                            Some(RenderTypeId::Index(id)) => {
+                                let id = usize::try_from(id).unwrap();
+                                let id = *map.get(&id).unwrap();
+                                assert!(id != !0);
+                                ty.id = Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
+                            }
+                            _ => unreachable!(),
+                        }
+                        if let Some(generics) = &mut ty.generics {
+                            for generic in generics {
+                                map_fn_sig_item(map, generic);
+                            }
+                        }
+                        if let Some(bindings) = &mut ty.bindings {
+                            for (param, constraints) in bindings {
+                                *param = match *param {
+                                    param @ RenderTypeId::Index(generic) if generic < 0 => param,
+                                    RenderTypeId::Index(id) => {
                                         let id = usize::try_from(id).unwrap();
                                         let id = *map.get(&id).unwrap();
                                         assert!(id != !0);
-                                        ty.id =
-                                            Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
+                                        RenderTypeId::Index(isize::try_from(id).unwrap())
                                     }
                                     _ => unreachable!(),
-                                }
-                                if let Some(generics) = &mut ty.generics {
-                                    for generic in generics {
-                                        map_fn_sig_item(map, generic);
-                                    }
-                                }
-                                if let Some(bindings) = &mut ty.bindings {
-                                    for (param, constraints) in bindings {
-                                        *param = match *param {
-                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
-                                                param
-                                            }
-                                            RenderTypeId::Index(id) => {
-                                                let id = usize::try_from(id).unwrap();
-                                                let id = *map.get(&id).unwrap();
-                                                assert!(id != !0);
-                                                RenderTypeId::Index(isize::try_from(id).unwrap())
-                                            }
-                                            _ => unreachable!(),
-                                        };
-                                        for constraint in constraints {
-                                            map_fn_sig_item(map, constraint);
-                                        }
-                                    }
+                                };
+                                for constraint in constraints {
+                                    map_fn_sig_item(map, constraint);
                                 }
                             }
-                            for input in &mut func.inputs {
-                                map_fn_sig_item(&map, input);
-                            }
-                            for output in &mut func.output {
-                                map_fn_sig_item(&map, output);
-                            }
-                            for clause in &mut func.where_clause {
-                                for entry in clause {
-                                    map_fn_sig_item(&map, entry);
-                                }
-                            }
-                            let mut result = String::with_capacity(function_signature.len());
-                            func.write_to_string_without_param_names(&mut result);
-                            result
-                        },
-                        param_names: param_names.clone(),
-                    },
-                ),
+                        }
+                    }
+                    for input in &mut func.inputs {
+                        map_fn_sig_item(&map, input);
+                    }
+                    for output in &mut func.output {
+                        map_fn_sig_item(&map, output);
+                    }
+                    for clause in &mut func.where_clause {
+                        for entry in clause {
+                            map_fn_sig_item(&map, entry);
+                        }
+                    }
+                    func
+                }),
                 self.type_data[id].as_ref().map(
                     |TypeData {
                          search_unbox,
@@ -900,6 +878,7 @@ struct EntryData {
     module_path: Option<usize>,
     exact_module_path: Option<usize>,
     parent: Option<usize>,
+    trait_parent: Option<usize>,
     deprecated: bool,
     associated_item_disambiguator: Option<String>,
 }
@@ -915,6 +894,7 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.module_path.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.exact_module_path.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
+        seq.serialize_element(&self.trait_parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
         if let Some(disambig) = &self.associated_item_disambiguator {
             seq.serialize_element(&disambig)?;
@@ -946,6 +926,9 @@ impl<'de> Deserialize<'de> for EntryData {
                     .ok_or_else(|| A::Error::missing_field("exact_module_path"))?;
                 let parent: SerializedOptional32 =
                     v.next_element()?.ok_or_else(|| A::Error::missing_field("parent"))?;
+                let trait_parent: SerializedOptional32 =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("trait_parent"))?;
+
                 let deprecated: u32 = v.next_element()?.unwrap_or(0);
                 let associated_item_disambiguator: Option<String> = v.next_element()?;
                 Ok(EntryData {
@@ -955,6 +938,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     exact_module_path: Option::<i32>::from(exact_module_path)
                         .map(|path| path as usize),
                     parent: Option::<i32>::from(parent).map(|path| path as usize),
+                    trait_parent: Option::<i32>::from(trait_parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
                     associated_item_disambiguator,
                 })
@@ -1251,48 +1235,6 @@ impl<'de> Deserialize<'de> for SerializedOptional32 {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct FunctionData {
-    function_signature: String,
-    param_names: Vec<String>,
-}
-
-impl Serialize for FunctionData {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        seq.serialize_element(&self.function_signature)?;
-        seq.serialize_element(&self.param_names)?;
-        seq.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for FunctionData {
-    fn deserialize<D>(deserializer: D) -> Result<FunctionData, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct FunctionDataVisitor;
-        impl<'de> de::Visitor<'de> for FunctionDataVisitor {
-            type Value = FunctionData;
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(formatter, "fn data")
-            }
-            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<FunctionData, A::Error> {
-                let function_signature: String = v
-                    .next_element()?
-                    .ok_or_else(|| A::Error::missing_field("function_signature"))?;
-                let param_names: Vec<String> =
-                    v.next_element()?.ok_or_else(|| A::Error::missing_field("param_names"))?;
-                Ok(FunctionData { function_signature, param_names })
-            }
-        }
-        deserializer.deserialize_any(FunctionDataVisitor)
-    }
-}
-
 /// Builds the search index from the collected metadata
 pub(crate) fn build_index(
     krate: &clean::Crate,
@@ -1305,7 +1247,8 @@ pub(crate) fn build_index(
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
-    for &OrphanImplItem { impl_id, parent, ref item, ref impl_generics } in &cache.orphan_impl_items
+    for &OrphanImplItem { impl_id, parent, trait_parent, ref item, ref impl_generics } in
+        &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
@@ -1317,6 +1260,8 @@ pub(crate) fn build_index(
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
+                trait_parent,
+                trait_parent_idx: None,
                 exact_module_path: None,
                 impl_id,
                 search_type: get_function_type_for_search(
@@ -1421,6 +1366,7 @@ pub(crate) fn build_index(
                         module_path: None,
                         exact_module_path: None,
                         parent: None,
+                        trait_parent: None,
                         deprecated: false,
                         associated_item_disambiguator: None,
                     }),
@@ -1434,39 +1380,46 @@ pub(crate) fn build_index(
         }
     };
 
-    // First, populate associated item parents
+    // First, populate associated item parents and trait parents
     let crate_items: Vec<&mut IndexItem> = search_index
         .iter_mut()
         .map(|item| {
-            item.parent_idx = item.parent.and_then(|defid| {
-                cache.paths.get(&defid).map(|&(ref fqp, ty)| {
-                    let pathid = serialized_index.names.len();
-                    match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
-                        Entry::Occupied(entry) => *entry.get(),
-                        Entry::Vacant(entry) => {
-                            entry.insert(pathid);
-                            let (name, path) = fqp.split_last().unwrap();
-                            serialized_index.push_path(
-                                name.as_str().to_string(),
-                                PathData {
-                                    ty,
-                                    module_path: path.to_vec(),
-                                    exact_module_path: if let Some(exact_path) =
-                                        cache.exact_paths.get(&defid)
-                                        && let Some((name2, exact_path)) = exact_path.split_last()
-                                        && name == name2
-                                    {
-                                        Some(exact_path.to_vec())
-                                    } else {
-                                        None
+            let mut defid_to_rowid = |defid, check_external: bool| {
+                cache
+                    .paths
+                    .get(&defid)
+                    .or_else(|| check_external.then(|| cache.external_paths.get(&defid)).flatten())
+                    .map(|&(ref fqp, ty)| {
+                        let pathid = serialized_index.names.len();
+                        match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
+                            Entry::Occupied(entry) => *entry.get(),
+                            Entry::Vacant(entry) => {
+                                entry.insert(pathid);
+                                let (name, path) = fqp.split_last().unwrap();
+                                serialized_index.push_path(
+                                    name.as_str().to_string(),
+                                    PathData {
+                                        ty,
+                                        module_path: path.to_vec(),
+                                        exact_module_path: if let Some(exact_path) =
+                                            cache.exact_paths.get(&defid)
+                                            && let Some((name2, exact_path)) =
+                                                exact_path.split_last()
+                                            && name == name2
+                                        {
+                                            Some(exact_path.to_vec())
+                                        } else {
+                                            None
+                                        },
                                     },
-                                },
-                            );
-                            usize::try_from(pathid).unwrap()
+                                );
+                                usize::try_from(pathid).unwrap()
+                            }
                         }
-                    }
-                })
-            });
+                    })
+            };
+            item.parent_idx = item.parent.and_then(|p| defid_to_rowid(p, false));
+            item.trait_parent_idx = item.trait_parent.and_then(|p| defid_to_rowid(p, true));
 
             if let Some(defid) = item.defid
                 && item.parent_idx.is_none()
@@ -1549,6 +1502,7 @@ pub(crate) fn build_index(
             EntryData {
                 ty: item.ty,
                 parent: item.parent_idx,
+                trait_parent: item.trait_parent_idx,
                 module_path,
                 exact_module_path,
                 deprecated: item.deprecation.is_some(),
@@ -1907,18 +1861,7 @@ pub(crate) fn build_index(
                 // because the postings list has to fill in an empty array for each
                 // unoccupied size.
                 if item.ty.is_fn_like() { 0 } else { 16 };
-            serialized_index.function_data[new_entry_id] = Some(FunctionData {
-                function_signature: {
-                    let mut function_signature = String::new();
-                    search_type.write_to_string_without_param_names(&mut function_signature);
-                    function_signature
-                },
-                param_names: search_type
-                    .param_names
-                    .iter()
-                    .map(|sym| sym.map(|sym| sym.to_string()).unwrap_or(String::new()))
-                    .collect::<Vec<String>>(),
-            });
+            serialized_index.function_data[new_entry_id] = Some(search_type.clone());
             for index in used_in_function_inputs {
                 let postings = if index >= 0 {
                     assert!(serialized_index.path_data[index as usize].is_some());

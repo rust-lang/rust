@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
   schedule:
     # Run multiple times a day as the successfull cached links are not checked every time.

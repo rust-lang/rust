@@ -181,17 +181,10 @@ pub(super) fn handle_needs(
         },
     ];
 
-    let &DirectiveLine { raw_directive: ln, .. } = ln;
+    let &DirectiveLine { name, .. } = ln;
 
-    let (name, rest) = match ln.split_once([':', ' ']) {
-        Some((name, rest)) => (name, Some(rest)),
-        None => (ln, None),
-    };
-
-    // FIXME(jieyouxu): tighten up this parsing to reject using both `:` and ` ` as means to
-    // delineate value.
     if name == "needs-target-has-atomic" {
-        let Some(rest) = rest else {
+        let Some(rest) = ln.value_after_colon() else {
             return IgnoreDecision::Error {
                 message: "expected `needs-target-has-atomic` to have a comma-separated list of atomic widths".to_string(),
             };
@@ -233,7 +226,7 @@ pub(super) fn handle_needs(
 
     // FIXME(jieyouxu): share multi-value directive logic with `needs-target-has-atomic` above.
     if name == "needs-crate-type" {
-        let Some(rest) = rest else {
+        let Some(rest) = ln.value_after_colon() else {
             return IgnoreDecision::Error {
                 message:
                     "expected `needs-crate-type` to have a comma-separated list of crate types"
@@ -292,7 +285,7 @@ pub(super) fn handle_needs(
                 break;
             } else {
                 return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = rest {
+                    reason: if let Some(comment) = ln.remark_after_space() {
                         format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()

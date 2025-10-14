@@ -146,12 +146,13 @@ impl Deprecation {
 }
 
 /// There are three valid forms of the attribute:
-/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used]`, which is equivalent to `#[used(linker)]` on targets that support it, but `#[used(compiler)]` if not.
 /// `#[used(compiler)]`
 /// `#[used(linker)]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum UsedBy {
+    Default,
     Compiler,
     Linker,
 }
@@ -308,7 +309,10 @@ pub enum NativeLibKind {
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     /// On Linux, it refers to a generated shared library stub.
-    RawDylib,
+    RawDylib {
+        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
+        as_needed: Option<bool>,
+    },
     /// A macOS-specific kind of dynamic libraries.
     Framework {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
@@ -331,11 +335,10 @@ impl NativeLibKind {
             NativeLibKind::Static { bundle, whole_archive } => {
                 bundle.is_some() || whole_archive.is_some()
             }
-            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
-                as_needed.is_some()
-            }
-            NativeLibKind::RawDylib
-            | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { as_needed }
+            | NativeLibKind::Framework { as_needed }
+            | NativeLibKind::RawDylib { as_needed } => as_needed.is_some(),
+            NativeLibKind::Unspecified
             | NativeLibKind::LinkArg
             | NativeLibKind::WasmImportModule => false,
         }
@@ -348,7 +351,9 @@ impl NativeLibKind {
     pub fn is_dllimport(&self) -> bool {
         matches!(
             self,
-            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { .. }
+                | NativeLibKind::RawDylib { .. }
+                | NativeLibKind::Unspecified
         )
     }
 }

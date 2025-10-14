@@ -21,10 +21,10 @@ note: the traits `Iterator` and `ToTokens` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0282]: type annotations needed
-  --> $DIR/not-repeatable.rs:11:13
+  --> $DIR/not-repeatable.rs:11:25
    |
 LL |     let _ = quote! { $($ip)* };
-   |             ^^^^^^^^^^^^^^^^^^ cannot infer type
+   |                         ^^ cannot infer type
 
 error: aborting due to 2 previous errors
 

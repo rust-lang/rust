@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use clippy_utils::{is_self, peel_hir_ty_options};
+use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
+use clippy_utils::{is_self, path_to_local_id, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Attribute, BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node,
-    PatKind, QPath, TyKind,
+    Attribute, BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability,
+    Node, PatKind, QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass};
@@ -19,9 +19,12 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
+
+use std::borrow::Cow;
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -217,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_diagnostic_item(cx, ty, sym::Vec)
-                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[(sym::clone, ".to_owned()")])
+                        && let Some(clone_spans) = get_spans(cx, body, idx, &[(sym::clone, ".to_owned()")])
                         && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
                         && let Some(elem_ty) = path
                             .segments
@@ -260,12 +263,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     if is_type_lang_item(cx, ty, LangItem::String)
-                        && let Some(clone_spans) = get_spans(
-                            cx,
-                            Some(body.id()),
-                            idx,
-                            &[(sym::clone, ".to_string()"), (sym::as_str, "")],
-                        )
+                        && let Some(clone_spans) =
+                            get_spans(cx, body, idx, &[(sym::clone, ".to_string()"), (sym::as_str, "")])
                     {
                         diag.span_suggestion(
                             input.span,
@@ -339,4 +338,44 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
+fn get_spans<'tcx>(
+    cx: &LateContext<'tcx>,
+    body: &'tcx Body<'_>,
+    idx: usize,
+    replacements: &[(Symbol, &'static str)],
+) -> Option<Vec<(Span, Cow<'static, str>)>> {
+    if let PatKind::Binding(_, binding_id, _, _) = strip_pat_refs(body.params[idx].pat).kind {
+        extract_clone_suggestions(cx, binding_id, replacements, body)
+    } else {
+        Some(vec![])
+    }
+}
+
+fn extract_clone_suggestions<'tcx>(
+    cx: &LateContext<'tcx>,
+    id: HirId,
+    replace: &[(Symbol, &'static str)],
+    body: &'tcx Body<'_>,
+) -> Option<Vec<(Span, Cow<'static, str>)>> {
+    let mut spans = Vec::new();
+    for_each_expr_without_closures(body, |e| {
+        if let ExprKind::MethodCall(seg, recv, [], _) = e.kind
+            && path_to_local_id(recv, id)
+        {
+            if seg.ident.name == sym::capacity {
+                return ControlFlow::Break(());
+            }
+            for &(fn_name, suffix) in replace {
+                if seg.ident.name == fn_name {
+                    spans.push((e.span, snippet(cx, recv.span, "_") + suffix));
+                    return ControlFlow::Continue(Descend::No);
+                }
+            }
+        }
+        ControlFlow::Continue(Descend::Yes)
+    })
+    .is_none()
+    .then_some(spans)
 }

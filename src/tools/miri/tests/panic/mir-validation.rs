@@ -13,7 +13,7 @@
 use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-pub fn main() {
+fn main() {
     mir! {
         let x: i32;
         let tuple: (*mut i32,);

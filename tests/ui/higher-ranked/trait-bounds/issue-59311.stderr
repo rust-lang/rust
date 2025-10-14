@@ -37,7 +37,7 @@ error: higher-ranked lifetime error
 LL |     v.t(|| {});
    |         ^^^^^
    |
-   = note: could not prove `for<'a> &'a V: 'b`
+   = note: could not prove `for<'a> &'a V: '_`
 
 error: aborting due to 3 previous errors
 
