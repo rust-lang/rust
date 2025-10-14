@@ -155,13 +155,6 @@ fn add_hidden_type<'tcx>(
     }
 }
 
-fn get_hidden_type<'tcx>(
-    hidden_types: &DefinitionSiteHiddenTypes<'tcx>,
-    def_id: LocalDefId,
-) -> Option<EarlyBinder<'tcx, OpaqueHiddenType<'tcx>>> {
-    hidden_types.0.get(&def_id).map(|ty| EarlyBinder::bind(*ty))
-}
-
 #[derive(Debug)]
 struct DefiningUse<'tcx> {
     /// The opaque type using non NLL vars. This uses the actual
@@ -508,7 +501,8 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     let tcx = infcx.tcx;
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
-        let Some(expected) = get_hidden_type(hidden_types, key.def_id) else {
+        let Some(expected) = hidden_types.0.get(&key.def_id).map(|ty| EarlyBinder::bind(*ty))
+        else {
             if !tcx.use_typing_mode_borrowck() {
                 if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
                     && alias_ty.def_id == key.def_id.to_def_id()
