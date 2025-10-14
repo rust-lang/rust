@@ -18,7 +18,7 @@ use hir_def::{
 use hir_expand::name::Name;
 use rustc_type_ir::inherent::{IntoKind, SliceLike};
 use span::Edition;
-use stdx::{always, never};
+use stdx::{always, never, variance::PhantomCovariantLifetime};
 
 use crate::{
     InferenceResult,
@@ -299,8 +299,8 @@ impl<'a, 'db> PatCtxt<'a, 'db> {
     }
 }
 
-impl HirDisplay for Pat<'_> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+impl<'db> HirDisplay<'db> for Pat<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
         match &*self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
@@ -356,7 +356,7 @@ impl HirDisplay for Pat<'_> {
                             .filter(|p| !matches!(*p.pattern.kind, PatKind::Wild))
                             .map(|p| {
                                 printed += 1;
-                                WriteWith(|f| {
+                                WriteWith::new(|f| {
                                     write!(
                                         f,
                                         "{}: ",
@@ -382,7 +382,7 @@ impl HirDisplay for Pat<'_> {
                 if num_fields != 0 || variant.is_none() {
                     write!(f, "(")?;
                     let subpats = (0..num_fields).map(|i| {
-                        WriteWith(move |f| {
+                        WriteWith::new(move |f| {
                             let fid = LocalFieldId::from_raw((i as u32).into());
                             if let Some(p) = subpatterns.get(i)
                                 && p.field == fid
@@ -420,15 +420,24 @@ impl HirDisplay for Pat<'_> {
     }
 }
 
-struct WriteWith<F>(F)
+struct WriteWith<'db, F>(F, PhantomCovariantLifetime<'db>)
 where
-    F: Fn(&mut HirFormatter<'_>) -> Result<(), HirDisplayError>;
+    F: Fn(&mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError>;
 
-impl<F> HirDisplay for WriteWith<F>
+impl<'db, F> WriteWith<'db, F>
 where
-    F: Fn(&mut HirFormatter<'_>) -> Result<(), HirDisplayError>,
+    F: Fn(&mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError>,
 {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+    fn new(f: F) -> Self {
+        Self(f, PhantomCovariantLifetime::new())
+    }
+}
+
+impl<'db, F> HirDisplay<'db> for WriteWith<'db, F>
+where
+    F: Fn(&mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError>,
+{
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
         (self.0)(f)
     }
 }

@@ -3,47 +3,11 @@
 use hir_def::{ItemContainerId, Lookup, TraitId};
 
 use crate::{
-    Binders, CallableSig, DynTy, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, generics::generics,
-    to_chalk_trait_id, utils::ClosureSubst,
+    Binders, DynTy, Interner, ProjectionTy, Substitution, TraitRef, Ty, db::HirDatabase,
+    from_assoc_type_id, from_chalk_trait_id, generics::generics, to_chalk_trait_id,
 };
 
-pub(crate) trait TyExt {
-    fn is_unit(&self) -> bool;
-    fn is_unknown(&self) -> bool;
-
-    fn as_tuple(&self) -> Option<&Substitution>;
-
-    fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig>;
-}
-
-impl TyExt for Ty {
-    fn is_unit(&self) -> bool {
-        matches!(self.kind(Interner), TyKind::Tuple(0, _))
-    }
-
-    fn is_unknown(&self) -> bool {
-        matches!(self.kind(Interner), TyKind::Error)
-    }
-
-    fn as_tuple(&self) -> Option<&Substitution> {
-        match self.kind(Interner) {
-            TyKind::Tuple(_, substs) => Some(substs),
-            _ => None,
-        }
-    }
-
-    fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
-        match self.kind(Interner) {
-            TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
-            TyKind::FnDef(def, parameters) => Some(CallableSig::from_def(db, *def, parameters)),
-            TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty(db).callable_sig(db),
-            _ => None,
-        }
-    }
-}
-
-pub trait ProjectionTyExt {
+pub(crate) trait ProjectionTyExt {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef;
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId;
     fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty;
@@ -88,7 +52,7 @@ impl DynTyExt for DynTy {
     }
 }
 
-pub trait TraitRefExt {
+pub(crate) trait TraitRefExt {
     fn hir_trait_id(&self) -> TraitId;
 }
 

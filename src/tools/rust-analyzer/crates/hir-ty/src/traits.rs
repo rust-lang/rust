@@ -12,22 +12,20 @@ use intern::sym;
 use rustc_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
 use rustc_type_ir::{
     InferCtxtLike, TypingMode,
-    inherent::{IntoKind, SliceLike, Span as _, Ty as _},
+    inherent::{IntoKind, SliceLike, Span as _},
     solve::Certainty,
 };
 use span::Edition;
-use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
-    ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
+    AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTyExt,
+    TraitRefExt, TyKind, WhereClause,
     db::HirDatabase,
-    from_assoc_type_id,
     next_solver::{
         DbInterner, GenericArg, ParamEnv, Predicate, SolverContext, Span,
         infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
-        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_canonical_args_for_result},
+        mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
         obligation_ctxt::ObligationCtxt,
         util::mini_canonicalize,
     },
@@ -94,47 +92,6 @@ pub fn structurally_normalize_ty<'db>(
     ty.replace_infer_with_error(infcx.interner)
 }
 
-pub(crate) fn normalize_projection_query<'db>(
-    db: &'db dyn HirDatabase,
-    projection: ProjectionTy,
-    env: Arc<TraitEnvironment<'db>>,
-) -> Ty {
-    if projection.substitution.iter(Interner).any(|arg| {
-        arg.ty(Interner)
-            .is_some_and(|ty| ty.data(Interner).flags.intersects(TypeFlags::HAS_TY_INFER))
-    }) {
-        never!(
-            "Invoking `normalize_projection_query` with a projection type containing inference var"
-        );
-        return TyKind::Error.intern(Interner);
-    }
-
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
-    // FIXME(next-solver): I believe this should use `PostAnalysis` (this is only used for IDE things),
-    // but this causes some bug because of our incorrect impl of `type_of_opaque_hir_typeck()` for TAIT
-    // and async blocks.
-    let infcx = interner.infer_ctxt().build(TypingMode::Analysis {
-        defining_opaque_types_and_generators: crate::next_solver::SolverDefIds::new_from_iter(
-            interner,
-            [],
-        ),
-    });
-    let alias_ty = crate::next_solver::Ty::new_alias(
-        interner,
-        rustc_type_ir::AliasTyKind::Projection,
-        crate::next_solver::AliasTy::new(
-            interner,
-            from_assoc_type_id(projection.associated_ty_id).into(),
-            <crate::Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(&projection.substitution, interner),
-        ),
-    );
-    let mut ctxt = crate::next_solver::obligation_ctxt::ObligationCtxt::new(&infcx);
-    let normalized = ctxt
-        .structurally_normalize_ty(&ObligationCause::dummy(), env.env, alias_ty)
-        .unwrap_or(alias_ty);
-    normalized.replace_infer_with_error(interner).to_chalk(interner)
-}
-
 fn identity_subst(
     binders: chalk_ir::CanonicalVarKinds<Interner>,
 ) -> chalk_ir::Canonical<chalk_ir::Substitution<Interner>> {
@@ -163,45 +120,6 @@ fn identity_subst(
         }),
     );
     chalk_ir::Canonical { binders, value: identity_subst }
-}
-
-/// Solve a trait goal using next trait solver.
-pub(crate) fn trait_solve_query(
-    db: &dyn HirDatabase,
-    krate: Crate,
-    block: Option<BlockId>,
-    goal: Canonical<InEnvironment<Goal>>,
-) -> NextTraitSolveResult {
-    let _p = tracing::info_span!("trait_solve_query", detail = ?match &goal.value.goal.data(Interner) {
-        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => db
-            .trait_signature(it.hir_trait_id())
-            .name
-            .display(db, Edition::LATEST)
-            .to_string(),
-        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
-        _ => "??".to_owned(),
-    })
-    .entered();
-
-    if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
-        alias: AliasTy::Projection(projection_ty),
-        ..
-    }))) = &goal.value.goal.data(Interner)
-        && let TyKind::BoundVar(_) = projection_ty.self_type_parameter(db).kind(Interner)
-    {
-        // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
-        return NextTraitSolveResult::Uncertain(identity_subst(goal.binders.clone()));
-    }
-
-    // Chalk see `UnevaluatedConst` as a unique concrete value, but we see it as an alias for another const. So
-    // we should get rid of it when talking to chalk.
-    let goal = goal
-        .try_fold_with(&mut UnevaluatedConstEvaluatorFolder { db }, DebruijnIndex::INNERMOST)
-        .unwrap();
-
-    // We currently don't deal with universes (I think / hope they're not yet
-    // relevant for our use cases?)
-    next_trait_solve(db, krate, block, goal)
 }
 
 fn solve_nextsolver<'db>(

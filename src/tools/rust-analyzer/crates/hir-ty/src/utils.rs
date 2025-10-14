@@ -25,8 +25,7 @@ use smallvec::{SmallVec, smallvec};
 use span::Edition;
 
 use crate::{
-    ChalkTraitId, Const, ConstScalar, Interner, Substitution, TargetFeatures, TraitRef,
-    TraitRefExt, Ty,
+    ChalkTraitId, Const, ConstScalar, Interner, TargetFeatures, TraitRef, TraitRefExt,
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
@@ -190,19 +189,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
         let assoc_type = t.hir_trait_id().trait_items(db).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
-}
-
-pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
-
-impl<'a> ClosureSubst<'a> {
-    pub(crate) fn sig_ty(&self, db: &dyn HirDatabase) -> Ty {
-        let interner = DbInterner::new_with(db, None, None);
-        let subst =
-            <Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(
-                self.0, interner,
-            );
-        subst.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.to_chalk(interner)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

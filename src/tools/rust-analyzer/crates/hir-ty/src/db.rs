@@ -24,7 +24,6 @@ use crate::{
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    traits::NextTraitSolveResult,
 };
 
 #[query_group::query_group]

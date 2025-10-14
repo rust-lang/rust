@@ -82,7 +82,11 @@ impl<'db> Const<'db> {
     }
 
     pub fn is_ct_infer(&self) -> bool {
-        matches!(&self.inner().internee, ConstKind::Infer(_))
+        matches!(self.kind(), ConstKind::Infer(_))
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self.kind(), ConstKind::Error(_))
     }
 
     pub fn is_trivially_wf(self) -> bool {
