@@ -3,7 +3,9 @@ use rustc_span::{Symbol, sym};
 
 #[derive(Clone, Debug, Copy, Eq, PartialEq, HashStable_Generic)]
 pub enum AllocatorKind {
+    /// Use `#[global_allocator]` as global allocator.
     Global,
+    /// Use the default implementation in libstd as global allocator.
     Default,
 }
 
@@ -29,6 +31,7 @@ pub enum AllocatorTy {
     Usize,
 }
 
+/// A method that will be codegened in the allocator shim.
 #[derive(Copy, Clone)]
 pub struct AllocatorMethod {
     pub name: Symbol,
