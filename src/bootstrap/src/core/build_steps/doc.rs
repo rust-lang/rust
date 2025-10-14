@@ -274,6 +274,10 @@ impl Step for TheBook {
 
         // build the redirect pages
         let _guard = builder.msg(Kind::Doc, "book redirect pages", None, build_compiler, target);
+        if builder.config.dry_run() {
+            return;
+        }
+
         for file in t!(fs::read_dir(redirect_path)) {
             let file = t!(file);
             let path = file.path();
@@ -783,7 +787,7 @@ fn doc_std(
         Kind::Doc,
     );
 
-    compile::std_cargo(builder, target, &mut cargo);
+    compile::std_cargo(builder, target, &mut cargo, requested_crates);
     cargo
         .arg("--no-deps")
         .arg("--target-dir")
@@ -801,10 +805,6 @@ fn doc_std(
 
     if builder.config.library_docs_private_items {
         cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
-    }
-
-    for krate in requested_crates {
-        cargo.arg("-p").arg(krate);
     }
 
     let description =

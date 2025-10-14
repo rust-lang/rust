@@ -514,7 +514,9 @@ mod snapshot {
     };
     use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
-    use crate::core::config::toml::rust::with_lld_opt_in_targets;
+    use crate::core::config::toml::target::{
+        DefaultLinuxLinkerOverride, with_default_linux_linker_overrides,
+    };
     use crate::utils::cache::Cache;
     use crate::utils::helpers::get_host_target;
     use crate::utils::tests::{ConfigBuilder, TestCtx};
@@ -782,9 +784,11 @@ mod snapshot {
 
     #[test]
     fn build_compiler_lld_opt_in() {
-        with_lld_opt_in_targets(vec![host_target()], || {
-            let ctx = TestCtx::new();
-            insta::assert_snapshot!(
+        with_default_linux_linker_overrides(
+            [(host_target(), DefaultLinuxLinkerOverride::SelfContainedLldCc)].into(),
+            || {
+                let ctx = TestCtx::new();
+                insta::assert_snapshot!(
                 ctx.config("build")
                     .path("compiler")
                     .render_steps(), @r"
@@ -792,7 +796,26 @@ mod snapshot {
             [build] rustc 0 <host> -> rustc 1 <host>
             [build] rustc 0 <host> -> LldWrapper 1 <host>
             ");
-        });
+            },
+        );
+    }
+
+    #[test]
+    fn build_compiler_lld_opt_in_lld_disabled() {
+        with_default_linux_linker_overrides(
+            [(host_target(), DefaultLinuxLinkerOverride::SelfContainedLldCc)].into(),
+            || {
+                let ctx = TestCtx::new();
+                insta::assert_snapshot!(
+                ctx.config("build")
+                    .path("compiler")
+                    .args(&["--set", "rust.lld=false"])
+                    .render_steps(), @r"
+                [build] llvm <host>
+                [build] rustc 0 <host> -> rustc 1 <host>
+                ");
+            },
+        );
     }
 
     #[test]
@@ -1270,12 +1293,12 @@ mod snapshot {
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
@@ -1409,12 +1432,12 @@ mod snapshot {
         [doc] book/first-edition (book) <host>
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [doc] book (book) <target1>
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
@@ -1493,8 +1516,8 @@ mod snapshot {
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] nomicon (book) <target1>
@@ -1537,8 +1560,8 @@ mod snapshot {
         [doc] book/first-edition (book) <target1>
         [doc] book/second-edition (book) <target1>
         [doc] book/2018-edition (book) <target1>
-        [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
         [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] llvm <target1>

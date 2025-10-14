@@ -3,19 +3,22 @@
 #[cfg(test)]
 mod tests;
 
-pub mod common;
+pub mod cli;
+mod common;
 mod debuggers;
-pub mod diagnostics;
-pub mod directives;
-pub mod errors;
+mod diagnostics;
+mod directives;
+mod edition;
+mod errors;
 mod executor;
 mod json;
 mod output_capture;
 mod panic_hook;
 mod raise_fd_limit;
 mod read2;
-pub mod runtest;
-pub mod util;
+mod runtest;
+pub mod rustdoc_gui_test;
+mod util;
 
 use core::panic;
 use std::collections::HashSet;
@@ -38,7 +41,8 @@ use crate::common::{
     CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
     expected_output_path, output_base_dir, output_relative_path,
 };
-use crate::directives::DirectivesCache;
+use crate::directives::{DirectivesCache, FileDirectives};
+use crate::edition::parse_edition;
 use crate::executor::{CollectedTest, ColorConfig};
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -46,7 +50,7 @@ use crate::executor::{CollectedTest, ColorConfig};
 /// The config mostly reflects command-line arguments, but there might also be
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
-pub fn parse_config(args: Vec<String>) -> Config {
+fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -449,7 +453,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
-        edition: matches.opt_str("edition"),
+        edition: matches.opt_str("edition").as_deref().map(parse_edition),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -460,7 +464,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         host_linker: matches.opt_str("host-linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
-        npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
 
@@ -484,14 +487,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     }
 }
 
-pub fn opt_str(maybestr: &Option<String>) -> &str {
-    match *maybestr {
-        None => "(none)",
-        Some(ref s) => s,
-    }
-}
-
-pub fn opt_str2(maybestr: Option<String>) -> String {
+fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
         None => "(none)".to_owned(),
         Some(s) => s,
@@ -499,7 +495,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 /// Called by `main` after the config has been parsed.
-pub fn run_tests(config: Arc<Config>) {
+fn run_tests(config: Arc<Config>) {
     debug!(?config, "run_tests");
 
     panic_hook::install_panic_hook();
@@ -637,7 +633,7 @@ impl TestCollector {
 /// FIXME(Zalathar): Now that we no longer rely on libtest, try to overhaul
 /// test discovery to take into account the filters/tests specified on the
 /// command-line, instead of having to enumerate everything.
-pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
+fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
     debug!("making tests from {}", config.src_test_suite_root);
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
@@ -849,7 +845,7 @@ fn collect_tests_from_dir(
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
-pub fn is_test(file_name: &str) -> bool {
+fn is_test(file_name: &str) -> bool {
     if !file_name.ends_with(".rs") {
         return false;
     }
@@ -872,7 +868,10 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     };
 
     // Scan the test file to discover its revisions, if any.
-    let early_props = EarlyProps::from_file(&cx.config, &test_path);
+    let file_contents =
+        fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
+    let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
+    let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
 
     // Normally we create one structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that
@@ -890,7 +889,6 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // `CollectedTest` that can be handed over to the test executor.
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to the executor.
-        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
         let (test_name, filterable_path) =
             make_test_name_and_filterable_path(&cx.config, testpaths, revision);
         // Create a description struct for the test/revision.
@@ -902,7 +900,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             test_name,
             &test_path,
             &filterable_path,
-            src_file,
+            &file_directives,
             revision,
             &mut collector.poisoned,
         );
@@ -1128,7 +1126,7 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
     }
 }
 
-pub fn early_config_check(config: &Config) {
+fn early_config_check(config: &Config) {
     if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
         warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }

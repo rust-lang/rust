@@ -278,7 +278,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         fold_regions(tcx, self.inner, |r, depth| match r.kind() {
-            ty::ReBound(debruijn, br) => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::from_usize(br.var.index()))
             }
@@ -857,7 +857,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             }
             StatementKind::Nop
             | StatementKind::Retag { .. }
-            | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
@@ -1539,24 +1538,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 self.consume_operand(location, (operand, span), state)
             }
 
-            &Rvalue::CopyForDeref(place) => {
-                self.access_place(
-                    location,
-                    (place, span),
-                    (Deep, Read(ReadKind::Copy)),
-                    LocalMutationIsAllowed::No,
-                    state,
-                );
-
-                // Finally, check if path was already moved.
-                self.check_if_path_or_subpath_is_moved(
-                    location,
-                    InitializationRequiringAction::Use,
-                    (place.as_ref(), span),
-                    state,
-                );
-            }
-
             &Rvalue::Discriminant(place) => {
                 let af = match *rvalue {
                     Rvalue::Discriminant(..) => None,
@@ -1618,6 +1599,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Rvalue::WrapUnsafeBinder(op, _) => {
                 self.consume_operand(location, (op, span), state);
             }
+
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
         }
     }
 
@@ -1989,10 +1972,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 },
                 // `OpaqueCast`: only transmutes the type, so no moves there.
                 // `Downcast`  : only changes information about a `Place` without moving.
-                // `Subtype`   : only transmutes the type, so no moves.
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Subtype(_)
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::UnwrapUnsafeBinder(_) => (),
             }
@@ -2218,7 +2199,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
-                ProjectionElem::Subtype(_) |
                 ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
@@ -2610,7 +2590,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::UnwrapUnsafeBinder(_) => {

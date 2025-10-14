@@ -20,3 +20,6 @@ macro_rules! e { {} }
 
 macro_rules! f {}
 //~^ ERROR: macros must contain at least one rule
+
+macro_rules! g { unsafe {} => {} }
+//~^ ERROR: `unsafe` is only supported on `attr` rules

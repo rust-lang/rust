@@ -376,6 +376,21 @@ impl Extend<TokenStream> for TokenStream {
     }
 }
 
+macro_rules! extend_items {
+    ($($item:ident)*) => {
+        $(
+            #[stable(feature = "token_stream_extend_tt_items", since = "CURRENT_RUSTC_VERSION")]
+            impl Extend<$item> for TokenStream {
+                fn extend<T: IntoIterator<Item = $item>>(&mut self, iter: T) {
+                    self.extend(iter.into_iter().map(TokenTree::$item));
+                }
+            }
+        )*
+    };
+}
+
+extend_items!(Group Literal Punct Ident);
+
 /// Public implementation details for the `TokenStream` type, such as iterators.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub mod token_stream {

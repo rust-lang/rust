@@ -19,17 +19,15 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
-use rustc_macros::TryFromU32;
-use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
-    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
-    DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags, DILocation,
+    DISPFlags, DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind,
+    DebugNameTableKind,
 };
-use crate::llvm;
 use crate::llvm::MetadataKindId;
+use crate::{TryFromU32, llvm};
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -220,16 +218,6 @@ pub(crate) enum Visibility {
     Protected = 2,
 }
 
-impl Visibility {
-    pub(crate) fn from_generic(visibility: SymbolVisibility) -> Self {
-        match visibility {
-            SymbolVisibility::Hidden => Visibility::Hidden,
-            SymbolVisibility::Protected => Visibility::Protected,
-            SymbolVisibility::Interposable => Visibility::Default,
-        }
-    }
-}
-
 /// LLVMUnnamedAddr
 #[repr(C)]
 pub(crate) enum UnnamedAddr {
@@ -319,24 +307,6 @@ pub(crate) enum IntPredicate {
     IntSLE = 41,
 }
 
-impl IntPredicate {
-    pub(crate) fn from_generic(intpre: rustc_codegen_ssa::common::IntPredicate) -> Self {
-        use rustc_codegen_ssa::common::IntPredicate as Common;
-        match intpre {
-            Common::IntEQ => Self::IntEQ,
-            Common::IntNE => Self::IntNE,
-            Common::IntUGT => Self::IntUGT,
-            Common::IntUGE => Self::IntUGE,
-            Common::IntULT => Self::IntULT,
-            Common::IntULE => Self::IntULE,
-            Common::IntSGT => Self::IntSGT,
-            Common::IntSGE => Self::IntSGE,
-            Common::IntSLT => Self::IntSLT,
-            Common::IntSLE => Self::IntSLE,
-        }
-    }
-}
-
 /// LLVMRealPredicate
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -357,30 +327,6 @@ pub(crate) enum RealPredicate {
     RealULE = 13,
     RealUNE = 14,
     RealPredicateTrue = 15,
-}
-
-impl RealPredicate {
-    pub(crate) fn from_generic(realp: rustc_codegen_ssa::common::RealPredicate) -> Self {
-        use rustc_codegen_ssa::common::RealPredicate as Common;
-        match realp {
-            Common::RealPredicateFalse => Self::RealPredicateFalse,
-            Common::RealOEQ => Self::RealOEQ,
-            Common::RealOGT => Self::RealOGT,
-            Common::RealOGE => Self::RealOGE,
-            Common::RealOLT => Self::RealOLT,
-            Common::RealOLE => Self::RealOLE,
-            Common::RealONE => Self::RealONE,
-            Common::RealORD => Self::RealORD,
-            Common::RealUNO => Self::RealUNO,
-            Common::RealUEQ => Self::RealUEQ,
-            Common::RealUGT => Self::RealUGT,
-            Common::RealUGE => Self::RealUGE,
-            Common::RealULT => Self::RealULT,
-            Common::RealULE => Self::RealULE,
-            Common::RealUNE => Self::RealUNE,
-            Common::RealPredicateTrue => Self::RealPredicateTrue,
-        }
-    }
 }
 
 /// Must match the layout of `LLVMTypeKind`.
@@ -458,25 +404,6 @@ pub(crate) enum AtomicRmwBinOp {
     AtomicUMin = 10,
 }
 
-impl AtomicRmwBinOp {
-    pub(crate) fn from_generic(op: rustc_codegen_ssa::common::AtomicRmwBinOp) -> Self {
-        use rustc_codegen_ssa::common::AtomicRmwBinOp as Common;
-        match op {
-            Common::AtomicXchg => Self::AtomicXchg,
-            Common::AtomicAdd => Self::AtomicAdd,
-            Common::AtomicSub => Self::AtomicSub,
-            Common::AtomicAnd => Self::AtomicAnd,
-            Common::AtomicNand => Self::AtomicNand,
-            Common::AtomicOr => Self::AtomicOr,
-            Common::AtomicXor => Self::AtomicXor,
-            Common::AtomicMax => Self::AtomicMax,
-            Common::AtomicMin => Self::AtomicMin,
-            Common::AtomicUMax => Self::AtomicUMax,
-            Common::AtomicUMin => Self::AtomicUMin,
-        }
-    }
-}
-
 /// LLVMAtomicOrdering
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -491,19 +418,6 @@ pub(crate) enum AtomicOrdering {
     Release = 5,
     AcquireRelease = 6,
     SequentiallyConsistent = 7,
-}
-
-impl AtomicOrdering {
-    pub(crate) fn from_generic(ao: rustc_middle::ty::AtomicOrdering) -> Self {
-        use rustc_middle::ty::AtomicOrdering as Common;
-        match ao {
-            Common::Relaxed => Self::Monotonic,
-            Common::Acquire => Self::Acquire,
-            Common::Release => Self::Release,
-            Common::AcqRel => Self::AcquireRelease,
-            Common::SeqCst => Self::SequentiallyConsistent,
-        }
-    }
 }
 
 /// LLVMRustFileType
@@ -867,7 +781,6 @@ pub(crate) mod debuginfo {
     pub(crate) type DIDerivedType = DIType;
     pub(crate) type DICompositeType = DIDerivedType;
     pub(crate) type DIVariable = DIDescriptor;
-    pub(crate) type DIGlobalVariableExpression = DIDescriptor;
     pub(crate) type DIArray = DIDescriptor;
     pub(crate) type DIEnumerator = DIDescriptor;
     pub(crate) type DITemplateTypeParameter = DIDescriptor;
@@ -940,28 +853,6 @@ pub(crate) mod debuginfo {
         DebugDirectivesOnly,
     }
 
-    impl DebugEmissionKind {
-        pub(crate) fn from_generic(kind: rustc_session::config::DebugInfo) -> Self {
-            // We should be setting LLVM's emission kind to `LineTablesOnly` if
-            // we are compiling with "limited" debuginfo. However, some of the
-            // existing tools relied on slightly more debuginfo being generated than
-            // would be the case with `LineTablesOnly`, and we did not want to break
-            // these tools in a "drive-by fix", without a good idea or plan about
-            // what limited debuginfo should exactly look like. So for now we are
-            // instead adding a new debuginfo option "line-tables-only" so as to
-            // not break anything and to allow users to have 'limited' debug info.
-            //
-            // See https://github.com/rust-lang/rust/issues/60020 for details.
-            use rustc_session::config::DebugInfo;
-            match kind {
-                DebugInfo::None => DebugEmissionKind::NoDebug,
-                DebugInfo::LineDirectivesOnly => DebugEmissionKind::DebugDirectivesOnly,
-                DebugInfo::LineTablesOnly => DebugEmissionKind::LineTablesOnly,
-                DebugInfo::Limited | DebugInfo::Full => DebugEmissionKind::FullDebug,
-            }
-        }
-    }
-
     /// LLVMRustDebugNameTableKind
     #[derive(Clone, Copy)]
     #[repr(C)]
@@ -1013,7 +904,9 @@ pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) ->
 
 unsafe extern "C" {
     // Create and destroy contexts.
+    pub(crate) fn LLVMContextCreate() -> &'static mut Context;
     pub(crate) fn LLVMContextDispose(C: &'static mut Context);
+    pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
     pub(crate) fn LLVMGetMDKindIDInContext(
         C: &Context,
         Name: *const c_char,
@@ -1061,7 +954,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMInt16TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt32TypeInContext(C: &Context) -> &Type;
     pub(crate) fn LLVMInt64TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
+    pub(crate) safe fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
@@ -1090,7 +983,7 @@ unsafe extern "C" {
     ) -> &'a Type;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub(crate) fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
+    pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
     pub(crate) fn LLVMGetElementType(Ty: &Type) -> &Type;
@@ -1259,6 +1152,7 @@ unsafe extern "C" {
 
     // Operations on load/store instructions (only)
     pub(crate) fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
+    pub(crate) fn LLVMSetOrdering(MemoryAccessInst: &Value, Ordering: AtomicOrdering);
 
     // Operations on phi nodes
     pub(crate) fn LLVMAddIncoming<'a>(
@@ -1982,9 +1876,34 @@ unsafe extern "C" {
         Length: size_t,
     ) -> &'ll Metadata;
 
+    pub(crate) fn LLVMDIBuilderCreateGlobalVariableExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        Linkage: *const c_uchar, // See "PTR_LEN_STR".
+        LinkLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Ty: &'ll Metadata,
+        LocalToUnit: llvm::Bool,
+        Expr: &'ll Metadata,
+        Decl: Option<&'ll Metadata>,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
+
     pub(crate) fn LLVMDIBuilderInsertDeclareRecordAtEnd<'ll>(
         Builder: &DIBuilder<'ll>,
         Storage: &'ll Value,
+        VarInfo: &'ll Metadata,
+        Expr: &'ll Metadata,
+        DebugLoc: &'ll Metadata,
+        Block: &'ll BasicBlock,
+    ) -> &'ll DbgRecord;
+
+    pub(crate) fn LLVMDIBuilderInsertDbgValueRecordAtEnd<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Val: &'ll Value,
         VarInfo: &'ll Metadata,
         Expr: &'ll Metadata,
         DebugLoc: &'ll Metadata,
@@ -2023,9 +1942,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustInstallErrorHandlers();
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
-    // Create and destroy contexts.
-    pub(crate) fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
-
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
         Val: &'a Value,
@@ -2053,7 +1969,6 @@ unsafe extern "C" {
         NameLen: size_t,
         T: &'a Type,
     ) -> &'a Value;
-    pub(crate) fn LLVMRustInsertPrivateGlobal<'a>(M: &'a Module, T: &'a Type) -> &'a Value;
     pub(crate) fn LLVMRustGetNamedValue(
         M: &Module,
         Name: *const c_char,
@@ -2140,69 +2055,6 @@ unsafe extern "C" {
         Val: &'a Value,
         Size: &'a Value,
         IsVolatile: bool,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildVectorReduceFAdd<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMul<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAdd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMul<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAnd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceOr<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceXor<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildMinNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildMaxNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-
-    // Atomic Operations
-    pub(crate) fn LLVMRustBuildAtomicLoad<'a>(
-        B: &Builder<'a>,
-        ElementType: &'a Type,
-        PointerVal: &'a Value,
-        Name: *const c_char,
-        Order: AtomicOrdering,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildAtomicStore<'a>(
-        B: &Builder<'a>,
-        Val: &'a Value,
-        Ptr: &'a Value,
-        Order: AtomicOrdering,
     ) -> &'a Value;
 
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
@@ -2375,22 +2227,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
-        Builder: &DIBuilder<'a>,
-        Context: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        LinkageName: *const c_char,
-        LinkageNameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        isLocalToUnit: bool,
-        Val: &'a Value,
-        Decl: Option<&'a DIDescriptor>,
-        AlignInBits: u32,
-    ) -> &'a DIGlobalVariableExpression;
 
     pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,

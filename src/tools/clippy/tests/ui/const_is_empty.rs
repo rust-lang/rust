@@ -55,53 +55,6 @@ const NON_EMPTY_ARRAY_REPEAT: [u32; 2] = [1; 2];
 const EMPTY_REF_ARRAY: &[u32; 0] = &[];
 const NON_EMPTY_REF_ARRAY: &[u32; 3] = &[1, 2, 3];
 
-fn test_from_const() {
-    let _ = EMPTY_STR.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_STR.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_BSTR.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_BSTR.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_ARRAY.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_ARRAY_REPEAT.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_U8_SLICE.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_U8_SLICE.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_ARRAY.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_ARRAY_REPEAT.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_REF_ARRAY.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_REF_ARRAY.is_empty();
-    //~^ const_is_empty
-
-    let _ = EMPTY_SLICE.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_SLICE.is_empty();
-    //~^ const_is_empty
-
-    let _ = NON_EMPTY_SLICE_REPEAT.is_empty();
-    //~^ const_is_empty
-}
-
 fn main() {
     let value = "foobar";
     let _ = value.is_empty();
@@ -120,7 +73,7 @@ fn main() {
 
 fn str_from_arg(var: &str) {
     var.is_empty();
-    // Do not lint, we know nothiny about var
+    // Do not lint, we know nothing about var
 }
 
 fn update_str() {
@@ -200,6 +153,5 @@ fn issue_13106() {
 
     const {
         EMPTY_STR.is_empty();
-        //~^ const_is_empty
     }
 }

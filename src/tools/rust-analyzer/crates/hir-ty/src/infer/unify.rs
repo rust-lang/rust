@@ -117,7 +117,7 @@ pub fn could_unify<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
-    could_unify_impl(db, env, tys, |ctxt| ctxt.select_where_possible())
+    could_unify_impl(db, env, tys, |ctxt| ctxt.try_evaluate_obligations())
 }
 
 /// Check if types unify eagerly making sure there are no unresolved goals.
@@ -129,7 +129,7 @@ pub fn could_unify_deeply<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> bool {
-    could_unify_impl(db, env, tys, |ctxt| ctxt.select_all_or_error())
+    could_unify_impl(db, env, tys, |ctxt| ctxt.evaluate_obligations_error_on_ambiguity())
 }
 
 fn could_unify_impl<'db>(
@@ -608,7 +608,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn select_obligations_where_possible(&mut self) {
-        self.fulfillment_cx.select_where_possible(&self.infer_ctxt);
+        self.fulfillment_cx.try_evaluate_obligations(&self.infer_ctxt);
     }
 
     pub(super) fn register_predicate(&mut self, obligation: PredicateObligation<'db>) {

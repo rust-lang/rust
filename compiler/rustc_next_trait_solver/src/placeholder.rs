@@ -90,7 +90,7 @@ where
 
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         match r.kind() {
-            ty::ReBound(debruijn, _)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize()
                     >= self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -99,7 +99,9 @@ where
                     self.universe_indices
                 );
             }
-            ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+                if debruijn >= self.current_index =>
+            {
                 let universe = self.universe_for(debruijn);
                 let p = PlaceholderLike::new(universe, br);
                 self.mapped_regions.insert(p, br);
@@ -111,7 +113,7 @@ where
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
-            ty::Bound(debruijn, _)
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -120,7 +122,9 @@ where
                     self.universe_indices
                 );
             }
-            ty::Bound(debruijn, bound_ty) if debruijn >= self.current_index => {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn >= self.current_index =>
+            {
                 let universe = self.universe_for(debruijn);
                 let p = PlaceholderLike::new(universe, bound_ty);
                 self.mapped_types.insert(p, bound_ty);
@@ -133,7 +137,7 @@ where
 
     fn fold_const(&mut self, ct: I::Const) -> I::Const {
         match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -142,7 +146,9 @@ where
                     self.universe_indices
                 );
             }
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn >= self.current_index =>
+            {
                 let universe = self.universe_for(debruijn);
                 let p = PlaceholderLike::new(universe, bound_const);
                 self.mapped_consts.insert(p, bound_const);

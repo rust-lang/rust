@@ -3,7 +3,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::bug;
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -677,14 +677,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         innermost_binding,
                                         binding,
                                     )
-                                    || flags.contains(Flags::MACRO_RULES)
-                                        && innermost_flags.contains(Flags::MODULE)
-                                        && !this.disambiguate_macro_rules_vs_modularized(
-                                            binding,
-                                            innermost_binding,
-                                        )
                                 {
                                     Some(AmbiguityKind::MacroRulesVsModularized)
+                                } else if flags.contains(Flags::MACRO_RULES)
+                                    && innermost_flags.contains(Flags::MODULE)
+                                {
+                                    // should be impossible because of visitation order in
+                                    // visit_scopes
+                                    //
+                                    // we visit all macro_rules scopes (e.g. textual scope macros)
+                                    // before we visit any modules (e.g. path-based scope macros)
+                                    span_bug!(
+                                        orig_ident.span,
+                                        "ambiguous scoped macro resolutions with path-based \
+                                        scope resolution as first candidate"
+                                    )
                                 } else if innermost_binding.is_glob_import() {
                                     Some(AmbiguityKind::GlobVsOuter)
                                 } else if innermost_binding

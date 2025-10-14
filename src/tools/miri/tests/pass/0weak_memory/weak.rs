@@ -115,7 +115,7 @@ fn initialization_write(add_fence: bool) {
 fn faa_replaced_by_load() {
     check_all_outcomes([true, false], || {
         // Example from https://github.com/llvm/llvm-project/issues/56450#issuecomment-1183695905
-        pub fn rdmw(storing: &AtomicUsize, sync: &AtomicUsize, loading: &AtomicUsize) -> usize {
+        fn rdmw(storing: &AtomicUsize, sync: &AtomicUsize, loading: &AtomicUsize) -> usize {
             storing.store(1, Relaxed);
             fence(Release);
             // sync.fetch_add(0, Relaxed);
@@ -226,7 +226,7 @@ fn old_release_store() {
     });
 }
 
-pub fn main() {
+fn main() {
     relaxed();
     seq_cst();
     initialization_write(false);

@@ -135,7 +135,8 @@ fn parse_and_apply_modifier(cx: &ParseNativeLibCx<'_>, modifier: &str, native_li
         ),
 
         ("as-needed", NativeLibKind::Dylib { as_needed })
-        | ("as-needed", NativeLibKind::Framework { as_needed }) => {
+        | ("as-needed", NativeLibKind::Framework { as_needed })
+        | ("as-needed", NativeLibKind::RawDylib { as_needed }) => {
             cx.on_unstable_value(
                 "linking modifier `as-needed` is unstable",
                 ", the `-Z unstable-options` flag must also be passed to use it",

@@ -376,6 +376,40 @@ impl<T: ?Sized> Mutex<T> {
     pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
+
+    /// Acquires the mutex and provides mutable access to the underlying data by passing
+    /// a mutable reference to the given closure.
+    ///
+    /// This method acquires the lock, calls the provided closure with a mutable reference
+    /// to the data, and returns the result of the closure. The lock is released after
+    /// the closure completes, even if it panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors, nonpoison_mutex)]
+    ///
+    /// use std::sync::nonpoison::Mutex;
+    ///
+    /// let mutex = Mutex::new(2);
+    ///
+    /// let result = mutex.with_mut(|data| {
+    ///     *data += 3;
+    ///
+    ///     *data + 5
+    /// });
+    ///
+    /// assert_eq!(*mutex.lock(), 5);
+    /// assert_eq!(result, 10);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    // #[unstable(feature = "nonpoison_mutex", issue = "134645")]
+    pub fn with_mut<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        f(&mut self.lock())
+    }
 }
 
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]

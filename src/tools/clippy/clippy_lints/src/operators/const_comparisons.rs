@@ -22,7 +22,7 @@ fn comparison_to_const<'tcx>(
     cx: &LateContext<'tcx>,
     typeck: &'tcx TypeckResults<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant<'tcx>, Ty<'tcx>)> {
+) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant, Ty<'tcx>)> {
     if let ExprKind::Binary(operator, left, right) = expr.kind
         && let Ok(cmp_op) = CmpOp::try_from(operator.node)
     {

@@ -31,7 +31,9 @@ use rustc_target::callconv::FnAbi;
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
-use crate::concurrency::{AllocDataRaceHandler, GenmcCtx, GlobalDataRaceHandler, weak_memory};
+use crate::concurrency::{
+    AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
+};
 use crate::*;
 
 /// First real-time signal.
@@ -649,16 +651,6 @@ pub struct MiriMachine<'tcx> {
     pub(crate) pthread_rwlock_sanity: Cell<bool>,
     pub(crate) pthread_condvar_sanity: Cell<bool>,
 
-    /// Remembers whether we already warned about an extern type with Stacked Borrows.
-    pub(crate) sb_extern_type_warned: Cell<bool>,
-    /// Remember whether we already warned about sharing memory with a native call.
-    #[allow(unused)]
-    pub(crate) native_call_mem_warned: Cell<bool>,
-    /// Remembers which shims have already shown the warning about erroring in isolation.
-    pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
-    /// Remembers which int2ptr casts we have already warned about.
-    pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
-
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
@@ -777,9 +769,8 @@ impl<'tcx> MiriMachine<'tcx> {
             local_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
-            allocator: if !config.native_lib.is_empty() {
-                Some(Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new())))
-            } else { None },
+            allocator: (!config.native_lib.is_empty())
+                .then(|| Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new()))),
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
@@ -827,10 +818,6 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_mutex_sanity: Cell::new(false),
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
-            sb_extern_type_warned: Cell::new(false),
-            native_call_mem_warned: Cell::new(false),
-            reject_in_isolation_warned: Default::default(),
-            int2ptr_warned: Default::default(),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
@@ -920,7 +907,7 @@ impl<'tcx> MiriMachine<'tcx> {
                         &ecx.machine.threads,
                         size,
                         kind,
-                        ecx.machine.current_span(),
+                        ecx.machine.current_user_relevant_span(),
                     ),
                     data_race.weak_memory.then(weak_memory::AllocState::new_allocation),
                 ),
@@ -944,7 +931,7 @@ impl<'tcx> MiriMachine<'tcx> {
             ecx.machine
                 .allocation_spans
                 .borrow_mut()
-                .insert(id, (ecx.machine.current_span(), None));
+                .insert(id, (ecx.machine.current_user_relevant_span(), None));
         }
 
         interp_ok(AllocExtra { borrow_tracker, data_race, backtrace, sync: FxHashMap::default() })
@@ -1004,10 +991,6 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_mutex_sanity: _,
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
-            sb_extern_type_warned: _,
-            native_call_mem_warned: _,
-            reject_in_isolation_warned: _,
-            int2ptr_warned: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
@@ -1182,7 +1165,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -1201,6 +1184,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
 
+        if ecx.machine.data_race.as_genmc_ref().is_some()
+            && ecx.genmc_intercept_function(instance, args, dest)?
+        {
+            ecx.return_to_block(ret)?;
+            return interp_ok(None);
+        }
+
         // Otherwise, load the MIR.
         let _trace = enter_trace_span!("load_mir");
         interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
@@ -1211,7 +1201,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -1567,7 +1557,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {
-            *deallocated_at = Some(machine.current_span());
+            *deallocated_at = Some(machine.current_user_relevant_span());
         }
         machine.free_alloc_id(alloc_id, size, align, kind);
         interp_ok(())

@@ -21,10 +21,9 @@ use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
-use crate::type_::Type;
+use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
-use crate::{base, debuginfo, llvm};
+use crate::{base, debuginfo};
 
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
@@ -241,11 +240,13 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
                 });
-                llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
                 gv
             }
-            _ => self.define_private_global(self.val_ty(cv)),
+            _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
+                bug!("anonymous global symbol is already defined");
+            }),
         };
+        llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
         llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::set_unnamed_address(gv, llvm::UnnamedAddr::Global);
@@ -494,16 +495,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                 let alloc = self.create_metadata(bytes);
                 let data = [section, alloc];
-                let meta =
-                    unsafe { llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len()) };
-                let val = self.get_metadata_value(meta);
-                unsafe {
-                    llvm::LLVMAddNamedMetadataOperand(
-                        self.llmod,
-                        c"wasm.custom_sections".as_ptr(),
-                        val,
-                    )
-                };
+                self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
         } else {
             base::set_link_section(g, attrs);

@@ -14,6 +14,7 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
+#![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -47,6 +48,8 @@ use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 use rustc_target::spec::{RelocModel, TlsModel};
 
+use crate::llvm::ToLlvmBool;
+
 mod abi;
 mod allocator;
 mod asm;
@@ -65,6 +68,7 @@ mod errors;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
+mod macros;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -73,6 +77,8 @@ mod va_arg;
 mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub(crate) use macros::TryFromU32;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
@@ -380,7 +386,8 @@ unsafe impl Sync for ModuleLlvm {}
 impl ModuleLlvm {
     fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -392,7 +399,8 @@ impl ModuleLlvm {
 
     fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -423,7 +431,8 @@ impl ModuleLlvm {
         dcx: DiagCtxtHandle<'_>,
     ) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
             let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx);
 

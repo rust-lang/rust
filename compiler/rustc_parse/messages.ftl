@@ -68,19 +68,19 @@ parse_attr_after_generic = trailing attribute after generic parameter
 parse_attr_without_generics = attribute without generic parameters
     .label = attributes are only permitted when preceding parameters
 
+parse_attribute_on_empty_type = attributes cannot be applied here
+    .label = attributes are not allowed here
+
+parse_attribute_on_generic_arg = attributes cannot be applied to generic arguments
+    .label = attributes are not allowed here
+    .suggestion = remove attribute from here
+
 parse_attribute_on_param_type = attributes cannot be applied to a function parameter's type
     .label = attributes are not allowed here
 
 parse_attribute_on_type = attributes cannot be applied to types
     .label = attributes are not allowed here
     .suggestion = remove attribute from here
-
-parse_attribute_on_generic_arg = attributes cannot be applied to generic arguments
-    .label = attributes are not allowed here
-    .suggestion = remove attribute from here
-
-parse_attribute_on_empty_type = attributes cannot be applied here
-    .label = attributes are not allowed here
 
 parse_bad_assoc_type_bounds = bounds on associated types do not belong here
     .label = belongs in `where` clause
@@ -868,7 +868,6 @@ parse_too_many_hashes = too many `#` symbols: raw strings may be delimited by up
 parse_too_short_hex_escape = numeric character escape is too short
 
 parse_trailing_vert_not_allowed = a trailing `{$token}` is not allowed in an or-pattern
-parse_trailing_vert_not_allowed_suggestion = remove the `{$token}`
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_const = trait aliases cannot be `const`

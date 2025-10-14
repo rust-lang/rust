@@ -206,3 +206,15 @@ fn dont_lint_inside_macros() {
     }
     let _: Option<u32> = mac!(true, 42);
 }
+
+mod issue15770 {
+    fn maybe_error() -> Result<u32, &'static str> {
+        Err("error!")
+    }
+
+    pub fn trying(b: bool) -> Result<(), &'static str> {
+        let _x: Option<u32> = if b { Some(maybe_error()?) } else { None };
+        // Process _x locally
+        Ok(())
+    }
+}

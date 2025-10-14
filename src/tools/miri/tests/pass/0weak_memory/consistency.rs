@@ -212,7 +212,7 @@ fn test_single_thread() {
 fn test_sync_through_rmw_and_fences() {
     // Example from https://github.com/llvm/llvm-project/issues/56450#issuecomment-1183695905
     #[no_mangle]
-    pub fn rdmw(storing: &AtomicI32, sync: &AtomicI32, loading: &AtomicI32) -> i32 {
+    fn rdmw(storing: &AtomicI32, sync: &AtomicI32, loading: &AtomicI32) -> i32 {
         storing.store(1, Relaxed);
         fence(Release);
         sync.fetch_add(0, Relaxed);
@@ -245,7 +245,7 @@ fn test_sync_through_rmw_and_fences() {
     assert_ne!((a, b), (0, 0));
 }
 
-pub fn main() {
+fn main() {
     for _ in 0..50 {
         test_single_thread();
         test_mixed_access();

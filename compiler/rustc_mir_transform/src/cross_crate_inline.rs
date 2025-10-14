@@ -115,10 +115,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         // Don't count StorageLive/StorageDead in the inlining cost.
         match statement.kind {
-            StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::Deinit(_)
-            | StatementKind::Nop => {}
+            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
             _ => self.statements += 1,
         }
     }

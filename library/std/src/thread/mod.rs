@@ -207,6 +207,7 @@ pub use self::local::{AccessError, LocalKey};
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals", issue = "none")]
 pub mod local_impl {
+    pub use super::local::thread_local_process_attrs;
     pub use crate::sys::thread_local::*;
 }
 

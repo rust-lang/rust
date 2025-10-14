@@ -283,7 +283,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     fn report_calling_closure(&mut self, fun: &Expr<'_>, tupled_args: Ty<'_>, expr: &Expr<'_>) {
         let underscored_args = match tupled_args.kind() {
             ty::Tuple(tys) if tys.is_empty() => "".to_owned(),
-            ty::Tuple(tys) => std::iter::repeat("_, ").take(tys.len() - 1).chain(["_"]).collect(),
+            ty::Tuple(tys) => std::iter::repeat_n("_, ", tys.len() - 1).chain(["_"]).collect(),
             _ => "_".to_owned(),
         };
 

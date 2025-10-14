@@ -17,7 +17,6 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
@@ -1324,37 +1323,7 @@ struct WasmLd<'a> {
 
 impl<'a> WasmLd<'a> {
     fn new(cmd: Command, sess: &'a Session) -> WasmLd<'a> {
-        // If the atomics feature is enabled for wasm then we need a whole bunch
-        // of flags:
-        //
-        // * `--shared-memory` - the link won't even succeed without this, flags
-        //   the one linear memory as `shared`
-        //
-        // * `--max-memory=1G` - when specifying a shared memory this must also
-        //   be specified. We conservatively choose 1GB but users should be able
-        //   to override this with `-C link-arg`.
-        //
-        // * `--import-memory` - it doesn't make much sense for memory to be
-        //   exported in a threaded module because typically you're
-        //   sharing memory and instantiating the module multiple times. As a
-        //   result if it were exported then we'd just have no sharing.
-        //
-        // On wasm32-unknown-unknown, we also export symbols for glue code to use:
-        //    * `--export=*tls*` - when `#[thread_local]` symbols are used these
-        //      symbols are how the TLS segments are initialized and configured.
-        let mut wasm_ld = WasmLd { cmd, sess };
-        if sess.target_features.contains(&sym::atomics) {
-            wasm_ld.link_args(&["--shared-memory", "--max-memory=1073741824", "--import-memory"]);
-            if sess.target.os == "unknown" || sess.target.os == "none" {
-                wasm_ld.link_args(&[
-                    "--export=__wasm_init_tls",
-                    "--export=__tls_size",
-                    "--export=__tls_align",
-                    "--export=__tls_base",
-                ]);
-            }
-        }
-        wasm_ld
+        WasmLd { cmd, sess }
     }
 }
 

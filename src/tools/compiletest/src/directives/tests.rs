@@ -1,32 +1,32 @@
-use std::io::Read;
-
 use camino::Utf8Path;
 use semver::Version;
 
-use super::{
-    DirectivesCache, EarlyProps, extract_llvm_version, extract_version_range, iter_directives,
-    parse_normalize_rule,
-};
 use crate::common::{Config, Debugger, TestMode};
+use crate::directives::{
+    DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives, extract_llvm_version,
+    extract_version_range, iter_directives, line_directive, parse_edition, parse_normalize_rule,
+};
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 
-fn make_test_description<R: Read>(
+fn make_test_description(
     config: &Config,
     name: String,
     path: &Utf8Path,
     filterable_path: &Utf8Path,
-    src: R,
+    file_contents: &str,
     revision: Option<&str>,
 ) -> CollectedTestDesc {
     let cache = DirectivesCache::load(config);
     let mut poisoned = false;
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+
     let test = crate::directives::make_test_description(
         config,
         &cache,
         name,
         path,
         filterable_path,
-        src,
+        &file_directives,
         revision,
         &mut poisoned,
     );
@@ -73,6 +73,7 @@ fn test_parse_normalize_rule() {
 struct ConfigBuilder {
     mode: Option<String>,
     channel: Option<String>,
+    edition: Option<Edition>,
     host: Option<String>,
     target: Option<String>,
     stage: Option<u32>,
@@ -93,6 +94,11 @@ impl ConfigBuilder {
 
     fn channel(&mut self, s: &str) -> &mut Self {
         self.channel = Some(s.to_owned());
+        self
+    }
+
+    fn edition(&mut self, e: Edition) -> &mut Self {
+        self.edition = Some(e);
         self
     }
 
@@ -183,6 +189,10 @@ impl ConfigBuilder {
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
+        if let Some(edition) = &self.edition {
+            args.push(format!("--edition={edition}"));
+        }
+
         if let Some(ref llvm_version) = self.llvm_version {
             args.push("--llvm-version".to_owned());
             args.push(llvm_version.clone());
@@ -216,14 +226,14 @@ fn cfg() -> ConfigBuilder {
 }
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Utf8Path::new("a.rs"), bytes)
+    let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
+    EarlyProps::from_file_directives(config, &file_directives)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new(contents), None);
+    let d = make_test_description(&config, tn, p, p, contents, None);
     d.ignore
 }
 
@@ -233,9 +243,9 @@ fn should_fail() {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
 
-    let d = make_test_description(&config, tn.clone(), p, p, std::io::Cursor::new(""), None);
+    let d = make_test_description(&config, tn.clone(), p, p, "", None);
     assert_eq!(d.should_panic, ShouldPanic::No);
-    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new("//@ should-fail"), None);
+    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None);
     assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
@@ -768,9 +778,9 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
-    let rdr = std::io::Cursor::new(&buf);
-    iter_directives(TestMode::Ui, poisoned, path, rdr, &mut |_| {});
+fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+    iter_directives(TestMode::Ui, poisoned, &file_directives, &mut |_| {});
 }
 
 #[test]
@@ -779,7 +789,7 @@ fn test_unknown_directive_check() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/unknown_directive.rs"),
+        include_str!("./test-auxillary/unknown_directive.rs"),
     );
     assert!(poisoned);
 }
@@ -790,7 +800,7 @@ fn test_known_directive_check_no_error() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/known_directive.rs"),
+        include_str!("./test-auxillary/known_directive.rs"),
     );
     assert!(!poisoned);
 }
@@ -801,7 +811,7 @@ fn test_error_annotation_no_error() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/error_annotation.rs"),
+        include_str!("./test-auxillary/error_annotation.rs"),
     );
     assert!(!poisoned);
 }
@@ -812,7 +822,7 @@ fn test_non_rs_unknown_directive_not_checked() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.Makefile"),
-        include_bytes!("./test-auxillary/not_rs.Makefile"),
+        include_str!("./test-auxillary/not_rs.Makefile"),
     );
     assert!(!poisoned);
 }
@@ -820,21 +830,21 @@ fn test_non_rs_unknown_directive_not_checked() {
 #[test]
 fn test_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86 only-arm");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
     assert!(poisoned);
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86   only-arm with comment");
     assert!(poisoned);
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ revisions: incremental");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ revisions: incremental");
     assert!(!poisoned);
 }
 
@@ -940,4 +950,133 @@ fn test_needs_target_std() {
     assert!(check_ignore(&config, "//@ needs-target-std"));
     let config = cfg().target("x86_64-unknown-linux-gnu").build();
     assert!(!check_ignore(&config, "//@ needs-target-std"));
+}
+
+fn parse_edition_range(line: &str) -> Option<EditionRange> {
+    let config = cfg().build();
+
+    let line_with_comment = format!("//@ {line}");
+    let line = line_directive(0, &line_with_comment).unwrap();
+
+    super::parse_edition_range(&config, &line, "tmp.rs".into())
+}
+
+#[test]
+fn test_parse_edition_range() {
+    assert_eq!(None, parse_edition_range("hello-world"));
+    assert_eq!(None, parse_edition_range("edition"));
+
+    assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
+    assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));
+    assert_eq!(Some(EditionRange::Exact(2024.into())), parse_edition_range("edition: 2024 "));
+    assert_eq!(Some(EditionRange::Exact(Edition::Future)), parse_edition_range("edition: future"));
+
+    assert_eq!(Some(EditionRange::RangeFrom(2018.into())), parse_edition_range("edition: 2018.."));
+    assert_eq!(Some(EditionRange::RangeFrom(2021.into())), parse_edition_range("edition:2021 .."));
+    assert_eq!(
+        Some(EditionRange::RangeFrom(2024.into())),
+        parse_edition_range("edition: 2024 .. ")
+    );
+    assert_eq!(
+        Some(EditionRange::RangeFrom(Edition::Future)),
+        parse_edition_range("edition: future.. ")
+    );
+
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() }),
+        parse_edition_range("edition: 2018..2024")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2015.into(), upper_bound: 2021.into() }),
+        parse_edition_range("edition:2015 .. 2021 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: 2027.into() }),
+        parse_edition_range("edition: 2021 .. 2027 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: Edition::Future }),
+        parse_edition_range("edition: 2021..future")
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_empty() {
+    parse_edition_range("edition:");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_invalid_edition() {
+    parse_edition_range("edition: hello");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_double_dots() {
+    parse_edition_range("edition: ..");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_inverted_range() {
+    parse_edition_range("edition: 2021..2015");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_inverted_range_future() {
+    parse_edition_range("edition: future..2015");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_empty_range() {
+    parse_edition_range("edition: 2021..2021");
+}
+
+#[track_caller]
+fn assert_edition_to_test(
+    expected: impl Into<Edition>,
+    range: EditionRange,
+    default: Option<Edition>,
+) {
+    let mut cfg = cfg();
+    if let Some(default) = default {
+        cfg.edition(default);
+    }
+    assert_eq!(expected.into(), range.edition_to_test(cfg.build().edition));
+}
+
+#[test]
+fn test_edition_range_edition_to_test() {
+    let e2015 = parse_edition("2015");
+    let e2018 = parse_edition("2018");
+    let e2021 = parse_edition("2021");
+    let e2024 = parse_edition("2024");
+    let efuture = parse_edition("future");
+
+    let exact = EditionRange::Exact(2021.into());
+    assert_edition_to_test(2021, exact, None);
+    assert_edition_to_test(2021, exact, Some(e2018));
+    assert_edition_to_test(2021, exact, Some(efuture));
+
+    assert_edition_to_test(Edition::Future, EditionRange::Exact(Edition::Future), None);
+
+    let greater_equal_than = EditionRange::RangeFrom(2021.into());
+    assert_edition_to_test(2021, greater_equal_than, None);
+    assert_edition_to_test(2021, greater_equal_than, Some(e2015));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2018));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2021));
+    assert_edition_to_test(2024, greater_equal_than, Some(e2024));
+    assert_edition_to_test(Edition::Future, greater_equal_than, Some(efuture));
+
+    let range = EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() };
+    assert_edition_to_test(2018, range, None);
+    assert_edition_to_test(2018, range, Some(e2015));
+    assert_edition_to_test(2018, range, Some(e2018));
+    assert_edition_to_test(2021, range, Some(e2021));
+    assert_edition_to_test(2018, range, Some(e2024));
+    assert_edition_to_test(2018, range, Some(efuture));
 }

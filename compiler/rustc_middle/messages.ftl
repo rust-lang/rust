@@ -95,14 +95,14 @@ middle_layout_normalization_failure =
 middle_layout_references_error =
     the type has an unknown layout
 
-middle_layout_size_overflow =
-    values of the type `{$ty}` are too big for the target architecture
-
 middle_layout_simd_too_many =
     the SIMD type `{$ty}` has more elements than the limit {$max_lanes}
 
 middle_layout_simd_zero_length =
     the SIMD type `{$ty}` has zero elements
+
+middle_layout_size_overflow =
+    values of the type `{$ty}` are too big for the target architecture
 
 middle_layout_too_generic = the type `{$ty}` does not have a fixed layout
 

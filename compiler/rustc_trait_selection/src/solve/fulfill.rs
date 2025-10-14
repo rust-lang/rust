@@ -60,7 +60,7 @@ struct ObligationStorage<'tcx> {
     /// Obligations which resulted in an overflow in fulfillment itself.
     ///
     /// We cannot eagerly return these as error so we instead store them here
-    /// to avoid recomputing them each time `select_where_possible` is called.
+    /// to avoid recomputing them each time `try_evaluate_obligations` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
     overflowed: Vec<PredicateObligation<'tcx>>,
     pending: PendingObligations<'tcx>,
@@ -101,7 +101,7 @@ impl<'tcx> ObligationStorage<'tcx> {
             // IMPORTANT: we must not use solve any inference variables in the obligations
             // as this is all happening inside of a probe. We use a probe to make sure
             // we get all obligations involved in the overflow. We pretty much check: if
-            // we were to do another step of `select_where_possible`, which goals would
+            // we were to do another step of `try_evaluate_obligations`, which goals would
             // change.
             // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
             self.overflowed.extend(
@@ -179,7 +179,7 @@ where
             .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
         loop {

@@ -58,6 +58,7 @@ use tracing::{debug, instrument};
 use utils::*;
 use {rustc_ast as ast, rustc_hir as hir};
 
+pub(crate) use self::cfg::{CfgInfo, extract_cfg_from_attrs};
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
 use crate::core::DocContext;

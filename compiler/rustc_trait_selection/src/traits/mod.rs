@@ -42,7 +42,8 @@ use tracing::{debug, instrument};
 
 pub use self::coherence::{
     InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
-    add_placeholder_note, orphan_check_trait_ref, overlapping_impls,
+    add_placeholder_note, orphan_check_trait_ref, overlapping_inherent_impls,
+    overlapping_trait_impls,
 };
 pub use self::dyn_compatibility::{
     DynCompatibilityViolation, dyn_compatibility_violations_for_assoc_item,
@@ -231,7 +232,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             let ocx = ObligationCtxt::new(infcx);
             ocx.register_obligation(obligation);
 
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             match errors.as_slice() {
                 // Only known to hold if we did no inference.
                 [] => infcx.resolve_vars_if_possible(goal) == goal,
@@ -273,7 +274,7 @@ fn do_normalize_predicates<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, predicates);
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -738,13 +739,13 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
         ocx.register_obligation(obligation);
     }
 
-    // Use `select_where_possible` to only return impossible for true errors,
+    // Use `try_evaluate_obligations` to only return impossible for true errors,
     // and not ambiguities or overflows. Since the new trait solver forces
     // some currently undetected overlap between `dyn Trait: Trait` built-in
     // vs user-written impls to AMBIGUOUS, this may return ambiguity even
     // with no infer vars. There may also be ways to encounter ambiguity due
     // to post-mono overflow.
-    let true_errors = ocx.select_where_possible();
+    let true_errors = ocx.try_evaluate_obligations();
     if !true_errors.is_empty() {
         return true;
     }
@@ -853,7 +854,7 @@ fn is_impossible_associated_item(
 
     let ocx = ObligationCtxt::new(&infcx);
     ocx.register_obligations(predicates_for_trait);
-    !ocx.select_where_possible().is_empty()
+    !ocx.try_evaluate_obligations().is_empty()
 }
 
 pub fn provide(providers: &mut Providers) {

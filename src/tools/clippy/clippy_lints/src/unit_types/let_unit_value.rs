@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_context};
+use clippy_utils::source::{snippet_indent, walk_span_to_context};
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_ast::{FormatArgs, FormatArgumentKind};
@@ -74,10 +74,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                 "this let-binding has unit value",
                 |diag| {
                     let mut suggestions = Vec::new();
+                    let init_new_span = walk_span_to_context(init.span, local.span.ctxt()).unwrap();
 
                     // Suggest omitting the `let` binding
-                    let mut app = Applicability::MachineApplicable;
-                    let snip = snippet_with_context(cx, init.span, local.span.ctxt(), "()", &mut app).0;
+                    let app = Applicability::MachineApplicable;
 
                     // If this is a binding pattern, we need to add suggestions to remove any usages
                     // of the variable
@@ -89,35 +89,49 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
                         walk_body(&mut visitor, body);
 
                         let mut has_in_format_capture = false;
-                        suggestions.extend(visitor.spans.iter().filter_map(|span| match span {
-                            MaybeInFormatCapture::Yes => {
+                        suggestions.extend(visitor.spans.into_iter().filter_map(|span| match span {
+                            VariableUsage::FormatCapture => {
                                 has_in_format_capture = true;
                                 None
                             },
-                            MaybeInFormatCapture::No(span) => Some((*span, "()".to_string())),
+                            VariableUsage::Normal(span) => Some((span, "()".to_string())),
+                            VariableUsage::FieldShorthand(span) => Some((span.shrink_to_hi(), ": ()".to_string())),
                         }));
 
                         if has_in_format_capture {
+                            // In a case like this:
+                            // ```
+                            // let unit = returns_unit();
+                            // eprintln!("{unit}");
+                            // ```
+                            // we can't remove the `unit` binding and replace its uses with a `()`,
+                            // because the `eprintln!` would break.
+                            //
+                            // So do the following instead:
+                            // ```
+                            // let unit = ();
+                            // returns_unit();
+                            // eprintln!("{unit}");
+                            // ```
+                            // TODO: find a less awkward way to do this
                             suggestions.push((
-                                init.span,
-                                format!("();\n{}", reindent_multiline(&snip, false, indent_of(cx, local.span))),
+                                init_new_span.shrink_to_lo(),
+                                format!("();\n{}", snippet_indent(cx, local.span).as_deref().unwrap_or("")),
                             ));
-                            diag.multipart_suggestion(
-                                "replace variable usages with `()`",
-                                suggestions,
-                                Applicability::MachineApplicable,
-                            );
+                            diag.multipart_suggestion_verbose("replace variable usages with `()`", suggestions, app);
                             return;
                         }
                     }
 
-                    suggestions.push((local.span, format!("{snip};")));
+                    // let local = returns_unit();
+                    // ^^^^^^^^^^^^ remove this
+                    suggestions.push((local.span.until(init_new_span), String::new()));
                     let message = if suggestions.len() == 1 {
                         "omit the `let` binding"
                     } else {
                         "omit the `let` binding and replace variable usages with `()`"
                     };
-                    diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
+                    diag.multipart_suggestion_verbose(message, suggestions, app);
                 },
             );
         }
@@ -128,13 +142,30 @@ struct UnitVariableCollector<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     format_args: &'a FormatArgsStorage,
     id: HirId,
-    spans: Vec<MaybeInFormatCapture>,
+    spans: Vec<VariableUsage>,
     macro_call: Option<&'a FormatArgs>,
 }
 
-enum MaybeInFormatCapture {
-    Yes,
-    No(Span),
+/// How the unit variable is used
+enum VariableUsage {
+    Normal(Span),
+    /// Captured in a `format!`:
+    ///
+    /// ```ignore
+    /// let unit = ();
+    /// eprintln!("{unit}");
+    /// ```
+    FormatCapture,
+    /// In a field shorthand init:
+    ///
+    /// ```ignore
+    /// struct Foo {
+    ///    unit: (),
+    /// }
+    /// let unit = ();
+    /// Foo { unit };
+    /// ```
+    FieldShorthand(Span),
 }
 
 impl<'a, 'tcx> UnitVariableCollector<'a, 'tcx> {
@@ -174,9 +205,17 @@ impl<'tcx> Visitor<'tcx> for UnitVariableCollector<'_, 'tcx> {
                     matches!(arg.kind, FormatArgumentKind::Captured(_)) && find_format_arg_expr(ex, arg).is_some()
                 })
             {
-                self.spans.push(MaybeInFormatCapture::Yes);
+                self.spans.push(VariableUsage::FormatCapture);
             } else {
-                self.spans.push(MaybeInFormatCapture::No(path.span));
+                let parent = self.cx.tcx.parent_hir_node(ex.hir_id);
+                match parent {
+                    Node::ExprField(expr_field) if expr_field.is_shorthand => {
+                        self.spans.push(VariableUsage::FieldShorthand(ex.span));
+                    },
+                    _ => {
+                        self.spans.push(VariableUsage::Normal(path.span));
+                    },
+                }
             }
         }
 

@@ -292,7 +292,6 @@ impl<'tcx> Validator<'_, 'tcx> {
         match elem {
             // Recurse directly.
             ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
@@ -1050,7 +1049,7 @@ fn promote_candidates<'tcx>(
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| match &statement.kind {
+        block.retain_statements(|statement| match &statement.kind {
             StatementKind::Assign(box (place, _)) => {
                 if let Some(index) = place.as_local() {
                     !promoted(index)

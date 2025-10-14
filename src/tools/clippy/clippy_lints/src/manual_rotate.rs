@@ -66,7 +66,7 @@ fn parse_shift<'tcx>(
             BinOpKind::Shr => ShiftDirection::Right,
             _ => return None,
         };
-        let const_expr = ConstEvalCtxt::new(cx).eval(r)?;
+        let const_expr = ConstEvalCtxt::new(cx).eval_local(r, expr.span.ctxt())?;
         if let Constant::Int(shift) = const_expr {
             return Some((dir, shift, l));
         }

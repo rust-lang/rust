@@ -2023,7 +2023,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         // No argument expectations are produced if unification fails.
                         let origin = ObligationCause::new();
                         ocx.sup(&origin, self.table.trait_env.env, expected_output, formal_output)?;
-                        if !ocx.select_where_possible().is_empty() {
+                        if !ocx.try_evaluate_obligations().is_empty() {
                             return Err(TypeError::Mismatch);
                         }
 

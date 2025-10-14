@@ -253,6 +253,10 @@ fn collect_defining_uses<'tcx>(
                 }
             } else {
                 errors.push(DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err));
+                debug!(
+                    "collect_defining_uses: InvalidOpaqueTypeArgs for {:?} := {:?}",
+                    non_nll_opaque_type_key, hidden_type
+                );
             }
             continue;
         }
@@ -276,6 +280,7 @@ fn collect_defining_uses<'tcx>(
     defining_uses
 }
 
+#[instrument(level = "debug", skip(rcx, hidden_types, defining_uses, errors))]
 fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     rcx: &RegionCtxt<'_, 'tcx>,
     hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
@@ -287,6 +292,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
         FxIndexMap::default();
     for &DefiningUse { opaque_type_key, ref arg_regions, hidden_type } in defining_uses {
+        debug!(?opaque_type_key, ?arg_regions, ?hidden_type);
         // After applying member constraints, we now map all regions in the hidden type
         // to the `arg_regions` of this defining use. In case a region in the hidden type
         // ended up not being equal to any such region, we error.
@@ -294,6 +300,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
             match hidden_type.try_fold_with(&mut ToArgRegionsFolder::new(rcx, arg_regions)) {
                 Ok(hidden_type) => hidden_type,
                 Err(r) => {
+                    debug!("UnexpectedHiddenRegion: {:?}", r);
                     errors.push(DeferredOpaqueTypeError::UnexpectedHiddenRegion {
                         hidden_type,
                         opaque_type_key,

@@ -13,7 +13,7 @@ error: `#[allow_internal_unstable]` attribute cannot be used on structs
 LL | #[allow_internal_unstable(something)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[allow_internal_unstable]` can be applied to macro defs and functions
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
 
 error: aborting due to 2 previous errors
 

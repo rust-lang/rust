@@ -143,7 +143,7 @@ mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
-use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
+use rpc::{DecodeMut, Encode, Reader, Writer};
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
