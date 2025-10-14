@@ -84,7 +84,6 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use interpret::ErrorHandled;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
@@ -232,8 +231,6 @@ const ROOT_NODE: DropIdx = DropIdx::ZERO;
 struct DropTree {
     /// Nodes in the drop tree, containing drop data and a link to the next node.
     drop_nodes: IndexVec<DropIdx, DropNode>,
-    /// Map for finding the index of an existing node, given its contents.
-    existing_drops_map: FxHashMap<DropNodeKey, DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
 }
@@ -245,13 +242,14 @@ struct DropNode {
     data: DropData,
     /// Index of the "next" drop to perform (in drop order, not declaration order).
     next: DropIdx,
+    /// Map for finding the index of an existing node, given its contents.
+    existing_drops_map: Vec<(Local, DropIdx)>,
 }
 
-/// Subset of [`DropNode`] used for reverse lookup in a hash table.
-#[derive(Debug, PartialEq, Eq, Hash)]
-struct DropNodeKey {
-    next: DropIdx,
-    local: Local,
+impl DropNode {
+    fn new(data: DropData, next: DropIdx) -> DropNode {
+        DropNode { data, next, existing_drops_map: Vec::new() }
+    }
 }
 
 impl Scope {
@@ -299,8 +297,8 @@ impl DropTree {
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
-        let drop_nodes = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
-        Self { drop_nodes, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
+        let drop_nodes = IndexVec::from_raw(vec![DropNode::new(fake_data, DropIdx::MAX)]);
+        Self { drop_nodes, entry_points: Vec::new() }
     }
 
     /// Adds a node to the drop tree, consisting of drop data and the index of
@@ -310,11 +308,16 @@ impl DropTree {
     /// that node's index is returned. Otherwise, the new node's index is returned.
     fn add_drop(&mut self, data: DropData, next: DropIdx) -> DropIdx {
         let drop_nodes = &mut self.drop_nodes;
-        *self
-            .existing_drops_map
-            .entry(DropNodeKey { next, local: data.local })
+        if let Some((_, existing)) =
+            drop_nodes[next].existing_drops_map.iter().find(|(local, _)| *local == data.local)
+        {
+            *existing
+        } else {
             // Create a new node, and also add its index to the map.
-            .or_insert_with(|| drop_nodes.push(DropNode { data, next }))
+            let new = drop_nodes.push(DropNode::new(data, next));
+            drop_nodes[next].existing_drops_map.push((data.local, new));
+            new
+        }
     }
 
     /// Registers `from` as an entry point to this drop tree, at `to`.
@@ -2012,7 +2015,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         }
         // Link the exit drop tree to dropline drop tree (coroutine drop path) for async drops
         if is_coroutine
-            && drops.drop_nodes.iter().any(|DropNode { data, next: _ }| {
+            && drops.drop_nodes.iter().any(|DropNode { data, .. }| {
                 data.kind == DropKind::Value && self.is_async_drop(data.local)
             })
         {
