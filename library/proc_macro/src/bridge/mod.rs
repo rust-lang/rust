@@ -143,7 +143,7 @@ mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
-use rpc::{DecodeMut, Encode, Reader, Writer};
+use rpc::{Decode, Encode, Reader, Writer};
 
 /// Configuration for establishing an active connection between a server and a
 /// client.  The server creates the bridge config (`run_server` in `server.rs`),
@@ -168,7 +168,7 @@ impl !Sync for BridgeConfig<'_> {}
 #[forbid(unsafe_code)]
 #[allow(non_camel_case_types)]
 mod api_tags {
-    use super::rpc::{DecodeMut, Encode, Reader, Writer};
+    use super::rpc::{Decode, Encode, Reader, Writer};
 
     macro_rules! declare_tags {
         ($($name:ident {
