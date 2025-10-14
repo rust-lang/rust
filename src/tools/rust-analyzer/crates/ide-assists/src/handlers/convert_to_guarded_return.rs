@@ -182,7 +182,7 @@ fn let_stmt_to_guarded_return(
     let cursor_in_range =
         let_token_range.cover(let_pattern_range).contains_range(ctx.selection_trimmed());
 
-    if !cursor_in_range {
+    if !cursor_in_range || let_stmt.let_else().is_some() {
         return None;
     }
 
@@ -906,6 +906,19 @@ fn main() {
     } else {
         bar()
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_let_else_branch() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+fn main() {
+    let$0 Some(x) = Some(2) else { return };
 }
 "#,
         );
