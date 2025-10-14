@@ -676,3 +676,12 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         Some(AttributeKind::Sanitize { on_set, off_set, span: cx.attr_span })
     }
 }
+
+pub(crate) struct RustcPassIndirectlyInNonRusticAbisParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisParser {
+    const PATH: &[Symbol] = &[sym::rustc_pass_indirectly_in_non_rustic_abis];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
+}

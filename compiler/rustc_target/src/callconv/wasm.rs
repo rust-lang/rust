@@ -52,6 +52,10 @@ where
         // Not touching this...
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     arg.extend_integer_width_to(32);
     if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
         arg.make_indirect();
