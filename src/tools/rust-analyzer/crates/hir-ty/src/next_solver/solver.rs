@@ -149,13 +149,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn fetch_eligible_assoc_item(
         &self,
         goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
-        trait_assoc_def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
+        trait_assoc_def_id: SolverDefId,
         impl_id: ImplIdWrapper,
-    ) -> Result<Option<<Self::Interner as rustc_type_ir::Interner>::DefId>, ErrorGuaranteed> {
-        let trait_assoc_id = match trait_assoc_def_id {
-            SolverDefId::TypeAliasId(id) => id,
-            _ => panic!("Unexpected SolverDefId"),
-        };
+    ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
         let trait_ = self
             .0
             .interner
@@ -167,18 +163,47 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             .def_id
             .0;
         let trait_data = trait_.trait_items(self.0.interner.db());
-        let id =
-            impl_id.0.impl_items(self.0.interner.db()).items.iter().find_map(|item| -> Option<_> {
-                match item {
-                    (_, AssocItemId::TypeAliasId(type_alias)) => {
-                        let name = &self.0.interner.db().type_alias_signature(*type_alias).name;
-                        let found_trait_assoc_id = trait_data.associated_type_by_name(name)?;
-                        (found_trait_assoc_id == trait_assoc_id).then_some(*type_alias)
-                    }
-                    _ => None,
-                }
-            });
-        Ok(id.map(SolverDefId::TypeAliasId))
+        let impl_items = impl_id.0.impl_items(self.0.interner.db());
+        let id = match trait_assoc_def_id {
+            SolverDefId::TypeAliasId(trait_assoc_id) => {
+                let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
+                            && *impl_assoc_name == trait_assoc_data.name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(SolverDefId::TypeAliasId)
+            }
+            SolverDefId::ConstId(trait_assoc_id) => {
+                let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
+                let trait_assoc_name = trait_assoc_data
+                    .name
+                    .as_ref()
+                    .expect("unnamed consts should not get passed to the solver");
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
+                            && impl_assoc_name == trait_assoc_name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(SolverDefId::ConstId)
+            }
+            _ => panic!("Unexpected SolverDefId"),
+        };
+        Ok(id)
     }
 
     fn is_transmutable(
@@ -200,9 +225,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             SolverDefId::StaticId(c) => GeneralConstId::StaticId(c),
             _ => unreachable!(),
         };
-        let subst = uv.args.to_chalk(self.interner);
+        let subst = uv.args;
         let ec = self.cx().db.const_eval(c, subst, None).ok()?;
-        Some(ec.to_nextsolver(self.interner))
+        Some(ec)
     }
 
     fn compute_goal_fast_path(

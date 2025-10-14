@@ -1323,7 +1323,7 @@ tests or binaries. For example, it may be `--release`.
 Default:
 ```json
 [
-  "--show-output"
+  "--nocapture"
 ]
 ```
 

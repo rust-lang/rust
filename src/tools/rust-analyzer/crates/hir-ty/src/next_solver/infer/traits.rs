@@ -7,16 +7,19 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use hir_def::TraitId;
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::elaborate::Elaboratable;
 use rustc_type_ir::{
     PredicatePolarity, Upcast,
     solve::{Certainty, NoSolution},
 };
 use rustc_type_ir::{TypeFoldable, TypeVisitable};
+use tracing::debug;
 
 use crate::next_solver::{
     Binder, Clause, DbInterner, Goal, ParamEnv, PolyTraitPredicate, Predicate, SolverDefId, Span,
-    TraitPredicate, Ty,
+    TraitPredicate, TraitRef, Ty,
 };
 
 use super::InferCtxt;
@@ -63,8 +66,10 @@ impl ObligationCause {
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeVisitable, TypeFoldable)]
 pub struct Obligation<'db, T> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     /// The reason we have to prove this thing.
     pub cause: ObligationCause,
 
@@ -111,39 +116,6 @@ impl<'db> Elaboratable<DbInterner<'db>> for PredicateObligation<'db> {
             param_env: self.param_env,
             recursion_depth: 0,
             predicate: clause.as_predicate(),
-        }
-    }
-}
-
-impl<'db, T: TypeVisitable<DbInterner<'db>>> TypeVisitable<DbInterner<'db>> for Obligation<'db, T> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        rustc_ast_ir::try_visit!(self.param_env.visit_with(visitor));
-        self.predicate.visit_with(visitor)
-    }
-}
-
-impl<'db, T: TypeFoldable<DbInterner<'db>>> TypeFoldable<DbInterner<'db>> for Obligation<'db, T> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env.try_fold_with(folder)?,
-            predicate: self.predicate.try_fold_with(folder)?,
-            recursion_depth: self.recursion_depth,
-        })
-    }
-
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env.fold_with(folder),
-            predicate: self.predicate.fold_with(folder),
-            recursion_depth: self.recursion_depth,
         }
     }
 }
@@ -236,4 +208,36 @@ impl<'db, O> Obligation<'db, O> {
     ) -> Obligation<'db, P> {
         Obligation::with_depth(tcx, self.cause.clone(), self.recursion_depth, self.param_env, value)
     }
+}
+
+/// Determines whether the type `ty` is known to meet `bound` and
+/// returns true if so. Returns false if `ty` either does not meet
+/// `bound` or is not known to meet bound (note that this is
+/// conservative towards *no impl*, which is the opposite of the
+/// `evaluate` methods).
+pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    def_id: TraitId,
+) -> bool {
+    let trait_ref = TraitRef::new(infcx.interner, def_id.into(), [ty]);
+    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref)
+}
+
+/// FIXME(@lcnr): this function doesn't seem right and shouldn't exist?
+///
+/// Ping me on zulip if you want to use this method and need help with finding
+/// an appropriate replacement.
+fn pred_known_to_hold_modulo_regions<'db>(
+    infcx: &InferCtxt<'db>,
+    param_env: ParamEnv<'db>,
+    pred: impl Upcast<DbInterner<'db>, Predicate<'db>>,
+) -> bool {
+    let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), param_env, pred);
+
+    let result = infcx.evaluate_obligation(&obligation);
+    debug!(?result);
+
+    result.must_apply_modulo_regions()
 }

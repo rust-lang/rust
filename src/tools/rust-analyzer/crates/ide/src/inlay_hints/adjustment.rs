@@ -10,7 +10,7 @@ use hir::{
     Adjust, Adjustment, AutoBorrow, DisplayTarget, HirDisplay, Mutability, OverloadedDeref,
     PointerCast, Safety,
 };
-use ide_db::{base_db::salsa, famous_defs::FamousDefs};
+use ide_db::famous_defs::FamousDefs;
 
 use ide_db::text_edit::TextEditBuilder;
 use syntax::ast::{self, AstNode, prec::ExprPrecedence};
@@ -216,7 +216,7 @@ pub(super) fn hints(
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
             tooltip: Some(config.lazy_tooltip(|| {
-                salsa::attach(sema.db, || {
+                hir::attach_db(sema.db, || {
                     InlayTooltip::Markdown(format!(
                         "`{}` → `{}`\n\n**{}**\n\n{}",
                         source.display(sema.db, display_target),

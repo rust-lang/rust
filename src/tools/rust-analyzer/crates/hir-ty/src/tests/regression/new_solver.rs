@@ -84,7 +84,7 @@ fn test() -> i32 {
             307..359 'core::...n Foo)': DynMetadata<dyn Foo + '?>
             327..328 '0': usize
             327..340 '0 as *const F': *const F
-            327..358 '0 as *...yn Foo': *const (dyn Foo + '?)
+            327..358 '0 as *...yn Foo': *const (dyn Foo + 'static)
             370..371 'f': F
             374..378 'F {}': F
             388..395 'fat_ptr': *const (dyn Foo + '?)

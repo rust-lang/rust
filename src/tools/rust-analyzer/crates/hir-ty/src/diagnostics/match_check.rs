@@ -20,6 +20,8 @@ use hir_expand::name::Name;
 use span::Edition;
 use stdx::{always, never};
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
     db::HirDatabase,
@@ -93,16 +95,21 @@ pub(crate) enum PatKind {
     },
 }
 
-pub(crate) struct PatCtxt<'a> {
-    db: &'a dyn HirDatabase,
-    infer: &'a InferenceResult,
-    body: &'a Body,
+pub(crate) struct PatCtxt<'db> {
+    db: &'db dyn HirDatabase,
+    infer: &'db InferenceResult<'db>,
+    body: &'db Body,
     pub(crate) errors: Vec<PatternError>,
+    interner: DbInterner<'db>,
 }
 
 impl<'a> PatCtxt<'a> {
-    pub(crate) fn new(db: &'a dyn HirDatabase, infer: &'a InferenceResult, body: &'a Body) -> Self {
-        Self { db, infer, body, errors: Vec::new() }
+    pub(crate) fn new(
+        db: &'a dyn HirDatabase,
+        infer: &'a InferenceResult<'a>,
+        body: &'a Body,
+    ) -> Self {
+        Self { db, infer, body, errors: Vec::new(), interner: DbInterner::new_with(db, None, None) }
     }
 
     pub(crate) fn lower_pattern(&mut self, pat: PatId) -> Pat {
@@ -115,14 +122,14 @@ impl<'a> PatCtxt<'a> {
         self.infer.pat_adjustments.get(&pat).map(|it| &**it).unwrap_or_default().iter().rev().fold(
             unadjusted_pat,
             |subpattern, ref_ty| Pat {
-                ty: ref_ty.clone(),
+                ty: ref_ty.to_chalk(self.interner).clone(),
                 kind: Box::new(PatKind::Deref { subpattern }),
             },
         )
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: PatId) -> Pat {
-        let mut ty = &self.infer[pat];
+        let mut ty = self.infer[pat].to_chalk(self.interner);
         let variant = self.infer.variant_resolution_for_pat(pat);
 
         let kind = match self.body[pat] {
@@ -140,7 +147,7 @@ impl<'a> PatCtxt<'a> {
                     _ => {
                         never!("unexpected type for tuple pattern: {:?}", ty);
                         self.errors.push(PatternError::UnexpectedType);
-                        return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
+                        return Pat { ty, kind: PatKind::Wild.into() };
                     }
                 };
                 let subpatterns = self.lower_tuple_subpats(args, arity, ellipsis);
@@ -149,10 +156,10 @@ impl<'a> PatCtxt<'a> {
 
             hir_def::hir::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.binding_modes[pat];
-                ty = &self.infer[id];
+                ty = self.infer[id].to_chalk(self.interner);
                 let name = &self.body[id].name;
                 match (bm, ty.kind(Interner)) {
-                    (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
+                    (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty.clone(),
                     (BindingMode::Ref(_), _) => {
                         never!(
                             "`ref {}` has wrong type {:?}",
@@ -170,7 +177,7 @@ impl<'a> PatCtxt<'a> {
             hir_def::hir::Pat::TupleStruct { ref args, ellipsis, .. } if variant.is_some() => {
                 let expected_len = variant.unwrap().fields(self.db).fields().len();
                 let subpatterns = self.lower_tuple_subpats(args, expected_len, ellipsis);
-                self.lower_variant_or_leaf(pat, ty, subpatterns)
+                self.lower_variant_or_leaf(pat, &ty, subpatterns)
             }
 
             hir_def::hir::Pat::Record { ref args, .. } if variant.is_some() => {
@@ -186,7 +193,7 @@ impl<'a> PatCtxt<'a> {
                     })
                     .collect();
                 match subpatterns {
-                    Some(subpatterns) => self.lower_variant_or_leaf(pat, ty, subpatterns),
+                    Some(subpatterns) => self.lower_variant_or_leaf(pat, &ty, subpatterns),
                     None => {
                         self.errors.push(PatternError::MissingField);
                         PatKind::Wild
@@ -271,12 +278,12 @@ impl<'a> PatCtxt<'a> {
     }
 
     fn lower_path(&mut self, pat: PatId, _path: &Path) -> Pat {
-        let ty = &self.infer[pat];
+        let ty = self.infer[pat].to_chalk(self.interner);
 
         let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };
 
         match self.infer.variant_resolution_for_pat(pat) {
-            Some(_) => pat_from_kind(self.lower_variant_or_leaf(pat, ty, Vec::new())),
+            Some(_) => pat_from_kind(self.lower_variant_or_leaf(pat, &ty, Vec::new())),
             None => {
                 self.errors.push(PatternError::UnresolvedVariant);
                 pat_from_kind(PatKind::Wild)

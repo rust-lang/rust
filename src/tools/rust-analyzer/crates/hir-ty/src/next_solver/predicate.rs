@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 
 use intern::Interned;
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::try_visit;
 use rustc_type_ir::{
     self as ty, CollectAndApply, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
@@ -232,13 +233,12 @@ impl<'db> Predicate<'db> {
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<Binder<'db, PredicateKind<'db>>> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = &self.kind_(db).0;
             // SAFETY: The caller already has access to a `Predicate<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 
     /// Flips the polarity of a Predicate.
@@ -303,13 +303,12 @@ impl<'db> Clauses<'db> {
     }
 
     pub fn inner(&self) -> &InternedClausesWrapper<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.inner_(db);
             // SAFETY: The caller already has access to a `Clauses<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 
@@ -426,7 +425,7 @@ impl<'db> rustc_type_ir::TypeSuperVisitable<DbInterner<'db>> for Clauses<'db> {
 pub struct Clause<'db>(pub(crate) Predicate<'db>);
 
 // We could cram the reveal into the clauses like rustc does, probably
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'db> {
     pub(crate) clauses: Clauses<'db>,
 }
@@ -434,28 +433,6 @@ pub struct ParamEnv<'db> {
 impl<'db> ParamEnv<'db> {
     pub fn empty() -> Self {
         ParamEnv { clauses: Clauses::new_from_iter(DbInterner::conjure(), []) }
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for ParamEnv<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        try_visit!(self.clauses.visit_with(visitor));
-        V::Result::output()
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for ParamEnv<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(ParamEnv { clauses: self.clauses.try_fold_with(folder)? })
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        ParamEnv { clauses: self.clauses.fold_with(folder) }
     }
 }
 

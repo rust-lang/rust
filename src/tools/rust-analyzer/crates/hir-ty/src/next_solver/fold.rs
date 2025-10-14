@@ -129,3 +129,26 @@ where
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 }
+
+pub fn fold_tys<'db, T: TypeFoldable<DbInterner<'db>>>(
+    interner: DbInterner<'db>,
+    t: T,
+    callback: impl FnMut(Ty<'db>) -> Ty<'db>,
+) -> T {
+    struct Folder<'db, F> {
+        interner: DbInterner<'db>,
+        callback: F,
+    }
+    impl<'db, F: FnMut(Ty<'db>) -> Ty<'db>> TypeFolder<DbInterner<'db>> for Folder<'db, F> {
+        fn cx(&self) -> DbInterner<'db> {
+            self.interner
+        }
+
+        fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
+            let t = t.super_fold_with(self);
+            (self.callback)(t)
+        }
+    }
+
+    t.fold_with(&mut Folder { interner, callback })
+}

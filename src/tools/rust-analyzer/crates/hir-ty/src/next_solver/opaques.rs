@@ -24,12 +24,11 @@ impl<'db> PredefinedOpaques<'db> {
     }
 
     pub fn inner(&self) -> &PredefinedOpaquesData<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.kind_(db);
             // SAFETY: ¯\_(ツ)_/¯
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 
@@ -96,12 +95,11 @@ impl<'db> ExternalConstraints<'db> {
     }
 
     pub fn inner(&self) -> &ExternalConstraintsData<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.kind_(db);
             // SAFETY: ¯\_(ツ)_/¯
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 

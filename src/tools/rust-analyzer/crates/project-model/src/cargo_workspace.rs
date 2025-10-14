@@ -13,12 +13,12 @@ use serde_derive::Deserialize;
 use serde_json::from_value;
 use span::Edition;
 use stdx::process::spawn_with_streaming_output;
-use toolchain::Tool;
+use toolchain::{NO_RUSTUP_AUTO_INSTALL_ENV, Tool};
 use triomphe::Arc;
 
-use crate::cargo_config_file::make_lockfile_copy;
-use crate::{CfgOverrides, InvocationStrategy};
-use crate::{ManifestPath, Sysroot};
+use crate::{
+    CfgOverrides, InvocationStrategy, ManifestPath, Sysroot, cargo_config_file::make_lockfile_copy,
+};
 
 pub(crate) const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version =
     semver::Version {
@@ -632,6 +632,7 @@ impl FetchMetadata {
     ) -> Self {
         let cargo = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
         let mut command = MetadataCommand::new();
+        command.env(NO_RUSTUP_AUTO_INSTALL_ENV.0, NO_RUSTUP_AUTO_INSTALL_ENV.1);
         command.cargo_path(cargo.get_program());
         cargo.get_envs().for_each(|(var, val)| _ = command.env(var, val.unwrap_or_default()));
         command.manifest_path(cargo_toml.to_path_buf());

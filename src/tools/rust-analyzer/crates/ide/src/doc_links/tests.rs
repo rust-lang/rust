@@ -4,7 +4,6 @@ use expect_test::{Expect, expect};
 use hir::Semantics;
 use ide_db::{
     FilePosition, FileRange, RootDatabase,
-    base_db::salsa,
     defs::Definition,
     documentation::{DocsRangeMap, Documentation, HasDocs},
 };
@@ -48,7 +47,7 @@ fn check_rewrite(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect
     let sema = &Semantics::new(&analysis.db);
     let (cursor_def, docs, range) = def_under_cursor(sema, &position);
     let res =
-        salsa::attach(sema.db, || rewrite_links(sema.db, docs.as_str(), cursor_def, Some(range)));
+        hir::attach_db(sema.db, || rewrite_links(sema.db, docs.as_str(), cursor_def, Some(range)));
     expect.assert_eq(&res)
 }
 
@@ -65,7 +64,7 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         .flat_map(|(text_range, link, ns)| {
             let attr = range.map(text_range);
             let is_inner_attr = attr.map(|(_file, attr)| attr.is_inner_attr()).unwrap_or(false);
-            let def = salsa::attach(sema.db, || {
+            let def = hir::attach_db(sema.db, || {
                 resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
                     .unwrap_or_else(|| panic!("Failed to resolve {link}"))
             });
