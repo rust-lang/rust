@@ -308,13 +308,21 @@ pub(crate) fn clean_precise_capturing_arg(
 
 pub(crate) fn clean_const<'tcx>(
     constant: &hir::ConstArg<'tcx>,
+    // Used for mgca representation of const item bodies.
+    parent_if_item_body: Option<DefId>,
     _cx: &mut DocContext<'tcx>,
 ) -> ConstantKind {
     match &constant.kind {
         hir::ConstArgKind::Path(qpath) => {
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
-        hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
+        hir::ConstArgKind::Anon(anon) => {
+            if let Some(def_id) = parent_if_item_body {
+                ConstantKind::Local { def_id, body: anon.body }
+            } else {
+                ConstantKind::Anonymous { body: anon.body }
+            }
+        }
         hir::ConstArgKind::Infer(..) => ConstantKind::Infer,
     }
 }
@@ -1194,7 +1202,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Const(ty, Some(default)) => {
                 ProvidedAssocConstItem(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                    kind: ConstantKind::Local { def_id: local_did, body: default },
+                    kind: clean_const(default, Some(local_did), cx),
                     type_: clean_ty(ty, cx),
                 }))
             }
@@ -1244,7 +1252,7 @@ pub(crate) fn clean_impl_item<'tcx>(
         let inner = match impl_.kind {
             hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
-                kind: ConstantKind::Local { def_id: local_did, body: expr },
+                kind: clean_const(expr, Some(local_did), cx),
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
@@ -2516,7 +2524,7 @@ fn clean_generic_args<'tcx>(
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
                     hir::GenericArg::Const(ct) => {
-                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
+                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), None, cx)))
                     }
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
@@ -2785,10 +2793,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, generics, ty, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, generics, ty, body) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
-                kind: ConstantKind::Local { body: body_id, def_id },
+                kind: clean_const(body, Some(def_id), cx),
             })),
             ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;

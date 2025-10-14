@@ -523,17 +523,17 @@ impl<'a> State<'a> {
         ident: Ident,
         generics: &hir::Generics<'_>,
         ty: &hir::Ty<'_>,
-        default: Option<hir::BodyId>,
+        default: Option<hir::ConstItemRhs<'_>>,
     ) {
         self.word_space("const");
         self.print_ident(ident);
         self.print_generic_params(generics.params);
         self.word_space(":");
         self.print_type(ty);
-        if let Some(expr) = default {
+        if let Some(ct_rhs) = default {
             self.space();
             self.word_space("=");
-            self.ann.nested(self, Nested::Body(expr));
+            self.print_const_item_rhs(ct_rhs);
         }
         self.print_where_clause(generics);
         self.word(";")
@@ -616,7 +616,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(cb);
             }
-            hir::ItemKind::Const(ident, generics, ty, expr) => {
+            hir::ItemKind::Const(ident, generics, ty, rhs) => {
                 let (cb, ib) = self.head("const");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
@@ -626,7 +626,7 @@ impl<'a> State<'a> {
                 self.end(ib);
 
                 self.word_space("=");
-                self.ann.nested(self, Nested::Body(expr));
+                self.print_const_item_rhs(rhs);
                 self.print_where_clause(generics);
                 self.word(";");
                 self.end(cb);
@@ -1125,6 +1125,13 @@ impl<'a> State<'a> {
 
     fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
+    }
+
+    fn print_const_item_rhs(&mut self, ct_rhs: hir::ConstItemRhs<'_>) {
+        match ct_rhs {
+            hir::ConstItemRhs::Body(body_id) => self.ann.nested(self, Nested::Body(body_id)),
+            hir::ConstItemRhs::TypeConst(const_arg) => self.print_const_arg(const_arg),
+        }
     }
 
     fn print_const_arg(&mut self, const_arg: &hir::ConstArg<'_>) {

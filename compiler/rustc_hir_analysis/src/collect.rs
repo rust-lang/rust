@@ -1524,6 +1524,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     let const_arg_id = tcx.parent_hir_id(hir_id);
     match tcx.hir_node(const_arg_id) {
         hir::Node::ConstArg(_) => {
+            let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
             } else if tcx.features().min_generic_const_args() {
@@ -1531,7 +1532,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             } else if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Repeat(_, repeat_count),
                 ..
-            }) = tcx.hir_node(tcx.parent_hir_id(const_arg_id))
+            }) = parent_hir_node
                 && repeat_count.hir_id == const_arg_id
             {
                 ty::AnonConstKind::RepeatExprCount

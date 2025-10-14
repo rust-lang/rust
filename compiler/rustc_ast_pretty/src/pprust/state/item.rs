@@ -210,7 +210,7 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 ty,
-                expr,
+                body,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -218,7 +218,7 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    expr.as_deref(),
+                    body.as_ref().map(|ct| ct.expr()),
                     &item.vis,
                     ast::Safety::Default,
                     *defaultness,
@@ -566,7 +566,7 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 ty,
-                expr,
+                body,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -574,7 +574,7 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    expr.as_deref(),
+                    body.as_ref().map(|ct| ct.expr()),
                     vis,
                     ast::Safety::Default,
                     *defaultness,
