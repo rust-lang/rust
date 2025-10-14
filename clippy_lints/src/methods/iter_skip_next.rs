@@ -12,7 +12,7 @@ use super::ITER_SKIP_NEXT;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     // lint if caller of skip is an Iterator
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
-        let mut application = Applicability::MachineApplicable;
+        let mut applicability = Applicability::MachineApplicable;
         span_lint_and_then(
             cx,
             ITER_SKIP_NEXT,
@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
                     && let PatKind::Binding(ann, _, _, _) = pat.kind
                     && ann != BindingMode::MUT
                 {
-                    application = Applicability::Unspecified;
+                    applicability = Applicability::Unspecified;
                     diag.span_help(
                         pat.span,
                         format!("for this change `{}` has to be mutable", snippet(cx, pat.span, "..")),
@@ -35,7 +35,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
                     expr.span.trim_start(recv.span).unwrap(),
                     "use `nth` instead",
                     format!(".nth({})", snippet(cx, arg.span, "..")),
-                    application,
+                    applicability,
                 );
             },
         );

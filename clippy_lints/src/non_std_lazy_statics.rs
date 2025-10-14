@@ -220,7 +220,7 @@ impl LazyInfo {
     fn lint(&self, cx: &LateContext<'_>, sugg_map: &FxIndexMap<DefId, Option<String>>) {
         // Applicability might get adjusted to `Unspecified` later if any calls
         // in `calls_span_and_id` are not replaceable judging by the `sugg_map`.
-        let mut appl = Applicability::MachineApplicable;
+        let mut app = Applicability::MachineApplicable;
         let mut suggs = vec![(self.ty_span_no_args, "std::sync::LazyLock".to_string())];
 
         for (span, def_id) in &self.calls_span_and_id {
@@ -229,7 +229,7 @@ impl LazyInfo {
                 suggs.push((*span, sugg));
             } else {
                 // If NO suggested replacement, not machine applicable
-                appl = Applicability::Unspecified;
+                app = Applicability::Unspecified;
             }
         }
 
@@ -240,7 +240,7 @@ impl LazyInfo {
             self.ty_span_no_args,
             "this type has been superseded by `LazyLock` in the standard library",
             |diag| {
-                diag.multipart_suggestion("use `std::sync::LazyLock` instead", suggs, appl);
+                diag.multipart_suggestion("use `std::sync::LazyLock` instead", suggs, app);
             },
         );
     }

@@ -320,7 +320,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                         }
                     },
                     hir::StmtKind::Semi(semi_expr) => {
-                        if has_drop(semi_expr, apa.first_bind_ident, self.cx) {
+                        if has_drop(self.cx, semi_expr, apa.first_bind_ident) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
@@ -417,11 +417,11 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: Option<Ident>, lcx: &LateContext<'_>) -> bool {
+fn has_drop(cx: &LateContext<'_>, expr: &hir::Expr<'_>, first_bind_ident: Option<Ident>) -> bool {
     if let hir::ExprKind::Call(fun, [first_arg]) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
-        && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
+        && cx.tcx.is_diagnostic_item(sym::mem_drop, did)
     {
         let has_ident = |local_expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind
