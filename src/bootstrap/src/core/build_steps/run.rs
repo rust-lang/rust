@@ -274,6 +274,8 @@ impl Step for GenerateCopyright {
             cache_dir
         };
 
+        let _guard = builder.group("generate-copyright");
+
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("CARGO_MANIFESTS", &cargo_manifests);
         cmd.env("LICENSE_METADATA", &license_metadata);
