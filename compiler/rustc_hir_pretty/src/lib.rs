@@ -1129,6 +1129,7 @@ impl<'a> State<'a> {
         match &const_arg.kind {
             ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
+            ConstArgKind::Error(_, _) => self.word("/*ERROR*/"),
             ConstArgKind::Infer(..) => self.word("_"),
         }
     }

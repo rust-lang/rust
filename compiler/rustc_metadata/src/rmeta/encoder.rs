@@ -1428,7 +1428,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && match tcx.hir_node_by_def_id(local_id) {
                     hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
                         // Skip encoding defs for these as they should not have had a `DefId` created
-                        hir::ConstArgKind::Path(..) | hir::ConstArgKind::Infer(..) => true,
+                        hir::ConstArgKind::Error(..)
+                        | hir::ConstArgKind::Path(..)
+                        | hir::ConstArgKind::Infer(..) => true,
                         hir::ConstArgKind::Anon(..) => false,
                     },
                     _ => false,
