@@ -2071,7 +2071,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
             match sub_option {
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
                 "diagnostic-unicode" => {
-                    json_rendered = HumanReadableErrorType::Unicode;
+                    json_rendered = HumanReadableErrorType::AnnotateSnippet { unicode: true };
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
@@ -2110,7 +2110,7 @@ pub fn parse_error_format(
         match matches.opt_str("error-format").as_deref() {
             None | Some("human") => ErrorOutputType::HumanReadable { color_config, .. },
             Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet,
+                kind: HumanReadableErrorType::AnnotateSnippet { unicode: false },
                 color_config,
             },
             Some("json") => {
@@ -2123,7 +2123,7 @@ pub fn parse_error_format(
                 ErrorOutputType::HumanReadable { kind: HumanReadableErrorType::Short, color_config }
             }
             Some("human-unicode") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::Unicode,
+                kind: HumanReadableErrorType::AnnotateSnippet { unicode: true },
                 color_config,
             },
             Some(arg) => {
@@ -2191,8 +2191,8 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
-            HumanReadableErrorType::AnnotateSnippet => "human-annotate-rs",
-            HumanReadableErrorType::Unicode => "human-unicode",
+            HumanReadableErrorType::AnnotateSnippet { unicode: false } => "human-annotate-rs",
+            HumanReadableErrorType::AnnotateSnippet { unicode: true } => "human-unicode",
             _ => return,
         },
         _ => return,

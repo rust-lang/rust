@@ -952,8 +952,7 @@ fn default_emitter(
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
-
-            if let HumanReadableErrorType::AnnotateSnippet = kind {
+            if let HumanReadableErrorType::AnnotateSnippet { unicode } = kind {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -962,11 +961,7 @@ fn default_emitter(
                         .macro_backtrace(macro_backtrace)
                         .track_diagnostics(track_diagnostics)
                         .terminal_url(terminal_url)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                         .ignored_directories_in_source_blocks(
                             sopts
                                 .unstable_opts
@@ -982,11 +977,7 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
+                    .theme(OutputTheme::Ascii)
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1501,24 +1492,16 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
-            if let HumanReadableErrorType::AnnotateSnippet = kind {
+            if let HumanReadableErrorType::AnnotateSnippet { unicode } = kind {
                 Box::new(
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                         .short_message(short),
                 )
             } else {
                 Box::new(
                     HumanEmitter::new(stderr_destination(color_config), translator)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(OutputTheme::Ascii)
                         .short_message(short),
                 )
             }
