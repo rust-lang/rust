@@ -464,10 +464,27 @@ impl<'tcx> Candidates<'tcx> {
             appears_in_index: DenseBitSet::new_empty(body.local_decls.len()),
         };
         visitor.visit_body(body);
+        let FindAssignments { mut candidates, appears_in_index, .. } = visitor;
 
-        visitor.candidates.sort_by_key(|&(s, d)| (s, d.local, d.projection.len()));
+        // Allowing to merge with an arbitrary place creates a lot of candidates.
+        // Trim the set a little before trying to apply them.
+        candidates.retain(|&(s, d)| {
+            let s_required = is_local_required(s, body);
+            let d_required = is_local_required(d.local, body);
+            if s_required && d_required {
+                // We cannot merge locals if both are required.
+                return false;
+            }
+            if !d.projection.is_empty() && (s_required || appears_in_index.contains(s)) {
+                // We cannot merge a projection with a local that needs to remain bare.
+                return false;
+            }
+            true
+        });
 
-        Candidates { c: visitor.candidates, appears_in_index: visitor.appears_in_index }
+        candidates.sort_by_key(|&(s, d)| (s, d.local, d.projection.len()));
+
+        Candidates { c: candidates, appears_in_index }
     }
 }
 
