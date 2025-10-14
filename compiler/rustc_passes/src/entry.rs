@@ -1,16 +1,16 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::codes::*;
-use rustc_hir::def::DefKind;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{CRATE_HIR_ID, ItemId, Node};
+use rustc_hir::{CRATE_HIR_ID, ItemId, Node, find_attr};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::{CrateType, EntryFnType, RemapPathScopeComponents, sigpipe};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, sym};
 
-use crate::errors::{AttrOnlyInFunctions, ExternMain, MultipleRustcMain, NoMainErr};
+use crate::errors::{ExternMain, MultipleRustcMain, NoMainErr};
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -44,26 +44,12 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     configure_main(tcx, &ctxt)
 }
 
-fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
-    let attrs = ctxt.tcx.hir_attrs(id.hir_id());
-    attr::find_by_name(attrs, sym).map(|attr| attr.span())
-}
-
 fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
-    if !matches!(ctxt.tcx.def_kind(id.owner_id), DefKind::Fn) {
-        for attr in [sym::rustc_main] {
-            if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
-                ctxt.tcx.dcx().emit_err(AttrOnlyInFunctions { span, attr });
-            }
-        }
-        return;
-    }
-
     let at_root = ctxt.tcx.opt_local_parent(id.owner_id.def_id) == Some(CRATE_DEF_ID);
 
     let attrs = ctxt.tcx.hir_attrs(id.hir_id());
     let entry_point_type = rustc_ast::entry::entry_point_type(
-        attrs,
+        find_attr!(attrs, AttributeKind::RustcMain),
         at_root,
         ctxt.tcx.opt_item_name(id.owner_id.to_def_id()),
     );
