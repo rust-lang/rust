@@ -1,0 +1,51 @@
+error[E0658]: use of unstable library feature `contracts`
+  --> $DIR/invalid-delimeter-ice-146808.rs:1:4
+   |
+LL | #![core::contracts::requires]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+   = help: add `#![feature(contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/invalid-delimeter-ice-146808.rs:1:4
+   |
+LL | #![core::contracts::requires]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: wrong meta list delimiters
+  --> $DIR/invalid-delimeter-ice-146808.rs:1:1
+   |
+LL | / #![core::contracts::requires]
+...  |
+LL | | #[allow{}]
+LL | | fn main() {}
+   | |____________^ help: the delimiters should be `(` and `)`: `(...)`
+
+error[E0658]: `#[prelude_import]` is for use by rustc only
+  --> $DIR/invalid-delimeter-ice-146808.rs:1:1
+   |
+LL | / #![core::contracts::requires]
+...  |
+LL | | #[allow{}]
+LL | | fn main() {}
+   | |____________^
+   |
+   = help: add `#![feature(prelude_import)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-delimeter-ice-146808.rs:1:1
+   |
+LL | #![core::contracts::requires]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

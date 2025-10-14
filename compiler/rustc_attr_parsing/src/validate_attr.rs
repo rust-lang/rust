@@ -130,10 +130,15 @@ fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    psess.dcx().emit_err(errors::MetaBadDelim {
-        span: span.entire(),
-        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
-    });
+
+    if span.open == span.close {
+        psess.dcx().emit_err(errors::MetaBadDelimSingle { span: span.open, sugg_span: span.open });
+    } else {
+        psess.dcx().emit_err(errors::MetaBadDelim {
+            span: span.entire(),
+            sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+        });
+    }
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.

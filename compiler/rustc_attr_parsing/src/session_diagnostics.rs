@@ -823,6 +823,19 @@ pub(crate) struct MetaBadDelimSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_meta_bad_delim)]
+pub(crate) struct MetaBadDelimSingle {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        attr_parsing_meta_bad_delim_suggestion,
+        code = "(...)",
+        applicability = "machine-applicable"
+    )]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_meta_item)]
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
