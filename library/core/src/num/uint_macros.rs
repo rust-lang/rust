@@ -57,6 +57,83 @@ macro_rules! uint_impl {
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = Self::MAX.count_ones();
 
+        /// Tests the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let n = 0b01111001", stringify!($SelfT), ";")]
+        ///
+        /// assert!(n.bit(0));
+        /// assert!(!n.bit(1));
+        /// assert!(!n.bit(2));
+        /// assert!(n.bit(3));
+        /// assert!(n.bit(4));
+        /// assert!(n.bit(5));
+        /// assert!(n.bit(6));
+        /// assert!(!n.bit(7));
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn bit(self, index: u32) -> bool {
+            self & (1 as $SelfT) << index != (0 as $SelfT)
+        }
+
+        /// Sets the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let mut n = 0b01010101", stringify!($SelfT), ";")]
+        ///
+        /// n = n.set_bit(0, false);
+        /// n = n.set_bit(1, true);
+        /// n = n.set_bit(2, false);
+        /// n = n.set_bit(3, true);
+        /// n = n.set_bit(4, false);
+        /// n = n.set_bit(5, true);
+        /// n = n.set_bit(6, false);
+        /// n = n.set_bit(7, true);
+        ///
+        /// assert_eq!(n, 0b10101010);
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn set_bit(mut self, index: u32, value: bool) -> Self {
+            self &= !((1 as $SelfT) << index);
+            self |= (value as $SelfT) << index;
+
+            self
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples
