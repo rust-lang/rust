@@ -4,6 +4,8 @@ mod markdown;
 mod runner;
 mod rust;
 
+#[cfg(bootstrap)]
+use std::fmt;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
@@ -30,6 +32,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
+#[cfg(not(bootstrap))]
 use test::test::{RustdocResult, get_rustdoc_result};
 use tracing::debug;
 
@@ -37,6 +40,38 @@ use self::rust::HirCollector;
 use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
+
+#[cfg(bootstrap)]
+#[allow(dead_code)]
+pub enum RustdocResult {
+    /// The test failed to compile.
+    CompileError,
+    /// The test is marked `compile_fail` but compiled successfully.
+    UnexpectedCompilePass,
+    /// The test failed to compile (as expected) but the compiler output did not contain all
+    /// expected error codes.
+    MissingErrorCodes(Vec<String>),
+    /// The test binary was unable to be executed.
+    ExecutionError(io::Error),
+    /// The test binary exited with a non-zero exit code.
+    ///
+    /// This typically means an assertion in the test failed or another form of panic occurred.
+    ExecutionFailure(process::Output),
+    /// The test is marked `should_panic` but the test binary executed successfully.
+    NoPanic(Option<String>),
+}
+
+#[cfg(bootstrap)]
+impl fmt::Display for RustdocResult {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+}
+
+#[cfg(bootstrap)]
+fn get_rustdoc_result(_: process::Output, _: bool) -> Result<(), RustdocResult> {
+    Ok(())
+}
 
 /// Type used to display times (compilation and total) information for merged doctests.
 struct MergedDoctestTimes {
