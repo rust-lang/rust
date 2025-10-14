@@ -1,4 +1,6 @@
-use crate::spec::{RelocModel, StackProbeType, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Architecture, RelocModel, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");
@@ -12,7 +14,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 64,
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32".into(),
-        arch: "aarch64".into(),
+        arch: Architecture::AArch64,
         options: TargetOptions {
             linker: Some("aarch64-kmc-elf-gcc".into()),
             features: "+v8a,+neon,+fp-armv8".into(),

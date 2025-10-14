@@ -240,7 +240,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     }
 
     ins_str!(sym::target_abi, &sess.target.abi);
-    ins_str!(sym::target_arch, &sess.target.arch);
+    ins_sym!(sym::target_arch, sess.target.arch.desc_symbol());
     ins_str!(sym::target_endian, sess.target.endian.as_str());
     ins_str!(sym::target_env, &sess.target.env);
 
@@ -448,7 +448,7 @@ impl CheckCfg {
 
                 for target in Target::builtins().chain(iter::once(current_target.clone())) {
                     values_target_abi.insert(Symbol::intern(&target.options.abi));
-                    values_target_arch.insert(Symbol::intern(&target.arch));
+                    values_target_arch.insert(target.arch.desc_symbol());
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                     values_target_env.insert(Symbol::intern(&target.options.env));
                     values_target_family.extend(

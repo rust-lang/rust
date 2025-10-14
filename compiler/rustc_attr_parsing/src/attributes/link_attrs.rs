@@ -4,7 +4,7 @@ use rustc_hir::attrs::*;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::kw;
-use rustc_target::spec::BinaryFormat;
+use rustc_target::spec::{Architecture, BinaryFormat};
 
 use super::prelude::*;
 use super::util::parse_single_integer;
@@ -439,7 +439,7 @@ impl LinkParser {
             cx.expected_name_value(item.span(), Some(sym::import_name_type));
             return true;
         };
-        if cx.sess().target.arch != "x86" {
+        if cx.sess().target.arch != Architecture::X86 {
             cx.emit_err(ImportNameTypeX86 { span: item.span() });
             return true;
         }

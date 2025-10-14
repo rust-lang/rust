@@ -1,6 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target, TargetMetadata,
-    TargetOptions,
+    Architecture, Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target,
+    TargetMetadata, TargetOptions,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 64,
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32".into(),
-        arch: "aarch64".into(),
+        arch: Architecture::AArch64,
         options: TargetOptions {
             features: "+v8a,+neon,+crypto,+crc".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

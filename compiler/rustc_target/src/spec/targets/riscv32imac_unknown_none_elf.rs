@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Architecture, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -13,7 +14,7 @@ pub(crate) fn target() -> Target {
             std: Some(false),
         },
         pointer_width: 32,
-        arch: "riscv32".into(),
+        arch: Architecture::RiscV32,
 
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

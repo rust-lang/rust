@@ -1,5 +1,6 @@
 use crate::spec::{
-    RustcAbi, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+    Architecture, RustcAbi, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
@@ -28,7 +29,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
             i128:128-f64:32:64-f80:32-n8:16:32-S128"
             .into(),
-        arch: "x86".into(),
+        arch: Architecture::X86,
         options: TargetOptions { supported_sanitizers: SanitizerSet::ADDRESS, ..base },
     }
 }
