@@ -155,18 +155,14 @@ pub(crate) fn new_dcx(
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
-            if let HumanReadableErrorType::AnnotateSnippet = kind {
+            if let HumanReadableErrorType::AnnotateSnippet { unicode } = kind {
                 Box::new(
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map.map(|sm| sm as _))
                         .short_message(short)
                         .diagnostic_width(diagnostic_width)
                         .track_diagnostics(unstable_opts.track_diagnostics)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                         .ui_testing(unstable_opts.ui_testing),
                 )
             } else {
@@ -176,11 +172,7 @@ pub(crate) fn new_dcx(
                         .short_message(short)
                         .diagnostic_width(diagnostic_width)
                         .track_diagnostics(unstable_opts.track_diagnostics)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(OutputTheme::Ascii)
                         .ui_testing(unstable_opts.ui_testing),
                 )
             }

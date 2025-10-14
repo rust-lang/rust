@@ -379,7 +379,7 @@ impl Diagnostic {
                 choice => choice,
             },
         );
-        if let HumanReadableErrorType::AnnotateSnippet = je.json_rendered {
+        if let HumanReadableErrorType::AnnotateSnippet { unicode } = je.json_rendered {
             AnnotateSnippetEmitter::new(dst, je.translator.clone())
                 .short_message(short)
                 .sm(je.sm.clone())
@@ -391,12 +391,8 @@ impl Diagnostic {
                 .ignored_directories_in_source_blocks(
                     je.ignored_directories_in_source_blocks.clone(),
                 )
-                .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
-                    OutputTheme::Unicode
-                } else {
-                    OutputTheme::Ascii
-                })
-                .emit_diagnostic(diag, registry);
+                .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+                .emit_diagnostic(diag, registry)
         } else {
             HumanEmitter::new(dst, je.translator.clone())
                 .short_message(short)
@@ -409,12 +405,8 @@ impl Diagnostic {
                 .ignored_directories_in_source_blocks(
                     je.ignored_directories_in_source_blocks.clone(),
                 )
-                .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
-                    OutputTheme::Unicode
-                } else {
-                    OutputTheme::Ascii
-                })
-                .emit_diagnostic(diag, registry);
+                .theme(OutputTheme::Ascii)
+                .emit_diagnostic(diag, registry)
         }
 
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();

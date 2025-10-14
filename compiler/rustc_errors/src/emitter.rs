@@ -48,8 +48,7 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
     Default,
-    Unicode,
-    AnnotateSnippet,
+    AnnotateSnippet { unicode: bool },
     Short,
 }
 
