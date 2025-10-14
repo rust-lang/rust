@@ -59,8 +59,7 @@ impl_full_ops! {
     u8:  add(intrinsics::u8_add_with_overflow),  mul/div(u16);
     u16: add(intrinsics::u16_add_with_overflow), mul/div(u32);
     u32: add(intrinsics::u32_add_with_overflow), mul/div(u64);
-    // See RFC #521 for enabling this.
-    // u64: add(intrinsics::u64_add_with_overflow), mul/div(u128);
+    u64: add(intrinsics::u64_add_with_overflow), mul/div(u128);
 }
 
 /// Table of powers of 5 representable in digits. Specifically, the largest {u8, u16, u32} value
