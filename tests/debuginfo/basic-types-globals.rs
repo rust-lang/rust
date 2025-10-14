@@ -5,6 +5,7 @@
 
 //@ [lto] compile-flags:-C lto
 //@ [lto] no-prefer-dynamic
+//@ ignore-backends: gcc
 
 // lldb-command:run
 // lldb-command:v B

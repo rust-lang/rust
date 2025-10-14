@@ -9,6 +9,7 @@
 //@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
 // SingleUseConsts shouldn't need to be disabled, see #128945
 //@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

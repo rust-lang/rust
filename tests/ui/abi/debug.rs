@@ -15,6 +15,7 @@
 //@ [loongarch64] needs-llvm-components: loongarch
 //@ [generic] ignore-riscv64
 //@ [generic] ignore-loongarch64
+//@ ignore-backends: gcc
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
 #![feature(no_core)]
