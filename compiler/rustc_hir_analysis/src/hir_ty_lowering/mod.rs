@@ -2242,6 +2242,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
+            hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
         }
     }
 
