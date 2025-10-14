@@ -7,6 +7,7 @@ impl Drop for Noise {
     }
 }
 
+#[inline(never)]
 fn panic() {
     panic!();
 }
