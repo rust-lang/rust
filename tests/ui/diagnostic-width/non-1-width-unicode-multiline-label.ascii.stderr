@@ -1,11 +1,11 @@
 error[E0369]: cannot add `&str` to `&str`
   --> $DIR/non-1-width-unicode-multiline-label.rs:8:237
    |
-LL | ...👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
-   |                                                           -------------- ^ -------------- &str
-   |                                                           |              |
-   |                                                           |              `+` cannot be used to concatenate two `&str` strings
-   |                                                           &str
+LL | ... 👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
+   |                                   -------------- ^ -------------- &str
+   |                                   |              |
+   |                                   |              `+` cannot be used to concatenate two `&str` strings
+   |                                   &str
    |
    = note: string concatenation requires an owned `String` on the left
 help: create an owned `String` from a string reference
@@ -16,11 +16,11 @@ LL |     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧�
 error[E0369]: cannot add `&str` to `&str`
   --> $DIR/non-1-width-unicode-multiline-label.rs:10:384
    |
-LL | ...👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
-   |                                       -------------- ^ -------------- &str
-   |                                       |              |
-   |                                       |              `+` cannot be used to concatenate two `&str` strings
-   |                                       &str
+LL | ... 👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
+   |                                   -------------- ^ -------------- &str
+   |                                   |              |
+   |                                   |              `+` cannot be used to concatenate two `&str` strings
+   |                                   &str
    |
    = note: string concatenation requires an owned `String` on the left
 help: create an owned `String` from a string reference
@@ -31,11 +31,11 @@ LL |     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧�
 error[E0369]: cannot add `&str` to `&str`
   --> $DIR/non-1-width-unicode-multiline-label.rs:12:260
    |
-LL | ...࿇࿈࿉࿊࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun + " really fun!";
-   |                                   -------------- ^ -------------- &str
-   |                                   |              |
-   |                                   |              `+` cannot be used to concatenate two `&str` strings
-   |                                   &str
+LL | ...࿆࿇࿈࿉࿊࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun + " really fun!";
+   |                                    -------------- ^ -------------- &str
+   |                                    |              |
+   |                                    |              `+` cannot be used to concatenate two `&str` strings
+   |                                    &str
    |
    = note: string concatenation requires an owned `String` on the left
 help: create an owned `String` from a string reference
