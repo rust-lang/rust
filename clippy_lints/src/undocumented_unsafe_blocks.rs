@@ -475,7 +475,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
     span.to(cx.tcx.hir_attrs(hir_id).iter().fold(span, |acc, attr| {
-        if attr.is_doc_comment() {
+        if attr.is_doc_comment().is_some() {
             return acc;
         }
         acc.to(attr.span())
