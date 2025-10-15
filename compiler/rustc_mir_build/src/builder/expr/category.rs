@@ -64,7 +64,6 @@ impl Category {
             | ExprKind::Closure { .. }
             | ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
-            | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }

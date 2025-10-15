@@ -442,7 +442,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Cast(..)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::WrapUnsafeBinder(..) => {}
@@ -619,8 +618,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }
-
-            ShallowInitBox(..) => return None,
 
             Cast(ref kind, ref value, to) => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {

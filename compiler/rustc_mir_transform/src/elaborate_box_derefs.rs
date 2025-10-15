@@ -86,20 +86,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
 
         self.super_place(place, context, location);
     }
-
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if let Rvalue::ShallowInitBox(operand, ty) = rvalue {
-            let ty = Ty::new_box(self.tcx, *ty);
-            let operand = std::mem::replace(
-                operand,
-                // Just a meaningless placeholder.
-                Operand::Copy(RETURN_PLACE.into()),
-            );
-            *rvalue = Rvalue::Cast(CastKind::Transmute, operand, ty)
-        }
-
-        self.super_rvalue(rvalue, location);
-    }
 }
 
 pub(super) struct ElaborateBoxDerefs;

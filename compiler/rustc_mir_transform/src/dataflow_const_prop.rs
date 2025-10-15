@@ -493,7 +493,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
             }
-            Rvalue::ShallowInitBox(..) => bug!("ShallowInitBox must not appear in runtime MIR"),
         };
         ValueOrPlace::Value(val)
     }
