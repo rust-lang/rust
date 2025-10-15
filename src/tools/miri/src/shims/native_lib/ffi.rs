@@ -9,13 +9,8 @@ use libffi::middle::{Arg as ArgPtr, Cif, Type as FfiType};
 ///
 /// The safety invariants of the foreign function being called must be upheld (if any).
 pub unsafe fn call<R: libffi::high::CType>(fun: CodePtr, args: &mut [OwnedArg]) -> R {
-    let mut cif_args = vec![];
-    let mut arg_ptrs = vec![];
-    for a in args {
-        cif_args.push(a.ty.take().unwrap());
-        arg_ptrs.push(ArgPtr::new(&*a.bytes));
-    }
-    let cif = Cif::new(cif_args, R::reify().into_middle());
+    let cif = Cif::new(args.iter_mut().map(|arg| arg.ty.take().unwrap()), R::reify().into_middle());
+    let arg_ptrs: Vec<_> = args.iter().map(|arg| ArgPtr::new(&*arg.bytes)).collect();
     // SAFETY: Caller upholds that the function is safe to call.
     unsafe { cif.call(fun, &arg_ptrs) }
 }
