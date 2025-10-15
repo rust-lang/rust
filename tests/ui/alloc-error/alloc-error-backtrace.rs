@@ -1,5 +1,10 @@
 //@ run-pass
+//@ ignore-android FIXME #17520
 //@ needs-subprocess
+//@ ignore-openbsd no support for libbacktrace without filename
+//@ ignore-fuchsia Backtraces not symbolized
+//@ compile-flags:-g
+//@ compile-flags:-Cstrip=none
 
 use std::alloc::{Layout, handle_alloc_error};
 use std::process::Command;
@@ -11,7 +16,7 @@ fn main() {
     }
 
     let me = env::current_exe().unwrap();
-    let output = Command::new(&me).env("RUST_BACKTRACE", "0").arg("next").output().unwrap();
+    let output = Command::new(&me).env("RUST_BACKTRACE", "1").arg("next").output().unwrap();
     assert!(!output.status.success(), "{:?} is a success", output.status);
 
     let mut stderr = str::from_utf8(&output.stderr).unwrap();
@@ -22,9 +27,6 @@ fn main() {
         .strip_suffix("qemu: uncaught target signal 6 (Aborted) - core dumped\n")
         .unwrap_or(stderr);
 
-    assert_eq!(
-        stderr,
-        "memory allocation of 42 bytes failed\n\
-        note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
-    );
+    assert!(stderr.contains("memory allocation of 42 bytes failed"), "{}", stderr);
+    assert!(stderr.contains("alloc_error_backtrace::main"), "{}", stderr);
 }
