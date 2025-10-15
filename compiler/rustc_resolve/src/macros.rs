@@ -1,7 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
@@ -40,9 +39,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
+    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
+    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -79,7 +78,7 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = &'ra Cell<MacroRulesScope<'ra>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra CacheCell<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -775,8 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             if trace {
-                // FIXME: Should be an output of Speculative Resolution.
-                self.multi_segment_macro_resolutions.borrow_mut().push((
+                self.multi_segment_macro_resolutions.borrow_mut(&self).push((
                     path,
                     path_span,
                     kind,
@@ -803,8 +801,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             if trace {
-                // FIXME: Should be an output of Speculative Resolution.
-                self.single_segment_macro_resolutions.borrow_mut().push((
+                self.single_segment_macro_resolutions.borrow_mut(&self).push((
                     path[0].ident,
                     kind,
                     *parent_scope,
@@ -870,8 +867,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        // FIXME: Should be an output of Speculative Resolution.
-        let macro_resolutions = self.multi_segment_macro_resolutions.take();
+        let macro_resolutions = self.multi_segment_macro_resolutions.take(self);
         for (mut path, path_span, kind, parent_scope, initial_res, ns) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
@@ -948,8 +944,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        // FIXME: Should be an output of Speculative Resolution.
-        let macro_resolutions = self.single_segment_macro_resolutions.take();
+        let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
             match self.cm().resolve_ident_in_scope_set(
                 ident,
