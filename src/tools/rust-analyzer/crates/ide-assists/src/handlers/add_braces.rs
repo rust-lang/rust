@@ -1,7 +1,8 @@
 use either::Either;
 use syntax::{
-    AstNode,
+    AstNode, T,
     ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    match_ast,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -37,6 +38,7 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         match expr_type {
             ParentType::ClosureExpr => "Add braces to this closure body",
             ParentType::MatchArmExpr => "Add braces to this match arm expression",
+            ParentType::Assignment => "Add braces to this assignment expression",
         },
         expr.syntax().text_range(),
         |builder| {
@@ -57,29 +59,38 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 enum ParentType {
     MatchArmExpr,
     ClosureExpr,
+    Assignment,
 }
 
 fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Expr)> {
-    let node = ctx.find_node_at_offset::<Either<ast::MatchArm, ast::ClosureExpr>>()?;
-    if let Either::Left(match_arm) = &node {
+    let node = ctx.find_node_at_offset::<Either<ast::MatchArm, ast::ClosureExpr>>();
+    let (parent_type, body) = if let Some(eq_token) = ctx.find_token_syntax_at_offset(T![=]) {
+        let parent = eq_token.parent()?;
+        let body = match_ast! {
+            match parent {
+                ast::LetStmt(it) => it.initializer()?,
+                ast::LetExpr(it) => it.expr()?,
+                ast::Static(it) => it.body()?,
+                ast::Const(it) => it.body()?,
+                _ => return None,
+            }
+        };
+        (ParentType::Assignment, body)
+    } else if let Some(Either::Left(match_arm)) = &node {
         let match_arm_expr = match_arm.expr()?;
-
-        if matches!(match_arm_expr, ast::Expr::BlockExpr(_)) {
-            return None;
-        }
-
-        return Some((ParentType::MatchArmExpr, match_arm_expr));
-    } else if let Either::Right(closure_expr) = &node {
+        (ParentType::MatchArmExpr, match_arm_expr)
+    } else if let Some(Either::Right(closure_expr)) = &node {
         let body = closure_expr.body()?;
+        (ParentType::ClosureExpr, body)
+    } else {
+        return None;
+    };
 
-        if matches!(body, ast::Expr::BlockExpr(_)) {
-            return None;
-        }
-
-        return Some((ParentType::ClosureExpr, body));
+    if matches!(body, ast::Expr::BlockExpr(_)) {
+        return None;
     }
 
-    None
+    Some((parent_type, body))
 }
 
 #[cfg(test)]
@@ -129,6 +140,25 @@ fn foo() {
             });
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_assignment() {
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    let x =$0 n + 100;
+}
+"#,
+            r#"
+fn foo() {
+    let x = {
+        n + 100
+    };
 }
 "#,
         );
