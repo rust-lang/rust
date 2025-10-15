@@ -1,5 +1,6 @@
-//@ known-bug: rust-lang/rust#126680
+//! Regression test for #126680
 //@ compile-flags: -Zvalidate-mir
+
 #![feature(type_alias_impl_trait)]
 type Bar = impl std::fmt::Display;
 
@@ -10,7 +11,7 @@ struct A {
 }
 
 #[define_opaque(Bar)]
-fn foo() -> A {
+fn foo() -> A { //~ ERROR item does not constrain `Bar::{opaque#0}`
     A {
         func: |check, b| {
             if check {
