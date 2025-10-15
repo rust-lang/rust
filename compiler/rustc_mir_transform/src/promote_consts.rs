@@ -457,8 +457,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 NullOp::ContractChecks => {}
             },
 
-            Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
-
             Rvalue::UnaryOp(op, operand) => {
                 match op {
                     // These operations can never fail.

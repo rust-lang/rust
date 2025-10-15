@@ -1533,8 +1533,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => {
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), state)
             }
 

@@ -1074,7 +1074,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
             // Unsupported values.
             Rvalue::ThreadLocalRef(..) => return None,
-            Rvalue::CopyForDeref(_) | Rvalue::ShallowInitBox(..) => {
+            Rvalue::CopyForDeref(_) => {
                 bug!("forbidden in runtime MIR: {rvalue:?}")
             }
         };

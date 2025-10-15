@@ -653,7 +653,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 | NullOp::ContractChecks,
                 _,
             ) => {}
-            Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
