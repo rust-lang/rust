@@ -843,8 +843,8 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             | StatementKind::ConstEvalCounter
             | StatementKind::StorageLive(..) => {}
             // This does not affect borrowck
-            StatementKind::BackwardIncompatibleDropHint { place, reason: BackwardIncompatibleDropReason::Edition2024 } => {
-                self.check_backward_incompatible_drop(location, **place, state);
+            StatementKind::BackwardIncompatibleDropHint { place, reason } => {
+                self.check_backward_incompatible_drop(location, **place, state, *reason);
             }
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -1386,6 +1386,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         place: Place<'tcx>,
         state: &BorrowckDomain,
+        reason: BackwardIncompatibleDropReason,
     ) {
         let tcx = self.infcx.tcx;
         // If this type does not need `Drop`, then treat it like a `StorageDead`.
@@ -1412,21 +1413,29 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 if matches!(borrow.kind, BorrowKind::Fake(_)) {
                     return ControlFlow::Continue(());
                 }
-                let borrowed = this.retrieve_borrow_spans(borrow).var_or_use_path_span();
-                let explain = this.explain_why_borrow_contains_point(
-                    location,
-                    borrow,
-                    Some((WriteKind::StorageDeadOrDrop, place)),
-                );
-                this.infcx.tcx.node_span_lint(
-                    TAIL_EXPR_DROP_ORDER,
-                    CRATE_HIR_ID,
-                    borrowed,
-                    |diag| {
-                        session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
-                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
-                    },
-                );
+                match reason {
+                    BackwardIncompatibleDropReason::Edition2024 => {
+                        let borrowed = this.retrieve_borrow_spans(borrow).var_or_use_path_span();
+                        let explain = this.explain_why_borrow_contains_point(
+                            location,
+                            borrow,
+                            Some((WriteKind::StorageDeadOrDrop, place)),
+                        );
+                        this.infcx.tcx.node_span_lint(
+                            TAIL_EXPR_DROP_ORDER,
+                            CRATE_HIR_ID,
+                            borrowed,
+                            |diag| {
+                                session_diagnostics::TailExprDropOrder { borrowed }
+                                    .decorate_lint(diag);
+                                explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                            },
+                        );
+                    }
+                    BackwardIncompatibleDropReason::MacroExtendedScope => {
+                        this.lint_macro_extended_temporary_scope(location, borrow);
+                    }
+                }
                 // We may stop at the first case
                 ControlFlow::Break(())
             },

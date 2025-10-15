@@ -129,8 +129,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);
         }
 
-        if let Some(backwards_incompatible) = temp_lifetime.backwards_incompatible {
-            this.schedule_backwards_incompatible_drop(expr_span, backwards_incompatible, temp);
+        if let Some((backwards_incompatible, reason)) = temp_lifetime.backwards_incompatible {
+            this.schedule_backwards_incompatible_drop(
+                expr_span,
+                backwards_incompatible,
+                temp,
+                reason,
+            );
         }
 
         block.and(temp)

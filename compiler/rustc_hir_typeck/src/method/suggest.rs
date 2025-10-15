@@ -441,8 +441,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check scope of binding.
             fn is_sub_scope(&self, sub_id: hir::ItemLocalId, super_id: hir::ItemLocalId) -> bool {
                 let scope_tree = self.fcx.tcx.region_scope_tree(self.fcx.body_id);
-                if let Some(sub_var_scope) = scope_tree.var_scope(sub_id)
-                    && let Some(super_var_scope) = scope_tree.var_scope(super_id)
+                if let (Some(sub_var_scope), _) = scope_tree.var_scope(sub_id)
+                    && let (Some(super_var_scope), _) = scope_tree.var_scope(super_id)
                     && scope_tree.is_subscope_of(sub_var_scope, super_var_scope)
                 {
                     return true;

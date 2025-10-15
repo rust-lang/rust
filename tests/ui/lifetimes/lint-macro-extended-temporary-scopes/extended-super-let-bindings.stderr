@@ -1,0 +1,15 @@
+warning: temporary lifetime will be shortened in Rust 1.92
+  --> $DIR/extended-super-let-bindings.rs:9:30
+   |
+LL |     println!("{:?}{}", (), { format_args!("{:?}", ()) });
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^ - ...which will be dropped at the end of this block in Rust 1.92
+   |                              |
+   |                              this expression creates a temporary value...
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
+   = note: consider using a `let` binding to create a longer lived value
+   = note: `#[warn(macro_extended_temporary_scopes)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

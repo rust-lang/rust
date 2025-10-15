@@ -989,17 +989,21 @@ pub enum TerminatorKind<'tcx> {
 
 #[derive(
     Clone,
+    Copy,
     Debug,
     TyEncodable,
     TyDecodable,
     Hash,
     HashStable,
     PartialEq,
+    Eq,
     TypeFoldable,
     TypeVisitable
 )]
 pub enum BackwardIncompatibleDropReason {
     Edition2024,
+    /// Used by the `macro_extended_temporary_scopes` lint.
+    MacroExtendedScope,
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]

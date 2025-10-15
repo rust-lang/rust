@@ -21,6 +21,7 @@ use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
+use rustc_session::lint::builtin::MACRO_EXTENDED_TEMPORARY_SCOPES;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
@@ -1579,5 +1580,33 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Skip over locals that begin with an underscore or have no name
     pub(crate) fn local_excluded_from_unused_mut_lint(&self, index: Local) -> bool {
         self.local_name(index).is_none_or(|name| name.as_str().starts_with('_'))
+    }
+
+    /// Report a temporary whose scope will shorten in Rust 1.92 due to #145838.
+    pub(crate) fn lint_macro_extended_temporary_scope(
+        &self,
+        future_drop: Location,
+        borrow: &BorrowData<'tcx>,
+    ) {
+        let tcx = self.infcx.tcx;
+        let temp_decl = &self.body.local_decls[borrow.borrowed_place.local];
+        let temp_span = temp_decl.source_info.span;
+        let lint_root = self.body.source_scopes[temp_decl.source_info.scope]
+            .local_data
+            .as_ref()
+            .unwrap_crate_local()
+            .lint_root;
+
+        let mut labels = MultiSpan::from_span(temp_span);
+        labels.push_span_label(temp_span, "this expression creates a temporary value...");
+        labels.push_span_label(
+            self.body.source_info(future_drop).span,
+            "...which will be dropped at the end of this block in Rust 1.92",
+        );
+
+        tcx.node_span_lint(MACRO_EXTENDED_TEMPORARY_SCOPES, lint_root, labels, |diag| {
+            diag.primary_message("temporary lifetime will be shortened in Rust 1.92");
+            diag.note("consider using a `let` binding to create a longer lived value");
+        });
     }
 }
