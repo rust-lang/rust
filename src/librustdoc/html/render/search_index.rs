@@ -10,6 +10,7 @@ use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
@@ -17,7 +18,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
-use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};

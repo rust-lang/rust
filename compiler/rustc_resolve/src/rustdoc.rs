@@ -2,6 +2,8 @@ use std::mem;
 use std::ops::Range;
 
 use itertools::Itertools;
+/// Re-export the markdown parser used by rustdoc.
+pub use pulldown_cmark;
 use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, Options, Parser, Tag,
 };

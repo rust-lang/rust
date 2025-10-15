@@ -25,12 +25,6 @@
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
 
-// These crates are pulled from the sysroot because they are part of
-// rustc's public API, so we need to ensure version compatibility.
-extern crate smallvec;
-#[macro_use]
-extern crate tracing;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_apfloat;
@@ -44,6 +38,7 @@ extern crate rustc_hir;
 extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
+extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_middle;
 extern crate rustc_session;

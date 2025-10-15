@@ -12,10 +12,10 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
-    TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, ImplicitSysrootCrateImportDiag,
+    LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked,
+    SpanUseEqCtxtDiag, SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind,
+    TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -742,6 +742,43 @@ impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
                 kind.span,
                 SymbolInternStringLiteralDiag,
             );
+        }
+    }
+}
+
+declare_tool_lint! {
+    /// The `implicit_sysroot_crate_import` detects use of `extern crate` to import non-sysroot crates
+    /// (e.g. crates.io deps) from the sysroot, which is dangerous because these crates are not guaranteed
+    /// to exist exactly once, and so may be missing entirely or appear multiple times resulting in ambiguity.
+    pub rustc::IMPLICIT_SYSROOT_CRATE_IMPORT,
+    Allow,
+    "Forbid uses of non-sysroot crates in `extern crate`",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(ImplicitSysrootCrateImport => [IMPLICIT_SYSROOT_CRATE_IMPORT]);
+
+impl EarlyLintPass for ImplicitSysrootCrateImport {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        fn is_whitelisted(crate_name: &str) -> bool {
+            // Whitelist of allowed crates.
+            crate_name.starts_with("rustc_")
+                || matches!(
+                    crate_name,
+                    "test" | "self" | "core" | "alloc" | "std" | "proc_macro" | "tikv_jemalloc_sys"
+                )
+        }
+
+        if let ast::ItemKind::ExternCrate(original_name, imported_name) = &item.kind {
+            let name = original_name.as_ref().unwrap_or(&imported_name.name).as_str();
+            let externs = &cx.builder.sess().opts.externs;
+            if externs.get(name).is_none() && !is_whitelisted(name) {
+                cx.emit_span_lint(
+                    IMPLICIT_SYSROOT_CRATE_IMPORT,
+                    item.span,
+                    ImplicitSysrootCrateImportDiag { name },
+                );
+            }
         }
     }
 }
