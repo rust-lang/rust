@@ -171,37 +171,6 @@ macro_rules! zip_impl_general_defaults {
         default fn nth(&mut self, n: usize) -> Option<Self::Item> {
             self.super_nth(n)
         }
-
-        #[inline]
-        default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-        where
-            A: DoubleEndedIterator + ExactSizeIterator,
-            B: DoubleEndedIterator + ExactSizeIterator,
-        {
-            // The function body below only uses `self.a/b.len()` and `self.a/b.next_back()`
-            // and doesn’t call `next_back` too often, so this implementation is safe in
-            // the `TrustedRandomAccessNoCoerce` specialization
-
-            let a_sz = self.a.len();
-            let b_sz = self.b.len();
-            if a_sz != b_sz {
-                // Adjust a, b to equal length
-                if a_sz > b_sz {
-                    for _ in 0..a_sz - b_sz {
-                        self.a.next_back();
-                    }
-                } else {
-                    for _ in 0..b_sz - a_sz {
-                        self.b.next_back();
-                    }
-                }
-            }
-            match (self.a.next_back(), self.b.next_back()) {
-                (Some(x), Some(y)) => Some((x, y)),
-                (None, None) => None,
-                _ => unreachable!(),
-            }
-        }
     };
 }
 
@@ -247,6 +216,28 @@ where
     {
         SpecFold::spec_fold(self, init, f)
     }
+
+    #[inline]
+    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        let next_opts = if a_sz == b_sz {
+            (self.a.next_back(), self.b.next_back())
+        } else if a_sz > b_sz {
+            (self.a.nth_back(a_sz - b_sz), self.b.next_back())
+        } else {
+            (self.a.next_back(), self.b.nth_back(b_sz - a_sz))
+        };
+        match next_opts {
+            (Some(x), Some(y)) => Some((x, y)),
+            (None, None) => None,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -287,6 +278,37 @@ where
             }
         }
         accum
+    }
+
+    #[inline]
+    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        // The function body below only uses `self.a/b.len()` and `self.a/b.next_back()`
+        // and doesn’t call `next_back` too often, so this implementation is safe in
+        // the `TrustedRandomAccessNoCoerce` specialization
+
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        if a_sz != b_sz {
+            // Adjust a, b to equal length
+            if a_sz > b_sz {
+                for _ in 0..a_sz - b_sz {
+                    self.a.next_back();
+                }
+            } else {
+                for _ in 0..b_sz - a_sz {
+                    self.b.next_back();
+                }
+            }
+        }
+        match (self.a.next_back(), self.b.next_back()) {
+            (Some(x), Some(y)) => Some((x, y)),
+            (None, None) => None,
+            _ => unreachable!(),
+        }
     }
 }
 
