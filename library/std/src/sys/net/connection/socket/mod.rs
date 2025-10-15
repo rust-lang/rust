@@ -226,14 +226,11 @@ impl SockaddrLike for SocketAddr {
 }
 
 impl SockaddrLike for () {
-    unsafe fn from_storage(
-        _storage: &libc::sockaddr_storage,
-        _len: libc::socklen_t,
-    ) -> io::Result<Self> {
+    unsafe fn from_storage(_storage: &c::sockaddr_storage, _len: c::socklen_t) -> io::Result<Self> {
         Ok(())
     }
 
-    fn to_storage(&self, _storage_ret: &mut libc::sockaddr_storage) -> libc::socklen_t {
+    fn to_storage(&self, _storage_ret: &mut c::sockaddr_storage) -> c::socklen_t {
         0
     }
 }
