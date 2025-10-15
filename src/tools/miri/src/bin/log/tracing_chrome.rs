@@ -523,16 +523,16 @@ where
                 }
             },
             TraceStyle::Async => Some(
-        span.scope()
-            .from_root()
-            .take(1)
-            .next()
-            .unwrap_or(span)
-            .id()
-            .into_u64()
+                span.scope()
+                    .from_root()
+                    .take(1)
+                    .next()
+                    .unwrap_or(span)
+                    .id()
+                    .into_u64()
                     .cast_signed() // the comment above explains the cast
             ),
-    }
+        }
     }
 
     fn enter_span(&self, span: SpanRef<S>, ts: f64, tid: usize, out: &Sender<Message>) {
@@ -567,11 +567,11 @@ where
                 Some(thread_data) => (thread_data, false),
                 None => {
                     let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
-                let out = self.out.lock().unwrap().clone();
+                    let out = self.out.lock().unwrap().clone();
                     let start = TracingChromeInstant::setup_for_thread_and_start(tid);
                     *thread_data = Some(ThreadData { tid, out, start });
                     (thread_data.as_mut().unwrap(), true)
-            }
+                }
             };
 
             start.with_elapsed_micros_subtracting_tracing(|ts| {
@@ -583,7 +583,7 @@ where
                     let _ignored = out.send(Message::NewThread(*tid, name));
                 }
                 f(ts, *tid, out);
-        });
+            });
         });
     }
 }
@@ -605,15 +605,15 @@ where
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         if self.include_args {
             self.with_elapsed_micros_subtracting_tracing(|_, _, _| {
-            let span = ctx.span(id).unwrap();
-            let mut exts = span.extensions_mut();
+                let span = ctx.span(id).unwrap();
+                let mut exts = span.extensions_mut();
 
-            let args = exts.get_mut::<ArgsWrapper>();
+                let args = exts.get_mut::<ArgsWrapper>();
 
-            if let Some(args) = args {
-                let args = Arc::make_mut(&mut args.args);
-                values.record(&mut JsonVisitor { object: args });
-            }
+                if let Some(args) = args {
+                    let args = Arc::make_mut(&mut args.args);
+                    values.record(&mut JsonVisitor { object: args });
+                }
             });
         }
     }
@@ -636,16 +636,16 @@ where
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
-        if self.include_args {
-            let mut args = Object::new();
-            attrs.record(&mut JsonVisitor { object: &mut args });
-            ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper {
-                args: Arc::new(args),
-            });
-        }
-        if let TraceStyle::Threaded = self.trace_style {
-            return;
-        }
+            if self.include_args {
+                let mut args = Object::new();
+                attrs.record(&mut JsonVisitor { object: &mut args });
+                ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper {
+                    args: Arc::new(args),
+                });
+            }
+            if let TraceStyle::Threaded = self.trace_style {
+                return;
+            }
 
             self.enter_span(ctx.span(id).expect("Span not found."), ts, tid, out);
         });

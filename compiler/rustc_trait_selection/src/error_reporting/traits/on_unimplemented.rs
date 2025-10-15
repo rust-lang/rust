@@ -309,7 +309,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 pub struct OnUnimplementedFormatString {
     /// Symbol of the format string, i.e. `"content"`
     symbol: Symbol,
-    ///The span of the format string, i.e. `"content"`
+    /// The span of the format string, i.e. `"content"`
     span: Span,
     is_diagnostic_namespace_variant: bool,
 }

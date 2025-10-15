@@ -738,13 +738,15 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 [notify-zulip."beta-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-topic = "#{number}: beta-nominated"
+topic = "#{number}: beta-backport nomination"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for beta backport.
+PR #{number} "{title}" fixes a regression.
+{recipients}, please evaluate nominating this PR for backport.
+The following poll is a vibe-check and not binding.
 """,
     """\
-/poll Approve beta backport of #{number}?
+/poll Should #{number} be beta backported?
 approve
 decline
 don't know

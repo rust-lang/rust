@@ -302,7 +302,7 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     type Item;
     /// A function that converts individual items (of type [`Item`](Self::Item)) into the final attribute.
     ///
-    /// For example, individual representations fomr `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
+    /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
 
