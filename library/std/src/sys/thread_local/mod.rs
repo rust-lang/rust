@@ -28,6 +28,7 @@ cfg_select! {
         all(target_family = "wasm", not(target_feature = "atomics")),
         target_os = "uefi",
         target_os = "zkvm",
+        target_os = "openvm",
         target_os = "trusty",
         target_os = "vexos",
     ) => {
@@ -98,6 +99,7 @@ pub(crate) mod guard {
             )),
             target_os = "uefi",
             target_os = "zkvm",
+            target_os = "openvm",
             target_os = "trusty",
             target_os = "vexos",
         ) => {
