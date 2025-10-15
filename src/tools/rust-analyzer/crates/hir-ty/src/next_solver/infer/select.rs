@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use hir_def::{ImplId, TraitId};
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::{
     Interner,
     solve::{BuiltinImplSource, CandidateSource, Certainty, inspect::ProbeKind},
@@ -12,6 +13,7 @@ use crate::{
         Const, ErrorGuaranteed, GenericArgs, Goal, TraitRef, Ty, TypeError,
         infer::{
             InferCtxt,
+            select::EvaluationResult::*,
             traits::{Obligation, ObligationCause, PredicateObligation, TraitObligation},
         },
         inspect::{InspectCandidate, InspectGoal, ProofTreeVisitor},
@@ -45,6 +47,83 @@ pub enum NotConstEvaluatable {
     Error(ErrorGuaranteed),
     MentionsInfer,
     MentionsParam,
+}
+
+/// The result of trait evaluation. The order is important
+/// here as the evaluation of a list is the maximum of the
+/// evaluations.
+///
+/// The evaluation results are ordered:
+///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions`
+///       implies `EvaluatedToAmbig` implies `EvaluatedToAmbigStackDependent`
+///     - the "union" of evaluation results is equal to their maximum -
+///     all the "potential success" candidates can potentially succeed,
+///     so they are noops when unioned with a definite error, and within
+///     the categories it's easy to see that the unions are correct.
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub enum EvaluationResult {
+    /// Evaluation successful.
+    EvaluatedToOk,
+    /// Evaluation successful, but there were unevaluated region obligations.
+    EvaluatedToOkModuloRegions,
+    /// Evaluation successful, but need to rerun because opaque types got
+    /// hidden types assigned without it being known whether the opaque types
+    /// are within their defining scope
+    EvaluatedToOkModuloOpaqueTypes,
+    /// Evaluation is known to be ambiguous -- it *might* hold for some
+    /// assignment of inference variables, but it might not.
+    ///
+    /// While this has the same meaning as `EvaluatedToAmbigStackDependent` -- we can't
+    /// know whether this obligation holds or not -- it is the result we
+    /// would get with an empty stack, and therefore is cacheable.
+    EvaluatedToAmbig,
+    /// Evaluation failed because of recursion involving inference
+    /// variables. We are somewhat imprecise there, so we don't actually
+    /// know the real result.
+    ///
+    /// This can't be trivially cached because the result depends on the
+    /// stack results.
+    EvaluatedToAmbigStackDependent,
+    /// Evaluation failed.
+    EvaluatedToErr,
+}
+
+impl EvaluationResult {
+    /// Returns `true` if this evaluation result is known to apply, even
+    /// considering outlives constraints.
+    pub fn must_apply_considering_regions(self) -> bool {
+        self == EvaluatedToOk
+    }
+
+    /// Returns `true` if this evaluation result is known to apply, ignoring
+    /// outlives constraints.
+    pub fn must_apply_modulo_regions(self) -> bool {
+        self <= EvaluatedToOkModuloRegions
+    }
+
+    pub fn may_apply(self) -> bool {
+        match self {
+            EvaluatedToOkModuloOpaqueTypes
+            | EvaluatedToOk
+            | EvaluatedToOkModuloRegions
+            | EvaluatedToAmbig
+            | EvaluatedToAmbigStackDependent => true,
+
+            EvaluatedToErr => false,
+        }
+    }
+
+    pub fn is_stack_dependent(self) -> bool {
+        match self {
+            EvaluatedToAmbigStackDependent => true,
+
+            EvaluatedToOkModuloOpaqueTypes
+            | EvaluatedToOk
+            | EvaluatedToOkModuloRegions
+            | EvaluatedToAmbig
+            | EvaluatedToErr => false,
+        }
+    }
 }
 
 /// Indicates that trait evaluation caused overflow and in which pass.
@@ -99,7 +178,7 @@ pub type SelectionResult<'db, T> = Result<Option<T>, SelectionError<'db>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum ImplSource<'db, N> {
     /// ImplSource identifying a particular impl.
     UserDefined(ImplSourceUserDefinedData<'db, N>),
@@ -164,8 +243,10 @@ impl<'db, N> ImplSource<'db, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub struct ImplSourceUserDefinedData<'db, N> {
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub impl_def_id: ImplId,
     pub args: GenericArgs<'db>,
     pub nested: Vec<N>,

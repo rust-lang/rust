@@ -2,6 +2,7 @@
 //@ compile-flags: --target powerpc64-ibm-aix
 //@ needs-llvm-components: powerpc
 //@ add-core-stubs
+//@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]
 #![no_std]

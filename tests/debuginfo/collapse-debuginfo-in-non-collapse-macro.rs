@@ -6,6 +6,7 @@
 // without collapse_debuginfo attribute.
 
 //@ compile-flags:-g
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

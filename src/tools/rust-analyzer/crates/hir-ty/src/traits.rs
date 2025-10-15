@@ -12,7 +12,7 @@ use intern::sym;
 use rustc_next_trait_solver::solve::{HasChanged, SolverDelegateEvalExt};
 use rustc_type_ir::{
     InferCtxtLike, TypingMode,
-    inherent::{SliceLike, Span as _},
+    inherent::{IntoKind, SliceLike, Span as _, Ty as _},
     solve::Certainty,
 };
 use span::Edition;
@@ -23,11 +23,12 @@ use crate::{
     AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
     ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
     db::HirDatabase,
-    infer::unify::InferenceTable,
+    from_assoc_type_id,
     next_solver::{
         DbInterner, GenericArg, ParamEnv, Predicate, SolverContext, Span,
-        infer::{DbInternerInferExt, InferCtxt},
-        mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
+        infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
+        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_canonical_args_for_result},
+        obligation_ctxt::ObligationCtxt,
         util::mini_canonicalize,
     },
     utils::UnevaluatedConstEvaluatorFolder,
@@ -43,7 +44,7 @@ pub struct TraitEnvironment<'db> {
     pub krate: Crate,
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
-    traits_from_clauses: Box<[(Ty, TraitId)]>,
+    traits_from_clauses: Box<[(crate::next_solver::Ty<'db>, TraitId)]>,
     pub env: ParamEnv<'db>,
 }
 
@@ -60,7 +61,7 @@ impl<'db> TraitEnvironment<'db> {
     pub fn new(
         krate: Crate,
         block: Option<BlockId>,
-        traits_from_clauses: Box<[(Ty, TraitId)]>,
+        traits_from_clauses: Box<[(crate::next_solver::Ty<'db>, TraitId)]>,
         env: ParamEnv<'db>,
     ) -> Arc<Self> {
         Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
@@ -71,11 +72,26 @@ impl<'db> TraitEnvironment<'db> {
         Arc::make_mut(this).block = Some(block);
     }
 
-    pub fn traits_in_scope_from_clauses(&self, ty: Ty) -> impl Iterator<Item = TraitId> + '_ {
+    pub fn traits_in_scope_from_clauses(
+        &self,
+        ty: crate::next_solver::Ty<'db>,
+    ) -> impl Iterator<Item = TraitId> + '_ {
         self.traits_from_clauses
             .iter()
             .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then_some(*trait_id))
     }
+}
+
+/// This should be used in `hir` only.
+pub fn structurally_normalize_ty<'db>(
+    infcx: &InferCtxt<'db>,
+    ty: crate::next_solver::Ty<'db>,
+    env: Arc<TraitEnvironment<'db>>,
+) -> crate::next_solver::Ty<'db> {
+    let crate::next_solver::TyKind::Alias(..) = ty.kind() else { return ty };
+    let mut ocx = ObligationCtxt::new(infcx);
+    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env.env, ty).unwrap_or(ty);
+    ty.replace_infer_with_error(infcx.interner)
 }
 
 pub(crate) fn normalize_projection_query<'db>(
@@ -93,9 +109,30 @@ pub(crate) fn normalize_projection_query<'db>(
         return TyKind::Error.intern(Interner);
     }
 
-    let mut table = InferenceTable::new(db, env);
-    let ty = table.normalize_projection_ty(projection);
-    table.resolve_completely(ty)
+    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    // FIXME(next-solver): I believe this should use `PostAnalysis` (this is only used for IDE things),
+    // but this causes some bug because of our incorrect impl of `type_of_opaque_hir_typeck()` for TAIT
+    // and async blocks.
+    let infcx = interner.infer_ctxt().build(TypingMode::Analysis {
+        defining_opaque_types_and_generators: crate::next_solver::SolverDefIds::new_from_iter(
+            interner,
+            [],
+        ),
+    });
+    let alias_ty = crate::next_solver::Ty::new_alias(
+        interner,
+        rustc_type_ir::AliasTyKind::Projection,
+        crate::next_solver::AliasTy::new(
+            interner,
+            from_assoc_type_id(projection.associated_ty_id).into(),
+            <crate::Substitution as ChalkToNextSolver<crate::next_solver::GenericArgs<'_>>>::to_nextsolver(&projection.substitution, interner),
+        ),
+    );
+    let mut ctxt = crate::next_solver::obligation_ctxt::ObligationCtxt::new(&infcx);
+    let normalized = ctxt
+        .structurally_normalize_ty(&ObligationCause::dummy(), env.env, alias_ty)
+        .unwrap_or(alias_ty);
+    normalized.replace_infer_with_error(interner).to_chalk(interner)
 }
 
 fn identity_subst(
@@ -418,4 +455,44 @@ impl FnTrait {
     pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
         self.lang_item().resolve_trait(db, krate)
     }
+}
+
+/// This should not be used in `hir-ty`, only in `hir`.
+pub fn implements_trait_unique<'db>(
+    ty: crate::next_solver::Ty<'db>,
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    trait_: TraitId,
+) -> bool {
+    implements_trait_unique_impl(db, env, trait_, &mut |infcx| {
+        infcx.fill_rest_fresh_args(trait_.into(), [ty.into()])
+    })
+}
+
+/// This should not be used in `hir-ty`, only in `hir`.
+pub fn implements_trait_unique_with_args<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    trait_: TraitId,
+    args: crate::next_solver::GenericArgs<'db>,
+) -> bool {
+    implements_trait_unique_impl(db, env, trait_, &mut |_| args)
+}
+
+fn implements_trait_unique_impl<'db>(
+    db: &'db dyn HirDatabase,
+    env: Arc<TraitEnvironment<'db>>,
+    trait_: TraitId,
+    create_args: &mut dyn FnMut(&InferCtxt<'db>) -> crate::next_solver::GenericArgs<'db>,
+) -> bool {
+    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    // FIXME(next-solver): I believe this should be `PostAnalysis`.
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+
+    let args = create_args(&infcx);
+    let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
+    let goal = crate::next_solver::Goal::new(interner, env.env, trait_ref);
+
+    let result = crate::traits::next_trait_solve_in_ctxt(&infcx, goal);
+    matches!(result, Ok((_, Certainty::Yes)))
 }

@@ -44,7 +44,7 @@ fn foo() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "lang_item",
                 "crate_lang_items",
@@ -131,7 +131,7 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "lang_item",
                 "crate_lang_items",
@@ -143,7 +143,7 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "infer_shim",
                 "function_signature_shim",
@@ -151,7 +151,7 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
             ]
         "#]],
@@ -586,7 +586,7 @@ fn main() {
                 "attrs_shim",
                 "attrs_shim",
                 "generic_predicates_ns_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
@@ -594,7 +594,7 @@ fn main() {
                 "expr_scopes_shim",
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
+                "generic_predicates_ns_shim",
                 "value_ty_shim",
                 "VariantFields::firewall_",
                 "VariantFields::query_",
@@ -610,7 +610,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics_shim",
                 "generic_predicates_ns_shim",
                 "value_ty_shim",
-                "generic_predicates_shim",
+                "generic_predicates_ns_shim",
             ]
         "#]],
     );
@@ -683,11 +683,12 @@ fn main() {
                 "attrs_shim",
                 "attrs_shim",
                 "generic_predicates_ns_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
+                "generic_predicates_ns_shim",
                 "VariantFields::query_",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_with_source_map_shim",
@@ -697,7 +698,7 @@ fn main() {
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
                 "generic_predicates_ns_shim",
-                "generic_predicates_shim",
+                "generic_predicates_ns_shim",
             ]
         "#]],
     );
@@ -709,8 +710,8 @@ fn execute_assert_events(
     required: &[(&str, usize)],
     expect: Expect,
 ) {
-    let (executed, events) = db.log_executed(f);
-    salsa::attach(db, || {
+    crate::attach_db(db, || {
+        let (executed, events) = db.log_executed(f);
         for (event, count) in required {
             let n = executed.iter().filter(|it| it.contains(event)).count();
             assert_eq!(

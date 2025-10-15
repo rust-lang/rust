@@ -564,7 +564,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &*get_offset_len_noubcheck(slice, self.start, new_len)
+        }
     }
 
     #[inline]
@@ -573,7 +576,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &mut *get_offset_len_mut_noubcheck(slice, self.start, new_len)
+        }
     }
 }
 

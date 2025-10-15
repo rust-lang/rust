@@ -498,7 +498,8 @@ fn resolve_local<'tcx>(
             // Iterate up to the enclosing destruction scope to find the same scope that will also
             // be used for the result of the block itself.
             if let Some(inner_scope) = visitor.cx.var_parent {
-                (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
+                visitor.cx.var_parent =
+                    Some(visitor.scope_tree.default_temporary_scope(inner_scope).0)
             }
             // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
             // the initializer when this `super let` is not itself extended by a parent `let`
@@ -752,10 +753,10 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                 // The body of the every fn is a root scope.
                 resolve_expr(this, body.value, true);
             } else {
-                // Only functions have an outer terminating (drop) scope, while
-                // temporaries in constant initializers may be 'static, but only
-                // according to rvalue lifetime semantics, using the same
-                // syntactical rules used for let initializers.
+                // All bodies have an outer temporary drop scope, but temporaries
+                // and `super let` bindings in constant initializers may be extended
+                // to have 'static lifetimes, using the same syntactical rules used
+                // for `let` initializers.
                 //
                 // e.g., in `let x = &f();`, the temporary holding the result from
                 // the `f()` call lives for the entirety of the surrounding block.

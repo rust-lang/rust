@@ -1257,8 +1257,8 @@ fn test() {
             16..66 'for _ ...     }': fn into_iter<()>(()) -> <() as IntoIterator>::IntoIter
             16..66 'for _ ...     }': <() as IntoIterator>::IntoIter
             16..66 'for _ ...     }': !
-            16..66 'for _ ...     }': <() as IntoIterator>::IntoIter
-            16..66 'for _ ...     }': &'? mut <() as IntoIterator>::IntoIter
+            16..66 'for _ ...     }': {unknown}
+            16..66 'for _ ...     }': &'? mut {unknown}
             16..66 'for _ ...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
             16..66 'for _ ...     }': Option<<{unknown} as Iterator>::Item>
             16..66 'for _ ...     }': ()
@@ -2363,8 +2363,8 @@ fn test() {
             108..125 '{     ...     }': usize
             118..119 'N': usize
             139..157 '{     ...= N; }': ()
-            149..150 '_': Foo<_>
-            153..154 'N': Foo<_>
+            149..150 '_': Foo<N>
+            153..154 'N': Foo<N>
         "#]],
     );
 }

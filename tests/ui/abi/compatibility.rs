@@ -59,6 +59,7 @@
 //@ revisions: nvptx64
 //@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx64] needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]

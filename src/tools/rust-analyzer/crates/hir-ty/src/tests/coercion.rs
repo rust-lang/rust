@@ -49,7 +49,7 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
-                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
                          // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
@@ -268,7 +268,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{error}, Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{region error}, Not))
 }
 "#,
     );
@@ -567,7 +567,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &'? (dyn Foo + '?), got &'? impl Foo + ?Sized
+                    //^ expected &'? (dyn Foo + 'static), got &'? impl Foo + ?Sized
 }
         "#,
     );
@@ -833,11 +833,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
 }
         "#,
     );
@@ -854,8 +854,8 @@ impl core::cmp::PartialEq for Struct {
 }
 fn test() {
     Struct == Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
-           // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
+ // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
+           // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
 }",
     );
 }
@@ -871,7 +871,7 @@ impl core::ops::AddAssign for Struct {
 }
 fn test() {
     Struct += Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{error}, Mut))
+ // ^^^^^^ adjustments: Borrow(Ref('{region error}, Mut))
            // ^^^^^^ adjustments:
 }",
     );

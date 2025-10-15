@@ -88,6 +88,7 @@ impl AttributeKind {
             RustcCoherenceIsCore(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
+            RustcMain => No,
             RustcObjectLifetimeDefault => No,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
             Sanitize { .. } => No,

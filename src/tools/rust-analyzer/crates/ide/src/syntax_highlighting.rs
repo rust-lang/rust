@@ -16,7 +16,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -116,7 +116,7 @@ pub struct HighlightConfig {
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
 // |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operatos `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
 //
 // - For punctuation:
 //
@@ -426,9 +426,12 @@ fn traverse(
         let edition = descended_element.file_id.edition(sema.db);
         let (unsafe_ops, bindings_shadow_count) = match current_body {
             Some(current_body) => {
-                let (ops, bindings) = per_body_cache
-                    .entry(current_body)
-                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
+                let (ops, bindings) = per_body_cache.entry(current_body).or_insert_with(|| {
+                    (
+                        hir::attach_db(sema.db, || sema.get_unsafe_ops(current_body)),
+                        Default::default(),
+                    )
+                });
                 (&*ops, Some(bindings))
             }
             None => (&empty, None),
@@ -437,7 +440,7 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = salsa::attach(sema.db, || {
+                let hl = hir::attach_db(sema.db, || {
                     highlight::name_like(
                         sema,
                         krate,
@@ -455,7 +458,7 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => salsa::attach(sema.db, || {
+            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
             }),

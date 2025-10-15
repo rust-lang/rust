@@ -235,7 +235,7 @@ of type `V`. Queries come in two basic varieties:
   intelligently) when we can re-use these memoized values and when we have to
   recompute them.
 
-For further discussion, its important to understand one bit of "fairly
+For further discussion, it's important to understand one bit of "fairly
 intelligently". Suppose we have two functions, `f1` and `f2`, and one input,
 `z`. We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
 returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that and

@@ -279,7 +279,7 @@ fn process_builtin_attrs(
                 AttributeKind::StdInternalSymbol(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
                 }
-                AttributeKind::Linkage(linkage, _) => {
+                AttributeKind::Linkage(linkage, span) => {
                     let linkage = Some(*linkage);
 
                     if tcx.is_foreign_item(did) {
@@ -287,7 +287,7 @@ fn process_builtin_attrs(
 
                         if tcx.is_mutable_static(did.into()) {
                             let mut diag = tcx.dcx().struct_span_err(
-                                attr.span(),
+                                *span,
                                 "extern mutable statics are not allowed with `#[linkage]`",
                             );
                             diag.note(

@@ -26,6 +26,7 @@ use crate::core::builder;
 use crate::core::builder::{
     Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
+use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
@@ -1373,9 +1374,14 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
 
-    // Enable rustc's env var for `rust-lld` when requested.
-    if builder.config.lld_enabled {
-        cargo.env("CFG_USE_SELF_CONTAINED_LINKER", "1");
+    // Enable rustc's env var to use a linker override on Linux when requested.
+    if let Some(linker) = target_config.map(|c| c.default_linker_linux_override) {
+        match linker {
+            DefaultLinuxLinkerOverride::Off => {}
+            DefaultLinuxLinkerOverride::SelfContainedLldCc => {
+                cargo.env("CFG_DEFAULT_LINKER_SELF_CONTAINED_LLD_CC", "1");
+            }
+        }
     }
 
     if builder.config.rust_verify_llvm_ir {

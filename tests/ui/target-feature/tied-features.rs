@@ -1,6 +1,7 @@
 //@ add-core-stubs
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![no_core]
 
