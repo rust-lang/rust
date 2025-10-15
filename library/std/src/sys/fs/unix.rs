@@ -2113,10 +2113,10 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
     Ok((reader, metadata))
 }
 
-fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
+fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
        any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
-            let _ = (p, times, flags);
+            let _ = (p, times, follow_symlinks);
             Err(io::const_error!(
                 io::ErrorKind::Unsupported,
                 "setting file times not supported",
@@ -2124,12 +2124,11 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
        }
        target_vendor = "apple" => {
             // Apple platforms use setattrlist which supports setting times on symlinks
-            //let (attrlist, buf, num_times) = set_attrlist_with_times(&times)?;
             let ta = TimesAttrlist::from_times(&times)?;
-            let options = if flags == libc::AT_SYMLINK_NOFOLLOW {
-                libc::FSOPT_NOFOLLOW
-            } else {
+            let options = if follow_symlinks {
                 0
+            } else {
+                libc::FSOPT_NOFOLLOW
             };
 
             cvt(unsafe { libc::setattrlist(
@@ -2143,6 +2142,7 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
        }
        target_os = "android" => {
             let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+            let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
@@ -2159,6 +2159,7 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
             Ok(())
        }
        _ => {
+            let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
             #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
             {
                 use crate::sys::{time::__timespec64, weak::weak};
@@ -2185,13 +2186,12 @@ fn set_times_impl(p: &CStr, times: FileTimes, flags: c_int) -> io::Result<()> {
 
 #[inline(always)]
 pub fn set_times(p: &CStr, times: FileTimes) -> io::Result<()> {
-    // flags = 0 means follow symlinks
-    set_times_impl(p, times, 0)
+    set_times_impl(p, times, true)
 }
 
 #[inline(always)]
 pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
-    set_times_impl(p, times, libc::AT_SYMLINK_NOFOLLOW)
+    set_times_impl(p, times, false)
 }
 
 #[cfg(target_os = "espidf")]
