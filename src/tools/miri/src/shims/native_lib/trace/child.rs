@@ -228,9 +228,10 @@ pub unsafe fn init_sv() -> Result<(), SvInitError> {
                 match init {
                     // The "Ok" case means that we couldn't ptrace.
                     Ok(e) => return Err(e),
-                    Err(p) => {
+                    Err(_p) => {
                         eprintln!(
-                            "Supervisor process panicked!\n{p:?}\n\nTry running again without using the native-lib tracer."
+                            "Supervisor process panicked!\n\"
+                            Try running again without `-Zmiri-native-lib-enable-tracing`."
                         );
                         std::process::exit(1);
                     }
