@@ -179,8 +179,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::AllowConstFnUnstable(_, first_span)) => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
                 }
-                Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
-                    self.check_deprecated(hir_id, attr, span, target)
+                Attribute::Parsed(AttributeKind::Deprecation {span: attr_span, .. }) => {
+                    self.check_deprecated(hir_id, *attr_span, target)
                 }
                 Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
@@ -1872,7 +1872,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_deprecated(&self, hir_id: HirId, attr: &Attribute, _span: Span, target: Target) {
+    fn check_deprecated(&self, hir_id: HirId, attr_span: Span, target: Target) {
         match target {
             Target::AssocConst | Target::Method(..) | Target::AssocTy
                 if matches!(
@@ -1883,8 +1883,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
-                    errors::DeprecatedAnnotationHasNoEffect { span: attr.span() },
+                    attr_span,
+                    errors::DeprecatedAnnotationHasNoEffect { span: attr_span },
                 );
             }
             _ => {}
