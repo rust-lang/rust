@@ -80,7 +80,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let scope = ctx.sema.scope(expr.syntax())?;
     let module = scope.module();
-    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(scope.krate()));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(scope.krate()));
     let self_ty = if ctx.config.prefer_self_ty {
         scope
             .containing_function()

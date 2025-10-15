@@ -8,6 +8,7 @@
 //@[arm] build-fail
 //@[arm] needs-llvm-components: arm
 //@ needs-asm-support
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

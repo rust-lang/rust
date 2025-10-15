@@ -53,14 +53,23 @@ pub(crate) fn gather_pgo_profile<'a>(
 
     // Merge profiles into a single file
     let merged_profile = pgo_dir.join("merged.profdata");
-    let profile_files = std::fs::read_dir(pgo_dir)?.filter_map(|entry| {
-        let entry = entry.ok()?;
-        if entry.path().extension() == Some(OsStr::new("profraw")) {
-            Some(entry.path().to_str().unwrap().to_owned())
-        } else {
-            None
-        }
-    });
+    let profile_files = std::fs::read_dir(pgo_dir)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            if entry.path().extension() == Some(OsStr::new("profraw")) {
+                Some(entry.path().to_str().unwrap().to_owned())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if profile_files.is_empty() {
+        anyhow::bail!(
+            "rust-analyzer analysis-stats produced no pgo files. This is a bug in rust-analyzer; please file an issue."
+        );
+    }
+
     cmd!(sh, "{llvm_profdata} merge {profile_files...} -o {merged_profile}").run().context(
         "cannot merge PGO profiles. Do you have the rustup `llvm-tools` component installed?",
     )?;

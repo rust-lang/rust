@@ -1942,6 +1942,17 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 );
                 crate::exit!(1);
             }
+
+            if let CodegenBackendKind::Gcc = codegen_backend
+                && builder.config.rustc_debug_assertions
+            {
+                eprintln!(
+                    r#"WARNING: Running tests with the GCC codegen backend while rustc debug assertions are enabled. This might lead to test failures.
+Please disable assertions with `rust.debug-assertions = false`.
+        "#
+                );
+            }
+
             // Tells compiletest that we want to use this codegen in particular and to override
             // the default one.
             cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
@@ -3276,6 +3287,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
         .env("GITHUB_ACTIONS", "0")
         .current_dir(plain_src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(plain_src_dir);
 }
 
 /// Check that rust-src has all of libstd's dependencies
@@ -3301,6 +3314,8 @@ fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
         .arg(&toml)
         .current_dir(src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(src_dir);
 }
 
 /// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
@@ -3325,6 +3340,8 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
         .env("RUSTC", &builder.initial_rustc)
         .current_dir(dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(dir);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

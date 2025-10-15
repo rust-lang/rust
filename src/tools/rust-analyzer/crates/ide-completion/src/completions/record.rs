@@ -135,10 +135,7 @@ fn complete_fields(
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
-                ctx: DotAccessExprCtx {
-                    in_block_expr: false,
-                    in_breakable: crate::context::BreakableKind::None,
-                },
+                ctx: DotAccessExprCtx { in_block_expr: false, in_breakable: None },
             },
             None,
             field,

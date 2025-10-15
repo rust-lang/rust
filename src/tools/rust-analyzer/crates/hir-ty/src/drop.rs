@@ -1,18 +1,20 @@
 //! Utilities for computing drop info about types.
 
-use chalk_ir::cast::Cast;
-use hir_def::AdtId;
-use hir_def::lang_item::LangItem;
-use hir_def::signatures::StructFlags;
+use hir_def::{AdtId, lang_item::LangItem, signatures::StructFlags};
+use rustc_hash::FxHashSet;
+use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use stdx::never;
 use triomphe::Arc;
 
-use crate::next_solver::DbInterner;
-use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
-    AliasTy, Canonical, CanonicalVarKinds, ConcreteConst, ConstScalar, ConstValue, InEnvironment,
-    Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind, db::HirDatabase,
+    TraitEnvironment, consteval,
+    db::HirDatabase,
     method_resolution::TyFingerprint,
+    next_solver::{
+        Ty, TyKind,
+        infer::{InferCtxt, traits::ObligationCause},
+        obligation_ctxt::ObligationCtxt,
+    },
 };
 
 fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
@@ -45,27 +47,52 @@ pub enum DropGlue {
     HasDropGlue,
 }
 
-pub(crate) fn has_drop_glue(
-    db: &dyn HirDatabase,
-    ty: Ty,
-    env: Arc<TraitEnvironment<'_>>,
+pub fn has_drop_glue<'db>(
+    infcx: &InferCtxt<'db>,
+    ty: Ty<'db>,
+    env: Arc<TraitEnvironment<'db>>,
 ) -> DropGlue {
-    match ty.kind(Interner) {
-        TyKind::Adt(adt, subst) => {
-            if has_destructor(db, adt.0) {
+    has_drop_glue_impl(infcx, ty, env, &mut FxHashSet::default())
+}
+
+fn has_drop_glue_impl<'db>(
+    infcx: &InferCtxt<'db>,
+    ty: Ty<'db>,
+    env: Arc<TraitEnvironment<'db>>,
+    visited: &mut FxHashSet<Ty<'db>>,
+) -> DropGlue {
+    let mut ocx = ObligationCtxt::new(infcx);
+    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env.env, ty).unwrap_or(ty);
+
+    if !visited.insert(ty) {
+        // Recursive type.
+        return DropGlue::None;
+    }
+
+    let db = infcx.interner.db;
+    match ty.kind() {
+        TyKind::Adt(adt_def, subst) => {
+            let adt_id = adt_def.def_id().0;
+            if has_destructor(db, adt_id) {
                 return DropGlue::HasDropGlue;
             }
-            match adt.0 {
+            match adt_id {
                 AdtId::StructId(id) => {
-                    if db.struct_signature(id).flags.contains(StructFlags::IS_MANUALLY_DROP) {
+                    if db
+                        .struct_signature(id)
+                        .flags
+                        .intersects(StructFlags::IS_MANUALLY_DROP | StructFlags::IS_PHANTOM_DATA)
+                    {
                         return DropGlue::None;
                     }
-                    db.field_types(id.into())
+                    db.field_types_ns(id.into())
                         .iter()
                         .map(|(_, field_ty)| {
-                            db.has_drop_glue(
-                                field_ty.clone().substitute(Interner, subst),
+                            has_drop_glue_impl(
+                                infcx,
+                                field_ty.instantiate(infcx.interner, subst),
                                 env.clone(),
+                                visited,
                             )
                         })
                         .max()
@@ -78,12 +105,14 @@ pub(crate) fn has_drop_glue(
                     .variants
                     .iter()
                     .map(|&(variant, _, _)| {
-                        db.field_types(variant.into())
+                        db.field_types_ns(variant.into())
                             .iter()
                             .map(|(_, field_ty)| {
-                                db.has_drop_glue(
-                                    field_ty.clone().substitute(Interner, subst),
+                                has_drop_glue_impl(
+                                    infcx,
+                                    field_ty.instantiate(infcx.interner, subst),
                                     env.clone(),
+                                    visited,
                                 )
                             })
                             .max()
@@ -93,116 +122,70 @@ pub(crate) fn has_drop_glue(
                     .unwrap_or(DropGlue::None),
             }
         }
-        TyKind::Tuple(_, subst) => subst
-            .iter(Interner)
-            .map(|ty| ty.assert_ty_ref(Interner))
-            .map(|ty| db.has_drop_glue(ty.clone(), env.clone()))
+        TyKind::Tuple(tys) => tys
+            .iter()
+            .map(|ty| has_drop_glue_impl(infcx, ty, env.clone(), visited))
             .max()
             .unwrap_or(DropGlue::None),
         TyKind::Array(ty, len) => {
-            if let ConstValue::Concrete(ConcreteConst { interned: ConstScalar::Bytes(len, _) }) =
-                &len.data(Interner).value
-            {
-                match (&**len).try_into() {
-                    Ok(len) => {
-                        let len = usize::from_le_bytes(len);
-                        if len == 0 {
-                            // Arrays of size 0 don't have drop glue.
-                            return DropGlue::None;
-                        }
-                    }
-                    Err(_) => {
-                        never!("const array size with non-usize len");
-                    }
-                }
+            if consteval::try_const_usize(db, len) == Some(0) {
+                // Arrays of size 0 don't have drop glue.
+                return DropGlue::None;
             }
-            db.has_drop_glue(ty.clone(), env)
+            has_drop_glue_impl(infcx, ty, env, visited)
         }
-        TyKind::Slice(ty) => db.has_drop_glue(ty.clone(), env),
+        TyKind::Slice(ty) => has_drop_glue_impl(infcx, ty, env, visited),
         TyKind::Closure(closure_id, subst) => {
-            let owner = db.lookup_intern_closure((*closure_id).into()).0;
+            let owner = db.lookup_intern_closure(closure_id.0).0;
             let infer = db.infer(owner);
-            let (captures, _) = infer.closure_info(closure_id);
+            let (captures, _) = infer.closure_info(closure_id.0);
             let env = db.trait_environment_for_body(owner);
             captures
                 .iter()
-                .map(|capture| db.has_drop_glue(capture.ty(db, subst), env.clone()))
+                .map(|capture| {
+                    has_drop_glue_impl(infcx, capture.ty(db, subst), env.clone(), visited)
+                })
                 .max()
                 .unwrap_or(DropGlue::None)
         }
         // FIXME: Handle coroutines.
-        TyKind::Coroutine(..) | TyKind::CoroutineWitness(..) => DropGlue::None,
+        TyKind::Coroutine(..) | TyKind::CoroutineWitness(..) | TyKind::CoroutineClosure(..) => {
+            DropGlue::None
+        }
         TyKind::Ref(..)
-        | TyKind::Raw(..)
+        | TyKind::RawPtr(..)
         | TyKind::FnDef(..)
         | TyKind::Str
         | TyKind::Never
-        | TyKind::Scalar(_)
-        | TyKind::Function(_)
+        | TyKind::Bool
+        | TyKind::Char
+        | TyKind::Int(_)
+        | TyKind::Uint(_)
+        | TyKind::Float(_)
+        | TyKind::FnPtr(..)
         | TyKind::Foreign(_)
-        | TyKind::Error => DropGlue::None,
-        TyKind::Dyn(_) => DropGlue::HasDropGlue,
-        TyKind::AssociatedType(assoc_type_id, subst) => projection_has_drop_glue(
-            db,
-            env,
-            ProjectionTy { associated_ty_id: *assoc_type_id, substitution: subst.clone() },
-            ty,
-        ),
-        TyKind::Alias(AliasTy::Projection(projection)) => {
-            projection_has_drop_glue(db, env, projection.clone(), ty)
-        }
-        TyKind::OpaqueType(..) | TyKind::Alias(AliasTy::Opaque(_)) => {
-            if is_copy(db, ty, env) {
+        | TyKind::Error(_)
+        | TyKind::Bound(..)
+        | TyKind::Placeholder(..) => DropGlue::None,
+        TyKind::Dynamic(..) => DropGlue::HasDropGlue,
+        TyKind::Alias(..) => {
+            if infcx.type_is_copy_modulo_regions(env.env, ty) {
                 DropGlue::None
             } else {
                 DropGlue::HasDropGlue
             }
         }
-        TyKind::Placeholder(_) | TyKind::BoundVar(_) => {
-            if is_copy(db, ty, env) {
+        TyKind::Param(_) => {
+            if infcx.type_is_copy_modulo_regions(env.env, ty) {
                 DropGlue::None
             } else {
                 DropGlue::DependOnParams
             }
         }
-        TyKind::InferenceVar(..) => unreachable!("inference vars shouldn't exist out of inference"),
-    }
-}
-
-fn projection_has_drop_glue(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment<'_>>,
-    projection: ProjectionTy,
-    ty: Ty,
-) -> DropGlue {
-    let normalized = db.normalize_projection(projection, env.clone());
-    match normalized.kind(Interner) {
-        TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(..) => {
-            if is_copy(db, ty, env) { DropGlue::None } else { DropGlue::DependOnParams }
+        TyKind::Infer(..) => unreachable!("inference vars shouldn't exist out of inference"),
+        TyKind::Pat(..) | TyKind::UnsafeBinder(..) => {
+            never!("we do not handle pattern and unsafe binder types");
+            DropGlue::None
         }
-        _ => db.has_drop_glue(normalized, env),
     }
-}
-
-fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> bool {
-    let Some(copy_trait) = LangItem::Copy.resolve_trait(db, env.krate) else {
-        return false;
-    };
-    let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(ty).build();
-    let goal = Canonical {
-        value: InEnvironment::new(
-            &env.env.to_chalk(DbInterner::new_with(db, Some(env.krate), env.block)),
-            trait_ref.cast(Interner),
-        ),
-        binders: CanonicalVarKinds::empty(Interner),
-    };
-    db.trait_solve(env.krate, env.block, goal).certain()
-}
-
-pub(crate) fn has_drop_glue_cycle_result(
-    _db: &dyn HirDatabase,
-    _ty: Ty,
-    _env: Arc<TraitEnvironment<'_>>,
-) -> DropGlue {
-    DropGlue::None
 }

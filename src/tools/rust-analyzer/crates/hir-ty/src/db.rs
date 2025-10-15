@@ -16,10 +16,9 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Binders, Const, ImplTraitId, ImplTraits, InferenceResult, Substitution, TraitEnvironment, Ty,
-    TyDefId, ValueTyDefId, chalk_db,
+    Binders, ImplTraitId, ImplTraits, InferenceResult, TraitEnvironment, Ty, TyDefId, ValueTyDefId,
+    chalk_db,
     consteval::ConstEvalError,
-    drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
@@ -32,62 +31,77 @@ use crate::{
 pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::infer::infer_query)]
     #[salsa::cycle(cycle_result = crate::infer::infer_cycle_result)]
-    fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
+    fn infer<'db>(&'db self, def: DefWithBodyId) -> Arc<InferenceResult<'db>>;
 
     // region:mir
 
     #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(cycle_result = crate::mir::mir_body_cycle_result)]
-    fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
+    fn mir_body<'db>(
+        &'db self,
+        def: DefWithBodyId,
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::mir_body_for_closure_query)]
-    fn mir_body_for_closure(&self, def: InternedClosureId) -> Result<Arc<MirBody>, MirLowerError>;
+    fn mir_body_for_closure<'db>(
+        &'db self,
+        def: InternedClosureId,
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_query)]
     #[salsa::cycle(cycle_result = crate::mir::monomorphized_mir_body_cycle_result)]
-    fn monomorphized_mir_body(
-        &self,
+    fn monomorphized_mir_body<'db>(
+        &'db self,
         def: DefWithBodyId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment<'_>>,
-    ) -> Result<Arc<MirBody>, MirLowerError>;
+        subst: crate::next_solver::GenericArgs<'db>,
+        env: Arc<TraitEnvironment<'db>>,
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
-    fn monomorphized_mir_body_for_closure(
-        &self,
+    fn monomorphized_mir_body_for_closure<'db>(
+        &'db self,
         def: InternedClosureId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment<'_>>,
-    ) -> Result<Arc<MirBody>, MirLowerError>;
+        subst: crate::next_solver::GenericArgs<'db>,
+        env: Arc<TraitEnvironment<'db>>,
+    ) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::mir::borrowck_query)]
     #[salsa::lru(2024)]
-    fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<[BorrowckResult]>, MirLowerError>;
+    fn borrowck<'db>(
+        &'db self,
+        def: DefWithBodyId,
+    ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_cycle_result)]
-    fn const_eval(
-        &self,
+    fn const_eval<'db>(
+        &'db self,
         def: GeneralConstId,
-        subst: Substitution,
-        trait_env: Option<Arc<TraitEnvironment<'_>>>,
-    ) -> Result<Const, ConstEvalError>;
+        subst: crate::next_solver::GenericArgs<'db>,
+        trait_env: Option<Arc<TraitEnvironment<'db>>>,
+    ) -> Result<crate::next_solver::Const<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_static_query)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_static_cycle_result)]
-    fn const_eval_static(&self, def: StaticId) -> Result<Const, ConstEvalError>;
+    fn const_eval_static<'db>(
+        &'db self,
+        def: StaticId,
+    ) -> Result<crate::next_solver::Const<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_discriminant_cycle_result)]
-    fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
+    fn const_eval_discriminant<'db>(
+        &'db self,
+        def: EnumVariantId,
+    ) -> Result<i128, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
-    fn lookup_impl_method(
-        &self,
-        env: Arc<TraitEnvironment<'_>>,
+    fn lookup_impl_method<'db>(
+        &'db self,
+        env: Arc<TraitEnvironment<'db>>,
         func: FunctionId,
-        fn_subst: Substitution,
-    ) -> (FunctionId, Substitution);
+        fn_subst: crate::next_solver::GenericArgs<'db>,
+    ) -> (FunctionId, crate::next_solver::GenericArgs<'db>);
 
     // endregion:mir
 
@@ -325,10 +339,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> NextTraitSolveResult;
 
-    #[salsa::invoke(crate::drop::has_drop_glue)]
-    #[salsa::cycle(cycle_result = crate::drop::has_drop_glue_cycle_result)]
-    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment<'_>>) -> DropGlue;
-
     // next trait solver
 
     #[salsa::invoke(crate::lower_nextsolver::const_param_ty_query)]
@@ -370,6 +380,23 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         &'db self,
         def: GenericDefId,
     ) -> crate::lower_nextsolver::GenericPredicates<'db>;
+
+    #[salsa::invoke(crate::lower_nextsolver::generic_defaults_with_diagnostics_query)]
+    #[salsa::cycle(cycle_result = crate::lower_nextsolver::generic_defaults_with_diagnostics_cycle_result)]
+    fn generic_defaults_ns_with_diagnostics<'db>(
+        &'db self,
+        def: GenericDefId,
+    ) -> (crate::lower_nextsolver::GenericDefaults<'db>, Diagnostics);
+
+    /// This returns an empty list if no parameter has default.
+    ///
+    /// The binders of the returned defaults are only up to (not including) this parameter.
+    #[salsa::invoke(crate::lower_nextsolver::generic_defaults_query)]
+    #[salsa::transparent]
+    fn generic_defaults_ns<'db>(
+        &'db self,
+        def: GenericDefId,
+    ) -> crate::lower_nextsolver::GenericDefaults<'db>;
 }
 
 #[test]

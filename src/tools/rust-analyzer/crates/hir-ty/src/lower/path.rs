@@ -3,15 +3,15 @@
 use chalk_ir::{BoundVar, cast::Cast, fold::Shift};
 use either::Either;
 use hir_def::{
-    GenericDefId, GenericParamId, Lookup, TraitId,
+    GenericDefId, GenericParamId, TraitId,
     expr_store::{
-        ExpressionStore, HygieneId,
+        ExpressionStore,
         path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
     },
     hir::generics::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
     },
-    resolver::{ResolveValueResult, TypeNs, ValueNs},
+    resolver::TypeNs,
     signatures::TraitFlags,
     type_ref::{TypeRef, TypeRefId},
 };
@@ -21,36 +21,36 @@ use stdx::never;
 use crate::{
     AliasEq, AliasTy, GenericArgsProhibitedReason, ImplTraitLoweringMode, IncorrectGenericsLenKind,
     Interner, ParamLoweringMode, PathGenericsSource, PathLoweringDiagnostic, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind,
-    TyLoweringContext, ValueTyDefId, WhereClause,
-    consteval::{unknown_const, unknown_const_as_generic},
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyDefId, TyKind, WhereClause,
+    consteval_chalk::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics},
-    lower::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
+    lower::{LifetimeElisionKind, TyLoweringContext, named_associated_type_shorthand_candidates},
     next_solver::{
         DbInterner,
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
-    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
 
-type CallbackData<'a> = Either<
+type CallbackData<'a, 'db> = Either<
     super::PathDiagnosticCallbackData,
-    crate::infer::diagnostics::PathDiagnosticCallbackData<'a>,
+    crate::infer::diagnostics::PathDiagnosticCallbackData<'a, 'db>,
 >;
 
 // We cannot use `&mut dyn FnMut()` because of lifetime issues, and we don't want to use `Box<dyn FnMut()>`
 // because of the allocation, so we create a lifetime-less callback, tailored for our needs.
-pub(crate) struct PathDiagnosticCallback<'a> {
-    pub(crate) data: CallbackData<'a>,
-    pub(crate) callback: fn(&CallbackData<'_>, &mut TyLoweringContext<'_>, PathLoweringDiagnostic),
+pub(crate) struct PathDiagnosticCallback<'a, 'db> {
+    pub(crate) data: CallbackData<'a, 'db>,
+    pub(crate) callback:
+        fn(&CallbackData<'_, 'db>, &mut TyLoweringContext<'_>, PathLoweringDiagnostic),
 }
 
 pub(crate) struct PathLoweringContext<'a, 'b> {
     ctx: &'a mut TyLoweringContext<'b>,
-    on_diagnostic: PathDiagnosticCallback<'a>,
+    on_diagnostic: PathDiagnosticCallback<'a, 'b>,
     path: &'a Path,
     segments: PathSegments<'a>,
     current_segment_idx: usize,
@@ -62,7 +62,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     #[inline]
     pub(crate) fn new(
         ctx: &'a mut TyLoweringContext<'b>,
-        on_diagnostic: PathDiagnosticCallback<'a>,
+        on_diagnostic: PathDiagnosticCallback<'a, 'b>,
         path: &'a Path,
     ) -> Self {
         let segments = path.segments();
@@ -107,20 +107,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     fn update_current_segment(&mut self) {
         self.current_or_prev_segment =
             self.segments.get(self.current_segment_idx).unwrap_or(self.current_or_prev_segment);
-    }
-
-    #[inline]
-    pub(crate) fn ignore_last_segment(&mut self) {
-        self.segments = self.segments.strip_last();
-    }
-
-    #[inline]
-    pub(crate) fn set_current_segment(&mut self, segment: usize) {
-        self.current_segment_idx = segment;
-        self.current_or_prev_segment = self
-            .segments
-            .get(segment)
-            .expect("invalid segment passed to PathLoweringContext::set_current_segment()");
     }
 
     #[inline]
@@ -390,103 +376,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         Some((resolution, remaining_index))
     }
 
-    pub(crate) fn resolve_path_in_value_ns(
-        &mut self,
-        hygiene_id: HygieneId,
-    ) -> Option<ResolveValueResult> {
-        let (res, prefix_info) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
-            self.ctx.db,
-            self.path,
-            hygiene_id,
-        )?;
-
-        let segments = self.segments;
-        if segments.is_empty() || matches!(self.path, Path::LangItem(..)) {
-            // `segments.is_empty()` can occur with `self`.
-            return Some(res);
-        }
-
-        let (mod_segments, enum_segment, resolved_segment_idx) = match res {
-            ResolveValueResult::Partial(_, unresolved_segment, _) => {
-                (segments.take(unresolved_segment - 1), None, unresolved_segment - 1)
-            }
-            ResolveValueResult::ValueNs(ValueNs::EnumVariantId(_), _)
-                if prefix_info.enum_variant =>
-            {
-                (segments.strip_last_two(), segments.len().checked_sub(2), segments.len() - 1)
-            }
-            ResolveValueResult::ValueNs(..) => (segments.strip_last(), None, segments.len() - 1),
-        };
-
-        self.current_segment_idx = resolved_segment_idx;
-        self.current_or_prev_segment =
-            segments.get(resolved_segment_idx).expect("should have resolved segment");
-
-        for (i, mod_segment) in mod_segments.iter().enumerate() {
-            if mod_segment.args_and_bindings.is_some() {
-                self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
-                    segment: i as u32,
-                    reason: GenericArgsProhibitedReason::Module,
-                });
-            }
-        }
-
-        if let Some(enum_segment) = enum_segment
-            && segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
-            && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
-        {
-            self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
-                segment: (enum_segment + 1) as u32,
-                reason: GenericArgsProhibitedReason::EnumVariant,
-            });
-        }
-
-        match &res {
-            ResolveValueResult::ValueNs(resolution, _) => {
-                let resolved_segment_idx = self.current_segment_u32();
-                let resolved_segment = self.current_or_prev_segment;
-
-                let mut prohibit_generics_on_resolved = |reason| {
-                    if resolved_segment.args_and_bindings.is_some() {
-                        self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
-                            segment: resolved_segment_idx,
-                            reason,
-                        });
-                    }
-                };
-
-                match resolution {
-                    ValueNs::ImplSelf(_) => {
-                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
-                    }
-                    // FIXME: rustc generates E0107 (incorrect number of generic arguments) and not
-                    // E0109 (generic arguments provided for a type that doesn't accept them) for
-                    // consts and statics, presumably as a defense against future in which consts
-                    // and statics can be generic, or just because it was easier for rustc implementors.
-                    // That means we'll show the wrong error code. Because of us it's easier to do it
-                    // this way :)
-                    ValueNs::GenericParam(_) => {
-                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::Const)
-                    }
-                    ValueNs::StaticId(_) => {
-                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::Static)
-                    }
-                    ValueNs::LocalBinding(_) => {
-                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::LocalVariable)
-                    }
-                    ValueNs::FunctionId(_)
-                    | ValueNs::StructId(_)
-                    | ValueNs::EnumVariantId(_)
-                    | ValueNs::ConstId(_) => {}
-                }
-            }
-            ResolveValueResult::Partial(resolution, _, _) => {
-                self.handle_type_ns_resolution(resolution);
-            }
-        };
-        Some(res)
-    }
-
     fn select_associated_type(&mut self, res: Option<TypeNs>, infer_args: bool) -> Ty {
         let Some(res) = res else {
             return TyKind::Error.intern(Interner);
@@ -554,62 +443,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         let interner = DbInterner::conjure();
         let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
         self.ctx.db.ty(typeable).instantiate(interner, args).to_chalk(interner)
-    }
-
-    /// Collect generic arguments from a path into a `Substs`. See also
-    /// `create_substs_for_ast_path` and `def_to_ty` in rustc.
-    pub(crate) fn substs_from_path(
-        &mut self,
-        // Note that we don't call `db.value_type(resolved)` here,
-        // `ValueTyDefId` is just a convenient way to pass generics and
-        // special-case enum variants
-        resolved: ValueTyDefId,
-        infer_args: bool,
-        lowering_assoc_type_generics: bool,
-    ) -> Substitution {
-        let prev_current_segment_idx = self.current_segment_idx;
-        let prev_current_segment = self.current_or_prev_segment;
-
-        let generic_def = match resolved {
-            ValueTyDefId::FunctionId(it) => it.into(),
-            ValueTyDefId::StructId(it) => it.into(),
-            ValueTyDefId::UnionId(it) => it.into(),
-            ValueTyDefId::ConstId(it) => it.into(),
-            ValueTyDefId::StaticId(_) => return Substitution::empty(Interner),
-            ValueTyDefId::EnumVariantId(var) => {
-                // the generic args for an enum variant may be either specified
-                // on the segment referring to the enum, or on the segment
-                // referring to the variant. So `Option::<T>::None` and
-                // `Option::None::<T>` are both allowed (though the former is
-                // FIXME: This isn't strictly correct, enum variants may be used not through the enum
-                // (via `use Enum::Variant`). The resolver returns whether they were, but we don't have its result
-                // available here. The worst that can happen is that we will show some confusing diagnostics to the user,
-                // if generics exist on the module and they don't match with the variant.
-                // preferred). See also `def_ids_for_path_segments` in rustc.
-                //
-                // `wrapping_sub(1)` will return a number which `get` will return None for if current_segment_idx<2.
-                // This simplifies the code a bit.
-                let penultimate_idx = self.current_segment_idx.wrapping_sub(1);
-                let penultimate = self.segments.get(penultimate_idx);
-                if let Some(penultimate) = penultimate
-                    && self.current_or_prev_segment.args_and_bindings.is_none()
-                    && penultimate.args_and_bindings.is_some()
-                {
-                    self.current_segment_idx = penultimate_idx;
-                    self.current_or_prev_segment = penultimate;
-                }
-                var.lookup(self.ctx.db).parent.into()
-            }
-        };
-        let result = self.substs_from_path_segment(
-            generic_def,
-            infer_args,
-            None,
-            lowering_assoc_type_generics,
-        );
-        self.current_segment_idx = prev_current_segment_idx;
-        self.current_or_prev_segment = prev_current_segment;
-        result
     }
 
     pub(crate) fn substs_from_path_segment(
@@ -816,14 +649,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 });
             }
 
-            fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32) {
-                self.ctx.on_diagnostic(PathLoweringDiagnostic::ElisionFailure {
-                    generics_source: self.generics_source,
-                    def,
-                    expected_count,
-                });
-            }
-
             fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32) {
                 self.ctx.on_diagnostic(PathLoweringDiagnostic::MissingLifetime {
                     generics_source: self.generics_source,
@@ -976,8 +801,6 @@ pub(crate) trait GenericArgsLowerer {
         hard_error: bool,
     );
 
-    fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32);
-
     fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32);
 
     fn report_len_mismatch(
@@ -1049,13 +872,6 @@ fn check_generic_args_len(
             LifetimeElisionKind::AnonymousReportError => {
                 ctx.report_missing_lifetime(def, lifetime_args_len as u32);
                 had_error = true
-            }
-            LifetimeElisionKind::ElisionFailure => {
-                ctx.report_elision_failure(def, lifetime_args_len as u32);
-                had_error = true;
-            }
-            LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
-                // FIXME: Check there are other lifetimes in scope, and error/lint.
             }
             LifetimeElisionKind::Elided(_) => {
                 ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, false);
@@ -1265,14 +1081,10 @@ pub(crate) fn substs_from_args_and_bindings(
                 // If there are fewer arguments than parameters, it means we're inferring the remaining arguments.
                 let param = if let GenericParamId::LifetimeParamId(_) = param_id {
                     match &lifetime_elision {
-                        LifetimeElisionKind::ElisionFailure
-                        | LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
+                        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
                         | LifetimeElisionKind::AnonymousReportError => {
                             assert!(had_count_error);
                             ctx.inferred_kind(def, param_id, param, infer_args, &substs)
-                        }
-                        LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
-                            static_lifetime().cast(Interner)
                         }
                         LifetimeElisionKind::Elided(lifetime) => lifetime.clone().cast(Interner),
                         LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false }

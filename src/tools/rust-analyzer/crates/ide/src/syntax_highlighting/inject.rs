@@ -5,7 +5,7 @@ use std::mem;
 use either::Either;
 use hir::{EditionedFileId, HirFileId, InFile, Semantics, sym};
 use ide_db::{
-    SymbolKind, active_parameter::ActiveParameter, base_db::salsa, defs::Definition,
+    SymbolKind, active_parameter::ActiveParameter, defs::Definition,
     documentation::docs_with_rangemap, rust_doc::is_rust_fence,
 };
 use syntax::{
@@ -27,7 +27,7 @@ pub(super) fn ra_fixture(
     expanded: &ast::String,
 ) -> Option<()> {
     let active_parameter =
-        salsa::attach(sema.db, || ActiveParameter::at_token(sema, expanded.syntax().clone()))?;
+        hir::attach_db(sema.db, || ActiveParameter::at_token(sema, expanded.syntax().clone()))?;
     let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
         attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
             path.segments()
@@ -128,7 +128,7 @@ pub(super) fn doc_comment(
 
     // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = docs_with_rangemap(sema.db, &attributes) {
-        salsa::attach(sema.db, || {
+        hir::attach_db(sema.db, || {
             extract_definitions_from_docs(&docs)
                 .into_iter()
                 .filter_map(|(range, link, ns)| {

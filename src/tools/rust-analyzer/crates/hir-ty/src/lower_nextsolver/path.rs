@@ -30,7 +30,7 @@ use stdx::never;
 use crate::{
     GenericArgsProhibitedReason, IncorrectGenericsLenKind, PathGenericsSource,
     PathLoweringDiagnostic, TyDefId, ValueTyDefId,
-    consteval_nextsolver::{unknown_const, unknown_const_as_generic},
+    consteval::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics},
     lower::PathDiagnosticCallbackData,
@@ -51,15 +51,17 @@ use super::{
     const_param_ty_query, ty_query,
 };
 
-type CallbackData<'a> =
-    Either<PathDiagnosticCallbackData, crate::infer::diagnostics::PathDiagnosticCallbackData<'a>>;
+type CallbackData<'a, 'db> = Either<
+    PathDiagnosticCallbackData,
+    crate::infer::diagnostics::PathDiagnosticCallbackData<'a, 'db>,
+>;
 
 // We cannot use `&mut dyn FnMut()` because of lifetime issues, and we don't want to use `Box<dyn FnMut()>`
 // because of the allocation, so we create a lifetime-less callback, tailored for our needs.
 pub(crate) struct PathDiagnosticCallback<'a, 'db> {
-    pub(crate) data: CallbackData<'a>,
+    pub(crate) data: CallbackData<'a, 'db>,
     pub(crate) callback:
-        fn(&CallbackData<'_>, &mut TyLoweringContext<'db, '_>, PathLoweringDiagnostic),
+        fn(&CallbackData<'_, 'db>, &mut TyLoweringContext<'db, '_>, PathLoweringDiagnostic),
 }
 
 pub(crate) struct PathLoweringContext<'a, 'b, 'db> {
@@ -155,13 +157,14 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         ty: Ty<'db>,
         // We need the original resolution to lower `Self::AssocTy` correctly
         res: Option<TypeNs>,
+        infer_args: bool,
     ) -> (Ty<'db>, Option<TypeNs>) {
         let remaining_segments = self.segments.len() - self.current_segment_idx;
         match remaining_segments {
             0 => (ty, res),
             1 => {
                 // resolve unselected assoc types
-                (self.select_associated_type(res), None)
+                (self.select_associated_type(res, infer_args), None)
             }
             _ => {
                 // FIXME report error (ambiguous associated type)
@@ -204,6 +207,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
                             Ty::new_error(self.ctx.interner, ErrorGuaranteed),
+                            false,
                         );
                         tracing::debug!(?trait_ref);
                         self.skip_resolved_segment();
@@ -276,8 +280,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                             GenericParamDataRef::TypeParamData(p) => p,
                             _ => unreachable!(),
                         };
-                        Ty::new_param(
-                            self.ctx.interner,
+                        self.ctx.type_param(
                             param_id,
                             idx as u32,
                             p.name
@@ -293,7 +296,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     self.ctx.interner,
                     adt.into(),
                 );
-                Ty::new_adt(self.ctx.interner, AdtDef::new(adt, self.ctx.interner), args)
+                Ty::new_adt(self.ctx.interner, adt, args)
             }
 
             TypeNs::AdtId(it) => self.lower_path_inner(it.into(), infer_args),
@@ -308,7 +311,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         tracing::debug!(?ty);
 
         self.skip_resolved_segment();
-        self.lower_ty_relative_path(ty, Some(resolution))
+        self.lower_ty_relative_path(ty, Some(resolution), infer_args)
     }
 
     fn handle_type_ns_resolution(&mut self, resolution: &TypeNs) {
@@ -480,14 +483,19 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     // and statics can be generic, or just because it was easier for rustc implementors.
                     // That means we'll show the wrong error code. Because of us it's easier to do it
                     // this way :)
-                    ValueNs::GenericParam(_) | ValueNs::ConstId(_) => {
+                    ValueNs::GenericParam(_) => {
                         prohibit_generics_on_resolved(GenericArgsProhibitedReason::Const)
                     }
                     ValueNs::StaticId(_) => {
                         prohibit_generics_on_resolved(GenericArgsProhibitedReason::Static)
                     }
-                    ValueNs::FunctionId(_) | ValueNs::StructId(_) | ValueNs::EnumVariantId(_) => {}
-                    ValueNs::LocalBinding(_) => {}
+                    ValueNs::LocalBinding(_) => {
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::LocalVariable)
+                    }
+                    ValueNs::FunctionId(_)
+                    | ValueNs::StructId(_)
+                    | ValueNs::EnumVariantId(_)
+                    | ValueNs::ConstId(_) => {}
                 }
             }
             ResolveValueResult::Partial(resolution, _, _) => {
@@ -498,7 +506,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
     }
 
     #[tracing::instrument(skip(self), ret)]
-    fn select_associated_type(&mut self, res: Option<TypeNs>) -> Ty<'db> {
+    fn select_associated_type(&mut self, res: Option<TypeNs>, infer_args: bool) -> Ty<'db> {
         let interner = self.ctx.interner;
         let Some(res) = res else {
             return Ty::new_error(self.ctx.interner, ErrorGuaranteed);
@@ -516,7 +524,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             // generic params. It's inefficient to splice the `Substitution`s, so we may want
             // that method to optionally take parent `Substitution` as we already know them at
             // this point (`t.substitution`).
-            let substs = self.substs_from_path_segment(associated_ty.into(), false, None, true);
+            let substs =
+                self.substs_from_path_segment(associated_ty.into(), infer_args, None, true);
 
             let substs = crate::next_solver::GenericArgs::new_from_iter(
                 interner,
@@ -541,7 +550,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
     fn lower_path_inner(&mut self, typeable: TyDefId, infer_args: bool) -> Ty<'db> {
         let generic_def = match typeable {
-            TyDefId::BuiltinType(builtinty) => return builtin(self.ctx.interner, builtinty),
+            TyDefId::BuiltinType(builtinty) => {
+                return Ty::from_builtin_type(self.ctx.interner, builtinty);
+            }
             TyDefId::AdtId(it) => it.into(),
             TyDefId::TypeAliasId(it) => it.into(),
         };
@@ -715,12 +726,12 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 param: GenericParamDataRef<'_>,
                 arg: &GenericArg,
             ) -> crate::next_solver::GenericArg<'db> {
-                match (param, arg) {
+                match (param, *arg) {
                     (GenericParamDataRef::LifetimeParamData(_), GenericArg::Lifetime(lifetime)) => {
-                        self.ctx.ctx.lower_lifetime(*lifetime).into()
+                        self.ctx.ctx.lower_lifetime(lifetime).into()
                     }
                     (GenericParamDataRef::TypeParamData(_), GenericArg::Type(type_ref)) => {
-                        self.ctx.ctx.lower_ty(*type_ref).into()
+                        self.ctx.ctx.lower_ty(type_ref).into()
                     }
                     (GenericParamDataRef::ConstParamData(_), GenericArg::Const(konst)) => {
                         let GenericParamId::ConstParamId(const_id) = param_id else {
@@ -859,8 +870,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty<'db>,
+        infer_args: bool,
     ) -> TraitRef<'db> {
-        let args = self.trait_ref_substs_from_path(resolved, explicit_self_ty);
+        let args = self.trait_ref_substs_from_path(resolved, explicit_self_ty, infer_args);
         TraitRef::new_from_args(self.ctx.interner, resolved.into(), args)
     }
 
@@ -868,8 +880,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty<'db>,
+        infer_args: bool,
     ) -> crate::next_solver::GenericArgs<'db> {
-        self.substs_from_path_segment(resolved.into(), false, Some(explicit_self_ty), false)
+        self.substs_from_path_segment(resolved.into(), infer_args, Some(explicit_self_ty), false)
     }
 
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(
@@ -1039,8 +1052,12 @@ fn check_generic_args_len<'db>(
     }
 
     let lifetime_args_len = def_generics.len_lifetimes_self();
-    if provided_lifetimes_count == 0 && lifetime_args_len > 0 && !lowering_assoc_type_generics {
-        // In generic associated types, we never allow inferring the lifetimes.
+    if provided_lifetimes_count == 0
+        && lifetime_args_len > 0
+        && (!lowering_assoc_type_generics || infer_args)
+    {
+        // In generic associated types, we never allow inferring the lifetimes, but only in type context, that is
+        // when `infer_args == false`. In expression/pattern context we always allow inferring them, even for GATs.
         match lifetime_elision {
             &LifetimeElisionKind::AnonymousCreateParameter { report_in_path } => {
                 ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, report_in_path);
@@ -1334,43 +1351,4 @@ fn unknown_subst<'db>(
             }
         }),
     )
-}
-
-pub(crate) fn builtin<'db>(interner: DbInterner<'db>, builtin: BuiltinType) -> Ty<'db> {
-    match builtin {
-        BuiltinType::Char => Ty::new(interner, rustc_type_ir::TyKind::Char),
-        BuiltinType::Bool => Ty::new_bool(interner),
-        BuiltinType::Str => Ty::new(interner, rustc_type_ir::TyKind::Str),
-        BuiltinType::Int(t) => {
-            let int_ty = match primitive::int_ty_from_builtin(t) {
-                chalk_ir::IntTy::Isize => rustc_type_ir::IntTy::Isize,
-                chalk_ir::IntTy::I8 => rustc_type_ir::IntTy::I8,
-                chalk_ir::IntTy::I16 => rustc_type_ir::IntTy::I16,
-                chalk_ir::IntTy::I32 => rustc_type_ir::IntTy::I32,
-                chalk_ir::IntTy::I64 => rustc_type_ir::IntTy::I64,
-                chalk_ir::IntTy::I128 => rustc_type_ir::IntTy::I128,
-            };
-            Ty::new_int(interner, int_ty)
-        }
-        BuiltinType::Uint(t) => {
-            let uint_ty = match primitive::uint_ty_from_builtin(t) {
-                chalk_ir::UintTy::Usize => rustc_type_ir::UintTy::Usize,
-                chalk_ir::UintTy::U8 => rustc_type_ir::UintTy::U8,
-                chalk_ir::UintTy::U16 => rustc_type_ir::UintTy::U16,
-                chalk_ir::UintTy::U32 => rustc_type_ir::UintTy::U32,
-                chalk_ir::UintTy::U64 => rustc_type_ir::UintTy::U64,
-                chalk_ir::UintTy::U128 => rustc_type_ir::UintTy::U128,
-            };
-            Ty::new_uint(interner, uint_ty)
-        }
-        BuiltinType::Float(t) => {
-            let float_ty = match primitive::float_ty_from_builtin(t) {
-                chalk_ir::FloatTy::F16 => rustc_type_ir::FloatTy::F16,
-                chalk_ir::FloatTy::F32 => rustc_type_ir::FloatTy::F32,
-                chalk_ir::FloatTy::F64 => rustc_type_ir::FloatTy::F64,
-                chalk_ir::FloatTy::F128 => rustc_type_ir::FloatTy::F128,
-            };
-            Ty::new_float(interner, float_ty)
-        }
-    }
 }

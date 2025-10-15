@@ -10,19 +10,20 @@
 
 use std::iter;
 
-use hir_ty::TyBuilder;
-use hir_ty::db::HirDatabase;
-use hir_ty::mir::BorrowKind;
+use hir_ty::{
+    db::HirDatabase,
+    mir::BorrowKind,
+    next_solver::{DbInterner, Ty},
+};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use rustc_type_ir::inherent::Ty as _;
 use span::Edition;
 
 use crate::{
     Adt, AssocItem, GenericDef, GenericParam, HasAttrs, HasVisibility, Impl, ModuleDef, ScopeDef,
-    Type, TypeParam,
+    Type, TypeParam, term_search::Expr,
 };
-
-use crate::term_search::Expr;
 
 use super::{LookupTable, NewTypesKey, TermSearchCtx};
 
@@ -596,10 +597,13 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
+    let interner = DbInterner::new_with(db, None, None);
+    let bool_ty = Ty::new_bool(interner);
+    let unit_ty = Ty::new_unit(interner);
     [
-        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "true" },
-        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "false" },
-        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::unit()), value: "()" },
+        Expr::FamousType { ty: Type::new(db, module.id, bool_ty), value: "true" },
+        Expr::FamousType { ty: Type::new(db, module.id, bool_ty), value: "false" },
+        Expr::FamousType { ty: Type::new(db, module.id, unit_ty), value: "()" },
     ]
     .into_iter()
     .inspect(|exprs| {

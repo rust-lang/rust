@@ -21,6 +21,7 @@
 
 //@[x86_64_uwp_g] compile-flags: --target x86_64-uwp-windows-gnu
 //@[x86_64_uwp_g] needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 

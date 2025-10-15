@@ -5,6 +5,7 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: -Ctarget-feature=-x87
 //@ build-pass
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![no_core]
 

@@ -7,7 +7,7 @@ LL |     core::intrinsics::abort();
    |
    = note: BACKTRACE:
    = note: inside `alloc_error_handler` at tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
-note: inside `_::__rg_oom`
+note: inside `_::__rust_alloc_error_handler`
   --> tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
    |
 LL | #[alloc_error_handler]

@@ -630,7 +630,7 @@ fn enum_variants_with_paths(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     enum_: hir::Enum,
-    impl_: &Option<ast::Impl>,
+    impl_: Option<&ast::Impl>,
     cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::Variant, hir::ModPath),
 ) {
     let mut process_variant = |variant: Variant| {
@@ -644,7 +644,7 @@ fn enum_variants_with_paths(
 
     let variants = enum_.variants(ctx.db);
 
-    if let Some(impl_) = impl_.as_ref().and_then(|impl_| ctx.sema.to_def(impl_))
+    if let Some(impl_) = impl_.and_then(|impl_| ctx.sema.to_def(impl_))
         && impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_))
     {
         variants.iter().for_each(|variant| process_variant(*variant));

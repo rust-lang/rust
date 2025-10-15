@@ -1,137 +1,137 @@
 error: invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:36:18
+  --> $DIR/bad-reg.rs:37:18
    |
 LL |         asm!("", out("sp") _);
    |                  ^^^^^^^^^^^
 
 error: invalid register `r2`: r2 is a system reserved register and cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:38:18
+  --> $DIR/bad-reg.rs:39:18
    |
 LL |         asm!("", out("r2") _);
    |                  ^^^^^^^^^^^
 
 error: invalid register `r29`: r29 is used internally by LLVM and cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:42:18
+  --> $DIR/bad-reg.rs:43:18
    |
 LL |         asm!("", out("r29") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `r30`: r30 is used internally by LLVM and cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:44:18
+  --> $DIR/bad-reg.rs:45:18
    |
 LL |         asm!("", out("r30") _);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:46:18
+  --> $DIR/bad-reg.rs:47:18
    |
 LL |         asm!("", out("fp") _);
    |                  ^^^^^^^^^^^
 
 error: invalid register `vrsave`: the vrsave register cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:48:18
+  --> $DIR/bad-reg.rs:49:18
    |
 LL |         asm!("", out("vrsave") _);
    |                  ^^^^^^^^^^^^^^^
 
 error: register class `cr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:96:18
+  --> $DIR/bad-reg.rs:97:18
    |
 LL |         asm!("", in("cr") x);
    |                  ^^^^^^^^^^
 
 error: register class `cr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:99:18
+  --> $DIR/bad-reg.rs:100:18
    |
 LL |         asm!("", out("cr") x);
    |                  ^^^^^^^^^^^
 
 error: register class `cr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:102:26
+  --> $DIR/bad-reg.rs:103:26
    |
 LL |         asm!("/* {} */", in(cr) x);
    |                          ^^^^^^^^
 
 error: register class `cr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:105:26
+  --> $DIR/bad-reg.rs:106:26
    |
 LL |         asm!("/* {} */", out(cr) _);
    |                          ^^^^^^^^^
 
 error: register class `ctr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:109:18
+  --> $DIR/bad-reg.rs:110:18
    |
 LL |         asm!("", in("ctr") x);
    |                  ^^^^^^^^^^^
 
 error: register class `ctr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:112:18
+  --> $DIR/bad-reg.rs:113:18
    |
 LL |         asm!("", out("ctr") x);
    |                  ^^^^^^^^^^^^
 
 error: register class `ctr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:115:26
+  --> $DIR/bad-reg.rs:116:26
    |
 LL |         asm!("/* {} */", in(ctr) x);
    |                          ^^^^^^^^^
 
 error: register class `ctr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:118:26
+  --> $DIR/bad-reg.rs:119:26
    |
 LL |         asm!("/* {} */", out(ctr) _);
    |                          ^^^^^^^^^^
 
 error: register class `lr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:122:18
+  --> $DIR/bad-reg.rs:123:18
    |
 LL |         asm!("", in("lr") x);
    |                  ^^^^^^^^^^
 
 error: register class `lr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:125:18
+  --> $DIR/bad-reg.rs:126:18
    |
 LL |         asm!("", out("lr") x);
    |                  ^^^^^^^^^^^
 
 error: register class `lr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:128:26
+  --> $DIR/bad-reg.rs:129:26
    |
 LL |         asm!("/* {} */", in(lr) x);
    |                          ^^^^^^^^
 
 error: register class `lr` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:131:26
+  --> $DIR/bad-reg.rs:132:26
    |
 LL |         asm!("/* {} */", out(lr) _);
    |                          ^^^^^^^^^
 
 error: register class `xer` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:135:18
+  --> $DIR/bad-reg.rs:136:18
    |
 LL |         asm!("", in("xer") x);
    |                  ^^^^^^^^^^^
 
 error: register class `xer` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:138:18
+  --> $DIR/bad-reg.rs:139:18
    |
 LL |         asm!("", out("xer") x);
    |                  ^^^^^^^^^^^^
 
 error: register class `xer` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:141:26
+  --> $DIR/bad-reg.rs:142:26
    |
 LL |         asm!("/* {} */", in(xer) x);
    |                          ^^^^^^^^^
 
 error: register class `xer` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:144:26
+  --> $DIR/bad-reg.rs:145:26
    |
 LL |         asm!("/* {} */", out(xer) _);
    |                          ^^^^^^^^^^
 
 error: register `cr0` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:148:31
+  --> $DIR/bad-reg.rs:149:31
    |
 LL |         asm!("", out("cr") _, out("cr0") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr0`
@@ -139,7 +139,7 @@ LL |         asm!("", out("cr") _, out("cr0") _);
    |                  register `cr`
 
 error: register `cr1` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:150:31
+  --> $DIR/bad-reg.rs:151:31
    |
 LL |         asm!("", out("cr") _, out("cr1") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr1`
@@ -147,7 +147,7 @@ LL |         asm!("", out("cr") _, out("cr1") _);
    |                  register `cr`
 
 error: register `cr2` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:152:31
+  --> $DIR/bad-reg.rs:153:31
    |
 LL |         asm!("", out("cr") _, out("cr2") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr2`
@@ -155,7 +155,7 @@ LL |         asm!("", out("cr") _, out("cr2") _);
    |                  register `cr`
 
 error: register `cr3` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:154:31
+  --> $DIR/bad-reg.rs:155:31
    |
 LL |         asm!("", out("cr") _, out("cr3") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr3`
@@ -163,7 +163,7 @@ LL |         asm!("", out("cr") _, out("cr3") _);
    |                  register `cr`
 
 error: register `cr4` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:156:31
+  --> $DIR/bad-reg.rs:157:31
    |
 LL |         asm!("", out("cr") _, out("cr4") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr4`
@@ -171,7 +171,7 @@ LL |         asm!("", out("cr") _, out("cr4") _);
    |                  register `cr`
 
 error: register `cr5` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:158:31
+  --> $DIR/bad-reg.rs:159:31
    |
 LL |         asm!("", out("cr") _, out("cr5") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr5`
@@ -179,7 +179,7 @@ LL |         asm!("", out("cr") _, out("cr5") _);
    |                  register `cr`
 
 error: register `cr6` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:160:31
+  --> $DIR/bad-reg.rs:161:31
    |
 LL |         asm!("", out("cr") _, out("cr6") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr6`
@@ -187,7 +187,7 @@ LL |         asm!("", out("cr") _, out("cr6") _);
    |                  register `cr`
 
 error: register `cr7` conflicts with register `cr`
-  --> $DIR/bad-reg.rs:162:31
+  --> $DIR/bad-reg.rs:163:31
    |
 LL |         asm!("", out("cr") _, out("cr7") _);
    |                  -----------  ^^^^^^^^^^^^ register `cr7`
@@ -195,13 +195,13 @@ LL |         asm!("", out("cr") _, out("cr7") _);
    |                  register `cr`
 
 error: cannot use register `r13`: r13 is a reserved register on this target
-  --> $DIR/bad-reg.rs:40:18
+  --> $DIR/bad-reg.rs:41:18
    |
 LL |         asm!("", out("r13") _);
    |                  ^^^^^^^^^^^^
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:63:27
+  --> $DIR/bad-reg.rs:64:27
    |
 LL |         asm!("", in("v0") x); // FIXME: should be ok if vsx is available
    |                           ^
@@ -209,7 +209,7 @@ LL |         asm!("", in("v0") x); // FIXME: should be ok if vsx is available
    = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:66:28
+  --> $DIR/bad-reg.rs:67:28
    |
 LL |         asm!("", out("v0") x); // FIXME: should be ok if vsx is available
    |                            ^
@@ -217,7 +217,7 @@ LL |         asm!("", out("v0") x); // FIXME: should be ok if vsx is available
    = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:74:35
+  --> $DIR/bad-reg.rs:75:35
    |
 LL |         asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is available
    |                                   ^
@@ -225,7 +225,7 @@ LL |         asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is avai
    = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:96:27
+  --> $DIR/bad-reg.rs:97:27
    |
 LL |         asm!("", in("cr") x);
    |                           ^
@@ -233,7 +233,7 @@ LL |         asm!("", in("cr") x);
    = note: register class `cr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:99:28
+  --> $DIR/bad-reg.rs:100:28
    |
 LL |         asm!("", out("cr") x);
    |                            ^
@@ -241,7 +241,7 @@ LL |         asm!("", out("cr") x);
    = note: register class `cr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:102:33
+  --> $DIR/bad-reg.rs:103:33
    |
 LL |         asm!("/* {} */", in(cr) x);
    |                                 ^
@@ -249,7 +249,7 @@ LL |         asm!("/* {} */", in(cr) x);
    = note: register class `cr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:109:28
+  --> $DIR/bad-reg.rs:110:28
    |
 LL |         asm!("", in("ctr") x);
    |                            ^
@@ -257,7 +257,7 @@ LL |         asm!("", in("ctr") x);
    = note: register class `ctr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:112:29
+  --> $DIR/bad-reg.rs:113:29
    |
 LL |         asm!("", out("ctr") x);
    |                             ^
@@ -265,7 +265,7 @@ LL |         asm!("", out("ctr") x);
    = note: register class `ctr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:115:34
+  --> $DIR/bad-reg.rs:116:34
    |
 LL |         asm!("/* {} */", in(ctr) x);
    |                                  ^
@@ -273,7 +273,7 @@ LL |         asm!("/* {} */", in(ctr) x);
    = note: register class `ctr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:122:27
+  --> $DIR/bad-reg.rs:123:27
    |
 LL |         asm!("", in("lr") x);
    |                           ^
@@ -281,7 +281,7 @@ LL |         asm!("", in("lr") x);
    = note: register class `lr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:125:28
+  --> $DIR/bad-reg.rs:126:28
    |
 LL |         asm!("", out("lr") x);
    |                            ^
@@ -289,7 +289,7 @@ LL |         asm!("", out("lr") x);
    = note: register class `lr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:128:33
+  --> $DIR/bad-reg.rs:129:33
    |
 LL |         asm!("/* {} */", in(lr) x);
    |                                 ^
@@ -297,7 +297,7 @@ LL |         asm!("/* {} */", in(lr) x);
    = note: register class `lr` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:135:28
+  --> $DIR/bad-reg.rs:136:28
    |
 LL |         asm!("", in("xer") x);
    |                            ^
@@ -305,7 +305,7 @@ LL |         asm!("", in("xer") x);
    = note: register class `xer` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:138:29
+  --> $DIR/bad-reg.rs:139:29
    |
 LL |         asm!("", out("xer") x);
    |                             ^
@@ -313,7 +313,7 @@ LL |         asm!("", out("xer") x);
    = note: register class `xer` supports these types: 
 
 error: type `i32` cannot be used with this register class
-  --> $DIR/bad-reg.rs:141:34
+  --> $DIR/bad-reg.rs:142:34
    |
 LL |         asm!("/* {} */", in(xer) x);
    |                                  ^

@@ -423,7 +423,21 @@ impl FlycheckActor {
 
                     tracing::debug!(?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
-                    match CommandHandle::spawn(command, CargoCheckParser, sender) {
+                    match CommandHandle::spawn(
+                        command,
+                        CargoCheckParser,
+                        sender,
+                        match &self.config {
+                            FlycheckConfig::CargoCommand { options, .. } => Some(
+                                options
+                                    .target_dir
+                                    .as_deref()
+                                    .unwrap_or("target".as_ref())
+                                    .join(format!("rust-analyzer/flycheck{}", self.id)),
+                            ),
+                            _ => None,
+                        },
+                    ) {
                         Ok(command_handle) => {
                             tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
@@ -622,6 +636,7 @@ impl FlycheckActor {
                 {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
+                cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
                 cmd.arg(command);
 
                 match scope {

@@ -10,7 +10,7 @@ use hir::{
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
-    base_db::{RootQueryDb, salsa},
+    base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
@@ -413,7 +413,7 @@ pub(crate) fn runnable_impl(
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
-    let params = salsa::attach(sema.db, || {
+    let params = hir::attach_db(sema.db, || {
         if ty_args.peek().is_some() {
             format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
         } else {
@@ -522,7 +522,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
             let mut ty_args = ty.generic_parameters(db, display_target).peekable();
             format_to!(path, "{}", name.display(db, edition));
             if ty_args.peek().is_some() {
-                salsa::attach(db, || {
+                hir::attach_db(db, || {
                     format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
                 });
             }
