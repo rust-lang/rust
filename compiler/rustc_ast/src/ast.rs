@@ -3636,49 +3636,26 @@ pub struct Trait {
     pub items: ThinVec<Box<AssocItem>>,
 }
 
-/// The location of a where clause on a `TyAlias` (`Span`) and whether there was
-/// a `where` keyword (`bool`). This is split out from `WhereClause`, since there
-/// are two locations for where clause on type aliases, but their predicates
-/// are concatenated together.
-///
-/// Take this example:
-/// ```ignore (only-for-syntax-highlight)
-/// trait Foo {
-///   type Assoc<'a, 'b> where Self: 'a, Self: 'b;
-/// }
-/// impl Foo for () {
-///   type Assoc<'a, 'b> where Self: 'a = () where Self: 'b;
-///   //                 ^^^^^^^^^^^^^^ first where clause
-///   //                                     ^^^^^^^^^^^^^^ second where clause
-/// }
-/// ```
-///
-/// If there is no where clause, then this is `false` with `DUMMY_SP`.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, Default, Walkable)]
-pub struct TyAliasWhereClause {
-    pub has_where_token: bool,
-    pub span: Span,
-}
-
-/// The span information for the two where clauses on a `TyAlias`.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, Default, Walkable)]
-pub struct TyAliasWhereClauses {
-    /// Before the equals sign.
-    pub before: TyAliasWhereClause,
-    /// After the equals sign.
-    pub after: TyAliasWhereClause,
-    /// The index in `TyAlias.generics.where_clause.predicates` that would split
-    /// into predicates from the where clause before the equals sign and the ones
-    /// from the where clause after the equals sign.
-    pub split: usize,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub ident: Ident,
     pub generics: Generics,
-    pub where_clauses: TyAliasWhereClauses,
+    /// There are two locations for where clause on type aliases. This represents the second
+    /// where clause, before the semicolon. The first where clause is stored inside `generics`.
+    ///
+    /// Take this example:
+    /// ```ignore (only-for-syntax-highlight)
+    /// trait Foo {
+    ///   type Assoc<'a, 'b> where Self: 'a, Self: 'b;
+    /// }
+    /// impl Foo for () {
+    ///   type Assoc<'a, 'b> where Self: 'a = () where Self: 'b;
+    ///   //                 ^^^^^^^^^^^^^^ before where clause
+    ///   //                                     ^^^^^^^^^^^^^^ after where clause
+    /// }
+    /// ```
+    pub after_where_clause: WhereClause,
     #[visitable(extra = BoundKind::Bound)]
     pub bounds: GenericBounds,
     pub ty: Option<Box<Ty>>,
