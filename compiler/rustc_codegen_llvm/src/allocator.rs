@@ -1,13 +1,13 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, default_fn_name, global_fn_name,
+    AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, SpecialAllocatorMethod,
+    default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
-use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::attributes::llfn_attrs_from_instance;
@@ -65,12 +65,12 @@ pub(crate) unsafe fn codegen(
         let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
         let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-        let alloc_attr_flag = match method.name {
-            sym::alloc => CodegenFnAttrFlags::ALLOCATOR,
-            sym::dealloc => CodegenFnAttrFlags::DEALLOCATOR,
-            sym::realloc => CodegenFnAttrFlags::REALLOCATOR,
-            sym::alloc_zeroed => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
-            _ => CodegenFnAttrFlags::empty(),
+        let alloc_attr_flag = match method.special {
+            Some(SpecialAllocatorMethod::Alloc) => CodegenFnAttrFlags::ALLOCATOR,
+            Some(SpecialAllocatorMethod::Dealloc) => CodegenFnAttrFlags::DEALLOCATOR,
+            Some(SpecialAllocatorMethod::Realloc) => CodegenFnAttrFlags::REALLOCATOR,
+            Some(SpecialAllocatorMethod::AllocZeroed) => CodegenFnAttrFlags::ALLOCATOR_ZEROED,
+            None => CodegenFnAttrFlags::empty(),
         };
 
         let mut attrs = CodegenFnAttrs::new();
