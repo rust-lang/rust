@@ -219,11 +219,11 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
                     TypeKind::Float if self.inner_size() == 32 => "float".to_string(),
                     TypeKind::Mask => format!(
                         "__mmask{}",
-                        self.bit_len.expect(format!("self: {:#?}", self).as_str())
+                        self.bit_len.expect(format!("self: {self:#?}").as_str())
                     ),
                     TypeKind::Vector => format!(
                         "__m{}i",
-                        self.bit_len.expect(format!("self: {:#?}", self).as_str())
+                        self.bit_len.expect(format!("self: {self:#?}").as_str())
                     ),
                     _ => self.c_scalar_type(),
                 },

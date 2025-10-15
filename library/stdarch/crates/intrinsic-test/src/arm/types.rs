@@ -14,10 +14,10 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                 (None, None) => format!("{const_prefix}{prefix}{bit_len}_t"),
                 (Some(simd), None) => format!("{prefix}{bit_len}x{simd}_t"),
                 (Some(simd), Some(vec)) => format!("{prefix}{bit_len}x{simd}x{vec}_t"),
-                (None, Some(_)) => todo!("{:#?}", self), // Likely an invalid case
+                (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
             }
         } else {
-            todo!("{:#?}", self)
+            todo!("{self:#?}")
         }
     }
 
@@ -58,14 +58,14 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     // The ACLE doesn't support 64-bit polynomial loads on Armv7
                     // if armv7 and bl == 64, use "s", else "p"
                     TypeKind::Poly => if choose_workaround && *bl == 64 {"s"} else {"p"},
-                    x => todo!("get_load_function TypeKind: {:#?}", x),
+                    x => todo!("get_load_function TypeKind: {x:#?}"),
                 },
                 size = bl,
                 quad = quad,
                 len = vec_len.unwrap_or(1),
             )
         } else {
-            todo!("get_load_function IntrinsicType: {:#?}", self)
+            todo!("get_load_function IntrinsicType: {self:#?}")
         }
     }
 
@@ -90,13 +90,13 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     TypeKind::Int(Sign::Signed) => "s",
                     TypeKind::Float => "f",
                     TypeKind::Poly => "p",
-                    x => todo!("get_load_function TypeKind: {:#?}", x),
+                    x => todo!("get_load_function TypeKind: {x:#?}"),
                 },
                 size = bl,
                 quad = quad,
             )
         } else {
-            todo!("get_lane_function IntrinsicType: {:#?}", self)
+            todo!("get_lane_function IntrinsicType: {self:#?}")
         }
     }
 
@@ -143,7 +143,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
                     TypeKind::Int(Sign::Signed) => format!("int{}_t", self.inner_size()),
                     TypeKind::Int(Sign::Unsigned) => format!("uint{}_t", self.inner_size()),
                     TypeKind::Poly => format!("poly{}_t", self.inner_size()),
-                    ty => todo!("print_result_c - Unknown type: {:#?}", ty),
+                    ty => todo!("print_result_c - Unknown type: {ty:#?}"),
                 },
                 promote = self.generate_final_type_cast(),
             )

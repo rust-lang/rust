@@ -80,7 +80,7 @@ impl TypeKind {
             Self::Poly => "poly",
             Self::Char(Sign::Signed) => "char",
             Self::Vector => "int",
-            _ => unreachable!("Not used: {:#?}", self),
+            _ => unreachable!("Not used: {self:#?}"),
         }
     }
 
@@ -94,7 +94,7 @@ impl TypeKind {
             Self::Poly => "u",
             Self::Char(Sign::Unsigned) => "u",
             Self::Char(Sign::Signed) => "i",
-            _ => unreachable!("Unused type kind: {:#?}", self),
+            _ => unreachable!("Unused type kind: {self:#?}"),
         }
     }
 }
@@ -134,7 +134,7 @@ impl IntrinsicType {
         if let Some(bl) = self.bit_len {
             cmp::max(bl, 8)
         } else {
-            unreachable!("{:#?}", self)
+            unreachable!("{self:#?}")
         }
     }
 
@@ -225,8 +225,8 @@ impl IntrinsicType {
                 ..
             } => {
                 let (prefix, suffix) = match language {
-                    Language::Rust => ("[", "]"),
-                    Language::C => ("{", "}"),
+                    Language::Rust => ('[', ']'),
+                    Language::C => ('{', '}'),
                 };
                 let body_indentation = indentation.nested();
                 format!(
@@ -262,12 +262,12 @@ impl IntrinsicType {
                 ..
             } => {
                 let (prefix, cast_prefix, cast_suffix, suffix) = match (language, bit_len) {
-                    (&Language::Rust, 16) => ("[", "f16::from_bits(", ")", "]"),
-                    (&Language::Rust, 32) => ("[", "f32::from_bits(", ")", "]"),
-                    (&Language::Rust, 64) => ("[", "f64::from_bits(", ")", "]"),
-                    (&Language::C, 16) => ("{", "cast<float16_t, uint16_t>(", ")", "}"),
-                    (&Language::C, 32) => ("{", "cast<float, uint32_t>(", ")", "}"),
-                    (&Language::C, 64) => ("{", "cast<double, uint64_t>(", ")", "}"),
+                    (&Language::Rust, 16) => ('[', "f16::from_bits(", ")", ']'),
+                    (&Language::Rust, 32) => ('[', "f32::from_bits(", ")", ']'),
+                    (&Language::Rust, 64) => ('[', "f64::from_bits(", ")", ']'),
+                    (&Language::C, 16) => ('{', "cast<float16_t, uint16_t>(", ")", '}'),
+                    (&Language::C, 32) => ('{', "cast<float, uint32_t>(", ")", '}'),
+                    (&Language::C, 64) => ('{', "cast<double, uint64_t>(", ")", '}'),
                     _ => unreachable!(),
                 };
                 format!(
@@ -288,8 +288,8 @@ impl IntrinsicType {
                 ..
             } => {
                 let (prefix, suffix) = match language {
-                    Language::Rust => ("[", "]"),
-                    Language::C => ("{", "}"),
+                    Language::Rust => ('[', ']'),
+                    Language::C => ('{', '}'),
                 };
                 let body_indentation = indentation.nested();
                 let effective_bit_len = 32;
@@ -317,7 +317,7 @@ impl IntrinsicType {
                         })
                 )
             }
-            _ => unimplemented!("populate random: {:#?}", self),
+            _ => unimplemented!("populate random: {self:#?}"),
         }
     }
 

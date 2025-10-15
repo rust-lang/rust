@@ -31,7 +31,7 @@ where
 
     pub fn to_c_type(&self) -> String {
         let prefix = if self.ty.constant { "const " } else { "" };
-        format!("{}{}", prefix, self.ty.c_type())
+        format!("{prefix}{}", self.ty.c_type())
     }
 
     pub fn generate_name(&self) -> String {
