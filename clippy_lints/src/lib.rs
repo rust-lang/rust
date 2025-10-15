@@ -765,7 +765,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(conf)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
     store.register_late_pass(move |_| Box::new(needless_pass_by_ref_mut::NeedlessPassByRefMut::new(conf)));
-    store.register_late_pass(|_| Box::new(non_canonical_impls::NonCanonicalImpls));
+    store.register_late_pass(|tcx| Box::new(non_canonical_impls::NonCanonicalImpls::new(tcx)));
     store.register_late_pass(move |_| Box::new(single_call_fn::SingleCallFn::new(conf)));
     store.register_early_pass(move || Box::new(raw_strings::RawStrings::new(conf)));
     store.register_late_pass(move |_| Box::new(legacy_numeric_constants::LegacyNumericConstants::new(conf)));
