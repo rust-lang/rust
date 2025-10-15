@@ -11,12 +11,12 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
@@ -122,18 +122,17 @@ struct CfgChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
-    fn fail(&self, location: Location, msg: impl AsRef<str>) {
+    fn fail(&self, location: Location, msg: impl std::fmt::Display) {
         // We might see broken MIR when other errors have already occurred.
-        if self.tcx.dcx().has_errors().is_none() {
-            span_bug!(
-                self.body.source_info(location).span,
+        // But we may have some cases of errors happening *after* MIR construction,
+        // for instance because of generic constants or coroutines.
+        self.tcx.dcx().span_delayed_bug(
+            self.body.source_info(location).span,
+            format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
-                self.when,
-                location,
-                msg.as_ref(),
-            );
-        }
+                self.body.source.instance, self.when, location, msg,
+            ),
+        );
     }
 
     fn check_edge(&mut self, location: Location, bb: BasicBlock, edge_kind: EdgeKind) {
@@ -1597,7 +1596,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ty::Int(int) => int.normalize(target_width).bit_width().unwrap(),
                     ty::Char => 32,
                     ty::Bool => 1,
-                    other => bug!("unhandled type: {:?}", other),
+                    other => {
+                        self.fail(location, format!("unhandled type in SwitchInt {other:?}"));
+                        // Magic number to avoid ICEing.
+                        1
+                    }
                 });
 
                 for (value, _) in targets.iter() {
