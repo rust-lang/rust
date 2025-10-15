@@ -1,4 +1,3 @@
-use rustc_abi::Align;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -39,8 +38,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         if context.is_borrow()
-            && let Some(disalign) =
-                util::is_disaligned(self.tcx, self.body, self.typing_env, *place)
+            && let Some(pack) = util::is_disaligned(self.tcx, self.body, self.typing_env, *place)
         {
             let def_id = self.body.source.instance.def_id();
             if let Some(impl_def_id) = self.tcx.trait_impl_of_assoc(def_id)
@@ -53,8 +51,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
             } else {
                 self.tcx.dcx().emit_err(errors::UnalignedPackedRef {
                     span: self.source_info.span,
-                    actual: disalign.actual.bytes(),
-                    expected: disalign.expected.map(Align::bytes).unwrap_or(0),
+                    actual: pack.bytes(),
                 });
             }
         }

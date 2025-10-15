@@ -70,10 +70,7 @@ mir_transform_tail_expr_local = {$is_generated_name ->
     }
 
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
-    .note = this field is only {$actual}-byte aligned, but its type requires {$expected ->
-        [0] more
-        *[other] {$expected}-byte
-    } alignment
+    .note = this field is only {$actual}-byte aligned, but its type requires more alignment
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
     .help = copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
