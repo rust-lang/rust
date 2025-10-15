@@ -36,20 +36,17 @@ pub(super) struct ItemLowerer<'a, 'hir> {
 /// clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
-    mut where_clauses: TyAliasWhereClauses,
+    after_where_clause: &ast::WhereClause,
     prefer_first: bool,
 ) {
+    let mut before = (generics.where_clause.has_where_token, generics.where_clause.span);
+    let mut after = (after_where_clause.has_where_token, after_where_clause.span);
     if !prefer_first {
-        (where_clauses.before, where_clauses.after) = (where_clauses.after, where_clauses.before);
+        (before, after) = (after, before);
     }
-    let where_clause =
-        if where_clauses.before.has_where_token || !where_clauses.after.has_where_token {
-            where_clauses.before
-        } else {
-            where_clauses.after
-        };
-    generics.where_clause.has_where_token = where_clause.has_where_token;
-    generics.where_clause.span = where_clause.span;
+    let where_clause = if before.0 || !after.0 { before } else { after };
+    generics.where_clause.has_where_token = where_clause.0;
+    generics.where_clause.span = where_clause.1;
 }
 
 impl<'a, 'hir> ItemLowerer<'a, 'hir> {
@@ -271,7 +268,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
-            ItemKind::TyAlias(box TyAlias { ident, generics, where_clauses, ty, .. }) => {
+            ItemKind::TyAlias(box TyAlias { ident, generics, after_where_clause, ty, .. }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -282,7 +279,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // opaque type Foo1: Trait
                 let ident = self.lower_ident(*ident);
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, *where_clauses, true);
+                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
+                add_ty_alias_where_clause(&mut generics, after_where_clause, true);
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
@@ -901,10 +899,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }
             AssocItemKind::Type(box TyAlias {
-                ident, generics, where_clauses, bounds, ty, ..
+                ident,
+                generics,
+                after_where_clause,
+                bounds,
+                ty,
+                ..
             }) => {
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
+                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
+                add_ty_alias_where_clause(&mut generics, after_where_clause, false);
                 let (generics, kind) = self.lower_generics(
                     &generics,
                     i.id,
@@ -1070,9 +1074,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (*ident, (generics, hir::ImplItemKind::Fn(sig, body_id)))
             }
-            AssocItemKind::Type(box TyAlias { ident, generics, where_clauses, ty, .. }) => {
+            AssocItemKind::Type(box TyAlias {
+                ident, generics, after_where_clause, ty, ..
+            }) => {
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
+                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
+                add_ty_alias_where_clause(&mut generics, after_where_clause, false);
                 (
                     *ident,
                     self.lower_generics(

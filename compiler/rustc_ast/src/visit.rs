@@ -471,8 +471,6 @@ macro_rules! common_visitor_and_walkers {
             TraitBoundModifiers,
             TraitObjectSyntax,
             TyAlias,
-            TyAliasWhereClause,
-            TyAliasWhereClauses,
             TyKind,
             TyPatKind,
             UnOp,

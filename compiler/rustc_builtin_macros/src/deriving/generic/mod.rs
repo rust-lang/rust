@@ -610,7 +610,7 @@ impl<'a> TraitDef<'a> {
                     defaultness: ast::Defaultness::Final,
                     ident,
                     generics: Generics::default(),
-                    where_clauses: ast::TyAliasWhereClauses::default(),
+                    after_where_clause: ast::WhereClause::default(),
                     bounds: Vec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
