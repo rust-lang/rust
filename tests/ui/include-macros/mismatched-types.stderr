@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/file.txt:0:1
    |
+LL |
+   | ^ expected `&[u8]`, found `&str`
    |
   ::: $DIR/mismatched-types.rs:2:12
    |

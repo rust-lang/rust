@@ -1,3 +1,4 @@
+//@ needs-rustc-debug-assertions
 //@ known-bug: #131762
 // ignore-tidy-linelength
 
