@@ -9,6 +9,7 @@ use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
 use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
@@ -17,7 +18,6 @@ use rustc_span::DUMMY_SP;
 use std::boxed::Box;
 use std::cell::Cell;
 use std::mem;
-use thin_vec::{ThinVec, thin_vec};
 
 declare_clippy_lint! {
     /// ### What it does

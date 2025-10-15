@@ -5,6 +5,7 @@ use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_fs_util::link_or_copy;
+use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
 use rustc_target::spec::SplitDebuginfo;
 

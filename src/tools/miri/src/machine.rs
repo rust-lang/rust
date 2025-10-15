@@ -16,6 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_hir::attrs::InlineAttr;
+use rustc_log::tracing;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;

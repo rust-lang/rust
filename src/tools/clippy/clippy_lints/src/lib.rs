@@ -27,9 +27,6 @@
     rustc::internal
 )]
 
-// FIXME: switch to something more ergonomic here, once available.
-// (Currently there is no way to opt into sysroot crates without `extern crate`.)
-extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
@@ -53,8 +50,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
-extern crate smallvec;
-extern crate thin_vec;
 
 #[macro_use]
 extern crate clippy_utils;

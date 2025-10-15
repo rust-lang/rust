@@ -5,13 +5,13 @@ use std::{ascii, mem};
 
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{Symbol, kw, sym};
-use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
