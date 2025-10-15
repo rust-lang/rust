@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::hash::Hash;
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
@@ -116,8 +116,7 @@ pub trait ExtraBackendMethods:
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> Self::Module;
 
     /// This generates the codegen unit and returns it along with

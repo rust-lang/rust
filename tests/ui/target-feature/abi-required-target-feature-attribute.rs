@@ -3,6 +3,7 @@
 //@ compile-flags: --target=x86_64-unknown-none --crate-type=lib
 //@ needs-llvm-components: x86
 //@ build-pass
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items, x87_target_feature)]
 #![no_core]
 

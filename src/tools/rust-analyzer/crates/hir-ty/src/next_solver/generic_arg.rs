@@ -1,7 +1,9 @@
 //! Things related to generic args in the next-trait-solver.
 
-use hir_def::GenericParamId;
+use hir_def::{GenericDefId, GenericParamId};
 use intern::{Interned, Symbol};
+use macros::{TypeFoldable, TypeVisitable};
+use rustc_type_ir::inherent::Const as _;
 use rustc_type_ir::{
     ClosureArgs, CollectAndApply, ConstVid, CoroutineArgs, CoroutineClosureArgs, FnSig, FnSigTys,
     GenericArgKind, IntTy, Interner, TermKind, TyKind, TyVid, TypeFoldable, TypeVisitable,
@@ -22,7 +24,7 @@ use super::{
     interned_vec_db,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum GenericArg<'db> {
     Ty(Ty<'db>),
     Lifetime(Region<'db>),
@@ -54,10 +56,25 @@ impl<'db> GenericArg<'db> {
         }
     }
 
+    pub fn konst(self) -> Option<Const<'db>> {
+        match self.kind() {
+            GenericArgKind::Const(konst) => Some(konst),
+            _ => None,
+        }
+    }
+
     pub fn region(self) -> Option<Region<'db>> {
         match self.kind() {
             GenericArgKind::Lifetime(r) => Some(r),
             _ => None,
+        }
+    }
+
+    pub fn error_from_id(interner: DbInterner<'db>, id: GenericParamId) -> GenericArg<'db> {
+        match id {
+            GenericParamId::TypeParamId(_) => Ty::new_error(interner, ErrorGuaranteed).into(),
+            GenericParamId::ConstParamId(_) => Const::error(interner).into(),
+            GenericParamId::LifetimeParamId(_) => Region::error(interner).into(),
         }
     }
 }
@@ -71,7 +88,7 @@ impl<'db> From<Term<'db>> for GenericArg<'db> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub enum Term<'db> {
     Ty(Ty<'db>),
     Const(Const<'db>),
@@ -125,39 +142,6 @@ impl<'db> IntoKind for GenericArg<'db> {
             GenericArg::Ty(ty) => GenericArgKind::Type(ty),
             GenericArg::Lifetime(region) => GenericArgKind::Lifetime(region),
             GenericArg::Const(c) => GenericArgKind::Const(c),
-        }
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for GenericArg<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        match self {
-            GenericArg::Lifetime(lt) => lt.visit_with(visitor),
-            GenericArg::Ty(ty) => ty.visit_with(visitor),
-            GenericArg::Const(ct) => ct.visit_with(visitor),
-        }
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for GenericArg<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        match self.kind() {
-            GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-        }
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        match self.kind() {
-            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
-            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
-            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
         }
     }
 }
@@ -216,6 +200,66 @@ impl<'db> GenericArgs<'db> {
         interner.mk_args(&args)
     }
 
+    /// Creates an all-error `GenericArgs`.
+    pub fn error_for_item(interner: DbInterner<'db>, def_id: SolverDefId) -> GenericArgs<'db> {
+        GenericArgs::for_item(interner, def_id, |_, _, id, _| {
+            GenericArg::error_from_id(interner, id)
+        })
+    }
+
+    /// Like `for_item`, but prefers the default of a parameter if it has any.
+    pub fn for_item_with_defaults<F>(
+        interner: DbInterner<'db>,
+        def_id: GenericDefId,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let defaults = interner.db.generic_defaults_ns(def_id);
+        Self::for_item(interner, def_id.into(), |name, idx, id, prev| {
+            match defaults.get(idx as usize) {
+                Some(default) => default.instantiate(interner, prev),
+                None => fallback(name, idx, id, prev),
+            }
+        })
+    }
+
+    /// Like `for_item()`, but calls first uses the args from `first`.
+    pub fn fill_rest<F>(
+        interner: DbInterner<'db>,
+        def_id: SolverDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let mut iter = first.into_iter();
+        Self::for_item(interner, def_id, |name, idx, id, prev| {
+            iter.next().unwrap_or_else(|| fallback(name, idx, id, prev))
+        })
+    }
+
+    /// Appends default param values to `first` if needed. Params without default will call `fallback()`.
+    pub fn fill_with_defaults<F>(
+        interner: DbInterner<'db>,
+        def_id: GenericDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+        mut fallback: F,
+    ) -> GenericArgs<'db>
+    where
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
+    {
+        let defaults = interner.db.generic_defaults_ns(def_id);
+        Self::fill_rest(interner, def_id.into(), first, |name, idx, id, prev| {
+            defaults
+                .get(idx as usize)
+                .map(|default| default.instantiate(interner, prev))
+                .unwrap_or_else(|| fallback(name, idx, id, prev))
+        })
+    }
+
     fn fill_item<F>(
         args: &mut SmallVec<[GenericArg<'db>; 8]>,
         interner: DbInterner<'_>,
@@ -270,6 +314,18 @@ impl<'db> GenericArgs<'db> {
                 unreachable!("unexpected closure sig");
             }
         }
+    }
+
+    pub fn types(self) -> impl Iterator<Item = Ty<'db>> {
+        self.iter().filter_map(|it| it.as_type())
+    }
+
+    pub fn consts(self) -> impl Iterator<Item = Const<'db>> {
+        self.iter().filter_map(|it| it.as_const())
+    }
+
+    pub fn regions(self) -> impl Iterator<Item = Region<'db>> {
+        self.iter().filter_map(|it| it.as_region())
     }
 }
 
@@ -484,36 +540,6 @@ impl<'db> From<Ty<'db>> for Term<'db> {
 impl<'db> From<Const<'db>> for Term<'db> {
     fn from(value: Const<'db>) -> Self {
         Self::Const(value)
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for Term<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        match self {
-            Term::Ty(ty) => ty.visit_with(visitor),
-            Term::Const(ct) => ct.visit_with(visitor),
-        }
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for Term<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        match self.kind() {
-            TermKind::Ty(ty) => ty.try_fold_with(folder).map(Into::into),
-            TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-        }
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        match self.kind() {
-            TermKind::Ty(ty) => ty.fold_with(folder).into(),
-            TermKind::Const(ct) => ct.fold_with(folder).into(),
-        }
     }
 }
 

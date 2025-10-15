@@ -1091,6 +1091,45 @@ fn return_value_no_block() {
 }
 
 #[test]
+fn break_unit_block() {
+    check_edit("break", r#"fn f() { loop { break; $0 } }"#, r#"fn f() { loop { break; break; } }"#);
+    check_edit("break", r#"fn f() { loop { $0 } }"#, r#"fn f() { loop { break; } }"#);
+}
+
+#[test]
+fn break_unit_no_block() {
+    check_edit(
+        "break",
+        r#"fn f() { loop { break; match () { () => $0 } } }"#,
+        r#"fn f() { loop { break; match () { () => break } } }"#,
+    );
+
+    check_edit(
+        "break",
+        r#"fn f() { loop { match () { () => $0 } } }"#,
+        r#"fn f() { loop { match () { () => break } } }"#,
+    );
+}
+
+#[test]
+fn break_value_block() {
+    check_edit(
+        "break",
+        r#"fn f() -> i32 { loop { $0 } }"#,
+        r#"fn f() -> i32 { loop { break $0; } }"#,
+    );
+}
+
+#[test]
+fn break_value_no_block() {
+    check_edit(
+        "break",
+        r#"fn f() -> i32 { loop { match () { () => $0 } } }"#,
+        r#"fn f() -> i32 { loop { match () { () => break $0 } } }"#,
+    );
+}
+
+#[test]
 fn else_completion_after_if() {
     check(
         r#"

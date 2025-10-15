@@ -52,6 +52,7 @@ debug = 2
 
 [workspace.dependencies]
 # local crates
+macros = { path = "./crates/macros", version = "0.0.0" }
 base-db = { path = "./crates/base-db", version = "0.0.0" }
 cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
 hir = { path = "./crates/hir", version = "0.0.0" }
@@ -87,14 +88,14 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.132", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.132", default-features = false }
-ra-ap-rustc_index = { version = "0.132", default-features = false }
-ra-ap-rustc_abi = { version = "0.132", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.132", default-features = false }
-ra-ap-rustc_ast_ir = { version = "0.132", default-features = false }
-ra-ap-rustc_type_ir = { version = "0.132", default-features = false }
-ra-ap-rustc_next_trait_solver = { version = "0.132", default-features = false }
+ra-ap-rustc_lexer = { version = "0.133", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.133", default-features = false }
+ra-ap-rustc_index = { version = "0.133", default-features = false }
+ra-ap-rustc_abi = { version = "0.133", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.133", default-features = false }
+ra-ap-rustc_ast_ir = { version = "0.133", default-features = false }
+ra-ap-rustc_type_ir = { version = "0.133", default-features = false }
+ra-ap-rustc_next_trait_solver = { version = "0.133", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -137,12 +138,12 @@ rayon = "1.10.0"
 rowan = "=0.15.15"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.23.0", default-features = true, features = [
+salsa = { version = "0.24.0", default-features = true, features = [
     "rayon",
     "salsa_unstable",
     "macros",
 ] }
-salsa-macros = "0.23.0"
+salsa-macros = "0.24.0"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }

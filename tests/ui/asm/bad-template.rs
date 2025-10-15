@@ -6,6 +6,7 @@
 
 //@ [x86_64] needs-llvm-components: x86
 //@ [aarch64] needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

@@ -455,7 +455,7 @@ interface TestItem {
     // A human readable name for this test
     label: string;
     // The kind of this test item. Based on the kind,
-	// an icon is chosen by the editor.
+    // an icon is chosen by the editor.
     kind: "package" | "module" | "test";
     // True if this test may have children not available eagerly
     canResolveChildren: boolean;
@@ -467,7 +467,7 @@ interface TestItem {
     // like debugging, this field is useful.
     // Note that this field includes some information about label and location as well, but
     // those exist just for keeping things in sync with other methods of running runnables
-    // (for example using one consistent name in the vscode's launch.json) so for any propose
+    // (for example using one consistent name in the vscode's launch.json) so for any purpose
     // other than running tests this field should not be used.
     runnable?: Runnable | undefined;
 };
@@ -475,11 +475,11 @@ interface TestItem {
 interface DiscoverTestResults {
     // The discovered tests.
     tests: TestItem[];
-    // For each test which its id is in this list, the response
+    // For each test whose id is in this list, the response
     // contains all tests that are children of this test, and
     // client should remove old tests not included in the response.
     scope: string[] | undefined;
-    // For each file which its uri is in this list, the response
+    // For each file whose uri is in this list, the response
     // contains all tests that are located in this file, and
     // client should remove old tests not included in the response.
     scopeFile: lc.TextDocumentIdentifier[] | undefined;
@@ -491,7 +491,7 @@ interface DiscoverTestResults {
 **Notification:** `DiscoverTestResults`
 
 This notification is sent from the server to the client when the
-server detect changes in the existing tests. The `DiscoverTestResults` is
+server detects changes in the existing tests. The `DiscoverTestResults` is
 the same as the one in `experimental/discoverTest` response.
 
 **Method:** `experimental/runTest`
@@ -527,7 +527,7 @@ after this.
 
 This notification is sent from the client to the server when the user is no longer
 interested in the test results. The server should clean up its resources and send
-a `experimental/endRunTest` when is done.
+a `experimental/endRunTest` when it is done.
 
 **Method:** `experimental/changeTestState`
 
@@ -648,8 +648,8 @@ interface ServerStatusParams {
 ```
 
 This notification is sent from server to client.
-The client can use it to display *persistent* status to the user (in modline).
-It is similar to the `showMessage`, but is intended for stares rather than point-in-time events.
+The client can use it to display *persistent* status to the user (in the mode line).
+It is similar to the `showMessage`, but is intended for status rather than point-in-time events.
 
 Note that this functionality is intended primarily to inform the end user about the state of the server.
 In particular, it's valid for the client to completely ignore this extension.
@@ -1070,13 +1070,13 @@ export interface RecursiveMemoryLayoutNode = {
     size: number;
     /// Alignment of the type in bytes
     alignment: number;
-    /// Offset of the type relative to its parent (or 0 if its the root)
+    /// Offset of the type relative to its parent (or 0 if it's the root)
     offset: number;
-    /// Index of the node's parent (or -1 if its the root)
+    /// Index of the node's parent (or -1 if it's the root)
     parent_idx: number;
     /// Index of the node's children (or -1 if it does not have children)
     children_start: number;
-    /// Number of child nodes (unspecified it does not have children)
+    /// Number of child nodes (unspecified if it does not have children)
     children_len: number;
 };
 

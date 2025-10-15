@@ -5,20 +5,21 @@
 
 use std::fmt;
 
-use hir_def::{TypeAliasId, lang_item::LangItem};
+use hir_def::{TraitId, TypeAliasId, lang_item::LangItem};
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use tracing::debug;
 use triomphe::Arc;
 
-use crate::next_solver::infer::InferOk;
 use crate::{
     TraitEnvironment,
     db::HirDatabase,
     infer::unify::InferenceTable,
     next_solver::{
-        Ty, TyKind,
-        infer::traits::{ObligationCause, PredicateObligations},
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        Canonical, TraitRef, Ty, TyKind,
+        infer::{
+            InferOk,
+            traits::{Obligation, ObligationCause, PredicateObligations},
+        },
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -35,17 +36,16 @@ const AUTODEREF_RECURSION_LIMIT: usize = 20;
 pub fn autoderef<'db>(
     db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
-    ty: crate::Canonical<crate::Ty>,
-) -> impl Iterator<Item = crate::Ty> + use<> {
+    ty: Canonical<'db, Ty<'db>>,
+) -> impl Iterator<Item = Ty<'db>> + use<'db> {
     let mut table = InferenceTable::new(db, env);
-    let interner = table.interner;
     let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty.to_nextsolver(interner));
+    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
         // resolved, just replace with fallback type.
-        let resolved = autoderef.table.resolve_completely(ty.to_chalk(interner));
+        let resolved = autoderef.table.resolve_completely(ty);
 
         // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
         // would revisit some already visited types. Stop here to avoid duplication.
@@ -101,6 +101,7 @@ struct AutoderefSnapshot<'db, Steps> {
 
 #[derive(Clone, Copy)]
 struct AutoderefTraits {
+    trait_: TraitId,
     trait_target: TypeAliasId,
 }
 
@@ -215,16 +216,26 @@ impl<'a, 'db, Steps: TrackAutoderefSteps<'db>> Autoderef<'a, 'db, Steps> {
             Some(it) => Some(*it),
             None => {
                 let traits = if self.use_receiver_trait {
-                    AutoderefTraits {
-                        trait_target: LangItem::ReceiverTarget
-                            .resolve_type_alias(self.table.db, self.table.trait_env.krate)
-                            .or_else(|| {
-                                LangItem::DerefTarget
-                                    .resolve_type_alias(self.table.db, self.table.trait_env.krate)
-                            })?,
-                    }
+                    (|| {
+                        Some(AutoderefTraits {
+                            trait_: LangItem::Receiver
+                                .resolve_trait(self.table.db, self.table.trait_env.krate)?,
+                            trait_target: LangItem::ReceiverTarget
+                                .resolve_type_alias(self.table.db, self.table.trait_env.krate)?,
+                        })
+                    })()
+                    .or_else(|| {
+                        Some(AutoderefTraits {
+                            trait_: LangItem::Deref
+                                .resolve_trait(self.table.db, self.table.trait_env.krate)?,
+                            trait_target: LangItem::DerefTarget
+                                .resolve_type_alias(self.table.db, self.table.trait_env.krate)?,
+                        })
+                    })?
                 } else {
                     AutoderefTraits {
+                        trait_: LangItem::Deref
+                            .resolve_trait(self.table.db, self.table.trait_env.krate)?,
                         trait_target: LangItem::DerefTarget
                             .resolve_type_alias(self.table.db, self.table.trait_env.krate)?,
                     }
@@ -236,10 +247,22 @@ impl<'a, 'db, Steps: TrackAutoderefSteps<'db>> Autoderef<'a, 'db, Steps> {
 
     fn overloaded_deref_ty(&mut self, ty: Ty<'db>) -> Option<Ty<'db>> {
         debug!("overloaded_deref_ty({:?})", ty);
-        let interner = self.table.interner;
+        let interner = self.table.interner();
 
         // <ty as Deref>, or whatever the equivalent trait is that we've been asked to walk.
-        let AutoderefTraits { trait_target } = self.autoderef_traits()?;
+        let AutoderefTraits { trait_, trait_target } = self.autoderef_traits()?;
+
+        let trait_ref = TraitRef::new(interner, trait_.into(), [ty]);
+        let obligation =
+            Obligation::new(interner, ObligationCause::new(), self.table.trait_env.env, trait_ref);
+        // We detect whether the self type implements `Deref` before trying to
+        // structurally normalize. We use `predicate_may_hold_opaque_types_jank`
+        // to support not-yet-defined opaque types. It will succeed for `impl Deref`
+        // but fail for `impl OtherTrait`.
+        if !self.table.infer_ctxt.predicate_may_hold_opaque_types_jank(&obligation) {
+            debug!("overloaded_deref_ty: cannot match obligation");
+            return None;
+        }
 
         let (normalized_ty, obligations) = structurally_normalize_ty(
             self.table,
@@ -316,7 +339,7 @@ pub(crate) fn overloaded_deref_ty<'db>(
     table: &InferenceTable<'db>,
     ty: Ty<'db>,
 ) -> Option<InferOk<'db, Ty<'db>>> {
-    let interner = table.interner;
+    let interner = table.interner();
 
     let trait_target = LangItem::DerefTarget.resolve_type_alias(table.db, table.trait_env.krate)?;
 

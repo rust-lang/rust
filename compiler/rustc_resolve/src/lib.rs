@@ -2332,30 +2332,44 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn field_idents(&self, def_id: DefId) -> Option<Vec<Ident>> {
         match def_id.as_local() {
             Some(def_id) => self.field_names.get(&def_id).cloned(),
-            None => Some(
-                self.tcx
-                    .associated_item_def_ids(def_id)
-                    .iter()
-                    .map(|&def_id| {
-                        Ident::new(self.tcx.item_name(def_id), self.tcx.def_span(def_id))
-                    })
-                    .collect(),
-            ),
+            None if matches!(
+                self.tcx.def_kind(def_id),
+                DefKind::Struct | DefKind::Union | DefKind::Variant
+            ) =>
+            {
+                Some(
+                    self.tcx
+                        .associated_item_def_ids(def_id)
+                        .iter()
+                        .map(|&def_id| {
+                            Ident::new(self.tcx.item_name(def_id), self.tcx.def_span(def_id))
+                        })
+                        .collect(),
+                )
+            }
+            _ => None,
         }
     }
 
     fn field_defaults(&self, def_id: DefId) -> Option<Vec<Symbol>> {
         match def_id.as_local() {
             Some(def_id) => self.field_defaults.get(&def_id).cloned(),
-            None => Some(
-                self.tcx
-                    .associated_item_def_ids(def_id)
-                    .iter()
-                    .filter_map(|&def_id| {
-                        self.tcx.default_field(def_id).map(|_| self.tcx.item_name(def_id))
-                    })
-                    .collect(),
-            ),
+            None if matches!(
+                self.tcx.def_kind(def_id),
+                DefKind::Struct | DefKind::Union | DefKind::Variant
+            ) =>
+            {
+                Some(
+                    self.tcx
+                        .associated_item_def_ids(def_id)
+                        .iter()
+                        .filter_map(|&def_id| {
+                            self.tcx.default_field(def_id).map(|_| self.tcx.item_name(def_id))
+                        })
+                        .collect(),
+                )
+            }
+            _ => None,
         }
     }
 

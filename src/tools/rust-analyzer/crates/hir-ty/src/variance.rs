@@ -1001,84 +1001,86 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
         // ));
         let (db, file_id) = TestDB::with_single_file(ra_fixture);
 
-        let mut defs: Vec<GenericDefId> = Vec::new();
-        let module = db.module_for_file_opt(file_id.file_id(&db)).unwrap();
-        let def_map = module.def_map(&db);
-        crate::tests::visit_module(&db, def_map, module.local_id, &mut |it| {
-            defs.push(match it {
-                ModuleDefId::FunctionId(it) => it.into(),
-                ModuleDefId::AdtId(it) => it.into(),
-                ModuleDefId::ConstId(it) => it.into(),
-                ModuleDefId::TraitId(it) => it.into(),
-                ModuleDefId::TypeAliasId(it) => it.into(),
-                _ => return,
-            })
-        });
-        let defs = defs
-            .into_iter()
-            .filter_map(|def| {
-                Some((
-                    def,
-                    match def {
-                        GenericDefId::FunctionId(it) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::AdtId(AdtId::StructId(it)) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::TraitId(it) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::TypeAliasId(it) => {
-                            let loc = it.lookup(&db);
-                            loc.source(&db).value.name().unwrap()
-                        }
-                        GenericDefId::ImplId(_) => return None,
-                        GenericDefId::ConstId(_) => return None,
-                        GenericDefId::StaticId(_) => return None,
-                    },
-                ))
-            })
-            .sorted_by_key(|(_, n)| n.syntax().text_range().start());
-        let mut res = String::new();
-        for (def, name) in defs {
-            let Some(variances) = db.variances_of(def) else {
-                continue;
-            };
-            format_to!(
-                res,
-                "{name}[{}]\n",
-                generics(&db, def)
-                    .iter()
-                    .map(|(_, param)| match param {
-                        GenericParamDataRef::TypeParamData(type_param_data) => {
-                            type_param_data.name.as_ref().unwrap()
-                        }
-                        GenericParamDataRef::ConstParamData(const_param_data) =>
-                            &const_param_data.name,
-                        GenericParamDataRef::LifetimeParamData(lifetime_param_data) => {
-                            &lifetime_param_data.name
-                        }
-                    })
-                    .zip_eq(&*variances)
-                    .format_with(", ", |(name, var), f| f(&format_args!(
-                        "{}: {var}",
-                        name.as_str()
-                    )))
-            );
-        }
+        crate::attach_db(&db, || {
+            let mut defs: Vec<GenericDefId> = Vec::new();
+            let module = db.module_for_file_opt(file_id.file_id(&db)).unwrap();
+            let def_map = module.def_map(&db);
+            crate::tests::visit_module(&db, def_map, module.local_id, &mut |it| {
+                defs.push(match it {
+                    ModuleDefId::FunctionId(it) => it.into(),
+                    ModuleDefId::AdtId(it) => it.into(),
+                    ModuleDefId::ConstId(it) => it.into(),
+                    ModuleDefId::TraitId(it) => it.into(),
+                    ModuleDefId::TypeAliasId(it) => it.into(),
+                    _ => return,
+                })
+            });
+            let defs = defs
+                .into_iter()
+                .filter_map(|def| {
+                    Some((
+                        def,
+                        match def {
+                            GenericDefId::FunctionId(it) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::AdtId(AdtId::EnumId(it)) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::AdtId(AdtId::StructId(it)) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::AdtId(AdtId::UnionId(it)) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::TraitId(it) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::TypeAliasId(it) => {
+                                let loc = it.lookup(&db);
+                                loc.source(&db).value.name().unwrap()
+                            }
+                            GenericDefId::ImplId(_) => return None,
+                            GenericDefId::ConstId(_) => return None,
+                            GenericDefId::StaticId(_) => return None,
+                        },
+                    ))
+                })
+                .sorted_by_key(|(_, n)| n.syntax().text_range().start());
+            let mut res = String::new();
+            for (def, name) in defs {
+                let Some(variances) = db.variances_of(def) else {
+                    continue;
+                };
+                format_to!(
+                    res,
+                    "{name}[{}]\n",
+                    generics(&db, def)
+                        .iter()
+                        .map(|(_, param)| match param {
+                            GenericParamDataRef::TypeParamData(type_param_data) => {
+                                type_param_data.name.as_ref().unwrap()
+                            }
+                            GenericParamDataRef::ConstParamData(const_param_data) =>
+                                &const_param_data.name,
+                            GenericParamDataRef::LifetimeParamData(lifetime_param_data) => {
+                                &lifetime_param_data.name
+                            }
+                        })
+                        .zip_eq(&*variances)
+                        .format_with(", ", |(name, var), f| f(&format_args!(
+                            "{}: {var}",
+                            name.as_str()
+                        )))
+                );
+            }
 
-        expected.assert_eq(&res);
+            expected.assert_eq(&res);
+        })
     }
 }

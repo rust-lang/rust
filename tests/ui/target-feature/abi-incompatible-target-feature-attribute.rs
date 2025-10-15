@@ -6,6 +6,7 @@
 //@[x86] needs-llvm-components: x86
 //@[riscv] compile-flags: --target=riscv32e-unknown-none-elf
 //@[riscv] needs-llvm-components: riscv
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items, riscv_target_feature, x87_target_feature)]
 #![no_core]
 

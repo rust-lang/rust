@@ -11,12 +11,12 @@ use ide_db::{
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
-use itertools::Either;
 use stdx::never;
 use syntax::{
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
-    TextRange, TextSize,
+    T, TextRange, TextSize,
     ast::{self, AstNode, AstToken},
+    match_ast,
 };
 
 use crate::{
@@ -113,12 +113,8 @@ pub(crate) fn complete_postfix(
     if let Some(parent) = dot_receiver_including_refs.syntax().parent()
         && let Some(second_ancestor) = parent.parent()
     {
-        let sec_ancestor_kind = second_ancestor.kind();
-        if let Some(expr) = <Either<ast::IfExpr, ast::WhileExpr>>::cast(second_ancestor) {
-            is_in_cond = match expr {
-                Either::Left(it) => it.condition().is_some_and(|cond| *cond.syntax() == parent),
-                Either::Right(it) => it.condition().is_some_and(|cond| *cond.syntax() == parent),
-            }
+        if let Some(parent_expr) = ast::Expr::cast(parent) {
+            is_in_cond = is_in_condition(&parent_expr);
         }
         match &try_enum {
             Some(try_enum) if is_in_cond => match try_enum {
@@ -147,7 +143,7 @@ pub(crate) fn complete_postfix(
                     .add_to(acc, ctx.db);
                 }
             },
-            _ if matches!(sec_ancestor_kind, STMT_LIST | EXPR_STMT) => {
+            _ if matches!(second_ancestor.kind(), STMT_LIST | EXPR_STMT) => {
                 postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
                     .add_to(acc, ctx.db);
                 postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
@@ -295,7 +291,7 @@ pub(crate) fn complete_postfix(
     )
     .add_to(acc, ctx.db);
 
-    if let BreakableKind::Block | BreakableKind::Loop = expr_ctx.in_breakable {
+    if let Some(BreakableKind::Block | BreakableKind::Loop) = expr_ctx.in_breakable {
         postfix_snippet(
             "break",
             "break expr",
@@ -452,6 +448,22 @@ fn add_custom_postfix_completions(
         },
     );
     None
+}
+
+pub(crate) fn is_in_condition(it: &ast::Expr) -> bool {
+    it.syntax()
+        .parent()
+        .and_then(|parent| {
+            Some(match_ast! { match parent {
+                ast::IfExpr(expr) => expr.condition()? == *it,
+                ast::WhileExpr(expr) => expr.condition()? == *it,
+                ast::MatchGuard(guard) => guard.condition()? == *it,
+                ast::BinExpr(bin_expr) => (bin_expr.op_token()?.kind() == T![&&])
+                    .then(|| is_in_condition(&bin_expr.into()))?,
+                _ => return None,
+            } })
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -647,6 +659,38 @@ fn main() {
 fn main() {
     let bar = Some(true);
     if let Some($0) = bar
+}
+"#,
+        );
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if true && bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    if true && let Some($0) = bar
+}
+"#,
+        );
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if true && true && bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    if true && true && let Some($0) = bar
 }
 "#,
         );

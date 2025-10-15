@@ -695,7 +695,7 @@ pub(super) fn definition(
                 DropInfo { drop_glue: field.ty(db).to_type(db).drop_glue(db), has_dtor: None }
             }
             Definition::Adt(Adt::Struct(strukt)) => {
-                let struct_drop_glue = strukt.ty_placeholders(db).drop_glue(db);
+                let struct_drop_glue = strukt.ty_params(db).drop_glue(db);
                 let mut fields_drop_glue = strukt
                     .fields(db)
                     .iter()
@@ -716,10 +716,10 @@ pub(super) fn definition(
             // Unions cannot have fields with drop glue.
             Definition::Adt(Adt::Union(union)) => DropInfo {
                 drop_glue: DropGlue::None,
-                has_dtor: Some(union.ty_placeholders(db).drop_glue(db) != DropGlue::None),
+                has_dtor: Some(union.ty_params(db).drop_glue(db) != DropGlue::None),
             },
             Definition::Adt(Adt::Enum(enum_)) => {
-                let enum_drop_glue = enum_.ty_placeholders(db).drop_glue(db);
+                let enum_drop_glue = enum_.ty_params(db).drop_glue(db);
                 let fields_drop_glue = enum_
                     .variants(db)
                     .iter()
@@ -748,7 +748,7 @@ pub(super) fn definition(
                 DropInfo { drop_glue: fields_drop_glue, has_dtor: None }
             }
             Definition::TypeAlias(type_alias) => {
-                DropInfo { drop_glue: type_alias.ty_placeholders(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: type_alias.ty_params(db).drop_glue(db), has_dtor: None }
             }
             Definition::Local(local) => {
                 DropInfo { drop_glue: local.ty(db).drop_glue(db), has_dtor: None }

@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase, VfsPath, salsa},
+    base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -228,32 +228,30 @@ impl StaticIndex<'_> {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
-                let it = salsa::attach(sema.db, || {
-                    self.tokens.insert(TokenStaticData {
-                        documentation: documentation_for_definition(&sema, def, scope_node),
-                        hover: Some(hover_for_definition(
-                            &sema,
-                            file_id,
-                            def,
-                            None,
-                            scope_node,
-                            None,
-                            false,
-                            &hover_config,
-                            edition,
-                            display_target,
-                        )),
-                        definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(
-                            |it| FileRange { file_id: it.file_id, range: it.focus_or_full_range() },
-                        ),
-                        references: vec![],
-                        moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
-                        display_name: def
-                            .name(self.db)
-                            .map(|name| name.display(self.db, edition).to_string()),
-                        signature: Some(def.label(self.db, display_target)),
-                        kind: def_to_kind(self.db, def),
-                    })
+                let it = self.tokens.insert(TokenStaticData {
+                    documentation: documentation_for_definition(&sema, def, scope_node),
+                    hover: Some(hover_for_definition(
+                        &sema,
+                        file_id,
+                        def,
+                        None,
+                        scope_node,
+                        None,
+                        false,
+                        &hover_config,
+                        edition,
+                        display_target,
+                    )),
+                    definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(|it| {
+                        FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
+                    }),
+                    references: vec![],
+                    moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
+                    display_name: def
+                        .name(self.db)
+                        .map(|name| name.display(self.db, edition).to_string()),
+                    signature: Some(def.label(self.db, display_target)),
+                    kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);
                 it
@@ -278,7 +276,7 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            match salsa::attach(self.db, || get_definitions(&sema, token.clone())) {
+            match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
                 Some(it) => {
                     for i in it {
                         add_token(i, range, &node);
@@ -295,37 +293,40 @@ impl StaticIndex<'_> {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
         let db = &analysis.db;
-        let work = all_modules(db).into_iter().filter(|module| {
-            let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
-            let source_root = db.source_root(source_root).source_root(db);
-            let is_vendored = match vendored_libs_config {
-                VendoredLibrariesConfig::Included { workspace_root } => source_root
-                    .path_for_file(&file_id.file_id(&analysis.db))
-                    .is_some_and(|module_path| module_path.starts_with(workspace_root)),
-                VendoredLibrariesConfig::Excluded => false,
-            };
+        hir::attach_db(db, || {
+            let work = all_modules(db).into_iter().filter(|module| {
+                let file_id = module.definition_source_file_id(db).original_file(db);
+                let source_root =
+                    db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
+                let source_root = db.source_root(source_root).source_root(db);
+                let is_vendored = match vendored_libs_config {
+                    VendoredLibrariesConfig::Included { workspace_root } => source_root
+                        .path_for_file(&file_id.file_id(&analysis.db))
+                        .is_some_and(|module_path| module_path.starts_with(workspace_root)),
+                    VendoredLibrariesConfig::Excluded => false,
+                };
 
-            !source_root.is_library || is_vendored
-        });
-        let mut this = StaticIndex {
-            files: vec![],
-            tokens: Default::default(),
-            analysis,
-            db,
-            def_map: Default::default(),
-        };
-        let mut visited_files = FxHashSet::default();
-        for module in work {
-            let file_id = module.definition_source_file_id(db).original_file(db);
-            if visited_files.contains(&file_id) {
-                continue;
+                !source_root.is_library || is_vendored
+            });
+            let mut this = StaticIndex {
+                files: vec![],
+                tokens: Default::default(),
+                analysis,
+                db,
+                def_map: Default::default(),
+            };
+            let mut visited_files = FxHashSet::default();
+            for module in work {
+                let file_id = module.definition_source_file_id(db).original_file(db);
+                if visited_files.contains(&file_id) {
+                    continue;
+                }
+                this.add_file(file_id.file_id(&analysis.db));
+                // mark the file
+                visited_files.insert(file_id);
             }
-            this.add_file(file_id.file_id(&analysis.db));
-            // mark the file
-            visited_files.insert(file_id);
-        }
-        this
+            this
+        })
     }
 }
 

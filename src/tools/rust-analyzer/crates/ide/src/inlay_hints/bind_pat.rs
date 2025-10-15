@@ -646,9 +646,9 @@ auto trait Sync {}
 fn main() {
     // The block expression wrapping disables the constructor hint hiding logic
     let _v = { Vec::<Box<&(dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<&(dyn Display + Sync)>>
+      //^^ Vec<Box<&(dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<*const (dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<*const (dyn Display + Sync)>>
+      //^^ Vec<Box<*const (dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<dyn Display + Sync + 'static>>::new() };
       //^^ Vec<Box<dyn Display + Sync + 'static>>
 }

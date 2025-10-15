@@ -18,7 +18,7 @@ use crate::{AssistContext, AssistId, Assists};
 pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax())?.module();
-    let ty = ctx.sema.type_of_expr(&peel_blocks(tail_expr.clone()))?.original();
+    let ty = ctx.sema.type_of_expr(&peel_blocks(tail_expr.clone()))?.adjusted();
     if ty.is_unit() {
         return None;
     }
@@ -417,6 +417,21 @@ mod tests {
             5
         }
     }
+}"#,
+        );
+    }
+
+    #[test]
+    fn infer_coerced_return_type_closure() {
+        check_assist(
+            add_return_type,
+            r#"fn foo() {
+    let f = ||$0 {loop {}};
+    let _: fn() -> i8 = f;
+}"#,
+            r#"fn foo() {
+    let f = || -> i8 {loop {}};
+    let _: fn() -> i8 = f;
 }"#,
         );
     }
