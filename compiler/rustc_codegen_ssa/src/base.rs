@@ -669,6 +669,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
     if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
         methods.push(AllocatorMethod {
             name: ALLOC_ERROR_HANDLER,
+            special: None,
             inputs: &[],
             output: AllocatorTy::Never,
         });
