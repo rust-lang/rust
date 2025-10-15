@@ -1,10 +1,10 @@
 use rustc_ast as ast;
 use rustc_ast::{GenericParamKind, ItemKind, MetaItemInner, MetaItemKind, StmtKind};
+use rustc_attr_parsing::validate_attr;
 use rustc_expand::base::{
     Annotatable, DeriveResolution, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier,
 };
 use rustc_feature::AttributeTemplate;
-use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_span::{ErrorGuaranteed, Ident, Span, sym};
 

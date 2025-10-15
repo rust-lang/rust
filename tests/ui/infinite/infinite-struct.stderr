@@ -10,7 +10,7 @@ LL | struct Take(Box<Take>);
    |             ++++    +
 
 error[E0072]: recursive type `Foo` has infinite size
-  --> $DIR/infinite-struct.rs:11:1
+  --> $DIR/infinite-struct.rs:12:1
    |
 LL | struct Foo {
    | ^^^^^^^^^^
@@ -23,6 +23,10 @@ LL |     x: Bar<Box<Foo>>,
    |            ++++   +
 
 error: reached the recursion limit finding the struct tail for `Take`
+  --> $DIR/infinite-struct.rs:1:1
+   |
+LL | struct Take(Take);
+   | ^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
 

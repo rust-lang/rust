@@ -3,9 +3,12 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_span::ErrorGuaranteed;
+use rustc_span::source_map::Spanned;
 
 use crate::mir::interpret::EvalToValTreeResult;
+use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
 use crate::query::CyclePlaceholder;
+use crate::traits::solve;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
@@ -170,6 +173,17 @@ impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
+impl EraseType
+    for Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>
+{
+    type Result = [u8; size_of::<
+        Result<
+            (&'static [Spanned<MonoItem<'static>>], &'static [Spanned<MonoItem<'static>>]),
+            NormalizationErrorInMono,
+        >,
+    >()];
+}
+
 impl<T> EraseType for Option<&'_ T> {
     type Result = [u8; size_of::<Option<&'static ()>>()];
 }
@@ -217,6 +231,10 @@ impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
 
 impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
     type Result = [u8; size_of::<(&'static (), &'static ())>()];
+}
+
+impl<T0> EraseType for (solve::QueryResult<'_>, &'_ T0) {
+    type Result = [u8; size_of::<(solve::QueryResult<'static>, &'static ())>()];
 }
 
 impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
@@ -313,7 +331,7 @@ trivial! {
     rustc_middle::traits::WellFormedLoc,
     rustc_middle::ty::adjustment::CoerceUnsizedInfo,
     rustc_middle::ty::AssocItem,
-    rustc_middle::ty::AssocItemContainer,
+    rustc_middle::ty::AssocContainer,
     rustc_middle::ty::Asyncness,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
@@ -343,6 +361,7 @@ trivial! {
     rustc_span::Symbol,
     rustc_span::Ident,
     rustc_target::spec::PanicStrategy,
+    rustc_target::spec::SanitizerSet,
     rustc_type_ir::Variance,
     u32,
     usize,

@@ -9,7 +9,7 @@
 # a custom configuration file can also be specified with `--config` to the build
 # system.
 #
-# Note that the following are equivelent, for more details see <https://toml.io/en/v1.0.0>.
+# Note that the following are equivalent, for more details see <https://toml.io/en/v1.0.0>.
 #
 #     build.verbose = 1
 #
@@ -325,6 +325,9 @@
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"
 
+# The path to (or name of) the resource compiler executable to use on Windows.
+#build.windows-rc = "rc.exe"
+
 # The path to the REUSE executable to use. Note that REUSE is not required in
 # most cases, as our tooling relies on a cached (and shrunk) copy of the
 # REUSE output present in the git repository and in our source tarballs.
@@ -345,9 +348,9 @@
 # want to use vendoring. See https://forge.rust-lang.org/infra/other-installation-methods.html#source-code.
 #build.vendor = if "is a tarball source" && "vendor" dir exists && ".cargo/config.toml" file exists { true } else { false }
 
-# Typically the build system will build the Rust compiler twice. The second
-# compiler, however, will simply use its own libraries to link against. If you
-# would rather to perform a full bootstrap, compiling the compiler three times,
+# If you build the compiler more than twice (stage3+) or the standard library more than once
+# (stage 2+), the third compiler and second library will get uplifted from stage2 and stage1,
+# respectively. If you would like to disable this uplifting, and rather perform a full bootstrap,
 # then you can set this option to true.
 #
 # This is only useful for verifying that rustc generates reproducible builds.
@@ -407,8 +410,11 @@
 #build.profiler = false
 
 # Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
-# sources are available.
+# Choosing true requires the LLVM submodule to be managed by bootstrap (i.e. not external)
+# so that `compiler-rt` sources are available.
+#
+# Setting this to a path removes the requirement for a C toolchain, but requires setting the
+# path to an existing library containing the builtins library from LLVM's compiler-rt.
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
@@ -470,9 +476,6 @@
 # when the stage 0 compiler is actually built from in-tree sources.
 #build.compiletest-allow-stage0 = false
 
-# Whether to use the precompiled stage0 libtest with compiletest.
-#build.compiletest-use-stage0-libtest = true
-
 # Default value for the `--extra-checks` flag of tidy.
 #
 # See `./x test tidy --help` for details.
@@ -482,7 +485,7 @@
 # Use `--extra-checks=''` to temporarily disable all extra checks.
 #
 # Automatically enabled in the "tools" profile.
-# Set to the empty string to force disable (recommeded for hdd systems).
+# Set to the empty string to force disable (recommended for hdd systems).
 #build.tidy-extra-checks = ""
 
 # Indicates whether ccache is used when building certain artifacts (e.g. LLVM).
@@ -755,15 +758,10 @@
 # Currently, the only standard options supported here are `"llvm"`, `"cranelift"` and `"gcc"`.
 #rust.codegen-backends = ["llvm"]
 
-# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and
-# whether to set it as rustc's default linker on `x86_64-unknown-linux-gnu`. This will also only be
-# when *not* building an external LLVM (so only when using `download-ci-llvm` or building LLVM from
-# the in-tree source): setting `llvm-config` in the `[target.x86_64-unknown-linux-gnu]` section will
-# make this default to false.
-#rust.lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
+# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute,
+#rust.lld = false, except for targets that opt into LLD (see `target.default-linker-linux-override`)
 
-# Indicates whether LLD will be used to link Rust crates during bootstrap on
-# supported platforms.
+# Indicates if we should override the linker used to link Rust crates during bootstrap to be LLD.
 # If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
 # will be used.
 # If set to `"self-contained"`, rust-lld from the snapshot compiler will be used.
@@ -771,7 +769,7 @@
 # On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
-#rust.use-lld = false
+#rust.bootstrap-override-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
@@ -853,6 +851,17 @@
 # as libstd features, this option can also be used to configure features such as optimize_for_size.
 #rust.std-features = ["panic_unwind"]
 
+# Trigger a `DebugBreak` after an internal compiler error during bootstrap on Windows
+#rust.break-on-ice = true
+
+# Set the number of threads for the compiler frontend used during compilation of Rust code (passed to `-Zthreads`).
+# The valid options are:
+# 0 - Set the number of threads according to the detected number of threads of the host system
+# 1 - Use a single thread for compilation of Rust code (the default)
+# N - Number of threads used for compilation of Rust code
+#
+#rust.parallel-frontend-threads = 1
+
 # =============================================================================
 # Distribution options
 #
@@ -933,7 +942,7 @@
 # Linker to be used to bootstrap Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# Setting this will override the `use-lld` option for Rust code when targeting MSVC.
+# Setting this will override the `bootstrap-override-lld` option for Rust code when targeting MSVC.
 #linker = "cc" (path)
 
 # Should rustc and the standard library be built with split debuginfo? Default
@@ -1041,14 +1050,30 @@
 #runner = <none> (string)
 
 # Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics
-# on this target.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
-# sources are available.
+# on this target. Choosing true requires the LLVM submodule to be managed by bootstrap
+# (i.e. not external) so that `compiler-rt` sources are available.
+#
+# Setting this to a path removes the requirement for a C toolchain, but requires setting the
+# path to an existing library containing the builtins library from LLVM's compiler-rt.
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
-#optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
+#optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This overrides the global `rust.jemalloc` option. See that option for more info.
 #jemalloc = rust.jemalloc (bool)
+
+# The linker configuration that will *override* the default linker used for Linux
+# targets in the built compiler.
+#
+# The following values are supported:
+# - `off` => do not apply any override and use the default linker. This can be used to opt out of
+#   linker overrides set by bootstrap for specific targets (see below).
+# - `self-contained-lld-cc` => override the default linker to be self-contained LLD (`rust-lld`)
+#   that is invoked through `cc`.
+#
+# Currently, the following targets automatically opt into the self-contained LLD linker, unless you
+# pass `off`:
+# - x86_64-unknown-linux-gnu
+#default-linker-linux-override = "off" (for most targets)

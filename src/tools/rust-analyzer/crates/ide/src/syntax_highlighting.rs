@@ -35,6 +35,7 @@ use crate::{
 };
 
 pub(crate) use html::highlight_as_html;
+pub(crate) use html::highlight_as_html_with_config;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HlRange {
@@ -47,6 +48,8 @@ pub struct HlRange {
 pub struct HighlightConfig {
     /// Whether to highlight strings
     pub strings: bool,
+    /// Whether to highlight comments
+    pub comments: bool,
     /// Whether to highlight punctuation
     pub punctuation: bool,
     /// Whether to specialize punctuation highlights
@@ -113,7 +116,7 @@ pub struct HighlightConfig {
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
 // |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operatos `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
 //
 // - For punctuation:
 //
@@ -423,9 +426,12 @@ fn traverse(
         let edition = descended_element.file_id.edition(sema.db);
         let (unsafe_ops, bindings_shadow_count) = match current_body {
             Some(current_body) => {
-                let (ops, bindings) = per_body_cache
-                    .entry(current_body)
-                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
+                let (ops, bindings) = per_body_cache.entry(current_body).or_insert_with(|| {
+                    (
+                        hir::attach_db(sema.db, || sema.get_unsafe_ops(current_body)),
+                        Default::default(),
+                    )
+                });
                 (&*ops, Some(bindings))
             }
             None => (&empty, None),
@@ -434,15 +440,17 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = highlight::name_like(
-                    sema,
-                    krate,
-                    bindings_shadow_count,
-                    &is_unsafe_node,
-                    config.syntactic_name_ref_highlighting,
-                    name_like,
-                    edition,
-                );
+                let hl = hir::attach_db(sema.db, || {
+                    highlight::name_like(
+                        sema,
+                        krate,
+                        bindings_shadow_count,
+                        &is_unsafe_node,
+                        config.syntactic_name_ref_highlighting,
+                        name_like,
+                        edition,
+                    )
+                });
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
                     // as that would potentially overwrite our result
@@ -450,10 +458,10 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => {
+            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
-            }
+            }),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {
@@ -586,6 +594,7 @@ fn descend_token(
 fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
     match &mut highlight.tag {
         HlTag::StringLiteral if !config.strings => return false,
+        HlTag::Comment if !config.comments => return false,
         // If punctuation is disabled, make the macro bang part of the macro call again.
         tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
             if !config.macro_bang {

@@ -3,6 +3,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_middle::ty::TyCtxt;
+use rustc_parse::lexer::StripTokens;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{FileName, Span};
@@ -64,14 +65,18 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     // Create a Parser.
     let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
     let file_name = FileName::macro_expansion_source_code(&snippet);
-    let mut parser =
-        match rustc_parse::new_parser_from_source_str(&psess, file_name, snippet.clone()) {
-            Ok(parser) => parser,
-            Err(errs) => {
-                errs.into_iter().for_each(|err| err.cancel());
-                return None;
-            }
-        };
+    let mut parser = match rustc_parse::new_parser_from_source_str(
+        &psess,
+        file_name,
+        snippet.clone(),
+        StripTokens::Nothing,
+    ) {
+        Ok(parser) => parser,
+        Err(errs) => {
+            errs.into_iter().for_each(|err| err.cancel());
+            return None;
+        }
+    };
 
     // Reparse a single token tree.
     if parser.token == token::Eof {

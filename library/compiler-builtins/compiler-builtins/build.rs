@@ -540,12 +540,20 @@ mod c {
             sources.extend(&[("__emutls_get_address", "emutls.c")]);
         }
 
+        // Optionally, link against a prebuilt llvm compiler-rt containing the builtins
+        // library. Only the builtins library is required. On many platforms, this is
+        // available as a library named libclang_rt.builtins.a.
+        let link_against_prebuilt_rt = env::var_os("LLVM_COMPILER_RT_LIB").is_some();
+
         // When compiling the C code we require the user to tell us where the
         // source code is, and this is largely done so when we're compiling as
         // part of rust-lang/rust we can use the same llvm-project repository as
         // rust-lang/rust.
         let root = match env::var_os("RUST_COMPILER_RT_ROOT") {
             Some(s) => PathBuf::from(s),
+            // If a prebuild libcompiler-rt is provided, set a valid
+            // path to simplify later logic. Nothing should be compiled.
+            None if link_against_prebuilt_rt => PathBuf::new(),
             None => {
                 panic!(
                     "RUST_COMPILER_RT_ROOT is not set. You may need to run \
@@ -553,7 +561,7 @@ mod c {
                 );
             }
         };
-        if !root.exists() {
+        if !link_against_prebuilt_rt && !root.exists() {
             panic!("RUST_COMPILER_RT_ROOT={} does not exist", root.display());
         }
 
@@ -569,7 +577,7 @@ mod c {
         let src_dir = root.join("lib/builtins");
         if target.arch == "aarch64" && target.env != "msvc" && target.os != "uefi" {
             // See below for why we're building these as separate libraries.
-            build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
+            build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg, link_against_prebuilt_rt);
 
             // Some run-time CPU feature detection is necessary, as well.
             let cpu_model_src = if src_dir.join("cpu_model.c").exists() {
@@ -583,20 +591,45 @@ mod c {
         let mut added_sources = HashSet::new();
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
-            if added_sources.insert(src.clone()) {
+            if !link_against_prebuilt_rt && added_sources.insert(src.clone()) {
                 cfg.file(&src);
                 println!("cargo:rerun-if-changed={}", src.display());
             }
             println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
         }
 
-        cfg.compile("libcompiler-rt.a");
+        if link_against_prebuilt_rt {
+            let rt_builtins_ext = PathBuf::from(env::var_os("LLVM_COMPILER_RT_LIB").unwrap());
+            if !rt_builtins_ext.exists() {
+                panic!(
+                    "LLVM_COMPILER_RT_LIB={} does not exist",
+                    rt_builtins_ext.display()
+                );
+            }
+            if let Some(dir) = rt_builtins_ext.parent() {
+                println!("cargo::rustc-link-search=native={}", dir.display());
+            }
+            if let Some(lib) = rt_builtins_ext.file_name() {
+                println!(
+                    "cargo::rustc-link-lib=static:+verbatim={}",
+                    lib.to_str().unwrap()
+                );
+            }
+        } else {
+            cfg.compile("libcompiler-rt.a");
+        }
     }
 
-    fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &mut cc::Build) {
+    fn build_aarch64_out_of_line_atomics_libraries(
+        builtins_dir: &Path,
+        cfg: &mut cc::Build,
+        link_against_prebuilt_rt: bool,
+    ) {
         let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
         let outlined_atomics_file = builtins_dir.join("aarch64").join("lse.S");
-        println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
+        if !link_against_prebuilt_rt {
+            println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
+        }
 
         cfg.include(&builtins_dir);
 
@@ -609,6 +642,13 @@ mod c {
                 for (model_number, model_name) in
                     &[(1, "relax"), (2, "acq"), (3, "rel"), (4, "acq_rel")]
                 {
+                    let sym = format!("__aarch64_{}{}_{}", instruction_type, size, model_name);
+                    println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
+
+                    if link_against_prebuilt_rt {
+                        continue;
+                    }
+
                     // The original compiler-rt build system compiles the same
                     // source file multiple times with different compiler
                     // options. Here we do something slightly different: we
@@ -632,9 +672,6 @@ mod c {
                     .unwrap();
                     drop(file);
                     cfg.file(path);
-
-                    let sym = format!("__aarch64_{}{}_{}", instruction_type, size, model_name);
-                    println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
                 }
             }
         }

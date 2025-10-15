@@ -67,6 +67,10 @@ struct LeafNode<K, V> {
 
 impl<K, V> LeafNode<K, V> {
     /// Initializes a new `LeafNode` in-place.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `this` points to a (possibly uninitialized) `LeafNode`
     unsafe fn init(this: *mut Self) {
         // As a general policy, we leave fields uninitialized if they can be, as this should
         // be both slightly faster and easier to track in Valgrind.
@@ -79,9 +83,11 @@ impl<K, V> LeafNode<K, V> {
 
     /// Creates a new boxed `LeafNode`.
     fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
+        let mut leaf = Box::new_uninit_in(alloc);
         unsafe {
-            let mut leaf = Box::new_uninit_in(alloc);
+            // SAFETY: `leaf` points to a `LeafNode`
             LeafNode::init(leaf.as_mut_ptr());
+            // SAFETY: `leaf` was just initialized
             leaf.assume_init()
         }
     }
@@ -111,10 +117,11 @@ impl<K, V> InternalNode<K, V> {
     /// initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
+        let mut node = Box::<Self, _>::new_uninit_in(alloc);
         unsafe {
-            let mut node = Box::<Self, _>::new_uninit_in(alloc);
-            // We only need to initialize the data; the edges are MaybeUninit.
+            // SAFETY: argument points to the `node.data` `LeafNode`
             LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
+            // SAFETY: `node.data` was just initialized and `node.edges` is MaybeUninit.
             node.assume_init()
         }
     }
@@ -218,7 +225,11 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     }
 
     fn from_new_leaf<A: Allocator + Clone>(leaf: Box<LeafNode<K, V>, A>) -> Self {
-        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
+        let (leaf, _alloc) = Box::into_raw_with_allocator(leaf);
+        // SAFETY: the node was just allocated.
+        let node = unsafe { NonNull::new_unchecked(leaf) };
+        NodeRef { height: 0, node, _marker: PhantomData }
     }
 }
 
@@ -236,7 +247,11 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
         height: usize,
     ) -> Self {
         debug_assert!(height > 0);
-        let node = NonNull::from(Box::leak(internal)).cast();
+        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
+        let (internal, _alloc) = Box::into_raw_with_allocator(internal);
+        // SAFETY: the node was just allocated.
+        let internal = unsafe { NonNull::new_unchecked(internal) };
+        let node = internal.cast();
         let mut this = NodeRef { height, node, _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
         this

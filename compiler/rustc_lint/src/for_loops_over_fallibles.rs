@@ -176,9 +176,9 @@ fn suggest_question_mark<'tcx>(
         cause,
         param_env,
         // Erase any region vids from the type, which may not be resolved
-        infcx.tcx.erase_regions(ty),
+        infcx.tcx.erase_and_anonymize_regions(ty),
         into_iterator_did,
     );
 
-    ocx.select_all_or_error().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
 }

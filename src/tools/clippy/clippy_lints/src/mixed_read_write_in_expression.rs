@@ -134,7 +134,7 @@ impl<'tcx> DivergenceVisitor<'_, 'tcx> {
         }
     }
 
-    fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
+    fn report_diverging_sub_expr(&self, e: &Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(self.cx, e)
             && self.cx.tcx.is_diagnostic_item(sym::todo_macro, macro_call.def_id)
         {

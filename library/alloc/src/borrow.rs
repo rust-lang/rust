@@ -17,9 +17,11 @@ use crate::fmt;
 use crate::string::String;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<'a, B: ?Sized> const Borrow<B> for Cow<'a, B>
 where
     B: ToOwned,
+    B::Owned: [const] Borrow<B>,
 {
     fn borrow(&self) -> &B {
         &**self
@@ -326,9 +328,10 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<B: ?Sized + ToOwned> const Deref for Cow<'_, B>
 where
-    B::Owned: Borrow<B>,
+    B::Owned: [const] Borrow<B>,
 {
     type Target = B;
 
@@ -439,7 +442,11 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: ?Sized + ToOwned> const AsRef<T> for Cow<'_, T>
+where
+    T::Owned: [const] Borrow<T>,
+{
     fn as_ref(&self) -> &T {
         self
     }

@@ -517,8 +517,9 @@ We use these items in macro parser:
   are about to ask the MBE parser to parse. We will consume the raw stream of
   tokens and output a binding of metavariables to corresponding token trees.
   The parsing session can be used to report parser errors.
-- a `matcher` variable is a sequence of [`MatcherLoc`]s that we want to match
-  the token stream against. They're converted from token trees before matching.
+- a `matcher` variable is a sequence of [`MatcherLoc`]s that we want to match the token stream
+  against. They're converted from the original token trees in the macro's definition before
+  matching.
 
 [`MatcherLoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/enum.MatcherLoc.html
 
@@ -544,41 +545,26 @@ The full interface is defined [here][code_parse_int].
 The macro parser does pretty much exactly the same as a normal regex parser
 with one exception: in order to parse different types of metavariables, such as
 `ident`, `block`, `expr`, etc., the macro parser must call back to the normal
-Rust parser. Both the definition and invocation of macros are parsed using
-the parser in a process which is non-intuitively self-referential. 
+Rust parser.
 
-The code to parse macro _definitions_ is in
-[`compiler/rustc_expand/src/mbe/macro_rules.rs`][code_mr]. It defines the
-pattern for matching a macro definition as `$( $lhs:tt => $rhs:tt );+`. In
-other words, a `macro_rules` definition should have in its body at least one
-occurrence of a token tree followed by `=>` followed by another token tree.
-When the compiler comes to a `macro_rules` definition, it uses this pattern to
-match the two token trees per the rules of the definition of the macro, _thereby
-utilizing the macro parser itself_. In our example definition, the
-metavariable `$lhs` would match the patterns of both arms: `(print
-$mvar:ident)` and `(print twice $mvar:ident)`. And `$rhs` would match the
-bodies of both arms: `{ println!("{}", $mvar); }` and `{ println!("{}", $mvar);
-println!("{}", $mvar); }`. The parser keeps this knowledge around for when it
-needs to expand a macro invocation.
+The code to parse macro definitions is in [`compiler/rustc_expand/src/mbe/macro_rules.rs`][code_mr].
+For more information about the macro parser's implementation, see the comments in
+[`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
 
-When the compiler comes to a macro invocation, it parses that invocation using
-a NFA-based macro parser described above. However, the matcher variable
-used is the first token tree (`$lhs`) extracted from the arms of the macro
-_definition_. Using our example, we would try to match the token stream `print
-foo` from the invocation against the matchers `print $mvar:ident` and `print
-twice $mvar:ident` that we previously extracted from the definition. The
-algorithm is exactly the same, but when the macro parser comes to a place in the
-current matcher where it needs to match a _non-terminal_ (e.g. `$mvar:ident`),
-it calls back to the normal Rust parser to get the contents of that
-non-terminal. In this case, the Rust parser would look for an `ident` token,
-which it finds (`foo`) and returns to the macro parser. Then, the macro parser
-proceeds in parsing as normal. Also, note that exactly one of the matchers from
-the various arms should match the invocation; if there is more than one match,
-the parse is ambiguous, while if there are no matches at all, there is a syntax
+Using our example, we would try to match the token stream `print foo` from the invocation against
+the matchers `print $mvar:ident` and `print twice $mvar:ident` that we previously extracted from the
+rules in the macro definition. When the macro parser comes to a place in the current matcher where
+it needs to match a _non-terminal_ (e.g. `$mvar:ident`), it calls back to the normal Rust parser to
+get the contents of that non-terminal. In this case, the Rust parser would look for an `ident`
+token, which it finds (`foo`) and returns to the macro parser. Then, the macro parser continues
+parsing.
+
+Note that exactly one of the matchers from the various rules should match the invocation; if there is
+more than one match, the parse is ambiguous, while if there are no matches at all, there is a syntax
 error.
 
-For more information about the macro parser's implementation, see the comments
-in [`compiler/rustc_expand/src/mbe/macro_parser.rs`][code_mp].
+Assuming exactly one rule matches, macro expansion will then *transcribe* the right-hand side of the
+rule, substituting the values of any matches it captured when matching against the left-hand side.
 
 ## Procedural Macros
 

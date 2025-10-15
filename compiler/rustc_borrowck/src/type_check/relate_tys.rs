@@ -124,8 +124,13 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         // by using `ty_vid rel B` and then finally and end by equating `ty_vid` to
         // the opaque.
         let mut enable_subtyping = |ty, opaque_is_expected| {
-            let ty_vid = infcx.next_ty_var_id_in_universe(self.span(), ty::UniverseIndex::ROOT);
-
+            // We create the fresh inference variable in the highest universe.
+            // In theory we could limit it to the highest universe in the args of
+            // the opaque but that isn't really worth the effort.
+            //
+            // We'll make sure that the opaque type can actually name everything
+            // in its hidden type later on.
+            let ty_vid = infcx.next_ty_vid(self.span());
             let variance = if opaque_is_expected {
                 self.ambient_variance
             } else {

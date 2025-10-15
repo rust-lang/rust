@@ -31,6 +31,7 @@ pub enum Kind {
     Half,
     Float,
     Double,
+    F128,
     Unknown,
 }
 

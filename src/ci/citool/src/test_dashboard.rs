@@ -33,7 +33,7 @@ fn write_page<T: Template>(dir: &Path, name: &str, template: &T) -> anyhow::Resu
     Ok(())
 }
 
-fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites {
+fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites<'_> {
     struct CoarseTestSuite<'a> {
         tests: BTreeMap<String, Test<'a>>,
     }

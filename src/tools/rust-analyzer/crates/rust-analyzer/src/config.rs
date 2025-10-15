@@ -226,6 +226,14 @@ config_data! {
         inlayHints_discriminantHints_enable: DiscriminantHintsDef =
             DiscriminantHintsDef::Never,
 
+        /// Disable reborrows in expression adjustments inlay hints.
+        ///
+        /// Reborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.
+        ///
+        /// Note: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.
+        inlayHints_expressionAdjustmentHints_disableReborrows: bool =
+            true,
+
         /// Show inlay hints for type adjustments.
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef =
             AdjustmentHintsDef::Never,
@@ -259,6 +267,8 @@ config_data! {
         inlayHints_lifetimeElisionHints_useParameterNames: bool = false,
 
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
+        ///
+        /// **Note:** This is mostly a hint, and we don't guarantee to strictly follow the limit.
         inlayHints_maxLength: Option<usize> = Some(25),
 
         /// Show function parameter name inlay hints at the call site.
@@ -373,6 +383,13 @@ config_data! {
 
         /// Exclude tests from find-all-references and call-hierarchy.
         references_excludeTests: bool = false,
+
+        /// Use semantic tokens for comments.
+        ///
+        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+        /// By disabling semantic tokens for comments, other grammars can be used to highlight
+        /// their contents.
+        semanticHighlighting_comments_enable: bool = true,
 
         /// Inject additional highlighting into doc comments.
         ///
@@ -858,6 +875,9 @@ config_data! {
         /// check will be performed.
         check_workspace: bool = true,
 
+        /// Exclude all locals from document symbol search.
+        document_symbol_search_excludeLocals: bool = true,
+
         /// These proc-macros will be ignored when trying to expand them.
         ///
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
@@ -875,7 +895,7 @@ config_data! {
         /// [custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
-        runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
+        runnables_extraTestBinaryArgs: Vec<String> = vec!["--nocapture".to_owned()],
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
@@ -1481,6 +1501,13 @@ pub enum FilesWatcher {
     Server,
 }
 
+/// Configuration for document symbol search requests.
+#[derive(Debug, Clone)]
+pub struct DocumentSymbolConfig {
+    /// Should locals be excluded.
+    pub search_exclude_locals: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
@@ -1878,12 +1905,14 @@ impl Config {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.inlayHints_reborrowHints_enable() {
                     ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
-                        ide::AdjustmentHints::ReborrowOnly
+                        ide::AdjustmentHints::BorrowsOnly
                     }
                     ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
                 },
-                AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
+                AdjustmentHintsDef::Borrows => ide::AdjustmentHints::BorrowsOnly,
             },
+            adjustment_hints_disable_reborrows: *self
+                .inlayHints_expressionAdjustmentHints_disableReborrows(),
             adjustment_hints_mode: match self.inlayHints_expressionAdjustmentHints_mode() {
                 AdjustmentHintsModeDef::Prefix => ide::AdjustmentHintsMode::Prefix,
                 AdjustmentHintsModeDef::Postfix => ide::AdjustmentHintsMode::Postfix,
@@ -1915,8 +1944,9 @@ impl Config {
     fn insert_use_config(&self, source_root: Option<SourceRootId>) -> InsertUseConfig {
         InsertUseConfig {
             granularity: match self.imports_granularity_group(source_root) {
-                ImportGranularityDef::Preserve => ImportGranularity::Preserve,
-                ImportGranularityDef::Item => ImportGranularity::Item,
+                ImportGranularityDef::Item | ImportGranularityDef::Preserve => {
+                    ImportGranularity::Item
+                }
                 ImportGranularityDef::Crate => ImportGranularity::Crate,
                 ImportGranularityDef::Module => ImportGranularity::Module,
                 ImportGranularityDef::One => ImportGranularity::One,
@@ -1948,6 +1978,7 @@ impl Config {
     pub fn highlighting_config(&self) -> HighlightConfig {
         HighlightConfig {
             strings: self.semanticHighlighting_strings_enable().to_owned(),
+            comments: self.semanticHighlighting_comments_enable().to_owned(),
             punctuation: self.semanticHighlighting_punctuation_enable().to_owned(),
             specialize_punctuation: self
                 .semanticHighlighting_punctuation_specialization_enable()
@@ -2438,6 +2469,12 @@ impl Config {
         }
     }
 
+    pub fn document_symbol(&self, source_root: Option<SourceRootId>) -> DocumentSymbolConfig {
+        DocumentSymbolConfig {
+            search_exclude_locals: *self.document_symbol_search_excludeLocals(source_root),
+        }
+    }
+
     pub fn workspace_symbol(&self, source_root: Option<SourceRootId>) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
             search_exclude_imports: *self.workspace_symbol_search_excludeImports(source_root),
@@ -2806,7 +2843,8 @@ enum ReborrowHintsDef {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum AdjustmentHintsDef {
-    Reborrow,
+    #[serde(alias = "reborrow")]
+    Borrows,
     #[serde(with = "true_or_always")]
     #[serde(untagged)]
     Always,
@@ -3067,7 +3105,7 @@ macro_rules! _config_data {
     }) => {
         /// Default config values for this grouping.
         #[allow(non_snake_case)]
-        #[derive(Debug, Clone )]
+        #[derive(Debug, Clone)]
         struct $name { $($field: $ty,)* }
 
         impl_for_config_data!{
@@ -3467,13 +3505,23 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "ImportGranularityDef" => set! {
             "type": "string",
-            "enum": ["preserve", "crate", "module", "item", "one"],
-            "enumDescriptions": [
-                "Do not change the granularity of any imports and preserve the original structure written by the developer.",
-                "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
-                "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                "Flatten imports so that each has its own use statement.",
-                "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+            "anyOf": [
+                {
+                    "enum": ["crate", "module", "item", "one"],
+                    "enumDescriptions": [
+                        "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                        "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                        "Flatten imports so that each has its own use statement.",
+                        "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+                    ],
+                },
+                {
+                    "enum": ["preserve"],
+                    "enumDescriptions": [
+                        "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`.",
+                    ],
+                    "deprecated": true,
+                }
             ],
         },
         "ImportPrefixDef" => set! {

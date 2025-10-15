@@ -20,7 +20,6 @@ use syntax::{
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
         edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
         make,
     },
     ted::{self, Position},
@@ -266,6 +265,7 @@ fn generate_impl(
             let bound_params = bound_def.generic_param_list();
 
             let delegate = make::impl_trait(
+                None,
                 delegee.is_unsafe(db),
                 bound_params.clone(),
                 bound_params.map(|params| params.to_generic_args()),
@@ -379,6 +379,7 @@ fn generate_impl(
             let path_type = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type)?;
             // 3) Generate delegate trait impl
             let delegate = make::impl_trait(
+                None,
                 trait_.is_unsafe(db),
                 trait_gen_params,
                 trait_gen_args,
@@ -652,8 +653,7 @@ fn process_assoc_item(
     qual_path_ty: ast::Path,
     base_name: &str,
 ) -> Option<ast::AssocItem> {
-    let attrs = item.attrs();
-    let assoc = match item {
+    match item {
         AssocItem::Const(c) => const_assoc_item(c, qual_path_ty),
         AssocItem::Fn(f) => func_assoc_item(f, qual_path_ty, base_name),
         AssocItem::MacroCall(_) => {
@@ -662,18 +662,7 @@ fn process_assoc_item(
             None
         }
         AssocItem::TypeAlias(ta) => ty_assoc_item(ta, qual_path_ty),
-    };
-    if let Some(assoc) = &assoc {
-        attrs.for_each(|attr| {
-            assoc.add_attr(attr.clone());
-            // fix indentations
-            if let Some(tok) = attr.syntax().next_sibling_or_token() {
-                let pos = Position::after(tok);
-                ted::insert(pos, make::tokens::whitespace("    "));
-            }
-        })
     }
-    assoc
 }
 
 fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option<AssocItem> {
@@ -687,6 +676,7 @@ fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option
     // make::path_qualified(qual_path_ty, path_expr_segment.as_single_segment().unwrap());
     let qualified_path = qualified_path(qual_path_ty, path_expr_segment);
     let inner = make::item_const(
+        item.attrs(),
         item.visibility(),
         item.name()?,
         item.ty()?,
@@ -755,6 +745,7 @@ fn func_assoc_item(
 
     let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
     let func = make::fn_(
+        item.attrs(),
         item.visibility(),
         item.name()?,
         item.generic_param_list(),
@@ -779,13 +770,14 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<Ass
     let ident = item.name()?.to_string();
 
     let alias = make::ty_alias(
+        item.attrs(),
         ident.as_str(),
         item.generic_param_list(),
         None,
         item.where_clause(),
         Some((ty, None)),
     )
-    .clone_for_update();
+    .indent(edit::IndentLevel(1));
 
     Some(AssocItem::TypeAlias(alias))
 }
@@ -1808,6 +1800,63 @@ impl T for B {
     fn f(&self, a: bool) {
         <A as T>::f(&self.a, a)
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_ty_alias_attrs() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+struct A;
+
+trait T {
+    #[cfg(test)]
+    type t;
+    #[cfg(not(test))]
+    type t;
+}
+
+impl T for A {
+    #[cfg(test)]
+    type t = u32;
+    #[cfg(not(test))]
+    type t = bool;
+}
+
+struct B {
+    a$0: A,
+}
+"#,
+            r#"
+struct A;
+
+trait T {
+    #[cfg(test)]
+    type t;
+    #[cfg(not(test))]
+    type t;
+}
+
+impl T for A {
+    #[cfg(test)]
+    type t = u32;
+    #[cfg(not(test))]
+    type t = bool;
+}
+
+struct B {
+    a: A,
+}
+
+impl T for B {
+    #[cfg(test)]
+    type t = <A as T>::t;
+
+    #[cfg(not(test))]
+    type t = <A as T>::t;
 }
 "#,
         );

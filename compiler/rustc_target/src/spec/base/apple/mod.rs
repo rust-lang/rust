@@ -158,12 +158,22 @@ pub(crate) fn base(
             SplitDebuginfo::Off,
         ]),
 
+        // Tell the linker that we would like it to avoid irreproducible binaries.
+        //
         // This environment variable is pretty magical but is intended for
         // producing deterministic builds. This was first discovered to be used
         // by the `ar` tool as a way to control whether or not mtime entries in
-        // the archive headers were set to zero or not. It appears that
-        // eventually the linker got updated to do the same thing and now reads
-        // this environment variable too in recent versions.
+        // the archive headers were set to zero or not.
+        //
+        // In `ld64-351.8`, shipped with Xcode 9.3, the linker was updated to
+        // read this flag too. Linker versions that don't support this flag
+        // may embed modification timestamps in binaries (especially in debug
+        // information).
+        //
+        // A cleaner alternative would be to pass the `-reproducible` flag,
+        // though that is only supported since `ld64-819.6` shipped with Xcode
+        // 14, which is too new for our minimum supported version:
+        // https://doc.rust-lang.org/rustc/platform-support/apple-darwin.html#host-tooling
         //
         // For some more info see the commentary on #47086
         link_env: Cow::Borrowed(&[(Cow::Borrowed("ZERO_AR_DATE"), Cow::Borrowed("1"))]),
@@ -294,7 +304,7 @@ impl OSVersion {
     /// to raise the minimum OS version.
     ///
     /// This matches what LLVM does, see in part:
-    /// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
+    /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
         let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.env) {
             ("macos", "aarch64", _) => (11, 0, 0),
@@ -305,6 +315,9 @@ impl OSVersion {
             ("ios", _, "macabi") => (13, 1, 0),
             ("tvos", "aarch64", "sim") => (14, 0, 0),
             ("watchos", "aarch64", "sim") => (7, 0, 0),
+            // True Aarch64 on watchOS (instead of their Aarch64 Ilp32 called `arm64_32`) has been
+            // available since Xcode 14, but it's only actually used more recently in watchOS 26.
+            ("watchos", "aarch64", "") if !target.llvm_target.starts_with("arm64_32") => (26, 0, 0),
             (os, _, _) => return Self::os_minimum_deployment_target(os),
         };
         Self { major, minor, patch }

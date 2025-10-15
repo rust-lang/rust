@@ -12,11 +12,11 @@ LL | fn test2<'a>() {
 LL |     outlives_forall::<Value<'a>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
-  --> $DIR/type-test-universe.rs:6:16
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/type-test-universe.rs:6:5
    |
 LL |     for<'u> T: 'u,
-   |                ^^
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

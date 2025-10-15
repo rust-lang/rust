@@ -1,3 +1,4 @@
+//@ compile-flags: -Zmir-opt-level=0
 // skip-filecheck
 #![feature(liballoc_internals, rustc_attrs)]
 

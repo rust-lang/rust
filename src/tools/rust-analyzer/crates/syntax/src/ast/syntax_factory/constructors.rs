@@ -2,8 +2,8 @@
 use crate::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
-        self, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName, HasTypeBounds,
-        HasVisibility, RangeItem, make,
+        self, HasArgList, HasAttrs, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
+        HasTypeBounds, HasVisibility, RangeItem, make,
     },
     syntax_editor::SyntaxMappingBuilder,
 };
@@ -107,8 +107,13 @@ impl SyntaxFactory {
         ast
     }
 
-    pub fn use_(&self, visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
-        make::use_(visibility, use_tree).clone_for_update()
+    pub fn use_(
+        &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
+        visibility: Option<ast::Visibility>,
+        use_tree: ast::UseTree,
+    ) -> ast::Use {
+        make::use_(attrs, visibility, use_tree).clone_for_update()
     }
 
     pub fn use_tree(
@@ -840,16 +845,20 @@ impl SyntaxFactory {
 
     pub fn item_const(
         &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
         visibility: Option<ast::Visibility>,
         name: ast::Name,
         ty: ast::Type,
         expr: ast::Expr,
     ) -> ast::Const {
-        let ast = make::item_const(visibility.clone(), name.clone(), ty.clone(), expr.clone())
-            .clone_for_update();
+        let (attrs, attrs_input) = iterator_input(attrs);
+        let ast =
+            make::item_const(attrs, visibility.clone(), name.clone(), ty.clone(), expr.clone())
+                .clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(attrs_input, ast.attrs().map(|attr| attr.syntax().clone()));
             if let Some(visibility) = visibility {
                 builder.map_node(
                     visibility.syntax().clone(),
@@ -1067,6 +1076,7 @@ impl SyntaxFactory {
 
     pub fn item_enum(
         &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
         visibility: Option<ast::Visibility>,
         name: ast::Name,
         generic_param_list: Option<ast::GenericParamList>,
@@ -1074,6 +1084,7 @@ impl SyntaxFactory {
         variant_list: ast::VariantList,
     ) -> ast::Enum {
         let ast = make::enum_(
+            attrs,
             visibility.clone(),
             name.clone(),
             generic_param_list.clone(),
@@ -1182,6 +1193,7 @@ impl SyntaxFactory {
 
     pub fn fn_(
         &self,
+        attrs: impl IntoIterator<Item = ast::Attr>,
         visibility: Option<ast::Visibility>,
         fn_name: ast::Name,
         type_params: Option<ast::GenericParamList>,
@@ -1194,7 +1206,9 @@ impl SyntaxFactory {
         is_unsafe: bool,
         is_gen: bool,
     ) -> ast::Fn {
+        let (attrs, input) = iterator_input(attrs);
         let ast = make::fn_(
+            attrs,
             visibility.clone(),
             fn_name.clone(),
             type_params.clone(),
@@ -1210,6 +1224,7 @@ impl SyntaxFactory {
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.attrs().map(|attr| attr.syntax().clone()));
 
             if let Some(visibility) = visibility {
                 builder.map_node(

@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+use std::borrow::Cow;
 use std::fmt;
 
 use rustc_abi::ExternAbi;
@@ -17,10 +18,10 @@ pub use rustc_ast::{
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -30,7 +31,7 @@ use tracing::debug;
 
 use crate::LangItem;
 use crate::attrs::AttributeKind;
-use crate::def::{CtorKind, DefKind, PerNS, Res};
+use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
@@ -783,7 +784,6 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<&'hir ConstArg<'hir>>,
-        synthetic: bool,
     },
 }
 
@@ -1160,6 +1160,12 @@ pub struct AttrPath {
     pub span: Span,
 }
 
+impl IntoDiagArg for AttrPath {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(path)
+    }
+}
+
 impl AttrPath {
     pub fn from_ast(path: &ast::Path) -> Self {
         AttrPath {
@@ -1233,6 +1239,13 @@ impl Attribute {
             _ => None,
         }
     }
+
+    pub fn is_parsed_attr(&self) -> bool {
+        match self {
+            Attribute::Parsed(_) => true,
+            Attribute::Unparsed(_) => false,
+        }
+    }
 }
 
 impl AttributeExt for Attribute {
@@ -1285,10 +1298,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {
-            Attribute::Unparsed(n) => {
-                n.path.segments.len() == name.len()
-                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
-            }
+            Attribute::Unparsed(n) => n.path.segments.iter().map(|ident| &ident.name).eq(name),
             _ => false,
         }
     }
@@ -1303,14 +1313,8 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Unparsed(u) => u.span,
             // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::MacroUse { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::MayDangle(span)) => *span,
-            Attribute::Parsed(AttributeKind::Ignore { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::ShouldPanic { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::AutomaticallyDerived(span)) => *span,
-            Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span)) => *span,
+            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1874,8 +1878,8 @@ pub enum PatKind<'hir> {
     Binding(BindingMode, HirId, Ident, Option<&'hir Pat<'hir>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
-    /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
+    /// The `Option` contains the span of a possible `..`.
+    Struct(QPath<'hir>, &'hir [PatField<'hir>], Option<Span>),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
@@ -2257,8 +2261,15 @@ impl fmt::Display for ConstContext {
     }
 }
 
-// NOTE: `IntoDiagArg` impl for `ConstContext` lives in `rustc_errors`
-// due to a cyclical dependency between hir and that crate.
+impl IntoDiagArg for ConstContext {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self {
+            ConstContext::ConstFn => "const_fn",
+            ConstContext::Static(_) => "static",
+            ConstContext::Const { .. } => "const",
+        }))
+    }
+}
 
 /// A literal.
 pub type Lit = Spanned<LitKind>;
@@ -2600,6 +2611,18 @@ impl Expr<'_> {
             )
             | (
                 ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeFrom, _),
                     [val1],
                     StructTailExpr::None,
@@ -2689,7 +2712,8 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeToInclusive
                     | LangItem::RangeCopy
                     | LangItem::RangeFromCopy
-                    | LangItem::RangeInclusiveCopy,
+                    | LangItem::RangeInclusiveCopy
+                    | LangItem::RangeToInclusiveCopy,
                 ..
             )
         ),
@@ -3191,12 +3215,21 @@ pub struct ImplItem<'hir> {
     pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
-    pub defaultness: Defaultness,
+    pub impl_kind: ImplItemImplKind,
     pub span: Span,
-    pub vis_span: Span,
     pub has_delayed_lints: bool,
-    /// When we are in a trait impl, link to the trait-item's id.
-    pub trait_item_def_id: Option<DefId>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum ImplItemImplKind {
+    Inherent {
+        vis_span: Span,
+    },
+    Trait {
+        defaultness: Defaultness,
+        /// Item in the trait that this item implements
+        trait_item_def_id: Result<DefId, ErrorGuaranteed>,
+    },
 }
 
 impl<'hir> ImplItem<'hir> {
@@ -3208,6 +3241,13 @@ impl<'hir> ImplItem<'hir> {
 
     pub fn impl_item_id(&self) -> ImplItemId {
         ImplItemId { owner_id: self.owner_id }
+    }
+
+    pub fn vis_span(&self) -> Option<Span> {
+        match self.impl_kind {
+            ImplItemImplKind::Trait { .. } => None,
+            ImplItemImplKind::Inherent { vis_span, .. } => Some(vis_span),
+        }
     }
 
     expect_methods_self_kind! {
@@ -4157,7 +4197,7 @@ impl<'hir> Item<'hir> {
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
 
-        expect_macro, (Ident, &ast::MacroDef, MacroKind),
+        expect_macro, (Ident, &ast::MacroDef, MacroKinds),
             ItemKind::Macro(ident, def, mk), (*ident, def, *mk);
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
@@ -4336,7 +4376,7 @@ pub enum ItemKind<'hir> {
         has_body: bool,
     },
     /// A MBE macro definition (`macro_rules!` or `macro`).
-    Macro(Ident, &'hir ast::MacroDef, MacroKind),
+    Macro(Ident, &'hir ast::MacroDef, MacroKinds),
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
@@ -4956,14 +4996,14 @@ mod size_asserts {
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 40);
-    static_assert_size!(ImplItem<'_>, 96);
+    static_assert_size!(ImplItem<'_>, 88);
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
-    static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(PatKind<'_>, 48);
+    static_assert_size!(Pat<'_>, 80);
+    static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
     static_assert_size!(QPath<'_>, 24);

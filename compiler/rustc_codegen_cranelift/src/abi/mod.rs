@@ -715,7 +715,7 @@ pub(crate) fn codegen_drop<'tcx>(
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
         match ty.kind() {
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)
                 // which is: exists<T> ( *mut T,    Vtable<T: Trait> )

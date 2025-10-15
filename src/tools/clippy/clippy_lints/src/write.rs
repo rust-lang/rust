@@ -537,7 +537,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
 
             sug_span = Some(sug_span.unwrap_or(arg.expr.span).to(arg.expr.span));
 
-            if let Some((_, index)) = positional_arg_piece_span(piece) {
+            if let Some((_, index)) = format_arg_piece_span(piece) {
                 replaced_position.push(index);
             }
 
@@ -569,16 +569,11 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
     }
 }
 
-/// Extract Span and its index from the given `piece`, if it's positional argument.
-fn positional_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
+/// Extract Span and its index from the given `piece`
+fn format_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
     match piece {
         FormatArgsPiece::Placeholder(FormatPlaceholder {
-            argument:
-                FormatArgPosition {
-                    index: Ok(index),
-                    kind: FormatArgPositionKind::Number,
-                    ..
-                },
+            argument: FormatArgPosition { index: Ok(index), .. },
             span: Some(span),
             ..
         }) => Some((*span, *index)),

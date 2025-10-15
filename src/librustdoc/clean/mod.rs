@@ -40,7 +40,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, In
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
@@ -58,6 +58,7 @@ use tracing::{debug, instrument};
 use utils::*;
 use {rustc_ast as ast, rustc_hir as hir};
 
+pub(crate) use self::cfg::{CfgInfo, extract_cfg_from_attrs};
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
 use crate::core::DocContext;
@@ -212,18 +213,10 @@ fn generate_item_with_correct_attrs(
         // We only keep the item's attributes.
         target_attrs.iter().map(|attr| (Cow::Borrowed(attr), None)).collect()
     };
-    let cfg = extract_cfg_from_attrs(
-        attrs.iter().map(move |(attr, _)| match attr {
-            Cow::Borrowed(attr) => *attr,
-            Cow::Owned(attr) => attr,
-        }),
-        cx.tcx,
-        &cx.cache.hidden_cfg,
-    );
     let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
-    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, None);
     // FIXME (GuillaumeGomez): Should we also make `inline_stmt_id` a `Vec` instead of an `Option`?
     item.inner.inline_stmt_id = import_ids.first().copied();
     item
@@ -557,7 +550,7 @@ fn clean_generic_param_def(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, synthetic } => (
+        ty::GenericParamDefKind::Const { has_default } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -580,7 +573,6 @@ fn clean_generic_param_def(
                 } else {
                     None
                 },
-                synthetic,
             },
         ),
     };
@@ -636,14 +628,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default, synthetic } => (
+        hir::GenericParamKind::Const { ty, default } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
                     Box::new(lower_const_arg_for_rustdoc(cx.tcx, ct, FeedConstTy::No).to_string())
                 }),
-                synthetic,
             },
         ),
     };
@@ -1258,7 +1249,10 @@ pub(crate) fn clean_impl_item<'tcx>(
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body));
-                let defaultness = cx.tcx.defaultness(impl_.owner_id);
+                let defaultness = match impl_.impl_kind {
+                    hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
+                    hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
+                };
                 MethodItem(m, Some(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
@@ -1297,12 +1291,14 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => ImplAssocConstItem(Box::new(Constant {
-                    generics,
-                    kind: ConstantKind::Extern { def_id: assoc_item.def_id },
-                    type_: ty,
-                })),
-                ty::AssocItemContainer::Trait => {
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
+                    ImplAssocConstItem(Box::new(Constant {
+                        generics,
+                        kind: ConstantKind::Extern { def_id: assoc_item.def_id },
+                        type_: ty,
+                    }))
+                }
+                ty::AssocContainer::Trait => {
                     if tcx.defaultness(assoc_item.def_id).has_value() {
                         ProvidedAssocConstItem(Box::new(Constant {
                             generics,
@@ -1320,10 +1316,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             if has_self {
                 let self_ty = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => {
+                    ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
                     }
-                    ty::AssocItemContainer::Trait => tcx.types.self_param,
+                    ty::AssocContainer::Trait => tcx.types.self_param,
                 };
                 let self_param_ty =
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
@@ -1340,13 +1336,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let provided = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             };
             if provided {
                 let defaultness = match assoc_item.container {
-                    ty::AssocItemContainer::Impl => Some(assoc_item.defaultness(tcx)),
-                    ty::AssocItemContainer::Trait => None,
+                    ty::AssocContainer::TraitImpl(_) => Some(assoc_item.defaultness(tcx)),
+                    ty::AssocContainer::InherentImpl | ty::AssocContainer::Trait => None,
                 };
                 MethodItem(item, defaultness)
             } else {
@@ -1377,7 +1373,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
-            if let ty::AssocItemContainer::Trait = assoc_item.container {
+            if let ty::AssocContainer::Trait = assoc_item.container {
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
@@ -1388,7 +1384,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            if let ty::AssocItemContainer::Trait = assoc_item.container {
+            if let ty::AssocContainer::Trait = assoc_item.container {
                 // Move bounds that are (likely) directly attached to the associated type
                 // from the where-clause to the associated type.
                 // There is no guarantee that this is what the user actually wrote but we have
@@ -2090,7 +2086,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             );
             Type::Path { path }
         }
-        ty::Dynamic(obj, reg, _) => {
+        ty::Dynamic(obj, reg) => {
             // HACK: pick the first `did` as the `did` of the trait object. Someone
             // might want to implement "native" support for marker-trait-only
             // trait objects.
@@ -2845,11 +2841,19 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
+            // FIXME: handle attributes and derives that aren't proc macros, and macros with
+            // multiple kinds
+            ItemKind::Macro(_, macro_def, MacroKinds::BANG) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, MacroKinds::ATTR) => {
+                clean_proc_macro(item, &mut name, MacroKind::Attr, cx)
+            }
+            ItemKind::Macro(_, _, MacroKinds::DERIVE) => {
+                clean_proc_macro(item, &mut name, MacroKind::Derive, cx)
+            }
+            ItemKind::Macro(_, _, _) => todo!("Handle macros with multiple kinds"),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)

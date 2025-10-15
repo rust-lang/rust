@@ -7,12 +7,24 @@ root = true
 [*]
 end_of_line = lf
 charset = utf-8
-trim_trailing_whitespace = true
 insert_final_newline = true
-
-[!src/llvm-project]
+trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
+
+# some tests need trailing whitespace in output snapshots
+[tests/**]
+trim_trailing_whitespace = false
+# for actual source code files of test, we still don't want trailing whitespace
+[tests/**.{rs,js}]
+trim_trailing_whitespace = true
+# these specific source files need to have trailing whitespace.
+[tests/ui/{frontmatter/frontmatter-whitespace-3.rs,parser/shebang/shebang-space.rs}]
+trim_trailing_whitespace = false
+
+[src/llvm-project]
+indent_style = unset
+indent_size = unset
 
 [*.rs]
 max_line_length = 100

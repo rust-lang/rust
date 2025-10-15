@@ -64,9 +64,10 @@ pub fn crcc_w_d_w(a: i64, b: i32) -> i32 {
 /// Generates the cache operation instruction
 #[inline]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn cacop<const IMM12: i64>(a: i64, b: i64) {
-    static_assert_simm_bits!(IMM12, 12);
-    __cacop(a, b, IMM12);
+pub unsafe fn cacop<const IMM5: i64, const IMM_S12: i64>(b: i64) {
+    static_assert_uimm_bits!(IMM5, 5);
+    static_assert_simm_bits!(IMM_S12, 12);
+    __cacop(IMM5, b, IMM_S12);
 }
 
 /// Reads the CSR
@@ -125,14 +126,16 @@ pub unsafe fn asrtgt(a: i64, b: i64) {
 #[inline]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn lddir<const B: i64>(a: i64) -> i64 {
-    __lddir(a, B)
+pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
+    static_assert_uimm_bits!(IMM8, 8);
+    __lddir(a, IMM8)
 }
 
 /// Loads the page table entry
 #[inline]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub unsafe fn ldpte<const B: i64>(a: i64) {
-    __ldpte(a, B)
+pub unsafe fn ldpte<const IMM8: i64>(a: i64) {
+    static_assert_uimm_bits!(IMM8, 8);
+    __ldpte(a, IMM8)
 }

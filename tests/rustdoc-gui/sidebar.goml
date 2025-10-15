@@ -1,5 +1,7 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
 include: "utils.goml"
+// Disable animations so they don't mess up color assertions later.
+emulate-media-features: { "prefers-reduced-motion": "reduce" }
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
@@ -200,7 +202,7 @@ drag-and-drop: ((205, 100), (108, 100))
 assert-position: (".sidebar-crate > h2 > a", {"x": -3})
 
 // Check that the mobile sidebar and the source sidebar use the same icon.
-store-css: (".mobile-topbar .sidebar-menu-toggle::before", {"content": image_url})
+store-css: ("rustdoc-topbar .sidebar-menu-toggle::before", {"content": image_url})
 // Then we go to a source page.
 click: ".main-heading .src"
 assert-css: ("#sidebar-button a::before", {"content": |image_url|})
@@ -212,7 +214,7 @@ assert: |sidebar_background| != |sidebar_background_hover|
 click: "#sidebar-button a"
 wait-for: "html.src-sidebar-expanded"
 assert-css: ("#sidebar-button a:hover", {"background-color": |sidebar_background_hover|})
-move-cursor-to: "#settings-menu"
+move-cursor-to: "#search-button"
 assert-css: ("#sidebar-button a:not(:hover)", {"background-color": |sidebar_background|})
 // Closing sidebar.
 click: "#sidebar-button a"
@@ -220,7 +222,7 @@ wait-for: "html:not(.src-sidebar-expanded)"
 // Now we check the same when the sidebar button is moved alongside the search.
 set-window-size: (500, 500)
 store-css: ("#sidebar-button a:hover", {"background-color": not_sidebar_background_hover})
-move-cursor-to: "#settings-menu"
+move-cursor-to: "rustdoc-toolbar #search-button"
 store-css: ("#sidebar-button a:not(:hover)", {"background-color": not_sidebar_background})
 // The sidebar background is supposed to be the same as the main background.
 assert-css: ("body", {"background-color": |not_sidebar_background|})

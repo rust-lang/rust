@@ -8,7 +8,7 @@ LL |         fn foo(&self) where (T, Option<T>): Ord {}
 LL |         fn bar(&self, x: &Option<T>) -> bool
    |            ^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

@@ -12,7 +12,7 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -37,7 +37,14 @@ fn associated_type_bounds<'tcx>(
 
         let icx = ItemCtxt::new(tcx, assoc_item_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            filter,
+            OverlappingAsssocItemConstraints::Allowed,
+        );
 
         match filter {
             PredicateFilter::All
@@ -174,21 +181,25 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
         let existing = match var.kind() {
             ty::GenericArgKind::Lifetime(re) => {
-                if let ty::RegionKind::ReBound(ty::INNERMOST, bv) = re.kind() {
+                if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                    re.kind()
+                {
                     mapping.insert(bv.var, tcx.mk_param_from_def(param))
                 } else {
                     return None;
                 }
             }
             ty::GenericArgKind::Type(ty) => {
-                if let ty::Bound(ty::INNERMOST, bv) = *ty.kind() {
+                if let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() {
                     mapping.insert(bv.var, tcx.mk_param_from_def(param))
                 } else {
                     return None;
                 }
             }
             ty::GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Bound(ty::INNERMOST, bv) = ct.kind() {
+                if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                    ct.kind()
+                {
                     mapping.insert(bv.var, tcx.mk_param_from_def(param))
                 } else {
                     return None;
@@ -253,7 +264,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ty;
         }
 
-        if let ty::Bound(binder, old_bound) = *ty.kind()
+        if let ty::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = *ty.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -279,7 +290,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
     }
 
     fn fold_region(&mut self, re: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReBound(binder, old_bound) = re.kind()
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(binder), old_bound) = re.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -307,7 +318,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ct;
         }
 
-        if let ty::ConstKind::Bound(binder, old_bound) = ct.kind()
+        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = ct.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -347,7 +358,14 @@ fn opaque_type_bounds<'tcx>(
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = Vec::new();
-        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        icx.lowerer().lower_bounds(
+            item_ty,
+            hir_bounds,
+            &mut bounds,
+            ty::List::empty(),
+            filter,
+            OverlappingAsssocItemConstraints::Allowed,
+        );
         // Implicit bounds are added to opaque types unless a `?Trait` bound is found
         match filter {
             PredicateFilter::All

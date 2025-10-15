@@ -57,7 +57,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ptr = left.to_scalar().to_pointer(this)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);
-                let result = this.binary_op(bin_op, &left, &right)?;
+                let result = this.binary_op(bin_op, &left, right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
                 let result_ptr = Pointer::new(
                     ptr.provenance,

@@ -18,8 +18,8 @@ query_system_cycle_usage = cycle used when {$usage}
 query_system_increment_compilation = internal compiler error: encountered incremental compilation error with {$dep_node}
     .help = This is a known issue with the compiler. Run {$run_cmd} to allow your project to compile
 
-query_system_increment_compilation_note1 = Please follow the instructions below to create a bug report with the provided information
-query_system_increment_compilation_note2 = See <https://github.com/rust-lang/rust/issues/84970> for more information
+query_system_increment_compilation_note1 = please follow the instructions below to create a bug report with the provided information
+query_system_increment_compilation_note2 = see <https://github.com/rust-lang/rust/issues/84970> for more information
 
 query_system_overflow_note = query depth increased by {$depth} when {$desc}
 

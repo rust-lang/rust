@@ -279,7 +279,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     poison: poison::Guard,
 }
 
-/// A [`MutexGuard`] is not `Send` to maximize platform portablity.
+/// A [`MutexGuard`] is not `Send` to maximize platform portability.
 ///
 /// On platforms that use POSIX threads (commonly referred to as pthreads) there is a requirement to
 /// release mutex locks on the same thread they were acquired.
@@ -668,7 +668,7 @@ impl<T: ?Sized> Mutex<T> {
     /// are properly synchronized to avoid data races, and that it is not read
     /// or written through after the mutex is dropped.
     #[unstable(feature = "mutex_data_ptr", issue = "140368")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
 }
@@ -757,11 +757,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
+/// For use in [`nonpoison::condvar`](super::condvar).
+pub(super) fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
 }
 
-pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
+/// For use in [`nonpoison::condvar`](super::condvar).
+pub(super) fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.lock.poison
 }
 

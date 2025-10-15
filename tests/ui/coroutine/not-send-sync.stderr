@@ -9,7 +9,11 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Sync`
    |
-   = help: within `{coroutine@$DIR/not-send-sync.rs:14:30: 14:32}`, the trait `Sync` is not implemented for `NotSync`
+help: within `{coroutine@$DIR/not-send-sync.rs:14:30: 14:32}`, the trait `Sync` is not implemented for `NotSync`
+  --> $DIR/not-send-sync.rs:5:1
+   |
+LL | struct NotSync;
+   | ^^^^^^^^^^^^^^
 note: coroutine is not `Sync` as this value is used across a yield
   --> $DIR/not-send-sync.rs:17:9
    |
@@ -34,7 +38,11 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/not-send-sync.rs:21:30: 21:32}`, the trait `Send` is not implemented for `NotSend`
+help: within `{coroutine@$DIR/not-send-sync.rs:21:30: 21:32}`, the trait `Send` is not implemented for `NotSend`
+  --> $DIR/not-send-sync.rs:4:1
+   |
+LL | struct NotSend;
+   | ^^^^^^^^^^^^^^
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/not-send-sync.rs:24:9
    |

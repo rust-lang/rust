@@ -47,14 +47,10 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             (arg, arg.span)
         },
         ExprKind::Call(path, [arg])
-            if path_def_id(cx, path).is_some_and(|did| {
-                if cx.tcx.is_diagnostic_item(sym::from_str_method, did) {
-                    true
-                } else if cx.tcx.is_diagnostic_item(sym::from_fn, did) {
-                    !is_copy(cx, typeck.expr_ty(expr))
-                } else {
-                    false
-                }
+            if path_def_id(cx, path).is_some_and(|did| match cx.tcx.get_diagnostic_name(did) {
+                Some(sym::from_str_method) => true,
+                Some(sym::from_fn) => !is_copy(cx, typeck.expr_ty(expr)),
+                _ => false,
             }) =>
         {
             (arg, arg.span)

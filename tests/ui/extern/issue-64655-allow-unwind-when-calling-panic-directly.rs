@@ -21,6 +21,7 @@
 //@[no]compile-flags: -C lto=no
 //@[thin]compile-flags: -C lto=thin
 //@[fat]compile-flags: -C lto=fat
+//@ ignore-backends: gcc
 
 #![feature(panic_internals)]
 

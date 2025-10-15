@@ -12,9 +12,13 @@ use rustc_middle::ty::UniverseIndex;
 use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
-    match constraint.locations {
-        Locations::All(_) => "All(...)".to_string(),
-        Locations::Single(loc) => format!("{loc:?}"),
+    if let ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable) = constraint.category {
+        format!("{unnameable:?} unnameable")
+    } else {
+        match constraint.locations {
+            Locations::All(_) => "All(...)".to_string(),
+            Locations::Single(loc) => format!("{loc:?}"),
+        }
     }
 }
 

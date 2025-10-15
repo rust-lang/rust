@@ -1,17 +1,20 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::numeric_literal;
+use clippy_utils::{ExprUseNode, expr_use_ctxt, numeric_literal};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FloatTy};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use std::fmt;
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for float literals with a precision greater
     /// than that supported by the underlying type.
+    ///
+    /// The lint is suppressed for literals with over `const_literal_digits_threshold` digits.
     ///
     /// ### Why is this bad?
     /// Rust will truncate the literal silently.
@@ -58,7 +61,21 @@ declare_clippy_lint! {
     "lossy whole number float literals"
 }
 
-declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
+pub struct FloatLiteral {
+    const_literal_digits_threshold: usize,
+}
+
+impl_lint_pass!(FloatLiteral => [
+    EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL
+]);
+
+impl FloatLiteral {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            const_literal_digits_threshold: conf.const_literal_digits_threshold,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
@@ -126,13 +143,25 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                         },
                     );
                 }
-            } else if digits > max as usize && count_digits(&float_str) < count_digits(sym_str) {
+            } else if digits > max as usize && count_digits(&float_str) < digits {
+                if digits >= self.const_literal_digits_threshold
+                    && matches!(expr_use_ctxt(cx, expr).use_node(cx), ExprUseNode::ConstStatic(_))
+                {
+                    // If a big enough number of digits is specified and it's a constant
+                    // we assume the user is definining a constant, and excessive precision is ok
+                    return;
+                }
                 span_lint_and_then(
                     cx,
                     EXCESSIVE_PRECISION,
                     expr.span,
                     "float has excessive precision",
                     |diag| {
+                        if digits >= self.const_literal_digits_threshold
+                            && let Some(let_stmt) = maybe_let_stmt(cx, expr)
+                        {
+                            diag.span_note(let_stmt.span, "consider making it a `const` item");
+                        }
                         diag.span_suggestion_verbose(
                             expr.span,
                             "consider changing the type or truncating it to",
@@ -194,5 +223,13 @@ impl FloatFormat {
             Self::UpperExp => format!("{f:E}"),
             Self::Normal => format!("{f}"),
         }
+    }
+}
+
+fn maybe_let_stmt<'a>(cx: &LateContext<'a>, expr: &hir::Expr<'_>) -> Option<&'a hir::LetStmt<'a>> {
+    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+    match parent {
+        hir::Node::LetStmt(let_stmt) => Some(let_stmt),
+        _ => None,
     }
 }

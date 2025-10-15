@@ -5,6 +5,7 @@
 //@ add-core-stubs
 //@ build-fail
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 #![feature(no_core, repr_simd)]
 #![no_core]
 #![allow(improper_ctypes_definitions)]

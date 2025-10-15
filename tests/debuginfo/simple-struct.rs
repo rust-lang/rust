@@ -1,5 +1,6 @@
 //@ compile-flags: -g -Zmir-enable-passes=-CheckAlignment
 //@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

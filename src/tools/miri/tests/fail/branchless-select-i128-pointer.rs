@@ -1,3 +1,5 @@
+#![allow(integer_to_ptr_transmutes)]
+
 use std::mem::transmute;
 
 #[cfg(target_pointer_width = "32")]

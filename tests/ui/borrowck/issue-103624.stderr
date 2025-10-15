@@ -13,7 +13,7 @@ LL |
 LL |             self.b;
    |             ^^^^^^ `self.b` is moved here
    |
-help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but an `FnOnce` consume them only once
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
   --> $DIR/issue-103624.rs:7:36
    |
 LL | async fn spawn_blocking<T>(f: impl (Fn() -> T) + Send + Sync + 'static) -> T {

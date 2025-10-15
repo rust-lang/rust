@@ -1,23 +1,25 @@
-use chalk_ir::{AdtId, TyKind};
+use base_db::target::TargetData;
 use either::Either;
 use hir_def::db::DefDatabase;
 use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
+use rustc_type_ir::inherent::GenericArgs as _;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
-    Interner, Substitution,
     db::HirDatabase,
     layout::{Layout, LayoutError},
+    next_solver::{DbInterner, GenericArgs},
+    setup_tracing,
     test_db::TestDB,
 };
 
 mod closure;
 
-fn current_machine_data_layout() -> String {
-    project_model::toolchain_info::target_data_layout::get(
+fn current_machine_target_data() -> TargetData {
+    project_model::toolchain_info::target_data::get(
         QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
@@ -29,7 +31,9 @@ fn eval_goal(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let target_data_layout = current_machine_data_layout();
+    let _tracing = setup_tracing();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\n{ra_fixture}",
     );
@@ -75,21 +79,24 @@ fn eval_goal(
             Some(adt_or_type_alias_id)
         })
         .unwrap();
-    let goal_ty = match adt_or_type_alias_id {
-        Either::Left(adt_id) => {
-            TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner)
-        }
-        Either::Right(ty_id) => {
-            db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
-        }
-    };
-    db.layout_of_ty(
-        goal_ty,
-        db.trait_environment(match adt_or_type_alias_id {
-            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-        }),
-    )
+    crate::attach_db(&db, || {
+        let interner = DbInterner::new_with(&db, None, None);
+        let goal_ty = match adt_or_type_alias_id {
+            Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
+                interner,
+                adt_id,
+                GenericArgs::identity_for_item(interner, adt_id.into()),
+            ),
+            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
+        };
+        db.layout_of_ty(
+            goal_ty,
+            db.trait_environment(match adt_or_type_alias_id {
+                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+            }),
+        )
+    })
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
@@ -97,35 +104,42 @@ fn eval_expr(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     minicore: &str,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let target_data_layout = current_machine_data_layout();
+    let _tracing = setup_tracing();
+    let target_data = current_machine_target_data();
+    let target_data_layout = target_data.data_layout;
     let ra_fixture = format!(
         "//- target_data_layout: {target_data_layout}\n{minicore}//- /main.rs crate:test\nfn main(){{let goal = {{{ra_fixture}}};}}",
     );
 
     let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id.file_id(&db));
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let function_id = scope
-        .declarations()
-        .find_map(|x| match x {
-            hir_def::ModuleDefId::FunctionId(x) => {
-                let name =
-                    db.function_signature(x).name.display_no_db(file_id.edition(&db)).to_smolstr();
-                (name == "main").then_some(x)
-            }
-            _ => None,
-        })
-        .unwrap();
-    let hir_body = db.body(function_id.into());
-    let b = hir_body
-        .bindings()
-        .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
-        .unwrap()
-        .0;
-    let infer = db.infer(function_id.into());
-    let goal_ty = infer.type_of_binding[b].clone();
-    db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id.local_id].scope;
+        let function_id = scope
+            .declarations()
+            .find_map(|x| match x {
+                hir_def::ModuleDefId::FunctionId(x) => {
+                    let name = db
+                        .function_signature(x)
+                        .name
+                        .display_no_db(file_id.edition(&db))
+                        .to_smolstr();
+                    (name == "main").then_some(x)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let hir_body = db.body(function_id.into());
+        let b = hir_body
+            .bindings()
+            .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
+            .unwrap()
+            .0;
+        let infer = db.infer(function_id.into());
+        let goal_ty = infer.type_of_binding[b];
+        db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+    })
 }
 
 #[track_caller]
@@ -137,7 +151,7 @@ fn check_size_and_align(
 ) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -149,7 +163,7 @@ fn check_size_and_align_expr(
 ) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]

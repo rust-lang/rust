@@ -6,6 +6,7 @@ mod item;
 mod stack;
 
 use std::fmt::Write;
+use std::sync::atomic::AtomicBool;
 use std::{cmp, mem};
 
 use rustc_abi::{BackendRepr, Size};
@@ -740,6 +741,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(access) = access {
                     assert_eq!(access, AccessKind::Write);
                     // Make sure the data race model also knows about this.
+                    // FIXME(genmc): Ensure this is still done in GenMC mode. Check for other places where GenMC may need to be informed.
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
                         data_race.write(
                             alloc_id,
@@ -821,7 +823,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         let size = match size {
             Some(size) => size,
             None => {
-                if !this.machine.sb_extern_type_warned.replace(true) {
+                static DEDUP: AtomicBool = AtomicBool::new(false);
+                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
                     this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
                 }
                 return interp_ok(place.clone());

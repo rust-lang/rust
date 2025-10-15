@@ -63,7 +63,7 @@
         "@typescript-eslint/eslint-plugin": "^8.25.0",
         "@typescript-eslint/parser": "^8.25.0",
         "@vscode/test-electron": "^2.4.1",
-        "@vscode/vsce": "^3.2.2",
+        "@vscode/vsce": "^3.6.0",
         "esbuild": "^0.25.0",
         "eslint": "^9.21.0",
         "eslint-config-prettier": "^10.0.2",
@@ -1586,6 +1586,16 @@
                 }
             },
             {
+                "title": "Document",
+                "properties": {
+                    "rust-analyzer.document.symbol.search.excludeLocals": {
+                        "markdownDescription": "Exclude all locals from document symbol search.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Files",
                 "properties": {
                     "rust-analyzer.files.exclude": {
@@ -1999,19 +2009,30 @@
                         "markdownDescription": "How imports should be grouped into use statements.",
                         "default": "crate",
                         "type": "string",
-                        "enum": [
-                            "preserve",
-                            "crate",
-                            "module",
-                            "item",
-                            "one"
-                        ],
-                        "enumDescriptions": [
-                            "Do not change the granularity of any imports and preserve the original structure written by the developer.",
-                            "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
-                            "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                            "Flatten imports so that each has its own use statement.",
-                            "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+                        "anyOf": [
+                            {
+                                "enum": [
+                                    "crate",
+                                    "module",
+                                    "item",
+                                    "one"
+                                ],
+                                "enumDescriptions": [
+                                    "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                                    "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                                    "Flatten imports so that each has its own use statement.",
+                                    "Merge all imports into a single use statement as long as they have the same visibility and attributes."
+                                ]
+                            },
+                            {
+                                "enum": [
+                                    "preserve"
+                                ],
+                                "enumDescriptions": [
+                                    "Deprecated - unless `enforceGranularity` is `true`, the style of the current file is preferred over this setting. Behaves like `item`."
+                                ],
+                                "deprecated": true
+                            }
                         ]
                     }
                 }
@@ -2202,6 +2223,16 @@
             {
                 "title": "Inlay Hints",
                 "properties": {
+                    "rust-analyzer.inlayHints.expressionAdjustmentHints.disableReborrows": {
+                        "markdownDescription": "Disable reborrows in expression adjustments inlay hints.\n\nReborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.\n\nNote: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
                     "rust-analyzer.inlayHints.expressionAdjustmentHints.enable": {
                         "markdownDescription": "Show inlay hints for type adjustments.",
                         "default": "never",
@@ -2335,7 +2366,7 @@
                 "title": "Inlay Hints",
                 "properties": {
                     "rust-analyzer.inlayHints.maxLength": {
-                        "markdownDescription": "Maximum length for inlay hints. Set to null to have an unlimited length.",
+                        "markdownDescription": "Maximum length for inlay hints. Set to null to have an unlimited length.\n\n**Note:** This is mostly a hint, and we don't guarantee to strictly follow the limit.",
                         "default": 25,
                         "type": [
                             "null",
@@ -2769,7 +2800,7 @@
                     "rust-analyzer.runnables.extraTestBinaryArgs": {
                         "markdownDescription": "Additional arguments to be passed through Cargo to launched tests, benchmarks, or\ndoc-tests.\n\nUnless the launched target uses a\n[custom test harness](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#the-harness-field),\nthey will end up being interpreted as options to\n[`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).",
                         "default": [
-                            "--show-output"
+                            "--nocapture"
                         ],
                         "type": "array",
                         "items": {
@@ -2826,6 +2857,16 @@
                     "rust-analyzer.rustfmt.rangeFormatting.enable": {
                         "markdownDescription": "Enables the use of rustfmt's unstable range formatting command for the\n`textDocument/rangeFormatting` request. The rustfmt option is unstable and only\navailable on a nightly build.",
                         "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Semantic Highlighting",
+                "properties": {
+                    "rust-analyzer.semanticHighlighting.comments.enable": {
+                        "markdownDescription": "Use semantic tokens for comments.\n\nIn some editors (e.g. vscode) semantic tokens override other highlighting grammars.\nBy disabling semantic tokens for comments, other grammars can be used to highlight\ntheir contents.",
+                        "default": true,
                         "type": "boolean"
                     }
                 }

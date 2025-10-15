@@ -1313,7 +1313,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if errors.iter().all(|error| {
                 match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
                     Some(clause) => match clause.self_ty().skip_binder().kind() {
@@ -1497,7 +1497,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
         ocx.register_bound(cause, self.infcx.param_env, ty, def_id);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors
@@ -2992,6 +2992,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.buffer_error(err);
     }
 
+    #[tracing::instrument(level = "debug", skip(self, explanation))]
     fn report_local_value_does_not_live_long_enough(
         &self,
         location: Location,
@@ -3001,13 +3002,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        debug!(
-            "report_local_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, name, borrow, drop_span, borrow_spans
-        );
-
         let borrow_span = borrow_spans.var_or_use_path_span();
         if let BorrowExplanation::MustBeValidFor {
             category,
@@ -3974,7 +3968,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         }
                         ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Subslice { .. }
-                        | ProjectionElem::Subtype(_)
                         | ProjectionElem::Index(_)
                         | ProjectionElem::UnwrapUnsafeBinder(_) => kind,
                     },

@@ -139,9 +139,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // whether or not the right-hand side is a place expression
             if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                 opt_match_place: Some((opt_match_place, match_span)),
-                binding_mode: _,
-                opt_ty_info: _,
-                pat_span: _,
+                ..
             })) = *local_decl.local_info()
             {
                 let stmt_source_info = self.body.source_info(location);
@@ -518,7 +516,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .with_span_help(
                         self.get_closure_bound_clause_span(*def_id),
                         "`Fn` and `FnMut` closures require captured values to be able to be \
-                         consumed multiple times, but an `FnOnce` consume them only once",
+                         consumed multiple times, but `FnOnce` closures may consume them only once",
                     )
             }
             _ => {

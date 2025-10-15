@@ -1,5 +1,5 @@
 // skip-filecheck
-//@ compile-flags: -Z validate-mir
+//@ compile-flags: -Zmir-opt-level=0 -Z validate-mir
 //@ edition: 2024
 struct Droppy(u8);
 impl Drop for Droppy {

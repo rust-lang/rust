@@ -1,10 +1,4 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
-
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
 
 pub(crate) struct PathParser;
 
@@ -12,6 +6,8 @@ impl<S: Stage> SingleAttributeParser<S> for PathParser {
     const PATH: &[Symbol] = &[sym::path];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Error(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "file",
         "https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute"

@@ -1,5 +1,5 @@
 error: import name type is only supported on x86
-  --> $DIR/import-name-type-x86-only.rs:3:42
+  --> $DIR/import-name-type-x86-only.rs:9:42
    |
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated")]
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

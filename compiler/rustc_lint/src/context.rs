@@ -11,7 +11,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
+use rustc_errors::{Diag, LintBuffer, LintDiagnostic, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -23,8 +23,8 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
-use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintBuffer, LintExpectationId, LintId};
-use rustc_session::{LintStoreMarker, Session};
+use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
+use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
@@ -62,7 +62,13 @@ pub struct LintStore {
     lint_groups: FxIndexMap<&'static str, LintGroup>,
 }
 
-impl LintStoreMarker for LintStore {}
+impl DynLintStore for LintStore {
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = rustc_session::LintGroup> + '_> {
+        Box::new(self.get_lint_groups().map(|(name, lints, is_externally_loaded)| {
+            rustc_session::LintGroup { name, lints, is_externally_loaded }
+        }))
+    }
+}
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
 #[derive(Debug)]
@@ -745,41 +751,41 @@ impl<'tcx> LateContext<'tcx> {
     /// }
     /// ```
     pub fn get_def_path(&self, def_id: DefId) -> Vec<Symbol> {
-        struct AbsolutePathPrinter<'tcx> {
+        struct LintPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             path: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for LintPathPrinter<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.path = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -800,7 +806,7 @@ impl<'tcx> LateContext<'tcx> {
                 })
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 self_ty: Ty<'tcx>,
@@ -825,7 +831,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -844,7 +850,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
@@ -853,7 +859,7 @@ impl<'tcx> LateContext<'tcx> {
             }
         }
 
-        let mut p = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
+        let mut p = LintPathPrinter { tcx: self.tcx, path: vec![] };
         p.print_def_path(def_id, &[]).unwrap();
         p.path
     }

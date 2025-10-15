@@ -60,6 +60,7 @@ impl<'a> PanicHookInfo<'a> {
     /// Returns the payload associated with the panic.
     ///
     /// This will commonly, but not always, be a `&'static str` or [`String`].
+    /// If you only care about such payloads, use [`payload_as_str`] instead.
     ///
     /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
     /// panic payload of type `&'static str` or `String`.
@@ -69,6 +70,7 @@ impl<'a> PanicHookInfo<'a> {
     /// can result in a panic payload other than a `&'static str` or `String`.
     ///
     /// [`String`]: ../../std/string/struct.String.html
+    /// [`payload_as_str`]: PanicHookInfo::payload_as_str
     ///
     /// # Examples
     ///
@@ -120,7 +122,7 @@ impl<'a> PanicHookInfo<'a> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "panic_payload_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "panic_payload_as_str", since = "1.91.0")]
     pub fn payload_as_str(&self) -> Option<&str> {
         if let Some(s) = self.payload.downcast_ref::<&str>() {
             Some(s)

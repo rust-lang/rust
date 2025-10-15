@@ -19,7 +19,7 @@ LL +
 LL +         if *v == 10 {
 LL +             return;
 LL +         } else {
-LL +             println!("{}", v);
+LL +             println!("{v}");
 LL +         }
 LL +     }
    |
@@ -29,5 +29,39 @@ LL -             return;
 LL +             continue;
    |
 
-error: aborting due to 1 previous error
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:22:5
+   |
+LL | /     [].iter().for_each(move |_: &i32| {
+LL | |
+LL | |         i += 1;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for _ in [].iter() {
+LL +
+LL +         i += 1;
+LL +     }
+   |
+
+error: needless use of `for_each`
+  --> tests/ui/needless_for_each_unfixable.rs:28:5
+   |
+LL | /     [1i32].iter().for_each(move |_: &i32| {
+LL | |
+LL | |         i += 1;
+LL | |     });
+   | |_______^
+   |
+help: try
+   |
+LL ~     for _ in [1i32].iter() {
+LL +
+LL +         i += 1;
+LL +     }
+   |
+
+error: aborting due to 3 previous errors
 

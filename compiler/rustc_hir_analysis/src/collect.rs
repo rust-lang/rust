@@ -590,7 +590,7 @@ fn get_new_lifetime_name<'tcx>(
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
             let mut s = '\''.to_string();
-            s.extend(std::iter::repeat(char::from(c)).take(n));
+            s.extend(std::iter::repeat_n(char::from(c), n));
             s
         })
     };
@@ -1140,7 +1140,7 @@ fn recover_infer_ret_ty<'tcx>(
     // recursive function definition to leak out into the fn sig.
     let mut recovered_ret_ty = None;
     if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with the correct return type",
             suggestable_ret_ty,
@@ -1152,7 +1152,7 @@ fn recover_infer_ret_ty<'tcx>(
         tcx.param_env(def_id),
         ret_ty,
     ) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with an appropriate return type",
             sugg,
@@ -1267,7 +1267,7 @@ pub fn suggest_impl_trait<'tcx>(
                 Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args),
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.select_where_possible().is_empty()
+            if ocx.try_evaluate_obligations().is_empty()
                 && let item_ty = infcx.resolve_vars_if_possible(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(

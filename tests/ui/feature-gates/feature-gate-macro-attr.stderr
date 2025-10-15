@@ -4,7 +4,7 @@ error[E0658]: `macro_rules!` attributes are unstable
 LL | macro_rules! myattr { attr() {} => {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = note: see issue #143547 <https://github.com/rust-lang/rust/issues/143547> for more information
    = help: add `#![feature(macro_attr)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

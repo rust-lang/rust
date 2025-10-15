@@ -2421,4 +2421,53 @@ impl other_file_2::Trait for MyStruct {
 }"#,
         );
     }
+
+    #[test]
+    fn test_qualify_ident_pat_in_default_members() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+//- /lib.rs crate:b new_source_root:library
+pub enum State {
+    Active,
+    Inactive,
+}
+
+use State::*;
+
+pub trait Checker {
+    fn check(&self) -> State;
+
+    fn is_active(&self) -> bool {
+        match self.check() {
+            Active => true,
+            Inactive => false,
+        }
+    }
+}
+//- /main.rs crate:a deps:b
+struct MyChecker;
+
+impl b::Checker for MyChecker {
+    fn check(&self) -> b::State {
+        todo!();
+    }$0
+}"#,
+            r#"
+struct MyChecker;
+
+impl b::Checker for MyChecker {
+    fn check(&self) -> b::State {
+        todo!();
+    }
+
+    $0fn is_active(&self) -> bool {
+        match self.check() {
+            b::State::Active => true,
+            b::State::Inactive => false,
+        }
+    }
+}"#,
+        );
+    }
 }

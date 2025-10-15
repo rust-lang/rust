@@ -24,32 +24,29 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
     let ty::Adt(adt, substs) = cx.typeck_results().expr_ty(iter).kind() else {
         return None;
     };
-    let did = adt.did();
 
-    if cx.tcx.is_diagnostic_item(sym::ArrayIntoIter, did) {
-        // For array::IntoIter<T, const N: usize>, the length is the second generic
-        // parameter.
-        substs.const_at(1).try_to_target_usize(cx.tcx).map(u128::from)
-    } else if cx.tcx.is_diagnostic_item(sym::SliceIter, did)
-        && let ExprKind::MethodCall(_, recv, ..) = iter.kind
-    {
-        if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
-            // For slice::Iter<'_, T>, the receiver might be an array literal: [1,2,3].iter().skip(..)
-            len.try_to_target_usize(cx.tcx).map(u128::from)
-        } else if let Some(args) = VecArgs::hir(cx, expr_or_init(cx, recv)) {
-            match args {
-                VecArgs::Vec(vec) => vec.len().try_into().ok(),
-                VecArgs::Repeat(_, len) => expr_as_u128(cx, len),
+    match cx.tcx.get_diagnostic_name(adt.did()) {
+        Some(sym::ArrayIntoIter) => {
+            // For array::IntoIter<T, const N: usize>, the length is the second generic
+            // parameter.
+            substs.const_at(1).try_to_target_usize(cx.tcx).map(u128::from)
+        },
+        Some(sym::SliceIter) if let ExprKind::MethodCall(_, recv, ..) = iter.kind => {
+            if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
+                // For slice::Iter<'_, T>, the receiver might be an array literal: [1,2,3].iter().skip(..)
+                len.try_to_target_usize(cx.tcx).map(u128::from)
+            } else if let Some(args) = VecArgs::hir(cx, expr_or_init(cx, recv)) {
+                match args {
+                    VecArgs::Vec(vec) => vec.len().try_into().ok(),
+                    VecArgs::Repeat(_, len) => expr_as_u128(cx, len),
+                }
+            } else {
+                None
             }
-        } else {
-            None
-        }
-    } else if cx.tcx.is_diagnostic_item(sym::IterEmpty, did) {
-        Some(0)
-    } else if cx.tcx.is_diagnostic_item(sym::IterOnce, did) {
-        Some(1)
-    } else {
-        None
+        },
+        Some(sym::IterEmpty) => Some(0),
+        Some(sym::IterOnce) => Some(1),
+        _ => None,
     }
 }
 

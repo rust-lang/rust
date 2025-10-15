@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::instrument;
 
@@ -25,6 +26,20 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    pub(in crate::solve) fn enter_single_candidate(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+    ) -> (T, CandidateHeadUsages) {
+        self.ecx.search_graph.enter_single_candidate();
+        let mut candidate_usages = CandidateHeadUsages::default();
+        let result = self.enter(|ecx| {
+            let result = f(ecx);
+            candidate_usages = ecx.search_graph.finish_single_candidate();
+            result
+        });
+        (result, candidate_usages)
+    }
+
     pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
         let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
 
@@ -78,7 +93,8 @@ where
         self,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
-        self.cx.enter(|ecx| f(ecx)).map(|result| Candidate { source: self.source, result })
+        let (result, head_usages) = self.cx.enter_single_candidate(f);
+        result.map(|result| Candidate { source: self.source, result, head_usages })
     }
 }
 

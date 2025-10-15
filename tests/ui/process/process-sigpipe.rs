@@ -15,6 +15,10 @@
 
 //@ ignore-vxworks no 'sh'
 //@ ignore-fuchsia no 'sh'
+//@ ignore-ios no 'sh'
+//@ ignore-tvos no 'sh'
+//@ ignore-watchos no 'sh'
+//@ ignore-visionos no 'sh'
 //@ needs-threads
 //@ only-unix SIGPIPE is a unix feature
 

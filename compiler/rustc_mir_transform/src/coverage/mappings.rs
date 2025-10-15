@@ -1,51 +1,36 @@
 use rustc_index::IndexVec;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind};
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind, Mapping, MappingKind,
+};
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
-use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::extract_refined_covspans;
 use crate::coverage::unexpand::unexpand_into_body_span;
 
-/// Associates an ordinary executable code span with its corresponding BCB.
-#[derive(Debug)]
-pub(super) struct CodeMapping {
-    pub(super) span: Span,
-    pub(super) bcb: BasicCoverageBlock,
-}
-
-#[derive(Debug)]
-pub(super) struct BranchPair {
-    pub(super) span: Span,
-    pub(super) true_bcb: BasicCoverageBlock,
-    pub(super) false_bcb: BasicCoverageBlock,
-}
-
 #[derive(Default)]
-pub(super) struct ExtractedMappings {
-    pub(super) code_mappings: Vec<CodeMapping>,
-    pub(super) branch_pairs: Vec<BranchPair>,
+pub(crate) struct ExtractedMappings {
+    pub(crate) mappings: Vec<Mapping>,
 }
 
-/// Extracts coverage-relevant spans from MIR, and associates them with
-/// their corresponding BCBs.
-pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
+/// Extracts coverage-relevant spans from MIR, and uses them to create
+/// coverage mapping data for inclusion in MIR.
+pub(crate) fn extract_mappings_from_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> ExtractedMappings {
-    let mut code_mappings = vec![];
-    let mut branch_pairs = vec![];
+    let mut mappings = vec![];
 
     // Extract ordinary code mappings from MIR statement/terminator spans.
-    extract_refined_covspans(tcx, mir_body, hir_info, graph, &mut code_mappings);
+    extract_refined_covspans(tcx, mir_body, hir_info, graph, &mut mappings);
 
-    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, graph));
+    extract_branch_mappings(mir_body, hir_info, graph, &mut mappings);
 
-    ExtractedMappings { code_mappings, branch_pairs }
+    ExtractedMappings { mappings }
 }
 
 fn resolve_block_markers(
@@ -69,19 +54,18 @@ fn resolve_block_markers(
     block_markers
 }
 
-pub(super) fn extract_branch_pairs(
+pub(super) fn extract_branch_mappings(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
-) -> Vec<BranchPair> {
-    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return vec![] };
+    mappings: &mut Vec<Mapping>,
+) {
+    let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return };
 
     let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
-    coverage_info_hi
-        .branch_spans
-        .iter()
-        .filter_map(|&BranchSpan { span: raw_span, true_marker, false_marker }| {
+    mappings.extend(coverage_info_hi.branch_spans.iter().filter_map(
+        |&BranchSpan { span: raw_span, true_marker, false_marker }| try {
             // For now, ignore any branch span that was introduced by
             // expansion. This makes things like assert macros less noisy.
             if !raw_span.ctxt().outer_expn_data().is_root() {
@@ -94,7 +78,7 @@ pub(super) fn extract_branch_pairs(
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
 
-            Some(BranchPair { span, true_bcb, false_bcb })
-        })
-        .collect::<Vec<_>>()
+            Mapping { span, kind: MappingKind::Branch { true_bcb, false_bcb } }
+        },
+    ));
 }

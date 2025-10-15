@@ -12,7 +12,7 @@ use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    ImportPathConfig, ModuleDefId, ModuleId,
+    FindPathConfig, ModuleDefId, ModuleId,
     db::DefDatabase,
     item_scope::ItemInNs,
     nameres::DefMap,
@@ -27,7 +27,7 @@ pub fn find_path(
     from: ModuleId,
     mut prefix_kind: PrefixKind,
     ignore_local_imports: bool,
-    mut cfg: ImportPathConfig,
+    mut cfg: FindPathConfig,
 ) -> Option<ModPath> {
     let _p = tracing::info_span!("find_path").entered();
 
@@ -96,7 +96,7 @@ impl PrefixKind {
 struct FindPathCtx<'db> {
     db: &'db dyn DefDatabase,
     prefix: PrefixKind,
-    cfg: ImportPathConfig,
+    cfg: FindPathConfig,
     ignore_local_imports: bool,
     is_std_item: bool,
     from: ModuleId,
@@ -718,7 +718,7 @@ mod tests {
                 module,
                 prefix,
                 ignore_local_imports,
-                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute, allow_unstable },
+                FindPathConfig { prefer_no_std, prefer_prelude, prefer_absolute, allow_unstable },
             );
             format_to!(
                 res,

@@ -54,7 +54,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, TraitCandidate,
+    LifetimeSyntax, ParamName, Target, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -943,11 +943,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: HirId,
         attrs: &[Attribute],
         target_span: Span,
+        target: Target,
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
-            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span), id);
+            let lowered_attrs =
+                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
 
             assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -972,12 +974,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target_hir_id: HirId,
+        target: Target,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target_hir_id,
+            target,
             OmitDoc::Lower,
             |s| l.lower(s),
             |l| {
@@ -1942,7 +1946,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs, param.span());
+        self.lower_attrs(hir_id, &param.attrs, param.span(), Target::Param);
         hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),
@@ -2024,7 +2028,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default },
                 )
             }
         }
@@ -2097,17 +2101,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 {
                     return;
                 }
-                if self.tcx.features().more_maybe_bounds() {
-                    return;
-                }
             }
             RelaxedBoundPolicy::Forbidden(reason) => {
-                if self.tcx.features().more_maybe_bounds() {
-                    return;
-                }
-
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
+                        if self.tcx.features().more_maybe_bounds() {
+                            return;
+                        }
+
                         self.dcx().span_err(
                             span,
                             "relaxed bounds are not permitted in trait object types",
@@ -2115,6 +2116,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
+                        if self.tcx.features().more_maybe_bounds() {
+                            return;
+                        }
+
                         let mut diag = self.dcx().struct_span_err(
                             span,
                             "relaxed bounds are not permitted in supertrait bounds",
@@ -2504,7 +2509,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span));
-        self.pat(span, hir::PatKind::Struct(qpath, fields, false))
+        self.pat(span, hir::PatKind::Struct(qpath, fields, None))
     }
 
     fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, HirId) {

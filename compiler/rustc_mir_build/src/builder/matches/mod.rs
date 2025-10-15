@@ -16,7 +16,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, *};
+use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
 use rustc_pattern_analysis::constructor::RangeEnd;
@@ -388,7 +388,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Evaluate the scrutinee and add the PlaceMention for it.
-    fn lower_scrutinee(
+    pub(crate) fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
         scrutinee_id: ExprId,
@@ -579,6 +579,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -608,6 +609,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -739,6 +741,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             pattern,
             &ProjectedUserTypesNode::None,
             &mut |this, name, mode, var, span, ty, user_tys| {
+                let saved_scope = this.source_scope;
+                this.set_correct_source_scope_for_arg(var.0, saved_scope, span);
                 let vis_scope = *visibility_scope
                     .get_or_insert_with(|| this.new_source_scope(scope_span, LintLevel::Inherited));
                 let source_info = SourceInfo { span, scope: this.source_scope };
@@ -756,6 +760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
+                this.source_scope = saved_scope;
             },
         );
         if let Some(guard_expr) = guard {
@@ -799,6 +804,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         var: LocalVarId,
         span: Span,
+        is_shorthand: bool,
         for_guard: ForGuard,
         schedule_drop: ScheduleDrops,
     ) -> Place<'tcx> {
@@ -811,6 +817,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && matches!(schedule_drop, ScheduleDrops::Yes)
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        }
+        let local_info = self.local_decls[local_id].local_info.as_mut().unwrap_crate_local();
+        if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
+            var_info.introductions.push(VarBindingIntroduction { span, is_shorthand });
         }
         Place::from(local_id)
     }
@@ -1217,6 +1227,7 @@ struct Binding<'tcx> {
     source: Place<'tcx>,
     var_id: LocalVarId,
     binding_mode: BindingMode,
+    is_shorthand: bool,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -1245,7 +1256,7 @@ struct Ascription<'tcx> {
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: mir::Const<'tcx> },
+    Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1316,13 +1327,13 @@ enum TestKind<'tcx> {
     If,
 
     /// Test for equality with value, possibly after an unsizing coercion to
-    /// `ty`,
+    /// `cast_ty`,
     Eq {
-        value: Const<'tcx>,
+        value: ty::Value<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
         // types and `&[T]` types are converted back into patterns, so this can
-        // only be `&str`, `f32` or `f64`.
-        ty: Ty<'tcx>,
+        // only be `&str` or floats.
+        cast_ty: Ty<'tcx>,
     },
 
     /// Test whether the value falls within an inclusive or exclusive range.
@@ -1357,8 +1368,8 @@ pub(crate) struct Test<'tcx> {
 enum TestBranch<'tcx> {
     /// Success branch, used for tests with two possible outcomes.
     Success,
-    /// Branch corresponding to this constant.
-    Constant(Const<'tcx>, u128),
+    /// Branch corresponding to this constant. Must be a scalar.
+    Constant(ty::Value<'tcx>),
     /// Branch corresponding to this variant.
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
@@ -1366,8 +1377,8 @@ enum TestBranch<'tcx> {
 }
 
 impl<'tcx> TestBranch<'tcx> {
-    fn as_constant(&self) -> Option<&Const<'tcx>> {
-        if let Self::Constant(v, _) = self { Some(v) } else { None }
+    fn as_constant(&self) -> Option<ty::Value<'tcx>> {
+        if let Self::Constant(v) = self { Some(*v) } else { None }
     }
 }
 
@@ -2725,6 +2736,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 binding.var_id,
                 binding.span,
+                binding.is_shorthand,
                 RefWithinGuard,
                 ScheduleDrops::Yes,
             );
@@ -2742,6 +2754,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         binding.var_id,
                         binding.span,
+                        binding.is_shorthand,
                         OutsideGuard,
                         ScheduleDrops::Yes,
                     );
@@ -2775,6 +2788,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 binding.var_id,
                 binding.span,
+                binding.is_shorthand,
                 OutsideGuard,
                 schedule_drops,
             );
@@ -2827,6 +2841,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_ty_info: None,
                     opt_match_place,
                     pat_span,
+                    introductions: Vec::new(),
                 },
             )))),
         };
@@ -2849,7 +2864,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(
-                    BindingForm::RefForGuard,
+                    BindingForm::RefForGuard(for_arm_body),
                 ))),
             });
             if self.should_emit_debug_info_for_binding(name, var_id) {

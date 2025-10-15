@@ -4,7 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::lang_items::TraitSolverLangItem;
+use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
@@ -140,7 +140,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         // is present.
         if self.elaborate_sized == ElaborateSized::No
             && let Some(did) = clause.as_trait_clause().map(|c| c.def_id())
-            && self.cx.is_lang_item(did, TraitSolverLangItem::Sized)
+            && self.cx.is_trait_lang_item(did, SolverTraitLangItem::Sized)
         {
             return;
         }
@@ -166,7 +166,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
                 match self.mode {
                     Filter::All => self.extend_deduped(
-                        cx.explicit_implied_predicates_of(data.def_id())
+                        cx.explicit_implied_predicates_of(data.def_id().into())
                             .iter_identity()
                             .enumerate()
                             .map(map_to_child_clause),
@@ -181,13 +181,15 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             }
             // `T: [const] Trait` implies `T: [const] Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
-                cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
-                    elaboratable.child(
-                        trait_ref
-                            .to_host_effect_clause(cx, data.constness)
-                            .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
-                    )
-                }),
+                cx.explicit_implied_const_bounds(data.def_id().into()).iter_identity().map(
+                    |trait_ref| {
+                        elaboratable.child(
+                            trait_ref
+                                .to_host_effect_clause(cx, data.constness)
+                                .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
+                        )
+                    },
+                ),
             ),
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
@@ -312,8 +314,8 @@ impl<I: Interner, O: Elaboratable<I>> Iterator for Elaborator<I, O> {
 /// and to make size estimates for vtable layout computation.
 pub fn supertrait_def_ids<I: Interner>(
     cx: I,
-    trait_def_id: I::DefId,
-) -> impl Iterator<Item = I::DefId> {
+    trait_def_id: I::TraitId,
+) -> impl Iterator<Item = I::TraitId> {
     let mut set = HashSet::default();
     let mut stack = vec![trait_def_id];
 

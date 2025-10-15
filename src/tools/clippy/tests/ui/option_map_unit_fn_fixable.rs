@@ -102,4 +102,13 @@ fn option_map_unit_fn() {
     //~^ option_map_unit_fn
 }
 
+fn issue15568() {
+    unsafe fn f(_: u32) {}
+    let x = Some(3);
+    x.map(|x| unsafe { f(x) });
+    //~^ option_map_unit_fn
+    x.map(|x| unsafe { { f(x) } });
+    //~^ option_map_unit_fn
+}
+
 fn main() {}

@@ -457,7 +457,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
 }
 
 fn is_one_of_trim_diagnostic_items(cx: &LateContext<'_>, trim_def_id: DefId) -> bool {
-    cx.tcx.is_diagnostic_item(sym::str_trim, trim_def_id)
-        || cx.tcx.is_diagnostic_item(sym::str_trim_start, trim_def_id)
-        || cx.tcx.is_diagnostic_item(sym::str_trim_end, trim_def_id)
+    matches!(
+        cx.tcx.get_diagnostic_name(trim_def_id),
+        Some(sym::str_trim | sym::str_trim_start | sym::str_trim_end)
+    )
 }

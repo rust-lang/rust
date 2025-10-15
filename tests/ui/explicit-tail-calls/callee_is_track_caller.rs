@@ -1,10 +1,12 @@
-//@ check-pass
-// FIXME(explicit_tail_calls): make this run-pass, once tail calls are properly implemented
+//@ run-pass
+//@ ignore-pass
+//@ ignore-backends: gcc
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
 fn a(x: u32) -> u32 {
     become b(x);
+    //~^ warning: tail calling a function marked with `#[track_caller]` has no special effect
 }
 
 #[track_caller]

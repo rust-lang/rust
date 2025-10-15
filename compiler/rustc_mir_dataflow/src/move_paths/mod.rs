@@ -1,3 +1,15 @@
+//! The move-analysis portion of borrowck needs to work in an abstract domain of lifted `Place`s.
+//! Most of the `Place` variants fall into a one-to-one mapping between the concrete and abstract
+//! (e.g., a field projection on a local variable, `x.field`, has the same meaning in both
+//! domains). In other words, all field projections for the same field on the same local do not
+//! have meaningfully different types if ever. Indexed projections are the exception: `a[x]` needs
+//! to be treated as mapping to the same move path as `a[y]` as well as `a[13]`, etc. So we map
+//! these `x`/`y` values to `()`.
+//!
+//! (In theory, the analysis could be extended to work with sets of paths, so that `a[0]` and
+//! `a[13]` could be kept distinct, while `a[x]` would still overlap them both. But that is not
+//! what this representation does today.)
+
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
@@ -8,10 +20,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-use self::abs_domain::Lift;
 use crate::un_derefer::UnDerefer;
-
-mod abs_domain;
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -324,7 +333,7 @@ impl<'tcx> MovePathLookup<'tcx> {
         };
 
         for (_, elem) in self.un_derefer.iter_projections(place) {
-            if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
+            if let Some(&subpath) = self.projections.get(&(result, elem.kind())) {
                 result = subpath;
             } else {
                 return LookupResult::Parent(Some(result));

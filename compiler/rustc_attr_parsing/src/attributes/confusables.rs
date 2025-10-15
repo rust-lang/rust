@@ -1,11 +1,5 @@
-use rustc_feature::template;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
-
-use super::{AcceptMapping, AttributeParser};
-use crate::context::{FinalizeContext, Stage};
-use crate::session_diagnostics;
+use super::prelude::*;
+use crate::session_diagnostics::EmptyConfusables;
 
 #[derive(Default)]
 pub(crate) struct ConfusablesParser {
@@ -24,7 +18,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
             };
 
             if list.is_empty() {
-                cx.emit_err(session_diagnostics::EmptyConfusables { span: cx.attr_span });
+                cx.emit_err(EmptyConfusables { span: cx.attr_span });
             }
 
             for param in list.mixed() {
@@ -41,6 +35,8 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
             this.first_span.get_or_insert(cx.attr_span);
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.confusables.is_empty() {

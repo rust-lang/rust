@@ -1,4 +1,5 @@
 //@ build-fail
+//@ ignore-backends: gcc
 
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]

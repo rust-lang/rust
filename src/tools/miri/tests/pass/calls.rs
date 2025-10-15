@@ -35,7 +35,7 @@ fn const_fn_call() -> i64 {
 }
 
 fn call_return_into_passed_reference() {
-    pub fn func<T>(v: &mut T, f: fn(&T) -> T) {
+    fn func<T>(v: &mut T, f: fn(&T) -> T) {
         // MIR building will introduce a temporary, so this becomes
         // `let temp = f(v); *v = temp;`.
         // If this got optimized to `*v = f(v)` on the MIR level we'd have UB

@@ -20,6 +20,13 @@ note: the traits `Iterator` and `ToTokens` must be implemented
   --> $SRC_DIR/proc_macro/src/to_tokens.rs:LL:COL
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/not-repeatable.rs:11:25
+   |
+LL |     let _ = quote! { $($ip)* };
+   |                         ^^ cannot infer type
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc --explain E0282`.

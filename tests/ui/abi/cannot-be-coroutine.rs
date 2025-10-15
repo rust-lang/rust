@@ -16,6 +16,7 @@
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,
@@ -49,6 +50,6 @@ async extern "riscv-interrupt-s" fn riscv_s() {
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be `async`
 }
 
-async extern "x86-interrupt" fn x86() {
+async extern "x86-interrupt" fn x86(_p: *mut ()) {
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be `async`
 }

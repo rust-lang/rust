@@ -103,15 +103,7 @@ impl EarlyLintPass for RawStrings {
 }
 
 impl RawStrings {
-    fn check_raw_string(
-        &mut self,
-        cx: &EarlyContext<'_>,
-        str: &str,
-        lit_span: Span,
-        prefix: &str,
-        max: u8,
-        descr: &str,
-    ) {
+    fn check_raw_string(&self, cx: &EarlyContext<'_>, str: &str, lit_span: Span, prefix: &str, max: u8, descr: &str) {
         if !str.contains(['\\', '"']) {
             span_lint_and_then(
                 cx,

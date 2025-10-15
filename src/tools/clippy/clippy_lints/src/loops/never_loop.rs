@@ -22,7 +22,10 @@ pub(super) fn check<'tcx>(
     for_loop: Option<&ForLoop<'_>>,
 ) {
     match never_loop_block(cx, block, &mut Vec::new(), loop_id) {
-        NeverLoopResult::Diverging { ref break_spans } => {
+        NeverLoopResult::Diverging {
+            ref break_spans,
+            ref never_spans,
+        } => {
             span_lint_and_then(cx, NEVER_LOOP, span, "this loop never actually loops", |diag| {
                 if let Some(ForLoop {
                     arg: iterator,
@@ -34,11 +37,15 @@ pub(super) fn check<'tcx>(
                 {
                     // If the block contains a break or continue, or if the loop has a label, `MachineApplicable` is not
                     // appropriate.
-                    let app = if !contains_any_break_or_continue(block) && label.is_none() {
+                    let mut app = if !contains_any_break_or_continue(block) && label.is_none() {
                         Applicability::MachineApplicable
                     } else {
                         Applicability::Unspecified
                     };
+
+                    if !never_spans.is_empty() {
+                        app = Applicability::HasPlaceholders;
+                    }
 
                     let mut suggestions = vec![(
                         for_span.with_hi(iterator.span.hi()),
@@ -51,6 +58,13 @@ pub(super) fn check<'tcx>(
                         suggestions,
                         app,
                     );
+
+                    for span in never_spans {
+                        diag.span_help(
+                            *span,
+                            "this code is unreachable. Consider moving the reachable parts out",
+                        );
+                    }
                 }
             });
         },
@@ -77,13 +91,16 @@ fn contains_any_break_or_continue(block: &Block<'_>) -> bool {
 /// The first two bits of information are in this enum, and the last part is in the
 /// `local_labels` variable, which contains a list of `(block_id, reachable)` pairs ordered by
 /// scope.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum NeverLoopResult {
     /// A continue may occur for the main loop.
     MayContinueMainLoop,
     /// We have not encountered any main loop continue,
     /// but we are diverging (subsequent control flow is not reachable)
-    Diverging { break_spans: Vec<Span> },
+    Diverging {
+        break_spans: Vec<Span>,
+        never_spans: Vec<Span>,
+    },
     /// We have not encountered any main loop continue,
     /// and subsequent control flow is (possibly) reachable
     Normal,
@@ -128,14 +145,18 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
         (
             NeverLoopResult::Diverging {
                 break_spans: mut break_spans1,
+                never_spans: mut never_spans1,
             },
             NeverLoopResult::Diverging {
                 break_spans: mut break_spans2,
+                never_spans: mut never_spans2,
             },
         ) => {
             break_spans1.append(&mut break_spans2);
+            never_spans1.append(&mut never_spans2);
             NeverLoopResult::Diverging {
                 break_spans: break_spans1,
+                never_spans: never_spans1,
             }
         },
     }
@@ -207,6 +228,8 @@ fn all_spans_after_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Vec<Span> {
         }
 
         return vec![stmt.span];
+    } else if let Node::Block(_) = cx.tcx.parent_hir_node(expr.hir_id) {
+        return vec![expr.span];
     }
 
     vec![]
@@ -270,10 +293,13 @@ fn never_loop_expr<'tcx>(
         ExprKind::Match(e, arms, _) => {
             let e = never_loop_expr(cx, e, local_labels, main_loop_id);
             combine_seq(e, || {
-                arms.iter()
-                    .fold(NeverLoopResult::Diverging { break_spans: vec![] }, |a, b| {
-                        combine_branches(a, never_loop_expr(cx, b.body, local_labels, main_loop_id))
-                    })
+                arms.iter().fold(
+                    NeverLoopResult::Diverging {
+                        break_spans: vec![],
+                        never_spans: vec![],
+                    },
+                    |a, b| combine_branches(a, never_loop_expr(cx, b.body, local_labels, main_loop_id)),
+                )
             })
         },
         ExprKind::Block(b, _) => {
@@ -296,6 +322,7 @@ fn never_loop_expr<'tcx>(
             } else {
                 NeverLoopResult::Diverging {
                     break_spans: all_spans_after_expr(cx, expr),
+                    never_spans: vec![],
                 }
             }
         },
@@ -306,7 +333,10 @@ fn never_loop_expr<'tcx>(
             combine_seq(first, || {
                 // checks if break targets a block instead of a loop
                 mark_block_as_reachable(expr, local_labels);
-                NeverLoopResult::Diverging { break_spans: vec![] }
+                NeverLoopResult::Diverging {
+                    break_spans: vec![],
+                    never_spans: vec![],
+                }
             })
         },
         ExprKind::Break(dest, e) => {
@@ -322,11 +352,15 @@ fn never_loop_expr<'tcx>(
                     } else {
                         all_spans_after_expr(cx, expr)
                     },
+                    never_spans: vec![],
                 }
             })
         },
         ExprKind::Become(e) => combine_seq(never_loop_expr(cx, e, local_labels, main_loop_id), || {
-            NeverLoopResult::Diverging { break_spans: vec![] }
+            NeverLoopResult::Diverging {
+                break_spans: vec![],
+                never_spans: vec![],
+            }
         }),
         ExprKind::InlineAsm(asm) => combine_seq_many(asm.operands.iter().map(|(o, _)| match o {
             InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
@@ -356,7 +390,10 @@ fn never_loop_expr<'tcx>(
     };
     let result = combine_seq(result, || {
         if cx.typeck_results().expr_ty(expr).is_never() {
-            NeverLoopResult::Diverging { break_spans: vec![] }
+            NeverLoopResult::Diverging {
+                break_spans: vec![],
+                never_spans: all_spans_after_expr(cx, expr),
+            }
         } else {
             NeverLoopResult::Normal
         }

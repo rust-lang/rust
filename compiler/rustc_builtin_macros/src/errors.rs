@@ -3,8 +3,28 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
     Subdiagnostic,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
+
+#[derive(LintDiagnostic)]
+#[diag(builtin_macros_avoid_intel_syntax)]
+pub(crate) struct AvoidIntelSyntax;
+
+#[derive(LintDiagnostic)]
+#[diag(builtin_macros_avoid_att_syntax)]
+pub(crate) struct AvoidAttSyntax;
+
+#[derive(LintDiagnostic)]
+#[diag(builtin_macros_incomplete_include)]
+pub(crate) struct IncompleteInclude;
+
+#[derive(LintDiagnostic)]
+#[diag(builtin_macros_unnameable_test_items)]
+pub(crate) struct UnnameableTestItems;
+
+#[derive(LintDiagnostic)]
+#[diag(builtin_macros_duplicate_macro_attribute)]
+pub(crate) struct DuplicateMacroAttribute;
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]
@@ -444,6 +464,24 @@ pub(crate) struct DefaultHasArg {
     #[primary_span]
     #[suggestion(code = "#[default]", style = "hidden", applicability = "maybe-incorrect")]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_derive_from_wrong_target)]
+#[note(builtin_macros_derive_from_usage_note)]
+pub(crate) struct DeriveFromWrongTarget<'a> {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) kind: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_derive_from_wrong_field_count)]
+#[note(builtin_macros_derive_from_usage_note)]
+pub(crate) struct DeriveFromWrongFieldCount {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) multiple_fields: bool,
 }
 
 #[derive(Diagnostic)]
@@ -903,14 +941,6 @@ pub(crate) struct TakesNoArguments<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_proc_macro_attribute_only_be_used_on_bare_functions)]
-pub(crate) struct AttributeOnlyBeUsedOnBareFunctions<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub path: &'a str,
 }
 
 #[derive(Diagnostic)]

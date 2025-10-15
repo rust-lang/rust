@@ -1,6 +1,7 @@
 //@ only-x86_64
 //@ run-pass
 //@ needs-asm-support
+//@ ignore-backends: gcc
 
 #![deny(unreachable_code)]
 #![feature(asm_goto_with_outputs)]
@@ -68,6 +69,7 @@ fn goto_out_jump() {
 fn goto_out_jump_noreturn() {
     unsafe {
         let mut value = false;
+        //~^ WARN value assigned to `value` is never read
         let mut out: usize;
         asm!(
             "lea {}, [{} + 1]",

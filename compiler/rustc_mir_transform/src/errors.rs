@@ -1,13 +1,54 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, LintDiagnostic};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintDiagnostic, Subdiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
+use rustc_middle::query::Key;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
+
+/// Emit diagnostic for calls to `#[inline(always)]`-annotated functions with a
+/// `#[target_feature]` attribute where the caller enables a different set of target features.
+pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    call_span: Span,
+    callee_def_id: DefId,
+    caller_def_id: DefId,
+    callee_only: &[&'a str],
+) {
+    let callee = tcx.def_path_str(callee_def_id);
+    let caller = tcx.def_path_str(caller_def_id);
+
+    tcx.node_span_lint(
+        lint::builtin::INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
+        tcx.local_def_id_to_hir_id(caller_def_id.as_local().unwrap()),
+        call_span,
+        |lint| {
+            lint.primary_message(format!(
+                "call to `#[inline(always)]`-annotated `{callee}` \
+                requires the same target features to be inlined"
+            ));
+            lint.note("function will not be inlined");
+
+            lint.note(format!(
+                "the following target features are on `{callee}` but missing from `{caller}`: {}",
+                callee_only.join(", ")
+            ));
+            lint.span_note(callee_def_id.default_span(tcx), format!("`{callee}` is defined here"));
+
+            let feats = callee_only.join(",");
+            lint.span_suggestion(
+                tcx.def_span(caller_def_id).shrink_to_lo(),
+                format!("add `#[target_feature]` attribute to `{caller}`"),
+                format!("#[target_feature(enable = \"{feats}\")]\n"),
+                lint::Applicability::MaybeIncorrect,
+            );
+        },
+    );
+}
 
 #[derive(LintDiagnostic)]
 #[diag(mir_transform_unconditional_recursion)]
@@ -115,6 +156,132 @@ pub(crate) struct FnItemRef {
     pub span: Span,
     pub sugg: String,
     pub ident: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_capture_maybe_capture_ref)]
+#[help]
+pub(crate) struct UnusedCaptureMaybeCaptureRef {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_var_assigned_only)]
+#[note]
+pub(crate) struct UnusedVarAssignedOnly {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub typo: Option<PatternTypo>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_assign)]
+pub(crate) struct UnusedAssign {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub suggestion: Option<UnusedAssignSuggestion>,
+    #[help]
+    pub help: bool,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(mir_transform_unused_assign_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct UnusedAssignSuggestion {
+    pub pre: &'static str,
+    #[suggestion_part(code = "{pre}mut ")]
+    pub ty_span: Option<Span>,
+    #[suggestion_part(code = "")]
+    pub ty_ref_span: Span,
+    #[suggestion_part(code = "*")]
+    pub pre_lhs_span: Span,
+    #[suggestion_part(code = "")]
+    pub rhs_borrow_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_assign_passed)]
+#[help]
+pub(crate) struct UnusedAssignPassed {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_variable)]
+pub(crate) struct UnusedVariable {
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub string_interp: Vec<UnusedVariableStringInterp>,
+    #[subdiagnostic]
+    pub sugg: UnusedVariableSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedVariableSugg {
+    #[multipart_suggestion(
+        mir_transform_unused_variable_try_ignore,
+        applicability = "machine-applicable"
+    )]
+    TryIgnore {
+        #[suggestion_part(code = "{name}: _")]
+        shorthands: Vec<Span>,
+        #[suggestion_part(code = "_")]
+        non_shorthands: Vec<Span>,
+        name: Symbol,
+    },
+
+    #[multipart_suggestion(
+        mir_transform_unused_var_underscore,
+        applicability = "machine-applicable"
+    )]
+    TryPrefix {
+        #[suggestion_part(code = "_{name}")]
+        spans: Vec<Span>,
+        name: Symbol,
+        #[subdiagnostic]
+        typo: Option<PatternTypo>,
+    },
+
+    #[help(mir_transform_unused_variable_args_in_macro)]
+    NoSugg {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+    },
+}
+
+pub(crate) struct UnusedVariableStringInterp {
+    pub lit: Span,
+}
+
+impl Subdiagnostic for UnusedVariableStringInterp {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.span_label(
+            self.lit,
+            crate::fluent_generated::mir_transform_maybe_string_interpolation,
+        );
+        diag.multipart_suggestion(
+            crate::fluent_generated::mir_transform_string_interpolation_only_works,
+            vec![
+                (self.lit.shrink_to_lo(), String::from("format!(")),
+                (self.lit.shrink_to_hi(), String::from(")")),
+            ],
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    mir_transform_unused_variable_typo,
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct PatternTypo {
+    #[suggestion_part(code = "{code}")]
+    pub span: Span,
+    pub code: String,
+    pub item_name: Symbol,
+    pub kind: &'static str,
 }
 
 pub(crate) struct MustNotSupend<'a, 'tcx> {

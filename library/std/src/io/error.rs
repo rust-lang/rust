@@ -18,7 +18,7 @@ use crate::{error, fmt, result, sys};
 /// This type is broadly used across [`std::io`] for any operation which may
 /// produce an error.
 ///
-/// This typedef is generally used to avoid writing out [`io::Error`] directly and
+/// This type alias is generally used to avoid writing out [`io::Error`] directly and
 /// is otherwise a direct mapping to [`Result`].
 ///
 /// While usual Rust style is to import types directly, aliases of [`Result`]
@@ -95,6 +95,9 @@ impl Error {
 
     pub(crate) const ZERO_TIMEOUT: Self =
         const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+
+    pub(crate) const NO_ADDRESSES: Self =
+        const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1049,15 +1052,6 @@ impl fmt::Display for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        match self.repr.data() {
-            ErrorData::Os(..) | ErrorData::Simple(..) => self.kind().as_str(),
-            ErrorData::SimpleMessage(msg) => msg.message,
-            ErrorData::Custom(c) => c.error.description(),
-        }
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.repr.data() {

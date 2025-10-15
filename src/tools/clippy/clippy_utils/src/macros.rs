@@ -250,18 +250,13 @@ impl<'a> PanicExpn<'a> {
         };
         let name = path.segments.last().unwrap().ident.name;
 
-        // This has no argument
-        if name == sym::panic_cold_explicit {
-            return Some(Self::Empty);
-        }
-
         let [arg, rest @ ..] = args else {
             return None;
         };
         let result = match name {
             sym::panic if arg.span.eq_ctxt(expr.span) => Self::Empty,
             sym::panic | sym::panic_str => Self::Str(arg),
-            sym::panic_display | sym::panic_cold_display => {
+            sym::panic_display => {
                 let ExprKind::AddrOf(_, _, e) = &arg.kind else {
                     return None;
                 };

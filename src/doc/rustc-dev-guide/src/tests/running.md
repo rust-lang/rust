@@ -339,9 +339,34 @@ results.  The Docker image is set up to launch `remote-test-server` and the
 build tools use `remote-test-client` to communicate with the server to
 coordinate running tests (see [src/bootstrap/src/core/build_steps/test.rs]).
 
-> **TODO**
->
-> - Is there any support for using an iOS emulator?
+To run on the iOS/tvOS/watchOS/visionOS simulator, we can similarly treat it as
+a "remote" machine. A curious detail here is that the network is shared between
+the simulator instance and the host macOS, so we can use the local loopback
+address `127.0.0.1`. Something like the following should work:
+
+```sh
+# Build the test server for the iOS simulator:
+./x build src/tools/remote-test-server --target aarch64-apple-ios-sim
+
+# If you already have a simulator instance open, copy the device UUID from:
+xcrun simctl list devices booted
+UDID=01234567-89AB-CDEF-0123-456789ABCDEF
+
+# Alternatively, create and boot a new simulator instance:
+xcrun simctl list runtimes
+xcrun simctl list devicetypes
+UDID=$(xcrun simctl create $CHOSEN_DEVICE_TYPE $CHOSEN_RUNTIME)
+xcrun simctl boot $UDID
+# See https://nshipster.com/simctl/ for details.
+
+# Spawn the runner on port 12345:
+xcrun simctl spawn $UDID ./build/host/stage2-tools/aarch64-apple-ios-sim/release/remote-test-server -v --bind 127.0.0.1:12345
+
+# In a new terminal, run tests via the runner:
+export TEST_DEVICE_ADDR="127.0.0.1:12345"
+./x test --host='' --target aarch64-apple-ios-sim --skip tests/debuginfo
+# FIXME(madsmtm): Allow debuginfo tests to work (maybe needs `.dSYM` folder to be copied to the target?).
+```
 
 [armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/

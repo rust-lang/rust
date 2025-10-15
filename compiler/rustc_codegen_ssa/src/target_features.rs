@@ -3,7 +3,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::attrs::InstructionSetAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
+use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -22,6 +22,7 @@ pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
     did: LocalDefId,
     features: &[(Symbol, Span)],
+    was_forced: bool,
     rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {
@@ -88,7 +89,14 @@ pub(crate) fn from_target_feature_attr(
                         }
                     }
                 }
-                target_features.push(TargetFeature { name, implied: name != feature })
+                let kind = if name != feature {
+                    TargetFeatureKind::Implied
+                } else if was_forced {
+                    TargetFeatureKind::Forced
+                } else {
+                    TargetFeatureKind::Enabled
+                };
+                target_features.push(TargetFeature { name, kind })
             }
         }
     }
@@ -180,6 +188,7 @@ fn parse_rust_feature_flag<'a>(
             while let Some(new_feature) = new_features.pop() {
                 if features.insert(new_feature) {
                     if let Some(implied_features) = inverse_implied_features.get(&new_feature) {
+                        #[allow(rustc::potential_query_instability)]
                         new_features.extend(implied_features)
                     }
                 }

@@ -31,6 +31,20 @@ fn panic() {
     let b = a + 2;
 }
 
+const fn panic_const() {
+    let a = 2;
+    panic!();
+    //~^ panic
+
+    panic!("message");
+    //~^ panic
+
+    panic!("{} {}", "panic with", "multiple arguments");
+    //~^ panic
+
+    let b = a + 2;
+}
+
 fn todo() {
     let a = 2;
     todo!();
@@ -114,6 +128,7 @@ fn debug_assert_msg() {
 
 fn main() {
     panic();
+    panic_const();
     todo();
     unimplemented();
     unreachable();

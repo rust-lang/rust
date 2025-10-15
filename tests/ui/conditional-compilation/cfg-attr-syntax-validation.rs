@@ -43,7 +43,7 @@ struct S9;
 macro_rules! generate_s10 {
     ($expr: expr) => {
         #[cfg(feature = $expr)]
-        //~^ ERROR expected unsuffixed literal, found `expr` metavariable
+        //~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
         struct S10;
     }
 }

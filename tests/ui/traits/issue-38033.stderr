@@ -7,7 +7,7 @@ LL | trait IntoFuture {
 LL |     fn into_future(self) -> Self::Future;
    |        ^^^^^^^^^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

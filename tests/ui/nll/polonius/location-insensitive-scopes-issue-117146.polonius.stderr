@@ -13,7 +13,12 @@ LL |     let b = |_| &a;
 LL | }
    | - `a` dropped here while still borrowed
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:20:11
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |           ^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/location-insensitive-scopes-issue-117146.rs:20:22
    |
 LL | fn bad<F: Fn(&()) -> &()>(_: F) {}

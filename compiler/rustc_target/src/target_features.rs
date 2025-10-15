@@ -248,6 +248,10 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("mte", Stable, &[]),
     // FEAT_AdvSimd & FEAT_FP
     ("neon", Stable, &[]),
+    // Backend option to turn atomic operations into an intrinsic call when `lse` is not known to be
+    // available, so the intrinsic can do runtime LSE feature detection rather than unconditionally
+    // using slower non-LSE operations. Unstable since it doesn't need to user-togglable.
+    ("outline-atomics", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_PAUTH (address authentication)
     ("paca", Stable, &[]),
     // FEAT_PAUTH (generic authentication)
@@ -471,9 +475,9 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sse3", Stable, &["sse2"]),
     ("sse4.1", Stable, &["ssse3"]),
     ("sse4.2", Stable, &["sse4.1"]),
-    ("sse4a", Unstable(sym::sse4a_target_feature), &["sse3"]),
+    ("sse4a", Stable, &["sse3"]),
     ("ssse3", Stable, &["sse3"]),
-    ("tbm", Unstable(sym::tbm_target_feature), &[]),
+    ("tbm", Stable, &[]),
     ("vaes", Stable, &["avx2", "aes"]),
     ("vpclmulqdq", Stable, &["avx", "pclmulqdq"]),
     ("widekl", Stable, &["kl"]),
@@ -597,6 +601,49 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ),
     ("m", Stable, &[]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
+    (
+        "rva23u64",
+        Unstable(sym::riscv_target_feature),
+        &[
+            "m",
+            "a",
+            "f",
+            "d",
+            "c",
+            "b",
+            "v",
+            "zicsr",
+            "zicntr",
+            "zihpm",
+            "ziccif",
+            "ziccrse",
+            "ziccamoa",
+            "zicclsm",
+            "zic64b",
+            "za64rs",
+            "zihintpause",
+            "zba",
+            "zbb",
+            "zbs",
+            "zicbom",
+            "zicbop",
+            "zicboz",
+            "zfhmin",
+            "zkt",
+            "zvfhmin",
+            "zvbb",
+            "zvkt",
+            "zihintntl",
+            "zicond",
+            "zimop",
+            "zcmop",
+            "zcb",
+            "zfa",
+            "zawrs",
+            "supm",
+        ],
+    ),
+    ("supm", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
@@ -763,6 +810,7 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
+    ("32s", Unstable(sym::loongarch_target_feature), &[]),
     ("d", Stable, &["f"]),
     ("div32", Unstable(sym::loongarch_target_feature), &[]),
     ("f", Stable, &[]),
@@ -801,6 +849,7 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Unstable(sym::s390x_target_feature), &[]),
     ("miscellaneous-extensions-4", Unstable(sym::s390x_target_feature), &[]),
     ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("soft-float", Forbidden { reason: "currently unsupported ABI-configuration feature" }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
     ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
@@ -1128,6 +1177,13 @@ impl Target {
                     }
                     _ => unreachable!(),
                 }
+            }
+            "s390x" => {
+                // We don't currently support a softfloat target on this architecture.
+                // As usual, we have to reject swapping the `soft-float` target feature.
+                // The "vector" target feature does not affect the ABI for floats
+                // because the vector and float registers overlap.
+                FeatureConstraints { required: &[], incompatible: &["soft-float"] }
             }
             _ => NOTHING,
         }

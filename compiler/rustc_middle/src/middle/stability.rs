@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,7 +12,7 @@ use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stabil
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
+use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint};
 use rustc_session::parse::feature_err_issue;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;

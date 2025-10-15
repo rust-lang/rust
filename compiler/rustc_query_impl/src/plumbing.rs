@@ -9,6 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
+use rustc_hir::limit::Limit;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
@@ -31,7 +32,6 @@ use rustc_query_system::query::{
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 
 use crate::QueryConfigRestored;

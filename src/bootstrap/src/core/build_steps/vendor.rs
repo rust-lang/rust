@@ -19,6 +19,7 @@ pub const VENDOR_DIR: &str = "vendor";
 pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'static str>)> {
     [
         ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
+        ("src/tools/clippy/clippy_test_deps/Cargo.toml", vec![]),
         ("src/tools/rust-analyzer/Cargo.toml", vec![]),
         ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
         ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
@@ -53,7 +54,7 @@ pub(crate) struct Vendor {
 impl Step for Vendor {
     type Output = VendorOutput;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("placeholder").default_condition(true)
@@ -73,7 +74,7 @@ impl Step for Vendor {
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.info(&format!("Vendoring sources to {:?}", self.root_dir));
+        let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");

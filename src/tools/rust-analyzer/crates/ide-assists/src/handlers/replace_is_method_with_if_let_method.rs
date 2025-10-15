@@ -31,6 +31,9 @@ pub(crate) fn replace_is_method_with_if_let_method(
         ast::Expr::MethodCallExpr(call) => call,
         _ => return None,
     };
+    if ctx.offset() > if_expr.then_branch()?.stmt_list()?.l_curly_token()?.text_range().end() {
+        return None;
+    }
 
     let name_ref = call_expr.name_ref()?;
     match name_ref.text().as_str() {
@@ -187,6 +190,21 @@ fn main() {
 fn main() {
     let x = Ok(1);
     if x.is_e$0rr() {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_is_some_with_if_let_some_not_applicable_after_l_curly() {
+        check_assist_not_applicable(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    if x.is_some() {
+        ()$0
+    }
 }
 "#,
         );

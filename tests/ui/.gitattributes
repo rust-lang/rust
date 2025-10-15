@@ -3,4 +3,5 @@ json-bom-plus-crlf.rs -text
 json-bom-plus-crlf-multifile.rs -text
 json-bom-plus-crlf-multifile-aux.rs -text
 trailing-carriage-return-in-string.rs -text
+frontmatter-crlf.rs -text
 *.bin -text

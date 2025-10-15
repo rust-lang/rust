@@ -10,7 +10,7 @@
 //@ has tango/trait.Tango.html
 //@ hasraw sierra/struct.Sierra.html 'Tango'
 //@ !has trait.impl/tango/trait.Tango.js
-//@ !has search-index.js
+//@ !has search.index/name/*.js
 
 // we --merge=none, so --parts-out-dir doesn't do anything
 extern crate tango;

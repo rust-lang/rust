@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=3
-//@ min-llvm-version: 20
 #![crate_type = "lib"]
 
 /// Ensure the function is properly optimized

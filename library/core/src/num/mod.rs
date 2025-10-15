@@ -454,6 +454,9 @@ impl u8 {
         rot = 2,
         rot_op = "0x82",
         rot_result = "0xa",
+        fsh_op = "0x36",
+        fshl_result = "0x8",
+        fshr_result = "0x8d",
         swap_op = "0x12",
         swapped = "0x12",
         reversed = "0x48",
@@ -1088,6 +1091,9 @@ impl u16 {
         rot = 4,
         rot_op = "0xa003",
         rot_result = "0x3a",
+        fsh_op = "0x2de",
+        fshl_result = "0x30",
+        fshr_result = "0x302d",
         swap_op = "0x1234",
         swapped = "0x3412",
         reversed = "0x2c48",
@@ -1135,6 +1141,9 @@ impl u32 {
         rot = 8,
         rot_op = "0x10000b3",
         rot_result = "0xb301",
+        fsh_op = "0x2fe78e45",
+        fshl_result = "0xb32f",
+        fshr_result = "0xb32fe78e",
         swap_op = "0x12345678",
         swapped = "0x78563412",
         reversed = "0x1e6a2c48",
@@ -1158,6 +1167,9 @@ impl u64 {
         rot = 12,
         rot_op = "0xaa00000000006e1",
         rot_result = "0x6e10aa",
+        fsh_op = "0x2fe78e45983acd98",
+        fshl_result = "0x6e12fe",
+        fshr_result = "0x6e12fe78e45983ac",
         swap_op = "0x1234567890123456",
         swapped = "0x5634129078563412",
         reversed = "0x6a2c48091e6a2c48",
@@ -1181,6 +1193,9 @@ impl u128 {
         rot = 16,
         rot_op = "0x13f40000000000000000000000004f76",
         rot_result = "0x4f7613f4",
+        fsh_op = "0x2fe78e45983acd98039000008736273",
+        fshl_result = "0x4f7602fe",
+        fshr_result = "0x4f7602fe78e45983acd9803900000873",
         swap_op = "0x12345678901234567890123456789012",
         swapped = "0x12907856341290785634129078563412",
         reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
@@ -1207,6 +1222,9 @@ impl usize {
         rot = 4,
         rot_op = "0xa003",
         rot_result = "0x3a",
+        fsh_op = "0x2fe78e45983acd98039000008736273",
+        fshl_result = "0x4f7602fe",
+        fshr_result = "0x4f7602fe78e45983acd9803900000873",
         swap_op = "0x1234",
         swapped = "0x3412",
         reversed = "0x2c48",
@@ -1231,6 +1249,9 @@ impl usize {
         rot = 8,
         rot_op = "0x10000b3",
         rot_result = "0xb301",
+        fsh_op = "0x2fe78e45",
+        fshl_result = "0xb32f",
+        fshr_result = "0xb32fe78e",
         swap_op = "0x12345678",
         swapped = "0x78563412",
         reversed = "0x1e6a2c48",
@@ -1255,6 +1276,9 @@ impl usize {
         rot = 12,
         rot_op = "0xaa00000000006e1",
         rot_result = "0x6e10aa",
+        fsh_op = "0x2fe78e45983acd98",
+        fshl_result = "0x6e12fe",
+        fshr_result = "0x6e12fe78e45983ac",
         swap_op = "0x1234567890123456",
         swapped = "0x5634129078563412",
         reversed = "0x6a2c48091e6a2c48",
@@ -1363,8 +1387,8 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[cold]
 #[track_caller]
 const fn from_ascii_radix_panic(radix: u32) -> ! {
@@ -1378,7 +1402,7 @@ const fn from_ascii_radix_panic(radix: u32) -> ! {
 macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const FromStr for $int_ty {
             type Err = ParseIntError;
 
@@ -1397,6 +1421,10 @@ macro_rules! from_str_int_impl {
             /// sign followed by only digits. Leading and trailing non-digit characters (including
             /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
             /// also represent an error.
+            ///
+            /// # See also
+            /// For parsing numbers in other bases, such as binary or hexadecimal,
+            /// see [`from_str_radix`][Self::from_str_radix].
             ///
             /// # Examples
             ///
@@ -1442,6 +1470,14 @@ macro_rules! from_str_int_impl {
             /// # Panics
             ///
             /// This function panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # See also
+            /// If the string to be parsed is in base 10 (decimal),
+            /// [`from_str`] or [`str::parse`] can also be used.
+            ///
+            // FIXME(#122566): These HTML links work around a rustdoc-json test failure.
+            /// [`from_str`]: #method.from_str
+            /// [`str::parse`]: primitive.str.html#method.parse
             ///
             /// # Examples
             ///

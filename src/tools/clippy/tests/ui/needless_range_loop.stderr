@@ -168,5 +168,29 @@ LL -     for i in 0..vec.len() {
 LL +     for (i, <item>) in vec.iter_mut().enumerate() {
    |
 
-error: aborting due to 14 previous errors
+error: the loop variable `i` is used to index `a`
+  --> tests/ui/needless_range_loop.rs:235:14
+   |
+LL |     for i in 0..MAX_LEN {
+   |              ^^^^^^^^^^
+   |
+help: consider using an iterator and enumerate()
+   |
+LL -     for i in 0..MAX_LEN {
+LL +     for (i, <item>) in a.iter().enumerate().take(MAX_LEN) {
+   |
+
+error: the loop variable `i` is only used to index `a`
+  --> tests/ui/needless_range_loop.rs:240:14
+   |
+LL |     for i in 0..MAX_LEN {
+   |              ^^^^^^^^^^
+   |
+help: consider using an iterator
+   |
+LL -     for i in 0..MAX_LEN {
+LL +     for <item> in a.iter().take(MAX_LEN) {
+   |
+
+error: aborting due to 16 previous errors
 

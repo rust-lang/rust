@@ -95,7 +95,7 @@ fn overflow<T: Trait>() {
 ```
 
 This preference causes a lot of issues. See [#24066]. Most of the
-issues are caused by prefering where-bounds over impls even if the where-bound guides type inference:
+issues are caused by preferring where-bounds over impls even if the where-bound guides type inference:
 ```rust
 trait Trait<T> {
     fn call_me(&self, x: T) {}

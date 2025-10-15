@@ -244,7 +244,11 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
-        this.once.call_once(|| {
+        this.once.call_once_force(|state| {
+            if state.is_poisoned() {
+                panic_poisoned();
+            }
+
             // SAFETY: `call_once` only runs this closure once, ever.
             let data = unsafe { &mut *this.data.get() };
             let f = unsafe { ManuallyDrop::take(&mut data.f) };
@@ -257,8 +261,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was called and initialized `value`.
         // * the closure was called and panicked, so this point is never reached.
         // * the closure was not called, but a previous call initialized `value`.
-        // * the closure was not called because the Once is poisoned, so this point
-        //   is never reached.
+        // * the closure was not called because the Once is poisoned, which we handled above.
         // So `value` has definitely been initialized and will not be modified again.
         unsafe { &*(*this.data.get()).value }
     }

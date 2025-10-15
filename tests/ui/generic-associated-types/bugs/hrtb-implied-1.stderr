@@ -9,7 +9,12 @@ LL |     print_items::<WindowsMut<'_>>(windows);
 LL | }
    | - temporary value is freed at the end of this statement
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/hrtb-implied-1.rs:26:5
+   |
+LL |     for<'a> I::Item<'a>: Debug,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/hrtb-implied-1.rs:26:26
    |
 LL |     for<'a> I::Item<'a>: Debug,

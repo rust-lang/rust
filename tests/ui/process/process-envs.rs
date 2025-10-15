@@ -2,6 +2,10 @@
 //@ needs-subprocess
 //@ ignore-vxworks no 'env'
 //@ ignore-fuchsia no 'env'
+//@ ignore-ios no 'env'
+//@ ignore-tvos no 'env'
+//@ ignore-watchos no 'env'
+//@ ignore-visionos no 'env'
 
 use std::process::Command;
 use std::env;

@@ -183,7 +183,7 @@ fn get_impl_args(
         &ObligationCause::misc(impl1_span, impl1_def_id),
     );
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
@@ -275,7 +275,7 @@ fn check_duplicate_params<'tcx>(
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let mut base_params = cgp::parameters_for(tcx, parent_args, true);
-    base_params.sort_by_key(|param| param.0);
+    base_params.sort_unstable();
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
         return Err(tcx
@@ -390,43 +390,11 @@ fn check_predicates<'tcx>(
 
     let mut res = Ok(());
     for (clause, span) in impl1_predicates {
-        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(clause.as_predicate(), *pred2))
-        {
+        if !impl2_predicates.iter().any(|&pred2| clause.as_predicate() == pred2) {
             res = res.and(check_specialization_on(tcx, clause, span))
         }
     }
     res
-}
-
-/// Checks if some predicate on the specializing impl (`predicate1`) is the same
-/// as some predicate on the base impl (`predicate2`).
-///
-/// This basically just checks syntactic equivalence, but is a little more
-/// forgiving since we want to equate `T: Tr` with `T: [const] Tr` so this can work:
-///
-/// ```ignore (illustrative)
-/// #[rustc_specialization_trait]
-/// trait Specialize { }
-///
-/// impl<T: Bound> Tr for T { }
-/// impl<T: [const] Bound + Specialize> const Tr for T { }
-/// ```
-///
-/// However, we *don't* want to allow the reverse, i.e., when the bound on the
-/// specializing impl is not as const as the bound on the base impl:
-///
-/// ```ignore (illustrative)
-/// impl<T: [const] Bound> const Tr for T { }
-/// impl<T: Bound + Specialize> const Tr for T { } // should be T: [const] Bound
-/// ```
-///
-/// So we make that check in this function and try to raise a helpful error message.
-fn trait_predicates_eq<'tcx>(
-    predicate1: ty::Predicate<'tcx>,
-    predicate2: ty::Predicate<'tcx>,
-) -> bool {
-    // FIXME(const_trait_impl)
-    predicate1 == predicate2
 }
 
 #[instrument(level = "debug", skip(tcx))]

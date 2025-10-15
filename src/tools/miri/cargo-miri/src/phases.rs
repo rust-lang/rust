@@ -65,16 +65,6 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
 }
 
 pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
-    // Check for version and help flags even when invoked as `cargo-miri`.
-    if has_arg_flag("--help") || has_arg_flag("-h") {
-        show_help();
-        return;
-    }
-    if has_arg_flag("--version") || has_arg_flag("-V") {
-        show_version();
-        return;
-    }
-
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
@@ -85,11 +75,36 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
         "setup" => MiriCommand::Setup,
         "test" | "t" | "run" | "r" | "nextest" => MiriCommand::Forward(subcommand),
         "clean" => MiriCommand::Clean,
-        _ =>
+        _ => {
+            // Check for version and help flags.
+            if has_arg_flag("--help") || has_arg_flag("-h") {
+                show_help();
+                return;
+            }
+            if has_arg_flag("--version") || has_arg_flag("-V") {
+                show_version();
+                return;
+            }
             show_error!(
                 "`cargo miri` supports the following subcommands: `run`, `test`, `nextest`, `clean`, and `setup`."
-            ),
+            )
+        }
     };
+    if has_arg_flag("--help") || has_arg_flag("-h") {
+        match subcommand {
+            MiriCommand::Forward(verb) => {
+                println!("`cargo miri {verb}` supports the same flags as `cargo {verb}`:\n");
+                let mut cmd = cargo();
+                cmd.arg(verb);
+                cmd.arg("--help");
+                exec(cmd);
+            }
+            _ => {
+                show_help();
+                return;
+            }
+        }
+    }
     let verbose = num_arg_flag("-v") + num_arg_flag("--verbose");
     let quiet = has_arg_flag("-q") || has_arg_flag("--quiet");
 

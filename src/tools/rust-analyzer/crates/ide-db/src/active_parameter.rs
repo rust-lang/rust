@@ -125,7 +125,6 @@ pub fn generic_def_for_node(
                     hir::PathResolution::Def(hir::ModuleDef::Adt(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::Function(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
-                    hir::PathResolution::Def(hir::ModuleDef::TraitAlias(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
                     hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => {
                         variant = Some(it);

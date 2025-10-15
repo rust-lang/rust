@@ -305,7 +305,7 @@ fn make_elided_region_spans_suggs<'a>(
                 consecutive_brackets += 1;
             } else if let Some(bracket_span) = bracket_span.take() {
                 let sugg = std::iter::once("<")
-                    .chain(std::iter::repeat(name).take(consecutive_brackets).intersperse(", "))
+                    .chain(std::iter::repeat_n(name, consecutive_brackets).intersperse(", "))
                     .chain([">"])
                     .collect();
                 spans_suggs.push((bracket_span.shrink_to_hi(), sugg));
@@ -399,7 +399,7 @@ pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            ty::Dynamic(preds, re, _) if re.is_static() => {
+            ty::Dynamic(preds, re) if re.is_static() => {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.insert(def_id);
                 }

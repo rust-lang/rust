@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{DesugaringKind, Ident, Span};
@@ -93,7 +93,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
                             let hir_id = self.lower_node_id(f.id);
-                            self.lower_attrs(hir_id, &f.attrs, f.span);
+                            self.lower_attrs(hir_id, &f.attrs, f.span, Target::PatField);
 
                             hir::PatField {
                                 hir_id,
@@ -106,10 +106,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         break hir::PatKind::Struct(
                             qpath,
                             fs,
-                            matches!(
-                                etc,
-                                ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_)
-                            ),
+                            match etc {
+                                ast::PatFieldsRest::Rest(sp) => Some(self.lower_span(*sp)),
+                                ast::PatFieldsRest::Recovered(_) => Some(Span::default()),
+                                _ => None,
+                            },
                         );
                     }
                     PatKind::Tuple(pats) => {

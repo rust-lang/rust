@@ -14,7 +14,6 @@ bench = false
 doc = false
 
 [dependencies]
-cfg-if = "1.0"
 core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]

@@ -1,10 +1,12 @@
 use std::array::IntoIter;
+use std::borrow::Cow;
 use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -29,6 +31,53 @@ pub enum CtorKind {
     Fn,
     /// Constructor constant automatically created by a unit struct/variant.
     Const,
+}
+
+/// A set of macro kinds, for macros that can have more than one kind
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub struct MacroKinds(u8);
+bitflags::bitflags! {
+    impl MacroKinds: u8 {
+        const BANG = 1 << 0;
+        const ATTR = 1 << 1;
+        const DERIVE = 1 << 2;
+    }
+}
+
+impl From<MacroKind> for MacroKinds {
+    fn from(kind: MacroKind) -> Self {
+        match kind {
+            MacroKind::Bang => Self::BANG,
+            MacroKind::Attr => Self::ATTR,
+            MacroKind::Derive => Self::DERIVE,
+        }
+    }
+}
+
+impl MacroKinds {
+    /// Convert the MacroKinds to a static string.
+    ///
+    /// This hardcodes all the possibilities, in order to return a static string.
+    pub fn descr(self) -> &'static str {
+        match self {
+            // FIXME: change this to "function-like macro" and fix all tests
+            Self::BANG => "macro",
+            Self::ATTR => "attribute macro",
+            Self::DERIVE => "derive macro",
+            _ if self == (Self::ATTR | Self::BANG) => "attribute/function macro",
+            _ if self == (Self::DERIVE | Self::BANG) => "derive/function macro",
+            _ if self == (Self::ATTR | Self::DERIVE) => "attribute/derive macro",
+            _ if self.is_all() => "attribute/derive/function macro",
+            _ if self.is_empty() => "useless macro",
+            _ => unreachable!(),
+        }
+    }
+
+    /// Return an indefinite article (a/an) for use with `descr()`
+    pub fn article(self) -> &'static str {
+        if self.contains(Self::ATTR) { "an" } else { "a" }
+    }
 }
 
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
@@ -101,7 +150,7 @@ pub enum DefKind {
     AssocConst,
 
     // Macro namespace
-    Macro(MacroKind),
+    Macro(MacroKinds),
 
     // Not namespaced (or they are, but we don't treat them so)
     ExternCrate,
@@ -177,7 +226,7 @@ impl DefKind {
             DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
-            DefKind::Macro(macro_kind) => macro_kind.descr(),
+            DefKind::Macro(kinds) => kinds.descr(),
             DefKind::LifetimeParam => "lifetime parameter",
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
@@ -208,7 +257,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
-            DefKind::Macro(macro_kind) => macro_kind.article(),
+            DefKind::Macro(kinds) => kinds.article(),
             _ => "a",
         }
     }
@@ -391,6 +440,43 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
+
+    /// Returns `true` if `self` is a kind of definition that does not have its own
+    /// type-checking context, i.e. closure, coroutine or inline const.
+    #[inline]
+    pub fn is_typeck_child(self) -> bool {
+        match self {
+            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::Ctor(_, _)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Macro(_)
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl { .. } => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.
@@ -539,6 +625,12 @@ pub enum Res<Id = hir::HirId> {
     Err,
 }
 
+impl<Id> IntoDiagArg for Res<Id> {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 /// The result of resolving a path before lowering to HIR,
 /// with "module" segments resolved and associated item
 /// segments deferred to type checking.
@@ -623,6 +715,12 @@ impl Namespace {
             Self::ValueNS => "value",
             Self::MacroNS => "macro",
         }
+    }
+}
+
+impl IntoDiagArg for Namespace {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
@@ -845,10 +943,10 @@ impl<Id> Res<Id> {
         )
     }
 
-    pub fn macro_kind(self) -> Option<MacroKind> {
+    pub fn macro_kinds(self) -> Option<MacroKinds> {
         match self {
-            Res::Def(DefKind::Macro(kind), _) => Some(kind),
-            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            Res::Def(DefKind::Macro(kinds), _) => Some(kinds),
+            Res::NonMacroAttr(..) => Some(MacroKinds::ATTR),
             _ => None,
         }
     }

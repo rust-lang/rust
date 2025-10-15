@@ -1,7 +1,5 @@
 name: New lint suggestion
-description: |
-  Suggest a new Clippy lint (currently not accepting new lints)
-  Check out the Clippy book for more information about the feature freeze.
+description: Suggest a new Clippy lint.
 labels: ["A-lint"]
 body:
   - type: markdown

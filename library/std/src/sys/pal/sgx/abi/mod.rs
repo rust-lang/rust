@@ -67,7 +67,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
     let tls_guard = unsafe { tls.activate() };
 
     if secondary {
-        let join_notifier = super::thread::Thread::entry();
+        let join_notifier = crate::sys::thread::Thread::entry();
         drop(tls_guard);
         drop(join_notifier);
 

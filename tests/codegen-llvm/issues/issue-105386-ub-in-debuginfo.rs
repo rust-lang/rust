@@ -19,6 +19,6 @@ pub fn outer_function(x: S, y: S) -> usize {
 // CHECK: [[spill:%.*]] = alloca
 // CHECK-NOT: [[ptr_tmp:%.*]] = getelementptr inbounds i8, ptr [[spill]]
 // CHECK-NOT: [[load:%.*]] = load ptr, ptr
-// CHECK: call void @llvm.lifetime.start{{.*}}({{.*}}, ptr [[spill]])
+// CHECK: call void @llvm.lifetime.start{{.*}}({{(.*, )?}}ptr [[spill]])
 // CHECK: [[inner:%.*]] = getelementptr inbounds i8, ptr [[spill]]
 // CHECK: call void @llvm.memcpy{{.*}}(ptr {{align .*}} [[inner]], ptr {{align .*}} %x

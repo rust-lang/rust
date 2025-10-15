@@ -1,5 +1,5 @@
 error: register `s1` conflicts with register `d0`
-  --> $DIR/reg-conflict.rs:14:31
+  --> $DIR/reg-conflict.rs:15:31
    |
 LL |         asm!("", out("d0") _, out("s1") _);
    |                  -----------  ^^^^^^^^^^^ register `s1`

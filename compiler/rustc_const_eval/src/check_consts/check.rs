@@ -415,7 +415,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             )
         }));
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {
             Some(ConstConditionsHold::Yes)
         } else {
@@ -573,8 +573,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(_) => {}
+            | Rvalue::Discriminant(..) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -733,7 +732,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
-            | StatementKind::Deinit(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
@@ -827,7 +825,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
+                // `begin_panic` and `panic_display` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
@@ -841,8 +839,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
-                if tcx.has_attr(callee, sym::rustc_const_panic_str) {
+                // const-eval of `panic_display` assumes the argument is `&&str`
+                if tcx.is_lang_item(callee, LangItem::PanicDisplay) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                             {}

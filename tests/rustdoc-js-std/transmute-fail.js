@@ -6,9 +6,9 @@ const EXPECTED = [
         // should-fail tag and the search query below:
         'query': 'generic:T -> generic:T',
         'others': [
-            { 'path': 'std::mem', 'name': 'transmute' },
             { 'path': 'std::intrinsics::simd', 'name': 'simd_as' },
             { 'path': 'std::intrinsics::simd', 'name': 'simd_cast' },
+            { 'path': 'std::mem', 'name': 'transmute' },
         ],
     },
 ];

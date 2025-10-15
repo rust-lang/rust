@@ -293,9 +293,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.diverge_from(loop_block);
 
                     // Logic for `match`.
-                    let scrutinee_place_builder =
-                        unpack!(body_block = this.as_place_builder(body_block, scrutinee));
                     let scrutinee_span = this.thir.exprs[scrutinee].span;
+                    let scrutinee_place_builder = unpack!(
+                        body_block = this.lower_scrutinee(body_block, scrutinee, scrutinee_span)
+                    );
+
                     let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 
                     let mut patterns = Vec::with_capacity(arms.len());
@@ -343,7 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         expr_span,
                                         |this| {
                                             this.lower_match_arms(
-                                                destination,
+                                                state_place,
                                                 scrutinee_place_builder,
                                                 scrutinee_span,
                                                 arms,
@@ -388,18 +390,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         args,
                         unwind: UnwindAction::Continue,
                         destination,
-                        // The presence or absence of a return edge affects control-flow sensitive
-                        // MIR checks and ultimately whether code is accepted or not. We can only
-                        // omit the return edge if a return type is visibly uninhabited to a module
-                        // that makes the call.
-                        target: expr
-                            .ty
-                            .is_inhabited_from(
-                                this.tcx,
-                                this.parent_module,
-                                this.infcx.typing_env(this.param_env),
-                            )
-                            .then_some(success),
+                        target: Some(success),
                         call_source: if from_hir_call {
                             CallSource::Normal
                         } else {

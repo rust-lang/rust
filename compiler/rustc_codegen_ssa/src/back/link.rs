@@ -9,16 +9,18 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
+use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
+use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -38,7 +40,6 @@ use rustc_session::config::{
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
-use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};
@@ -46,8 +47,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
-    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SplitDebuginfo,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
 };
 use tracing::{debug, info, warn};
 
@@ -57,6 +58,7 @@ use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
+use crate::base::needs_allocator_shim_for_linking;
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
 };
@@ -77,6 +79,7 @@ pub fn link_binary(
     codegen_results: CodegenResults,
     metadata: EncodedMetadata,
     outputs: &OutputFilenames,
+    codegen_backend: &'static str,
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -152,6 +155,7 @@ pub fn link_binary(
                         &codegen_results,
                         &metadata,
                         path.as_ref(),
+                        codegen_backend,
                     );
                 }
             }
@@ -678,6 +682,7 @@ fn link_natively(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     tmpdir: &Path,
+    codegen_backend: &'static str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
@@ -703,6 +708,7 @@ fn link_natively(
         codegen_results,
         metadata,
         self_contained_components,
+        codegen_backend,
     );
 
     linker::disable_localization(&mut cmd);
@@ -875,9 +881,9 @@ fn link_natively(
                     // All Microsoft `link.exe` linking ror codes are
                     // four digit numbers in the range 1000 to 9999 inclusive
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
-                        let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
-                            windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
+                            find_msvc_tools::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
 
@@ -1484,7 +1490,7 @@ fn print_native_static_libs(
                 NativeLibKind::Static { bundle: None | Some(true), .. }
                 | NativeLibKind::LinkArg
                 | NativeLibKind::WasmImportModule
-                | NativeLibKind::RawDylib => None,
+                | NativeLibKind::RawDylib { .. } => None,
             }
         })
         // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
@@ -2079,9 +2085,17 @@ fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &Codeg
 }
 
 /// Add object files for allocator code linked once for the whole crate tree.
-fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
-    if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref()) {
-        cmd.add_object(obj);
+fn add_local_crate_allocator_objects(
+    cmd: &mut dyn Linker,
+    codegen_results: &CodegenResults,
+    crate_type: CrateType,
+) {
+    if needs_allocator_shim_for_linking(&codegen_results.crate_info.dependency_formats, crate_type)
+    {
+        if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref())
+        {
+            cmd.add_object(obj);
+        }
     }
 }
 
@@ -2198,6 +2212,7 @@ fn linker_with_args(
     codegen_results: &CodegenResults,
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
+    codegen_backend: &'static str,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
@@ -2206,6 +2221,7 @@ fn linker_with_args(
         flavor,
         self_contained_components.are_any_components_enabled(),
         &codegen_results.crate_info.target_cpu,
+        codegen_backend,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 
@@ -2280,7 +2296,7 @@ fn linker_with_args(
         codegen_results,
         metadata,
     );
-    add_local_crate_allocator_objects(cmd, codegen_results);
+    add_local_crate_allocator_objects(cmd, codegen_results, crate_type);
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -2348,13 +2364,13 @@ fn linker_with_args(
             cmd.add_object(&output_path);
         }
     } else {
-        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+        for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
             codegen_results.crate_info.used_libraries.iter(),
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
@@ -2395,13 +2411,13 @@ fn linker_with_args(
             cmd.add_object(&output_path);
         }
     } else {
-        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+        for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
             native_libraries_from_nonstatics,
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
 
@@ -2434,6 +2450,13 @@ fn linker_with_args(
     // In practice may also be occasionally used for linking native libraries.
     // Passed after compiler-generated options to support manual overriding when necessary.
     add_user_defined_link_args(cmd, sess);
+
+    // ------------ Builtin configurable linker scripts ------------
+    // The user's link args should be able to overwrite symbols in the compiler's
+    // linker script that were weakly defined (i.e. defined with `PROVIDE()`). For this
+    // to work correctly, the user needs to be able to specify linker arguments like
+    // `--defsym` and `--script` *before* any builtin linker scripts are evaluated.
+    add_link_script(cmd, sess, tmpdir, crate_type);
 
     // ------------ Object code and libraries, order-dependent ------------
 
@@ -2469,8 +2492,6 @@ fn add_order_independent_options(
 
     let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
 
-    add_link_script(cmd, sess, tmpdir, crate_type);
-
     if sess.target.os == "fuchsia"
         && crate_type == CrateType::Executable
         && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
@@ -2497,10 +2518,10 @@ fn add_order_independent_options(
     if sess.target.os == "emscripten" {
         cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
-        } else if sess.panic_strategy() == PanicStrategy::Abort {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        } else {
+        } else if sess.panic_strategy().unwinds() {
             "-sDISABLE_EXCEPTION_CATCHING=0"
+        } else {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         });
     }
 
@@ -2705,7 +2726,7 @@ fn add_native_libs_from_crate(
                     cmd.link_framework_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
-            NativeLibKind::RawDylib => {
+            NativeLibKind::RawDylib { as_needed: _ } => {
                 // Handled separately in `linker_with_args`.
             }
             NativeLibKind::WasmImportModule => {}
@@ -3014,7 +3035,9 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr_parsing::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => {
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+        }
         None => true,
     }
 }

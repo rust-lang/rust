@@ -113,84 +113,147 @@ LL |         asm!("nop");
    |         ^^^^^^^^^^^
 
 error: this `unsafe` block contains 2 unsafe operations, expected only one
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:5
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:110:9
    |
-LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:14
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:110:18
    |
-LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: raw pointer dereference occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:111:39
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:110:43
    |
-LL |     unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
-   |                                       ^^^^^^^^^^^^^^^^^^
+LL |         unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
+   |                                           ^^^^^^^^^^^^^^^^^^
 
 error: this `unsafe` block contains 2 unsafe operations, expected only one
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:130:5
-   |
-LL | /     unsafe {
-LL | |
-LL | |         x();
-LL | |         x();
-LL | |     }
-   | |_____^
-   |
-note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:132:9
-   |
-LL |         x();
-   |         ^^^
-note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:133:9
-   |
-LL |         x();
-   |         ^^^
-
-error: this `unsafe` block contains 2 unsafe operations, expected only one
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:142:9
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:131:9
    |
 LL | /         unsafe {
 LL | |
-LL | |             T::X();
-LL | |             T::X();
+LL | |             x();
+LL | |             x();
 LL | |         }
    | |_________^
    |
 note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:144:13
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:133:13
    |
-LL |             T::X();
-   |             ^^^^^^
+LL |             x();
+   |             ^^^
 note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:145:13
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:134:13
    |
-LL |             T::X();
-   |             ^^^^^^
+LL |             x();
+   |             ^^^
 
 error: this `unsafe` block contains 2 unsafe operations, expected only one
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:153:5
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:143:13
+   |
+LL | /             unsafe {
+LL | |
+LL | |                 T::X();
+LL | |                 T::X();
+LL | |             }
+   | |_____________^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:145:17
+   |
+LL |                 T::X();
+   |                 ^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:146:17
+   |
+LL |                 T::X();
+   |                 ^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:154:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             x.0();
+LL | |             x.0();
+LL | |         }
+   | |_________^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:156:13
+   |
+LL |             x.0();
+   |             ^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:157:13
+   |
+LL |             x.0();
+   |             ^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:184:5
    |
 LL | /     unsafe {
 LL | |
-LL | |         x.0();
-LL | |         x.0();
+LL | |         not_very_safe();
+LL | |         STATIC += 1;
+LL | |         foo().await;
 LL | |     }
    | |_____^
    |
 note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:155:9
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:186:9
    |
-LL |         x.0();
-   |         ^^^^^
-note: unsafe function call occurs here
-  --> tests/ui/multiple_unsafe_ops_per_block.rs:156:9
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+note: modification of a mutable static occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:187:9
    |
-LL |         x.0();
-   |         ^^^^^
+LL |         STATIC += 1;
+   |         ^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:199:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         not_very_safe();
+LL | |         foo_unchecked().await;
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:201:9
+   |
+LL |         not_very_safe();
+   |         ^^^^^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:202:9
+   |
+LL |         foo_unchecked().await;
+   |         ^^^^^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:206:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         Some(foo_unchecked()).unwrap_unchecked().await;
+LL | |     }
+   | |_____^
+   |
+note: unsafe method call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:208:9
+   |
+LL |         Some(foo_unchecked()).unwrap_unchecked().await;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:208:14
+   |
+LL |         Some(foo_unchecked()).unwrap_unchecked().await;
+   |              ^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

@@ -5,6 +5,7 @@ LL |     *(x as *mut u8).byte_sub(1) = 42;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
 help: the accessed tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC

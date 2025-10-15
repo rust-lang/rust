@@ -24,8 +24,7 @@ type Successors<'a> = impl std::fmt::Debug + 'a;
 impl Terminator {
     #[define_opaque(Successors, Tait)]
     fn successors(&self, mut f: for<'x> fn(&'x ()) -> <&'x A as B>::C) -> Successors<'_> {
-        f = g;
-        //~^ ERROR mismatched types
+        f = g; //~ ERROR expected generic lifetime parameter, found `'x`
     }
 }
 

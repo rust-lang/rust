@@ -15,9 +15,7 @@ fn check_log_base() {
     let _ = x.log(std::f32::consts::E);
     //~^ suboptimal_flops
     let _ = x.log(TWO);
-    //~^ suboptimal_flops
     let _ = x.log(E);
-    //~^ suboptimal_flops
     let _ = (x as f32).log(2f32);
     //~^ suboptimal_flops
 

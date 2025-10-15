@@ -6,7 +6,8 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
-    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitRef, Ty, TyKind, find_attr,
+    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitImplHeader, TraitRef, Ty,
+    TyKind, find_attr,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_lint_defs::declare_tool_lint;
@@ -56,10 +57,14 @@ impl<'tcx> LateLintPass<'tcx> for DeriveDeserializeAllowingUnknown {
         // Is this an `impl` (of a certain form)?
         let ItemKind::Impl(Impl {
             of_trait:
-                Some(TraitRef {
-                    path:
-                        Path {
-                            res: Res::Def(_, trait_def_id),
+                Some(TraitImplHeader {
+                    trait_ref:
+                        TraitRef {
+                            path:
+                                Path {
+                                    res: Res::Def(_, trait_def_id),
+                                    ..
+                                },
                             ..
                         },
                     ..

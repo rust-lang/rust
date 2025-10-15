@@ -3,10 +3,10 @@ error[E0599]: cannot write into `String`
    |
 LL |     let _ = write!(buf, "foo");
    |                    ^^^
+   |
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
    = note: the method is available for `String` here
-   |
 note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
   --> $DIR/missing-writer-issue-139830.rs:7:20
    |

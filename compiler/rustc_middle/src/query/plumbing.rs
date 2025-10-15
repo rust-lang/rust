@@ -8,7 +8,8 @@ use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span};
+pub use sealed::IntoQueryParam;
 
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
@@ -165,78 +166,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[inline(always)]
-pub fn query_get_at<'tcx, Cache>(
-    tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
-    span: Span,
-    key: Cache::Key,
-) -> Cache::Value
-where
-    Cache: QueryCache,
-{
-    let key = key.into_query_param();
-    match try_get_cached(tcx, query_cache, &key) {
-        Some(value) => value,
-        None => execute_query(tcx, span, key, QueryMode::Get).unwrap(),
-    }
-}
-
-#[inline]
-pub fn query_ensure<'tcx, Cache>(
-    tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
-    key: Cache::Key,
-    check_cache: bool,
-) where
-    Cache: QueryCache,
-{
-    let key = key.into_query_param();
-    if try_get_cached(tcx, query_cache, &key).is_none() {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
-    }
-}
-
-#[inline]
-pub fn query_ensure_error_guaranteed<'tcx, Cache, T>(
-    tcx: TyCtxt<'tcx>,
-    execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
-    query_cache: &Cache,
-    key: Cache::Key,
-    check_cache: bool,
-) -> Result<(), ErrorGuaranteed>
-where
-    Cache: QueryCache<Value = super::erase::Erase<Result<T, ErrorGuaranteed>>>,
-    Result<T, ErrorGuaranteed>: EraseType,
-{
-    let key = key.into_query_param();
-    if let Some(res) = try_get_cached(tcx, query_cache, &key) {
-        super::erase::restore(res).map(drop)
-    } else {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
-            .map(super::erase::restore)
-            .map(|res| res.map(drop))
-            // Either we actually executed the query, which means we got a full `Result`,
-            // or we can just assume the query succeeded, because it was green in the
-            // incremental cache. If it is green, that means that the previous compilation
-            // that wrote to the incremental cache compiles successfully. That is only
-            // possible if the cache entry was `Ok(())`, so we emit that here, without
-            // actually encoding the `Result` in the cache or loading it from there.
-            .unwrap_or(Ok(()))
-    }
-}
-
-macro_rules! query_ensure {
+/// Calls either `query_ensure` or `query_ensure_error_guaranteed`, depending
+/// on whether the list of modifiers contains `return_result_from_ensure_ok`.
+macro_rules! query_ensure_select {
     ([]$($args:tt)*) => {
-        query_ensure($($args)*)
+        crate::query::inner::query_ensure($($args)*)
     };
     ([(return_result_from_ensure_ok) $($rest:tt)*]$($args:tt)*) => {
-        query_ensure_error_guaranteed($($args)*).map(|_| ())
+        crate::query::inner::query_ensure_error_guaranteed($($args)*)
     };
     ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
-        query_ensure!([$($modifiers)*]$($args)*)
+        query_ensure_select!([$($modifiers)*]$($args)*)
     };
 }
 
@@ -432,7 +372,7 @@ macro_rules! define_callbacks {
                 self,
                 key: query_helper_param_ty!($($K)*),
             ) -> ensure_ok_result!([$($modifiers)*]) {
-                query_ensure!(
+                query_ensure_select!(
                     [$($modifiers)*]
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
@@ -447,7 +387,7 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
+                crate::query::inner::query_ensure(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
@@ -472,7 +412,7 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
-                restore::<$V>(query_get_at(
+                restore::<$V>(crate::query::inner::query_get_at(
                     self.tcx,
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
@@ -565,48 +505,19 @@ macro_rules! define_feedable {
 
                 let tcx = self.tcx;
                 let erased = queries::$name::provided_to_erased(tcx, value);
-                let value = restore::<$V>(erased);
                 let cache = &tcx.query_system.caches.$name;
 
+                let dep_kind: dep_graph::DepKind = dep_graph::dep_kinds::$name;
                 let hasher: Option<fn(&mut StableHashingContext<'_>, &_) -> _> = hash_result!([$($modifiers)*]);
-                match try_get_cached(tcx, cache, &key) {
-                    Some(old) => {
-                        let old = restore::<$V>(old);
-                        if let Some(hasher) = hasher {
-                            let (value_hash, old_hash): (Fingerprint, Fingerprint) = tcx.with_stable_hashing_context(|mut hcx|
-                                (hasher(&mut hcx, &value), hasher(&mut hcx, &old))
-                            );
-                            if old_hash != value_hash {
-                                // We have an inconsistency. This can happen if one of the two
-                                // results is tainted by errors. In this case, delay a bug to
-                                // ensure compilation is doomed, and keep the `old` value.
-                                tcx.dcx().delayed_bug(format!(
-                                    "Trying to feed an already recorded value for query {} key={key:?}:\n\
-                                    old value: {old:?}\nnew value: {value:?}",
-                                    stringify!($name),
-                                ));
-                            }
-                        } else {
-                            // The query is `no_hash`, so we have no way to perform a sanity check.
-                            // If feeding the same value multiple times needs to be supported,
-                            // the query should not be marked `no_hash`.
-                            bug!(
-                                "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
-                                stringify!($name),
-                            )
-                        }
-                    }
-                    None => {
-                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::dep_kinds::$name, &key);
-                        let dep_node_index = tcx.dep_graph.with_feed_task(
-                            dep_node,
-                            tcx,
-                            &value,
-                            hash_result!([$($modifiers)*]),
-                        );
-                        cache.complete(key, erased, dep_node_index);
-                    }
-                }
+
+                $crate::query::inner::query_feed(
+                    tcx,
+                    dep_kind,
+                    hasher,
+                    cache,
+                    key,
+                    erased,
+                );
             }
         })*
     }
@@ -693,10 +604,6 @@ mod sealed {
         }
     }
 }
-
-pub use sealed::IntoQueryParam;
-
-use super::erase::EraseType;
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);

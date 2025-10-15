@@ -6,6 +6,7 @@ LL | const CONST_STRING: String = String::new();
 ...
 LL |     if let CONST_STRING = empty_str {}
    |            ^^^^^^^^^^^^ constant of non-structural type
+   |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<u8>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns

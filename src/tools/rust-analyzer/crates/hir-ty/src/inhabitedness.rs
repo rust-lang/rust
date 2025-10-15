@@ -11,7 +11,9 @@ use triomphe::Arc;
 
 use crate::{
     AliasTy, Binders, Interner, Substitution, TraitEnvironment, Ty, TyKind,
-    consteval::try_const_usize, db::HirDatabase,
+    consteval::try_const_usize,
+    db::HirDatabase,
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
 };
 
 // FIXME: Turn this into a query, it can be quite slow
@@ -20,7 +22,7 @@ pub(crate) fn is_ty_uninhabited_from(
     db: &dyn HirDatabase,
     ty: &Ty,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
 ) -> bool {
     let _p = tracing::info_span!("is_ty_uninhabited_from", ?ty).entered();
     let mut uninhabited_from =
@@ -36,7 +38,7 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     variant: EnumVariantId,
     subst: &Substitution,
     target_mod: ModuleId,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'_>>,
 ) -> bool {
     let _p = tracing::info_span!("is_enum_variant_uninhabited_from").entered();
 
@@ -52,7 +54,7 @@ struct UninhabitedFrom<'a> {
     // guard for preventing stack overflow in non trivial non terminating types
     max_depth: usize,
     db: &'a dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'a>>,
 }
 
 const CONTINUE_OPAQUELY_INHABITED: ControlFlow<VisiblyUninhabited> = Continue(());
@@ -79,14 +81,17 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
         }
         self.recursive_ty.insert(ty.clone());
         self.max_depth -= 1;
+        let interner = DbInterner::new_with(self.db, None, None);
         let r = match ty.kind(Interner) {
             TyKind::Adt(adt, subst) => self.visit_adt(adt.0, subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self, outer_binder),
-            TyKind::Array(item_ty, len) => match try_const_usize(self.db, len) {
-                Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
-                Some(1..) => item_ty.super_visit_with(self, outer_binder),
-            },
+            TyKind::Array(item_ty, len) => {
+                match try_const_usize(self.db, len.to_nextsolver(interner)) {
+                    Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
+                    Some(1..) => item_ty.super_visit_with(self, outer_binder),
+                }
+            }
             TyKind::Alias(AliasTy::Projection(projection)) => {
                 // FIXME: I think this currently isn't used for monomorphized bodies, so there is no need to handle
                 // `TyKind::AssociatedType`, but perhaps in the future it will.

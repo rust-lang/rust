@@ -1306,4 +1306,20 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn regression_20662() {
+        check_diagnostics(
+            r#"
+//- minicore: index
+pub trait A: core::ops::IndexMut<usize> {
+    type T: A;
+}
+
+fn func(a: &mut impl A, b: &mut [i32]) {
+    b[0] += 1;
+}
+        "#,
+        );
+    }
 }

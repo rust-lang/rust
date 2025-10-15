@@ -101,7 +101,6 @@ impl<T> Drop for JoinHandle<T> {
     }
 }
 
-#[expect(clippy::min_ident_chars, reason = "trait impl")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("JoinHandle { .. }")

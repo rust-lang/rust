@@ -38,6 +38,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferle
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentThread() -> HANDLE);
+windows_targets::link!("kernel32.dll" "system" fn GetCurrentThreadId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentStringsW() -> PWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentVariableW(lpname : PCWSTR, lpbuffer : PWSTR, nsize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetExitCodeProcess(hprocess : HANDLE, lpexitcode : *mut u32) -> BOOL);
@@ -48,6 +49,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetFileSizeEx(hfile : HANDLE, 
 windows_targets::link!("kernel32.dll" "system" fn GetFileType(hfile : HANDLE) -> FILE_TYPE);
 windows_targets::link!("kernel32.dll" "system" fn GetFinalPathNameByHandleW(hfile : HANDLE, lpszfilepath : PWSTR, cchfilepath : u32, dwflags : GETFINALPATHNAMEBYHANDLE_FLAGS) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetFullPathNameW(lpfilename : PCWSTR, nbufferlength : u32, lpbuffer : PWSTR, lpfilepart : *mut PWSTR) -> u32);
+windows_targets::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen : i32) -> i32);
 windows_targets::link!("kernel32.dll" "system" fn GetLastError() -> WIN32_ERROR);
 windows_targets::link!("kernel32.dll" "system" fn GetModuleFileNameW(hmodule : HMODULE, lpfilename : PWSTR, nsize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetModuleHandleA(lpmodulename : PCSTR) -> HMODULE);
@@ -61,7 +63,6 @@ windows_targets::link!("kernel32.dll" "system" fn GetSystemInfo(lpsysteminfo : *
 windows_targets::link!("kernel32.dll" "system" fn GetSystemTimeAsFileTime(lpsystemtimeasfiletime : *mut FILETIME));
 windows_targets::link!("kernel32.dll" "system" fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime : *mut FILETIME));
 windows_targets::link!("kernel32.dll" "system" fn GetTempPathW(nbufferlength : u32, lpbuffer : PWSTR) -> u32);
-windows_targets::link!("kernel32.dll" "system" fn GetThreadId(thread : HANDLE) -> u32);
 windows_targets::link!("userenv.dll" "system" fn GetUserProfileDirectoryW(htoken : HANDLE, lpprofiledir : PWSTR, lpcchsize : *mut u32) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn GetWindowsDirectoryW(lpbuffer : PWSTR, usize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonce : *mut INIT_ONCE, dwflags : u32, fpending : *mut BOOL, lpcontext : *mut *mut core::ffi::c_void) -> BOOL);
@@ -134,6 +135,7 @@ windows_targets::link!("ws2_32.dll" "system" fn getsockname(s : SOCKET, name : *
 windows_targets::link!("ws2_32.dll" "system" fn getsockopt(s : SOCKET, level : i32, optname : i32, optval : PSTR, optlen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn ioctlsocket(s : SOCKET, cmd : i32, argp : *mut u32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn listen(s : SOCKET, backlog : i32) -> i32);
+windows_targets::link!("kernel32.dll" "system" fn lstrlenW(lpstring : PCWSTR) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn recv(s : SOCKET, buf : PSTR, len : i32, flags : SEND_RECV_FLAGS) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn recvfrom(s : SOCKET, buf : PSTR, len : i32, flags : i32, from : *mut SOCKADDR, fromlen : *mut i32) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn select(nfds : i32, readfds : *mut FD_SET, writefds : *mut FD_SET, exceptfds : *mut FD_SET, timeout : *const TIMEVAL) -> i32);

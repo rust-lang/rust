@@ -36,7 +36,7 @@ pub fn parse_cfg_attr<'c, S: Stage>(
     parse_cfg_entry(cx, single)
 }
 
-fn parse_cfg_entry<S: Stage>(
+pub(crate) fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     item: &MetaItemOrLitParser<'_>,
 ) -> Option<CfgEntry> {

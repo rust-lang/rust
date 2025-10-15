@@ -16,7 +16,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
-use crate::ty::TyCtxt;
+use crate::ty::{self, TyCtxt};
 
 /// Represents a statically-describable scope that can be used to
 /// bound the lifetime/region for values.
@@ -298,5 +298,43 @@ impl ScopeTree {
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
         true
+    }
+
+    /// Returns the scope of non-lifetime-extended temporaries within a given scope, as well as
+    /// whether we've recorded a potential backwards-incompatible change to lint on.
+    /// Panics if no enclosing temporary scope is found.
+    pub fn default_temporary_scope(&self, inner: Scope) -> (Scope, Option<Scope>) {
+        let mut id = inner;
+        let mut backwards_incompatible = None;
+
+        while let Some(&p) = self.parent_map.get(&id) {
+            match p.data {
+                ScopeData::Destruction => {
+                    debug!("temporary_scope({inner:?}) = {id:?} [enclosing]");
+                    return (id, backwards_incompatible);
+                }
+                ScopeData::IfThenRescope | ScopeData::MatchGuard => {
+                    debug!("temporary_scope({inner:?}) = {p:?} [enclosing]");
+                    return (p, backwards_incompatible);
+                }
+                ScopeData::Node
+                | ScopeData::CallSite
+                | ScopeData::Arguments
+                | ScopeData::IfThen
+                | ScopeData::Remainder(_) => {
+                    // If we haven't already passed through a backwards-incompatible node,
+                    // then check if we are passing through one now and record it if so.
+                    // This is for now only working for cases where a temporary lifetime is
+                    // *shortened*.
+                    if backwards_incompatible.is_none() {
+                        backwards_incompatible =
+                            self.backwards_incompatible_scope.get(&p.local_id).copied();
+                    }
+                    id = p
+                }
+            }
+        }
+
+        span_bug!(ty::tls::with(|tcx| inner.span(tcx, self)), "no enclosing temporary scope")
     }
 }

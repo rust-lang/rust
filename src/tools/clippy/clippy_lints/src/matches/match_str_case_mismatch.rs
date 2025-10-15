@@ -54,7 +54,7 @@ impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
 }
 
 impl MatchExprVisitor<'_, '_> {
-    fn case_altered(&mut self, segment_ident: Symbol, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
+    fn case_altered(&self, segment_ident: Symbol, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 

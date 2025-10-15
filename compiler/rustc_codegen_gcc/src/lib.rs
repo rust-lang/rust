@@ -92,8 +92,7 @@ use back::lto::{ThinBuffer, ThinData};
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
-use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
@@ -111,7 +110,6 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
-use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
@@ -184,6 +182,10 @@ pub struct GccCodegenBackend {
 impl CodegenBackend for GccCodegenBackend {
     fn locale_resource(&self) -> &'static str {
         crate::DEFAULT_LOCALE_RESOURCE
+    }
+
+    fn name(&self) -> &'static str {
+        "gcc"
     }
 
     fn init(&self, _sess: &Session) {
@@ -282,8 +284,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
@@ -293,7 +294,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         };
 
         unsafe {
-            allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, &mut mods, module_name, methods);
         }
         mods
     }
@@ -363,12 +364,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        diff_functions: Vec<AutoDiffItem>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        if !diff_functions.is_empty() {
-            unimplemented!();
-        }
-
+    ) -> ModuleCodegen<Self::Module> {
         back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
     }
 
@@ -379,7 +375,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError> {
+    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
         back::lto::run_thin(cgcx, each_linked_rlib_for_lto, modules, cached_modules)
     }
 
@@ -396,15 +392,14 @@ impl WriteBackendMethods for GccCodegenBackend {
         _dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<(), FatalError> {
+    ) {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
-        Ok(())
     }
 
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+    ) -> ModuleCodegen<Self::Module> {
         back::lto::optimize_thin_module(thin, cgcx)
     }
 
@@ -412,15 +407,12 @@ impl WriteBackendMethods for GccCodegenBackend {
         cgcx: &CodegenContext<Self>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<CompiledModule, FatalError> {
+    ) -> CompiledModule {
         back::write::codegen(cgcx, module, config)
     }
 
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>,
-        emit_summary: bool,
-    ) -> (String, Self::ThinBuffer) {
-        back::lto::prepare_thin(module, emit_summary)
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
+        back::lto::prepare_thin(module)
     }
 
     fn serialize_module(_module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {

@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
 use clippy_utils::{
@@ -215,7 +215,8 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
         && let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
     {
-        if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
+        let repl_name = cx.tcx.get_diagnostic_name(repl_def_id);
+        if repl_name == Some(sym::mem_uninitialized) {
             let Some(top_crate) = std_or_core(cx) else { return };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -230,9 +231,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 ),
                 applicability,
             );
-        } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id)
-            && !cx.typeck_results().expr_ty(src).is_primitive()
-        {
+        } else if repl_name == Some(sym::mem_zeroed) && !cx.typeck_results().expr_ty(src).is_primitive() {
             span_lint_and_help(
                 cx,
                 MEM_REPLACE_WITH_UNINIT,
@@ -270,14 +269,11 @@ fn check_replace_with_default(
             ),
             |diag| {
                 if !expr.span.from_expansion() {
-                    let suggestion = format!("{top_crate}::mem::take({})", snippet(cx, dest.span, ""));
+                    let mut applicability = Applicability::MachineApplicable;
+                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(
-                        expr.span,
-                        "consider using",
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
+                    diag.span_suggestion(expr.span, "consider using", suggestion, applicability);
                 }
             },
         );

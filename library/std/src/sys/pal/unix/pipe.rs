@@ -18,8 +18,9 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // The only known way right now to create atomically set the CLOEXEC flag is
     // to use the `pipe2` syscall. This was added to Linux in 2.6.27, glibc 2.9
     // and musl 0.9.3, and some other targets also have it.
-    cfg_if::cfg_if! {
-        if #[cfg(any(
+    cfg_select! {
+        any(
+            target_os = "android",
             target_os = "dragonfly",
             target_os = "freebsd",
             target_os = "hurd",
@@ -29,12 +30,13 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
             target_os = "openbsd",
             target_os = "cygwin",
             target_os = "redox"
-        ))] {
+        ) => {
             unsafe {
                 cvt(libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC))?;
                 Ok((AnonPipe(FileDesc::from_raw_fd(fds[0])), AnonPipe(FileDesc::from_raw_fd(fds[1]))))
             }
-        } else {
+        }
+        _ => {
             unsafe {
                 cvt(libc::pipe(fds.as_mut_ptr()))?;
 

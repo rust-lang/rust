@@ -1,8 +1,12 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use std::borrow::Cow;
+
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{HasSession, SpanRangeExt as _};
 use rustc_errors::Applicability;
-use rustc_hir::{GenericArg, HirId, LetStmt, Node, Path, TyKind};
+use rustc_hir::{Expr, GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
+use rustc_span::Span;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
@@ -38,6 +42,7 @@ fn is_function_block(cx: &LateContext<'_>, expr_hir_id: HirId) -> bool {
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     path: &Path<'tcx>,
+    arg: &Expr<'tcx>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     expr_hir_id: HirId,
@@ -68,14 +73,48 @@ pub(super) fn check<'tcx>(
     } else if is_function_block(cx, expr_hir_id) {
         return false;
     }
-    span_lint_and_sugg(
+    let span = last.ident.span.with_hi(path.span.hi());
+    span_lint_and_then(
         cx,
         MISSING_TRANSMUTE_ANNOTATIONS,
-        last.ident.span.with_hi(path.span.hi()),
+        span,
         "transmute used without annotations",
-        "consider adding missing annotations",
-        format!("{}::<{from_ty}, {to_ty}>", last.ident),
-        Applicability::MaybeIncorrect,
+        |diag| {
+            let from_ty_no_name = ty_cannot_be_named(from_ty);
+            let to_ty_no_name = ty_cannot_be_named(to_ty);
+            if from_ty_no_name || to_ty_no_name {
+                let to_name = match (from_ty_no_name, to_ty_no_name) {
+                    (true, false) => maybe_name_by_expr(cx, arg.span, "the origin type"),
+                    (false, true) => "the destination type".into(),
+                    _ => "the source and destination types".into(),
+                };
+                diag.help(format!(
+                    "consider giving {to_name} a name, and adding missing type annotations"
+                ));
+            } else {
+                diag.span_suggestion(
+                    span,
+                    "consider adding missing annotations",
+                    format!("{}::<{from_ty}, {to_ty}>", last.ident),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        },
     );
     true
+}
+
+fn ty_cannot_be_named(ty: Ty<'_>) -> bool {
+    matches!(
+        ty.kind(),
+        ty::Alias(ty::AliasTyKind::Opaque | ty::AliasTyKind::Inherent, _)
+    )
+}
+
+fn maybe_name_by_expr<'a>(sess: &impl HasSession, span: Span, default: &'a str) -> Cow<'a, str> {
+    span.with_source_text(sess, |name| {
+        (name.len() + 9 < default.len()).then_some(format!("`{name}`'s type").into())
+    })
+    .flatten()
+    .unwrap_or(default.into())
 }

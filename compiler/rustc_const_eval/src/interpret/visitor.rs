@@ -90,7 +90,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         // Special treatment for special types, where the (static) layout is not sufficient.
         match *ty.kind() {
             // If it is a trait object, switch to the real type that was used to create it.
-            ty::Dynamic(data, _, ty::Dyn) => {
+            ty::Dynamic(data, _) => {
                 // Dyn types. This is unsized, and the actual dynamic type of the data is given by the
                 // vtable stored in the place metadata.
                 // unsized values are never immediate, so we can assert_mem_place

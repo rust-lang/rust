@@ -55,7 +55,6 @@ pub(crate) fn move_bounds_to_where_clause(
                 match parent {
                     ast::Fn(it) => it.get_or_create_where_clause(),
                     ast::Trait(it) => it.get_or_create_where_clause(),
-                    ast::TraitAlias(it) => it.get_or_create_where_clause(),
                     ast::Impl(it) => it.get_or_create_where_clause(),
                     ast::Enum(it) => it.get_or_create_where_clause(),
                     ast::Struct(it) => it.get_or_create_where_clause(),

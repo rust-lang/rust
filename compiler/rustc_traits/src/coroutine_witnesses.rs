@@ -1,9 +1,9 @@
-use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions};
+use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::{ObligationCtxt, with_replaced_escaping_bound_vars};
 
 /// Return the set of types that should be taken into account when checking
@@ -63,7 +63,7 @@ fn compute_assumptions<'tcx>(
                 ty::ClauseKind::WellFormed(ty.into()),
             )
         }));
-        let _errors = ocx.select_all_or_error();
+        let _errors = ocx.evaluate_obligations_error_on_ambiguity();
 
         let region_obligations = infcx.take_registered_region_obligations();
         let region_assumptions = infcx.take_registered_region_assumptions();

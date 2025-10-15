@@ -51,6 +51,7 @@ mod statement;
 mod syntax;
 mod terminator;
 
+pub mod loops;
 pub mod traversal;
 pub mod visit;
 
@@ -62,9 +63,7 @@ pub use terminator::*;
 
 pub use self::generic_graph::graphviz_safe_def_name;
 pub use self::graphviz::write_mir_graphviz;
-pub use self::pretty::{
-    PassWhere, create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty,
-};
+pub use self::pretty::{MirDumper, PassWhere, display_allocation, write_mir_pretty};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
@@ -113,48 +112,6 @@ impl MirPhase {
             MirPhase::Built => (1, 1),
             MirPhase::Analysis(analysis_phase) => (2, 1 + analysis_phase as usize),
             MirPhase::Runtime(runtime_phase) => (3, 1 + runtime_phase as usize),
-        }
-    }
-
-    /// Parses a `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
-    pub fn parse(dialect: String, phase: Option<String>) -> Self {
-        match &*dialect.to_ascii_lowercase() {
-            "built" => {
-                assert!(phase.is_none(), "Cannot specify a phase for `Built` MIR");
-                MirPhase::Built
-            }
-            "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
-            "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
-            _ => bug!("Unknown MIR dialect: '{}'", dialect),
-        }
-    }
-}
-
-impl AnalysisPhase {
-    pub fn parse(phase: Option<String>) -> Self {
-        let Some(phase) = phase else {
-            return Self::Initial;
-        };
-
-        match &*phase.to_ascii_lowercase() {
-            "initial" => Self::Initial,
-            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            _ => bug!("Unknown analysis phase: '{}'", phase),
-        }
-    }
-}
-
-impl RuntimePhase {
-    pub fn parse(phase: Option<String>) -> Self {
-        let Some(phase) = phase else {
-            return Self::Initial;
-        };
-
-        match &*phase.to_ascii_lowercase() {
-            "initial" => Self::Initial,
-            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            "optimized" => Self::Optimized,
-            _ => bug!("Unknown runtime phase: '{}'", phase),
         }
     }
 }
@@ -515,7 +472,7 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all function arguments.
     #[inline]
-    pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator {
+    pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator + use<> {
         (1..self.arg_count + 1).map(Local::new)
     }
 
@@ -926,6 +883,9 @@ pub struct VarBindingForm<'tcx> {
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
+    /// A binding can be introduced multiple times, with or patterns:
+    /// `Foo::A { x } | Foo::B { z: x }`. This stores information for each of those introductions.
+    pub introductions: Vec<VarBindingIntroduction>,
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable)]
@@ -935,7 +895,15 @@ pub enum BindingForm<'tcx> {
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
-    RefForGuard,
+    RefForGuard(Local),
+}
+
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct VarBindingIntroduction {
+    /// Where this additional introduction happened.
+    pub span: Span,
+    /// Is that introduction a shorthand struct pattern, i.e. `Foo { x }`.
+    pub is_shorthand: bool,
 }
 
 mod binding_form_impl {
@@ -950,7 +918,7 @@ mod binding_form_impl {
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
                 ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
-                RefForGuard => (),
+                RefForGuard(local) => local.hash_stable(hcx, hasher),
             }
         }
     }
@@ -1109,7 +1077,11 @@ pub enum LocalInfo<'tcx> {
     /// A temporary created during evaluating `if` predicate, possibly for pattern matching for `let`s,
     /// and subject to Edition 2024 temporary lifetime rules
     IfThenRescopeTemp { if_then: HirId },
-    /// A temporary created during the pass `Derefer` to avoid it's retagging
+    /// A temporary created during the pass `Derefer` treated as a transparent alias
+    /// for the place its copied from by analysis passes such as `AddRetag` and `ElaborateDrops`.
+    ///
+    /// It may only be written to by a `CopyForDeref` and otherwise only accessed through a deref.
+    /// In runtime MIR, it is replaced with a normal `Boring` local.
     DerefTemp,
     /// A temporary created for borrow checking.
     FakeBorrow,
@@ -1132,12 +1104,8 @@ impl<'tcx> LocalDecl<'tcx> {
         matches!(
             self.local_info(),
             LocalInfo::User(
-                BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
-                }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+                BindingForm::Var(VarBindingForm { binding_mode: BindingMode(ByRef::No, _), .. })
+                    | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
             )
         )
     }
@@ -1149,12 +1117,8 @@ impl<'tcx> LocalDecl<'tcx> {
         matches!(
             self.local_info(),
             LocalInfo::User(
-                BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
-                }) | BindingForm::ImplicitSelf(_),
+                BindingForm::Var(VarBindingForm { binding_mode: BindingMode(ByRef::No, _), .. })
+                    | BindingForm::ImplicitSelf(_),
             )
         )
     }
@@ -1170,7 +1134,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard(_)))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
@@ -1342,6 +1306,10 @@ pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
 
+    /// All debuginfos happen before the statement.
+    /// Put debuginfos here when the last statement is eliminated.
+    pub after_last_stmt_debuginfos: StmtDebugInfos<'tcx>,
+
     /// Terminator for this block.
     ///
     /// N.B., this should generally ONLY be `None` during construction.
@@ -1369,7 +1337,12 @@ impl<'tcx> BasicBlockData<'tcx> {
         terminator: Option<Terminator<'tcx>>,
         is_cleanup: bool,
     ) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements, terminator, is_cleanup }
+        BasicBlockData {
+            statements,
+            after_last_stmt_debuginfos: StmtDebugInfos::default(),
+            terminator,
+            is_cleanup,
+        }
     }
 
     /// Accessor for terminator.
@@ -1402,6 +1375,36 @@ impl<'tcx> BasicBlockData<'tcx> {
             targets.successors_for_value(bits)
         } else {
             self.terminator().successors()
+        }
+    }
+
+    pub fn retain_statements<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Statement<'tcx>) -> bool,
+    {
+        // Place debuginfos into the next retained statement,
+        // this `debuginfos` variable is used to cache debuginfos between two retained statements.
+        let mut debuginfos = StmtDebugInfos::default();
+        self.statements.retain_mut(|stmt| {
+            let retain = f(stmt);
+            if retain {
+                stmt.debuginfos.prepend(&mut debuginfos);
+            } else {
+                debuginfos.append(&mut stmt.debuginfos);
+            }
+            retain
+        });
+        self.after_last_stmt_debuginfos.prepend(&mut debuginfos);
+    }
+
+    pub fn strip_nops(&mut self) {
+        self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+    }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.after_last_stmt_debuginfos.drop_debuginfo();
+        for stmt in self.statements.iter_mut() {
+            stmt.debuginfos.drop_debuginfo();
         }
     }
 }
@@ -1708,10 +1711,10 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 128);
+    static_assert_size!(BasicBlockData<'_>, 152);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
-    static_assert_size!(Statement<'_>, 32);
+    static_assert_size!(Statement<'_>, 56);
     static_assert_size!(Terminator<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end

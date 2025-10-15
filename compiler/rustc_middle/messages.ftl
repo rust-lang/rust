@@ -84,7 +84,7 @@ middle_failed_writing_file =
 # Note: We only mention patterns here since the error can only occur with references, and those
 # are forbidden in const generics.
 middle_invalid_const_in_valtree = constant {$global_const_id} cannot be used as pattern
-    .note = constants that reference mutable or external memory cannot be used as pattern
+    .note = constants that reference mutable or external memory cannot be used as patterns
 
 middle_layout_cycle =
     a cycle occurred during layout computation
@@ -94,6 +94,12 @@ middle_layout_normalization_failure =
 
 middle_layout_references_error =
     the type has an unknown layout
+
+middle_layout_simd_too_many =
+    the SIMD type `{$ty}` has more elements than the limit {$max_lanes}
+
+middle_layout_simd_zero_length =
+    the SIMD type `{$ty}` has zero elements
 
 middle_layout_size_overflow =
     values of the type `{$ty}` are too big for the target architecture

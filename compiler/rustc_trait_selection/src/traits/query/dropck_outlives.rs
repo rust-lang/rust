@@ -199,7 +199,7 @@ where
                 // Flush errors b/c `deeply_normalize` doesn't expect pending
                 // obligations, and we may have pending obligations from the
                 // branch above (from other types).
-                let errors = ocx.select_all_or_error();
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     return Err(errors);
                 }
@@ -350,7 +350,9 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // Note that we don't care about whether the resume type has any drops since this is
             // redundant; there is no storage for the resume type, so if it is actually stored
             // in the interior, we'll already detect the need for a drop by checking the interior.
-            let typing_env = tcx.erase_regions(typing_env);
+            //
+            // FIXME(@lcnr): Why do we erase regions in the env here? Seems odd
+            let typing_env = tcx.erase_and_anonymize_regions(typing_env);
             let needs_drop = tcx.mir_coroutine_witnesses(def_id).is_some_and(|witness| {
                 witness.field_tys.iter().any(|field| field.ty.needs_drop(tcx, typing_env))
             });

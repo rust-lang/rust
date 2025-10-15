@@ -155,6 +155,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let ret_type = method_source.ret_type();
 
                 let f = make::fn_(
+                    None,
                     vis,
                     fn_name,
                     type_params,
@@ -195,6 +196,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         let assoc_item_list = make::assoc_item_list(Some(vec![item]));
 
                         let impl_def = make::impl_(
+                            None,
                             ty_params,
                             ty_args,
                             make::ty_path(make::ext::ident_path(name)),

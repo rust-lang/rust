@@ -15,6 +15,7 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::os::windows::process::ProcThreadAttributeList;
 use crate::path::{Path, PathBuf};
+use crate::process::StdioPipes;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
 use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
@@ -167,12 +168,6 @@ pub enum Stdio {
     MakePipe,
     Pipe(AnonPipe),
     Handle(Handle),
-}
-
-pub struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
 }
 
 impl Command {

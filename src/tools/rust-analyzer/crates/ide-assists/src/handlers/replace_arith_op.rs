@@ -1,7 +1,7 @@
 use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
-    AstNode, TextRange,
-    ast::{self, ArithOp, BinaryOp},
+    AstNode,
+    ast::{self, ArithOp, BinaryOp, syntax_factory::SyntaxFactory},
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -71,24 +71,31 @@ pub(crate) fn replace_arith_with_wrapping(
 
 fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) -> Option<()> {
     let (lhs, op, rhs) = parse_binary_op(ctx)?;
+    let op_expr = lhs.syntax().parent()?;
 
     if !is_primitive_int(ctx, &lhs) || !is_primitive_int(ctx, &rhs) {
         return None;
     }
 
-    let start = lhs.syntax().text_range().start();
-    let end = rhs.syntax().text_range().end();
-    let range = TextRange::new(start, end);
-
     acc.add_group(
         &GroupLabel("Replace arithmetic...".into()),
         kind.assist_id(),
         kind.label(),
-        range,
+        op_expr.text_range(),
         |builder| {
+            let mut edit = builder.make_editor(rhs.syntax());
+            let make = SyntaxFactory::with_mappings();
             let method_name = kind.method_name(op);
 
-            builder.replace(range, format!("{lhs}.{method_name}({rhs})"))
+            let needs_parentheses =
+                lhs.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix);
+            let receiver = if needs_parentheses { make.expr_paren(lhs).into() } else { lhs };
+            let arith_expr =
+                make.expr_method_call(receiver, make.name_ref(&method_name), make.arg_list([rhs]));
+            edit.replace(op_expr, arith_expr.syntax());
+
+            edit.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
@@ -102,6 +109,9 @@ fn is_primitive_int(ctx: &AssistContext<'_>, expr: &ast::Expr) -> bool {
 
 /// Extract the operands of an arithmetic expression (e.g. `1 + 2` or `1.checked_add(2)`)
 fn parse_binary_op(ctx: &AssistContext<'_>) -> Option<(ast::Expr, ArithOp, ast::Expr)> {
+    if !ctx.has_empty_selection() {
+        return None;
+    }
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op = match expr.op_kind() {
@@ -163,7 +173,7 @@ impl ArithKind {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -219,6 +229,35 @@ fn main() {
             r#"
 fn main() {
     let x = 1.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_add_parenthesis() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let x = 1*x $0+ 2;
+}
+"#,
+            r#"
+fn main() {
+    let x = (1*x).wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_not_applicable_with_non_empty_selection() {
+        check_assist_not_applicable(
+            replace_arith_with_checked,
+            r#"
+fn main() {
+    let x = 1 $0+$0 2;
 }
 "#,
         )

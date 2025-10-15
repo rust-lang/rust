@@ -13,12 +13,13 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-thread
 //
-//@ compile-flags: -Z sanitizer=thread -O
+//@ compile-flags: -Z sanitizer=thread -O -C unsafe-allow-abi-mismatch=sanitizer
 //
 //@ run-fail-or-crash
 //@ error-pattern: WARNING: ThreadSanitizer: data race
 //@ error-pattern: Location is heap block of size 4
 //@ error-pattern: allocated by main thread
+//@ ignore-backends: gcc
 
 #![feature(rustc_private)]
 extern crate libc;

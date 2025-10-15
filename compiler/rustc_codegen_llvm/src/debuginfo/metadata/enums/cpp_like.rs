@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use smallvec::smallvec;
 
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::dwarf_const::DW_TAG_const_type;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
@@ -378,20 +378,17 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
             variant_struct_type_wrapper_di_node,
             None,
         ),
-        unsafe {
-            llvm::LLVMRustDIBuilderCreateStaticMemberType(
-                DIB(cx),
-                enum_type_di_node,
-                TAG_FIELD_NAME.as_c_char_ptr(),
-                TAG_FIELD_NAME.len(),
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
-                variant_names_type_di_node,
-                visibility_flags,
-                Some(cx.const_u64(SINGLE_VARIANT_VIRTUAL_DISR)),
-                tag_base_type_align.bits() as u32,
-            )
-        }
+        create_static_member_type(
+            cx,
+            enum_type_di_node,
+            TAG_FIELD_NAME,
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
+            variant_names_type_di_node,
+            visibility_flags,
+            Some(cx.const_u64(SINGLE_VARIANT_VIRTUAL_DISR)),
+            tag_base_type_align,
+        ),
     ]
 }
 
@@ -570,27 +567,28 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
             let build_assoc_const = |name: &str,
                                      type_di_node_: &'ll DIType,
                                      value: u64,
-                                     align: Align| unsafe {
+                                     align: Align|
+             -> &'ll llvm::Metadata {
                 // FIXME: Currently we force all DISCR_* values to be u64's as LLDB seems to have
                 // problems inspecting other value types. Since DISCR_* is typically only going to be
                 // directly inspected via the debugger visualizer - which compares it to the `tag` value
                 // (whose type is not modified at all) it shouldn't cause any real problems.
                 let (t_di, align) = if name == ASSOC_CONST_DISCR_NAME {
-                    (type_di_node_, align.bits() as u32)
+                    (type_di_node_, align)
                 } else {
                     let ty_u64 = Ty::new_uint(cx.tcx, ty::UintTy::U64);
-                    (type_di_node(cx, ty_u64), Align::EIGHT.bits() as u32)
+                    (type_di_node(cx, ty_u64), Align::EIGHT)
                 };
 
                 // must wrap type in a `const` modifier for LLDB to be able to inspect the value of the member
-                let field_type =
-                    llvm::LLVMRustDIBuilderCreateQualifiedType(DIB(cx), DW_TAG_const_type, t_di);
+                let field_type = unsafe {
+                    llvm::LLVMDIBuilderCreateQualifiedType(DIB(cx), DW_TAG_const_type, t_di)
+                };
 
-                llvm::LLVMRustDIBuilderCreateStaticMemberType(
-                    DIB(cx),
+                create_static_member_type(
+                    cx,
                     wrapper_struct_type_di_node,
-                    name.as_c_char_ptr(),
-                    name.len(),
+                    name,
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
                     field_type,
@@ -974,4 +972,31 @@ fn variant_struct_wrapper_type_name(variant_index: VariantIdx) -> Cow<'static, s
         .get(variant_index.as_usize())
         .map(|&s| Cow::from(s))
         .unwrap_or_else(|| format!("Variant{}", variant_index.as_usize()).into())
+}
+
+fn create_static_member_type<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    scope: &'ll llvm::Metadata,
+    name: &str,
+    file: &'ll llvm::Metadata,
+    line_number: c_uint,
+    ty: &'ll llvm::Metadata,
+    flags: DIFlags,
+    value: Option<&'ll llvm::Value>,
+    align: Align,
+) -> &'ll llvm::Metadata {
+    unsafe {
+        llvm::LLVMDIBuilderCreateStaticMemberType(
+            DIB(cx),
+            scope,
+            name.as_ptr(),
+            name.len(),
+            file,
+            line_number,
+            ty,
+            flags,
+            value,
+            align.bits() as c_uint,
+        )
+    }
 }

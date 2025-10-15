@@ -23,6 +23,7 @@ pub(crate) mod clone;
 pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
 pub(crate) mod default;
+pub(crate) mod from;
 pub(crate) mod hash;
 
 #[path = "cmp/eq.rs"]

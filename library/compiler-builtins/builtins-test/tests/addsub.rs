@@ -1,4 +1,5 @@
 #![allow(unused_macros)]
+#![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
 
 use builtins_test::*;
@@ -115,28 +116,25 @@ macro_rules! float_sum {
 mod float_addsub {
     use super::*;
 
+    #[cfg(f16_enabled)]
+    float_sum! {
+        f16, __addhf3, __subhf3, Half, all();
+    }
+
     float_sum! {
         f32, __addsf3, __subsf3, Single, all();
         f64, __adddf3, __subdf3, Double, all();
     }
-}
 
-#[cfg(f128_enabled)]
-#[cfg(not(x86_no_sse))]
-#[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-mod float_addsub_f128 {
-    use super::*;
-
+    #[cfg(f128_enabled)]
+    #[cfg(not(x86_no_sse))]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     float_sum! {
         f128, __addtf3, __subtf3, Quad, not(feature = "no-sys-f128");
     }
-}
 
-#[cfg(f128_enabled)]
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-mod float_addsub_f128_ppc {
-    use super::*;
-
+    #[cfg(f128_enabled)]
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
     float_sum! {
         f128, __addkf3, __subkf3, Quad, not(feature = "no-sys-f128");
     }

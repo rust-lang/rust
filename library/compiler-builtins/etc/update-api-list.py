@@ -34,7 +34,7 @@ def eprint(*args, **kwargs):
 
 @dataclass
 class Crate:
-    """Representation of public interfaces and function defintion locations in
+    """Representation of public interfaces and function definition locations in
     `libm`.
     """
 

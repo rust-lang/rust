@@ -78,7 +78,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
                 match r.kind() {
-                    ty::ReBound(debruijn, _) if debruijn < self.outer_index => {
+                    ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
+                        if debruijn < self.outer_index =>
+                    {
                         ControlFlow::Continue(())
                     }
                     _ => {
@@ -205,49 +207,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::ReBound(debruijn, br) = r.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) = r.kind() {
             if debruijn == self.current_index {
                 self.regions.insert(br.kind);
             }
-        }
-    }
-}
-
-/// Finds the max universe present
-pub struct MaxUniverse {
-    max_universe: ty::UniverseIndex,
-}
-
-impl MaxUniverse {
-    pub fn new() -> Self {
-        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
-    }
-
-    pub fn max_universe(self) -> ty::UniverseIndex {
-        self.max_universe
-    }
-}
-
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
-    fn visit_ty(&mut self, t: Ty<'tcx>) {
-        if let ty::Placeholder(placeholder) = t.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_const(&mut self, c: ty::consts::Const<'tcx>) {
-        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
-        }
-
-        c.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::RePlaceholder(placeholder) = r.kind() {
-            self.max_universe = self.max_universe.max(placeholder.universe);
         }
     }
 }

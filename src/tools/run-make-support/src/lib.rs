@@ -1,7 +1,8 @@
 //! `run-make-support` is a support library for run-make tests. It provides command wrappers and
 //! convenience utility functions to help test writers reduce duplication. The support library
-//! notably is built via cargo: this means that if your test wants some non-trivial utility, such
-//! as `object` or `wasmparser`, they can be re-exported and be made available through this library.
+//! notably is built via bootstrap cargo: this means that if your test wants some non-trivial
+//! utility, such as `object` or `wasmparser`, they can be re-exported and be made available through
+//! this library.
 
 #![warn(unreachable_pub)]
 

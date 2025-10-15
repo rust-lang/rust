@@ -2,6 +2,8 @@
 //@ only-unix (this is a unix-specific test)
 //@ needs-subprocess
 //@ ignore-fuchsia no execvp syscall
+//@ ignore-tvos execvp is prohibited
+//@ ignore-watchos execvp is prohibited
 
 #![feature(rustc_private)]
 

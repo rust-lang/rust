@@ -7,7 +7,6 @@ use rustc_middle::{bug, span_bug};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-use super::abs_domain::Lift;
 use super::{
     Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
     MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
@@ -153,7 +152,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(..)
-                    | ty::Dynamic(_, _, _)
+                    | ty::Dynamic(_, _)
                     | ty::Closure(..)
                     | ty::CoroutineClosure(..)
                     | ty::Coroutine(_, _)
@@ -197,7 +196,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
                     | ty::FnPtr(..)
-                    | ty::Dynamic(_, _, _)
+                    | ty::Dynamic(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::UnsafeBinder(_)
@@ -228,11 +227,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 ProjectionElem::UnwrapUnsafeBinder(_) => {}
                 // `OpaqueCast`:Only transmutes the type, so no moves there.
                 // `Downcast`  :Only changes information about a `Place` without moving.
-                // `Subtype`   :Only transmutes the type, so moves.
                 // So it's safe to skip these.
-                ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Subtype(_)
-                | ProjectionElem::Downcast(_, _) => (),
+                ProjectionElem::OpaqueCast(_) | ProjectionElem::Downcast(_, _) => (),
             }
             let elem_ty = PlaceTy::from_ty(place_ty).projection_ty(tcx, elem).ty;
             if !(self.filter)(elem_ty) {
@@ -241,7 +237,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =
-                    *data.rev_lookup.projections.entry((base, elem.lift())).or_insert_with(|| {
+                    *data.rev_lookup.projections.entry((base, elem.kind())).or_insert_with(|| {
                         new_move_path(
                             &mut data.move_paths,
                             &mut data.path_map,
@@ -272,7 +268,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             tcx,
             ..
         } = self;
-        *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
+        *rev_lookup.projections.entry((base, elem.kind())).or_insert_with(move || {
             new_move_path(move_paths, path_map, init_path_map, Some(base), mk_place(*tcx))
         })
     }
@@ -375,7 +371,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     self.gather_move(Place::from(*local));
                 }
             }
-            StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
+            StatementKind::SetDiscriminant { .. } => {
                 span_bug!(
                     stmt.source_info.span,
                     "SetDiscriminant/Deinit should not exist during borrowck"
@@ -414,7 +410,6 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::Len(..)
             | Rvalue::NullaryOp(
                 NullOp::SizeOf
                 | NullOp::AlignOf

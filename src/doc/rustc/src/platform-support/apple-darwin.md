@@ -4,8 +4,11 @@ Apple macOS targets.
 
 **Tier: 1**
 
-- `x86_64-apple-darwin`: macOS on 64-bit x86.
 - `aarch64-apple-darwin`: macOS on ARM64 (M1-family or later Apple Silicon CPUs).
+
+**Tier: 2**
+
+- `x86_64-apple-darwin`: macOS on 64-bit x86.
 
 ## Target maintainers
 

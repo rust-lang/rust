@@ -42,7 +42,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut obligations = PredicateObligations::new();
         let targets =
-            steps.iter().skip(1).map(|&(ty, _)| ty).chain(iter::once(autoderef.final_ty(false)));
+            steps.iter().skip(1).map(|&(ty, _)| ty).chain(iter::once(autoderef.final_ty()));
         let steps: Vec<_> = steps
             .iter()
             .map(|&(source, kind)| {

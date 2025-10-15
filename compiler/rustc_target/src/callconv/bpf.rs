@@ -29,3 +29,9 @@ pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
         classify_arg(arg);
     }
 }
+
+pub(crate) fn compute_rust_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(&mut fn_abi.ret);
+    }
+}

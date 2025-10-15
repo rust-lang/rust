@@ -163,5 +163,11 @@ error: because of the numeric bounds on `u8` prior to casting, this expression i
 LL |     -5 >= (u8 as i32);
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 27 previous errors
+error: because of the numeric bounds on `add_one!(x)` prior to casting, this expression is always false
+  --> tests/ui/invalid_upcast_comparisons.rs:145:5
+   |
+LL |     (add_one!(x) as u32) > 300;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 28 previous errors
 

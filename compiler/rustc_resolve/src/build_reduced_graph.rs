@@ -5,13 +5,12 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use std::cell::Cell;
 use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
+    ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
@@ -35,6 +34,7 @@ use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
+use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
     NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, Used,
@@ -87,7 +87,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            parent.underscore_disambiguator.update(|d| d + 1);
+            // FIXME(batched): Will be fixed in batched resolution.
+            parent.underscore_disambiguator.update_unchecked(|d| d + 1);
             parent.underscore_disambiguator.get()
         });
         if self
@@ -207,6 +208,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 self.arenas.alloc_macro(macro_data)
             }),
+        }
+    }
+
+    /// Add every proc macro accessible from the current crate to the `macro_map` so diagnostics can
+    /// find them for suggestions.
+    pub(crate) fn register_macros_for_all_crates(&mut self) {
+        if !self.all_crate_macros_already_registered {
+            for def_id in self.cstore().all_proc_macro_def_ids() {
+                self.get_macro_by_def_id(def_id);
+            }
+            self.all_crate_macros_already_registered = true;
         }
     }
 
@@ -466,7 +478,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             kind,
             parent_scope: self.parent_scope,
             module_path,
-            imported_module: Cell::new(None),
+            imported_module: CmCell::new(None),
             span,
             use_span: item.span,
             use_span_with_attributes: item.span_with_attributes(),
@@ -474,6 +486,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_span,
             root_id,
             vis,
+            vis_span: item.vis.span,
         });
 
         self.r.indeterminate_imports.push(import);
@@ -493,10 +506,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     });
                 }
             }
-            // We don't add prelude imports to the globs since they only affect lexical scopes,
-            // which are not relevant to import resolution.
-            ImportKind::Glob { is_prelude: true, .. } => {}
-            ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
+            ImportKind::Glob { .. } => current_module.globs.borrow_mut(self.r).push(import),
             _ => unreachable!(),
         }
     }
@@ -658,13 +668,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob => {
-                let kind = ImportKind::Glob {
-                    is_prelude: ast::attr::contains_name(&item.attrs, sym::prelude_import),
-                    max_vis: Cell::new(None),
-                    id,
-                };
-
-                self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
+                if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
+                    let kind = ImportKind::Glob { max_vis: CmCell::new(None), id };
+                    self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
+                } else {
+                    // Resolve the prelude import early.
+                    let path_res =
+                        self.r.cm().maybe_resolve_path(&prefix, None, &self.parent_scope, None);
+                    if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
+                        self.r.prelude = Some(module);
+                    } else {
+                        self.r.dcx().span_err(use_tree.span, "cannot resolve a prelude import");
+                    }
+                }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 // Ensure there is at most one `self` in the list
@@ -798,7 +814,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Mod(_, ident, ref mod_kind) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
-                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
+                if let ast::ModKind::Loaded(_, Inline::No { had_parse_error: Err(_) }, _) = mod_kind
+                {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
                 self.parent_scope.module = self.r.new_local_module(
@@ -955,7 +972,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
             parent_scope: self.parent_scope,
-            imported_module: Cell::new(module),
+            imported_module: CmCell::new(module),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
             use_span: item.span,
@@ -963,6 +980,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
+            vis_span: item.vis.span,
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -971,41 +989,33 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let imported_binding = self.r.import(binding, import);
         if ident.name != kw::Underscore && parent == self.r.graph_root {
             let norm_ident = Macros20NormalizedIdent::new(ident);
+            // FIXME: this error is technically unnecessary now when extern prelude is split into
+            // two scopes, remove it with lang team approval.
             if let Some(entry) = self.r.extern_prelude.get(&norm_ident)
                 && expansion != LocalExpnId::ROOT
                 && orig_name.is_some()
-                && !entry.is_import()
+                && entry.item_binding.is_none()
             {
                 self.r.dcx().emit_err(
                     errors::MacroExpandedExternCrateCannotShadowExternArguments { span: item.span },
                 );
-                // `return` is intended to discard this binding because it's an
-                // unregistered ambiguity error which would result in a panic
-                // caused by inconsistency `path_res`
-                // more details: https://github.com/rust-lang/rust/pull/111761
-                return;
             }
 
             use indexmap::map::Entry;
             match self.r.extern_prelude.entry(norm_ident) {
                 Entry::Occupied(mut occupied) => {
                     let entry = occupied.get_mut();
-                    if let Some(old_binding) = entry.binding.get()
-                        && old_binding.is_import()
-                    {
+                    if entry.item_binding.is_some() {
                         let msg = format!("extern crate `{ident}` already in extern prelude");
                         self.r.tcx.dcx().span_delayed_bug(item.span, msg);
                     } else {
-                        // Binding from `extern crate` item in source code can replace
-                        // a binding from `--extern` on command line here.
-                        entry.binding.set(Some(imported_binding));
-                        entry.introduced_by_item = orig_name.is_some();
+                        entry.item_binding = Some((imported_binding, orig_name.is_some()));
                     }
                     entry
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
-                    binding: Cell::new(Some(imported_binding)),
-                    introduced_by_item: true,
+                    item_binding: Some((imported_binding, true)),
+                    flag_binding: None,
                 }),
             };
         }
@@ -1094,7 +1104,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 kind: ImportKind::MacroUse { warn_private },
                 root_id: item.id,
                 parent_scope: this.parent_scope,
-                imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
+                imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
                 use_span_with_attributes: item.span_with_attributes(),
                 has_attributes: !item.attrs.is_empty(),
                 use_span: item.span,
@@ -1102,6 +1112,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
+                vis_span: item.vis.span,
             })
         };
 
@@ -1186,7 +1197,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     /// directly into its parent scope's module.
     fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
-        self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
@@ -1232,7 +1243,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
-                        let res = Res::Def(DefKind::Macro(macro_kind), def_id.to_def_id());
+                        let macro_kinds = macro_kind.into();
+                        let res = Res::Def(DefKind::Macro(macro_kinds), def_id.to_def_id());
                         let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
                         self.r.new_local_macro(def_id, macro_data);
                         self.r.proc_macro_stubs.insert(def_id);
@@ -1263,7 +1275,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     kind: ImportKind::MacroExport,
                     root_id: item.id,
                     parent_scope: self.parent_scope,
-                    imported_module: Cell::new(None),
+                    imported_module: CmCell::new(None),
                     has_attributes: false,
                     use_span_with_attributes: span,
                     use_span: span,
@@ -1271,6 +1283,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
+                    vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);

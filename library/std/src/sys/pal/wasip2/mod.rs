@@ -10,13 +10,10 @@
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
 
-#[path = "../wasi/os.rs"]
+#[path = "../wasip1/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../wasi/thread.rs"]
-pub mod thread;
-#[path = "../wasi/time.rs"]
 pub mod time;
 
 #[path = "../unsupported/common.rs"]
@@ -26,7 +23,7 @@ mod common;
 
 pub use common::*;
 
-#[path = "../wasi/helpers.rs"]
+#[path = "../wasip1/helpers.rs"]
 mod helpers;
 
 // The following exports are listed individually to work around Rust's glob

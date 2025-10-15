@@ -1,5 +1,3 @@
-use cfg_if::cfg_if;
-
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::Deref;
@@ -87,8 +85,8 @@ pub struct ReentrantLock<T: ?Sized> {
     data: T,
 }
 
-cfg_if!(
-    if #[cfg(target_has_atomic = "64")] {
+cfg_select!(
+    target_has_atomic = "64" => {
         use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
 
         struct Tid(Atomic<u64>);
@@ -110,7 +108,8 @@ cfg_if!(
                 self.0.store(value, Relaxed);
             }
         }
-    } else {
+    }
+    _ => {
         /// Returns the address of a TLS variable. This is guaranteed to
         /// be unique across all currently alive threads.
         fn tls_addr() -> usize {
@@ -356,7 +355,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// properly synchronized to avoid data races, and that it is not read
     /// through after the lock is dropped.
     #[unstable(feature = "reentrant_lock_data_ptr", issue = "140368")]
-    pub fn data_ptr(&self) -> *const T {
+    pub const fn data_ptr(&self) -> *const T {
         &raw const self.data
     }
 

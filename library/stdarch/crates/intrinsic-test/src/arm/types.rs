@@ -1,5 +1,6 @@
 use super::intrinsic::ArmIntrinsicType;
 use crate::common::cli::Language;
+use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 
 impl IntrinsicTypeDefinition for ArmIntrinsicType {
@@ -97,6 +98,71 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         } else {
             todo!("get_lane_function IntrinsicType: {:#?}", self)
         }
+    }
+
+    /// Generates a std::cout for the intrinsics results that will match the
+    /// rust debug output format for the return type. The generated line assumes
+    /// there is an int i in scope which is the current pass number.
+    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String {
+        let lanes = if self.num_vectors() > 1 {
+            (0..self.num_vectors())
+                .map(|vector| {
+                    format!(
+                        r#""{ty}(" << {lanes} << ")""#,
+                        ty = self.c_single_vector_type(),
+                        lanes = (0..self.num_lanes())
+                            .map(move |idx| -> std::string::String {
+                                format!(
+                                    "{cast}{lane_fn}(__return_value.val[{vector}], {lane})",
+                                    cast = self.c_promotion(),
+                                    lane_fn = self.get_lane_function(),
+                                    lane = idx,
+                                    vector = vector,
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(r#" << ", " << "#)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(r#" << ", " << "#)
+        } else if self.num_lanes() > 1 {
+            (0..self.num_lanes())
+                .map(|idx| -> std::string::String {
+                    format!(
+                        "{cast}{lane_fn}(__return_value, {lane})",
+                        cast = self.c_promotion(),
+                        lane_fn = self.get_lane_function(),
+                        lane = idx
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(r#" << ", " << "#)
+        } else {
+            format!(
+                "{promote}cast<{cast}>(__return_value)",
+                cast = match self.kind() {
+                    TypeKind::Float if self.inner_size() == 16 => "float16_t".to_string(),
+                    TypeKind::Float if self.inner_size() == 32 => "float".to_string(),
+                    TypeKind::Float if self.inner_size() == 64 => "double".to_string(),
+                    TypeKind::Int(Sign::Signed) => format!("int{}_t", self.inner_size()),
+                    TypeKind::Int(Sign::Unsigned) => format!("uint{}_t", self.inner_size()),
+                    TypeKind::Poly => format!("poly{}_t", self.inner_size()),
+                    ty => todo!("print_result_c - Unknown type: {:#?}", ty),
+                },
+                promote = self.c_promotion(),
+            )
+        };
+
+        format!(
+            r#"{indentation}std::cout << "Result {additional}-" << i+1 << ": {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
+            ty = if self.is_simd() {
+                format!("{}(", self.c_type())
+            } else {
+                String::from("")
+            },
+            close = if self.is_simd() { ")" } else { "" },
+        )
     }
 }
 

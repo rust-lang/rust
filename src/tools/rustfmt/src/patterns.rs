@@ -303,7 +303,7 @@ impl Rewrite for Pat {
                 qself,
                 path,
                 fields,
-                rest == ast::PatFieldsRest::Rest,
+                matches!(rest, ast::PatFieldsRest::Rest(_)),
                 self.span,
                 context,
                 shape,

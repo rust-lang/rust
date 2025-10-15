@@ -276,7 +276,7 @@ There are two sets of people with extra permissions:
   Feel free to request a review or assign any PR to a reviewer with the relevant expertise to bring the work to their attention.
   Don't feel pressured to review assigned PRs though.
   If you don't feel like reviewing for whatever reason, someone else will pick the review up (but please speak up if you don't feel like it)!
-* The [rust-lang](https://github.com/rust-lang) team [t-rust-analyzer-contributors]([https://github.com/orgs/rust-analyzer/teams/triage](https://github.com/rust-lang/team/blob/master/teams/rust-analyzer-contributors.toml)).
+* The [rust-lang](https://github.com/rust-lang) team [t-rust-analyzer-contributors](https://github.com/rust-lang/team/blob/master/teams/rust-analyzer-contributors.toml).
   This team has general triaging permissions allowing to label, close and re-open issues.
 
 ## Synchronizing subtree changes

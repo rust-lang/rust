@@ -76,7 +76,7 @@ check-aux:
 		library/std \
 		$(BOOTSTRAP_ARGS) \
 		-- \
-		--skip fs:: --skip net:: --skip process:: --skip sys::fd:: --skip sys::pal::
+		--skip fs:: --skip net:: --skip process:: --skip sys::
 	# Also test some very target-specific modules on other targets
 	# (making sure to cover an i686 target as well).
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \

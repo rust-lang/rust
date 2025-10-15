@@ -423,19 +423,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 constituents.types,
             );
 
-            // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
-            // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
-            // matter yet.
-            for assumption in constituents.assumptions {
-                let assumption = normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    cause.clone(),
-                    obligation.recursion_depth + 1,
-                    assumption,
-                    &mut obligations,
-                );
-                self.infcx.register_region_assumption(assumption);
+            // Only normalize these goals if `-Zhigher-ranked-assumptions` is enabled, since
+            // we don't want to cause ourselves to do extra work if we're not even able to
+            // take advantage of these assumption clauses.
+            if self.tcx().sess.opts.unstable_opts.higher_ranked_assumptions {
+                // FIXME(coroutine_clone): We could uplift this into `collect_predicates_for_types`
+                // and do this for `Copy`/`Clone` too, but that's feature-gated so it doesn't really
+                // matter yet.
+                for assumption in constituents.assumptions {
+                    let assumption = normalize_with_depth_to(
+                        self,
+                        obligation.param_env,
+                        cause.clone(),
+                        obligation.recursion_depth + 1,
+                        assumption,
+                        &mut obligations,
+                    );
+                    self.infcx.register_region_assumption(assumption);
+                }
             }
 
             Ok(obligations)
@@ -1023,10 +1028,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let a_ty = self.infcx.shallow_resolve(predicate.self_ty());
         let b_ty = self.infcx.shallow_resolve(predicate.trait_ref.args.type_at(1));
 
-        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+        let ty::Dynamic(a_data, a_region) = *a_ty.kind() else {
             bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
         };
-        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+        let ty::Dynamic(b_data, b_region) = *b_ty.kind() else {
             bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
         };
 
@@ -1062,10 +1067,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?source, ?target, "confirm_builtin_unsize_candidate");
 
         Ok(match (source.kind(), target.kind()) {
-            // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(data_a, r_a, dyn_a), &ty::Dynamic(data_b, r_b, dyn_b))
-                if dyn_a == dyn_b =>
-            {
+            // `dyn Trait + Kx + 'a` -> `dyn Trait + Ky + 'b` (auto traits and lifetime subtyping).
+            (&ty::Dynamic(data_a, r_a), &ty::Dynamic(data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let existential_predicates = if data_b.principal().is_some() {
@@ -1098,7 +1101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     )
                 };
-                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b, dyn_a);
+                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1122,7 +1125,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `dyn Trait`
-            (_, &ty::Dynamic(data, r, ty::Dyn)) => {
+            (_, &ty::Dynamic(data, r)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.is_dyn_compatible(*did)) {
                     return Err(SelectionError::TraitDynIncompatible(did));

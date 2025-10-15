@@ -18,7 +18,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
     // If this has an extern indicator, then this function is globally shared and thus will not
     // generate cgu-internal copies which would make it cross-crate inlinable.
-    if codegen_fn_attrs.contains_extern_indicator(tcx, def_id.into()) {
+    if codegen_fn_attrs.contains_extern_indicator() {
         return false;
     }
 
@@ -115,10 +115,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         // Don't count StorageLive/StorageDead in the inlining cost.
         match statement.kind {
-            StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::Deinit(_)
-            | StatementKind::Nop => {}
+            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
             _ => self.statements += 1,
         }
     }
@@ -135,7 +132,16 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { unwind, .. } => {
+            TerminatorKind::Call { ref func, unwind, .. } => {
+                // We track calls because they make our function not a leaf (and in theory, the
+                // number of calls indicates how likely this function is to perturb other CGUs).
+                // But intrinsics don't have a body that gets assigned to a CGU, so they are
+                // ignored.
+                if let Some((fn_def_id, _)) = func.const_fn_def()
+                    && self.tcx.has_attr(fn_def_id, sym::rustc_intrinsic)
+                {
+                    return;
+                }
                 self.calls += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;

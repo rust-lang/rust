@@ -3,6 +3,7 @@
 
 //@ revisions:rpass1 rpass2
 //@ compile-flags: -Z query-dep-graph -Z mir-opt-level=3
+//@ ignore-backends: gcc
 
 fn main() {
     if std::env::var("a").is_ok() {

@@ -41,19 +41,19 @@ fn infer_pattern() {
             47..48 'x': &'? i32
             58..59 'a': i32
             62..63 'z': i32
-            73..79 '(c, d)': (i32, &'static str)
+            73..79 '(c, d)': (i32, &'? str)
             74..75 'c': i32
-            77..78 'd': &'static str
-            82..94 '(1, "hello")': (i32, &'static str)
+            77..78 'd': &'? str
+            82..94 '(1, "hello")': (i32, &'? str)
             83..84 '1': i32
             86..93 '"hello"': &'static str
             101..151 'for (e...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': <{unknown} as IntoIterator>::IntoIter
             101..151 'for (e...     }': !
             101..151 'for (e...     }': {unknown}
             101..151 'for (e...     }': &'? mut {unknown}
             101..151 'for (e...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
-            101..151 'for (e...     }': Option<({unknown}, {unknown})>
+            101..151 'for (e...     }': Option<<{unknown} as Iterator>::Item>
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
@@ -653,7 +653,7 @@ fn infer_generics_in_patterns() {
 fn infer_const_pattern() {
     check(
         r#"
-enum Option<T> { None }
+enum Option<T> { None, Some(T) }
 use Option::None;
 struct Foo;
 const Bar: usize = 1;
@@ -721,8 +721,8 @@ fn test() {
             72..171 '{     ... x); }': ()
             78..81 'foo': fn foo<&'? (i32, &'? str), i32, impl FnOnce(&'? (i32, &'? str)) -> i32>(&'? (i32, &'? str), impl FnOnce(&'? (i32, &'? str)) -> i32) -> i32
             78..105 'foo(&(...y)| x)': i32
-            82..91 '&(1, "a")': &'? (i32, &'static str)
-            83..91 '(1, "a")': (i32, &'static str)
+            82..91 '&(1, "a")': &'? (i32, &'? str)
+            83..91 '(1, "a")': (i32, &'? str)
             84..85 '1': i32
             87..90 '"a"': &'static str
             93..104 '|&(x, y)| x': impl FnOnce(&'? (i32, &'? str)) -> i32
@@ -733,8 +733,8 @@ fn test() {
             103..104 'x': i32
             142..145 'foo': fn foo<&'? (i32, &'? str), &'? i32, impl FnOnce(&'? (i32, &'? str)) -> &'? i32>(&'? (i32, &'? str), impl FnOnce(&'? (i32, &'? str)) -> &'? i32) -> &'? i32
             142..168 'foo(&(...y)| x)': &'? i32
-            146..155 '&(1, "a")': &'? (i32, &'static str)
-            147..155 '(1, "a")': (i32, &'static str)
+            146..155 '&(1, "a")': &'? (i32, &'? str)
+            147..155 '(1, "a")': (i32, &'? str)
             148..149 '1': i32
             151..154 '"a"': &'static str
             157..167 '|(x, y)| x': impl FnOnce(&'? (i32, &'? str)) -> &'? i32

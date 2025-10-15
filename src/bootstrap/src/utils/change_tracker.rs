@@ -501,4 +501,74 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The names of stageN directories in the build directory have been consolidated with the new (post-stage-0-redesign) staging scheme. Some tools and binaries might be located in a different build directory than before.",
     },
+    ChangeInfo {
+        change_id: 145131,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x clippy` with stage 0. All clippy commands have to be on stage 1+.",
+    },
+    ChangeInfo {
+        change_id: 145256,
+        severity: ChangeSeverity::Info,
+        summary: "Added `--test-codegen-backend` CLI option for tests",
+    },
+    ChangeInfo {
+        change_id: 145379,
+        severity: ChangeSeverity::Info,
+        summary: "Build/check now supports forwarding `--timings` flag to cargo.",
+    },
+    ChangeInfo {
+        change_id: 145472,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x dist` or `x install` with stage 0. All dist and install commands have to be on stage 1+.",
+    },
+    ChangeInfo {
+        change_id: 143689,
+        severity: ChangeSeverity::Info,
+        summary: "The `optimized-compiler-builtins` option now accepts a path to an existing compiler-rt builtins library.",
+    },
+    ChangeInfo {
+        change_id: 145876,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 rustc built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
+    },
+    ChangeInfo {
+        change_id: 145663,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x test` with stage 0, except for running compiletest and opting into `build.compiletest-allow-stage0`.",
+    },
+    ChangeInfo {
+        change_id: 145976,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.break-on-ice` to control if internal compiler errors cause a debug break on Windows.",
+    },
+    ChangeInfo {
+        change_id: 146435,
+        severity: ChangeSeverity::Info,
+        summary: "The default value of the `gcc.download-ci-gcc` option has been changed to `true`.",
+    },
+    ChangeInfo {
+        change_id: 146458,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a bootstrap option called `rust.parallel-frontend-threads`, which can be used to set the number of threads for the compiler frontend used during compilation of Rust code.",
+    },
+    ChangeInfo {
+        change_id: 146663,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
+    },
+    ChangeInfo {
+        change_id: 147046,
+        severity: ChangeSeverity::Warning,
+        summary: "The `rust.use-lld` option has been renamed to `rust.bootstrap-override-lld`. Note that it only serves for overriding the linker used when building Rust code in bootstrap to be LLD.",
+    },
+    ChangeInfo {
+        change_id: 146929,
+        severity: ChangeSeverity::Info,
+        summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
+    },
+    ChangeInfo {
+        change_id: 147157,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.lld = true` no longer automatically causes the `x86_64-unknown-linux-gnu` target to default into using the self-contained LLD linker. This target now uses the LLD linker by default. To opt out, set `target.x86_64-unknown-linux-gnu.default-linker-linux-override = 'off'`.",
+    },
 ];

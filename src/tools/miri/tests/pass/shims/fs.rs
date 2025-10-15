@@ -72,7 +72,9 @@ fn test_file() {
 
     // Writing to a file opened for reading should error (and not stop interpretation). std does not
     // categorize the error so we don't check for details.
-    file.write(&[]).unwrap_err();
+    file.write(&[0]).unwrap_err();
+    // However, writing 0 bytes can succeed or fail.
+    let _ignore = file.write(&[]);
 
     // Removing file should succeed.
     remove_file(&path).unwrap();

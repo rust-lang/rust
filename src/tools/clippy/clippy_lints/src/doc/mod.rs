@@ -315,7 +315,7 @@ declare_clippy_lint! {
     /// /// [example of a good link](https://github.com/rust-lang/rust-clippy/)
     /// pub fn do_something() {}
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.90.0"]
     pub DOC_BROKEN_LINK,
     pedantic,
     "broken document link"
@@ -1139,12 +1139,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         None,
                         "a backtick may be missing a pair",
                     );
+                    text_to_check.clear();
                 } else {
-                    for (text, range, assoc_code_level) in text_to_check {
+                    for (text, range, assoc_code_level) in text_to_check.drain(..) {
                         markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                     }
                 }
-                text_to_check = Vec::new();
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,

@@ -498,3 +498,27 @@ fn issue15059() {
         ()
     }
 }
+
+fn issue15350() {
+    'bar: for _ in 0..100 {
+        //~^ never_loop
+        loop {
+            //~^ never_loop
+            println!("This will still run");
+            break 'bar;
+        }
+    }
+
+    'foo: for _ in 0..100 {
+        //~^ never_loop
+        loop {
+            //~^ never_loop
+            println!("This will still run");
+            loop {
+                //~^ never_loop
+                println!("This will still run");
+                break 'foo;
+            }
+        }
+    }
+}
