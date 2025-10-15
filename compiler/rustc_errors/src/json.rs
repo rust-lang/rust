@@ -25,6 +25,7 @@ use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use serde::Serialize;
 
+use crate::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use crate::diagnostic::IsLint;
 use crate::emitter::{
     ColorConfig, Destination, Emitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
@@ -378,21 +379,44 @@ impl Diagnostic {
                 choice => choice,
             },
         );
-        HumanEmitter::new(dst, je.translator.clone())
-            .short_message(short)
-            .sm(je.sm.clone())
-            .diagnostic_width(je.diagnostic_width)
-            .macro_backtrace(je.macro_backtrace)
-            .track_diagnostics(je.track_diagnostics)
-            .terminal_url(je.terminal_url)
-            .ui_testing(je.ui_testing)
-            .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
-            .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
-                OutputTheme::Unicode
-            } else {
-                OutputTheme::Ascii
-            })
-            .emit_diagnostic(diag, registry);
+        if let HumanReadableErrorType::AnnotateSnippet = je.json_rendered {
+            AnnotateSnippetEmitter::new(dst, je.translator.clone())
+                .short_message(short)
+                .sm(je.sm.clone())
+                .diagnostic_width(je.diagnostic_width)
+                .macro_backtrace(je.macro_backtrace)
+                .track_diagnostics(je.track_diagnostics)
+                .terminal_url(je.terminal_url)
+                .ui_testing(je.ui_testing)
+                .ignored_directories_in_source_blocks(
+                    je.ignored_directories_in_source_blocks.clone(),
+                )
+                .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
+                    OutputTheme::Unicode
+                } else {
+                    OutputTheme::Ascii
+                })
+                .emit_diagnostic(diag, registry);
+        } else {
+            HumanEmitter::new(dst, je.translator.clone())
+                .short_message(short)
+                .sm(je.sm.clone())
+                .diagnostic_width(je.diagnostic_width)
+                .macro_backtrace(je.macro_backtrace)
+                .track_diagnostics(je.track_diagnostics)
+                .terminal_url(je.terminal_url)
+                .ui_testing(je.ui_testing)
+                .ignored_directories_in_source_blocks(
+                    je.ignored_directories_in_source_blocks.clone(),
+                )
+                .theme(if let HumanReadableErrorType::Unicode = je.json_rendered {
+                    OutputTheme::Unicode
+                } else {
+                    OutputTheme::Ascii
+                })
+                .emit_diagnostic(diag, registry);
+        }
+
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
         let buf = String::from_utf8(buf).unwrap();
 

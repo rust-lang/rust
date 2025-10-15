@@ -1501,15 +1501,27 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
-            Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
-                    .short_message(short),
-            )
+            if let HumanReadableErrorType::AnnotateSnippet = kind {
+                Box::new(
+                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .short_message(short),
+                )
+            } else {
+                Box::new(
+                    HumanEmitter::new(stderr_destination(color_config), translator)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .short_message(short),
+                )
+            }
         }
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
