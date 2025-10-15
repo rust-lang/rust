@@ -411,7 +411,7 @@ fn generate_asserts(
     Ok(())
 }
 
-/// Group the elements of `set` into contigous ranges
+/// Group the elements of `set` into contiguous ranges
 fn ranges_from_set(set: &[u32]) -> Vec<Range<u32>> {
     set.chunk_by(|a, b| a + 1 == *b)
         .map(|chunk| {
