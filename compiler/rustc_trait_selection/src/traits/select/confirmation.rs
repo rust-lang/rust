@@ -67,7 +67,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            ProjectionCandidate(idx) => {
+            ProjectionCandidate { idx, .. } => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 ImplSource::Param(obligations)
             }
@@ -144,15 +144,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         idx: usize,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let tcx = self.tcx();
-
         let placeholder_trait_predicate =
             self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
         let placeholder_self_ty = self.infcx.shallow_resolve(placeholder_trait_predicate.self_ty());
         let candidate_predicate = self
             .for_each_item_bound(
                 placeholder_self_ty,
-                |_, clause, clause_idx| {
+                |_, clause, clause_idx, _| {
                     if clause_idx == idx {
                         ControlFlow::Break(clause)
                     } else {
@@ -193,28 +191,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .map(|InferOk { obligations, .. }| obligations)
                 .map_err(|_| SelectionError::Unimplemented)?,
         );
-
-        // FIXME(compiler-errors): I don't think this is needed.
-        if let ty::Alias(ty::Projection, alias_ty) = placeholder_self_ty.kind() {
-            let predicates = tcx.predicates_of(alias_ty.def_id).instantiate_own(tcx, alias_ty.args);
-            for (predicate, _) in predicates {
-                let normalized = normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    predicate,
-                    &mut obligations,
-                );
-                obligations.push(Obligation::with_depth(
-                    self.tcx(),
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    normalized,
-                ));
-            }
-        }
 
         Ok(obligations)
     }

@@ -4,8 +4,8 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
+use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
 use tracing::instrument;
 
@@ -96,7 +96,7 @@ where
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
-                CandidateSource::AliasBound,
+                CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
                 goal,
                 clause,
                 |ecx| {
