@@ -4,7 +4,7 @@ error[E0793]: reference to packed field is unaligned
 LL |     let brw = &foo.baz;
    |               ^^^^^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this field is only 1-byte aligned, but its type requires 8-byte alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
@@ -14,7 +14,7 @@ error[E0793]: reference to packed field is unaligned
 LL |     let brw = &foo.baz;
    |               ^^^^^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this field is only 2-byte aligned, but its type requires 8-byte alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
