@@ -21,10 +21,11 @@ extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 
+extern crate self as hir_ty;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-mod drop;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -38,10 +39,11 @@ mod utils;
 
 pub mod autoderef;
 pub mod consteval;
-pub mod consteval_nextsolver;
+mod consteval_chalk;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
+pub mod drop;
 pub mod dyn_compatibility;
 pub mod generics;
 pub mod lang_items;
@@ -60,11 +62,10 @@ mod variance;
 use std::hash::Hash;
 
 use chalk_ir::{
-    NoSolution, VariableKinds,
+    VariableKinds,
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
 };
-use either::Either;
 use hir_def::{CallableDefId, GeneralConstId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
@@ -73,15 +74,16 @@ use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    UpcastFrom,
-    inherent::{SliceLike, Ty as _},
+    TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
+    inherent::{IntoKind, SliceLike, Ty as _},
 };
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
 
+#[cfg(not(debug_assertions))]
+use crate::next_solver::ErrorGuaranteed;
 use crate::{
-    consteval::unknown_const,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
@@ -95,7 +97,6 @@ use crate::{
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
-pub use drop::DropGlue;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
@@ -104,17 +105,17 @@ pub use infer::{
     could_coerce, could_unify, could_unify_deeply,
 };
 pub use interner::Interner;
-pub use lower::{
-    ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
-    ValueTyDefId, diagnostics::*,
+pub use lower::{ImplTraitLoweringMode, ParamLoweringMode, TyDefId, ValueTyDefId, diagnostics::*};
+pub use lower_nextsolver::{
+    LifetimeElisionKind, TyLoweringContext, associated_type_shorthand_candidates,
 };
-pub use lower_nextsolver::associated_type_shorthand_candidates;
 pub use mapping::{
     ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
     to_foreign_def_id, to_placeholder_idx, to_placeholder_idx_no_index,
 };
 pub use method_resolution::check_orphan_rules;
+pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
 pub use utils::{
@@ -123,20 +124,16 @@ pub use utils::{
 };
 pub use variance::Variance;
 
-pub use chalk_ir::{
-    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
-    cast::Cast,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-};
+use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Safety, Scalar};
 
-pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
-pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
-pub type FnDefId = chalk_ir::FnDefId<Interner>;
-pub type ClosureId = chalk_ir::ClosureId<Interner>;
-pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
-pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
+pub(crate) type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
+pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
+pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
+pub(crate) type ClosureId = chalk_ir::ClosureId<Interner>;
+pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
+pub(crate) type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
-pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+pub(crate) type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
 
 pub(crate) type VariableKind = chalk_ir::VariableKind<Interner>;
 /// Represents generic parameters and an item bound by them. When the item has parent, the binders
@@ -147,49 +144,48 @@ pub(crate) type VariableKind = chalk_ir::VariableKind<Interner>;
 /// parameters/arguments for an item MUST come before those for its parent. This is to facilitate
 /// the integration with chalk-solve, which mildly puts constraints as such. See #13335 for its
 /// motivation in detail.
-pub type Binders<T> = chalk_ir::Binders<T>;
+pub(crate) type Binders<T> = chalk_ir::Binders<T>;
 /// Interned list of generic arguments for an item. When an item has parent, the `Substitution` for
 /// it contains generic arguments for both its parent and itself. See chalk's documentation for
 /// details.
 ///
 /// See `Binders` for the constraint on the ordering.
-pub type Substitution = chalk_ir::Substitution<Interner>;
-pub type GenericArg = chalk_ir::GenericArg<Interner>;
-pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
+pub(crate) type Substitution = chalk_ir::Substitution<Interner>;
+pub(crate) type GenericArg = chalk_ir::GenericArg<Interner>;
+pub(crate) type GenericArgData = chalk_ir::GenericArgData<Interner>;
 
-pub type Ty = chalk_ir::Ty<Interner>;
+pub(crate) type Ty = chalk_ir::Ty<Interner>;
 pub type TyKind = chalk_ir::TyKind<Interner>;
-pub type TypeFlags = chalk_ir::TypeFlags;
+pub(crate) type TypeFlags = chalk_ir::TypeFlags;
 pub(crate) type DynTy = chalk_ir::DynTy<Interner>;
-pub type FnPointer = chalk_ir::FnPointer<Interner>;
+pub(crate) type FnPointer = chalk_ir::FnPointer<Interner>;
 pub(crate) use chalk_ir::FnSubst; // a re-export so we don't lose the tuple constructor
 
 pub type AliasTy = chalk_ir::AliasTy<Interner>;
 
-pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
+pub(crate) type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
 pub(crate) type OpaqueTy = chalk_ir::OpaqueTy<Interner>;
-pub(crate) type InferenceVar = chalk_ir::InferenceVar;
 
 pub(crate) type Lifetime = chalk_ir::Lifetime<Interner>;
 pub(crate) type LifetimeData = chalk_ir::LifetimeData<Interner>;
 pub(crate) type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
 
-pub type ConstValue = chalk_ir::ConstValue<Interner>;
+pub(crate) type ConstValue = chalk_ir::ConstValue<Interner>;
 
-pub type Const = chalk_ir::Const<Interner>;
+pub(crate) type Const = chalk_ir::Const<Interner>;
 pub(crate) type ConstData = chalk_ir::ConstData<Interner>;
 pub(crate) type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
-pub type TraitRef = chalk_ir::TraitRef<Interner>;
-pub type QuantifiedWhereClause = Binders<WhereClause>;
-pub type Canonical<T> = chalk_ir::Canonical<T>;
+pub(crate) type TraitRef = chalk_ir::TraitRef<Interner>;
+pub(crate) type QuantifiedWhereClause = Binders<WhereClause>;
+pub(crate) type Canonical<T> = chalk_ir::Canonical<T>;
 
 pub(crate) type ChalkTraitId = chalk_ir::TraitId<Interner>;
 pub(crate) type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
 
 pub(crate) type FnSig = chalk_ir::FnSig<Interner>;
 
-pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
+pub(crate) type InEnvironment<T> = chalk_ir::InEnvironment<T>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
@@ -233,7 +229,7 @@ impl ComplexMemoryMap<'_> {
 }
 
 impl<'db> MemoryMap<'db> {
-    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError> {
+    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError<'db>> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -249,8 +245,8 @@ impl<'db> MemoryMap<'db> {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
-    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError<'db>>,
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError<'db>> {
         let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
@@ -646,7 +642,7 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
+    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx), // FIXME(next-solver): Should be crate::nextsolver::ImplTraitIdx.
     TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
@@ -713,219 +709,170 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
     t.fold_with(&mut FreeVarFolder(for_ty, for_const), DebruijnIndex::INNERMOST)
 }
 
-pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    mut for_ty: impl FnMut(Ty, DebruijnIndex) -> Ty,
-    binders: DebruijnIndex,
-) -> T {
-    fold_tys_and_consts(
-        t,
-        |x, d| match x {
-            Either::Left(x) => Either::Left(for_ty(x, d)),
-            Either::Right(x) => Either::Right(x),
-        },
-        binders,
-    )
-}
-
-pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    f: impl FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>,
-    binders: DebruijnIndex,
-) -> T {
-    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
-    #[derive(chalk_derive::FallibleTypeFolder)]
-    #[has_interner(Interner)]
-    struct TyFolder<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>>(F);
-    impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
-        for TyFolder<F>
-    {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(Either::Left(ty), outer_binder).left().unwrap()
-        }
-
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
-            self.0(Either::Right(c), outer_binder).right().unwrap()
-        }
-    }
-    t.fold_with(&mut TyFolder(f), binders)
-}
-
-pub(crate) fn fold_generic_args<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
-    t: T,
-    f: impl FnMut(GenericArgData, DebruijnIndex) -> GenericArgData,
-    binders: DebruijnIndex,
-) -> T {
-    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
-    #[derive(chalk_derive::FallibleTypeFolder)]
-    #[has_interner(Interner)]
-    struct TyFolder<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData>(F);
-    impl<F: FnMut(GenericArgData, DebruijnIndex) -> GenericArgData> TypeFolder<Interner>
-        for TyFolder<F>
-    {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
-            self
-        }
-
-        fn interner(&self) -> Interner {
-            Interner
-        }
-
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(GenericArgData::Ty(ty), outer_binder)
-                .intern(Interner)
-                .ty(Interner)
-                .unwrap()
-                .clone()
-        }
-
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
-            self.0(GenericArgData::Const(c), outer_binder)
-                .intern(Interner)
-                .constant(Interner)
-                .unwrap()
-                .clone()
-        }
-
-        fn fold_lifetime(&mut self, lt: Lifetime, outer_binder: DebruijnIndex) -> Lifetime {
-            let lt = lt.super_fold_with(self.as_dyn(), outer_binder);
-            self.0(GenericArgData::Lifetime(lt), outer_binder)
-                .intern(Interner)
-                .lifetime(Interner)
-                .unwrap()
-                .clone()
-        }
-    }
-    t.fold_with(&mut TyFolder(f), binders)
-}
-
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
 /// ensures there are no unbound variables or inference variables anywhere in
 /// the `t`.
-pub fn replace_errors_with_variables<T>(t: &T) -> Canonical<T>
+pub fn replace_errors_with_variables<'db, T>(
+    interner: DbInterner<'db>,
+    t: &T,
+) -> crate::next_solver::Canonical<'db, T>
 where
-    T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
+    T: rustc_type_ir::TypeFoldable<DbInterner<'db>> + Clone,
 {
-    use chalk_ir::{
-        Fallible,
-        fold::{FallibleTypeFolder, TypeSuperFoldable},
-    };
-    struct ErrorReplacer {
-        vars: usize,
+    use rustc_type_ir::{FallibleTypeFolder, TypeSuperFoldable};
+    struct ErrorReplacer<'db> {
+        interner: DbInterner<'db>,
+        vars: Vec<crate::next_solver::CanonicalVarKind<'db>>,
+        binder: rustc_type_ir::DebruijnIndex,
     }
-    impl FallibleTypeFolder<Interner> for ErrorReplacer {
-        type Error = NoSolution;
+    impl<'db> FallibleTypeFolder<DbInterner<'db>> for ErrorReplacer<'db> {
+        #[cfg(debug_assertions)]
+        type Error = ();
+        #[cfg(not(debug_assertions))]
+        type Error = std::convert::Infallible;
 
-        fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = Self::Error> {
-            self
+        fn cx(&self) -> DbInterner<'db> {
+            self.interner
         }
 
-        fn interner(&self) -> Interner {
-            Interner
+        fn try_fold_binder<T>(
+            &mut self,
+            t: crate::next_solver::Binder<'db, T>,
+        ) -> Result<crate::next_solver::Binder<'db, T>, Self::Error>
+        where
+            T: rustc_type_ir::TypeFoldable<DbInterner<'db>>,
+        {
+            self.binder.shift_in(1);
+            let result = t.try_super_fold_with(self);
+            self.binder.shift_out(1);
+            result
         }
 
-        fn try_fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
-            if let TyKind::Error = ty.kind(Interner) {
-                let index = self.vars;
-                self.vars += 1;
-                Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(Interner))
-            } else {
-                ty.try_super_fold_with(self.as_dyn(), outer_binder)
+        fn try_fold_ty(
+            &mut self,
+            t: crate::next_solver::Ty<'db>,
+        ) -> Result<crate::next_solver::Ty<'db>, Self::Error> {
+            if !t.has_type_flags(
+                rustc_type_ir::TypeFlags::HAS_ERROR
+                    | rustc_type_ir::TypeFlags::HAS_TY_INFER
+                    | rustc_type_ir::TypeFlags::HAS_CT_INFER
+                    | rustc_type_ir::TypeFlags::HAS_RE_INFER,
+            ) {
+                return Ok(t);
+            }
+
+            #[cfg(debug_assertions)]
+            let error = || Err(());
+            #[cfg(not(debug_assertions))]
+            let error = || Ok(crate::next_solver::Ty::new_error(self.interner, ErrorGuaranteed));
+
+            match t.kind() {
+                crate::next_solver::TyKind::Error(_) => {
+                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
+                    self.vars.push(crate::next_solver::CanonicalVarKind::Ty {
+                        ui: rustc_type_ir::UniverseIndex::ZERO,
+                        sub_root: var,
+                    });
+                    Ok(crate::next_solver::Ty::new_bound(
+                        self.interner,
+                        self.binder,
+                        crate::next_solver::BoundTy {
+                            var,
+                            kind: crate::next_solver::BoundTyKind::Anon,
+                        },
+                    ))
+                }
+                crate::next_solver::TyKind::Infer(_) => error(),
+                crate::next_solver::TyKind::Bound(index, _) if index > self.binder => error(),
+                _ => t.try_super_fold_with(self),
             }
         }
 
-        fn try_fold_inference_ty(
+        fn try_fold_const(
             &mut self,
-            _var: InferenceVar,
-            _kind: TyVariableKind,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
-            if cfg!(debug_assertions) {
-                // we don't want to just panic here, because then the error message
-                // won't contain the whole thing, which would not be very helpful
-                Err(NoSolution)
-            } else {
-                Ok(TyKind::Error.intern(Interner))
+            ct: crate::next_solver::Const<'db>,
+        ) -> Result<crate::next_solver::Const<'db>, Self::Error> {
+            if !ct.has_type_flags(
+                rustc_type_ir::TypeFlags::HAS_ERROR
+                    | rustc_type_ir::TypeFlags::HAS_TY_INFER
+                    | rustc_type_ir::TypeFlags::HAS_CT_INFER
+                    | rustc_type_ir::TypeFlags::HAS_RE_INFER,
+            ) {
+                return Ok(ct);
+            }
+
+            #[cfg(debug_assertions)]
+            let error = || Err(());
+            #[cfg(not(debug_assertions))]
+            let error = || Ok(crate::next_solver::Const::error(self.interner));
+
+            match ct.kind() {
+                crate::next_solver::ConstKind::Error(_) => {
+                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
+                    self.vars.push(crate::next_solver::CanonicalVarKind::Const(
+                        rustc_type_ir::UniverseIndex::ZERO,
+                    ));
+                    Ok(crate::next_solver::Const::new_bound(
+                        self.interner,
+                        self.binder,
+                        crate::next_solver::BoundConst { var },
+                    ))
+                }
+                crate::next_solver::ConstKind::Infer(_) => error(),
+                crate::next_solver::ConstKind::Bound(index, _) if index > self.binder => error(),
+                _ => ct.try_super_fold_with(self),
             }
         }
 
-        fn try_fold_free_var_ty(
+        fn try_fold_region(
             &mut self,
-            _bound_var: BoundVar,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
-            if cfg!(debug_assertions) {
-                // we don't want to just panic here, because then the error message
-                // won't contain the whole thing, which would not be very helpful
-                Err(NoSolution)
-            } else {
-                Ok(TyKind::Error.intern(Interner))
+            region: crate::next_solver::Region<'db>,
+        ) -> Result<crate::next_solver::Region<'db>, Self::Error> {
+            #[cfg(debug_assertions)]
+            let error = || Err(());
+            #[cfg(not(debug_assertions))]
+            let error = || Ok(crate::next_solver::Region::error(self.interner));
+
+            match region.kind() {
+                crate::next_solver::RegionKind::ReError(_) => {
+                    let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
+                    self.vars.push(crate::next_solver::CanonicalVarKind::Region(
+                        rustc_type_ir::UniverseIndex::ZERO,
+                    ));
+                    Ok(crate::next_solver::Region::new_bound(
+                        self.interner,
+                        self.binder,
+                        crate::next_solver::BoundRegion {
+                            var,
+                            kind: crate::next_solver::BoundRegionKind::Anon,
+                        },
+                    ))
+                }
+                crate::next_solver::RegionKind::ReVar(_) => error(),
+                crate::next_solver::RegionKind::ReBound(index, _) if index > self.binder => error(),
+                _ => Ok(region),
             }
-        }
-
-        fn try_fold_inference_const(
-            &mut self,
-            ty: Ty,
-            _var: InferenceVar,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
-        }
-
-        fn try_fold_free_var_const(
-            &mut self,
-            ty: Ty,
-            _bound_var: BoundVar,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
-        }
-
-        fn try_fold_inference_lifetime(
-            &mut self,
-            _var: InferenceVar,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
-        }
-
-        fn try_fold_free_var_lifetime(
-            &mut self,
-            _bound_var: BoundVar,
-            _outer_binder: DebruijnIndex,
-        ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
         }
     }
-    let mut error_replacer = ErrorReplacer { vars: 0 };
-    let value = match t.clone().try_fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
+
+    let mut error_replacer =
+        ErrorReplacer { vars: Vec::new(), binder: rustc_type_ir::DebruijnIndex::ZERO, interner };
+    let value = match t.clone().try_fold_with(&mut error_replacer) {
         Ok(t) => t,
         Err(_) => panic!("Encountered unbound or inference vars in {t:?}"),
     };
-    let kinds = (0..error_replacer.vars).map(|_| {
-        chalk_ir::CanonicalVarKind::new(
-            chalk_ir::VariableKind::Ty(TyVariableKind::General),
-            chalk_ir::UniverseIndex::ROOT,
-        )
-    });
-    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
+    crate::next_solver::Canonical {
+        value,
+        max_universe: rustc_type_ir::UniverseIndex::ZERO,
+        variables: crate::next_solver::CanonicalVars::new_from_iter(interner, error_replacer.vars),
+    }
 }
 
 pub fn callable_sig_from_fn_trait<'db>(
-    self_ty: &Ty,
+    self_ty: crate::next_solver::Ty<'db>,
     trait_env: Arc<TraitEnvironment<'db>>,
     db: &'db dyn HirDatabase,
-) -> Option<(FnTrait, CallableSig)> {
+) -> Option<(FnTrait, crate::next_solver::PolyFnSig<'db>)> {
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = fn_once_trait
@@ -942,46 +889,47 @@ pub fn callable_sig_from_fn_trait<'db>(
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.next_ty_var();
-    let args = [self_ty.to_nextsolver(table.interner), args_ty];
-    let trait_ref = crate::next_solver::TraitRef::new(table.interner, fn_once_trait.into(), args);
+    let args = [self_ty, args_ty];
+    let trait_ref = crate::next_solver::TraitRef::new(table.interner(), fn_once_trait.into(), args);
     let projection = crate::next_solver::Ty::new_alias(
-        table.interner,
+        table.interner(),
         rustc_type_ir::AliasTyKind::Projection,
-        crate::next_solver::AliasTy::new(table.interner, output_assoc_type.into(), args),
+        crate::next_solver::AliasTy::new(table.interner(), output_assoc_type.into(), args),
     );
 
-    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, table.interner);
+    let pred = crate::next_solver::Predicate::upcast_from(trait_ref, table.interner());
     if !table.try_obligation(pred).no_solution() {
         table.register_obligation(pred);
         let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;
             let trait_ref =
-                crate::next_solver::TraitRef::new(table.interner, fn_x_trait.into(), args);
+                crate::next_solver::TraitRef::new(table.interner(), fn_x_trait.into(), args);
             if !table
                 .try_obligation(crate::next_solver::Predicate::upcast_from(
                     trait_ref,
-                    table.interner,
+                    table.interner(),
                 ))
                 .no_solution()
             {
-                let ret_ty = table.resolve_completely(return_ty.to_chalk(table.interner));
-                let args_ty = table.resolve_completely(args_ty.to_chalk(table.interner));
-                let params = args_ty
-                    .as_tuple()?
-                    .iter(Interner)
-                    .map(|it| it.assert_ty_ref(Interner))
-                    .cloned();
+                let ret_ty = table.resolve_completely(return_ty);
+                let args_ty = table.resolve_completely(args_ty);
+                let crate::next_solver::TyKind::Tuple(params) = args_ty.kind() else {
+                    return None;
+                };
+                let inputs_and_output = crate::next_solver::Tys::new_from_iter(
+                    table.interner(),
+                    params.iter().chain(std::iter::once(ret_ty)),
+                );
 
                 return Some((
                     fn_x,
-                    CallableSig::from_params_and_return(
-                        params,
-                        ret_ty,
-                        false,
-                        Safety::Safe,
-                        FnAbi::RustCall,
-                    ),
+                    crate::next_solver::Binder::dummy(crate::next_solver::FnSig {
+                        inputs_and_output,
+                        c_variadic: false,
+                        safety: crate::next_solver::abi::Safety::Safe,
+                        abi: FnAbi::RustCall,
+                    }),
                 ));
             }
         }
@@ -991,74 +939,43 @@ pub fn callable_sig_from_fn_trait<'db>(
     }
 }
 
-struct PlaceholderCollector<'db> {
-    db: &'db dyn HirDatabase,
-    placeholders: FxHashSet<TypeOrConstParamId>,
+struct ParamCollector {
+    params: FxHashSet<TypeOrConstParamId>,
 }
 
-impl PlaceholderCollector<'_> {
-    fn collect(&mut self, idx: PlaceholderIndex) {
-        let id = from_placeholder_idx(self.db, idx).0;
-        self.placeholders.insert(id);
-    }
-}
+impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for ParamCollector {
+    type Result = ();
 
-impl TypeVisitor<Interner> for PlaceholderCollector<'_> {
-    type BreakTy = ();
-
-    fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
-        self
-    }
-
-    fn interner(&self) -> Interner {
-        Interner
-    }
-
-    fn visit_ty(
-        &mut self,
-        ty: &Ty,
-        outer_binder: DebruijnIndex,
-    ) -> std::ops::ControlFlow<Self::BreakTy> {
-        let has_placeholder_bits = TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER;
-        let chalk_ir::TyData { kind, flags } = ty.data(Interner);
-
-        if let TyKind::Placeholder(idx) = kind {
-            self.collect(*idx);
-        } else if flags.intersects(has_placeholder_bits) {
-            return ty.super_visit_with(self, outer_binder);
-        } else {
-            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
-            // that there are no placeholders.
+    fn visit_ty(&mut self, ty: crate::next_solver::Ty<'db>) -> Self::Result {
+        if let crate::next_solver::TyKind::Param(param) = ty.kind() {
+            self.params.insert(param.id.into());
         }
 
-        std::ops::ControlFlow::Continue(())
+        ty.super_visit_with(self);
     }
 
-    fn visit_const(
-        &mut self,
-        constant: &chalk_ir::Const<Interner>,
-        _outer_binder: DebruijnIndex,
-    ) -> std::ops::ControlFlow<Self::BreakTy> {
-        if let chalk_ir::ConstValue::Placeholder(idx) = constant.data(Interner).value {
-            self.collect(idx);
+    fn visit_const(&mut self, konst: crate::next_solver::Const<'db>) -> Self::Result {
+        if let crate::next_solver::ConstKind::Param(param) = konst.kind() {
+            self.params.insert(param.id.into());
         }
-        std::ops::ControlFlow::Continue(())
+
+        konst.super_visit_with(self);
     }
 }
 
-/// Returns unique placeholders for types and consts contained in `value`.
-pub fn collect_placeholders<T>(value: &T, db: &dyn HirDatabase) -> Vec<TypeOrConstParamId>
+/// Returns unique params for types and consts contained in `value`.
+pub fn collect_params<'db, T>(value: &T) -> Vec<TypeOrConstParamId>
 where
-    T: ?Sized + TypeVisitable<Interner>,
+    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
 {
-    let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
-    _ = value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
-    collector.placeholders.into_iter().collect()
+    let mut collector = ParamCollector { params: FxHashSet::default() };
+    value.visit_with(&mut collector);
+    Vec::from_iter(collector.params)
 }
 
-pub fn known_const_to_ast(
-    konst: &Const,
-    db: &dyn HirDatabase,
+pub fn known_const_to_ast<'db>(
+    konst: crate::next_solver::Const<'db>,
+    db: &'db dyn HirDatabase,
     display_target: DisplayTarget,
 ) -> Option<ConstArg> {
     Some(make::expr_const_value(konst.display(db, display_target).to_string().as_str()))

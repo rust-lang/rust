@@ -1,4 +1,5 @@
 //@ revisions: cpass1 cpass2
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 

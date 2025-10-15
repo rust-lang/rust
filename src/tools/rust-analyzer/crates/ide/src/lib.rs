@@ -67,7 +67,7 @@ use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
-        salsa::{self, Cancelled},
+        salsa::Cancelled,
     },
     prime_caches, symbol_index,
 };
@@ -480,7 +480,7 @@ impl Analysis {
         // if we were to attach it here.
         Cancelled::catch(|| {
             let symbols = symbol_index::world_symbols(&self.db, query);
-            salsa::attach(&self.db, || {
+            hir::attach_db(&self.db, || {
                 symbols
                     .into_iter()
                     .filter_map(|s| s.try_to_nav(&Semantics::new(&self.db)))
@@ -899,7 +899,7 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        salsa::attach(&self.db, || {
+        hir::attach_db(&self.db, || {
             // the trait solver code may invoke `as_view<HirDatabase>` outside of queries,
             // so technically we might run into a panic in salsa if the downcaster has not yet been registered.
             HirDatabase::zalsa_register_downcaster(&self.db);

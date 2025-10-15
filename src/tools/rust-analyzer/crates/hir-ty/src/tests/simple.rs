@@ -2743,7 +2743,7 @@ impl B for Astruct {}
             725..754 '#[rust...1i32])': Box<[i32; 1], Global>
             747..753 '[1i32]': [i32; 1]
             748..752 '1i32': i32
-            765..766 'v': Vec<Box<dyn B + '?, Global>, Global>
+            765..766 'v': Vec<Box<dyn B + 'static, Global>, Global>
             786..803 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
             786..860 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
             804..859 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
@@ -3689,39 +3689,6 @@ fn main() {
     }
 }
 "#,
-    );
-}
-
-#[test]
-fn infer_bad_lang_item() {
-    check_infer(
-        r#"
-#[lang="eq"]
-pub trait Eq {
-    fn eq(&self, ) -> bool;
-
-}
-
-#[lang="shr"]
-pub trait Shr<RHS,Result> {
-    fn shr(&self, rhs: &RHS) -> Result;
-}
-
-fn test() -> bool {
-    1 >> 1;
-    1 == 1;
-}
-"#,
-        expect![[r#"
-            39..43 'self': &'? Self
-            114..118 'self': &'? Self
-            120..123 'rhs': &'? RHS
-            163..190 '{     ...= 1; }': bool
-            169..170 '1': i32
-            169..175 '1 >> 1': {unknown}
-            181..182 '1': i32
-            181..187 '1 == 1': {unknown}
-        "#]],
     );
 }
 

@@ -28,7 +28,7 @@ pub(crate) enum DivergingFallbackBehavior {
     ToNever,
 }
 
-impl<'db> InferenceContext<'db> {
+impl<'db> InferenceContext<'_, 'db> {
     pub(super) fn type_inference_fallback(&mut self) {
         debug!(
             "type-inference-fallback start obligations: {:#?}",
@@ -324,7 +324,7 @@ impl<'db> InferenceContext<'db> {
             FxHashMap::with_capacity_and_hasher(diverging_vids.len(), FxBuildHasher);
 
         for &diverging_vid in &diverging_vids {
-            let diverging_ty = Ty::new_var(self.table.interner, diverging_vid);
+            let diverging_ty = Ty::new_var(self.interner(), diverging_vid);
             let root_vid = self.table.infer_ctxt.root_var(diverging_vid);
             let can_reach_non_diverging = Dfs::new(&coercion_graph, root_vid.as_u32().into())
                 .iter(&coercion_graph)

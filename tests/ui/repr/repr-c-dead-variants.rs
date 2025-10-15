@@ -33,6 +33,7 @@ use minicore::*;
 //@ revisions: armebv7r-none-eabi
 //@[armebv7r-none-eabi] compile-flags: --target armebv7r-none-eabi
 //@[armebv7r-none-eabi] needs-llvm-components: arm
+//@ ignore-backends: gcc
 
 // A simple uninhabited type.
 enum Void {}

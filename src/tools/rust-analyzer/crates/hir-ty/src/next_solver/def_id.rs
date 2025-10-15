@@ -1,8 +1,8 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId,
+    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -119,6 +119,16 @@ impl From<GenericDefId> for SolverDefId {
     }
 }
 
+impl From<GeneralConstId> for SolverDefId {
+    #[inline]
+    fn from(value: GeneralConstId) -> Self {
+        match value {
+            GeneralConstId::ConstId(const_id) => SolverDefId::ConstId(const_id),
+            GeneralConstId::StaticId(static_id) => SolverDefId::StaticId(static_id),
+        }
+    }
+}
+
 impl TryFrom<SolverDefId> for GenericDefId {
     type Error = SolverDefId;
 
@@ -136,6 +146,26 @@ impl TryFrom<SolverDefId> for GenericDefId {
             SolverDefId::InternedOpaqueTyId(_) => return Err(value),
             SolverDefId::Ctor(_) => return Err(value),
         })
+    }
+}
+
+impl SolverDefId {
+    #[inline]
+    #[track_caller]
+    pub fn expect_opaque_ty(self) -> InternedOpaqueTyId {
+        match self {
+            SolverDefId::InternedOpaqueTyId(it) => it,
+            _ => panic!("expected opaque type, found {self:?}"),
+        }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn expect_type_alias(self) -> TypeAliasId {
+        match self {
+            SolverDefId::TypeAliasId(it) => it,
+            _ => panic!("expected type alias, found {self:?}"),
+        }
     }
 }
 

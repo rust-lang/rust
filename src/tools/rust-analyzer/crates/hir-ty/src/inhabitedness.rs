@@ -11,7 +11,9 @@ use triomphe::Arc;
 
 use crate::{
     AliasTy, Binders, Interner, Substitution, TraitEnvironment, Ty, TyKind,
-    consteval::try_const_usize, db::HirDatabase,
+    consteval::try_const_usize,
+    db::HirDatabase,
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
 };
 
 // FIXME: Turn this into a query, it can be quite slow
@@ -79,14 +81,17 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
         }
         self.recursive_ty.insert(ty.clone());
         self.max_depth -= 1;
+        let interner = DbInterner::new_with(self.db, None, None);
         let r = match ty.kind(Interner) {
             TyKind::Adt(adt, subst) => self.visit_adt(adt.0, subst),
             TyKind::Never => BREAK_VISIBLY_UNINHABITED,
             TyKind::Tuple(..) => ty.super_visit_with(self, outer_binder),
-            TyKind::Array(item_ty, len) => match try_const_usize(self.db, len) {
-                Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
-                Some(1..) => item_ty.super_visit_with(self, outer_binder),
-            },
+            TyKind::Array(item_ty, len) => {
+                match try_const_usize(self.db, len.to_nextsolver(interner)) {
+                    Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
+                    Some(1..) => item_ty.super_visit_with(self, outer_binder),
+                }
+            }
             TyKind::Alias(AliasTy::Projection(projection)) => {
                 // FIXME: I think this currently isn't used for monomorphized bodies, so there is no need to handle
                 // `TyKind::AssociatedType`, but perhaps in the future it will.

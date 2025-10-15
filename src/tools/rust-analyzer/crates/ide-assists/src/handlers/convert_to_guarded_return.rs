@@ -17,7 +17,7 @@ use syntax::{
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression_legacy,
+    utils::{invert_boolean_expression_legacy, is_never_block},
 };
 
 // Assist: convert_to_guarded_return
@@ -54,9 +54,13 @@ fn if_expr_to_guarded_return(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    if if_expr.else_branch().is_some() {
-        return None;
-    }
+    let else_block = match if_expr.else_branch() {
+        Some(ast::ElseBranch::Block(block_expr)) if is_never_block(&ctx.sema, &block_expr) => {
+            Some(block_expr)
+        }
+        Some(_) => return None,
+        _ => None,
+    };
 
     let cond = if_expr.condition()?;
 
@@ -96,7 +100,11 @@ fn if_expr_to_guarded_return(
 
     let parent_container = parent_block.syntax().parent()?;
 
-    let early_expression: ast::Expr = early_expression(parent_container, &ctx.sema)?;
+    let early_expression = else_block
+        .or_else(|| {
+            early_expression(parent_container, &ctx.sema).map(ast::make::tail_only_block_expr)
+        })?
+        .reset_indent();
 
     then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{'])?;
 
@@ -123,21 +131,14 @@ fn if_expr_to_guarded_return(
                     && let (Some(pat), Some(expr)) = (let_expr.pat(), let_expr.expr())
                 {
                     // If-let.
-                    let let_else_stmt = make::let_else_stmt(
-                        pat,
-                        None,
-                        expr,
-                        ast::make::tail_only_block_expr(early_expression.clone()),
-                    );
+                    let let_else_stmt =
+                        make::let_else_stmt(pat, None, expr, early_expression.clone());
                     let let_else_stmt = let_else_stmt.indent(if_indent_level);
                     let_else_stmt.syntax().clone()
                 } else {
                     // If.
                     let new_expr = {
-                        let then_branch = make::block_expr(
-                            once(make::expr_stmt(early_expression.clone()).into()),
-                            None,
-                        );
+                        let then_branch = clean_stmt_block(&early_expression);
                         let cond = invert_boolean_expression_legacy(expr);
                         make::expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
@@ -182,7 +183,7 @@ fn let_stmt_to_guarded_return(
     let cursor_in_range =
         let_token_range.cover(let_pattern_range).contains_range(ctx.selection_trimmed());
 
-    if !cursor_in_range {
+    if !cursor_in_range || let_stmt.let_else().is_some() {
         return None;
     }
 
@@ -270,6 +271,17 @@ fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
     chains.push(expr);
     chains.reverse();
     chains
+}
+
+fn clean_stmt_block(block: &ast::BlockExpr) -> ast::BlockExpr {
+    if block.statements().next().is_none()
+        && let Some(tail_expr) = block.tail_expr()
+        && block.modifier().is_none()
+    {
+        make::block_expr(once(make::expr_stmt(tail_expr).into()), None)
+    } else {
+        block.clone()
+    }
 }
 
 #[cfg(test)]
@@ -415,6 +427,53 @@ fn main() {
             r#"
 fn main() {
     let Ok(x) = Err(92) else { return };
+    foo(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_if_let_has_never_type_else_block() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 let Ok(x) = Err(92) {
+        foo(x);
+    } else {
+        // needless comment
+        return;
+    }
+}
+"#,
+            r#"
+fn main() {
+    let Ok(x) = Err(92) else {
+        // needless comment
+        return;
+    };
+    foo(x);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 let Ok(x) = Err(92) {
+        foo(x);
+    } else {
+        return
+    }
+}
+"#,
+            r#"
+fn main() {
+    let Ok(x) = Err(92) else {
+        return
+    };
     foo(x);
 }
 "#,
@@ -906,6 +965,19 @@ fn main() {
     } else {
         bar()
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_let_else_branch() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+fn main() {
+    let$0 Some(x) = Some(2) else { return };
 }
 "#,
         );
