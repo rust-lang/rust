@@ -1119,15 +1119,49 @@ fn bitwise_changes<Op>(out_vec: &[Word], in_vec: &[Word], op: Op) -> bool
 where
     Op: Fn(Word, Word) -> Word,
 {
-    assert_eq!(out_vec.len(), in_vec.len());
-    for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
-        let old_val = *out_elem;
-        let new_val = op(old_val, *in_elem);
-        if old_val != new_val {
+    chunked_pairwise_any::<4, Word>(out_vec, in_vec, |&out_elem, &in_elem| {
+        out_elem != op(out_elem, in_elem)
+    })
+}
+
+/// Given two slices of equal length, returns true if `pred_fn(&a[i], &b[i])`
+/// is true for any `i`.
+///
+/// To improve opportunities for loop-unrolling and autovectorization, items
+/// are grouped into chunks of length `N`, with early returns only occurring on
+/// chunk boundaries.
+fn chunked_pairwise_any<const N: usize, T>(
+    a_slice: &[T],
+    b_slice: &[T],
+    pred_fn: impl Fn(&T, &T) -> bool,
+) -> bool {
+    assert_eq!(a_slice.len(), b_slice.len());
+
+    let chunks = |s| <[T]>::chunks_exact(s, N);
+    let rest = |s| chunks(s).remainder();
+
+    // First, check the full N-sized chunks.
+    for (a_chunk, b_chunk) in iter::zip(chunks(a_slice), chunks(b_slice)) {
+        let mut chunk_any = false;
+        for (a, b) in iter::zip(a_chunk, b_chunk) {
+            if pred_fn(a, b) {
+                chunk_any = true;
+            }
+        }
+        if chunk_any {
             return true;
         }
     }
-    false
+
+    // Finally check the 0..N items that don't form a full chunk.
+    let mut rest_any = false;
+    for (a, b) in iter::zip(rest(a_slice), rest(b_slice)) {
+        if pred_fn(a, b) {
+            rest_any = true;
+        }
+    }
+
+    rest_any
 }
 
 /// A bitset with a mixed representation, using `DenseBitSet` for small and
