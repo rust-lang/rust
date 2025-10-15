@@ -4,7 +4,6 @@
 #![feature(once_cell_try)]
 #![feature(lock_value_accessors)]
 #![feature(reentrant_lock)]
-#![feature(rwlock_downgrade)]
 #![feature(std_internals)]
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_condvar)]
