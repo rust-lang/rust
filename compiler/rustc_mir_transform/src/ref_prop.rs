@@ -422,13 +422,15 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
         location: Location,
     ) {
-        let local = match stmt_debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => local,
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                if let Some(target) = self.remap_var_debug_infos[*local] {
+                    *local = target;
+                    self.any_replacement = true;
+                }
+            }
+            StmtDebugInfo::Nop => {}
         };
-        if let Some(target) = self.remap_var_debug_infos[*local] {
-            *local = target;
-            self.any_replacement = true;
-        }
         self.super_statement_debuginfo(stmt_debuginfo, location);
     }
 

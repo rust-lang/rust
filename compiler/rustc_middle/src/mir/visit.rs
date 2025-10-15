@@ -404,6 +404,7 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
+                    StmtDebugInfo::Nop => {}
                 }
             }
 

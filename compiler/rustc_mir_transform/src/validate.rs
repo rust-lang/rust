@@ -1679,11 +1679,13 @@ impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
         stmt_debuginfo: &StmtDebugInfo<'tcx>,
         location: Location,
     ) {
-        let local = match stmt_debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                if !self.debuginfo_locals.contains(*local) {
+                    self.failures.push((location, format!("{local:?} is not in debuginfo")));
+                }
+            }
+            StmtDebugInfo::Nop => {}
         };
-        if !self.debuginfo_locals.contains(local) {
-            self.failures.push((location, format!("{local:?} is not in debuginfo")));
-        }
     }
 }

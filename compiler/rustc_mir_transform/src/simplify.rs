@@ -667,7 +667,15 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
                     *stmt_debuginfo = StmtDebugInfo::InvalidAssign(*local);
                 }
             }
-            StmtDebugInfo::InvalidAssign(_) => {}
+            StmtDebugInfo::InvalidAssign(_) | StmtDebugInfo::Nop => {}
+        }
+        match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                if self.map[*local].is_none() {
+                    *stmt_debuginfo = StmtDebugInfo::Nop;
+                }
+            }
+            StmtDebugInfo::Nop => {}
         }
         self.super_statement_debuginfo(stmt_debuginfo, location);
     }

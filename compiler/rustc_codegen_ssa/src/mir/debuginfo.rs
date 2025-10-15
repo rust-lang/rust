@@ -726,6 +726,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StmtDebugInfo::InvalidAssign(local) => {
                 self.debug_poison_to_local(bx, *local);
             }
+            mir::StmtDebugInfo::Nop => {}
         }
     }
 

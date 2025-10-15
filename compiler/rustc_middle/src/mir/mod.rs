@@ -1412,7 +1412,11 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     pub fn strip_nops(&mut self) {
-        self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+        self.retain_statements(|stmt| !matches!(stmt.kind, StatementKind::Nop));
+        self.after_last_stmt_debuginfos.retain(|stmt| !matches!(stmt, StmtDebugInfo::Nop));
+        for stmt in self.statements.iter_mut() {
+            stmt.debuginfos.retain(|stmt| !matches!(stmt, StmtDebugInfo::Nop));
+        }
     }
 
     pub fn drop_debuginfo(&mut self) {

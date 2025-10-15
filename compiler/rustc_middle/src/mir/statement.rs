@@ -1077,6 +1077,7 @@ impl<'tcx> StmtDebugInfos<'tcx> {
             StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
                 locals.contains(*local)
             }
+            StmtDebugInfo::Nop => false,
         });
     }
 }
@@ -1101,4 +1102,5 @@ impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
 pub enum StmtDebugInfo<'tcx> {
     AssignRef(Local, Place<'tcx>),
     InvalidAssign(Local),
+    Nop,
 }

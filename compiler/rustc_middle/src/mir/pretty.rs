@@ -902,6 +902,9 @@ impl Debug for StmtDebugInfo<'_> {
             StmtDebugInfo::InvalidAssign(local) => {
                 write!(fmt, "{local:?} = &?")
             }
+            StmtDebugInfo::Nop => {
+                write!(fmt, "nop")
+            }
         }
     }
 }
