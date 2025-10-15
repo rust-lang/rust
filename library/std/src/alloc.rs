@@ -364,7 +364,7 @@ fn default_alloc_error_hook(layout: Layout) {
         // there is not enough memory to print a backtrace, although it could also mean that two
         // threads concurrently run out of memory.
         rtprintpanic!(
-            "memory allocation of {} bytes failed while handling another memory allocation error\n",
+            "memory allocation of {} bytes failed\nskipping backtrace printing to avoid potential recursion\n",
             layout.size()
         );
         return;
