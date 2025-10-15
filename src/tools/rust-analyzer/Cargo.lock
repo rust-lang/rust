@@ -235,6 +235,7 @@ name = "cfg"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
+ "cfg",
  "expect-test",
  "intern",
  "oorandom",
