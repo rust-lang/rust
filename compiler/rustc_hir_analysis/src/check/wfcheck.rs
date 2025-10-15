@@ -1651,9 +1651,7 @@ fn check_method_receiver<'tcx>(
 
     // If the receiver already has errors reported, consider it valid to avoid
     // unnecessary errors (#58712).
-    if receiver_ty.references_error() {
-        return Ok(());
-    }
+    receiver_ty.error_reported()?;
 
     let arbitrary_self_types_level = if tcx.features().arbitrary_self_types_pointers() {
         Some(ArbitrarySelfTypesLevel::WithPointers)
