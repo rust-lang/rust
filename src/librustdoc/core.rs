@@ -5,6 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{
     DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
@@ -154,19 +155,35 @@ pub(crate) fn new_dcx(
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
-            Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .sm(source_map.map(|sm| sm as _))
-                    .short_message(short)
-                    .diagnostic_width(diagnostic_width)
-                    .track_diagnostics(unstable_opts.track_diagnostics)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
-                    .ui_testing(unstable_opts.ui_testing),
-            )
+            if let HumanReadableErrorType::AnnotateSnippet = kind {
+                Box::new(
+                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                        .sm(source_map.map(|sm| sm as _))
+                        .short_message(short)
+                        .diagnostic_width(diagnostic_width)
+                        .track_diagnostics(unstable_opts.track_diagnostics)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .ui_testing(unstable_opts.ui_testing),
+                )
+            } else {
+                Box::new(
+                    HumanEmitter::new(stderr_destination(color_config), translator)
+                        .sm(source_map.map(|sm| sm as _))
+                        .short_message(short)
+                        .diagnostic_width(diagnostic_width)
+                        .track_diagnostics(unstable_opts.track_diagnostics)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .ui_testing(unstable_opts.ui_testing),
+                )
+            }
         }
         ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             let source_map = source_map.unwrap_or_else(|| {
