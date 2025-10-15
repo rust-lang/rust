@@ -12,6 +12,7 @@ def_reg_class! {
         reg_nonzero,
         freg,
         vreg,
+        vsreg,
         cr,
         ctr,
         lr,
@@ -58,6 +59,10 @@ impl PowerPCInlineAsmRegClass {
                 altivec: VecI8(16), VecI16(8), VecI32(4), VecF32(4);
                 vsx: F32, F64, VecI64(2), VecF64(2);
             },
+            // VSX is a superset of altivec.
+            Self::vsreg => types! {
+                vsx: F32, F64, VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+            },
             Self::cr | Self::ctr | Self::lr | Self::xer => &[],
         }
     }
@@ -86,7 +91,7 @@ fn reserved_v20to31(
 ) -> Result<(), &'static str> {
     if target.is_like_aix {
         match &*target.options.abi {
-            "vec-default" => Err("v20-v31 are reserved on vec-default ABI"),
+            "vec-default" => Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI"),
             "vec-extabi" => Ok(()),
             _ => unreachable!("unrecognized AIX ABI"),
         }
@@ -188,6 +193,71 @@ def_regs! {
         v29: vreg = ["v29"] % reserved_v20to31,
         v30: vreg = ["v30"] % reserved_v20to31,
         v31: vreg = ["v31"] % reserved_v20to31,
+        vs0: vsreg = ["vs0"],
+        vs1: vsreg = ["vs1"],
+        vs2: vsreg = ["vs2"],
+        vs3: vsreg = ["vs3"],
+        vs4: vsreg = ["vs4"],
+        vs5: vsreg = ["vs5"],
+        vs6: vsreg = ["vs6"],
+        vs7: vsreg = ["vs7"],
+        vs8: vsreg = ["vs8"],
+        vs9: vsreg = ["vs9"],
+        vs10: vsreg = ["vs10"],
+        vs11: vsreg = ["vs11"],
+        vs12: vsreg = ["vs12"],
+        vs13: vsreg = ["vs13"],
+        vs14: vsreg = ["vs14"],
+        vs15: vsreg = ["vs15"],
+        vs16: vsreg = ["vs16"],
+        vs17: vsreg = ["vs17"],
+        vs18: vsreg = ["vs18"],
+        vs19: vsreg = ["vs19"],
+        vs20: vsreg = ["vs20"],
+        vs21: vsreg = ["vs21"],
+        vs22: vsreg = ["vs22"],
+        vs23: vsreg = ["vs23"],
+        vs24: vsreg = ["vs24"],
+        vs25: vsreg = ["vs25"],
+        vs26: vsreg = ["vs26"],
+        vs27: vsreg = ["vs27"],
+        vs28: vsreg = ["vs28"],
+        vs29: vsreg = ["vs29"],
+        vs30: vsreg = ["vs30"],
+        vs31: vsreg = ["vs31"],
+        vs32: vsreg = ["vs32"],
+        vs33: vsreg = ["vs33"],
+        vs34: vsreg = ["vs34"],
+        vs35: vsreg = ["vs35"],
+        vs36: vsreg = ["vs36"],
+        vs37: vsreg = ["vs37"],
+        vs38: vsreg = ["vs38"],
+        vs39: vsreg = ["vs39"],
+        vs40: vsreg = ["vs40"],
+        vs41: vsreg = ["vs41"],
+        vs42: vsreg = ["vs42"],
+        vs43: vsreg = ["vs43"],
+        vs44: vsreg = ["vs44"],
+        vs45: vsreg = ["vs45"],
+        vs46: vsreg = ["vs46"],
+        vs47: vsreg = ["vs47"],
+        vs48: vsreg = ["vs48"],
+        vs49: vsreg = ["vs49"],
+        vs50: vsreg = ["vs50"],
+        vs51: vsreg = ["vs51"],
+        // vs52 - vs63 are aliases of v20-v31.
+        vs52: vsreg = ["vs52"] % reserved_v20to31,
+        vs53: vsreg = ["vs53"] % reserved_v20to31,
+        vs54: vsreg = ["vs54"] % reserved_v20to31,
+        vs55: vsreg = ["vs55"] % reserved_v20to31,
+        vs56: vsreg = ["vs56"] % reserved_v20to31,
+        vs57: vsreg = ["vs57"] % reserved_v20to31,
+        vs58: vsreg = ["vs58"] % reserved_v20to31,
+        vs59: vsreg = ["vs59"] % reserved_v20to31,
+        vs60: vsreg = ["vs60"] % reserved_v20to31,
+        vs61: vsreg = ["vs61"] % reserved_v20to31,
+        vs62: vsreg = ["vs62"] % reserved_v20to31,
+        vs63: vsreg = ["vs63"] % reserved_v20to31,
         cr: cr = ["cr"],
         cr0: cr = ["cr0"],
         cr1: cr = ["cr1"],
@@ -245,6 +315,15 @@ impl PowerPCInlineAsmReg {
             (v8, "8"), (v9, "9"), (v10, "10"), (v11, "11"), (v12, "12"), (v13, "13"), (v14, "14"), (v15, "15");
             (v16, "16"), (v17, "17"), (v18, "18"), (v19, "19"), (v20, "20"), (v21, "21"), (v22, "22"), (v23, "23");
             (v24, "24"), (v25, "25"), (v26, "26"), (v27, "27"), (v28, "28"), (v29, "29"), (v30, "30"), (v31, "31");
+            (vs0, "0"), (vs1, "1"), (vs2, "2"), (vs3, "3"), (vs4, "4"), (vs5, "5"), (vs6, "6"), (vs7, "7"),
+            (vs8, "8"), (vs9, "9"), (vs10, "10"), (vs11, "11"), (vs12, "12"), (vs13, "13"), (vs14, "14"),
+            (vs15, "15"), (vs16, "16"), (vs17, "17"), (vs18, "18"), (vs19, "19"), (vs20, "20"), (vs21, "21"),
+            (vs22, "22"), (vs23, "23"), (vs24, "24"), (vs25, "25"), (vs26, "26"), (vs27, "27"), (vs28, "28"),
+            (vs29, "29"), (vs30, "30"), (vs31, "31"), (vs32, "32"), (vs33, "33"), (vs34, "34"), (vs35, "35"),
+            (vs36, "36"), (vs37, "37"), (vs38, "38"), (vs39, "39"), (vs40, "40"), (vs41, "41"), (vs42, "42"),
+            (vs43, "43"), (vs44, "44"), (vs45, "45"), (vs46, "46"), (vs47, "47"), (vs48, "48"), (vs49, "49"),
+            (vs50, "50"), (vs51, "51"), (vs52, "52"), (vs53, "53"), (vs54, "54"), (vs55, "55"), (vs56, "56"),
+            (vs57, "57"), (vs58, "58"), (vs59, "59"), (vs60, "60"), (vs61, "61"), (vs62, "62"), (vs63, "63"),
             (cr, "cr");
             (cr0, "0"), (cr1, "1"), (cr2, "2"), (cr3, "3"), (cr4, "4"), (cr5, "5"), (cr6, "6"), (cr7, "7");
             (ctr, "ctr");
@@ -276,8 +355,77 @@ impl PowerPCInlineAsmReg {
             };
         }
         reg_conflicts! {
-            cr : cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7;
+            cr : cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7,
+            // f0-f31 overlap half of each of vs0-vs32.
+            vs0 : f0,
+            vs1 : f1,
+            vs2 : f2,
+            vs3 : f3,
+            vs4 : f4,
+            vs5 : f5,
+            vs6 : f6,
+            vs7 : f7,
+            vs8 : f8,
+            vs9 : f9,
+            vs10 : f10,
+            vs11 : f11,
+            vs12 : f12,
+            vs13 : f13,
+            vs14 : f14,
+            vs15 : f15,
+            vs16 : f16,
+            vs17 : f17,
+            vs18 : f18,
+            vs19 : f19,
+            vs20 : f20,
+            vs21 : f21,
+            vs22 : f22,
+            vs23 : f23,
+            vs24 : f24,
+            vs25 : f25,
+            vs26 : f26,
+            vs27 : f27,
+            vs28 : f28,
+            vs29 : f29,
+            vs30 : f30,
+            vs31 : f31,
+            // vs32-v63 are aliases of v0-v31
+            vs32 : v0,
+            vs33 : v1,
+            vs34 : v2,
+            vs35 : v3,
+            vs36 : v4,
+            vs37 : v5,
+            vs38 : v6,
+            vs39 : v7,
+            vs40 : v8,
+            vs41 : v9,
+            vs42 : v10,
+            vs43 : v11,
+            vs44 : v12,
+            vs45 : v13,
+            vs46 : v14,
+            vs47 : v15,
+            vs48 : v16,
+            vs49 : v17,
+            vs50 : v18,
+            vs51 : v19,
+            vs52 : v20,
+            vs53 : v21,
+            vs54 : v22,
+            vs55 : v23,
+            vs56 : v24,
+            vs57 : v25,
+            vs58 : v26,
+            vs59 : v27,
+            vs60 : v28,
+            vs61 : v29,
+            vs62 : v30,
+            vs63 : v31;
         }
-        // f0-f31 (vsr0-vsr31) and v0-v31 (vsr32-vsr63) do not conflict.
+        // For more detail on how vsx, vmx (altivec), fpr, and mma registers overlap
+        // see OpenPOWER ISA 3.1C, Book I, Section 7.2.1.1 through 7.2.1.3.
+        //
+        // https://files.openpower.foundation/s/9izgC5Rogi5Ywmm
     }
 }
