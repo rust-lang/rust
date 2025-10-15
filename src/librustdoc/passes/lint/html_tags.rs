@@ -6,8 +6,8 @@ use std::ops::Range;
 use std::str::CharIndices;
 
 use itertools::Itertools as _;
-use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
 use rustc_hir::HirId;
+use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag, TagEnd};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
 use crate::clean::*;
