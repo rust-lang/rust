@@ -39,14 +39,15 @@ fn add_ty_alias_where_clause(
     after_where_clause: &ast::WhereClause,
     prefer_first: bool,
 ) {
+    generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
+
     let mut before = (generics.where_clause.has_where_token, generics.where_clause.span);
     let mut after = (after_where_clause.has_where_token, after_where_clause.span);
     if !prefer_first {
         (before, after) = (after, before);
     }
-    let where_clause = if before.0 || !after.0 { before } else { after };
-    generics.where_clause.has_where_token = where_clause.0;
-    generics.where_clause.span = where_clause.1;
+    (generics.where_clause.has_where_token, generics.where_clause.span) =
+        if before.0 || !after.0 { before } else { after };
 }
 
 impl<'a, 'hir> ItemLowerer<'a, 'hir> {
@@ -279,7 +280,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // opaque type Foo1: Trait
                 let ident = self.lower_ident(*ident);
                 let mut generics = generics.clone();
-                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
                 add_ty_alias_where_clause(&mut generics, after_where_clause, true);
                 let (generics, ty) = self.lower_generics(
                     &generics,
@@ -907,7 +907,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ..
             }) => {
                 let mut generics = generics.clone();
-                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
                 add_ty_alias_where_clause(&mut generics, after_where_clause, false);
                 let (generics, kind) = self.lower_generics(
                     &generics,
@@ -1078,7 +1077,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ident, generics, after_where_clause, ty, ..
             }) => {
                 let mut generics = generics.clone();
-                generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
                 add_ty_alias_where_clause(&mut generics, after_where_clause, false);
                 (
                     *ident,
