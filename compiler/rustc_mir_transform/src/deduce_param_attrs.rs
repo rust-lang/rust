@@ -8,7 +8,7 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
+use rustc_middle::mir::*;
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
@@ -16,45 +16,48 @@ use rustc_session::config::OptLevel;
 /// on LocalDecl for this because it has no meaning post-optimization.
 struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
-    /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
+    /// 1). The bit is false if the argument may have been mutated or true if we know it hasn't
     /// been up to the point we're at.
-    mutable_args: DenseBitSet<usize>,
+    read_only: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
+        Self { read_only: DenseBitSet::new_filled(arg_count) }
+    }
+
+    /// Returns whether the given local is a parameter and its index.
+    fn as_param(&self, local: Local) -> Option<usize> {
+        // Locals and parameters are shifted by `RETURN_PLACE`.
+        let param_index = local.as_usize().checked_sub(1)?;
+        if param_index < self.read_only.domain_size() { Some(param_index) } else { None }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         // We're only interested in arguments.
-        if place.local == RETURN_PLACE || place.local.index() > self.mutable_args.domain_size() {
-            return;
-        }
+        let Some(param_index) = self.as_param(place.local) else { return };
 
         let mark_as_mutable = match context {
-            PlaceContext::MutatingUse(..) => {
-                // This is a mutation, so mark it as such.
-                true
-            }
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
-                // Whether mutating though a `&raw const` is allowed is still undecided, so we
-                // disable any sketchy `readonly` optimizations for now. But we only need to do
-                // this if the pointer would point into the argument. IOW: for indirect places,
-                // like `&raw (*local).field`, this surely cannot mutate `local`.
-                !place.is_indirect()
-            }
-            PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {
-                // Not mutating, so it's fine.
-                false
-            }
+            // Not mutating, so it's fine.
+            PlaceContext::NonUse(..) => false,
+            // Dereference is not a mutation.
+            _ if place.is_indirect_first_projection() => false,
+            // This is a mutation, so mark it as such.
+            PlaceContext::MutatingUse(..) => true,
+            // Whether mutating though a `&raw const` is allowed is still undecided, so we
+            // disable any sketchy `readonly` optimizations for now. But we only need to do
+            // this if the pointer would point into the argument. IOW: for indirect places,
+            // like `&raw (*local).field`, this surely cannot mutate `local`.
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => true,
+            // Not mutating, so it's fine.
+            PlaceContext::NonMutatingUse(..) => false,
         };
 
         if mark_as_mutable {
-            self.mutable_args.insert(place.local.index() - 1);
+            self.read_only.remove(param_index);
         }
     }
 
@@ -82,16 +85,12 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         // from.
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
-                if let Operand::Move(place) = arg.node {
-                    let local = place.local;
-                    if place.is_indirect()
-                        || local == RETURN_PLACE
-                        || local.index() > self.mutable_args.domain_size()
-                    {
-                        continue;
-                    }
-
-                    self.mutable_args.insert(local.index() - 1);
+                if let Operand::Move(place) = arg.node
+                    // We're only interested in arguments.
+                    && let Some(param_index) = self.as_param(place.local)
+                    && !place.is_indirect_first_projection()
+                {
+                    self.read_only.remove(param_index);
                 }
             }
         };
@@ -170,7 +169,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
     //
     // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
     let mut deduced_param_attrs = tcx.arena.alloc_from_iter((0..body.arg_count).map(|arg_index| {
-        DeducedParamAttrs { read_only: !deduce_read_only.mutable_args.contains(arg_index) }
+        DeducedParamAttrs { read_only: deduce_read_only.read_only.contains(arg_index) }
     }));
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
