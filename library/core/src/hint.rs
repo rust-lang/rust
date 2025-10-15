@@ -4,6 +4,7 @@
 //!
 //! Hints may be compile time or runtime.
 
+use crate::marker::Destruct;
 use crate::mem::MaybeUninit;
 use crate::{intrinsics, ub_checks};
 
@@ -771,7 +772,11 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[stable(feature = "select_unpredictable", since = "1.88.0")]
-pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
+pub const fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.
     let mut true_val = MaybeUninit::new(true_val);
