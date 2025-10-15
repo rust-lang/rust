@@ -36,7 +36,8 @@ The valid scopes are:
 - `macro` - apply remappings to the expansion of `std::file!()` macro. This is where paths in embedded panic messages come from
 - `diagnostics` - apply remappings to printed compiler diagnostics
 - `debuginfo` - apply remappings to debug informations
-- `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,debuginfo`.
+- `coverage` - apply remappings to coverage informations
+- `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,coverage,debuginfo`.
 - `all` (default) - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 
 The scopes accepted by `--remap-path-scope` are not exhaustive - new scopes may be added in future releases for eventual stabilisation.
