@@ -339,6 +339,70 @@ fn test_default_zip() {
 }
 
 #[test]
+fn test_zip_evaluation_order() {
+    use std::cell::RefCell;
+    // Check that order of side effects is correct
+
+    let log = RefCell::new(Vec::new());
+    let xs = [0, 1, 2, 3];
+    let ys = [10, 20];
+    let mut iter1 = xs
+        .iter()
+        .map(|x| {
+            log.borrow_mut().push(0);
+            x
+        })
+        .zip(ys.iter().map(|x| {
+            log.borrow_mut().push(1);
+            x
+        }));
+    iter1.next();
+    iter1.next_back();
+    assert_eq!(&log.take(), &[0, 1, 0, 0, 0, 1]);
+
+    let mut iter2 = ys
+        .iter()
+        .map(|x| {
+            log.borrow_mut().push(0);
+            x
+        })
+        .zip(xs.iter().map(|x| {
+            log.borrow_mut().push(1);
+            x
+        }));
+    iter2.next();
+    iter2.next_back();
+    assert_eq!(&log.take(), &[0, 1, 1, 1, 0, 1]);
+
+    let mut iter3 = repeat_n(0, 4)
+        .map(|x| {
+            log.borrow_mut().push(0);
+            x
+        })
+        .zip(ys.iter().map(|x| {
+            log.borrow_mut().push(1);
+            x
+        }));
+    iter3.next();
+    iter3.next_back();
+    assert_eq!(&log.take(), &[0, 1, 0, 0, 0, 1]);
+
+    let mut iter4 = ys
+        .iter()
+        .map(|x| {
+            log.borrow_mut().push(0);
+            x
+        })
+        .zip(repeat_n(0, 4).map(|x| {
+            log.borrow_mut().push(1);
+            x
+        }));
+    iter4.next();
+    iter4.next_back();
+    assert_eq!(&log.take(), &[0, 1, 1, 1, 0, 1]);
+}
+
+#[test]
 fn test_issue_82282() {
     fn overflowed_zip(arr: &[i32]) -> impl Iterator<Item = (i32, &())> {
         static UNIT_EMPTY_ARR: [(); 0] = [];

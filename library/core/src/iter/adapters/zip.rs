@@ -189,7 +189,10 @@ macro_rules! zip_impl_general_defaults {
             } else if a_sz > b_sz {
                 (self.a.nth_back(a_sz - b_sz), self.b.next_back())
             } else {
-                (self.a.next_back(), self.b.nth_back(b_sz - a_sz))
+                // Equalize lengths before calling next_back,
+                // so iterators are called in correct order
+                self.b.nth_back(b_sz - a_sz - 1);
+                (self.a.next_back(), self.b.next_back())
             };
             match next_opts {
                 (Some(x), Some(y)) => Some((x, y)),
