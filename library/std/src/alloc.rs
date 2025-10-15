@@ -345,25 +345,14 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
 }
 
 fn default_alloc_error_hook(layout: Layout) {
-    unsafe extern "Rust" {
-        // This symbol is emitted by rustc next to __rust_alloc_error_handler.
-        // Its value depends on the -Zoom={panic,abort} compiler option.
-        #[rustc_std_internal_symbol]
-        fn __rust_alloc_error_handler_should_panic_v2() -> u8;
-    }
-
-    if unsafe { __rust_alloc_error_handler_should_panic_v2() != 0 } {
-        panic!("memory allocation of {} bytes failed", layout.size());
-    } else {
-        // This is the default path taken on OOM, and the only path taken on stable with std.
-        // Crucially, it does *not* call any user-defined code, and therefore users do not have to
-        // worry about allocation failure causing reentrancy issues. That makes it different from
-        // the default `__rdl_alloc_error_handler` defined in alloc (i.e., the default alloc error
-        // handler that is  called when there is no `#[alloc_error_handler]`), which triggers a
-        // regular panic and thus can invoke a user-defined panic hook, executing arbitrary
-        // user-defined code.
-        rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
-    }
+    // This is the default path taken on OOM, and the only path taken on stable with std.
+    // Crucially, it does *not* call any user-defined code, and therefore users do not have to
+    // worry about allocation failure causing reentrancy issues. That makes it different from
+    // the default `__rdl_alloc_error_handler` defined in alloc (i.e., the default alloc error
+    // handler that is  called when there is no `#[alloc_error_handler]`), which triggers a
+    // regular panic and thus can invoke a user-defined panic hook, executing arbitrary
+    // user-defined code.
+    rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
 }
 
 #[cfg(not(test))]
