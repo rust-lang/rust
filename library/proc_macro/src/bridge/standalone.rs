@@ -167,8 +167,12 @@ impl server::TokenStream for NoRustc {
         }
 
         let mut s = String::new();
-        for tree in &tokens.0 {
-            s.push_str(&match tree {
+        let mut last = String::new();
+        let mut second_last = String::new();
+
+        for (idx, tree) in tokens.0.iter().enumerate() {
+            let mut space = true;
+            let new_part = match tree {
                 TokenTree::Group(group) => {
                     let inner = if let Some(stream) = &group.stream {
                         self.to_string(stream)
@@ -177,7 +181,13 @@ impl server::TokenStream for NoRustc {
                     };
                     match group.delimiter {
                         Delimiter::Parenthesis => format!("({inner})"),
-                        Delimiter::Brace => format!("{{{inner}}}"),
+                        Delimiter::Brace => {
+                            if inner.is_empty() {
+                                "{ }".to_string()
+                            } else {
+                                format!("{{ {inner} }}")
+                            }
+                        }
                         Delimiter::Bracket => format!("[{inner}]"),
                         Delimiter::None => inner,
                     }
@@ -212,11 +222,34 @@ impl server::TokenStream for NoRustc {
                         LitKind::StrRaw(raw) => format!("r{0}\"{inner}\"{0}", get_hashes_str(raw)),
                     }
                 }
-                TokenTree::Punct(punct) => (punct.ch as char).to_string(),
-            });
-            s.push(' ');
+                TokenTree::Punct(punct) => {
+                    let c = punct.ch as char;
+                    if c == '\'' {
+                        space = false;
+                    }
+                    c.to_string()
+                }
+            };
+
+            const NON_SEPARATABLE_TOKENS: &[(char, char)] = &[(':', ':'), ('-', '>')];
+
+            for (first, second) in NON_SEPARATABLE_TOKENS {
+                if second_last == first.to_string() && last == second.to_string() && new_part != ":"
+                {
+                    s.pop(); // pop ' '
+                    s.pop(); // pop `second`
+                    s.pop(); // pop ' '
+                    s.push(*second);
+                    s.push(' ');
+                }
+            }
+            s.push_str(&new_part);
+            second_last = last;
+            last = new_part;
+            if space && idx + 1 != tokens.0.len() {
+                s.push(' ');
+            }
         }
-        s.pop();
         s
     }
 
