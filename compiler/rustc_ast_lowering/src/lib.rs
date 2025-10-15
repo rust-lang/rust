@@ -2086,12 +2086,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         rbp: RelaxedBoundPolicy<'_>,
     ) {
-        // Even though feature `more_maybe_bounds` bypasses the given policy and (currently) enables
-        // relaxed bounds in every conceivable position[^1], we don't want to advertise it to the user
-        // (via a feature gate) since it's super internal. Besides this, it'd be quite distracting.
+        // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
+        // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
+        // want to advertise it to the user (via a feature gate error) since it's super internal.
         //
-        // [^1]: Strictly speaking, this is incorrect (at the very least for `Sized`) because it's
-        //       no longer fully consistent with default trait elaboration in HIR ty lowering.
+        // FIXME(more_maybe_bounds): Moreover, if we actually were to add proper default traits
+        // (like a hypothetical `Move` or `Leak`) we would want to validate the location according
+        // to default trait elaboration in HIR ty lowering (which depends on the specific trait in
+        // question: E.g., `?Sized` & `?Move` most likely won't be allowed in all the same places).
 
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
@@ -2105,17 +2107,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             RelaxedBoundPolicy::Forbidden(reason) => {
                 let gate = |context, subject| {
-                    if self.tcx.features().more_maybe_bounds() {
+                    let extended = self.tcx.features().more_maybe_bounds();
+                    let is_sized = trait_ref
+                        .trait_def_id()
+                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, hir::LangItem::Sized));
+
+                    if extended && !is_sized {
                         return;
                     }
 
+                    let prefix = if extended { "`Sized` " } else { "" };
                     let mut diag = self.dcx().struct_span_err(
                         span,
-                        format!("relaxed bounds are not permitted in {context}"),
+                        format!("relaxed {prefix}bounds are not permitted in {context}"),
                     );
-                    if let Some(def_id) = trait_ref.trait_def_id()
-                        && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
-                    {
+                    if is_sized {
                         diag.note(format!(
                             "{subject} are not implicitly bounded by `Sized`, \
                              so there is nothing to relax"
