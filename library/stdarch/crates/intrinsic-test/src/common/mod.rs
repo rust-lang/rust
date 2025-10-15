@@ -76,12 +76,12 @@ pub trait SupportedArchitectureTest {
                 //
                 // This is done because `cpp_compiler_wrapped` is None when
                 // the --generate-only flag is passed
-                println!("compiling mod_{i}.cpp");
+                trace!("compiling mod_{i}.cpp");
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
                     let compile_output = cpp_compiler
                         .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"));
 
-                    println!("finished compiling mod_{i}.cpp");
+                    trace!("finished compiling mod_{i}.cpp");
                     if let Err(compile_error) = compile_output {
                         return Err(format!("Error compiling mod_{i}.cpp: {compile_error:?}"));
                     }
@@ -104,7 +104,7 @@ pub trait SupportedArchitectureTest {
         // the --generate-only flag is passed
         if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
             // compile this cpp file into a .o file
-            info!("compiling main.cpp");
+            trace!("compiling main.cpp");
             let output = cpp_compiler
                 .compile_object_file("main.cpp", "intrinsic-test-programs.o")
                 .unwrap();
