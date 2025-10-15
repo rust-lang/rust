@@ -332,9 +332,9 @@ fn test_nested_zip_panic_safety() {
 fn test_default_zip() {
     // test the un-specialized version, using RepeatN, which does not implement TrustedRandomAccess(NoCoerce)
     let mut iter = repeat_n(0, 2).zip([1, 2, 3]);
-    assert_eq!(iter.next(), Some((0,1)));
+    assert_eq!(iter.next(), Some((0, 1)));
     assert_eq!(iter.size_hint(), (1, Some(1)));
-    assert_eq!(iter.next_back(), Some((0,2)));
+    assert_eq!(iter.next_back(), Some((0, 2)));
     assert_eq!(iter.next_back(), None);
 }
 
