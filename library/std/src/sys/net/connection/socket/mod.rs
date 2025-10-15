@@ -203,7 +203,7 @@ pub(crate) trait SockaddrLike: Sized {
     // used in recvmsg to parse the received addr
     unsafe fn from_storage(storage: &c::sockaddr_storage, len: c::socklen_t) -> io::Result<Self>;
 
-    // used in sendmsg to write to a suckaddr_storage buffer
+    // used in sendmsg to write to a sockaddr_storage buffer
     fn to_storage(&self, storage_ret: &mut c::sockaddr_storage) -> c::socklen_t;
 }
 
