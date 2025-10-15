@@ -6,7 +6,10 @@
 #![allow(clippy::style)]
 
 use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
-use core::ptr;
+use core::sync::atomic::Ordering;
+use core::{mem, ptr};
+
+use crate::sync::atomic::AtomicPtr;
 
 mod windows_sys;
 pub use windows_sys::*;
@@ -180,6 +183,40 @@ unsafe extern "system" {
     ) -> BOOL;
     pub fn WakeByAddressSingle(address: *const c_void);
     pub fn WakeByAddressAll(address: *const c_void);
+}
+
+pub static lpWSARecvMsg: AtomicPtr<()> = AtomicPtr::new(lpWSARecvMsgShim as *mut ());
+
+unsafe extern "system" fn lpWSARecvMsgShim(
+    s: SOCKET,
+    lpmsg: *mut WSAMSG,
+    lpdwnumberofbytesrecvd: *mut u32,
+    lpoverlapped: *mut OVERLAPPED,
+    lpcompletionroutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
+) -> i32 {
+    unsafe {
+        let mut recvmsg_m: LPFN_WSARECVMSG = mem::zeroed();
+        let guid = WSAID_WSARECVMSG;
+        let mut bytes = 0;
+        let r = WSAIoctl(
+            s,
+            SIO_GET_EXTENSION_FUNCTION_POINTER,
+            &raw const guid as *const _,
+            size_of::<GUID>() as u32,
+            &raw mut recvmsg_m as *mut _,
+            size_of::<*mut ()> as u32,
+            &raw mut bytes,
+            ptr::null_mut(),
+            None,
+        );
+        if r == SOCKET_ERROR {
+            r
+        } else {
+            let recvmsg = recvmsg_m.expect("impossible");
+            lpWSARecvMsg.store(recvmsg as *mut _, Ordering::Relaxed);
+            recvmsg(s, lpmsg, lpdwnumberofbytesrecvd, lpoverlapped, lpcompletionroutine)
+        }
+    }
 }
 
 // These are loaded by `load_synch_functions`.

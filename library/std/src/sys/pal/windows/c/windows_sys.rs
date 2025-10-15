@@ -113,8 +113,10 @@ windows_targets::link!("kernel32.dll" "system" fn UpdateProcThreadAttribute(lpat
 windows_targets::link!("ws2_32.dll" "system" fn WSACleanup() -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSADuplicateSocketW(s : SOCKET, dwprocessid : u32, lpprotocolinfo : *mut WSAPROTOCOL_INFOW) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSAGetLastError() -> WSA_ERROR);
+windows_targets::link!("ws2_32.dll" "system" fn WSAIoctl(s : SOCKET, dwiocontrolcode : u32, lpvinbuffer : *const core::ffi::c_void, cbinbuffer : u32, lpvoutbuffer : *mut core::ffi::c_void, cboutbuffer : u32, lpcbbytesreturned : *mut u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSARecv(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytesrecvd : *mut u32, lpflags : *mut u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSASend(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytessent : *mut u32, dwflags : u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
+windows_targets::link!("ws2_32.dll" "system" fn WSASendMsg(handle : SOCKET, lpmsg : *const WSAMSG, dwflags : u32, lpnumberofbytessent : *mut u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_targets::link!("ws2_32.dll" "system" fn WSASocketW(af : i32, r#type : i32, protocol : i32, lpprotocolinfo : *const WSAPROTOCOL_INFOW, g : u32, dwflags : u32) -> SOCKET);
 windows_targets::link!("ws2_32.dll" "system" fn WSAStartup(wversionrequested : u16, lpwsadata : *mut WSADATA) -> i32);
 windows_targets::link!("kernel32.dll" "system" fn WaitForMultipleObjects(ncount : u32, lphandles : *const HANDLE, bwaitall : BOOL, dwmilliseconds : u32) -> WAIT_EVENT);
@@ -2914,6 +2916,15 @@ pub struct LINGER {
 pub const LOCKFILE_EXCLUSIVE_LOCK: LOCK_FILE_FLAGS = 2u32;
 pub const LOCKFILE_FAIL_IMMEDIATELY: LOCK_FILE_FLAGS = 1u32;
 pub type LOCK_FILE_FLAGS = u32;
+pub type LPFN_WSARECVMSG = Option<
+    unsafe extern "system" fn(
+        s: SOCKET,
+        lpmsg: *mut WSAMSG,
+        lpdwnumberofbytesrecvd: *mut u32,
+        lpoverlapped: *mut OVERLAPPED,
+        lpcompletionroutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
+    ) -> i32,
+>;
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = Option<
     unsafe extern "system" fn(
         dwerrorcode: u32,
@@ -3145,6 +3156,7 @@ pub const SECURITY_SQOS_PRESENT: FILE_FLAGS_AND_ATTRIBUTES = 1048576u32;
 pub const SECURITY_VALID_SQOS_FLAGS: FILE_FLAGS_AND_ATTRIBUTES = 2031616u32;
 pub type SEND_RECV_FLAGS = i32;
 pub type SET_FILE_POINTER_MOVE_METHOD = u32;
+pub const SIO_GET_EXTENSION_FUNCTION_POINTER: u32 = 3355443206u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct SOCKADDR {
@@ -3502,6 +3514,22 @@ pub const WSAETOOMANYREFS: WSA_ERROR = 10059i32;
 pub const WSAEUSERS: WSA_ERROR = 10068i32;
 pub const WSAEWOULDBLOCK: WSA_ERROR = 10035i32;
 pub const WSAHOST_NOT_FOUND: WSA_ERROR = 11001i32;
+pub const WSAID_WSARECVMSG: GUID = GUID::from_u128(0xf689d7c8_6f1f_436b_8a53_e54fe351c322);
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct WSAMSG {
+    pub name: *mut SOCKADDR,
+    pub namelen: i32,
+    pub lpBuffers: *mut WSABUF,
+    pub dwBufferCount: u32,
+    pub Control: WSABUF,
+    pub dwFlags: u32,
+}
+impl Default for WSAMSG {
+    fn default() -> Self {
+        unsafe { core::mem::zeroed() }
+    }
+}
 pub const WSANOTINITIALISED: WSA_ERROR = 10093i32;
 pub const WSANO_DATA: WSA_ERROR = 11004i32;
 pub const WSANO_RECOVERY: WSA_ERROR = 11003i32;
