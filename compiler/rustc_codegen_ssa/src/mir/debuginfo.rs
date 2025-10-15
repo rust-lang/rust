@@ -260,7 +260,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     // Indicates that local is set to a new value. The `layout` and `projection` are used to
     // calculate the offset.
-    pub(crate) fn debug_new_val_to_local(
+    fn debug_new_val_to_local(
         &self,
         bx: &mut Bx,
         local: mir::Local,
@@ -297,7 +297,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub(crate) fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
+    fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
         let ty = self.monomorphize(self.mir.local_decls[local].ty);
         let layout = bx.cx().layout_of(ty);
         let to_backend_ty = bx.cx().immediate_backend_type(layout);
@@ -688,6 +688,55 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         Some((per_local, constants))
+    }
+
+    pub(crate) fn codegen_stmt_debuginfo(
+        &mut self,
+        bx: &mut Bx,
+        debuginfo: &mir::StmtDebugInfo<'tcx>,
+    ) {
+        match debuginfo {
+            mir::StmtDebugInfo::AssignRef(dest, place) => {
+                let local_ref = match self.locals[place.local] {
+                    // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
+                    // The place is an indirect pointer, we can refer to it directly.
+                    LocalRef::Place(place_ref) => Some((place_ref, place.projection.as_slice())),
+                    // For an rvalue like `&((*_1).1)`, we are calculating the address of `_1.1`.
+                    // The deref projection is no-op here.
+                    LocalRef::Operand(operand_ref) if place.is_indirect_first_projection() => {
+                        Some((operand_ref.deref(bx.cx()), &place.projection[1..]))
+                    }
+                    // For an rvalue like `&1`, when `BackendRepr` is `BackendRepr::Scalar`,
+                    // we cannot get the address.
+                    // N.B. `non_ssa_locals` returns that this is an SSA local.
+                    LocalRef::Operand(_) => None,
+                    LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => None,
+                }
+                .filter(|(_, projection)| {
+                    // Drop unsupported projections.
+                    projection.iter().all(|p| p.can_use_in_debuginfo())
+                });
+                if let Some((base, projection)) = local_ref {
+                    self.debug_new_val_to_local(bx, *dest, base, projection);
+                } else {
+                    // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
+                    self.debug_poison_to_local(bx, *dest);
+                }
+            }
+            mir::StmtDebugInfo::InvalidAssign(local) => {
+                self.debug_poison_to_local(bx, *local);
+            }
+        }
+    }
+
+    pub(crate) fn codegen_stmt_debuginfos(
+        &mut self,
+        bx: &mut Bx,
+        debuginfos: &[mir::StmtDebugInfo<'tcx>],
+    ) {
+        for debuginfo in debuginfos {
+            self.codegen_stmt_debuginfo(bx, debuginfo);
+        }
     }
 
     /// Creates the function-specific debug context.
