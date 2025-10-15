@@ -767,7 +767,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // We use the *resolved* bound vars later instead of the HIR ones since the former
         // also include the bound vars of the overarching predicate if applicable.
-        let hir::PolyTraitRef { bound_generic_params: _, modifiers, ref trait_ref, span } =
+        let hir::PolyTraitRef { bound_generic_params: _, modifiers, trait_ref, span } =
             *poly_trait_ref;
         let hir::TraitBoundModifiers { constness, polarity } = modifiers;
 
@@ -791,6 +791,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             rustc_ast::BoundPolarity::Positive => (ty::PredicatePolarity::Positive, bounds),
             rustc_ast::BoundPolarity::Negative(_) => (ty::PredicatePolarity::Negative, bounds),
             rustc_ast::BoundPolarity::Maybe(_) => {
+                self.require_bound_to_relax_default_trait(trait_ref, span);
+
                 (ty::PredicatePolarity::Positive, &mut Vec::new())
             }
         };

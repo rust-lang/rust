@@ -1782,9 +1782,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_default_trait(self, def_id: DefId) -> bool {
-        self.default_traits()
-            .iter()
-            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+        self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
     }
 
     /// Returns a range of the start/end indices specified with the
