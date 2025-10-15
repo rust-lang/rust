@@ -3,8 +3,6 @@ builtin_macros_alloc_must_statics = allocators must be statics
 
 builtin_macros_asm_attribute_not_supported =
     this attribute is not supported on assembly
-builtin_macros_asm_cfg =
-    the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
 
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs

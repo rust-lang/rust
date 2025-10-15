@@ -6,14 +6,13 @@ use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::asm::*;
 use rustc_session::lint;
-use rustc_session::parse::feature_err;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
 
+use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
-use crate::{errors, fluent_generated as fluent};
 
 /// Validated assembly arguments, ready for macro expansion.
 struct ValidatedAsmArgs {
@@ -64,22 +63,13 @@ fn validate_asm_args<'a>(
 
     for arg in args {
         for attr in arg.attributes.0.iter() {
-            match attr.name() {
-                Some(sym::cfg | sym::cfg_attr) => {
-                    if !ecx.ecfg.features.asm_cfg() {
-                        let span = attr.span();
-                        feature_err(ecx.sess, sym::asm_cfg, span, fluent::builtin_macros_asm_cfg)
-                            .emit();
-                    }
-                }
-                _ => {
-                    ecx.dcx().emit_err(errors::AsmAttributeNotSupported { span: attr.span() });
-                }
+            if !matches!(attr.name(), Some(sym::cfg | sym::cfg_attr)) {
+                ecx.dcx().emit_err(errors::AsmAttributeNotSupported { span: attr.span() });
             }
         }
 
         // Skip arguments that are configured out.
-        if ecx.ecfg.features.asm_cfg() && strip_unconfigured.configure(arg.attributes).is_none() {
+        if strip_unconfigured.configure(arg.attributes).is_none() {
             continue;
         }
 
