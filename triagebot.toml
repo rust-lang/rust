@@ -1363,6 +1363,7 @@ compiler = [
     "@jieyouxu",
     "@jdonszelmann",
     "@lcnr",
+    "@madsmtm",
     "@Nadrieril",
     "@nnethercote",
     "@oli-obk",
@@ -1398,6 +1399,7 @@ docs = [
 ]
 codegen = [
     "@dianqk",
+    "@madsmtm",
     "@saethlin",
     "@workingjubilee",
     "@WaffleLapkin",
