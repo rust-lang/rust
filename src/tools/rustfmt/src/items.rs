@@ -836,8 +836,7 @@ pub(crate) fn format_impl(
     let where_span_end = context.snippet_provider.opt_span_before(missing_span, "{");
     let where_clause_str = rewrite_where_clause(
         context,
-        &generics.where_clause.predicates,
-        generics.where_clause.span,
+        &generics.where_clause,
         context.config.brace_style(),
         Shape::legacy(where_budget, offset.block_only()),
         false,
@@ -1224,8 +1223,7 @@ pub(crate) fn format_trait(
         let option = WhereClauseOption::snuggled(&generics_str);
         let where_clause_str = rewrite_where_clause(
             context,
-            &generics.where_clause.predicates,
-            generics.where_clause.span,
+            &generics.where_clause,
             context.config.brace_style(),
             Shape::legacy(where_budget, offset.block_only()),
             where_on_new_line,
@@ -1350,8 +1348,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
 
         let where_str = rewrite_where_clause(
             context,
-            &self.generics.where_clause.predicates,
-            self.generics.where_clause.span,
+            &self.generics.where_clause,
             context.config.brace_style(),
             shape,
             false,
@@ -1621,8 +1618,7 @@ fn format_tuple_struct(
             let option = WhereClauseOption::new(true, WhereClauseSpace::Newline);
             rewrite_where_clause(
                 context,
-                &generics.where_clause.predicates,
-                generics.where_clause.span,
+                &generics.where_clause,
                 context.config.brace_style(),
                 Shape::legacy(where_budget, offset.block_only()),
                 false,
@@ -1691,7 +1687,7 @@ struct TyAliasRewriteInfo<'c, 'g>(
     &'c RewriteContext<'c>,
     Indent,
     &'g ast::Generics,
-    ast::TyAliasWhereClauses,
+    &'g ast::WhereClause,
     symbol::Ident,
     Span,
 );
@@ -1712,13 +1708,13 @@ pub(crate) fn rewrite_type_alias<'a>(
         ref generics,
         ref bounds,
         ref ty,
-        where_clauses,
+        ref after_where_clause,
     } = *ty_alias_kind;
     let ty_opt = ty.as_ref();
     let rhs_hi = ty
         .as_ref()
-        .map_or(where_clauses.before.span.hi(), |ty| ty.span.hi());
-    let rw_info = &TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span);
+        .map_or(generics.where_clause.span.hi(), |ty| ty.span.hi());
+    let rw_info = &TyAliasRewriteInfo(context, indent, generics, after_where_clause, ident, span);
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
     // in which they appear, whether they are opaque, and whether they are associated.
@@ -1762,11 +1758,7 @@ fn rewrite_ty<R: Rewrite>(
     vis: &ast::Visibility,
 ) -> RewriteResult {
     let mut result = String::with_capacity(128);
-    let TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span) = *rw_info;
-    let (before_where_predicates, after_where_predicates) = generics
-        .where_clause
-        .predicates
-        .split_at(where_clauses.split);
+    let TyAliasRewriteInfo(context, indent, generics, after_where_clause, ident, span) = *rw_info;
     result.push_str(&format!("{}type ", format_visibility(context, vis)));
     let ident_str = rewrite_ident(context, ident);
 
@@ -1804,8 +1796,7 @@ fn rewrite_ty<R: Rewrite>(
     }
     let before_where_clause_str = rewrite_where_clause(
         context,
-        before_where_predicates,
-        where_clauses.before.span,
+        &generics.where_clause,
         context.config.brace_style(),
         Shape::legacy(where_budget, indent),
         false,
@@ -1820,9 +1811,9 @@ fn rewrite_ty<R: Rewrite>(
         // If there are any where clauses, add a newline before the assignment.
         // If there is a before where clause, do not indent, but if there is
         // only an after where clause, additionally indent the type.
-        if !before_where_predicates.is_empty() {
+        if !generics.where_clause.predicates.is_empty() {
             result.push_str(&indent.to_string_with_newline(context.config));
-        } else if !after_where_predicates.is_empty() {
+        } else if !after_where_clause.predicates.is_empty() {
             result.push_str(
                 &indent
                     .block_indent(context.config)
@@ -1835,7 +1826,7 @@ fn rewrite_ty<R: Rewrite>(
         let comment_span = context
             .snippet_provider
             .opt_span_before(span, "=")
-            .map(|op_lo| mk_sp(where_clauses.before.span.hi(), op_lo));
+            .map(|op_lo| mk_sp(generics.where_clause.span.hi(), op_lo));
 
         let lhs = match comment_span {
             Some(comment_span)
@@ -1846,7 +1837,7 @@ fn rewrite_ty<R: Rewrite>(
                         .unknown_error()?,
                 ) =>
             {
-                let comment_shape = if !before_where_predicates.is_empty() {
+                let comment_shape = if !generics.where_clause.predicates.is_empty() {
                     Shape::indented(indent, context.config)
                 } else {
                     let shape = Shape::indented(indent, context.config);
@@ -1869,7 +1860,7 @@ fn rewrite_ty<R: Rewrite>(
 
         // 1 = `;` unless there's a trailing where clause
         let shape = Shape::indented(indent, context.config);
-        let shape = if after_where_predicates.is_empty() {
+        let shape = if after_where_clause.predicates.is_empty() {
             Shape::indented(indent, context.config)
                 .sub_width(1)
                 .max_width_error(shape.width, span)?
@@ -1881,12 +1872,11 @@ fn rewrite_ty<R: Rewrite>(
         result
     };
 
-    if !after_where_predicates.is_empty() {
+    if !after_where_clause.predicates.is_empty() {
         let option = WhereClauseOption::new(true, WhereClauseSpace::Newline);
         let after_where_clause_str = rewrite_where_clause(
             context,
-            after_where_predicates,
-            where_clauses.after.span,
+            &after_where_clause,
             context.config.brace_style(),
             Shape::indented(indent, context.config),
             false,
@@ -2728,8 +2718,7 @@ fn rewrite_fn_base(
     }
     let where_clause_str = rewrite_where_clause(
         context,
-        &where_clause.predicates,
-        where_clause.span,
+        &where_clause,
         context.config.brace_style(),
         Shape::indented(indent, context.config),
         true,
@@ -3158,8 +3147,7 @@ fn rewrite_bounds_on_where_clause(
 
 fn rewrite_where_clause(
     context: &RewriteContext<'_>,
-    predicates: &[ast::WherePredicate],
-    where_span: Span,
+    where_clause: &ast::WhereClause,
     brace_style: BraceStyle,
     shape: Shape,
     on_new_line: bool,
@@ -3168,6 +3156,12 @@ fn rewrite_where_clause(
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
 ) -> RewriteResult {
+    let ast::WhereClause {
+        ref predicates,
+        span: where_span,
+        has_where_token: _,
+    } = *where_clause;
+
     if predicates.is_empty() {
         return Ok(String::new());
     }
@@ -3354,8 +3348,7 @@ fn format_generics(
         }
         let where_clause_str = rewrite_where_clause(
             context,
-            &generics.where_clause.predicates,
-            generics.where_clause.span,
+            &generics.where_clause,
             brace_style,
             Shape::legacy(budget, offset.block_only()),
             true,
