@@ -2880,12 +2880,45 @@ enum AsmLabelKind {
 /// These follow the pattern: `[letter][digit(s)]:[digit(s)][optional_suffix]`
 ///
 /// Returns `true` if the string matches a valid Hexagon register span pattern.
-fn is_hexagon_register_span(possible_label: &str) -> bool {
-    if possible_label.len() < 3 {
+pub fn is_hexagon_register_span(possible_label: &str) -> bool {
+    // Extract the full register span from the context
+    if let Some(colon_idx) = possible_label.find(':') {
+        let after_colon = &possible_label[colon_idx + 1..];
+        is_hexagon_register_span_impl(&possible_label[..colon_idx], after_colon)
+    } else {
+        false
+    }
+}
+
+/// Helper function for use within the lint when we have statement context.
+fn is_hexagon_register_span_context(
+    possible_label: &str,
+    statement: &str,
+    colon_idx: usize,
+) -> bool {
+    // Extract what comes after the colon in the statement
+    let after_colon_start = colon_idx + 1;
+    if after_colon_start >= statement.len() {
         return false;
     }
 
-    let mut chars = possible_label.chars();
+    // Get the part after the colon, up to the next whitespace or special character
+    let after_colon_full = &statement[after_colon_start..];
+    let after_colon = after_colon_full
+        .chars()
+        .take_while(|&c| c.is_ascii_alphanumeric() || c == '.')
+        .collect::<String>();
+
+    is_hexagon_register_span_impl(possible_label, &after_colon)
+}
+
+/// Core implementation for checking hexagon register spans.
+fn is_hexagon_register_span_impl(before_colon: &str, after_colon: &str) -> bool {
+    if before_colon.len() < 1 || after_colon.is_empty() {
+        return false;
+    }
+
+    let mut chars = before_colon.chars();
     let start = chars.next().unwrap();
 
     // Must start with a letter (r, V, p, etc.)
@@ -2893,16 +2926,10 @@ fn is_hexagon_register_span(possible_label: &str) -> bool {
         return false;
     }
 
-    let rest = &possible_label[1..];
-    let Some(colon_idx) = rest.find(':') else {
-        return false;
-    };
+    let rest = &before_colon[1..];
 
-    let (before_colon, after_colon_with_colon) = rest.split_at(colon_idx);
-    let after_colon = &after_colon_with_colon[1..]; // Skip the ':'
-
-    // Check if before colon is all digits and non-empty
-    if before_colon.is_empty() || !before_colon.chars().all(|c| c.is_ascii_digit()) {
+    // Check if the part after the first letter is all digits and non-empty
+    if rest.is_empty() || !rest.chars().all(|c| c.is_ascii_digit()) {
         return false;
     }
 
@@ -2910,39 +2937,6 @@ fn is_hexagon_register_span(possible_label: &str) -> bool {
     let digits_after = after_colon.chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
 
     !digits_after.is_empty()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_hexagon_register_span;
-
-    #[test]
-    fn test_hexagon_register_span_patterns() {
-        // Valid Hexagon register span patterns
-        assert!(is_hexagon_register_span("r1:0"));
-        assert!(is_hexagon_register_span("r15:14"));
-        assert!(is_hexagon_register_span("V5:4"));
-        assert!(is_hexagon_register_span("V3:2"));
-        assert!(is_hexagon_register_span("V5:4.w"));
-        assert!(is_hexagon_register_span("V3:2.h"));
-        assert!(is_hexagon_register_span("p1:0"));
-        assert!(is_hexagon_register_span("p3:2"));
-        assert!(is_hexagon_register_span("r99:98"));
-        assert!(is_hexagon_register_span("V123:122.whatever"));
-
-        // Invalid patterns - these should be treated as potential labels
-        assert!(!is_hexagon_register_span("label1"));
-        assert!(!is_hexagon_register_span("foo:"));
-        assert!(!is_hexagon_register_span(":0"));
-        assert!(!is_hexagon_register_span("r:0")); // missing digits before colon
-        assert!(!is_hexagon_register_span("r1:")); // missing digits after colon
-        assert!(!is_hexagon_register_span("r1:a")); // non-digit after colon
-        assert!(!is_hexagon_register_span("1:0")); // starts with digit, not letter
-        assert!(!is_hexagon_register_span("r1")); // no colon
-        assert!(!is_hexagon_register_span("r")); // too short
-        assert!(!is_hexagon_register_span("")); // empty
-        assert!(!is_hexagon_register_span("ra:0")); // letter in first digit group
-    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
@@ -3030,7 +3024,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                         // Check for Hexagon register span notation (e.g., "r1:0", "V5:4", "V3:2.w")
                         // This is valid Hexagon assembly syntax, not a label
                         if matches!(cx.tcx.sess.asm_arch, Some(InlineAsmArch::Hexagon))
-                            && is_hexagon_register_span(possible_label)
+                            && is_hexagon_register_span_context(possible_label, statement, idx)
                         {
                             break 'label_loop;
                         }
