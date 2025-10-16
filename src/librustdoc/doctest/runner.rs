@@ -267,9 +267,13 @@ test::StaticTestFn(
         runner = if not_running {
             "test::assert_test_result(Ok::<(), String>(()))".to_string()
         } else {
+            // One case to consider: if this is a `should_panic` doctest, on some targets, libtest
+            // ignores such tests because it's not supported. The first `if` checks exactly that.
             format!(
                 "
-if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
+if {should_panic} && test::cannot_handle_should_panic() {{
+    test::assert_test_result(Ok::<(), String>(()))
+}} else if let Some(bin_path) = crate::__doctest_mod::doctest_path() {{
     test::assert_test_result(crate::__doctest_mod::doctest_runner(bin_path, {id}, {should_panic}))
 }} else {{
     test::assert_test_result(doctest_bundle::{test_id}::__main_fn())
