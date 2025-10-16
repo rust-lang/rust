@@ -16,7 +16,9 @@ use ide::{
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
     UpdateTest,
 };
-use ide_db::{FxHasher, assists, rust_doc::format_docs, source_change::ChangeAnnotationId};
+use ide_db::{
+    FxHasher, MiniCore, assists, rust_doc::format_docs, source_change::ChangeAnnotationId,
+};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -270,7 +272,7 @@ pub(crate) fn completion_items(
         );
     }
 
-    if let Some(limit) = config.completion(None).limit {
+    if let Some(limit) = config.completion(None, MiniCore::default()).limit {
         res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
         res.truncate(limit);
     }
@@ -400,16 +402,17 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    let imports =
-        if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
-            item.import_to_add
-                .clone()
-                .into_iter()
-                .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
-                .collect()
-        } else {
-            Vec::new()
-        };
+    let imports = if config.completion(None, MiniCore::default()).enable_imports_on_the_fly
+        && !item.import_to_add.is_empty()
+    {
+        item.import_to_add
+            .clone()
+            .into_iter()
+            .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
         let ref_resolve_data = if ref_match.is_some() {
             let ref_resolve_data = lsp_ext::CompletionResolveData {

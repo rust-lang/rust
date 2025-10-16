@@ -13,7 +13,10 @@ use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
+use ide_db::{
+    MiniCore,
+    base_db::{Crate, ProcMacroPaths, SourceDatabase},
+};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -188,6 +191,14 @@ pub(crate) struct GlobalState {
     /// This is marked true if we failed to load a crate root file at crate graph creation,
     /// which will usually end up causing a bunch of incorrect diagnostics on startup.
     pub(crate) incomplete_crate_graph: bool,
+
+    pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
+}
+
+// FIXME: This should move to the VFS once the rewrite is done.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct MiniCoreRustAnalyzerInternalOnly {
+    pub(crate) minicore_text: Option<String>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -204,6 +215,7 @@ pub(crate) struct GlobalStateSnapshot {
     // FIXME: Can we derive this from somewhere else?
     pub(crate) proc_macros_loaded: bool,
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
+    minicore: MiniCoreRustAnalyzerInternalOnly,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -304,6 +316,8 @@ impl GlobalState {
 
             deferred_task_queue: task_queue,
             incomplete_crate_graph: false,
+
+            minicore: MiniCoreRustAnalyzerInternalOnly::default(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -550,6 +564,7 @@ impl GlobalState {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
+            minicore: self.minicore.clone(),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
@@ -837,6 +852,14 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
         self.vfs.read().0.exists(file_id)
+    }
+
+    #[inline]
+    pub(crate) fn minicore(&self) -> MiniCore<'_> {
+        match &self.minicore.minicore_text {
+            Some(minicore) => MiniCore::new(minicore),
+            None => MiniCore::default(),
+        }
     }
 }
 

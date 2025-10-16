@@ -16,6 +16,7 @@ pub(crate) mod lifetime;
 pub(crate) mod mod_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;
+pub(crate) mod ra_fixture;
 pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod r#type;
@@ -72,6 +73,10 @@ impl Builder {
 impl Completions {
     fn add(&mut self, item: CompletionItem) {
         self.buf.push(item)
+    }
+
+    fn add_many(&mut self, items: impl IntoIterator<Item = CompletionItem>) {
+        self.buf.extend(items)
     }
 
     fn add_opt(&mut self, item: Option<CompletionItem>) {

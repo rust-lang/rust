@@ -132,13 +132,17 @@ pub struct Fixture {
     pub library: bool,
     /// Actual file contents. All meta comments are stripped.
     pub text: String,
+    /// The line number in the original fixture of the beginning of this fixture.
+    pub line: usize,
 }
 
+#[derive(Debug)]
 pub struct MiniCore {
     activated_flags: Vec<String>,
     valid_flags: Vec<String>,
 }
 
+#[derive(Debug)]
 pub struct FixtureWithProjectMeta {
     pub fixture: Vec<Fixture>,
     pub mini_core: Option<MiniCore>,
@@ -184,40 +188,49 @@ impl FixtureWithProjectMeta {
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
         let mut proc_macro_names = vec![];
+        let mut first_row = 0;
 
         if let Some(meta) = fixture.strip_prefix("//- toolchain:") {
+            first_row += 1;
             let (meta, remain) = meta.split_once('\n').unwrap();
             toolchain = Some(meta.trim().to_owned());
             fixture = remain;
         }
 
         if let Some(meta) = fixture.strip_prefix("//- target_data_layout:") {
+            first_row += 1;
             let (meta, remain) = meta.split_once('\n').unwrap();
             meta.trim().clone_into(&mut target_data_layout);
             fixture = remain;
         }
 
         if let Some(meta) = fixture.strip_prefix("//- target_arch:") {
+            first_row += 1;
             let (meta, remain) = meta.split_once('\n').unwrap();
             meta.trim().clone_into(&mut target_arch);
             fixture = remain;
         }
 
         if let Some(meta) = fixture.strip_prefix("//- proc_macros:") {
+            first_row += 1;
             let (meta, remain) = meta.split_once('\n').unwrap();
             proc_macro_names = meta.split(',').map(|it| it.trim().to_owned()).collect();
             fixture = remain;
         }
 
         if let Some(meta) = fixture.strip_prefix("//- minicore:") {
+            first_row += 1;
             let (meta, remain) = meta.split_once('\n').unwrap();
             mini_core = Some(MiniCore::parse(meta));
             fixture = remain;
         }
 
-        let default = if fixture.contains("//-") { None } else { Some("//- /main.rs") };
+        let default =
+            if fixture.contains("//- /") { None } else { Some((first_row - 1, "//- /main.rs")) };
 
-        for (ix, line) in default.into_iter().chain(fixture.split_inclusive('\n')).enumerate() {
+        for (ix, line) in
+            default.into_iter().chain((first_row..).zip(fixture.split_inclusive('\n')))
+        {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),
@@ -228,7 +241,7 @@ impl FixtureWithProjectMeta {
             }
 
             if let Some(line) = line.strip_prefix("//-") {
-                let meta = Self::parse_meta_line(line);
+                let meta = Self::parse_meta_line(line, (ix + 1).try_into().unwrap());
                 res.push(meta);
             } else {
                 if matches!(line.strip_prefix("// "), Some(l) if l.trim().starts_with('/')) {
@@ -252,7 +265,7 @@ impl FixtureWithProjectMeta {
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-    fn parse_meta_line(meta: &str) -> Fixture {
+    fn parse_meta_line(meta: &str, line: usize) -> Fixture {
         let meta = meta.trim();
         let mut components = meta.split_ascii_whitespace();
 
@@ -317,6 +330,7 @@ impl FixtureWithProjectMeta {
         Fixture {
             path,
             text: String::new(),
+            line,
             krate,
             deps,
             extern_prelude,
@@ -330,7 +344,7 @@ impl FixtureWithProjectMeta {
 }
 
 impl MiniCore {
-    const RAW_SOURCE: &'static str = include_str!("./minicore.rs");
+    pub const RAW_SOURCE: &'static str = include_str!("./minicore.rs");
 
     fn has_flag(&self, flag: &str) -> bool {
         self.activated_flags.iter().any(|it| it == flag)
@@ -363,8 +377,8 @@ impl MiniCore {
         res
     }
 
-    pub fn available_flags() -> impl Iterator<Item = &'static str> {
-        let lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
+    pub fn available_flags(raw_source: &str) -> impl Iterator<Item = &str> {
+        let lines = raw_source.split_inclusive('\n');
         lines
             .map_while(|x| x.strip_prefix("//!"))
             .skip_while(|line| !line.contains("Available flags:"))
@@ -375,9 +389,9 @@ impl MiniCore {
     /// Strips parts of minicore.rs which are flagged by inactive flags.
     ///
     /// This is probably over-engineered to support flags dependencies.
-    pub fn source_code(mut self) -> String {
+    pub fn source_code(mut self, raw_source: &str) -> String {
         let mut buf = String::new();
-        let mut lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
+        let mut lines = raw_source.split_inclusive('\n');
 
         let mut implications = Vec::new();
 

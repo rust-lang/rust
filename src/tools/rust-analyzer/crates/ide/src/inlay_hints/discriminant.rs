@@ -17,7 +17,7 @@ use crate::{
 pub(super) fn enum_hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     enum_: ast::Enum,
 ) -> Option<()> {
     if let DiscriminantHints::Never = config.discriminant_hints {
@@ -41,7 +41,7 @@ pub(super) fn enum_hints(
 
 fn variant_hints(
     acc: &mut Vec<InlayHint>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     sema: &Semantics<'_, RootDatabase>,
     enum_: &ast::Enum,
     variant: &ast::Variant,
