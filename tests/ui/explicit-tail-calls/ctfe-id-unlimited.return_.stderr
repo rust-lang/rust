@@ -10,15 +10,15 @@ note: inside `rec_id`
 LL |     inner(0, n)
    |     ^^^^^^^^^^^
 note: [... 125 additional calls inside `inner` ...]
-  --> $DIR/ctfe-id-unlimited.rs:17:42
+  --> $DIR/ctfe-id-unlimited.rs:17:41
    |
-LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
-   |                                          ^^^^^^^^^^^^^^^^^^^^^
+LL |             #[cfg(return_)] _ => return inner(acc + 1, n - 1),
+   |                                         ^^^^^^^^^^^^^^^^^^^^^
 note: inside `inner`
-  --> $DIR/ctfe-id-unlimited.rs:17:42
+  --> $DIR/ctfe-id-unlimited.rs:17:41
    |
-LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
-   |                                          ^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+LL |             #[cfg(return_)] _ => return inner(acc + 1, n - 1),
+   |                                         ^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
 error: aborting due to 1 previous error
 

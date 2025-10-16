@@ -83,7 +83,8 @@ pub(crate) fn parse_cfg_entry<S: Stage>(
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
-                let Some(name) = meta.path().word_sym() else {
+                let Some(name) = meta.path().word_sym().filter(|s| !s.is_path_segment_keyword())
+                else {
                     cx.expected_identifier(meta.path().span());
                     return None;
                 };
@@ -160,7 +161,7 @@ fn parse_cfg_entry_target<S: Stage>(
         };
 
         // Then, parse it as a name-value item
-        let Some(name) = sub_item.path().word_sym() else {
+        let Some(name) = sub_item.path().word_sym().filter(|s| !s.is_path_segment_keyword()) else {
             cx.expected_identifier(sub_item.path().span());
             return None;
         };

@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `r#_` (argument key must be an identifier, but `_` cannot be a raw identifier)
+
