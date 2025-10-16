@@ -1579,6 +1579,7 @@ dependencies = [
  "rustc-literal-escaper 0.0.4",
  "stdx",
  "tracing",
+ "winnow",
 ]
 
 [[package]]
