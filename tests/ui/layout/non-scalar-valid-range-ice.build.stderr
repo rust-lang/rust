@@ -1,0 +1,194 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/non-scalar-valid-range-ice.rs:15:5
+   |
+LL |     #[rustc_layout_scalar_valid_range_start(1)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_layout_scalar_valid_range_start]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable niche optimizations in the standard library
+
+
+thread 'rustc' ($TID) panicked at $COMPILER_DIR_REAL/rustc_abi/src/layout.rs:574:18:
+nonscalar layout for layout_scalar_valid_range type: Layout {
+    size: Size(16 bytes),
+    align: AbiAlign {
+        abi: Align(4 bytes),
+    },
+    backend_repr: Memory {
+        sized: true,
+    },
+    fields: Arbitrary {
+        offsets: [
+            Size(0 bytes),
+        ],
+        memory_index: [
+            0,
+        ],
+    },
+    largest_niche: None,
+    uninhabited: false,
+    variants: Single {
+        index: 0,
+    },
+    max_repr_align: None,
+    unadjusted_abi_align: Align(4 bytes),
+    randomization_seed: 16106072450782697546,
+}
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panicking.rs:698:5
+   1: core::panicking::panic_fmt
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/core/src/panicking.rs:75:14
+   2: layout_of_struct<rustc_middle::ty::context::TyCtxt, rustc_abi::layout::ty::FieldIdx, rustc_abi::layout::ty::VariantIdx, rustc_abi::layout::ty::TyAndLayout<rustc_middle::ty::Ty>>
+   3: layout_of_struct_or_enum<rustc_middle::ty::context::TyCtxt, rustc_abi::layout::ty::FieldIdx, rustc_abi::layout::ty::VariantIdx, rustc_abi::layout::ty::TyAndLayout<rustc_middle::ty::Ty>, rustc_ty_utils::layout::layout_of_uncached::{closure_env#21}, core::iter::adapters::flatten::Flatten<core::option::IntoIter<core::iter::adapters::map::Map<core::iter::adapters::map::Map<core::iter::adapters::map::Map<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<rustc_middle::ty::VariantDef>>, rustc_index::slice::{impl#0}::iter_enumerated::{closure_env#0}<rustc_abi::layout::ty::VariantIdx, rustc_middle::ty::VariantDef>>, rustc_middle::ty::adt::{impl#8}::discriminants::{closure_env#0}>, rustc_ty_utils::layout::layout_of_uncached::{closure#22}::{closure#0}::{closure_env#0}>>>>
+             at ./compiler/rustc_abi/src/layout.rs:341:18
+   4: layout_of_uncached
+             at ./compiler/rustc_ty_utils/src/layout.rs:634:18
+   5: layout_of
+             at ./compiler/rustc_ty_utils/src/layout.rs:70:18
+   6: {closure#0}
+             at ./compiler/rustc_query_impl/src/plumbing.rs:294:9
+      [... omitted 22 frames ...]
+   7: query_get_at<rustc_query_system::query::caches::DefaultCache<rustc_middle::ty::PseudoCanonicalInput<rustc_middle::ty::Ty>, rustc_middle::query::erase::Erased<[u8; 16]>>>
+             at ./compiler/rustc_middle/src/query/inner.rs:33:17
+   8: layout_of
+             at ./compiler/rustc_middle/src/query/plumbing.rs:415:31
+   9: layout_of
+             at ./compiler/rustc_middle/src/query/plumbing.rs:406:35
+  10: check
+             at ./compiler/rustc_mir_transform/src/known_panics_lint.rs:889:27
+  11: new
+             at ./compiler/rustc_mir_transform/src/known_panics_lint.rs:185:30
+  12: run_lint
+             at ./compiler/rustc_mir_transform/src/known_panics_lint.rs:56:26
+  13: run_passes_inner
+             at ./compiler/rustc_mir_transform/src/pass_manager.rs:308:22
+  14: run_runtime_lowering_passes
+             at ./compiler/rustc_mir_transform/src/lib.rs:632:5
+  15: run_analysis_to_runtime_passes
+             at ./compiler/rustc_mir_transform/src/lib.rs:576:5
+  16: mir_drops_elaborated_and_const_checked
+             at ./compiler/rustc_mir_transform/src/lib.rs:545:5
+  17: {closure#0}
+             at ./compiler/rustc_query_impl/src/plumbing.rs:294:9
+      [... omitted 22 frames ...]
+  18: query_ensure<rustc_data_structures::vec_cache::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>, rustc_query_system::dep_graph::graph::DepNodeIndex>>
+             at ./compiler/rustc_middle/src/query/inner.rs:51:9
+  19: mir_drops_elaborated_and_const_checked<rustc_span::def_id::LocalDefId>
+             at ./compiler/rustc_middle/src/query/plumbing.rs:173:9
+  20: {closure#0}
+             at ./compiler/rustc_interface/src/passes.rs:1106:33
+  21: {closure#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>
+             at ./compiler/rustc_middle/src/hir/map.rs:340:79
+  22: {closure#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:181:30
+  23: call_once<(), rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/core/src/panic/unwind_safe.rs:274:9
+  24: do_call<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>, ()>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panicking.rs:590:40
+  25: catch_unwind<(), core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panicking.rs:553:19
+  26: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>, ()>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panic.rs:359:14
+  27: run<(), rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:23:9
+  28: {closure#1}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:181:23
+  29: for_each<rustc_span::def_id::LocalDefId, rustc_data_structures::sync::parallel::par_for_each_in::{closure#0}::{closure_env#1}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/core/src/slice/iter/macros.rs:277:21
+  30: {closure#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:180:27
+  31: parallel_guard<(), rustc_data_structures::sync::parallel::par_for_each_in::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:39:15
+  32: par_for_each_in<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_hir_body_owners::{closure_env#0}<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:175:5
+  33: par_hir_body_owners<rustc_interface::passes::run_required_analyses::{closure#1}::{closure_env#0}>
+             at ./compiler/rustc_middle/src/hir/map.rs:340:9
+  34: {closure#1}
+             at ./compiler/rustc_interface/src/passes.rs:1090:13
+  35: run<(), rustc_interface::passes::run_required_analyses::{closure_env#1}>
+             at ./compiler/rustc_data_structures/src/profiling.rs:844:9
+  36: time<(), rustc_interface::passes::run_required_analyses::{closure_env#1}>
+             at ./compiler/rustc_session/src/utils.rs:17:50
+  37: run_required_analyses
+             at ./compiler/rustc_interface/src/passes.rs:1089:10
+  38: analysis
+             at ./compiler/rustc_interface/src/passes.rs:1131:5
+  39: {closure#0}
+             at ./compiler/rustc_query_impl/src/plumbing.rs:294:9
+      [... omitted 22 frames ...]
+  40: query_ensure<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 0]>>>
+             at ./compiler/rustc_middle/src/query/inner.rs:51:9
+  41: analysis
+             at ./compiler/rustc_middle/src/query/plumbing.rs:173:9
+  42: {closure#2}
+             at ./compiler/rustc_driver_impl/src/lib.rs:371:29
+  43: {closure#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>
+             at ./compiler/rustc_interface/src/passes.rs:1016:27
+  44: {closure#1}<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>
+             at ./compiler/rustc_middle/src/ty/context.rs:1663:37
+  45: {closure#0}<rustc_middle::ty::context::{impl#21}::enter::{closure_env#1}<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:60:9
+  46: try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#21}::enter::{closure_env#1}<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/thread/local.rs:315:12
+  47: with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#21}::enter::{closure_env#1}<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/thread/local.rs:279:20
+  48: enter_context<rustc_middle::ty::context::{impl#21}::enter::{closure_env#1}<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>, core::option::Option<rustc_interface::queries::Linker>>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:57:9
+  49: enter<rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, core::option::Option<rustc_interface::queries::Linker>>
+             at ./compiler/rustc_middle/src/ty/context.rs:1663:9
+  50: create_global_ctxt<core::option::Option<rustc_interface::queries::Linker>, rustc_interface::passes::create_and_enter_global_ctxt::{closure#2}::{closure_env#0}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>>
+             at ./compiler/rustc_middle/src/ty/context.rs:1872:13
+  51: {closure#2}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>
+             at ./compiler/rustc_interface/src/passes.rs:983:9
+  52: call_once<rustc_interface::passes::create_and_enter_global_ctxt::{closure_env#2}<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>, (&rustc_session::session::Session, rustc_middle::ty::context::CurrentGcx, alloc::sync::Arc<rustc_data_structures::jobserver::Proxy, alloc::alloc::Global>, &std::sync::once_lock::OnceLock<rustc_middle::ty::context::GlobalCtxt>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_middle::arena::Arena>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_hir::Arena>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2})>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/core/src/ops/function.rs:250:5
+  53: call_once<(&rustc_session::session::Session, rustc_middle::ty::context::CurrentGcx, alloc::sync::Arc<rustc_data_structures::jobserver::Proxy, alloc::alloc::Global>, &std::sync::once_lock::OnceLock<rustc_middle::ty::context::GlobalCtxt>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_middle::arena::Arena>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_hir::Arena>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}), dyn core::ops::function::FnOnce<(&rustc_session::session::Session, rustc_middle::ty::context::CurrentGcx, alloc::sync::Arc<rustc_data_structures::jobserver::Proxy, alloc::alloc::Global>, &std::sync::once_lock::OnceLock<rustc_middle::ty::context::GlobalCtxt>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_middle::arena::Arena>, &rustc_data_structures::sync::worker_local::WorkerLocal<rustc_hir::Arena>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}), Output=core::option::Option<rustc_interface::queries::Linker>>, alloc::alloc::Global>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/alloc/src/boxed.rs:1985:9
+  54: create_and_enter_global_ctxt<core::option::Option<rustc_interface::queries::Linker>, rustc_driver_impl::run_compiler::{closure#0}::{closure_env#2}>
+             at ./compiler/rustc_interface/src/passes.rs:1024:5
+  55: {closure#0}
+             at ./compiler/rustc_driver_impl/src/lib.rs:344:22
+  56: {closure#0}<(), rustc_driver_impl::run_compiler::{closure_env#0}>
+             at ./compiler/rustc_interface/src/interface.rs:531:80
+  57: call_once<(), rustc_interface::interface::run_compiler::{closure#1}::{closure_env#0}<(), rustc_driver_impl::run_compiler::{closure_env#0}>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/core/src/panic/unwind_safe.rs:274:9
+  58: do_call<core::panic::unwind_safe::AssertUnwindSafe<rustc_interface::interface::run_compiler::{closure#1}::{closure_env#0}<(), rustc_driver_impl::run_compiler::{closure_env#0}>>, ()>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panicking.rs:590:40
+  59: catch_unwind<(), core::panic::unwind_safe::AssertUnwindSafe<rustc_interface::interface::run_compiler::{closure#1}::{closure_env#0}<(), rustc_driver_impl::run_compiler::{closure_env#0}>>>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panicking.rs:553:19
+  60: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<rustc_interface::interface::run_compiler::{closure#1}::{closure_env#0}<(), rustc_driver_impl::run_compiler::{closure_env#0}>>, ()>
+             at /rustc/bb624dcb4c8ab987e10c0808d92d76f3b84dd117/library/std/src/panic.rs:359:14
+  61: {closure#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>
+             at ./compiler/rustc_interface/src/interface.rs:531:23
+  62: {closure#0}<rustc_interface::interface::run_compiler::{closure_env#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>, ()>
+             at ./compiler/rustc_interface/src/util.rs:208:17
+  63: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>, ()>, ()>
+             at ./compiler/rustc_interface/src/util.rs:162:24
+  64: set<rustc_span::SessionGlobals, rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>, ()>, ()>, ()>
+             at /Users/stuart/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/scoped-tls-1.0.1/src/lib.rs:137:9
+  65: create_session_globals_then<(), rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>, ()>, ()>>
+             at ./compiler/rustc_span/src/lib.rs:146:21
+  66: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<(), rustc_driver_impl::run_compiler::{closure_env#0}>, ()>, ()>
+             at ./compiler/rustc_interface/src/util.rs:158:17
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.92.0-dev running on aarch64-apple-darwin
+
+note: compiler flags: -Z threads=1 -Z simulate-remapped-rust-src-base=/rustc/FAKE_PREFIX -Z translate-remapped-path-to-local-path=no -Z ignore-directory-in-diagnostics-source-blocks=/Users/stuart/.cargo -Z ignore-directory-in-diagnostics-source-blocks=/Users/stuart/Dev/rust/rust/vendor -C codegen-units=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z write-long-types-to-disk=no -C strip=debuginfo -C prefer-dynamic -C rpath -C debuginfo=0 --crate-type lib
+
+query stack during panic:
+#0 [layout_of] computing layout of `array::NonZero<i32>`
+#1 [mir_drops_elaborated_and_const_checked] elaborating drops for `array`
+#2 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,13 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/non-scalar-valid-range-ice.rs:15:5
+   |
+LL |     #[rustc_layout_scalar_valid_range_start(1)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_layout_scalar_valid_range_start]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable niche optimizations in the standard library
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.
