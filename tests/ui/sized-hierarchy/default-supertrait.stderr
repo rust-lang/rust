@@ -4,7 +4,7 @@ error: relaxed bounds are not permitted in supertrait bounds
 LL | trait NegSized: ?Sized { }
    |                 ^^^^^^
    |
-   = note: traits are `?Sized` by default
+   = note: traits are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in supertrait bounds
   --> $DIR/default-supertrait.rs:13:21

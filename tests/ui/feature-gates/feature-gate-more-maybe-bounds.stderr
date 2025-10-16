@@ -10,7 +10,7 @@ error: this relaxed bound is not permitted here
 LL | trait Trait4 where Self: ?Trait1 {}
    |                          ^^^^^^^
    |
-   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+   = note: in this context, relaxed bounds are only allowed on type parameters defined on the closest item
 
 error: relaxed bounds are not permitted in trait object types
   --> $DIR/feature-gate-more-maybe-bounds.rs:8:28

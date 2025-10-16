@@ -3,6 +3,8 @@ error: relaxed bounds are not permitted in trait object types
    |
 LL | type _0 = dyn ?Sized;
    |               ^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/only-maybe-bound.rs:3:11

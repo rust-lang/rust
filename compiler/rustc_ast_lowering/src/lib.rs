@@ -2103,33 +2103,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             RelaxedBoundPolicy::Forbidden(reason) => {
+                let gate = |context, subject| {
+                    if self.tcx.features().more_maybe_bounds() {
+                        return;
+                    }
+
+                    let mut diag = self.dcx().struct_span_err(
+                        span,
+                        format!("relaxed bounds are not permitted in {context}"),
+                    );
+                    if let Some(def_id) = trait_ref.trait_def_id()
+                        && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
+                    {
+                        diag.note(format!(
+                            "{subject} are not implicitly bounded by `Sized`, \
+                             so there is nothing to relax"
+                        ));
+                    }
+                    diag.emit();
+                };
+
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
-                        if self.tcx.features().more_maybe_bounds() {
-                            return;
-                        }
-
-                        self.dcx().span_err(
-                            span,
-                            "relaxed bounds are not permitted in trait object types",
-                        );
+                        gate("trait object types", "trait object types");
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
-                        if self.tcx.features().more_maybe_bounds() {
-                            return;
-                        }
-
-                        let mut diag = self.dcx().struct_span_err(
-                            span,
-                            "relaxed bounds are not permitted in supertrait bounds",
-                        );
-                        if let Some(def_id) = trait_ref.trait_def_id()
-                            && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
-                        {
-                            diag.note("traits are `?Sized` by default");
-                        }
-                        diag.emit();
+                        gate("supertrait bounds", "traits");
                         return;
                     }
                     RelaxedBoundForbiddenReason::AssocTyBounds
@@ -2142,7 +2142,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .struct_span_err(span, "this relaxed bound is not permitted here")
             .with_note(
                 "in this context, relaxed bounds are only allowed on \
-                 type parameters defined by the closest item",
+                 type parameters defined on the closest item",
             )
             .emit();
     }
