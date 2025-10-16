@@ -139,23 +139,6 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::size_of | sym::align_of => {
-                        let target = target.unwrap();
-                        let tp_ty = generic_args.type_at(0);
-                        let null_op = match intrinsic.name {
-                            sym::size_of => NullOp::SizeOf,
-                            sym::align_of => NullOp::AlignOf,
-                            _ => bug!("unexpected intrinsic"),
-                        };
-                        block.statements.push(Statement::new(
-                            terminator.source_info,
-                            StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(null_op, tp_ty),
-                            ))),
-                        ));
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
                     sym::read_via_copy => {
                         let Ok([arg]) = take_array(args) else {
                             span_bug!(terminator.source_info.span, "Wrong number of arguments");

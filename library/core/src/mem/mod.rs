@@ -333,7 +333,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_size_of"]
 pub const fn size_of<T>() -> usize {
-    intrinsics::size_of::<T>()
+    <T as SizedTypeProperties>::SIZE
 }
 
 /// Returns the size of the pointed-to value in bytes.
@@ -441,7 +441,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(note = "use `align_of` instead", since = "1.2.0", suggestion = "align_of")]
 pub fn min_align_of<T>() -> usize {
-    intrinsics::align_of::<T>()
+    <T as SizedTypeProperties>::ALIGN
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -488,7 +488,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 #[rustc_diagnostic_item = "mem_align_of"]
 pub const fn align_of<T>() -> usize {
-    intrinsics::align_of::<T>()
+    <T as SizedTypeProperties>::ALIGN
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
@@ -1236,6 +1236,16 @@ pub const fn variant_count<T>() -> usize {
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
 pub trait SizedTypeProperties: Sized {
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    #[lang = "mem_size_const"]
+    const SIZE: usize = intrinsics::size_of::<Self>();
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    #[lang = "mem_align_const"]
+    const ALIGN: usize = intrinsics::align_of::<Self>();
+
     /// `true` if this type requires no storage.
     /// `false` if its [size](size_of) is greater than zero.
     ///
@@ -1263,7 +1273,7 @@ pub trait SizedTypeProperties: Sized {
     /// ```
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const IS_ZST: bool = size_of::<Self>() == 0;
+    const IS_ZST: bool = Self::SIZE == 0;
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
@@ -1275,7 +1285,7 @@ pub trait SizedTypeProperties: Sized {
     /// which is never allowed for a single object.
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const MAX_SLICE_LEN: usize = match size_of::<Self>() {
+    const MAX_SLICE_LEN: usize = match Self::SIZE {
         0 => usize::MAX,
         n => (isize::MAX as usize) / n,
     };

@@ -73,7 +73,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb1: {
-        _6 = AlignOf(T);
+        _6 = const <T as std::mem::SizedTypeProperties>::ALIGN;
         StorageLive(_7);
         _7 = copy _6 as std::ptr::Alignment (Transmute);
         _8 = move (_7.0: std::ptr::alignment::AlignmentEnum);
