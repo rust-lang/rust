@@ -570,6 +570,10 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .collect()
 }
 
+pub fn cannot_handle_should_panic() -> bool {
+    (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm")) && !cfg!(target_os = "emscripten")
+}
+
 pub fn run_test(
     opts: &TestOpts,
     force_ignore: bool,
@@ -581,9 +585,8 @@ pub fn run_test(
     let TestDescAndFn { desc, testfn } = test;
 
     // Emscripten can catch panics but other wasm targets cannot
-    let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
-        && !cfg!(target_os = "emscripten");
+    let ignore_because_no_process_support =
+        desc.should_panic != ShouldPanic::No && cannot_handle_should_panic();
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         let message = CompletedTest::new(id, desc, TrIgnored, None, Vec::new());

@@ -1120,6 +1120,10 @@ fn doctest_run_fn(
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> Result<(), String> {
+    #[cfg(not(bootstrap))]
+    if scraped_test.langstr.should_panic && test::cannot_handle_should_panic() {
+        return Ok(());
+    }
     let report_unused_externs = |uext| {
         unused_externs.lock().unwrap().push(uext);
     };
