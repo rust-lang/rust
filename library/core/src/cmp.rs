@@ -1997,6 +1997,19 @@ mod impls {
                 fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
                 }
+
+                #[inline]
+                fn clamp(self, min: Self, max: Self) -> Self
+                {
+                    assert!(min <= max, "min > max. min = {min}, max = {max}");
+                    if self < min {
+                        min
+                    } else if self > max {
+                        max
+                    } else {
+                        self
+                    }
+                }
             }
         )*)
     }
