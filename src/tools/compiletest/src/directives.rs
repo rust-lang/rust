@@ -168,6 +168,10 @@ pub struct TestProps {
     ignore_pass: bool,
     // How far this test should proceed to start failing.
     pub fail_mode: Option<FailMode>,
+    /// If true, skips the automatic `check-pass` step before building a
+    /// `build-fail` test. Useful in edge cases where check and build both
+    /// fail, but in different ways, and the build failure is being tested.
+    pub(crate) dont_require_check_pass: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
     // customized normalization rules
@@ -226,6 +230,7 @@ mod directives {
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
     pub const DONT_REQUIRE_ANNOTATIONS: &'static str = "dont-require-annotations";
+    pub const DONT_REQUIRE_CHECK_PASS: &'static str = "dont-require-check-pass";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
@@ -296,6 +301,7 @@ impl TestProps {
             known_bug: false,
             pass_mode: None,
             fail_mode: None,
+            dont_require_check_pass: false,
             ignore_pass: false,
             check_test_line_numbers_match: false,
             normalize_stdout: vec![],
@@ -531,6 +537,12 @@ impl TestProps {
 
                     self.update_pass_mode(ln, test_revision, config);
                     self.update_fail_mode(ln, config);
+
+                    config.set_name_directive(
+                        ln,
+                        DONT_REQUIRE_CHECK_PASS,
+                        &mut self.dont_require_check_pass,
+                    );
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
 

@@ -74,6 +74,7 @@ expectations](ui.md#controlling-passfail-expectations).
 | `check-fail`                | Building (no codegen) should fail           | `ui`, `crashes`                           | N/A             |
 | `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `build-fail`                | Building should fail                        | `ui`, `crashes`                           | N/A             |
+| `dont-require-check-pass`   | Skips the implied `check-pass` before a `build-fail` test | `ui`                        | N/A             |
 | `run-pass`                  | Program must exit with code `0`             | `ui`, `crashes`, `incremental`            | N/A             |
 | `run-fail`                  | Program must exit with code `1..=127`       | `ui`, `crashes`                           | N/A             |
 | `run-crash`                 | Program must crash                          | `ui`                                      | N/A             |

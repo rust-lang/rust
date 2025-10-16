@@ -14,7 +14,9 @@ use crate::runtest::ProcRes;
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
-        if let Some(FailMode::Build) = self.props.fail_mode {
+        if let Some(FailMode::Build) = self.props.fail_mode
+            && !self.props.dont_require_check_pass
+        {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
             let pm = Some(PassMode::Check);
             let proc_res =

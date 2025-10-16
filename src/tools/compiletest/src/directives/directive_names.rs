@@ -26,6 +26,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "dont-check-compiler-stdout",
     "dont-check-failure-status",
     "dont-require-annotations",
+    "dont-require-check-pass",
     "edition",
     "error-pattern",
     "exact-llvm-major-version",
