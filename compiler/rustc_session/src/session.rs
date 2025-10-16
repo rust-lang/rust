@@ -603,7 +603,8 @@ impl Session {
         // Autodiff currently requires fat-lto to have access to the llvm-ir of all (indirectly) used functions and types.
         // fat-lto is the easiest solution to this requirement, but quite expensive.
         // FIXME(autodiff): Make autodiff also work with embed-bc instead of fat-lto.
-        if self.opts.autodiff_enabled() {
+        // Don't apply fat-lto to proc-macro crates as they cannot use fat-lto without -Zdylib-lto
+        if self.opts.autodiff_enabled() && !self.opts.crate_types.contains(&CrateType::ProcMacro) {
             return config::Lto::Fat;
         }
 
