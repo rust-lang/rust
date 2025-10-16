@@ -181,8 +181,8 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// end of the scope. In that case, if the spawned thread panics, [`scope`] will
     /// panic after all threads are joined.
     ///
-    /// This function creates a thread with the default parameters. To specify the
-    /// new thread's stack size or the name, use [`Builder::spawn_scoped`].
+    /// This function creates a thread with the default parameters of [`Builder`].
+    /// To specify the new thread's stack size or the name, use [`Builder::spawn_scoped`].
     ///
     /// # Panics
     ///
