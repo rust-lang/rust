@@ -1,9 +1,10 @@
 use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context,
-    is_inherent_method_call, is_no_std_crate, numeric_literal, peel_blocks, sugg, sym,
+    eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context, is_no_std_crate,
+    numeric_literal, peel_blocks, sugg, sym,
 };
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -737,7 +738,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
         if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
-            if recv_ty.is_floating_point() && !is_no_std_crate(cx) && is_inherent_method_call(cx, expr) {
+            if recv_ty.is_floating_point() && !is_no_std_crate(cx) && cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
                 match path.ident.name {
                     sym::ln => check_ln1p(cx, expr, receiver),
                     sym::log => check_log_base(cx, expr, receiver, args),

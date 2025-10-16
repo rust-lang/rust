@@ -1,7 +1,8 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{is_assert_macro, root_macro_call};
-use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context, path_to_local};
+use clippy_utils::res::MaybeResPath;
+use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context};
 use rustc_hir::{Expr, HirId};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::sym;
@@ -45,7 +46,8 @@ fn is_under_cfg(cx: &LateContext<'_>, id: HirId) -> bool {
 /// Similar to [`clippy_utils::expr_or_init`], but does not go up the chain if the initialization
 /// value depends on a `#[cfg(…)]` directive.
 fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
-    while let Some(init) = path_to_local(expr)
+    while let Some(init) = expr
+        .res_local_id()
         .and_then(|id| find_binding_init(cx, id))
         .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
         .filter(|init| !is_under_cfg(cx, init.hir_id))

@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_expn_of, path_def_id, sym};
+use clippy_utils::{is_expn_of, is_in_test, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
@@ -59,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             && let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = *look_in_block(cx, &write_call.kind)
             && let ExprKind::Call(write_recv_path, []) = write_recv.kind
             && write_fun.ident.name == sym::write_fmt
-            && let Some(def_id) = path_def_id(cx, write_recv_path)
+            && let Some(def_id) = write_recv_path.basic_res().opt_def_id()
         {
             // match calls to std::io::stdout() / std::io::stderr ()
             let (dest_name, prefix) = match cx.tcx.get_diagnostic_name(def_id) {
@@ -70,6 +71,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             let Some(format_args) = self.format_args.get(cx, write_arg, ExpnId::root()) else {
                 return;
             };
+
+            // Performing an explicit write in a test circumvent's libtest's capture of stdio and stdout.
+            if is_in_test(cx.tcx, expr.hir_id) {
+                return;
+            }
 
             // ordering is important here, since `writeln!` uses `write!` internally
             let calling_macro = if is_expn_of(write_call.span, sym::writeln).is_some() {

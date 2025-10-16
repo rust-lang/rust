@@ -1,7 +1,7 @@
 if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
-    && is_path_diagnostic_item(cx, func, sym::cmp_min)
+    && func.res(cx).is_diag_item(cx, sym::cmp_min)
     && args.len() == 2
     && let ExprKind::Lit(ref lit) = args[0].kind
     && let LitKind::Int(3, LitIntType::Unsuffixed) = lit.node

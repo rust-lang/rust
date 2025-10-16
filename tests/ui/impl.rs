@@ -68,7 +68,20 @@ struct OneAllowedImpl;
 impl OneAllowedImpl {}
 #[allow(clippy::multiple_inherent_impl)]
 impl OneAllowedImpl {}
-impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+impl OneAllowedImpl {}
+//~^ multiple_inherent_impl
+
+#[expect(clippy::multiple_inherent_impl)]
+struct ExpectedFulfilled;
+
+impl ExpectedFulfilled {}
+impl ExpectedFulfilled {}
+
+struct OneExpected;
+impl OneExpected {}
+#[expect(clippy::multiple_inherent_impl)]
+impl OneExpected {}
+impl OneExpected {}
 //~^ multiple_inherent_impl
 
 fn main() {}

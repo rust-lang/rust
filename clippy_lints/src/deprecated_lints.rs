@@ -7,7 +7,6 @@ macro_rules! declare_with_version {
         $e:expr,
     )*]) => {
         pub static $name: &[(&str, &str)] = &[$($e),*];
-        #[allow(unused)]
         pub static $name_version: &[&str] = &[$($version),*];
     };
 }

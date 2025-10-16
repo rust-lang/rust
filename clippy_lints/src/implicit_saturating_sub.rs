@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn check_manual_check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'tcx>,
@@ -165,7 +165,7 @@ fn check_manual_check<'tcx>(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn check_gt(
     cx: &LateContext<'_>,
     condition_span: Span,
@@ -196,7 +196,7 @@ fn is_side_effect_free(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     eq_expr_value(cx, expr, expr)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn check_subtraction(
     cx: &LateContext<'_>,
     condition_span: Span,

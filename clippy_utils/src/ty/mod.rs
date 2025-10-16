@@ -3,7 +3,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
-use itertools::Itertools;
 use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -22,8 +21,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgsRef, GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -34,8 +33,8 @@ use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::{iter, mem};
 
-use crate::path_res;
 use crate::paths::{PathNS, lookup_path_str};
+use crate::res::{MaybeDef, MaybeQPath};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -157,20 +156,6 @@ pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Optio
         .and_then(|iter_did| cx.get_associated_type(ty, iter_did, sym::Item))
 }
 
-/// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
-/// implements a trait marked with a diagnostic item use [`implements_trait`].
-///
-/// For a further exploitation what diagnostic items are see [diagnostic items] in
-/// rustc-dev-guide.
-///
-/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
-pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.get_diagnostic_name(adt.did()),
-        _ => None,
-    }
-}
-
 /// Returns true if `ty` is a type on which calling `Clone` through a function instead of
 /// as a method, such as `Arc::clone()` is considered idiomatic.
 ///
@@ -178,7 +163,7 @@ pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symb
 /// of those types.
 pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     matches!(
-        get_type_diagnostic_name(cx, ty),
+        ty.opt_diag_name(cx),
         Some(sym::Arc | sym::ArcWeak | sym::Rc | sym::RcWeak)
     )
 }
@@ -379,42 +364,6 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
-/// Checks if the type is a reference equals to a diagnostic item
-pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.kind() {
-        ty::Ref(_, ref_ty, _) => is_type_diagnostic_item(cx, *ref_ty, diag_item),
-        _ => false,
-    }
-}
-
-/// Checks if the type is equal to a diagnostic item. To check if a type implements a
-/// trait marked with a diagnostic item use [`implements_trait`].
-///
-/// For a further exploitation what diagnostic items are see [diagnostic items] in
-/// rustc-dev-guide.
-///
-/// ---
-///
-/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
-///
-/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
-pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did()),
-        _ => false,
-    }
-}
-
-/// Checks if the type is equal to a lang item.
-///
-/// Returns `false` if the `LangItem` is not defined.
-pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
-        _ => false,
-    }
-}
-
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
@@ -433,9 +382,9 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         }
         // Check for std types which implement drop, but only for memory allocation.
-        else if is_type_lang_item(cx, ty, LangItem::OwnedBox)
+        else if ty.is_lang_item(cx, LangItem::OwnedBox)
             || matches!(
-                get_type_diagnostic_name(cx, ty),
+                ty.opt_diag_name(cx),
                 Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type | sym::RcWeak | sym::ArcWeak)
             )
         {
@@ -628,7 +577,7 @@ impl<'tcx> ExprFnSig<'tcx> {
 
 /// If the expression is function like, get the signature for it.
 pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
-    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = path_res(cx, expr) {
+    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = expr.res(cx) {
         Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate_identity(), Some(id)))
     } else {
         ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
@@ -953,9 +902,10 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     }
 }
 
+#[cfg(debug_assertions)]
 /// Asserts that the given arguments match the generic parameters of the given item.
-#[allow(dead_code)]
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
+    use itertools::Itertools;
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
     let count = g.parent_count + g.own_params.len();
@@ -971,7 +921,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
             note: the expected arguments are: `[{}]`\n\
             the given arguments are: `{args:#?}`",
         args.len(),
-        params.clone().map(GenericParamDefKind::descr).format(", "),
+        params.clone().map(ty::GenericParamDefKind::descr).format(", "),
     );
 
     if let Some((idx, (param, arg))) =
@@ -980,13 +930,13 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
             .zip(args.iter().map(|&x| x.kind()))
             .enumerate()
             .find(|(_, (param, arg))| match (param, arg) {
-                (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
-                | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
-                | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
+                (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
                 (
-                    GenericParamDefKind::Lifetime
-                    | GenericParamDefKind::Type { .. }
-                    | GenericParamDefKind::Const { .. },
+                    ty::GenericParamDefKind::Lifetime
+                    | ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Const { .. },
                     _,
                 ) => true,
             })
@@ -996,7 +946,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
                 note: the expected arguments are `[{}]`\n\
                 the given arguments are `{args:#?}`",
             param.descr(),
-            params.clone().map(GenericParamDefKind::descr).format(", "),
+            params.clone().map(ty::GenericParamDefKind::descr).format(", "),
         );
     }
 }
@@ -1299,11 +1249,14 @@ pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) ->
 
 /// Check if `ty` is an `Option` and return its argument type if it is.
 pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match ty.kind() {
-        ty::Adt(adt, args) => cx
-            .tcx
-            .is_diagnostic_item(sym::Option, adt.did())
-            .then(|| args.type_at(0)),
+    match *ty.kind() {
+        ty::Adt(adt, args)
+            if let [arg] = &**args
+                && let Some(arg) = arg.as_type()
+                && adt.is_diag_item(cx, sym::Option) =>
+        {
+            Some(arg)
+        },
         _ => None,
     }
 }
@@ -1357,7 +1310,7 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
 
 /// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.
 pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_slice() || ty.is_array() || is_type_diagnostic_item(cx, ty, sym::Vec)
+    ty.is_slice() || ty.is_array() || ty.is_diag_item(cx, sym::Vec)
 }
 
 pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {

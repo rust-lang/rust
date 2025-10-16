@@ -1,0 +1,67 @@
+#![warn(clippy::mutex_integer)]
+#![warn(clippy::mutex_atomic)]
+#![allow(clippy::borrow_as_ptr)]
+
+use std::sync::Mutex;
+
+fn main() {
+    let _ = std::sync::atomic::AtomicBool::new(true);
+    //~^ mutex_atomic
+
+    let _ = std::sync::atomic::AtomicUsize::new(5usize);
+    //~^ mutex_atomic
+
+    let _ = std::sync::atomic::AtomicIsize::new(9isize);
+    //~^ mutex_atomic
+
+    let mut x = 4u32;
+    // `AtomicPtr` only accepts `*mut T`, so this should not lint
+    let _ = Mutex::new(&x as *const u32);
+
+    let _ = std::sync::atomic::AtomicPtr::new(&mut x as *mut u32);
+    //~^ mutex_atomic
+
+    let _ = std::sync::atomic::AtomicU32::new(0u32);
+    //~^ mutex_integer
+
+    let _ = std::sync::atomic::AtomicI32::new(0i32);
+    //~^ mutex_integer
+
+    let _ = Mutex::new(0f32); // there are no float atomics, so this should not lint
+    let _ = std::sync::atomic::AtomicU8::new(0u8);
+    //~^ mutex_integer
+
+    let _ = std::sync::atomic::AtomicI16::new(0i16);
+    //~^ mutex_integer
+
+    let _x = std::sync::atomic::AtomicI8::new(0);
+    //~^ mutex_integer
+
+    const X: i64 = 0;
+    let _ = std::sync::atomic::AtomicI64::new(X);
+    //~^ mutex_integer
+
+    // there are no 128 atomics, so these two should not lint
+    {
+        let _ = Mutex::new(0u128);
+        let _x: Mutex<i128> = Mutex::new(0);
+    }
+}
+
+// don't lint on _use_, only declaration
+fn issue13378() {
+    static MTX: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    //~^ mutex_integer
+
+    let mtx = std::sync::atomic::AtomicI32::new(0);
+    //~^ mutex_integer
+    // This will still lint, since we're reassigning the mutex to a variable -- oh well.
+    // But realistically something like this won't really come up.
+    let reassigned = mtx;
+    //~^ mutex_integer
+
+    // don't eat the `)` when removing the type ascription -- see
+    // https://github.com/rust-lang/rust-clippy/issues/15377
+    let (funky_mtx) = std::sync::atomic::AtomicU64::new(0);
+    //~^ mutex_integer
+}

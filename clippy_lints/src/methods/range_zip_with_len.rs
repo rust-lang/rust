@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt as _, snippet_with_applicability};
-use clippy_utils::{SpanlessEq, get_parent_expr, higher, is_integer_const, is_trait_method, sym};
+use clippy_utils::{SpanlessEq, get_parent_expr, higher, is_integer_const, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
@@ -8,7 +9,7 @@ use rustc_lint::LateContext;
 use super::RANGE_ZIP_WITH_LEN;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>, zip_arg: &'tcx Expr<'_>) {
-    if is_trait_method(cx, expr, sym::Iterator)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // range expression in `.zip()` call: `0..x.len()`
         && let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg)
         && is_integer_const(cx, start, 0)
@@ -82,7 +83,7 @@ fn for_loop_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Optio
 /// them to a closure, return the pattern of the closure.
 fn methods_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Pat<'tcx>> {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
-        && is_trait_method(cx, expr, sym::Iterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let ExprKind::MethodCall(method, recv, [arg], _) = parent_expr.kind
         && recv.hir_id == expr.hir_id
         && matches!(
