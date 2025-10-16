@@ -1,4 +1,5 @@
 use genmc_sys::{ActionKind, ExecutionState};
+use rustc_data_structures::either::Either;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, Ty};
 
@@ -38,7 +39,7 @@ fn get_next_instruction_kind<'tcx>(
     let Some(frame) = thread_manager.active_thread_stack().last() else {
         return interp_ok(NonAtomic);
     };
-    let either::Either::Left(loc) = frame.current_loc() else {
+    let Either::Left(loc) = frame.current_loc() else {
         // We are unwinding, so the next step is definitely not atomic.
         return interp_ok(NonAtomic);
     };

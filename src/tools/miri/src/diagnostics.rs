@@ -139,6 +139,7 @@ pub enum NonHaltingDiagnostic {
     NativeCallSharedMem {
         tracing: bool,
     },
+    NativeCallFnPtr,
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
@@ -644,6 +645,11 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
             NativeCallSharedMem { .. } =>
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
+            NativeCallFnPtr =>
+                (
+                    "sharing a function pointer with a native function".to_string(),
+                    DiagLevel::Warning,
+                ),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
             GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
@@ -682,6 +688,8 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
             NativeCallSharedMem { .. } =>
                 format!("sharing memory with a native function called via FFI"),
+            NativeCallFnPtr =>
+                format!("sharing a function pointer with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
@@ -779,6 +787,11 @@ impl<'tcx> MiriMachine<'tcx> {
                         ),
                     ]
                 },
+            NativeCallFnPtr => {
+                vec![note!(
+                    "calling Rust functions from C is not supported and will, in the best case, crash the program"
+                )]
+            }
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(
