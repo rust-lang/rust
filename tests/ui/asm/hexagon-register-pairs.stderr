@@ -1,5 +1,5 @@
 error: avoid using named labels in inline assembly
-  --> $DIR/hexagon-register-pairs.rs:29:15
+  --> $DIR/hexagon-register-pairs.rs:30:15
    |
 LL |         asm!("label1: r7:6 = combine(#2, #3)");
    |               ^^^^^^
@@ -9,7 +9,7 @@ LL |         asm!("label1: r7:6 = combine(#2, #3)");
    = note: `#[deny(named_asm_labels)]` on by default
 
 error: avoid using named labels in inline assembly
-  --> $DIR/hexagon-register-pairs.rs:32:15
+  --> $DIR/hexagon-register-pairs.rs:33:15
    |
 LL |         asm!("hexagon_label: nop");
    |               ^^^^^^^^^^^^^

@@ -1,6 +1,7 @@
 //@ add-core-stubs
 //@ compile-flags: --target hexagon-unknown-linux-musl -C target-feature=+hvx-length128b
 //@ needs-llvm-components: hexagon
+//@ ignore-backends: gcc
 
 #![feature(no_core, asm_experimental_arch)]
 #![crate_type = "lib"]
