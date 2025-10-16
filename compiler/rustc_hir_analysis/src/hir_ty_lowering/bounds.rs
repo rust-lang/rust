@@ -202,9 +202,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             //        where we are guaranteed to catch *all* bounds like in
             //        `Self::lower_poly_trait_ref`. List of concrete issues:
             //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
-            //                                  bounds or associated type bounds (ATB)!
-            //        FIXME(trait_alias, #143122): We don't call it for the RHS. Arguably however,
-            //                                     AST lowering should reject them outright.
+            //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
             let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
             self.check_and_report_invalid_relaxed_bounds(bounds);
         }

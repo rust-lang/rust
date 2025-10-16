@@ -55,7 +55,15 @@ LL | trait Tr: ?Sized {}
    = note: traits are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:33:20
+  --> $DIR/relaxed-bounds-invalid-places.rs:33:15
+   |
+LL | type O0 = dyn ?Sized;
+   |               ^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/relaxed-bounds-invalid-places.rs:36:20
    |
 LL | type O1 = dyn Tr + ?Sized;
    |                    ^^^^^^
@@ -63,7 +71,7 @@ LL | type O1 = dyn Tr + ?Sized;
    = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:34:15
+  --> $DIR/relaxed-bounds-invalid-places.rs:37:15
    |
 LL | type O2 = dyn ?Sized + ?Sized + Tr;
    |               ^^^^^^
@@ -71,7 +79,7 @@ LL | type O2 = dyn ?Sized + ?Sized + Tr;
    = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/relaxed-bounds-invalid-places.rs:34:24
+  --> $DIR/relaxed-bounds-invalid-places.rs:37:24
    |
 LL | type O2 = dyn ?Sized + ?Sized + Tr;
    |                        ^^^^^^
@@ -90,5 +98,12 @@ error: bound modifier `?` can only be applied to `Sized`
 LL | struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
    |                                 ^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/relaxed-bounds-invalid-places.rs:33:11
+   |
+LL | type O0 = dyn ?Sized;
+   |           ^^^^^^^^^^
 
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

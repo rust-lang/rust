@@ -296,6 +296,7 @@ enum RelaxedBoundPolicy<'a> {
 enum RelaxedBoundForbiddenReason {
     TraitObjectTy,
     SuperTrait,
+    TraitAlias,
     AssocTyBounds,
     LateBoundVarsInScope,
 }
@@ -2130,6 +2131,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
                         gate("supertrait bounds", "traits");
+                        return;
+                    }
+                    RelaxedBoundForbiddenReason::TraitAlias => {
+                        gate("trait alias bounds", "trait aliases");
                         return;
                     }
                     RelaxedBoundForbiddenReason::AssocTyBounds
