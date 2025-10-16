@@ -466,7 +466,7 @@ impl<'a> Parser<'a> {
 
     // Public for rustfmt usage.
     pub fn parse_ident(&mut self) -> PResult<'a, Ident> {
-        self.parse_ident_common(true)
+        self.parse_ident_common(self.may_recover())
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
