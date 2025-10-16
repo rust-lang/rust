@@ -809,7 +809,6 @@ ui/consts/issue-94371.rs
 ui/consts/issue-94675.rs
 ui/consts/issue-96169.rs
 ui/coroutine/issue-102645.rs
-ui/coroutine/issue-105084.rs
 ui/coroutine/issue-110929-coroutine-conflict-error-ice.rs
 ui/coroutine/issue-113279.rs
 ui/coroutine/issue-44197.rs

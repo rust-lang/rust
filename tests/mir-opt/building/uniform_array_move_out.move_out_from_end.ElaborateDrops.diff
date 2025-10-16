@@ -5,134 +5,97 @@
       let mut _0: ();
       let _1: [std::boxed::Box<i32>; 2];
       let mut _2: std::boxed::Box<i32>;
-      let mut _3: usize;
-      let mut _4: usize;
-      let mut _5: *mut u8;
-      let mut _6: std::boxed::Box<i32>;
-      let mut _7: std::boxed::Box<i32>;
-      let mut _8: usize;
-      let mut _9: usize;
-      let mut _10: *mut u8;
-      let mut _11: std::boxed::Box<i32>;
+      let mut _3: std::boxed::Box<i32>;
       scope 1 {
           debug a => _1;
-          let _12: std::boxed::Box<i32>;
+          let _4: std::boxed::Box<i32>;
           scope 2 {
-              debug _y => _12;
+              debug _y => _4;
           }
       }
   
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _3 = SizeOf(i32);
-          _4 = AlignOf(i32);
-          _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind continue];
+          _2 = Box::<i32>::new(const 1_i32) -> [return: bb1, unwind continue];
       }
   
       bb1: {
-          StorageLive(_6);
-          _6 = ShallowInitBox(move _5, i32);
-          (*_6) = const 1_i32;
-          _2 = move _6;
--         drop(_6) -> [return: bb2, unwind: bb11];
-+         goto -> bb2;
+          StorageLive(_3);
+          _3 = Box::<i32>::new(const 2_i32) -> [return: bb2, unwind: bb8];
       }
   
       bb2: {
-          StorageDead(_6);
-          StorageLive(_7);
-          _8 = SizeOf(i32);
-          _9 = AlignOf(i32);
-          _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb11];
+          _1 = [move _2, move _3];
+-         drop(_3) -> [return: bb3, unwind: bb8];
++         goto -> bb3;
       }
   
       bb3: {
-          StorageLive(_11);
-          _11 = ShallowInitBox(move _10, i32);
-          (*_11) = const 2_i32;
-          _7 = move _11;
--         drop(_11) -> [return: bb4, unwind: bb10];
+          StorageDead(_3);
+-         drop(_2) -> [return: bb4, unwind continue];
 +         goto -> bb4;
       }
   
       bb4: {
-          StorageDead(_11);
-          _1 = [move _2, move _7];
--         drop(_7) -> [return: bb5, unwind: bb11];
-+         goto -> bb5;
+          StorageDead(_2);
+          PlaceMention(_1);
+          StorageLive(_4);
+          _4 = move _1[1 of 2];
+          _0 = const ();
+          drop(_4) -> [return: bb5, unwind: bb7];
       }
   
       bb5: {
-          StorageDead(_7);
--         drop(_2) -> [return: bb6, unwind continue];
-+         goto -> bb6;
+          StorageDead(_4);
+-         drop(_1) -> [return: bb6, unwind continue];
++         goto -> bb14;
       }
   
       bb6: {
-          StorageDead(_2);
-          PlaceMention(_1);
-          StorageLive(_12);
-          _12 = move _1[1 of 2];
-          _0 = const ();
-          drop(_12) -> [return: bb7, unwind: bb9];
-      }
-  
-      bb7: {
-          StorageDead(_12);
--         drop(_1) -> [return: bb8, unwind continue];
-+         goto -> bb17;
-      }
-  
-      bb8: {
           StorageDead(_1);
           return;
       }
   
+      bb7 (cleanup): {
+-         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
++         goto -> bb16;
+      }
+  
+      bb8 (cleanup): {
+          drop(_2) -> [return: bb9, unwind terminate(cleanup)];
+      }
+  
       bb9 (cleanup): {
--         drop(_1) -> [return: bb12, unwind terminate(cleanup)];
-+         goto -> bb19;
-      }
-  
-      bb10 (cleanup): {
--         drop(_7) -> [return: bb11, unwind terminate(cleanup)];
-+         goto -> bb11;
-      }
-  
-      bb11 (cleanup): {
-          drop(_2) -> [return: bb12, unwind terminate(cleanup)];
-      }
-  
-      bb12 (cleanup): {
           resume;
 +     }
 + 
-+     bb13: {
-+         goto -> bb8;
++     bb10: {
++         goto -> bb6;
 +     }
 + 
-+     bb14 (cleanup): {
-+         drop(_1[0..1]) -> [return: bb12, unwind terminate(cleanup)];
++     bb11 (cleanup): {
++         drop(_1[0..1]) -> [return: bb9, unwind terminate(cleanup)];
++     }
++ 
++     bb12 (cleanup): {
++         goto -> bb11;
++     }
++ 
++     bb13: {
++         drop(_1[0..1]) -> [return: bb10, unwind: bb9];
++     }
++ 
++     bb14: {
++         goto -> bb13;
 +     }
 + 
 +     bb15 (cleanup): {
-+         goto -> bb14;
++         drop(_1[0..1]) -> [return: bb9, unwind terminate(cleanup)];
 +     }
 + 
-+     bb16: {
-+         drop(_1[0..1]) -> [return: bb13, unwind: bb12];
-+     }
-+ 
-+     bb17: {
-+         goto -> bb16;
-+     }
-+ 
-+     bb18 (cleanup): {
-+         drop(_1[0..1]) -> [return: bb12, unwind terminate(cleanup)];
-+     }
-+ 
-+     bb19 (cleanup): {
-+         goto -> bb18;
++     bb16 (cleanup): {
++         goto -> bb15;
       }
   }
   
