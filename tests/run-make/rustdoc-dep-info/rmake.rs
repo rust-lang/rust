@@ -54,6 +54,6 @@ fn main() {
         .emit("dep-info=-")
         .run();
     assert!(!path("precedence1.d").exists());
-    assert!(path("-").exists()); // `-` be treated as a file path
-    assert!(result.stdout().is_empty()); // Nothing emitted to stdout
+    assert!(!path("-").exists()); // `-` shouldn't be treated as a file path
+    assert!(!result.stdout().is_empty()); // Something emitted to stdout
 }
