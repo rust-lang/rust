@@ -76,7 +76,7 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:74:24
+  --> tests/ui/manual_unwrap_or_default.rs:83:24
    |
 LL |               Some(_) => match *b {
    |  ________________________^
@@ -87,7 +87,7 @@ LL | |             },
    | |_____________^ help: replace it with: `(*b).unwrap_or_default()`
 
 error: if let can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:143:5
+  --> tests/ui/manual_unwrap_or_default.rs:152:5
    |
 LL | /     if let Some(x) = Some(42) {
 LL | |

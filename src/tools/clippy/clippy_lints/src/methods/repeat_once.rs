@@ -1,7 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, LangItem};
 use rustc_lint::LateContext;
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
                 format!("{}.to_vec()", snippet(cx, recv.span, r#""...""#)),
                 Applicability::MachineApplicable,
             );
-        } else if is_type_lang_item(cx, ty, LangItem::String) {
+        } else if ty.is_lang_item(cx, LangItem::String) {
             span_lint_and_sugg(
                 cx,
                 REPEAT_ONCE,

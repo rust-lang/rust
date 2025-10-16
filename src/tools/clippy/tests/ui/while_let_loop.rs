@@ -24,6 +24,19 @@ fn main() {
 
     loop {
         //~^ while_let_loop
+        let Some(_x) = y else { break };
+    }
+
+    loop {
+        // no error, else branch does something other than break
+        let Some(_x) = y else {
+            let _z = 1;
+            break;
+        };
+    }
+
+    loop {
+        //~^ while_let_loop
 
         match y {
             Some(_x) => true,

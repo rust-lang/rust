@@ -1,4 +1,4 @@
-use clippy_utils::path_res;
+use clippy_utils::res::MaybeResPath;
 use rustc_hir::def::Res;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             self_ty,
             ..
         }) = item.kind
-            && let Res::Def(_, def_id) = path_res(cx, self_ty)
+            && let Res::Def(_, def_id) = *self_ty.basic_res()
             && let Some(local_def_id) = def_id.as_local()
         {
             let adt_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);

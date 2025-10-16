@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{expr_type_is_certain, has_drop};
-use clippy_utils::{
-    in_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
-};
+use clippy_utils::{in_automatically_derived, is_inside_always_const_context, is_lint_allowed, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
@@ -109,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
     }
 
     fn check_expr(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let Some(def_id) = path_to_local(expr) {
+        if let Some(def_id) = expr.res_local_id() {
             self.underscore_bindings.swap_remove(&def_id);
         }
     }

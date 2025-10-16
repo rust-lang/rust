@@ -970,7 +970,7 @@ fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a
 /// This walks the "events" (think sections of markdown) produced by `pulldown_cmark`,
 /// so lints here will generally access that information.
 /// Returns documentation headers -- whether a "Safety", "Errors", "Panic" section was found
-#[allow(clippy::too_many_lines)] // Only a big match statement
+#[expect(clippy::too_many_lines, reason = "big match statement")]
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,

@@ -167,7 +167,7 @@ declare_clippy_lint! {
 impl_lint_pass!(ArbitrarySourceItemOrdering => [ARBITRARY_SOURCE_ITEM_ORDERING]);
 
 #[derive(Debug)]
-#[allow(clippy::struct_excessive_bools)] // Bools are cached feature flags.
+#[expect(clippy::struct_excessive_bools, reason = "Bools are cached feature flags")]
 pub struct ArbitrarySourceItemOrdering {
     assoc_types_order: SourceItemOrderingTraitAssocItemKinds,
     enable_ordering_for_enum: bool,

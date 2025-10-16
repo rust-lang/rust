@@ -240,7 +240,7 @@ fn is_label_for_block(cx: &LateContext<'_>, dest: &Destination) -> bool {
         .is_ok_and(|hir_id| matches!(cx.tcx.hir_node(hir_id), Node::Block(_)))
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn never_loop_expr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'tcx>,

@@ -232,9 +232,7 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } => {
-            check_place(cx, **place, span, body, msrv)
-        },
+        StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
