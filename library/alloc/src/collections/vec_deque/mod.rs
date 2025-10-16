@@ -24,11 +24,6 @@ use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
-#[unstable(feature = "vec_deque_extract_if", issue = "147750")]
-pub use self::extract_if::ExtractIf;
-
-mod extract_if;
-
 #[macro_use]
 mod macros;
 
@@ -36,6 +31,11 @@ mod macros;
 pub use self::drain::Drain;
 
 mod drain;
+
+#[unstable(feature = "vec_deque_extract_if", issue = "147750")]
+pub use self::extract_if::ExtractIf;
+
+mod extract_if;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iter_mut::IterMut;
