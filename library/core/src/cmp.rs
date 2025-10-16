@@ -1855,6 +1855,7 @@ mod impls {
     use crate::hint::unreachable_unchecked;
     use crate::marker::PointeeSized;
     use crate::ops::ControlFlow::{self, Break, Continue};
+    use crate::panic::const_assert;
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
@@ -2002,7 +2003,13 @@ mod impls {
                 #[track_caller]
                 fn clamp(self, min: Self, max: Self) -> Self
                 {
-                    assert!(min <= max, "min > max. min = {min}, max = {max}");
+                    const_assert!(
+                        min <= max,
+                        "min > max",
+                        "min > max. min = {min:?}, max = {max:?}",
+                        min: $t,
+                        max: $t,
+                    );
                     if self < min {
                         min
                     } else if self > max {
