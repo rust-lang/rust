@@ -9,6 +9,4 @@ clap = "4"
 
 // crlf line endings should be accepted
 
-#![feature(frontmatter)]
-
 fn main() {}
