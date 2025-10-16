@@ -2719,7 +2719,7 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if attr.is_doc_comment() {
+        if attr.is_doc_comment().is_some() {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }

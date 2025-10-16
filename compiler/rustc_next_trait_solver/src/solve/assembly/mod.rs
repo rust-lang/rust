@@ -9,7 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
@@ -26,11 +26,6 @@ use crate::solve::{
     MaybeCause, NoSolution, OpaqueTypesJank, ParamEnvSource, QueryResult,
     has_no_inference_or_external_constraints,
 };
-
-enum AliasBoundKind {
-    SelfBounds,
-    NonSelfBounds,
-}
 
 /// A candidate is a possible way to prove a goal.
 ///
@@ -451,7 +446,7 @@ where
                         matches!(
                             c.source,
                             CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound
+                                | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
                     })
                 {
@@ -711,7 +706,7 @@ where
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
                     candidates.push(Candidate {
-                        source: CandidateSource::AliasBound,
+                        source: CandidateSource::AliasBound(consider_self_bounds),
                         result,
                         head_usages: CandidateHeadUsages::default(),
                     });
@@ -735,7 +730,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound,
+                        CandidateSource::AliasBound(consider_self_bounds),
                         goal,
                         assumption,
                         [],
@@ -750,7 +745,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound,
+                        CandidateSource::AliasBound(consider_self_bounds),
                         goal,
                         assumption,
                         [],
@@ -1030,7 +1025,7 @@ where
                     item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
                 candidates.extend(G::probe_and_match_goal_against_assumption(
                     self,
-                    CandidateSource::AliasBound,
+                    CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
                     goal,
                     assumption,
                     |ecx| {

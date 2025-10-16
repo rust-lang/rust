@@ -393,7 +393,7 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment() {
+    if attr.is_doc_comment().is_some() {
         return true;
     }
 
