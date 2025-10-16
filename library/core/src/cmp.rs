@@ -1999,6 +1999,7 @@ mod impls {
                 }
 
                 #[inline]
+                #[track_caller]
                 fn clamp(self, min: Self, max: Self) -> Self
                 {
                     assert!(min <= max, "min > max. min = {min}, max = {max}");
