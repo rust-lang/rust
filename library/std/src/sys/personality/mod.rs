@@ -17,7 +17,7 @@ cfg_select! {
     target_os = "emscripten" => {
         mod emcc;
     }
-    any(target_env = "msvc", target_family = "wasm") => {
+    any(target_env = "msvc", target_family = "wasm", target_os = "motor") => {
         // This is required by the compiler to exist (e.g., it's a lang item),
         // but it's never actually called by the compiler because
         // __CxxFrameHandler3 (msvc) / __gxx_wasm_personality_v0 (wasm) is the
