@@ -7,7 +7,7 @@ use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::either;
-use rustc_middle::ty::layout::HasTypingEnv;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
 use serde::{Deserialize, Serialize};
@@ -278,7 +278,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This should go first so that we emit unsupported before doing a bunch
         // of extra work for types that aren't supported yet.
-        let ty = this.ty_to_ffitype(v.layout.ty)?;
+        let ty = this.ty_to_ffitype(v.layout)?;
 
         // Helper to print a warning when a pointer is shared with the native code.
         let expose = |prov: Provenance| -> InterpResult<'tcx> {
@@ -387,34 +387,44 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         let mut fields = vec![];
         for field in &adt_def.non_enum_variant().fields {
-            fields.push(this.ty_to_ffitype(field.ty(*this.tcx, args))?);
+            let layout = this.layout_of(field.ty(*this.tcx, args))?;
+            fields.push(this.ty_to_ffitype(layout)?);
         }
 
         interp_ok(FfiType::structure(fields))
     }
 
     /// Gets the matching libffi type for a given Ty.
-    fn ty_to_ffitype(&self, ty: Ty<'tcx>) -> InterpResult<'tcx, FfiType> {
-        let this = self.eval_context_ref();
-        interp_ok(match ty.kind() {
-            ty::Int(IntTy::I8) => FfiType::i8(),
-            ty::Int(IntTy::I16) => FfiType::i16(),
-            ty::Int(IntTy::I32) => FfiType::i32(),
-            ty::Int(IntTy::I64) => FfiType::i64(),
-            ty::Int(IntTy::Isize) => FfiType::isize(),
-            ty::Uint(UintTy::U8) => FfiType::u8(),
-            ty::Uint(UintTy::U16) => FfiType::u16(),
-            ty::Uint(UintTy::U32) => FfiType::u32(),
-            ty::Uint(UintTy::U64) => FfiType::u64(),
-            ty::Uint(UintTy::Usize) => FfiType::usize(),
-            ty::RawPtr(pointee_ty, _mut) => {
-                if !pointee_ty.is_sized(*this.tcx, this.typing_env()) {
-                    throw_unsup_format!("passing a pointer to an unsized type over FFI: {}", ty);
-                }
-                FfiType::pointer()
-            }
-            ty::Adt(adt_def, args) => self.adt_to_ffitype(ty, *adt_def, args)?,
-            _ => throw_unsup_format!("unsupported argument type for native call: {}", ty),
+    fn ty_to_ffitype(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, FfiType> {
+        use rustc_abi::{AddressSpace, BackendRepr, Integer, Primitive};
+
+        // `BackendRepr::Scalar` is also a signal to pass this type as a scalar in the ABI. This
+        // matches what codegen does. This does mean that we support some types whose ABI is not
+        // stable, but that's fine -- we are anyway quite conservative in native-lib mode.
+        if let BackendRepr::Scalar(s) = layout.backend_repr {
+            // Simple sanity-check: this cannot be `repr(C)`.
+            assert!(!layout.ty.ty_adt_def().is_some_and(|adt| adt.repr().c()));
+            return interp_ok(match s.primitive() {
+                Primitive::Int(Integer::I8, /* signed */ true) => FfiType::i8(),
+                Primitive::Int(Integer::I16, /* signed */ true) => FfiType::i16(),
+                Primitive::Int(Integer::I32, /* signed */ true) => FfiType::i32(),
+                Primitive::Int(Integer::I64, /* signed */ true) => FfiType::i64(),
+                Primitive::Int(Integer::I8, /* signed */ false) => FfiType::u8(),
+                Primitive::Int(Integer::I16, /* signed */ false) => FfiType::u16(),
+                Primitive::Int(Integer::I32, /* signed */ false) => FfiType::u32(),
+                Primitive::Int(Integer::I64, /* signed */ false) => FfiType::u64(),
+                Primitive::Pointer(AddressSpace::ZERO) => FfiType::pointer(),
+                _ =>
+                    throw_unsup_format!(
+                        "unsupported scalar argument type for native call: {}",
+                        layout.ty
+                    ),
+            });
+        }
+        interp_ok(match layout.ty.kind() {
+            // Scalar types have already been handled above.
+            ty::Adt(adt_def, args) => self.adt_to_ffitype(layout.ty, *adt_def, args)?,
+            _ => throw_unsup_format!("unsupported argument type for native call: {}", layout.ty),
         })
     }
 }
@@ -455,6 +465,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // pointer was passed as argument). Uninitialised memory is left as-is, but any data
         // exposed this way is garbage anyway.
         this.visit_reachable_allocs(this.exposed_allocs(), |this, alloc_id, info| {
+            if matches!(info.kind, AllocKind::Function) {
+                static DEDUP: AtomicBool = AtomicBool::new(false);
+                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallFnPtr);
+                }
+            }
             // If there is no data behind this pointer, skip this.
             if !matches!(info.kind, AllocKind::LiveData) {
                 return interp_ok(());
