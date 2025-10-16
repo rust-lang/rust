@@ -429,7 +429,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             | Rvalue::WrapUnsafeBinder(operand, _) => {
                 self.validate_operand(operand)?;
             }
-            Rvalue::CopyForDeref(place) => {
+            Rvalue::CopyForDeref(place) | Rvalue::Reborrow(place) => {
                 let op = &Operand::Copy(*place);
                 self.validate_operand(op)?
             }

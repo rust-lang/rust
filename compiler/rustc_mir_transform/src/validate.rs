@@ -1016,7 +1016,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) => {}
+            Rvalue::Use(_) | Rvalue::Reborrow(_) => {}
             Rvalue::CopyForDeref(_) => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");

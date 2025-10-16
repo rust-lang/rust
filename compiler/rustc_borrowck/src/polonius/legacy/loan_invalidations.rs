@@ -325,6 +325,11 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             }
 
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
+            &Rvalue::Reborrow(place) => {
+                let access_kind = (Deep, Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { kind: MutBorrowKind::TwoPhaseBorrow })));
+
+                self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
+            }
         }
     }
 

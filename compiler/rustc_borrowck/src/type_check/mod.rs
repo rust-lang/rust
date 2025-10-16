@@ -558,6 +558,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location:Location) {
+        // check rvalue is Reborrow
+        if let Rvalue::Reborrow(rvalue) = rvalue {
+            self.add_generic_reborrow_constraint(location, place, rvalue);
+        } else {
+            // rest of the cases
+            self.super_assign(place, rvalue, location);
+        }
+    }
+
     fn visit_span(&mut self, span: Span) {
         if !span.is_dummy() {
             debug!(?span);
@@ -1600,6 +1610,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 self.add_reborrow_constraint(location, *region, borrowed_place);
             }
 
+
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
                 box (left, right),
@@ -1677,7 +1688,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::Reborrow(_) => {}
         }
     }
 
@@ -2243,7 +2255,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::WrapUnsafeBinder(..) => None,
+            | Rvalue::WrapUnsafeBinder(..)
+            | Rvalue::Reborrow(_) => None,
 
             Rvalue::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
@@ -2439,6 +2452,56 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn add_generic_reborrow_constraint(
+        &mut self,
+        location: Location,
+        dest: &Place<'tcx>,
+        borrowed_place: &Place<'tcx>
+    ) {
+        // In Polonius mode, we also push a `loan_issued_at` fact
+        // linking the loan to the region (in some cases, though,
+        // there is no loan associated with this borrow expression --
+        // that occurs when we are borrowing an unsafe place, for
+        // example).
+        // if let Some(polonius_facts) = polonius_facts {
+        //     let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
+        //     if let Some(borrow_index) = borrow_set.get_index_of(&location) {
+        //         let region_vid = borrow_region.as_var();
+        //         polonius_facts.loan_issued_at.push((
+        //             region_vid.into(),
+        //             borrow_index,
+        //             location_table.mid_index(location),
+        //         ));
+        //     }
+        // }
+
+        // If we are reborrowing the referent of another reference, we
+        // need to add outlives relationships. In a case like `&mut
+        // *p`, where the `p` has type `&'b mut Foo`, for example, we
+        // need to ensure that `'b: 'a`.
+
+        debug!(
+            "add_generic_reborrow_constraint({:?}, {:?}, {:?})",
+            location, dest, borrowed_place
+        );
+
+        let tcx = self.infcx.tcx;
+        let def = self.body.source.def_id().expect_local();
+        let upvars = tcx.closure_captures(def);
+        let field =
+            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), self.body);
+        let category = if let Some(field) = field {
+            ConstraintCategory::ClosureUpvar(field)
+        } else {
+            ConstraintCategory::Boring
+        };
+
+        let dest_ty = dest.ty(self.body, tcx).ty;
+        let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
+
+        self.relate_types(borrowed_ty, ty::Variance::Covariant, dest_ty, location.to_locations(), category).unwrap();
     }
 
     fn prove_aggregate_predicates(

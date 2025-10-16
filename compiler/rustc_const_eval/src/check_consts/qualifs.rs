@@ -276,6 +276,8 @@ where
             // Otherwise, proceed structurally...
             operands.iter().any(|o| in_operand::<Q, _>(cx, in_local, o))
         }
+
+        Rvalue::Reborrow(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
     }
 }
 

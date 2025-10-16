@@ -191,6 +191,16 @@ where
                 }
             }
 
+            mir::Rvalue::Reborrow(borrowed_place) => {
+                if !borrowed_place.is_indirect() {
+                    let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
+                    if Q::in_any_value_of_ty(self.ccx, place_ty) {
+                        self.state.qualif.insert(borrowed_place.local);
+                        self.state.borrow.insert(borrowed_place.local);
+                    }
+                }
+            }
+
             mir::Rvalue::Cast(..)
             | mir::Rvalue::ShallowInitBox(..)
             | mir::Rvalue::Use(..)
