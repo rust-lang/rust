@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::path_to_local;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SourceText, SpanRangeExt, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
@@ -116,7 +116,7 @@ impl LocalAssign {
             }
 
             Some(Self {
-                lhs_id: path_to_local(lhs)?,
+                lhs_id: lhs.res_local_id()?,
                 rhs_span: rhs.span.source_callsite(),
                 span,
             })

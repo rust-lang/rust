@@ -1,11 +1,9 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::VecArgs;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{
-    get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
-};
+use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::attrs::AttributeKind;
@@ -86,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
     let body = if let ExprKind::Closure(c) = expr.kind
         && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(())))
@@ -144,7 +142,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         {
             let callee_ty_raw = typeck.expr_ty(callee);
             let callee_ty = callee_ty_raw.peel_refs();
-            if matches!(get_type_diagnostic_name(cx, callee_ty), Some(sym::Arc | sym::Rc))
+            if matches!(callee_ty.opt_diag_name(cx), Some(sym::Arc | sym::Rc))
                 || !check_inputs(typeck, body.params, None, args)
             {
                 return;
@@ -218,7 +216,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     "redundant closure",
                     |diag| {
                         if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                            if path_to_local(callee).is_some_and(|l| {
+                            if callee.res_local_id().is_some_and(|l| {
                                 // FIXME: Do we really need this `local_used_in` check?
                                 // Isn't it checking something like... `callee(callee)`?
                                 // If somehow this check is needed, add some test for it,
@@ -307,7 +305,7 @@ fn check_inputs(
             matches!(
                 p.pat.kind,
                 PatKind::Binding(BindingMode::NONE, id, _, None)
-                if path_to_local_id(arg, id)
+                if arg.res_local_id() == Some(id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
             && typeck

@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
-use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
-use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while, sym};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::ty::is_uninit_value_valid_for_ty;
+use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, peel_hir_expr_while, sym};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -139,7 +140,7 @@ enum VecLocation<'tcx> {
 impl<'tcx> VecLocation<'tcx> {
     pub fn eq_expr(self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         match self {
-            VecLocation::Local(hir_id) => path_to_local_id(expr, hir_id),
+            VecLocation::Local(hir_id) => expr.res_local_id() == Some(hir_id),
             VecLocation::Expr(self_expr) => SpanlessEq::new(cx).eq_expr(self_expr, expr),
         }
     }
@@ -183,7 +184,10 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
 }
 
 fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr).peel_refs(), sym::Vec)
+    cx.typeck_results()
+        .expr_ty(self_expr)
+        .peel_refs()
+        .is_diag_item(cx, sym::Vec)
         && path.ident.name == sym::reserve
 }
 
@@ -205,10 +209,7 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
     match expr.kind {
         ExprKind::MethodCall(path, self_expr, [arg], _) => {
             let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
-            if is_type_diagnostic_item(cx, self_type, sym::Vec)
-                && path.ident.name == sym::set_len
-                && !is_integer_literal(arg, 0)
-            {
+            if self_type.is_diag_item(cx, sym::Vec) && path.ident.name == sym::set_len && !is_integer_literal(arg, 0) {
                 Some((self_expr, expr.span))
             } else {
                 None

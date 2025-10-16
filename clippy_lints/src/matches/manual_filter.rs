@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
@@ -66,15 +65,15 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
         && let ExprKind::Call(callee, [arg]) = inner_expr.kind
     {
         return ctxt == expr.span.ctxt()
-            && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
-            && path_to_local_id(arg, target);
+            && callee.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+            && arg.res_local_id() == Some(target);
     }
     false
 }
 
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
-        return is_res_lang_ctor(cx, path_res(cx, inner_expr), OptionNone);
+        return inner_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone);
     }
     false
 }
@@ -98,7 +97,7 @@ pub(super) fn check_match<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     let ty = cx.typeck_results().expr_ty(expr);
-    if is_type_diagnostic_item(cx, ty, sym::Option)
+    if ty.is_diag_item(cx, sym::Option)
         && let [first_arm, second_arm] = arms
         && first_arm.guard.is_none()
         && second_arm.guard.is_none()

@@ -671,6 +671,16 @@ A list of paths to types that should be treated as if they do not contain interi
 * [`mutable_key_type`](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
 
 
+## `inherent-impl-lint-scope`
+Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
+
+**Default Value:** `"crate"`
+
+---
+**Affected lints:**
+* [`multiple_inherent_impl`](https://rust-lang.github.io/rust-clippy/master/index.html#multiple_inherent_impl)
+
+
 ## `large-error-threshold`
 The maximum size of the `Err`-variant in a `Result` returned from a function
 
@@ -925,6 +935,16 @@ exported visibility, or whether they are marked as "pub".
 ---
 **Affected lints:**
 * [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
+
+
+## `recursive-self-in-type-definitions`
+Whether the type itself in a struct or enum should be replaced with `Self` when encountering recursive types.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)
 
 
 ## `semicolon-inside-block-ignore-singleline`

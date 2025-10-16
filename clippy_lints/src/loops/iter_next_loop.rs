@@ -1,12 +1,12 @@
 use super::ITER_NEXT_LOOP;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_trait_method;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>) {
-    if is_trait_method(cx, arg, sym::Iterator) {
+    if cx.ty_based_def(arg).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         span_lint(
             cx,
             ITER_NEXT_LOOP,

@@ -1,7 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::{SpanlessEq, sym};
 use rustc_ast::{BinOpKind, LitIntType, LitKind, UnOp};
@@ -165,6 +164,7 @@ fn build_suggestion(
     applicability: &mut Applicability,
 ) {
     let dividend_sugg = Sugg::hir_with_applicability(cx, lhs, "..", applicability).maybe_paren();
+    let rhs_ty = cx.typeck_results().expr_ty(rhs);
     let type_suffix = if cx.typeck_results().expr_ty(lhs).is_numeric()
         && matches!(
             lhs.kind,
@@ -182,7 +182,7 @@ fn build_suggestion(
                 }
             )
         ) {
-        format!("_{}", cx.typeck_results().expr_ty(rhs))
+        format!("_{rhs_ty}")
     } else {
         String::new()
     };
@@ -199,9 +199,12 @@ fn build_suggestion(
     } else {
         format!("{dividend_sugg_str}{type_suffix}")
     };
-    let divisor_snippet = snippet_with_context(cx, rhs.span, expr.span.ctxt(), "..", applicability);
 
-    let sugg = format!("{suggestion_before_div_ceil}.div_ceil({})", divisor_snippet.0);
+    // Dereference the RHS if it is a reference type
+    let divisor_snippet = match Sugg::hir_with_context(cx, rhs, expr.span.ctxt(), "_", applicability) {
+        sugg if rhs_ty.is_ref() => sugg.deref(),
+        sugg => sugg,
+    };
 
     span_lint_and_sugg(
         cx,
@@ -209,7 +212,7 @@ fn build_suggestion(
         expr.span,
         "manually reimplementing `div_ceil`",
         "consider using `.div_ceil()`",
-        sugg,
+        format!("{suggestion_before_div_ceil}.div_ceil({divisor_snippet})"),
         *applicability,
     );
 }

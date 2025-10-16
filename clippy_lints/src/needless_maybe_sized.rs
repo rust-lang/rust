@@ -33,7 +33,7 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(NeedlessMaybeSized => [NEEDLESS_MAYBE_SIZED]);
 
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 struct Bound<'tcx> {
     /// The [`DefId`] of the type parameter the bound refers to
     param: DefId,
