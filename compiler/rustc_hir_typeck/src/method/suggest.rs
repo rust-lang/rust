@@ -1079,6 +1079,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
+        self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
         err.emit()
     }
 
@@ -3258,6 +3259,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
         }
+    }
+
+    fn suggest_bounds_for_range_to_method(
+        &self,
+        err: &mut Diag<'_>,
+        source: SelfSource<'tcx>,
+        item_ident: Ident,
+    ) {
+        let SelfSource::MethodCall(rcvr_expr) = source else { return };
+        let hir::ExprKind::Struct(qpath, fields, _) = rcvr_expr.kind else { return };
+        let Some(lang_item) = self.tcx.qpath_lang_item(*qpath) else {
+            return;
+        };
+        let is_inclusive = match lang_item {
+            hir::LangItem::RangeTo => false,
+            hir::LangItem::RangeToInclusive | hir::LangItem::RangeInclusiveCopy => true,
+            _ => return,
+        };
+
+        let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator) else { return };
+        let Some(_) = self
+            .tcx
+            .associated_items(iterator_trait)
+            .filter_by_name_unhygienic(item_ident.name)
+            .next()
+        else {
+            return;
+        };
+
+        let source_map = self.tcx.sess.source_map();
+        let range_type = if is_inclusive { "RangeInclusive" } else { "Range" };
+        let Some(end_field) = fields.iter().find(|f| f.ident.name == rustc_span::sym::end) else {
+            return;
+        };
+
+        let element_ty = self.typeck_results.borrow().expr_ty_opt(end_field.expr);
+        let is_integral = element_ty.is_some_and(|ty| ty.is_integral());
+        let end_is_negative = is_integral
+            && matches!(end_field.expr.kind, hir::ExprKind::Unary(rustc_ast::UnOp::Neg, _));
+
+        let Ok(snippet) = source_map.span_to_snippet(rcvr_expr.span) else { return };
+
+        let offset = snippet
+            .chars()
+            .take_while(|&c| c == '(' || c.is_whitespace())
+            .map(|c| c.len_utf8())
+            .sum::<usize>();
+
+        let insert_span = rcvr_expr
+            .span
+            .with_lo(rcvr_expr.span.lo() + rustc_span::BytePos(offset as u32))
+            .shrink_to_lo();
+
+        let (value, appl) = if is_integral && !end_is_negative {
+            ("0", Applicability::MachineApplicable)
+        } else {
+            ("/* start */", Applicability::HasPlaceholders)
+        };
+
+        err.span_suggestion_verbose(
+            insert_span,
+            format!("consider using a bounded `{range_type}` by adding a concrete starting value"),
+            value,
+            appl,
+        );
     }
 
     /// Print out the type for use in value namespace.
