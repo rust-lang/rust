@@ -9,6 +9,8 @@
       let mut _6: *const ();
       let mut _8: *const [()];
       let mut _9: *const ();
+      let mut _11: usize;
+      let mut _12: usize;
       let mut _22: usize;
       let mut _23: std::ptr::NonNull<()>;
       scope 1 {
@@ -33,9 +35,7 @@
           }
       }
       scope 5 (inlined Box::<()>::new) {
-          let mut _10: usize;
-          let mut _11: usize;
-          let mut _12: *mut u8;
+          let mut _10: *mut u8;
           scope 6 (inlined alloc::alloc::exchange_malloc) {
               let _13: std::alloc::Layout;
               let mut _14: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
@@ -73,11 +73,11 @@
           StorageLive(_3);
           StorageLive(_10);
           StorageLive(_11);
+-         _11 = const <() as std::mem::SizedTypeProperties>::SIZE;
++         _11 = const 0_usize;
           StorageLive(_12);
--         _10 = SizeOf(());
--         _11 = AlignOf(());
-+         _10 = const 0_usize;
-+         _11 = const 1_usize;
+-         _12 = const <() as std::mem::SizedTypeProperties>::ALIGN;
++         _12 = const 1_usize;
           StorageLive(_13);
           StorageLive(_15);
           StorageLive(_16);
@@ -106,15 +106,15 @@
           _16 = copy ((_14 as Ok).0: std::ptr::NonNull<[u8]>);
           StorageLive(_21);
           _21 = copy _16 as *mut [u8] (Transmute);
-          _12 = copy _21 as *mut u8 (PtrToPtr);
+          _10 = copy _21 as *mut u8 (PtrToPtr);
           StorageDead(_21);
           StorageDead(_14);
           StorageDead(_16);
           StorageDead(_15);
           StorageDead(_13);
-          _3 = ShallowInitBox(copy _12, ());
           StorageDead(_12);
           StorageDead(_11);
+          _3 = ShallowInitBox(copy _10, ());
           StorageDead(_10);
           _2 = &_3;
           _1 = copy _2;
@@ -148,15 +148,15 @@
       }
   
       bb5: {
--         _19 = Layout::from_size_align_unchecked::precondition_check(copy _10, copy _11) -> [return: bb6, unwind unreachable];
+-         _19 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb6, unwind unreachable];
 +         _19 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
           StorageDead(_18);
           StorageLive(_20);
--         _20 = copy _11 as std::ptr::Alignment (Transmute);
--         _13 = Layout { size: copy _10, align: move _20 };
+-         _20 = copy _12 as std::ptr::Alignment (Transmute);
+-         _13 = Layout { size: copy _11, align: move _20 };
 +         _20 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
 +         _13 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
           StorageDead(_20);

@@ -109,10 +109,10 @@ fn start<T: Termination + 'static>(
             puts(*argv as *const i8);
         }
         unsafe {
-            puts(*((argv as usize + intrinsics::size_of::<*const u8>()) as *const *const i8));
+            puts(*((argv as usize + size_of::<*const u8>()) as *const *const i8));
         }
         unsafe {
-            puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const i8));
+            puts(*((argv as usize + 2 * size_of::<*const u8>()) as *const *const i8));
         }
     }
 
@@ -213,8 +213,8 @@ fn main() {
         assert_eq!(intrinsics::size_of_val(a) as u8, 16);
         assert_eq!(intrinsics::size_of_val(&0u32) as u8, 4);
 
-        assert_eq!(intrinsics::align_of::<u16>() as u8, 2);
-        assert_eq!(intrinsics::align_of_val(&a) as u8, intrinsics::align_of::<&str>() as u8);
+        assert_eq!(align_of::<u16>() as u8, 2);
+        assert_eq!(intrinsics::align_of_val(&a) as u8, align_of::<&str>() as u8);
 
         let u8_needs_drop = const { intrinsics::needs_drop::<u8>() };
         assert!(!u8_needs_drop);

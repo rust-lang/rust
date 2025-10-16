@@ -1,4 +1,5 @@
-//@ known-bug: #136175
+//! Regression test for #136175
+
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
@@ -10,4 +11,5 @@ where
 
 fn main() {
     let x: A<dyn Trait>;
+    //~^ ERROR the size for values of type `dyn Trait` cannot be known at compilation time
 }

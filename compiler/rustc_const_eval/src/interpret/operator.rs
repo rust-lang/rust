@@ -517,20 +517,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let usize_layout = || self.layout_of(self.tcx.types.usize).unwrap();
 
         interp_ok(match null_op {
-            SizeOf => {
-                if !layout.is_sized() {
-                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
-                }
-                let val = layout.size.bytes();
-                ImmTy::from_uint(val, usize_layout())
-            }
-            AlignOf => {
-                if !layout.is_sized() {
-                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
-                }
-                let val = layout.align.bytes();
-                ImmTy::from_uint(val, usize_layout())
-            }
             OffsetOf(fields) => {
                 let val =
                     self.tcx.offset_of_subfield(self.typing_env, layout, fields.iter()).bytes();
