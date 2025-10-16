@@ -5,6 +5,4 @@ package.description = "é"
 
 // ignore-tidy-cr
 
-#![feature(frontmatter)]
-
 pub fn main() {}

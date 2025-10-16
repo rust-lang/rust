@@ -1,7 +1,6 @@
 --- json
 {"edition": "2024"}
 ---
-#![feature(frontmatter)]
 
 // Test that we highlight frontmatter as comments on source code pages.
 
