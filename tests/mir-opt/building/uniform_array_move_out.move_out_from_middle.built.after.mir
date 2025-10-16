@@ -1,6 +1,6 @@
-// MIR for `move_out_by_subslice` after built
+// MIR for `move_out_from_middle` after built
 
-fn move_out_by_subslice() -> () {
+fn move_out_from_middle() -> () {
     let mut _0: ();
     let _1: [std::boxed::Box<i32>; 3];
     let mut _2: std::boxed::Box<i32>;
@@ -20,7 +20,7 @@ fn move_out_by_subslice() -> () {
     let mut _16: std::boxed::Box<i32>;
     scope 1 {
         debug a => _1;
-        let _17: [std::boxed::Box<i32>; 2];
+        let _17: std::boxed::Box<i32>;
         scope 2 {
             debug _y => _17;
         }
@@ -95,7 +95,7 @@ fn move_out_by_subslice() -> () {
         FakeRead(ForLet(None), _1);
         PlaceMention(_1);
         StorageLive(_17);
-        _17 = move _1[0..2];
+        _17 = move _1[1 of 3];
         _0 = const ();
         drop(_17) -> [return: bb11, unwind: bb13];
     }

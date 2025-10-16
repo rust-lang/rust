@@ -1,0 +1,182 @@
+- // MIR for `move_out_from_middle` before ElaborateDrops
++ // MIR for `move_out_from_middle` after ElaborateDrops
+  
+  fn move_out_from_middle() -> () {
+      let mut _0: ();
+      let _1: [std::boxed::Box<i32>; 3];
+      let mut _2: std::boxed::Box<i32>;
+      let mut _3: usize;
+      let mut _4: usize;
+      let mut _5: *mut u8;
+      let mut _6: std::boxed::Box<i32>;
+      let mut _7: std::boxed::Box<i32>;
+      let mut _8: usize;
+      let mut _9: usize;
+      let mut _10: *mut u8;
+      let mut _11: std::boxed::Box<i32>;
+      let mut _12: std::boxed::Box<i32>;
+      let mut _13: usize;
+      let mut _14: usize;
+      let mut _15: *mut u8;
+      let mut _16: std::boxed::Box<i32>;
+      scope 1 {
+          debug a => _1;
+          let _17: std::boxed::Box<i32>;
+          scope 2 {
+              debug _y => _17;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _3 = SizeOf(i32);
+          _4 = AlignOf(i32);
+          _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageLive(_6);
+          _6 = ShallowInitBox(move _5, i32);
+          (*_6) = const 1_i32;
+          _2 = move _6;
+-         drop(_6) -> [return: bb2, unwind: bb15];
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageLive(_7);
+          _8 = SizeOf(i32);
+          _9 = AlignOf(i32);
+          _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb15];
+      }
+  
+      bb3: {
+          StorageLive(_11);
+          _11 = ShallowInitBox(move _10, i32);
+          (*_11) = const 2_i32;
+          _7 = move _11;
+-         drop(_11) -> [return: bb4, unwind: bb14];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_11);
+          StorageLive(_12);
+          _13 = SizeOf(i32);
+          _14 = AlignOf(i32);
+          _15 = alloc::alloc::exchange_malloc(move _13, move _14) -> [return: bb5, unwind: bb14];
+      }
+  
+      bb5: {
+          StorageLive(_16);
+          _16 = ShallowInitBox(move _15, i32);
+          (*_16) = const 3_i32;
+          _12 = move _16;
+-         drop(_16) -> [return: bb6, unwind: bb13];
++         goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_16);
+          _1 = [move _2, move _7, move _12];
+-         drop(_12) -> [return: bb7, unwind: bb14];
++         goto -> bb7;
+      }
+  
+      bb7: {
+          StorageDead(_12);
+-         drop(_7) -> [return: bb8, unwind: bb15];
++         goto -> bb8;
+      }
+  
+      bb8: {
+          StorageDead(_7);
+-         drop(_2) -> [return: bb9, unwind continue];
++         goto -> bb9;
+      }
+  
+      bb9: {
+          StorageDead(_2);
+          PlaceMention(_1);
+          StorageLive(_17);
+          _17 = move _1[1 of 3];
+          _0 = const ();
+          drop(_17) -> [return: bb10, unwind: bb12];
+      }
+  
+      bb10: {
+          StorageDead(_17);
+-         drop(_1) -> [return: bb11, unwind continue];
++         goto -> bb23;
+      }
+  
+      bb11: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb12 (cleanup): {
+-         drop(_1) -> [return: bb16, unwind terminate(cleanup)];
++         goto -> bb26;
+      }
+  
+      bb13 (cleanup): {
+-         drop(_12) -> [return: bb14, unwind terminate(cleanup)];
++         goto -> bb14;
+      }
+  
+      bb14 (cleanup): {
+          drop(_7) -> [return: bb15, unwind terminate(cleanup)];
+      }
+  
+      bb15 (cleanup): {
+          drop(_2) -> [return: bb16, unwind terminate(cleanup)];
+      }
+  
+      bb16 (cleanup): {
+          resume;
++     }
++ 
++     bb17: {
++         goto -> bb11;
++     }
++ 
++     bb18 (cleanup): {
++         drop(_1[0..1]) -> [return: bb16, unwind terminate(cleanup)];
++     }
++ 
++     bb19 (cleanup): {
++         goto -> bb18;
++     }
++ 
++     bb20 (cleanup): {
++         drop(_1[2..3]) -> [return: bb19, unwind terminate(cleanup)];
++     }
++ 
++     bb21: {
++         drop(_1[0..1]) -> [return: bb17, unwind: bb16];
++     }
++ 
++     bb22: {
++         goto -> bb21;
++     }
++ 
++     bb23: {
++         drop(_1[2..3]) -> [return: bb22, unwind: bb19];
++     }
++ 
++     bb24 (cleanup): {
++         drop(_1[0..1]) -> [return: bb16, unwind terminate(cleanup)];
++     }
++ 
++     bb25 (cleanup): {
++         goto -> bb24;
++     }
++ 
++     bb26 (cleanup): {
++         drop(_1[2..3]) -> [return: bb25, unwind terminate(cleanup)];
+      }
+  }
+  
