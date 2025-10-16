@@ -40,8 +40,8 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
     const PLATFORM_C_DEFINITIONS: &str = config::PLATFORM_C_DEFINITIONS;
     const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::PLATFORM_C_FORWARD_DECLARATIONS;
 
-    const PLATFORM_RUST_DEFINITIONS: &str = config::F16_FORMATTING_DEF;
-    const PLATFORM_RUST_CFGS: &str = config::X86_CONFIGURATIONS;
+    const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
+    const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
 
     fn create(cli_options: ProcessedCli) -> Self {
         let intrinsics =

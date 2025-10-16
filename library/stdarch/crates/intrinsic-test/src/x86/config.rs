@@ -4,7 +4,7 @@ pub const NOTICE: &str = "\
 // `intrinsic-test` crate.\n";
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
-pub const F16_FORMATTING_DEF: &str = r#"
+pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
 use std::arch::x86_64::*;
 
 #[inline]
@@ -392,7 +392,7 @@ std::ostream& operator<<(std::ostream& os, __mmask8 value) {
 }
 "#;
 
-pub const X86_CONFIGURATIONS: &str = r#"
+pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(target_arch = "x86", feature(avx))]
 #![cfg_attr(target_arch = "x86", feature(sse))]
 #![cfg_attr(target_arch = "x86", feature(sse2))]

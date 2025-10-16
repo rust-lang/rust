@@ -3,7 +3,7 @@ pub const NOTICE: &str = "\
 // test are derived from a JSON specification, published under the same license as the
 // `intrinsic-test` crate.\n";
 
-pub const POLY128_OSTREAM_DECL: &str = r#"
+pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value);
 #endif
@@ -20,7 +20,7 @@ template<typename T1, typename T2> T1 cast(T2 x) {
 }
 "#;
 
-pub const POLY128_OSTREAM_DEF: &str = r#"
+pub const PLATFORM_C_DEFINITIONS: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::stringstream temp;
@@ -53,7 +53,7 @@ std::ostream& operator<<(std::ostream& os, uint8_t value) {
 "#;
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
-pub const F16_FORMATTING_DEF: &str = r#"
+pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
 /// Used to continue `Debug`ging SIMD types as `MySimd(1, 2, 3, 4)`, as they
 /// were before moving to array-based simd.
 #[inline]
@@ -139,7 +139,7 @@ impl DebugHexF16 for float16x8x4_t {
 }
  "#;
 
-pub const AARCH_CONFIGURATIONS: &str = r#"
+pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
 #![cfg_attr(target_arch = "arm", feature(stdarch_aarch32_crc32))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fcma))]
