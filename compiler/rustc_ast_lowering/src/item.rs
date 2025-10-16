@@ -1214,76 +1214,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
 
-            // Optionally lower the fn contract, which turns:
-            //
-            // { body }
-            //
-            // into:
-            //
-            // { contract_requires(PRECOND); let __postcond = |ret_val| POSTCOND; postcond({ body }) }
+            // Optionally lower the fn contract
             if let Some(contract) = contract {
-                let precond = if let Some(req) = &contract.requires {
-                    // Lower the precondition check intrinsic.
-                    let lowered_req = this.lower_expr_mut(&req);
-                    let req_span = this.mark_span_with_reason(
-                        DesugaringKind::Contract,
-                        lowered_req.span,
-                        None,
-                    );
-                    let precond = this.expr_call_lang_item_fn_mut(
-                        req_span,
-                        hir::LangItem::ContractCheckRequires,
-                        &*arena_vec![this; lowered_req],
-                    );
-                    Some(this.stmt_expr(req.span, precond))
-                } else {
-                    None
-                };
-                let (postcond, body) = if let Some(ens) = &contract.ensures {
-                    let ens_span = this.lower_span(ens.span);
-                    let ens_span =
-                        this.mark_span_with_reason(DesugaringKind::Contract, ens_span, None);
-                    // Set up the postcondition `let` statement.
-                    let check_ident: Ident =
-                        Ident::from_str_and_span("__ensures_checker", ens_span);
-                    let (checker_pat, check_hir_id) = this.pat_ident_binding_mode_mut(
-                        ens_span,
-                        check_ident,
-                        hir::BindingMode::NONE,
-                    );
-                    let lowered_ens = this.lower_expr_mut(&ens);
-                    let postcond_checker = this.expr_call_lang_item_fn(
-                        ens_span,
-                        hir::LangItem::ContractBuildCheckEnsures,
-                        &*arena_vec![this; lowered_ens],
-                    );
-                    let postcond = this.stmt_let_pat(
-                        None,
-                        ens_span,
-                        Some(postcond_checker),
-                        this.arena.alloc(checker_pat),
-                        hir::LocalSource::Contract,
-                    );
-
-                    // Install contract_ensures so we will intercept `return` statements,
-                    // then lower the body.
-                    this.contract_ensures = Some((ens_span, check_ident, check_hir_id));
-                    let body = this.arena.alloc(body(this));
-
-                    // Finally, inject an ensures check on the implicit return of the body.
-                    let body = this.inject_ensures_check(body, ens_span, check_ident, check_hir_id);
-                    (Some(postcond), body)
-                } else {
-                    let body = &*this.arena.alloc(body(this));
-                    (None, body)
-                };
-                // Flatten the body into precond, then postcond, then wrapped body.
-                let wrapped_body = this.block_all(
-                    body.span,
-                    this.arena.alloc_from_iter([precond, postcond].into_iter().flatten()),
-                    Some(body),
-                );
-                (params, this.expr_block(wrapped_body))
+                (params, this.lower_contract(body, contract))
             } else {
                 (params, body(this))
             }

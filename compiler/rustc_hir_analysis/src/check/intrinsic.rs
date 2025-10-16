@@ -647,11 +647,11 @@ pub(crate) fn check_intrinsic_type(
 
         sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
-        // contract_checks() -> bool
-        sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
         // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
         sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
-        sym::contract_check_ensures => (2, 0, vec![param(0), param(1)], param(1)),
+        sym::contract_check_ensures => {
+            (2, 0, vec![Ty::new_option(tcx, param(0)), param(1)], param(1))
+        }
 
         sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
             (2, 0, vec![param(0), param(0)], param(1))

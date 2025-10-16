@@ -39,7 +39,7 @@ features = ['unprefixed_malloc_on_supported_platforms']
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # native-lib dependencies
-libffi = { version = "4.1.1", optional = true }
+libffi = { version = "5.0.0", optional = true }
 libloading = { version = "0.8", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 

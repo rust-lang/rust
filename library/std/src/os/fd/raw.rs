@@ -4,13 +4,17 @@
 
 #[cfg(target_os = "hermit")]
 use hermit_abi as libc;
+#[cfg(target_os = "motor")]
+use moto_rt::libc;
 
+#[cfg(target_os = "motor")]
+use super::owned::OwnedFd;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
 use crate::io;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
-#[cfg(not(target_os = "hermit"))]
+#[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
 use crate::os::raw;
 #[cfg(all(doc, not(target_arch = "wasm32")))]
 use crate::os::unix::io::AsFd;
@@ -23,10 +27,10 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(target_os = "hermit"))]
+#[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
 pub type RawFd = raw::c_int;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(target_os = "hermit")]
+#[cfg(any(target_os = "hermit", target_os = "motor"))]
 pub type RawFd = i32;
 
 /// A trait to extract the raw file descriptor from an underlying object.

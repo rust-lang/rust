@@ -310,7 +310,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_cond_timedwait_relative_np" => {
                 let [cond, mutex, reltime] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                this.pthread_cond_timedwait(cond, mutex, reltime, dest, /* macos_relative_np */ true)?;
+                this.pthread_cond_timedwait(
+                    cond, mutex, reltime, dest, /* macos_relative_np */ true,
+                )?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

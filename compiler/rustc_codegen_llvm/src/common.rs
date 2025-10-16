@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
 use tracing::debug;
@@ -281,8 +281,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset.bytes(), 0);
-                            let llval = self.const_usize(alloc.inner().align.bytes());
+                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
+                            let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                             } else {

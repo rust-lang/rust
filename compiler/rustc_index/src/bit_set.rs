@@ -872,7 +872,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     let mut self_chunk_words = **other_chunk_words;
                     for word in self_chunk_words[0..num_words].iter_mut().rev() {
                         *word = !*word & tail_mask;
-                        tail_mask = u64::MAX;
+                        tail_mask = Word::MAX;
                     }
                     let self_chunk_count = chunk_domain_size - *other_chunk_count;
                     debug_assert_eq!(
@@ -887,7 +887,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                 ) => {
                     // See `ChunkedBitSet::union` for details on what is happening here.
                     let num_words = num_words(chunk_domain_size as usize);
-                    let op = |a: u64, b: u64| a & !b;
+                    let op = |a: Word, b: Word| a & !b;
                     if !bitwise_changes(
                         &self_chunk_words[0..num_words],
                         &other_chunk_words[0..num_words],
