@@ -1,35 +1,14 @@
-error: this function depends on never type fallback being `()`
-  --> $DIR/impl_trait_fallback.rs:6:1
-   |
-LL | fn should_ret_unit() -> impl T {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-   = help: specify the types explicitly
-note: in edition 2024, the requirement `!: T` will fail
-  --> $DIR/impl_trait_fallback.rs:6:25
-   |
-LL | fn should_ret_unit() -> impl T {
-   |                         ^^^^^^
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
-
-error: aborting due to 1 previous error
-
 Future incompatibility report: Future breakage diagnostic:
-error: this function depends on never type fallback being `()`
-  --> $DIR/impl_trait_fallback.rs:6:1
+warning: this function depends on never type fallback being `()`
+  --> $DIR/impl_trait_fallback.rs:9:1
    |
 LL | fn should_ret_unit() -> impl T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: T` will fail
-  --> $DIR/impl_trait_fallback.rs:6:25
+  --> $DIR/impl_trait_fallback.rs:9:25
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^
-   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
