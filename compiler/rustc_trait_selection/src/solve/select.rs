@@ -126,7 +126,9 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
         (
-            CandidateSource::Impl(_) | CandidateSource::ParamEnv(_) | CandidateSource::AliasBound,
+            CandidateSource::Impl(_)
+            | CandidateSource::ParamEnv(_)
+            | CandidateSource::AliasBound(_),
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
         ) => true,
 
@@ -175,7 +177,9 @@ fn to_selection<'tcx>(
                 })
             }
             CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, nested),
-            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => ImplSource::Param(nested),
+            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound(_) => {
+                ImplSource::Param(nested)
+            }
             CandidateSource::CoherenceUnknowable => {
                 span_bug!(span, "didn't expect to select an unknowable candidate")
             }

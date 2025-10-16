@@ -2,8 +2,9 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::path::Path;
 
-use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_abi::{Align, CanonAbi, Size};
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
+use rustc_data_structures::either::Either;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
@@ -11,6 +12,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::AllocInit;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
+use rustc_session::config::OomStrategy;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
@@ -50,31 +52,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
 
-        // Some shims forward to other MIR bodies.
-        match link_name.as_str() {
-            // This allocator function has forwarding shims synthesized during normal codegen
-            // (see `allocator_shim_contents`); this is where we emulate that behavior.
-            // FIXME should use global_fn_name, but mangle_internal_symbol requires a static str.
-            name if name == this.mangle_internal_symbol("__rust_alloc_error_handler") => {
-                // Forward to the right symbol that implements this function.
-                let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
-                    // in real code, this symbol does not exist without an allocator
-                    throw_unsup_format!(
-                        "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
-                    );
-                };
-                if handler_kind == AllocatorKind::Default {
-                    let name =
-                        Symbol::intern(this.mangle_internal_symbol("__rdl_alloc_error_handler"));
+        // Handle allocator shim.
+        if let Some(shim) = this.machine.allocator_shim_symbols.get(&link_name) {
+            match *shim {
+                Either::Left(other_fn) => {
                     let handler = this
-                        .lookup_exported_symbol(name)?
+                        .lookup_exported_symbol(other_fn)?
                         .expect("missing alloc error handler symbol");
                     return interp_ok(Some(handler));
                 }
-                // Fall through to the `lookup_exported_symbol` below which should find
-                // a `__rust_alloc_error_handler`.
+                Either::Right(special) => {
+                    this.rust_special_allocator_method(special, link_name, abi, args, dest)?;
+                    this.return_to_block(ret)?;
+                    return interp_ok(None);
+                }
             }
-            _ => {}
         }
 
         // FIXME: avoid allocating memory
@@ -254,33 +246,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Check some basic requirements for this allocation request:
-    /// non-zero size, power-of-two alignment.
-    fn check_rustc_alloc_request(&self, size: u64, align: u64) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        if size == 0 {
-            throw_ub_format!("creating allocation with size 0");
-        }
-        if size > this.max_size_of_val().bytes() {
-            throw_ub_format!("creating an allocation larger than half the address space");
-        }
-        if let Err(e) = Align::from_bytes(align) {
-            match e {
-                AlignFromBytesError::TooLarge(_) => {
-                    throw_unsup_format!(
-                        "creating allocation with alignment {align} exceeding rustc's maximum \
-                         supported value"
-                    );
-                }
-                AlignFromBytesError::NotPowerOfTwo(_) => {
-                    throw_ub_format!("creating allocation with non-power-of-two alignment {align}");
-                }
-            }
-        }
-
-        interp_ok(())
-    }
-
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -340,7 +305,51 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
+            // Magic functions Rust emits (and not as part of the allocator shim).
+            name if name == this.mangle_internal_symbol(NO_ALLOC_SHIM_IS_UNSTABLE) => {
+                // This is a no-op shim that only exists to prevent making the allocator shims
+                // instantly stable.
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+            }
+            name if name == this.mangle_internal_symbol(OomStrategy::SYMBOL) => {
+                // Gets the value of the `oom` option.
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let val = this.tcx.sess.opts.unstable_opts.oom.should_panic();
+                this.write_int(val, dest)?;
+            }
+
             // Miri-specific extern functions
+            "miri_alloc" => {
+                let [size, align] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let size = this.read_target_usize(size)?;
+                let align = this.read_target_usize(align)?;
+
+                this.check_rust_alloc_request(size, align)?;
+
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::Miri.into(),
+                    AllocInit::Uninit,
+                )?;
+
+                this.write_pointer(ptr, dest)?;
+            }
+            "miri_dealloc" => {
+                let [ptr, old_size, align] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let old_size = this.read_target_usize(old_size)?;
+                let align = this.read_target_usize(align)?;
+
+                // No need to check old_size/align; we anyway check that they match the allocation.
+                this.deallocate_ptr(
+                    ptr,
+                    Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
+                    MiriMemoryKind::Miri.into(),
+                )?;
+            }
             "miri_start_unwind" => {
                 let [payload] =
                     this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
@@ -492,7 +501,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 }
             }
-
             // GenMC mode: Assume statements block the current thread when their condition is false.
             "miri_genmc_assume" => {
                 let [condition] =
@@ -577,133 +585,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     this.write_null(dest)?;
                 }
-            }
-
-            // Rust allocation
-            name if name == this.mangle_internal_symbol("__rust_alloc") || name == "miri_alloc" => {
-                let default = |ecx: &mut MiriInterpCx<'tcx>| {
-                    // Only call `check_shim` when `#[global_allocator]` isn't used. When that
-                    // macro is used, we act like no shim exists, so that the exported function can run.
-                    let [size, align] =
-                        ecx.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-                    let size = ecx.read_target_usize(size)?;
-                    let align = ecx.read_target_usize(align)?;
-
-                    ecx.check_rustc_alloc_request(size, align)?;
-
-                    let memory_kind = match link_name.as_str() {
-                        "miri_alloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
-                    };
-
-                    let ptr = ecx.allocate_ptr(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        memory_kind.into(),
-                        AllocInit::Uninit,
-                    )?;
-
-                    ecx.write_pointer(ptr, dest)
-                };
-
-                match link_name.as_str() {
-                    "miri_alloc" => {
-                        default(this)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    }
-                    _ => return this.emulate_allocator(default),
-                }
-            }
-            name if name == this.mangle_internal_symbol("__rust_alloc_zeroed") => {
-                return this.emulate_allocator(|this| {
-                    // See the comment for `__rust_alloc` why `check_shim` is only called in the
-                    // default case.
-                    let [size, align] =
-                        this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-                    let size = this.read_target_usize(size)?;
-                    let align = this.read_target_usize(align)?;
-
-                    this.check_rustc_alloc_request(size, align)?;
-
-                    let ptr = this.allocate_ptr(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Rust.into(),
-                        AllocInit::Zero,
-                    )?;
-                    this.write_pointer(ptr, dest)
-                });
-            }
-            name if name == this.mangle_internal_symbol("__rust_dealloc")
-                || name == "miri_dealloc" =>
-            {
-                let default = |ecx: &mut MiriInterpCx<'tcx>| {
-                    // See the comment for `__rust_alloc` why `check_shim` is only called in the
-                    // default case.
-                    let [ptr, old_size, align] =
-                        ecx.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-                    let ptr = ecx.read_pointer(ptr)?;
-                    let old_size = ecx.read_target_usize(old_size)?;
-                    let align = ecx.read_target_usize(align)?;
-
-                    let memory_kind = match link_name.as_str() {
-                        "miri_dealloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
-                    };
-
-                    // No need to check old_size/align; we anyway check that they match the allocation.
-                    ecx.deallocate_ptr(
-                        ptr,
-                        Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                        memory_kind.into(),
-                    )
-                };
-
-                match link_name.as_str() {
-                    "miri_dealloc" => {
-                        default(this)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    }
-                    _ => return this.emulate_allocator(default),
-                }
-            }
-            name if name == this.mangle_internal_symbol("__rust_realloc") => {
-                return this.emulate_allocator(|this| {
-                    // See the comment for `__rust_alloc` why `check_shim` is only called in the
-                    // default case.
-                    let [ptr, old_size, align, new_size] =
-                        this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-                    let ptr = this.read_pointer(ptr)?;
-                    let old_size = this.read_target_usize(old_size)?;
-                    let align = this.read_target_usize(align)?;
-                    let new_size = this.read_target_usize(new_size)?;
-                    // No need to check old_size; we anyway check that they match the allocation.
-
-                    this.check_rustc_alloc_request(new_size, align)?;
-
-                    let align = Align::from_bytes(align).unwrap();
-                    let new_ptr = this.reallocate_ptr(
-                        ptr,
-                        Some((Size::from_bytes(old_size), align)),
-                        Size::from_bytes(new_size),
-                        align,
-                        MiriMemoryKind::Rust.into(),
-                        AllocInit::Uninit,
-                    )?;
-                    this.write_pointer(new_ptr, dest)
-                });
-            }
-            name if name == this.mangle_internal_symbol("__rust_no_alloc_shim_is_unstable_v2") => {
-                // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-            }
-            name if name
-                == this.mangle_internal_symbol("__rust_alloc_error_handler_should_panic_v2") =>
-            {
-                // Gets the value of the `oom` option.
-                let [] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
-                let val = this.tcx.sess.opts.unstable_opts.oom.should_panic();
-                this.write_int(val, dest)?;
             }
 
             // C memory handling functions

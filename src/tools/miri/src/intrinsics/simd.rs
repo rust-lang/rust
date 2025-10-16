@@ -38,47 +38,47 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for i in 0..dest_len {
                     let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     let dest = this.project_index(&dest, i)?;
-                            let ty::Float(float_ty) = op.layout.ty.kind() else {
-                                span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
-                            };
-                            // Using host floats except for sqrt (but it's fine, these operations do not
-                            // have guaranteed precision).
+                    let ty::Float(float_ty) = op.layout.ty.kind() else {
+                        span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
+                    };
+                    // Using host floats except for sqrt (but it's fine, these operations do not
+                    // have guaranteed precision).
                     let val = match float_ty {
-                                FloatTy::F16 => unimplemented!("f16_f128"),
-                                FloatTy::F32 => {
-                                    let f = op.to_scalar().to_f32()?;
+                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F32 => {
+                            let f = op.to_scalar().to_f32()?;
                             let res = match intrinsic_name {
-                                        "fsqrt" => math::sqrt(f),
-                                        "fsin" => f.to_host().sin().to_soft(),
-                                        "fcos" => f.to_host().cos().to_soft(),
-                                        "fexp" => f.to_host().exp().to_soft(),
-                                        "fexp2" => f.to_host().exp2().to_soft(),
-                                        "flog" => f.to_host().ln().to_soft(),
-                                        "flog2" => f.to_host().log2().to_soft(),
-                                        "flog10" => f.to_host().log10().to_soft(),
-                                        _ => bug!(),
-                                    };
-                                    let res = this.adjust_nan(res, &[f]);
-                                    Scalar::from(res)
-                                }
-                                FloatTy::F64 => {
-                                    let f = op.to_scalar().to_f64()?;
-                            let res = match intrinsic_name {
-                                        "fsqrt" => math::sqrt(f),
-                                        "fsin" => f.to_host().sin().to_soft(),
-                                        "fcos" => f.to_host().cos().to_soft(),
-                                        "fexp" => f.to_host().exp().to_soft(),
-                                        "fexp2" => f.to_host().exp2().to_soft(),
-                                        "flog" => f.to_host().ln().to_soft(),
-                                        "flog2" => f.to_host().log2().to_soft(),
-                                        "flog10" => f.to_host().log10().to_soft(),
-                                        _ => bug!(),
-                                    };
-                                    let res = this.adjust_nan(res, &[f]);
-                                    Scalar::from(res)
-                                }
-                                FloatTy::F128 => unimplemented!("f16_f128"),
+                                "fsqrt" => math::sqrt(f),
+                                "fsin" => f.to_host().sin().to_soft(),
+                                "fcos" => f.to_host().cos().to_soft(),
+                                "fexp" => f.to_host().exp().to_soft(),
+                                "fexp2" => f.to_host().exp2().to_soft(),
+                                "flog" => f.to_host().ln().to_soft(),
+                                "flog2" => f.to_host().log2().to_soft(),
+                                "flog10" => f.to_host().log10().to_soft(),
+                                _ => bug!(),
                             };
+                            let res = this.adjust_nan(res, &[f]);
+                            Scalar::from(res)
+                        }
+                        FloatTy::F64 => {
+                            let f = op.to_scalar().to_f64()?;
+                            let res = match intrinsic_name {
+                                "fsqrt" => math::sqrt(f),
+                                "fsin" => f.to_host().sin().to_soft(),
+                                "fcos" => f.to_host().cos().to_soft(),
+                                "fexp" => f.to_host().exp().to_soft(),
+                                "fexp2" => f.to_host().exp2().to_soft(),
+                                "flog" => f.to_host().ln().to_soft(),
+                                "flog2" => f.to_host().log2().to_soft(),
+                                "flog10" => f.to_host().log10().to_soft(),
+                                _ => bug!(),
+                            };
+                            let res = this.adjust_nan(res, &[f]);
+                            Scalar::from(res)
+                        }
+                        FloatTy::F128 => unimplemented!("f16_f128"),
+                    };
 
                     this.write_scalar(val, &dest)?;
                 }

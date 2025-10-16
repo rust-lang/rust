@@ -17,3 +17,4 @@ impl<C: ?Sized> A for u8 { //~ ERROR: the type parameter `C` is not constrained
 #[rustc_layout(debug)]
 struct S([u8; <u8 as A>::B]);
 //~^ ERROR: the type has an unknown layout
+//~| ERROR: type annotations needed

@@ -31,10 +31,23 @@ pub enum AllocatorTy {
     Usize,
 }
 
+/// Some allocator methods are known to the compiler: they act more like
+/// intrinsics/language primitives than library-defined functions.
+/// FIXME: ideally this would be derived from attributes like `#[rustc_allocator]`,
+/// so we don't have two sources of truth.
+#[derive(Copy, Clone, Debug)]
+pub enum SpecialAllocatorMethod {
+    Alloc,
+    AllocZeroed,
+    Dealloc,
+    Realloc,
+}
+
 /// A method that will be codegened in the allocator shim.
 #[derive(Copy, Clone)]
 pub struct AllocatorMethod {
     pub name: Symbol,
+    pub special: Option<SpecialAllocatorMethod>,
     pub inputs: &'static [AllocatorMethodInput],
     pub output: AllocatorTy,
 }
@@ -47,11 +60,13 @@ pub struct AllocatorMethodInput {
 pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
     AllocatorMethod {
         name: sym::alloc,
+        special: Some(SpecialAllocatorMethod::Alloc),
         inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
         output: AllocatorTy::ResultPtr,
     },
     AllocatorMethod {
         name: sym::dealloc,
+        special: Some(SpecialAllocatorMethod::Dealloc),
         inputs: &[
             AllocatorMethodInput { name: "ptr", ty: AllocatorTy::Ptr },
             AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout },
@@ -60,6 +75,7 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
     },
     AllocatorMethod {
         name: sym::realloc,
+        special: Some(SpecialAllocatorMethod::Realloc),
         inputs: &[
             AllocatorMethodInput { name: "ptr", ty: AllocatorTy::Ptr },
             AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout },
@@ -69,6 +85,7 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
     },
     AllocatorMethod {
         name: sym::alloc_zeroed,
+        special: Some(SpecialAllocatorMethod::AllocZeroed),
         inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
         output: AllocatorTy::ResultPtr,
     },

@@ -685,9 +685,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let ty =
             self.check_expr_with_expectation_and_needs(oprnd, hint, Needs::maybe_mut_place(mutbl));
+        if let Err(guar) = ty.error_reported() {
+            return Ty::new_error(self.tcx, guar);
+        }
 
         match kind {
-            _ if ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)

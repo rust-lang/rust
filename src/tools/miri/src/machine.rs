@@ -12,6 +12,8 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
+use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -27,6 +29,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
 
 use crate::alloc_addresses::EvalContextExt;
@@ -652,6 +655,10 @@ pub struct MiriMachine<'tcx> {
     pub(crate) pthread_rwlock_sanity: Cell<bool>,
     pub(crate) pthread_condvar_sanity: Cell<bool>,
 
+    /// (Foreign) symbols that are synthesized as part of the allocator shim: the key indicates the
+    /// name of the symbol being synthesized; the value indicates whether this should invoke some
+    /// other symbol or whether this has special allocator semantics.
+    pub(crate) allocator_shim_symbols: FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>>,
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
@@ -819,12 +826,43 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_mutex_sanity: Cell::new(false),
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
+            allocator_shim_symbols: Self::allocator_shim_symbols(tcx),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
             short_fd_operations: config.short_fd_operations,
         }
+    }
+
+    fn allocator_shim_symbols(
+        tcx: TyCtxt<'tcx>,
+    ) -> FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>> {
+        use rustc_codegen_ssa::base::allocator_shim_contents;
+
+        // codegen uses `allocator_kind_for_codegen` here, but that's only needed to deal with
+        // dylibs which we do not support.
+        let Some(kind) = tcx.allocator_kind(()) else {
+            return Default::default();
+        };
+        let methods = allocator_shim_contents(tcx, kind);
+        let mut symbols = FxHashMap::default();
+        for method in methods {
+            let from_name = Symbol::intern(&mangle_internal_symbol(
+                tcx,
+                &allocator::global_fn_name(method.name),
+            ));
+            let to = match method.special {
+                Some(special) => Either::Right(special),
+                None =>
+                    Either::Left(Symbol::intern(&mangle_internal_symbol(
+                        tcx,
+                        &allocator::default_fn_name(method.name),
+                    ))),
+            };
+            symbols.try_insert(from_name, to).unwrap();
+        }
+        symbols
     }
 
     pub(crate) fn late_init(
@@ -992,6 +1030,7 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_mutex_sanity: _,
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
+            allocator_shim_symbols: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
