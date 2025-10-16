@@ -4,6 +4,4 @@
 
 // infostrings cannot have spaces
 
-#![feature(frontmatter)]
-
 fn main() {}

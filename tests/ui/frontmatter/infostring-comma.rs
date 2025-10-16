@@ -4,6 +4,4 @@
 
 // infostrings can only be a single identifier.
 
-#![feature(frontmatter)]
-
 fn main() {}
