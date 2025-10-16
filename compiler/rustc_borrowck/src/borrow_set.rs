@@ -5,8 +5,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_middle::{span_bug, ty};
 use rustc_mir_dataflow::move_paths::MoveData;
 use tracing::debug;
 
@@ -301,6 +301,34 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             };
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
+        } else if let &mir::Rvalue::Reborrow(borrowed_place) = rvalue {
+            let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
+            match borrowed_place_ty.kind() {
+                ty::Adt(_, args) => {
+                    for arg in args.iter() {
+                        let ty::GenericArgKind::Lifetime(region) = arg.kind() else {
+                            continue;
+                        };
+                        let region = region.as_var();
+                        let kind = mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default };
+                        let borrow = BorrowData {
+                            kind,
+                            region,
+                            reserve_location: location,
+                            activation_location: TwoPhaseActivation::NotTwoPhase,
+                            borrowed_place,
+                            assigned_place: *assigned_place,
+                        };
+                        let (idx, _) = self.location_map.insert_full(location, borrow);
+                        let idx = BorrowIndex::from(idx);
+
+                        self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
+
+                        self.local_map.entry(borrowed_place.local).or_default().insert(idx);
+                    }
+                }
+                _ => unreachable!(),
+            }
         }
 
         self.super_assign(assigned_place, rvalue, location)

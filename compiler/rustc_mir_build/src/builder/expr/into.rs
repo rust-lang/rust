@@ -816,12 +816,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let _1 = unpack!(
                     block = this.as_temp(block, this.local_temp_lifetime(), source, mutability)
                 );
-                this.cfg.push_assign(
-                    block,
-                    source_info,
-                    destination,
-                    Rvalue::Reborrow(_1.into()),
-                );
+                this.cfg.push_assign(block, source_info, destination, Rvalue::Reborrow(_1.into()));
                 block.unit()
             }
         };
