@@ -74,6 +74,9 @@ pub enum LayoutCalculatorError<F> {
 
     /// An element type of an SIMD type isn't a primitive
     NonPrimitiveSimdType(F),
+
+    /// Nonscalar layout used with `#[rustc_layout_scalar_valid_range_..]`
+    NonScalarValidRange,
 }
 
 impl<F> LayoutCalculatorError<F> {
@@ -87,6 +90,7 @@ impl<F> LayoutCalculatorError<F> {
             ZeroLengthSimdType => ZeroLengthSimdType,
             OversizedSimdType { max_lanes } => OversizedSimdType { max_lanes },
             NonPrimitiveSimdType(_) => NonPrimitiveSimdType(()),
+            NonScalarValidRange => NonScalarValidRange,
         }
     }
 
@@ -103,6 +107,7 @@ impl<F> LayoutCalculatorError<F> {
             ZeroLengthSimdType | OversizedSimdType { .. } | NonPrimitiveSimdType(_) => {
                 "invalid simd type definition"
             }
+            NonScalarValidRange => "nonscalar layout for layout_scalar_valid_range type",
         })
     }
 }
@@ -571,10 +576,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     }
                 }
             }
-            _ => assert!(
-                start == Bound::Unbounded && end == Bound::Unbounded,
-                "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
-            ),
+            _ => {
+                if (start, end) != (Bound::Unbounded, Bound::Unbounded) {
+                    return Err(LayoutCalculatorError::NonScalarValidRange);
+                }
+            }
         }
 
         Ok(st)

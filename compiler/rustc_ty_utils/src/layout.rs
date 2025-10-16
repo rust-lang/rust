@@ -134,6 +134,15 @@ fn map_error<'tcx>(
             // the element type of the vector is generic.
             cx.tcx().dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty: field.ty })
         }
+        LayoutCalculatorError::NonScalarValidRange => {
+            // This can occur when `#![feature(rustc_attrs)]` is not even
+            // enabled, so use `delayed_bug` to avoid an ICE if compilation
+            // is going to fail anyway.
+            let guaranteed = cx.tcx().dcx().delayed_bug(format!(
+                "nonscalar layout for layout_scalar_valid_range type: {ty:?}"
+            ));
+            LayoutError::ReferencesError(guaranteed)
+        }
     };
     error(cx, err)
 }

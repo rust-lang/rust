@@ -8,7 +8,7 @@
 //@ [check] check-fail
 //@ [build] build-fail
 //@ [build] dont-require-check-pass
-//@ [build] failure-status: 101
+//@ [build] failure-status: 1
 
 fn array() {
     //~v ERROR use of an internal attribute
