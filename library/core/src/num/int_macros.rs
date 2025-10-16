@@ -1024,7 +1024,7 @@ macro_rules! int_impl {
         /// # Panics
         ///
         /// This function will panic  if `rhs == 0`.
-        /// 
+        ///
         /// ## Overflow behavior
         ///
         /// On overflow, this function will panic if overflow checks are enabled (default in debug
