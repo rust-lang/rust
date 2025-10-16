@@ -5,6 +5,4 @@
 // close. There should not be a "missing `main` function" error as the rest
 // are properly parsed.
 
-#![feature(frontmatter)]
-
-fn main() {}
+fn main() {}  //~ ERROR: `main` function not found in crate `unclosed_1` [E0601]

@@ -3,8 +3,8 @@ error: unclosed frontmatter
    |
 LL | / ----cargo
 ...  |
-LL | |
-   | |_^
+LL | | fn main() {}
+   | |_________________________________________________________________________________^
    |
 note: frontmatter opening here was not closed
   --> $DIR/unclosed-1.rs:1:1
@@ -12,5 +12,12 @@ note: frontmatter opening here was not closed
 LL | ----cargo
    | ^^^^
 
-error: aborting due to 1 previous error
+error[E0601]: `main` function not found in crate `unclosed_1`
+  --> $DIR/unclosed-1.rs:8:82
+   |
+LL | fn main() {}
+   |                                                                                 ^ consider adding a `main` function to `$DIR/unclosed-1.rs`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.
