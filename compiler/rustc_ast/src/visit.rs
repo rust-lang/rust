@@ -389,9 +389,9 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<(NodeId, Path)>,
             ThinVec<PathSegment>,
             ThinVec<PreciseCapturingArg>,
-            ThinVec<Box<Pat>>,
+            ThinVec<Pat>,
             ThinVec<Box<Ty>>,
-            ThinVec<Box<TyPat>>,
+            ThinVec<TyPat>,
         );
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`

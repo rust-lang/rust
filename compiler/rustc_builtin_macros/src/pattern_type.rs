@@ -32,7 +32,7 @@ fn parse_pat_ty<'a>(
 
     let pat = pat_to_ty_pat(
         cx,
-        *parser.parse_pat_no_top_guard(
+        parser.parse_pat_no_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::No,
@@ -44,14 +44,14 @@ fn parse_pat_ty<'a>(
         parser.unexpected()?;
     }
 
-    Ok((ty, pat))
+    Ok((ty, Box::new(pat)))
 }
 
-fn ty_pat(kind: TyPatKind, span: Span) -> Box<TyPat> {
-    Box::new(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
+fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
+    TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> Box<TyPat> {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
@@ -59,7 +59,7 @@ fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> Box<TyPat> {
             include_end,
         ),
         ast::PatKind::Or(variants) => {
-            TyPatKind::Or(variants.into_iter().map(|pat| pat_to_ty_pat(cx, *pat)).collect())
+            TyPatKind::Or(variants.into_iter().map(|pat| pat_to_ty_pat(cx, pat)).collect())
         }
         ast::PatKind::Err(guar) => TyPatKind::Err(guar),
         _ => TyPatKind::Err(cx.dcx().span_err(pat.span, "pattern not supported in pattern types")),

@@ -61,7 +61,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         Pat,
         NonterminalKind::Pat(PatParam { inferred: false }),
         |parser: &mut Parser<'b>| parser.parse_pat_no_top_alt(None, None),
-        |x: Box<ast::Pat>| Some(x)
+        |x: ast::Pat| Some(Box::new(x))
     );
     // `parse_item` returns `Option<Box<ast::Item>>`.
     parse_macro_arg!(
