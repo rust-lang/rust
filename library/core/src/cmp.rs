@@ -1109,6 +1109,8 @@ pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
     /// #![feature(clamp_min_max)]
     /// assert_eq!(12.clamp_max(10), 10);
     /// assert_eq!(4.clamp_max(7), 4);
+    /// let s = "hello";
+    /// assert_eq!(&s[..32.clamp_max(s.len())], s);
     /// ```
     #[must_use]
     #[inline]
