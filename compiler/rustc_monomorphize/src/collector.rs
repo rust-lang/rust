@@ -1145,6 +1145,7 @@ fn find_tails_for_unsizing<'tcx>(
     debug_assert!(!target_ty.has_param(), "{target_ty} should be fully monomorphic");
 
     match (source_ty.kind(), target_ty.kind()) {
+        (&ty::Pat(source, _), &ty::Pat(target, _)) => find_tails_for_unsizing(tcx, source, target),
         (
             &ty::Ref(_, source_pointee, _),
             &ty::Ref(_, target_pointee, _) | &ty::RawPtr(target_pointee, _),
