@@ -35,7 +35,7 @@
 // lldb-check:[...] { 0 = 0 1 = OneHundred }
 
 // lldb-command:v tuple_padding_at_end
-// lldb-check:[...] { 0 = { 0 = 1 1 = OneThousand } 1 = 2 }
+// lldb-check:[...] ((1, OneThousand), 2) { 0 = (1, OneThousand) { 0 = 1 1 = OneThousand } 1 = 2 }
 
 // lldb-command:v tuple_different_enums
 // lldb-check:[...] { 0 = OneThousand 1 = MountainView 2 = OneMillion 3 = Vienna }

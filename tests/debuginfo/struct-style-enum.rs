@@ -26,16 +26,16 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldb-check:(struct_style_enum::Regular) case1 = { value = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 } $discr$ = 0 }
+// lldb-check:(struct_style_enum::Regular) case1 = Case1{a:0, b:31868, c:31868, d:31868, e:31868} { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 }
 
 // lldb-command:v case2
-// lldb-check:(struct_style_enum::Regular) case2 = { value = { a = 0 b = 286331153 c = 286331153 } $discr$ = 1 }
+// lldb-check:(struct_style_enum::Regular) case2 = Case2{a:0, b:286331153, c:286331153} { a = 0 b = 286331153 c = 286331153 }
 
 // lldb-command:v case3
-// lldb-check:(struct_style_enum::Regular) case3 = { value = { a = 0 b = 6438275382588823897 } $discr$ = 2 }
+// lldb-check:(struct_style_enum::Regular) case3 = Case3{a:0, b:6438275382588823897} { a = 0 b = 6438275382588823897 }
 
 // lldb-command:v univariant
-// lldb-check:(struct_style_enum::Univariant) univariant = { value = { a = -1 } }
+// lldb-check:(struct_style_enum::Univariant) univariant = TheOnlyCase{a:-1} { a = -1 }
 
 #![allow(unused_variables)]
 
