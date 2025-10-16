@@ -4,12 +4,15 @@ use crate::os::unix::ffi::OsStringExt;
 use crate::sys::pal::os::errno;
 
 pub fn hostname() -> io::Result<OsString> {
-    // Query the system for the maximum host name length.
-    let host_name_max = match unsafe { libc::sysconf(libc::_SC_HOST_NAME_MAX) } {
-        // If this fails (possibly because there is no maximum length), then
-        // assume a maximum length of _POSIX_HOST_NAME_MAX (255).
-        -1 => 255,
-        max => max as usize,
+    let host_name_max = cfg_select! {
+        any(target_os = "horizon", target_os = "vita") => { 255 }
+        // Query the system for the maximum host name length.
+        _ =>  match unsafe { libc::sysconf(libc::_SC_HOST_NAME_MAX) } {
+            // If this fails (possibly because there is no maximum length), then
+            // assume a maximum length of _POSIX_HOST_NAME_MAX (255).
+            -1 => 255,
+            max => max as usize,
+        }
     };
 
     // Reserve space for the nul terminator too.
