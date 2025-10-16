@@ -1,4 +1,5 @@
-use crate::cmp::{self, Ordering::*};
+use crate::cmp;
+use crate::cmp::Ordering::*;
 use crate::fmt::{self, Debug};
 use crate::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
@@ -187,12 +188,7 @@ macro_rules! zip_impl_general_defaults {
             let next_opts = match a_sz.cmp(&b_sz) {
                 Equal => (self.a.next_back(), self.b.next_back()),
                 Greater => (self.a.nth_back(a_sz - b_sz), self.b.next_back()),
-                Less => {
-                    // Equalize lengths before calling next_back,
-                    // so iterators are called in correct order
-                    self.b.nth_back(b_sz - a_sz - 1);
-                    (self.a.next_back(), self.b.next_back())
-                },
+                Less => (self.a.next_back(), self.b.nth_back(b_sz - a_sz)),
             };
             match next_opts {
                 (Some(x), Some(y)) => Some((x, y)),
