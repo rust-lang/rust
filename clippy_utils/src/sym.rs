@@ -120,7 +120,6 @@ generate! {
     collapsible_if,
     collect,
     const_ptr,
-    consts,
     contains,
     copied,
     copy_from,

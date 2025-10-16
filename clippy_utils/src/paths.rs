@@ -131,11 +131,6 @@ path_macros! {
     macro_path: PathNS::Macro,
 }
 
-pub static F16_CONSTS: PathLookup = type_path!(core::f16::consts);
-pub static F32_CONSTS: PathLookup = type_path!(core::f32::consts);
-pub static F64_CONSTS: PathLookup = type_path!(core::f64::consts);
-pub static F128_CONSTS: PathLookup = type_path!(core::f128::consts);
-
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
 pub static FUTURES_IO_ASYNCWRITEEXT: PathLookup = type_path!(futures_util::AsyncWriteExt);

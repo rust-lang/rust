@@ -25,7 +25,6 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-extern crate indexmap;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_attr_parsing;
@@ -49,7 +48,6 @@ extern crate rustc_mir_dataflow;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_trait_selection;
-extern crate smallvec;
 
 pub mod ast_utils;
 pub mod attrs;
@@ -93,6 +91,7 @@ use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexmap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};

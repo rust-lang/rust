@@ -2,12 +2,12 @@ use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::RustcVersion;
 use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use serde::Deserialize;
-use smallvec::SmallVec;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 

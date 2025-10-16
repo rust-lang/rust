@@ -1,10 +1,10 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::sym;
-use smallvec::SmallVec;
 
 use super::IP_CONSTANT;
 
