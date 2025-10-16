@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `struct` (argument key must be an identifier but found keyword `struct`, escape it using `r#struct`)
+

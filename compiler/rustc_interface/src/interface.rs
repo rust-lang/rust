@@ -63,8 +63,8 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     dcx.fatal(format!(
-                        concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
-                        s
+                        concat!("invalid `--cfg` argument: `{}` ({})"),
+                        s, $reason,
                     ));
                 };
             }
@@ -83,6 +83,19 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                             }
                             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                                 let ident = meta_item.ident().expect("multi-segment cfg key");
+
+                                if ident.is_reserved() {
+                                    if !ident.name.can_be_raw() {
+                                        if s.trim().starts_with(&format!("r#{}", ident.as_str())) {
+                                            error!(format!("argument key must be an identifier, but `{}` cannot be a raw identifier", ident.name));
+                                        } else {
+                                            error!(format!("argument key must be an identifier but found keyword `{}`", ident.name));
+                                        }
+                                    } else if !s.trim().starts_with(&ident.to_string()) {
+                                        error!(format!("argument key must be an identifier but found keyword `{}`, escape it using `{}`", ident.as_str(), ident));
+                                    }
+                                }
+
                                 return (ident.name, meta_item.value_str());
                             }
                         }
@@ -91,7 +104,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                     Err(err) => err.cancel(),
                 },
                 Err(errs) => errs.into_iter().for_each(|err| err.cancel()),
-            }
+            };
 
             // If the user tried to use a key="value" flag, but is missing the quotes, provide
             // a hint about how to resolve this.
@@ -202,6 +215,13 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
         let mut values_specified = false;
         let mut values_any_specified = false;
 
+        let arg_strs = s
+            .trim()
+            .trim_start_matches("cfg(")
+            .trim_end_matches(')')
+            .split(',')
+            .collect::<Vec<_>>();
+
         for arg in args {
             if arg.is_word()
                 && let Some(ident) = arg.ident()
@@ -209,11 +229,40 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                 if values_specified {
                     error!("`cfg()` names cannot be after values");
                 }
+
+                if ident.is_reserved() {
+                    if !ident.name.can_be_raw() {
+                        if arg_strs[names.len()].starts_with(&format!("r#{}", ident.as_str())) {
+                            error!(format!(
+                                "argument key must be an identifier, but `{}` cannot be a raw identifier",
+                                ident.name
+                            ));
+                        } else {
+                            error!(format!(
+                                "argument key must be an identifier but found keyword `{}`",
+                                ident.name
+                            ));
+                        }
+                    } else if !arg_strs[names.len()].starts_with(&ident.to_string()) {
+                        error!(format!(
+                            "argument key must be an identifier but found keyword `{}`, escape it using `{}`",
+                            ident.as_str(),
+                            ident
+                        ));
+                    }
+                }
+
                 names.push(ident);
             } else if let Some(boolean) = arg.boolean_literal() {
                 if values_specified {
                     error!("`cfg()` names cannot be after values");
                 }
+
+                let lit_str = arg_strs[names.len()];
+                if !lit_str.starts_with("r#") {
+                    error!(in arg, format!("`cfg()` names must be identifiers but found keyword `{lit_str}`, escape it using `r#{lit_str}`"));
+                }
+
                 names.push(rustc_span::Ident::new(
                     if boolean { rustc_span::kw::True } else { rustc_span::kw::False },
                     arg.span(),
