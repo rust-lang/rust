@@ -38,8 +38,7 @@ impl<'a> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(edition, text);
         if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            conv.res.push(SHEBANG, conv.offset);
-            conv.offset = shebang_len;
+            conv.push(SHEBANG, shebang_len, Vec::new());
         };
 
         // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
