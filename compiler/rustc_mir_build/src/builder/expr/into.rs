@@ -820,7 +820,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     destination,
-                    Rvalue::Use(Operand::Copy(_1.into())),
+                    Rvalue::Reborrow(_1.into()),
                 );
                 block.unit()
             }
