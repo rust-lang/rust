@@ -1,3 +1,7 @@
+#[path = "../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 fn ref_box_dyn() {
     struct Struct(i32);
 
@@ -147,7 +151,7 @@ fn vtable_ptr_eq() {
     // We don't always get the same vtable when casting this to a wide pointer.
     let x = &2;
     let x_wide = x as &dyn fmt::Display;
-    assert!((0..256).any(|_| !ptr::eq(x as &dyn fmt::Display, x_wide)));
+    check_nondet(|| ptr::eq(x as &dyn fmt::Display, x_wide));
 }
 
 fn main() {
