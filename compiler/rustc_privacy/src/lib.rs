@@ -185,14 +185,17 @@ where
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
-        match *ty.kind() {
+        let ty_kind = *ty.kind();
+        match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
-                if !self.visited_tys.insert(ty) {
+                if let ty::Adt(..) = ty_kind
+                    && !self.visited_tys.insert(ty)
+                {
                     return V::Result::output();
                 }
                 try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
@@ -202,7 +205,7 @@ where
                 // Default type visitor doesn't visit signatures of fn types.
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
-                if let ty::FnDef(..) = ty.kind() {
+                if let ty::FnDef(..) = ty_kind {
                     // FIXME: this should probably use `args` from `FnDef`
                     try_visit!(tcx.fn_sig(def_id).instantiate_identity().visit_with(self));
                 }
@@ -217,9 +220,6 @@ where
                 }
             }
             ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -251,9 +251,6 @@ where
                 };
             }
             ty::Dynamic(predicates, ..) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
                 for predicate in predicates {
@@ -290,7 +287,7 @@ where
             | ty::Str
             | ty::Never
             | ty::Bound(..)
-            | ty::Param(..) => return V::Result::output(),
+            | ty::Param(..) => {}
 
             // These types don't have their own def-ids (but may have subcomponents
             // with def-ids that should be visited recursively).
@@ -303,11 +300,7 @@ where
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
             | ty::Error(_)
-            | ty::CoroutineWitness(..) => {
-                if !self.visited_tys.insert(ty) {
-                    return V::Result::output();
-                }
-            }
+            | ty::CoroutineWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
