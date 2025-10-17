@@ -8,7 +8,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbigModChild, ModChild};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::query::{ExternProviders, LocalCrate};
@@ -582,6 +582,14 @@ impl CStore {
 
     pub fn expn_that_defined_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
         self.get_crate_data(def_id.krate).get_expn_that_defined(def_id.index, sess)
+    }
+
+    pub fn ambig_module_children_untracked(
+        &self,
+        def_id: DefId,
+        sess: &Session,
+    ) -> impl Iterator<Item = AmbigModChild> {
+        self.get_crate_data(def_id.krate).get_ambig_module_children(def_id.index, sess)
     }
 
     /// Only public-facing way to traverse all the definitions in a non-local crate.

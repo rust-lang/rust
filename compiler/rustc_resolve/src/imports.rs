@@ -9,7 +9,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::{DefId, LocalDefIdMap};
-use rustc_middle::metadata::{ModChild, Reexport};
+use rustc_middle::metadata::{AmbigModChild, AmbigModChildKind, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
 use rustc_session::lint::BuiltinLintDiag;
@@ -21,7 +21,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
-use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -227,7 +226,7 @@ impl<'ra> ImportData<'ra> {
         }
     }
 
-    fn simplify(&self, r: &Resolver<'_, '_>) -> Reexport {
+    pub(crate) fn simplify(&self, r: &Resolver<'_, '_>) -> Reexport {
         let to_def_id = |id| r.local_def_id(id).to_def_id();
         match self.kind {
             ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
@@ -571,10 +570,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn finalize_imports(&mut self) {
         let mut module_children = Default::default();
+        let mut ambig_module_children = Default::default();
         for module in &self.local_modules {
-            self.finalize_resolutions_in(*module, &mut module_children);
+            self.finalize_resolutions_in(*module, &mut module_children, &mut ambig_module_children);
         }
         self.module_children = module_children;
+        self.ambig_module_children = ambig_module_children;
 
         let mut seen_spans = FxHashSet::default();
         let mut errors = vec![];
@@ -1546,6 +1547,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         module: Module<'ra>,
         module_children: &mut LocalDefIdMap<Vec<ModChild>>,
+        ambig_module_children: &mut LocalDefIdMap<Vec<AmbigModChild>>,
     ) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut(self) = Vec::new();
@@ -1553,25 +1555,45 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let Some(def_id) = module.opt_def_id() else { return };
 
         let mut children = Vec::new();
+        let mut ambig_children = Vec::new();
 
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
-            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
-            if res != def::Res::Err && !error_ambiguity {
-                let mut reexport_chain = SmallVec::new();
-                let mut next_binding = binding;
-                while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
-                    reexport_chain.push(import.simplify(this));
-                    next_binding = binding;
-                }
+            if res != def::Res::Err {
+                let child = |reexport_chain| ModChild {
+                    ident: ident.0,
+                    res,
+                    vis: binding.vis,
+                    reexport_chain,
+                };
+                if let Some((ambig_binding1, ambig_binding2, ambig_kind)) =
+                    binding.descent_to_ambiguity()
+                {
+                    let main = child(ambig_binding1.reexport_chain(this));
+                    let second = ModChild {
+                        ident: ident.0,
+                        res: ambig_binding2.res().expect_non_local(),
+                        vis: ambig_binding2.vis,
+                        reexport_chain: ambig_binding2.reexport_chain(this),
+                    };
+                    let kind = match ambig_kind {
+                        AmbiguityKind::GlobVsGlob => AmbigModChildKind::GlobVsGlob,
+                        AmbiguityKind::GlobVsExpanded => AmbigModChildKind::GlobVsExpanded,
+                        _ => unreachable!(),
+                    };
 
-                children.push(ModChild { ident: ident.0, res, vis: binding.vis, reexport_chain });
+                    ambig_children.push(AmbigModChild { main, second, kind })
+                } else {
+                    children.push(child(binding.reexport_chain(this)));
+                }
             }
         });
 
         if !children.is_empty() {
-            // Should be fine because this code is only called for local modules.
             module_children.insert(def_id.expect_local(), children);
+        }
+        if !ambig_children.is_empty() {
+            ambig_module_children.insert(def_id.expect_local(), ambig_children);
         }
     }
 }

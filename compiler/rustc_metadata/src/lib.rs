@@ -9,6 +9,7 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(proc_macro_internals)]
+#![feature(result_option_map_or_default)]
 #![feature(trusted_len)]
 // tidy-alphabetical-end
 
