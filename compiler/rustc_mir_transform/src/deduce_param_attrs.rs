@@ -170,16 +170,17 @@ pub(super) fn deduced_param_attrs<'tcx>(
     deduce_read_only.visit_body(body);
     tracing::trace!(?deduce_read_only.read_only);
 
-    let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
+    let mut deduced_param_attrs: &[_] = tcx.arena.alloc_from_iter(
         deduce_read_only.read_only.into_iter().map(|read_only| DeducedParamAttrs { read_only }),
     );
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
     // default set of attributes, so we don't have to store them explicitly. Pop them off to save a
     // few bytes in metadata.
-    while deduced_param_attrs.last() == Some(&DeducedParamAttrs::default()) {
-        let last_index = deduced_param_attrs.len() - 1;
-        deduced_param_attrs = &mut deduced_param_attrs[0..last_index];
+    while let Some((last, rest)) = deduced_param_attrs.split_last()
+        && last.is_default()
+    {
+        deduced_param_attrs = rest;
     }
 
     deduced_param_attrs

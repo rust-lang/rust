@@ -34,12 +34,18 @@ pub struct DeducedParamAttrs {
 
 // By default, consider the parameters to be mutated.
 impl Default for DeducedParamAttrs {
+    #[inline]
     fn default() -> DeducedParamAttrs {
         DeducedParamAttrs { read_only: DeducedReadOnlyParam::MUTATED }
     }
 }
 
 impl DeducedParamAttrs {
+    #[inline]
+    pub fn is_default(self) -> bool {
+        self.read_only.contains(DeducedReadOnlyParam::MUTATED)
+    }
+
     pub fn read_only<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
