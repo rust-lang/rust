@@ -1,15 +1,87 @@
-error[E0425]: cannot find function `f` in crate `glob_conflict`
+error: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:7:20
    |
 LL |     glob_conflict::f();
-   |                    ^ not found in `glob_conflict`
+   |                    ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:12:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:13:9
+   |
+LL | pub use m2::*;
+   |         ^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
-error[E0425]: cannot find function `f` in module `glob_conflict::glob`
-  --> $DIR/glob-conflict-cross-crate-1.rs:10:26
+error: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:9:26
    |
 LL |     glob_conflict::glob::f();
-   |                          ^ not found in `glob_conflict::glob`
+   |                          ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:12:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:13:9
+   |
+LL | pub use m2::*;
+   |         ^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0425`.
+Future incompatibility report: Future breakage diagnostic:
+error: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:7:20
+   |
+LL |     glob_conflict::f();
+   |                    ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:12:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:13:9
+   |
+LL | pub use m2::*;
+   |         ^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
+error: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:9:26
+   |
+LL |     glob_conflict::glob::f();
+   |                          ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:12:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:13:9
+   |
+LL | pub use m2::*;
+   |         ^^
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+

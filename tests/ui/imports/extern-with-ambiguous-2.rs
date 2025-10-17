@@ -1,4 +1,3 @@
-//@ check-pass
 //@ edition: 2021
 //@ aux-build: extern-with-ambiguous-2-extern.rs
 
@@ -11,8 +10,6 @@ mod s {
 }
 use s::*;
 use extern_with_ambiguous_2_extern::*;
-use error::*;
-//^ FIXME: An ambiguity error should be thrown for `error`,
-// as there is ambiguity present within `extern-with-ambiguous-2-extern.rs`.
+use error::*; //~ ERROR `error` is ambiguous
 
 fn main() {}
