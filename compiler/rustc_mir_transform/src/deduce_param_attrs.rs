@@ -47,7 +47,10 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
             // Dereference is not a mutation.
             _ if place.is_indirect_first_projection() => {}
             // This is a `Drop`. It could disappear at monomorphization, so mark it specially.
-            PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
+            PlaceContext::MutatingUse(MutatingUseContext::Drop)
+                // Projection changes the place's type, so `needs_drop(local.ty)` is not
+                // `needs_drop(place.ty)`.
+                if place.projection.is_empty() => {
                 self.read_only[param_index] |= DeducedReadOnlyParam::IF_NO_DROP;
             }
             // This is a mutation, so mark it as such.
