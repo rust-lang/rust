@@ -21,6 +21,10 @@ pkgs.mkShell {
     # Get the runtime deps of the x wrapper
   ] ++ lists.flatten (attrsets.attrValues env);
 
+  shellHook = ''
+    export PATH=$(pwd)/build/host/stage0/bin:$PATH
+  '';
+
   env = {
     # Avoid creating text files for ICEs.
     RUSTC_ICE = 0;
