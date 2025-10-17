@@ -367,10 +367,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 continue;
             }
 
-            let visit_result = self.visit_node(self.tcx.hir_node_by_def_id(id));
-            if visit_result.is_break() {
-                return visit_result;
-            }
+            self.visit_node(self.tcx.hir_node_by_def_id(id))?;
         }
 
         ControlFlow::Continue(())
@@ -1167,11 +1164,12 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
-    let live_symbols_result = tcx.live_symbols_and_ignored_derived_traits(());
-    if live_symbols_result.is_err() {
+    let Ok((live_symbols, ignored_derived_traits)) =
+        tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
+    else {
         return;
-    }
-    let (live_symbols, ignored_derived_traits) = live_symbols_result.as_ref().unwrap();
+    };
+
     let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
 
     let module_items = tcx.hir_module_items(module);

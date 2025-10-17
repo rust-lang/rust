@@ -1,6 +1,7 @@
 // The test confirms ICE-125323 is fixed.
 //
-// This warning makes sure the fix doesn't throw everything with errors to dead.
+// This warning tests there is no warning about dead code
+// when there is a constant evaluation error.
 #![warn(unused)]
 fn should_not_be_dead() {}
 
