@@ -1,2 +1,6 @@
+error: unexpected token: `value`
+  |
+  = note: this error occurred on the command line: `--cfg=key=value`
+
 error: invalid `--cfg` argument: `key=value` (expected `key` or `key="value"`, ensure escaping is appropriate for your shell, try 'key="value"' or key=\"value\")
 

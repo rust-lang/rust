@@ -1,2 +1,2 @@
-error: invalid `--cfg` argument: `Self` (argument key must be an identifier but found keyword `Self`)
+error: invalid `--cfg` argument: `Self` (argument key must be an identifier, but `Self` cannot be a raw identifier)
 

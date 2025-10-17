@@ -1,2 +1,6 @@
+error: this file contains an unclosed delimiter
+  |
+  = note: this error occurred on the command line: `--cfg=a{`
+
 error: invalid `--cfg` argument: `a{` (expected `key` or `key="value"`)
 
