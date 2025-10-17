@@ -3,12 +3,14 @@
 // unifying match arms, for example.
 //
 // See also coercion-slice.rs
+//
+//@ check-pass
 
 fn main() {
     let _: ((),) = (loop {},);
 
-    ((),) = (loop {},); //~ error: mismatched types
+    ((),) = (loop {},);
 
     let x = (loop {},);
-    let _: ((),) = x; //~ error: mismatched types
+    let _: ((),) = x;
 }
