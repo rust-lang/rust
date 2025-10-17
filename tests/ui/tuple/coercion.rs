@@ -5,13 +5,17 @@
 fn main() {
     let _: ((),) = (loop {},);
 
-    ((),) = (loop {},); //~ error: mismatched types
+    ((),) = (loop {},);
 
     let x = (loop {},);
-    let _: ((),) = x; //~ error: mismatched types
+    let _: ((),) = x;
 
     let _: (&[u8],) = (&[],);
 
+    // This one can't work without a redesign on the coercion system.
+    // We currently only eagerly add never-to-any coercions, not any others.
+    // Thus, because we don't have an expectation when typechecking `&[]`,
+    // we don't add a coercion => this doesn't work.
     let y = (&[],);
     let _: (&[u8],) = y; //~ error: mismatched types
 }
