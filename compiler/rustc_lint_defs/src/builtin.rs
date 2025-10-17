@@ -86,7 +86,7 @@ declare_lint_pass! {
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
-        REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        REPR_TRANSPARENT_NON_ZST_FIELDS,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
@@ -3011,10 +3011,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `repr_transparent_external_private_fields` lint
+    /// The `repr_transparent_non_zst_fields` lint
     /// detects types marked `#[repr(transparent)]` that (transitively)
-    /// contain an external ZST type marked `#[non_exhaustive]` or containing
-    /// private fields
+    /// contain a type that is not guaranteed to remain a ZST type under all configurations.
     ///
     /// ### Example
     ///
@@ -3022,8 +3021,13 @@ declare_lint! {
     /// #![deny(repr_transparent_external_private_fields)]
     /// use foo::NonExhaustiveZst;
     ///
+    /// #[repr(C)]
+    /// struct CZst([u8; 0]);
+    ///
     /// #[repr(transparent)]
     /// struct Bar(u32, ([u32; 0], NonExhaustiveZst));
+    /// #[repr(transparent)]
+    /// struct Baz(u32, CZst);
     /// ```
     ///
     /// This will produce:
@@ -3042,26 +3046,39 @@ declare_lint! {
     ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+    ///   = note: this field contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.
+    ///
+    /// error: zero-sized fields in repr(transparent) cannot contain `#[repr(C)]` types
+    ///  --> src/main.rs:5:28
+    ///   |
+    /// 5 | struct Baz(u32, CZst);
+    ///   |                 ^^^^
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+    ///   = note: this field contains `CZst`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Previous, Rust accepted fields that contain external private zero-sized types,
-    /// even though it should not be a breaking change to add a non-zero-sized field to
-    /// that private type.
+    /// Previous, Rust accepted fields that contain external private zero-sized types, even though
+    /// those types could gain a non-zero-sized field in a future, semver-compatible update.
+    ///
+    /// Rust also accepted fields that contain `repr(C)` zero-sized types, even though those types
+    /// are not guaranteed to be zero-sized on all targets, and even though those types can
+    /// make a difference for the ABI (and therefore cannot be ignored by `repr(transparent)`).
     ///
     /// This is a [future-incompatible] lint to transition this
     /// to a hard error in the future. See [issue #78586] for more details.
     ///
     /// [issue #78586]: https://github.com/rust-lang/rust/issues/78586
     /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-    Warn,
+    pub REPR_TRANSPARENT_NON_ZST_FIELDS,
+    Deny,
     "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
+        report_in_deps: true,
     };
 }
 
