@@ -83,7 +83,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
     ($name:ident, $ty:ty) => {
         interned_vec_nolifetime_salsa!($name, $ty, nofold);
 
-        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name {
+        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name<'db> {
             fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
                 self,
                 folder: &mut F,
@@ -104,7 +104,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
             }
         }
 
-        impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name {
+        impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name<'db> {
             fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
                 &self,
                 visitor: &mut V,
@@ -117,14 +117,14 @@ macro_rules! _interned_vec_nolifetime_salsa {
         }
     };
     ($name:ident, $ty:ty, nofold) => {
-        #[salsa::interned(no_lifetime, constructor = new_, debug)]
+        #[salsa::interned(constructor = new_, debug)]
         pub struct $name {
             #[returns(ref)]
             inner_: smallvec::SmallVec<[$ty; 2]>,
         }
 
-        impl $name {
-            pub fn new_from_iter<'db>(
+        impl<'db> $name<'db> {
+            pub fn new_from_iter(
                 interner: DbInterner<'db>,
                 data: impl IntoIterator<Item = $ty>,
             ) -> Self {
@@ -140,7 +140,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
             }
         }
 
-        impl rustc_type_ir::inherent::SliceLike for $name {
+        impl<'db> rustc_type_ir::inherent::SliceLike for $name<'db> {
             type Item = $ty;
 
             type IntoIter = <smallvec::SmallVec<[$ty; 2]> as IntoIterator>::IntoIter;
@@ -154,7 +154,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
             }
         }
 
-        impl IntoIterator for $name {
+        impl<'db> IntoIterator for $name<'db> {
             type Item = $ty;
             type IntoIter = <Self as rustc_type_ir::inherent::SliceLike>::IntoIter;
 
@@ -163,7 +163,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
             }
         }
 
-        impl Default for $name {
+        impl<'db> Default for $name<'db> {
             fn default() -> Self {
                 $name::new_from_iter(DbInterner::conjure(), [])
             }
@@ -887,7 +887,7 @@ macro_rules! as_lang_item {
 impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     type DefId = SolverDefId;
     type LocalDefId = SolverDefId;
-    type LocalDefIds = SolverDefIds;
+    type LocalDefIds = SolverDefIds<'db>;
     type TraitId = TraitIdWrapper;
     type ForeignId = TypeAliasIdWrapper;
     type FunctionId = CallableIdWrapper;
@@ -904,7 +904,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     type Term = Term<'db>;
 
-    type BoundVarKinds = BoundVarKinds;
+    type BoundVarKinds = BoundVarKinds<'db>;
     type BoundVarKind = BoundVarKind;
 
     type PredefinedOpaques = PredefinedOpaques<'db>;
@@ -977,7 +977,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     type GenericsOf = Generics;
 
-    type VariancesOf = VariancesOf;
+    type VariancesOf = VariancesOf<'db>;
 
     type AdtDef = AdtDef;
 
@@ -1045,10 +1045,9 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf {
         let generic_def = match def_id {
-            SolverDefId::FunctionId(def_id) => def_id.into(),
-            SolverDefId::AdtId(def_id) => def_id.into(),
-            SolverDefId::Ctor(Ctor::Struct(def_id)) => def_id.into(),
-            SolverDefId::Ctor(Ctor::Enum(def_id)) => def_id.loc(self.db).parent.into(),
+            SolverDefId::Ctor(Ctor::Enum(def_id)) | SolverDefId::EnumVariantId(def_id) => {
+                def_id.loc(self.db).parent.into()
+            }
             SolverDefId::InternedOpaqueTyId(_def_id) => {
                 // FIXME(next-solver): track variances
                 //
@@ -1059,17 +1058,20 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
                 );
             }
-            _ => return VariancesOf::new_from_iter(self, []),
+            SolverDefId::Ctor(Ctor::Struct(def_id)) => def_id.into(),
+            SolverDefId::AdtId(def_id) => def_id.into(),
+            SolverDefId::FunctionId(def_id) => def_id.into(),
+            SolverDefId::ConstId(_)
+            | SolverDefId::StaticId(_)
+            | SolverDefId::TraitId(_)
+            | SolverDefId::TypeAliasId(_)
+            | SolverDefId::ImplId(_)
+            | SolverDefId::InternedClosureId(_)
+            | SolverDefId::InternedCoroutineId(_) => {
+                return VariancesOf::new_from_iter(self, []);
+            }
         };
-        VariancesOf::new_from_iter(
-            self,
-            self.db()
-                .variances_of(generic_def)
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .map(|v| v.to_nextsolver(self)),
-        )
+        self.db.variances_of(generic_def)
     }
 
     fn type_of(self, def_id: Self::DefId) -> EarlyBinder<Self, Self::Ty> {

@@ -3,8 +3,8 @@
 use hir_def::{ItemContainerId, Lookup, TraitId};
 
 use crate::{
-    Binders, DynTy, Interner, ProjectionTy, Substitution, TraitRef, Ty, db::HirDatabase,
-    from_assoc_type_id, from_chalk_trait_id, generics::generics, to_chalk_trait_id,
+    Interner, ProjectionTy, Substitution, TraitRef, Ty, db::HirDatabase, from_assoc_type_id,
+    from_chalk_trait_id, generics::generics, to_chalk_trait_id,
 };
 
 pub(crate) trait ProjectionTyExt {
@@ -32,23 +32,6 @@ impl ProjectionTyExt for ProjectionTy {
 
     fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty {
         self.trait_ref(db).self_type_parameter(Interner)
-    }
-}
-
-pub(crate) trait DynTyExt {
-    fn principal(&self) -> Option<Binders<Binders<&TraitRef>>>;
-}
-
-impl DynTyExt for DynTy {
-    fn principal(&self) -> Option<Binders<Binders<&TraitRef>>> {
-        self.bounds.as_ref().filter_map(|bounds| {
-            bounds.interned().first().and_then(|b| {
-                b.as_ref().filter_map(|b| match b {
-                    crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                    _ => None,
-                })
-            })
-        })
     }
 }
 

@@ -17,7 +17,6 @@ use triomphe::Arc;
 
 use crate::{
     Binders, ImplTraitId, ImplTraits, InferenceResult, TraitEnvironment, Ty, TyDefId, ValueTyDefId,
-    chalk_db,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
@@ -308,19 +307,13 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::interned]
     fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
-    #[salsa::invoke(chalk_db::fn_def_variance_query)]
-    fn fn_def_variance(&self, fn_def_id: CallableDefId) -> chalk_db::Variances;
-
-    #[salsa::invoke(chalk_db::adt_variance_query)]
-    fn adt_variance(&self, adt_id: AdtId) -> chalk_db::Variances;
-
     #[salsa::invoke(crate::variance::variances_of)]
     #[salsa::cycle(
         // cycle_fn = crate::variance::variances_of_cycle_fn,
         // cycle_initial = crate::variance::variances_of_cycle_initial,
         cycle_result = crate::variance::variances_of_cycle_initial,
     )]
-    fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
+    fn variances_of(&self, def: GenericDefId) -> crate::next_solver::VariancesOf<'_>;
 
     // next trait solver
 

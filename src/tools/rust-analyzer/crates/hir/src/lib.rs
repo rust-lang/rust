@@ -36,6 +36,7 @@ pub mod term_search;
 mod display;
 
 use std::{
+    fmt,
     mem::discriminant,
     ops::{ControlFlow, Not},
 };
@@ -160,7 +161,7 @@ pub use {
     // FIXME: Properly encapsulate mir
     hir_ty::mir,
     hir_ty::{
-        CastError, FnAbi, PointerCast, Variance, attach_db, attach_db_allow_change,
+        CastError, FnAbi, PointerCast, attach_db, attach_db_allow_change,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
@@ -4110,7 +4111,39 @@ impl GenericParam {
             GenericParam::ConstParam(_) => return None,
             GenericParam::LifetimeParam(it) => generics.lifetime_idx(it.id)?,
         };
-        db.variances_of(parent)?.get(index).copied()
+        db.variances_of(parent).get(index).map(Into::into)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Variance {
+    Bivariant,
+    Covariant,
+    Contravariant,
+    Invariant,
+}
+
+impl From<rustc_type_ir::Variance> for Variance {
+    #[inline]
+    fn from(value: rustc_type_ir::Variance) -> Self {
+        match value {
+            rustc_type_ir::Variance::Covariant => Variance::Covariant,
+            rustc_type_ir::Variance::Invariant => Variance::Invariant,
+            rustc_type_ir::Variance::Contravariant => Variance::Contravariant,
+            rustc_type_ir::Variance::Bivariant => Variance::Bivariant,
+        }
+    }
+}
+
+impl fmt::Display for Variance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let description = match self {
+            Variance::Bivariant => "bivariant",
+            Variance::Covariant => "covariant",
+            Variance::Contravariant => "contravariant",
+            Variance::Invariant => "invariant",
+        };
+        f.pad(description)
     }
 }
 
