@@ -8,22 +8,11 @@
 
 use crate::next_solver::BoundConst;
 use crate::next_solver::{
-    AliasTy, Binder, BoundRegion, BoundTy, Canonical, CanonicalVarValues, Const, DbInterner, Goal,
-    ParamEnv, Predicate, PredicateKind, Region, Ty, TyKind,
-    fold::FnMutDelegate,
-    infer::{
-        DefineOpaqueTypes, InferCtxt, TypeTrace,
-        traits::{Obligation, PredicateObligations},
-    },
+    BoundRegion, BoundTy, Canonical, CanonicalVarValues, DbInterner, fold::FnMutDelegate,
 };
 use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, BoundVar, GenericArgKind, InferTy, TypeFoldable, Upcast,
-    Variance,
+    GenericArgKind, TypeFoldable,
     inherent::{IntoKind, SliceLike},
-    relate::{
-        Relate, TypeRelation, VarianceDiagInfo,
-        combine::{super_combine_consts, super_combine_tys},
-    },
 };
 
 pub trait CanonicalExt<'db, V> {

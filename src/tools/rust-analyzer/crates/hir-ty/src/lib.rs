@@ -82,7 +82,7 @@ use traits::FnTrait;
 use triomphe::Arc;
 
 use crate::{
-    builder::{ParamKind, TyBuilder},
+    builder::TyBuilder,
     chalk_ext::*,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},

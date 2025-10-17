@@ -2,19 +2,16 @@
 
 use std::cmp::Ordering;
 
-use intern::Interned;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_ast_ir::try_visit;
 use rustc_type_ir::{
     self as ty, CollectAndApply, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     PredicatePolarity, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, Upcast, UpcastFrom, VisitorResult, WithCachedTypeInfo,
+    TypeVisitable, Upcast, UpcastFrom, WithCachedTypeInfo,
     elaborate::Elaboratable,
     error::{ExpectedFound, TypeError},
     inherent::{IntoKind, SliceLike},
-    relate::Relate,
 };
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 
 use crate::next_solver::TraitIdWrapper;
 
@@ -56,11 +53,11 @@ fn stable_cmp_existential_predicate<'db>(
     // FIXME: this is actual unstable - see impl in predicate.rs in `rustc_middle`
     match (a, b) {
         (ExistentialPredicate::Trait(_), ExistentialPredicate::Trait(_)) => Ordering::Equal,
-        (ExistentialPredicate::Projection(a), ExistentialPredicate::Projection(b)) => {
+        (ExistentialPredicate::Projection(_a), ExistentialPredicate::Projection(_b)) => {
             // Should sort by def path hash
             Ordering::Equal
         }
-        (ExistentialPredicate::AutoTrait(a), ExistentialPredicate::AutoTrait(b)) => {
+        (ExistentialPredicate::AutoTrait(_a), ExistentialPredicate::AutoTrait(_b)) => {
             // Should sort by def path hash
             Ordering::Equal
         }
@@ -282,8 +279,6 @@ impl<'db> std::hash::Hash for InternedClausesWrapper<'db> {
         self.0.hash(state)
     }
 }
-
-type InternedClauses<'db> = Interned<InternedClausesWrapper<'db>>;
 
 #[salsa::interned(constructor = new_)]
 pub struct Clauses<'db> {

@@ -1,11 +1,8 @@
 //! A wrapper around [`TyLoweringContext`] specifically for lowering paths.
 
-use std::ops::Deref;
-
 use either::Either;
 use hir_def::{
-    AssocItemId, GenericDefId, GenericParamId, Lookup, TraitId, TypeAliasId,
-    builtin_type::BuiltinType,
+    GenericDefId, GenericParamId, Lookup, TraitId, TypeAliasId,
     expr_store::{
         ExpressionStore, HygieneId,
         path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
@@ -18,13 +15,11 @@ use hir_def::{
     type_ref::{TypeRef, TypeRefId},
 };
 use hir_expand::name::Name;
-use intern::sym;
-use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTerm, AliasTy, AliasTyKind, TypeVisitableExt,
-    inherent::{GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
+    AliasTerm, AliasTy, AliasTyKind,
+    inherent::{GenericArgs as _, Region as _, SliceLike, Ty as _},
 };
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use stdx::never;
 
 use crate::{
@@ -34,16 +29,12 @@ use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     lower::PathDiagnosticCallbackData,
-    lower_nextsolver::{
-        LifetimeElisionKind, PredicateFilter, generic_predicates_filtered_by,
-        named_associated_type_shorthand_candidates,
-    },
+    lower_nextsolver::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
     next_solver::{
-        AdtDef, Binder, Clause, Const, DbInterner, ErrorGuaranteed, Predicate, ProjectionPredicate,
-        Region, SolverDefId, TraitRef, Ty,
+        Binder, Clause, Const, DbInterner, ErrorGuaranteed, Predicate, ProjectionPredicate, Region,
+        TraitRef, Ty,
         mapping::{ChalkToNextSolver, convert_binder_to_early_binder},
     },
-    primitive,
 };
 
 use super::{
@@ -173,22 +164,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         }
     }
 
-    fn prohibit_parenthesized_generic_args(&mut self) -> bool {
-        if let Some(generic_args) = self.current_or_prev_segment.args_and_bindings {
-            match generic_args.parenthesized {
-                GenericArgsParentheses::No => {}
-                GenericArgsParentheses::ReturnTypeNotation | GenericArgsParentheses::ParenSugar => {
-                    let segment = self.current_segment_u32();
-                    self.on_diagnostic(
-                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
-                    );
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     // When calling this, the current segment is the resolved segment (we don't advance it yet).
     pub(crate) fn lower_partly_resolved_path(
         &mut self,
@@ -274,19 +249,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         Ty::new_error(self.ctx.interner, ErrorGuaranteed)
                     }
                     Some(idx) => {
-                        let (pidx, param) = generics.iter().nth(idx).unwrap();
+                        let (pidx, _param) = generics.iter().nth(idx).unwrap();
                         assert_eq!(pidx, param_id.into());
-                        let p = match param {
-                            GenericParamDataRef::TypeParamData(p) => p,
-                            _ => unreachable!(),
-                        };
-                        self.ctx.type_param(
-                            param_id,
-                            idx as u32,
-                            p.name
-                                .as_ref()
-                                .map_or_else(|| sym::MISSING_NAME.clone(), |p| p.symbol().clone()),
-                        )
+                        self.ctx.type_param(param_id, idx as u32)
                     }
                 }
             }
@@ -520,11 +485,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let Some(res) = res else {
             return Ty::new_error(self.ctx.interner, ErrorGuaranteed);
         };
-        let db = self.ctx.db;
         let def = self.ctx.def;
         let segment = self.current_or_prev_segment;
         let assoc_name = segment.name;
-        let mut check_alias = |name: &Name, t: TraitRef<'db>, associated_ty: TypeAliasId| {
+        let check_alias = |name: &Name, t: TraitRef<'db>, associated_ty: TypeAliasId| {
             if name != assoc_name {
                 return None;
             }

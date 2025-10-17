@@ -1,34 +1,30 @@
 //! Things related to tys in the next-trait-solver.
 
-use std::iter;
 use std::ops::ControlFlow;
 
 use hir_def::{
-    AdtId, DefWithBodyId, GenericDefId, HasModule, TypeOrConstParamId, TypeParamId,
+    AdtId, HasModule, TypeParamId,
     hir::generics::{TypeOrConstParamData, TypeParamProvenance},
     lang_item::LangItem,
 };
 use hir_def::{TraitId, type_ref::Rawness};
-use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
-    AliasTyKind, BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid,
-    InferTy, IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
+    AliasTyKind, BoundVar, ClosureKind, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy,
+    IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
-        Abi, AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
+        AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
         IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
     walk::TypeWalker,
 };
-use salsa::plumbing::{AsId, FromId};
-use smallvec::SmallVec;
 
 use crate::{
-    FnAbi, ImplTraitId,
+    ImplTraitId,
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
     next_solver::{
@@ -83,7 +79,7 @@ impl<'db> Ty<'db> {
         Ty::new(interner, TyKind::Adt(AdtDef::new(adt_id, interner), args))
     }
 
-    pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32, name: Symbol) -> Self {
+    pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32) -> Self {
         Ty::new(interner, TyKind::Param(ParamTy { id, index }))
     }
 
@@ -404,7 +400,7 @@ impl<'db> Ty<'db> {
                 Some(interner.fn_sig(callable).instantiate(interner, args))
             }
             TyKind::FnPtr(sig, hdr) => Some(sig.with(hdr)),
-            TyKind::Closure(closure_id, closure_args) => closure_args
+            TyKind::Closure(_, closure_args) => closure_args
                 .split_closure_args_untupled()
                 .closure_sig_as_fn_ptr_ty
                 .callable_sig(interner),
@@ -1222,7 +1218,7 @@ pub struct ParamTy {
 
 impl ParamTy {
     pub fn to_ty<'db>(self, interner: DbInterner<'db>) -> Ty<'db> {
-        Ty::new_param(interner, self.id, self.index, sym::MISSING_NAME.clone())
+        Ty::new_param(interner, self.id, self.index)
     }
 }
 
@@ -1269,11 +1265,11 @@ impl<'db> TypeVisitable<DbInterner<'db>> for ErrorGuaranteed {
 impl<'db> TypeFoldable<DbInterner<'db>> for ErrorGuaranteed {
     fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
-        folder: &mut F,
+        _folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(self)
     }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, _folder: &mut F) -> Self {
         self
     }
 }

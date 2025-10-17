@@ -1803,7 +1803,7 @@ impl Adt {
         let env = db.trait_environment(self.into());
         let interner = DbInterner::new_with(db, Some(env.krate), env.block);
         let adt_id = AdtId::from(self);
-        let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, _, id, _| {
+        let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, id, _| {
             GenericArg::error_from_id(interner, id)
         });
         db.layout_of_adt(adt_id, args, env)
@@ -4184,8 +4184,7 @@ impl TypeParam {
         let resolver = self.id.parent().resolver(db);
         let interner = DbInterner::new_with(db, None, None);
         let index = hir_ty::param_idx(db, self.id.into()).unwrap();
-        let name = self.name(db).symbol().clone();
-        let ty = Ty::new_param(interner, self.id, index as u32, name);
+        let ty = Ty::new_param(interner, self.id, index as u32);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
@@ -6438,7 +6437,7 @@ fn generic_args_from_tys<'db>(
     args: impl IntoIterator<Item = Ty<'db>>,
 ) -> GenericArgs<'db> {
     let mut args = args.into_iter();
-    GenericArgs::for_item(interner, def_id, |_, _, id, _| {
+    GenericArgs::for_item(interner, def_id, |_, id, _| {
         if matches!(id, GenericParamId::TypeParamId(_))
             && let Some(arg) = args.next()
         {

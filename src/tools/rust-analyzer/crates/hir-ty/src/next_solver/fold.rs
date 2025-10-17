@@ -1,9 +1,8 @@
 //! Fold impls for the next-trait-solver.
 
 use rustc_type_ir::{
-    BoundVar, DebruijnIndex, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
-    inherent::{IntoKind, Region as _},
+    DebruijnIndex, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    inherent::IntoKind,
 };
 
 use crate::next_solver::BoundConst;
@@ -55,7 +54,7 @@ pub(crate) struct BoundVarReplacer<'db, D> {
 }
 
 impl<'db, D: BoundVarReplacerDelegate<'db>> BoundVarReplacer<'db, D> {
-    pub fn new(tcx: DbInterner<'db>, delegate: D) -> Self {
+    pub(crate) fn new(tcx: DbInterner<'db>, delegate: D) -> Self {
         BoundVarReplacer { interner: tcx, current_index: DebruijnIndex::ZERO, delegate }
     }
 }

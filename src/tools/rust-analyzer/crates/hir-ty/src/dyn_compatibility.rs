@@ -7,7 +7,6 @@ use hir_def::{
     TypeAliasId, TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
     lang_item::LangItem, signatures::TraitFlags,
 };
-use intern::Symbol;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
@@ -441,8 +440,7 @@ fn receiver_is_dispatchable<'db>(
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
-    let unsized_self_ty =
-        crate::next_solver::Ty::new_param(interner, self_param_id, u32::MAX, Symbol::empty());
+    let unsized_self_ty = crate::next_solver::Ty::new_param(interner, self_param_id, u32::MAX);
     // `Receiver[Self => U]`
     let unsized_receiver_ty = receiver_for_self_ty(interner, func, receiver_ty, unsized_self_ty);
 
@@ -454,8 +452,8 @@ fn receiver_is_dispatchable<'db>(
             TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let args = GenericArgs::for_item(interner, trait_.into(), |name, index, kind, _| {
-            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, name, kind) }
+        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _| {
+            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, kind) }
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
@@ -494,8 +492,8 @@ fn receiver_for_self_ty<'db>(
     let args = crate::next_solver::GenericArgs::for_item(
         interner,
         SolverDefId::FunctionId(func),
-        |name, index, kind, _| {
-            if index == 0 { self_ty.into() } else { mk_param(interner, index, name, kind) }
+        |index, kind, _| {
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
         },
     );
 

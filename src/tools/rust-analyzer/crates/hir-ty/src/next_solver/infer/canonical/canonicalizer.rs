@@ -8,7 +8,7 @@
 use rustc_hash::FxHashMap;
 use rustc_index::Idx;
 use rustc_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
-use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{Const as _, IntoKind as _, SliceLike, Ty as _};
 use rustc_type_ir::{
     BoundVar, CanonicalQueryInput, DebruijnIndex, Flags, InferConst, RegionKind, TyVid, TypeFlags,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,

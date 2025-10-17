@@ -1062,9 +1062,9 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             TyKind::Str => write!(f, "str")?,
             TyKind::Bool => write!(f, "bool")?,
             TyKind::Char => write!(f, "char")?,
-            TyKind::Float(t) => write!(f, "{}", primitive::float_ty_to_string_ns(t))?,
-            TyKind::Int(t) => write!(f, "{}", primitive::int_ty_to_string_ns(t))?,
-            TyKind::Uint(t) => write!(f, "{}", primitive::uint_ty_to_string_ns(t))?,
+            TyKind::Float(t) => write!(f, "{}", primitive::float_ty_to_string(t))?,
+            TyKind::Int(t) => write!(f, "{}", primitive::int_ty_to_string(t))?,
+            TyKind::Uint(t) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
             TyKind::Slice(t) => {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;

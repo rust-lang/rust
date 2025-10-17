@@ -434,13 +434,16 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     }
 
     fn lower_path_inner(&mut self, typeable: TyDefId, infer_args: bool) -> Ty {
+        let interner = DbInterner::conjure();
         let generic_def = match typeable {
-            TyDefId::BuiltinType(builtin) => return TyBuilder::builtin(builtin),
+            TyDefId::BuiltinType(builtin) => {
+                return crate::next_solver::Ty::from_builtin_type(interner, builtin)
+                    .to_chalk(interner);
+            }
             TyDefId::AdtId(it) => it.into(),
             TyDefId::TypeAliasId(it) => it.into(),
         };
         let substs = self.substs_from_path_segment(generic_def, infer_args, None, false);
-        let interner = DbInterner::conjure();
         let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
         self.ctx.db.ty(typeable).instantiate(interner, args).to_chalk(interner)
     }

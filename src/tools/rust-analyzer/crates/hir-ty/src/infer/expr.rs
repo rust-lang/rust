@@ -46,7 +46,7 @@ use crate::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
         TypeError,
         infer::{
-            DefineOpaqueTypes, InferOk,
+            InferOk,
             traits::{Obligation, ObligationCause},
         },
         obligation_ctxt::ObligationCtxt,
@@ -1333,7 +1333,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.interner(),
                     box_id.into(),
                     [inner_ty.into()],
-                    |_, _, id, _| self.table.next_var_for_param(id),
+                    |_, id, _| self.table.next_var_for_param(id),
                 ),
             )
         } else {
@@ -2122,7 +2122,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 .table
                 .infer_ctxt
                 .at(&ObligationCause::new(), this.table.trait_env.env)
-                .eq(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty);
+                .eq(formal_input_ty, coerced_ty);
 
             // If neither check failed, the types are compatible
             match formal_ty_error {

@@ -1,72 +1,48 @@
 //! Things related to the Interner in the next-trait-solver.
-#![allow(unused)] // FIXME(next-solver): Remove this.
 
 use std::{fmt, ops::ControlFlow};
 
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
-use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variances};
 use hir_def::{
-    AdtId, AttrDefId, BlockId, CallableDefId, EnumVariantId, GenericDefId, ItemContainerId, Lookup,
-    StructId, TypeAliasId, UnionId, VariantId,
+    AdtId, AttrDefId, BlockId, CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId,
+    VariantId,
     lang_item::LangItem,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
-use intern::sym::non_exhaustive;
-use intern::{Interned, impl_internable, sym};
 use la_arena::Idx;
-use rustc_abi::{Align, ReprFlags, ReprOptions};
-use rustc_ast_ir::visit::VisitorResult;
+use rustc_abi::{ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
-use rustc_index::{IndexVec, bit_set::DenseBitSet};
+use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
-    AliasTerm, AliasTermKind, AliasTy, AliasTyKind, BoundVar, CollectAndApply, DebruijnIndex,
-    EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy,
-    ProjectionPredicate, RegionKind, TermKind, TraitPredicate, TraitRef, TypeVisitableExt,
-    UniverseIndex, Upcast, Variance, WithCachedTypeInfo,
-    elaborate::{self, elaborate},
+    AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, DebruijnIndex, EarlyBinder,
+    FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, TraitRef, TypeVisitableExt,
+    UniverseIndex, Upcast, Variance,
+    elaborate::elaborate,
     error::TypeError,
-    inherent::{
-        self, AdtDef as _, Const as _, GenericArgs as _, GenericsOf, IntoKind, ParamEnv as _,
-        Region as _, SliceLike as _, Span as _, Ty as _,
-    },
-    ir_print,
+    inherent::{self, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
-    relate,
     solve::SizedTraitKind,
 };
-use salsa::plumbing::AsId;
-use smallvec::{SmallVec, smallvec};
-use syntax::ast::SelfParamKind;
-use tracing::debug;
-use triomphe::Arc;
 
 use crate::{
-    ConstScalar, FnAbi, Interner,
+    FnAbi,
     db::HirDatabase,
-    lower_nextsolver::{self, TyLoweringContext},
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
         CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
         RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
-        TypingMode,
-        infer::{
-            DbInternerInferExt, InferCtxt,
-            traits::{Obligation, ObligationCause},
-        },
-        obligation_ctxt::ObligationCtxt,
         util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls},
     },
 };
 
 use super::{
-    Binder, BoundExistentialPredicate, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause,
-    ClauseKind, Clauses, Const, ConstKind, ErrorGuaranteed, ExprConst, ExternalConstraints,
-    ExternalConstraintsData, GenericArg, GenericArgs, InternedClausesWrapper, ParamConst, ParamEnv,
-    ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, PredefinedOpaquesData, Predicate,
-    PredicateKind, SolverDefId, Term, Ty, TyKind, Tys, Valtree, ValueConst,
+    Binder, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause, ClauseKind, Clauses, Const,
+    ErrorGuaranteed, ExprConst, ExternalConstraints, GenericArg, GenericArgs, ParamConst, ParamEnv,
+    ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, Predicate, SolverDefId, Term, Ty,
+    TyKind, Tys, Valtree, ValueConst,
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
     generics::{Generics, generics},
@@ -631,7 +607,6 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         self,
         interner: DbInterner<'db>,
     ) -> Option<EarlyBinder<DbInterner<'db>, Ty<'db>>> {
-        let db = interner.db();
         let hir_def::AdtId::StructId(struct_id) = self.inner().id else {
             return None;
         };
@@ -647,23 +622,10 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
     ) -> EarlyBinder<DbInterner<'db>, impl IntoIterator<Item = Ty<'db>>> {
         let db = interner.db();
         // FIXME: this is disabled just to match the behavior with chalk right now
-        let field_tys = |id: VariantId| {
-            let variant_data = id.fields(db);
-            let fields = if variant_data.fields().is_empty() {
-                vec![]
-            } else {
-                let field_types = db.field_types_ns(id);
-                variant_data
-                    .fields()
-                    .iter()
-                    .map(|(idx, _)| {
-                        let ty = field_types[idx];
-                        ty.skip_binder()
-                    })
-                    .collect()
-            };
+        let _field_tys = |id: VariantId| {
+            db.field_types_ns(id).iter().map(|(_, ty)| ty.skip_binder()).collect::<Vec<_>>()
         };
-        let field_tys = |id: VariantId| vec![];
+        let field_tys = |_id: VariantId| vec![];
         let tys: Vec<_> = match self.inner().id {
             hir_def::AdtId::StructId(id) => field_tys(id.into()),
             hir_def::AdtId::UnionId(id) => field_tys(id.into()),
@@ -696,7 +658,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
 
     fn destructor(
         self,
-        interner: DbInterner<'db>,
+        _interner: DbInterner<'db>,
     ) -> Option<rustc_type_ir::solve::AdtDestructorKind> {
         // FIXME(next-solver)
         None
@@ -742,7 +704,7 @@ impl<'db> inherent::Features<DbInterner<'db>> for Features {
         false
     }
 
-    fn feature_bound_holds_in_crate(self, symbol: ()) -> bool {
+    fn feature_bound_holds_in_crate(self, _symbol: ()) -> bool {
         false
     }
 }
@@ -1002,7 +964,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     fn mk_tracked<T: fmt::Debug + Clone>(
         self,
         data: T,
-        dep_node: Self::DepNodeIndex,
+        _dep_node: Self::DepNodeIndex,
     ) -> Self::Tracked<T> {
         Tracked(data)
     }
@@ -1024,7 +986,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn canonical_param_env_cache_get_or_insert<R>(
         self,
-        param_env: Self::ParamEnv,
+        _param_env: Self::ParamEnv,
         f: impl FnOnce() -> rustc_type_ir::CanonicalParamEnvCacheEntry<Self>,
         from_entry: impl FnOnce(&rustc_type_ir::CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R {
@@ -1162,17 +1124,17 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         (TraitRef::new_from_args(self, trait_def_id.try_into().unwrap(), trait_args), alias_args)
     }
 
-    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool {
+    fn check_args_compatible(self, _def_id: Self::DefId, _args: Self::GenericArgs) -> bool {
         // FIXME
         true
     }
 
-    fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) {}
+    fn debug_assert_args_compatible(self, _def_id: Self::DefId, _args: Self::GenericArgs) {}
 
     fn debug_assert_existential_args_compatible(
         self,
-        def_id: Self::DefId,
-        args: Self::GenericArgs,
+        _def_id: Self::DefId,
+        _args: Self::GenericArgs,
     ) {
     }
 
@@ -1240,11 +1202,11 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self.db().callable_item_signature(def_id.0)
     }
 
-    fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
+    fn coroutine_movability(self, _def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
         unimplemented!()
     }
 
-    fn coroutine_for_closure(self, def_id: Self::CoroutineId) -> Self::CoroutineId {
+    fn coroutine_for_closure(self, _def_id: Self::CoroutineId) -> Self::CoroutineId {
         unimplemented!()
     }
 
@@ -1421,9 +1383,10 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         })
     }
 
+    #[expect(unreachable_code)]
     fn const_conditions(
         self,
-        def_id: Self::DefId,
+        _def_id: Self::DefId,
     ) -> EarlyBinder<
         Self,
         impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
@@ -1431,7 +1394,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         EarlyBinder::bind([unimplemented!()])
     }
 
-    fn has_target_features(self, def_id: Self::FunctionId) -> bool {
+    fn has_target_features(self, _def_id: Self::FunctionId) -> bool {
         false
     }
 
@@ -1462,7 +1425,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             hir_def::lang_item::LangItemTarget::Union(union_id) => union_id.into(),
             hir_def::lang_item::LangItemTarget::TypeAlias(type_alias_id) => type_alias_id.into(),
             hir_def::lang_item::LangItemTarget::Trait(trait_id) => trait_id.into(),
-            hir_def::lang_item::LangItemTarget::EnumVariant(enum_variant_id) => unimplemented!(),
+            hir_def::lang_item::LangItemTarget::EnumVariant(_) => unimplemented!(),
         }
     }
 
@@ -1552,7 +1515,6 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             CoroutineReturn,
             CoroutineYield,
             FutureOutput,
-            AsyncFnOnceOutput,
             CallRefFuture,
             CallOnceFuture,
             AsyncFnOnceOutput,
@@ -1596,7 +1558,6 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             AsyncFnMut,
             AsyncFnOnce,
             AsyncFnOnceOutput,
-            AsyncFnOnceOutput,
         )
     }
 
@@ -1636,7 +1597,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         };
 
         if fps.is_empty() {
-            for_trait_impls(
+            _ = for_trait_impls(
                 self.db(),
                 self.krate.expect("Must have self.krate"),
                 self.block,
@@ -1658,7 +1619,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                 },
             );
         } else {
-            for_trait_impls(
+            _ = for_trait_impls(
                 self.db(),
                 self.krate.expect("Must have self.krate"),
                 self.block,
@@ -1698,7 +1659,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         }
     }
 
-    fn has_item_definition(self, def_id: Self::DefId) -> bool {
+    fn has_item_definition(self, _def_id: Self::DefId) -> bool {
         // FIXME(next-solver): should check if the associated item has a value.
         true
     }
@@ -1746,13 +1707,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         trait_data.flags.contains(TraitFlags::FUNDAMENTAL)
     }
 
-    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::TraitId) -> bool {
+    fn trait_may_be_implemented_via_object(self, _trait_def_id: Self::TraitId) -> bool {
         // FIXME(next-solver): should check the `TraitFlags` for
         // the `#[rustc_do_not_implement_via_object]` flag
         true
     }
 
-    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool {
+    fn is_impl_trait_in_trait(self, _def_id: Self::DefId) -> bool {
         // FIXME(next-solver)
         false
     }
@@ -1761,22 +1722,22 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         panic!("Bug encountered in next-trait-solver: {}", msg.to_string())
     }
 
-    fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool {
+    fn is_general_coroutine(self, _coroutine_def_id: Self::CoroutineId) -> bool {
         // FIXME(next-solver)
         true
     }
 
-    fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool {
+    fn coroutine_is_async(self, _coroutine_def_id: Self::CoroutineId) -> bool {
         // FIXME(next-solver)
         true
     }
 
-    fn coroutine_is_gen(self, coroutine_def_id: Self::CoroutineId) -> bool {
+    fn coroutine_is_gen(self, _coroutine_def_id: Self::CoroutineId) -> bool {
         // FIXME(next-solver)
         false
     }
 
-    fn coroutine_is_async_gen(self, coroutine_def_id: Self::CoroutineId) -> bool {
+    fn coroutine_is_async_gen(self, _coroutine_def_id: Self::CoroutineId) -> bool {
         // FIXME(next-solver)
         false
     }
@@ -1870,19 +1831,19 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         Binder::bind_with_vars(inner, bound_vars)
     }
 
-    fn opaque_types_defined_by(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
+    fn opaque_types_defined_by(self, _defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
         // FIXME(next-solver)
         SolverDefIds::new_from_iter(self, [])
     }
 
-    fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool {
+    fn alias_has_const_conditions(self, _def_id: Self::DefId) -> bool {
         // FIXME(next-solver)
         false
     }
 
     fn explicit_implied_const_bounds(
         self,
-        def_id: Self::DefId,
+        _def_id: Self::DefId,
     ) -> EarlyBinder<
         Self,
         impl IntoIterator<Item = rustc_type_ir::Binder<Self, rustc_type_ir::TraitRef<Self>>>,
@@ -1899,14 +1860,14 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self.db().function_signature(id).flags.contains(FnFlags::CONST)
     }
 
-    fn impl_is_const(self, def_id: Self::ImplId) -> bool {
+    fn impl_is_const(self, _def_id: Self::ImplId) -> bool {
         false
     }
 
     fn opt_alias_variances(
         self,
-        kind: impl Into<rustc_type_ir::AliasTermKind>,
-        def_id: Self::DefId,
+        _kind: impl Into<rustc_type_ir::AliasTermKind>,
+        _def_id: Self::DefId,
     ) -> Option<Self::VariancesOf> {
         None
     }
@@ -1933,7 +1894,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn coroutine_hidden_types(
         self,
-        def_id: Self::CoroutineId,
+        _def_id: Self::CoroutineId,
     ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::CoroutineWitnessTypes<Self>>>
     {
         // FIXME(next-solver)
@@ -1952,14 +1913,14 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self.db().trait_signature(trait_.0).flags.contains(TraitFlags::UNSAFE)
     }
 
-    fn impl_self_is_guaranteed_unsized(self, def_id: Self::ImplId) -> bool {
+    fn impl_self_is_guaranteed_unsized(self, _def_id: Self::ImplId) -> bool {
         false
     }
 
     fn impl_specializes(
         self,
-        specializing_impl_def_id: Self::ImplId,
-        parent_impl_def_id: Self::ImplId,
+        _specializing_impl_def_id: Self::ImplId,
+        _parent_impl_def_id: Self::ImplId,
     ) -> bool {
         false
     }
@@ -1970,7 +1931,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn opaque_types_and_coroutines_defined_by(
         self,
-        defining_anchor: Self::LocalDefId,
+        _defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
         Default::default()
     }

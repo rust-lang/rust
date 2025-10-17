@@ -1,11 +1,10 @@
 //! Things related to opaques in the next-trait-solver.
 
-use intern::Interned;
 use rustc_ast_ir::try_visit;
 
 use crate::next_solver::SolverDefId;
 
-use super::{CanonicalVarKind, DbInterner, interned_vec_nolifetime_salsa};
+use super::{DbInterner, interned_vec_nolifetime_salsa};
 
 pub type OpaqueTypeKey<'db> = rustc_type_ir::OpaqueTypeKey<DbInterner<'db>>;
 pub type PredefinedOpaquesData<'db> = rustc_type_ir::solve::PredefinedOpaquesData<DbInterner<'db>>;
