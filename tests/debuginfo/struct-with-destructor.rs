@@ -4,34 +4,34 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print simple
-// gdb-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
+//@ gdb-command:run
+//@ gdb-command:print simple
+//@ gdb-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
 
-// gdb-command:print noDestructor
-// gdb-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
+//@ gdb-command:print noDestructor
+//@ gdb-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
 
-// gdb-command:print withDestructor
-// gdb-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
+//@ gdb-command:print withDestructor
+//@ gdb-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
 
-// gdb-command:print nested
-// gdb-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
+//@ gdb-command:print nested
+//@ gdb-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
-// lldb-command:v simple
-// lldb-check:[...] { x = 10 y = 20 }
+//@ lldb-command:run
+//@ lldb-command:v simple
+//@ lldb-check:[...] { x = 10 y = 20 }
 
-// lldb-command:v noDestructor
-// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-command:v noDestructor
+//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
-// lldb-command:v withDestructor
-// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-command:v withDestructor
+//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
-// lldb-command:v nested
-// lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
+//@ lldb-command:v nested
+//@ lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
 
 #![allow(unused_variables)]
 

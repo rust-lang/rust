@@ -4,34 +4,34 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print a
-// gdb-check:$1 = 10101
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$1 = 10101
+//@ gdb-command:continue
 
-// gdb-command:print b
-// gdb-check:$2 = 20202
-// gdb-command:continue
+//@ gdb-command:print b
+//@ gdb-check:$2 = 20202
+//@ gdb-command:continue
 
-// gdb-command:print c
-// gdb-check:$3 = 30303
+//@ gdb-command:print c
+//@ gdb-check:$3 = 30303
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v a
-// lldb-check:[...] 10101
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 10101
+//@ lldb-command:continue
 
-// lldb-command:v b
-// lldb-check:[...] 20202
-// lldb-command:continue
+//@ lldb-command:v b
+//@ lldb-check:[...] 20202
+//@ lldb-command:continue
 
-// lldb-command:v c
-// lldb-check:[...] 30303
+//@ lldb-command:v c
+//@ lldb-check:[...] 30303
 
 #![allow(unused_variables)]
 

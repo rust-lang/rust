@@ -7,20 +7,20 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc1[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc2[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc3[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc4[...]
-// gdb-command:continue
+//@ gdb-command:run
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc1[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc2[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc3[...]
+//@ gdb-command:next
+//@ gdb-command:frame
+//@ gdb-check:[...]#loc4[...]
+//@ gdb-command:continue
 
 fn one() {
     println!("one");
