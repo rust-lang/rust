@@ -969,6 +969,11 @@ pub enum Spacing {
     Alone,
 }
 
+pub(crate) const LEGAL_PUNCT_CHARS: &[char] = &[
+    '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
+    ':', '#', '$', '?', '\'',
+];
+
 impl Punct {
     /// Creates a new `Punct` from the given character and spacing.
     /// The `ch` argument must be a valid punctuation character permitted by the language,
@@ -978,11 +983,7 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        const LEGAL_CHARS: &[char] = &[
-            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
-            ':', '#', '$', '?', '\'',
-        ];
-        if !LEGAL_CHARS.contains(&ch) {
+        if !LEGAL_PUNCT_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch);
         }
         Punct(bridge::Punct {
@@ -1178,7 +1179,7 @@ macro_rules! unsuffixed_int_literals {
         /// specified on this token, meaning that invocations like
         /// `Literal::i8_unsuffixed(1)` are equivalent to
         /// `Literal::u32_unsuffixed(1)`.
-        /// Literals created from negative numbers might not survive rountrips through
+        /// Literals created from negative numbers might not survive roundtrips through
         /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
@@ -1241,7 +1242,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1266,7 +1267,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f32` is the suffix of
     /// the token. This token will always be inferred to be an `f32` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1286,7 +1287,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1311,7 +1312,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f64` is the suffix of
     /// the token. This token will always be inferred to be an `f64` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
