@@ -565,8 +565,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// # use std::collections::VecDeque;
     /// # let some_predicate = |x: &mut i32| { *x % 2 == 1 };
-    /// # let mut deq = (0..10).collect();
+    /// # let mut deq: VecDeque<_> = (0..10).collect();
     /// # let mut deq2 = deq.clone();
     /// # let range = 1..5;
     /// let mut i = range.start;
@@ -575,7 +577,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// while i < deq.len() - end_items {
     ///     if some_predicate(&mut deq[i]) {
-    ///         let val = deq.remove(i);
+    ///         let val = deq.remove(i).unwrap();
     ///         // your code here
     /// #         extracted.push(val);
     ///     } else {
@@ -603,6 +605,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Splitting a deque into even and odd values, reusing the original deque:
     ///
     /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
     /// let mut numbers = VecDeque::from([1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
     ///
     /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<VecDeque<_>>();
@@ -615,6 +620,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Using the range argument to only process a part of the deque:
     ///
     /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
     /// let mut items = VecDeque::from([0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2]);
     /// let ones = items.extract_if(7.., |x| *x == 1).collect::<VecDeque<_>>();
     /// assert_eq!(items, VecDeque::from([0, 0, 0, 0, 0, 0, 0, 2, 2, 2]));

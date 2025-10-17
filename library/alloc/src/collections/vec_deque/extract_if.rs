@@ -12,6 +12,8 @@ use crate::alloc::{Allocator, Global};
 /// # Example
 ///
 /// ```
+/// #![feature(vec_deque_extract_if)]
+///
 /// use std::collections::vec_deque::ExtractIf;
 /// use std::collections::vec_deque::VecDeque;
 ///
@@ -40,14 +42,16 @@ pub struct ExtractIf<
 }
 
 impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
-    pub(super) fn new<R: RangeBounds<usize>>(vec: &'a mut Vec<T, A>, pred: F, range: R) -> Self {
+    pub(super) fn new<R: RangeBounds<usize>>(
+        vec: &'a mut VecDeque<T, A>,
+        pred: F,
+        range: R,
+    ) -> Self {
         let old_len = vec.len();
         let Range { start, end } = slice::range(range, ..old_len);
 
         // Guard against the deque getting leaked (leak amplification)
-        unsafe {
-            vec.len = len;
-        }
+        vec.len = 0;
         ExtractIf { vec, idx: start, del: 0, end, old_len, pred }
     }
 
@@ -78,8 +82,8 @@ where
             //
             //  Note: we can't use `vec.get_mut(i).unwrap()` here since the precondition for that
             //  function is that i < vec.len, but we've set vec's length to zero.
-            let idx = self.to_physical_idx(index);
-            let cur = unsafe { &mut *self.ptr().add(idx) };
+            let idx = self.vec.to_physical_idx(i);
+            let cur = unsafe { &mut *self.vec.ptr().add(idx) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index
             // is updated prior and the predicate panics, the element at this
@@ -110,7 +114,7 @@ where
 impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         if self.del > 0 {
-            let idx = self.to_physical_idx(self.idx);
+            let idx = self.vec.to_physical_idx(self.idx);
             // SAFETY: Trailing unchecked items must be valid since we never touch them.
             unsafe {
                 ptr::copy(
@@ -121,9 +125,7 @@ impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
             }
         }
         // SAFETY: After filling holes, all items are in contiguous memory.
-        unsafe {
-            self.vec.set_len(self.old_len - self.del);
-        }
+        self.vec.len = self.old_len - self.del;
     }
 }
 
