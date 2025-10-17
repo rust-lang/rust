@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
@@ -110,6 +111,10 @@ impl Clone for TokenStream {
 }
 
 impl Span {
+    pub(crate) fn dummy() -> Span {
+        Span { handle: NonZero::new(1).unwrap() }
+    }
+
     pub(crate) fn def_site() -> Span {
         Bridge::with(|bridge| bridge.globals.def_site)
     }
@@ -197,7 +202,7 @@ mod state {
     thread_local! {
         static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
         static STANDALONE: RefCell<Bridge<'static>> = RefCell::new(standalone_bridge());
-        pub(super) static USE_STANDALONE: Cell<StandaloneLevel> = const { Cell::new(StandaloneLevel::Never) };
+        pub(super) static USE_STANDALONE: Cell<StandaloneLevel> = const { Cell::new(StandaloneLevel::FallbackOnly) };
     }
 
     fn standalone_bridge() -> Bridge<'static> {

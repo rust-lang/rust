@@ -3,10 +3,10 @@
 use std::cell::RefCell;
 use std::ops::{Bound, Range};
 
-use crate::Delimiter;
+use crate::{Delimiter, LEGAL_PUNCT_CHARS};
 use crate::bridge::client::Symbol;
 use crate::bridge::fxhash::FxHashMap;
-use crate::bridge::{Diagnostic, ExpnGlobals, LitKind, Literal, TokenTree, server};
+use crate::bridge::{server, DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Literal, Punct, TokenTree};
 
 pub struct NoRustc;
 
@@ -130,7 +130,22 @@ impl server::FreeFunctions for NoRustc {
     fn track_path(&mut self, _path: &str) {}
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
-        todo!()
+        let mut chars = s.chars();
+        let Some(first) = chars.next() else {
+            return Err(());
+        };
+        br"";
+        cr"";
+
+        match first {
+            'b' => todo!(),
+            'c' => todo!(),
+            'r' => todo!(),
+            '0'..='9' | '-' => todo!(),
+            '\'' => todo!(),
+            '"' => todo!(),
+            _ => Err(())
+        }
     }
 
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
@@ -148,10 +163,53 @@ impl server::TokenStream for NoRustc {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        todo!()
+        /// Returns the delimiter, and whether it is the opening form.
+        fn char_to_delim(c: char) -> Option<(Delimiter, bool)> {
+            Some(match c {
+                '(' => (Delimiter::Parenthesis, true),
+                ')' => (Delimiter::Parenthesis, false),
+                '{' => (Delimiter::Brace, true),
+                '}' => (Delimiter::Brace, false),
+                '[' => (Delimiter::Bracket, true),
+                ']' => (Delimiter::Bracket, false),
+                _ => return None,
+            })
+        }
+
+        let mut unfinished_streams = vec![TokenStream::new()];
+        let mut unclosed_delimiters = Vec::new();
+        let mut current_ident = String::new();
+        for c in src.chars() {
+            if let Some((delim, is_opening)) = char_to_delim(c) {
+                if is_opening {
+                    unclosed_delimiters.push(delim);
+                    unfinished_streams.push(TokenStream::new());
+                } else if unclosed_delimiters.pop() == Some(delim) {
+                    let group = TokenTree::<_, _, Symbol>::Group(Group {
+                        delimiter: delim,
+                        stream: unfinished_streams.pop(),
+                        span: DelimSpan::from_single(Span::DUMMY)
+                    });
+                    unfinished_streams.last_mut().unwrap().0.push(group);
+                } else {
+                    panic!("cannot parse string into token stream")
+                }
+            } else if LEGAL_PUNCT_CHARS.contains(&c) {
+                unfinished_streams.last_mut().unwrap().0.push(TokenTree::Punct(Punct {
+                    ch: c as u8,
+                    joint: false, // TODO
+                    span: Span::DUMMY,
+                }));
+            }
+            match c {
+                _ => todo!(),
+            }
+        }
+        unfinished_streams[0].clone()
     }
 
     fn to_string(&mut self, tokens: &Self::TokenStream) -> String {
+        /*
         /// Returns a string containing exactly `num` '#' characters.
         /// Uses a 256-character source string literal which is always safe to
         /// index with a `u8` index.
@@ -164,7 +222,7 @@ impl server::TokenStream for NoRustc {
             ";
             const _: () = assert!(HASHES.len() == 256);
             &HASHES[..num as usize]
-        }
+        }*/
 
         let mut s = String::new();
         let mut last = String::new();
@@ -200,13 +258,20 @@ impl server::TokenStream for NoRustc {
                     }
                 }
                 TokenTree::Literal(lit) => {
-                    let inner = if let Some(suffix) = lit.suffix {
+                    let respanned = Literal {
+                        kind: lit.kind,
+                        symbol: lit.symbol,
+                        suffix: lit.suffix,
+                        span: super::client::Span::dummy(),
+                    };
+                    crate::Literal(respanned).to_string()
+                    /*let inner = if let Some(suffix) = lit.suffix {
                         format!("{}{suffix}", lit.symbol)
                     } else {
                         lit.symbol.to_string()
                     };
                     match lit.kind {
-                        LitKind::Byte => todo!(),
+                        LitKind::Byte => format!("b'{inner}'"),
                         LitKind::ByteStr => format!("b\"{inner}\""),
                         LitKind::ByteStrRaw(raw) => {
                             format!("br{0}\"{inner}\"{0}", get_hashes_str(raw))
@@ -220,7 +285,7 @@ impl server::TokenStream for NoRustc {
                         LitKind::Float | LitKind::Integer => inner,
                         LitKind::Str => format!("\"{inner}\""),
                         LitKind::StrRaw(raw) => format!("r{0}\"{inner}\"{0}", get_hashes_str(raw)),
-                    }
+                    }*/
                 }
                 TokenTree::Punct(punct) => {
                     let c = punct.ch as char;
@@ -231,7 +296,7 @@ impl server::TokenStream for NoRustc {
                 }
             };
 
-            const NON_SEPARATABLE_TOKENS: &[(char, char)] = &[(':', ':'), ('-', '>')];
+            const NON_SEPARATABLE_TOKENS: &[(char, char)] = &[(':', ':'), ('-', '>'), ('=', '>')];
 
             for (first, second) in NON_SEPARATABLE_TOKENS {
                 if second_last == first.to_string() && last == second.to_string() && new_part != ":"
