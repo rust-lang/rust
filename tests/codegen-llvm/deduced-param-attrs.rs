@@ -68,10 +68,7 @@ pub fn use_something<T>(something: T) {
 // CHECK-SAME: %x)
 #[no_mangle]
 #[inline(never)]
-pub fn use_something_freeze<T>(x: T) {
-    // `Drop` counts as a mutable use.
-    std::mem::forget(x)
-}
+pub fn use_something_freeze<T>(x: T) {}
 
 #[no_mangle]
 pub fn forward_big_cell_container(big_cell_container: BigCellContainer) {

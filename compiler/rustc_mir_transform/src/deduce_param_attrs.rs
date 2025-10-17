@@ -6,10 +6,11 @@
 //! dependent crates can use them.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_index::IndexVec;
+use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, DeducedReadOnlyParam};
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
@@ -18,20 +19,20 @@ struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
     /// 1). The bit is false if the argument may have been mutated or true if we know it hasn't
     /// been up to the point we're at.
-    read_only: DenseBitSet<usize>,
+    read_only: IndexVec<usize, DeducedReadOnlyParam>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { read_only: DenseBitSet::new_filled(arg_count) }
+        Self { read_only: IndexVec::from_elem_n(DeducedReadOnlyParam::empty(), arg_count) }
     }
 
     /// Returns whether the given local is a parameter and its index.
     fn as_param(&self, local: Local) -> Option<usize> {
         // Locals and parameters are shifted by `RETURN_PLACE`.
         let param_index = local.as_usize().checked_sub(1)?;
-        if param_index < self.read_only.domain_size() { Some(param_index) } else { None }
+        if param_index < self.read_only.len() { Some(param_index) } else { None }
     }
 }
 
@@ -40,24 +41,28 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         // We're only interested in arguments.
         let Some(param_index) = self.as_param(place.local) else { return };
 
-        let mark_as_mutable = match context {
+        match context {
             // Not mutating, so it's fine.
-            PlaceContext::NonUse(..) => false,
+            PlaceContext::NonUse(..) => {}
             // Dereference is not a mutation.
-            _ if place.is_indirect_first_projection() => false,
+            _ if place.is_indirect_first_projection() => {}
+            // This is a `Drop`. It could disappear at monomorphization, so mark it specially.
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
+                self.read_only[param_index] |= DeducedReadOnlyParam::IF_NO_DROP;
+            }
             // This is a mutation, so mark it as such.
-            PlaceContext::MutatingUse(..) => true,
+            PlaceContext::MutatingUse(..)
             // Whether mutating though a `&raw const` is allowed is still undecided, so we
-            // disable any sketchy `readonly` optimizations for now. But we only need to do
-            // this if the pointer would point into the argument. IOW: for indirect places,
-            // like `&raw (*local).field`, this surely cannot mutate `local`.
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => true,
+            // disable any sketchy `readonly` optimizations for now.
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
+                self.read_only[param_index] |= DeducedReadOnlyParam::MUTATED;
+            }
+            // Not mutating if the parameter is `Freeze`.
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
+                self.read_only[param_index] |= DeducedReadOnlyParam::IF_FREEZE;
+            }
             // Not mutating, so it's fine.
-            PlaceContext::NonMutatingUse(..) => false,
-        };
-
-        if mark_as_mutable {
-            self.read_only.remove(param_index);
+            PlaceContext::NonMutatingUse(..) => {}
         }
     }
 
@@ -90,7 +95,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                     && let Some(param_index) = self.as_param(place.local)
                     && !place.is_indirect_first_projection()
                 {
-                    self.read_only.remove(param_index);
+                    self.read_only[param_index] |= DeducedReadOnlyParam::MUTATED;
                 }
             }
         };
@@ -120,6 +125,7 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
 /// body of the function instead of just the signature. These can be useful for optimization
 /// purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 /// dependent crates can use them.
+#[tracing::instrument(level = "trace", skip(tcx), ret)]
 pub(super) fn deduced_param_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -159,18 +165,11 @@ pub(super) fn deduced_param_attrs<'tcx>(
     let body: &Body<'tcx> = tcx.optimized_mir(def_id);
     let mut deduce_read_only = DeduceReadOnly::new(body.arg_count);
     deduce_read_only.visit_body(body);
+    tracing::trace!(?deduce_read_only.read_only);
 
-    // Set the `readonly` attribute for every argument that we concluded is immutable and that
-    // contains no UnsafeCells.
-    //
-    // FIXME: This is overly conservative around generic parameters: `is_freeze()` will always
-    // return false for them. For a description of alternatives that could do a better job here,
-    // see [1].
-    //
-    // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
-    let mut deduced_param_attrs = tcx.arena.alloc_from_iter((0..body.arg_count).map(|arg_index| {
-        DeducedParamAttrs { read_only: deduce_read_only.read_only.contains(arg_index) }
-    }));
+    let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
+        deduce_read_only.read_only.into_iter().map(|read_only| DeducedParamAttrs { read_only }),
+    );
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
     // default set of attributes, so we don't have to store them explicitly. Pop them off to save a
