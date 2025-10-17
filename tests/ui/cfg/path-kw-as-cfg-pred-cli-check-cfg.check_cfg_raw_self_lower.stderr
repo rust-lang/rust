@@ -1,3 +1,7 @@
+error: `self` cannot be a raw identifier
+  |
+  = note: this error occurred on the command line: `--check-cfg=cfg(r#self)`
+
 error: invalid `--check-cfg` argument: `cfg(r#self)`
    |
    = note: argument key must be an identifier, but `self` cannot be a raw identifier

@@ -1,5 +1,9 @@
+error: expected unsuffixed literal, found reserved keyword `priv`
+  |
+  = note: this error occurred on the command line: `--check-cfg=cfg(priv)`
+
 error: invalid `--check-cfg` argument: `cfg(priv)`
    |
-   = note: argument key must be an identifier but found keyword `priv`, escape it using `r#priv`
+   = note: expected `cfg(name, values("value1", "value2", ... "valueN"))`
    = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
 

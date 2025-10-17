@@ -1,5 +1,9 @@
+error: expected unsuffixed literal, found reserved identifier `_`
+  |
+  = note: this error occurred on the command line: `--check-cfg=cfg(_)`
+
 error: invalid `--check-cfg` argument: `cfg(_)`
    |
-   = note: argument key must be an identifier but found keyword `_`
+   = note: expected `cfg(name, values("value1", "value2", ... "valueN"))`
    = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
 

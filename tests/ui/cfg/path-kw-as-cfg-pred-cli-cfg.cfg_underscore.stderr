@@ -1,2 +1,6 @@
-error: invalid `--cfg` argument: `_` (argument key must be an identifier but found keyword `_`)
+error: expected identifier, found reserved identifier `_`
+  |
+  = note: this error occurred on the command line: `--cfg=_`
+
+error: invalid `--cfg` argument: `_` (expected `key` or `key="value"`)
 

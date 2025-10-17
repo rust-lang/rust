@@ -1,2 +1,2 @@
-error: invalid `--cfg` argument: `super` (argument key must be an identifier but found keyword `super`)
+error: invalid `--cfg` argument: `super` (argument key must be an identifier, but `super` cannot be a raw identifier)
 

@@ -1,2 +1,6 @@
-error: invalid `--cfg` argument: `struct` (argument key must be an identifier but found keyword `struct`, escape it using `r#struct`)
+error: expected identifier, found keyword `struct`
+  |
+  = note: this error occurred on the command line: `--cfg=struct`
+
+error: invalid `--cfg` argument: `struct` (expected `key` or `key="value"`)
 

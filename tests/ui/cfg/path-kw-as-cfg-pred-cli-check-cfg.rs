@@ -1,4 +1,4 @@
-//@ edition: 2024
+//@ edition: 2021
 
 //@ revisions: check_cfg_crate check_cfg_super check_cfg_self_lower check_cfg_self_upper
 //@ revisions: check_cfg_raw_crate check_cfg_raw_super check_cfg_raw_self_lower
