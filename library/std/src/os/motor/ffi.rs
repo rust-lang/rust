@@ -3,35 +3,40 @@
 
 use crate::ffi::{OsStr, OsString};
 use crate::sealed::Sealed;
+use crate::sys_common::{AsInner, IntoInner};
 
-/// Motor OS-specific extensions to [`OsString`].
+/// Motor OS–specific extensions to [`OsString`].
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 pub trait OsStringExt: Sealed {
-    /// Motor OS strings are utf-8, and thus just strings.
-    fn as_str(&self) -> &str;
+    /// Yields the underlying UTF-8 string of this [`OsString`].
+    ///
+    /// OS strings on Motor OS are guaranteed to be UTF-8, so are just strings.
+    fn into_string(self) -> String;
 }
 
 impl OsStringExt for OsString {
     #[inline]
-    fn as_str(&self) -> &str {
-        self.to_str().unwrap()
+    fn into_string(self) -> String {
+        self.into_inner().inner
     }
 }
 
-/// Motor OS-specific extensions to [`OsString`].
+/// Motor OS–specific extensions to [`OsString`].
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 pub trait OsStrExt: Sealed {
-    /// Motor OS strings are utf-8, and thus just strings.
+    /// Gets the underlying UTF-8 string view of the [`OsStr`] slice.
+    ///
+    /// OS strings on Motor OS are guaranteed to be UTF-8, so are just strings.
     fn as_str(&self) -> &str;
 }
 
 impl OsStrExt for OsStr {
     #[inline]
     fn as_str(&self) -> &str {
-        self.to_str().unwrap()
+        &self.as_inner().inner
     }
 }
