@@ -620,9 +620,8 @@ impl Builder {
 /// (It is the responsibility of the program to either eventually join threads it
 /// creates or detach them; otherwise, a resource leak will result.)
 ///
-/// This call will create a thread using default parameters of [`Builder`], if you
-/// want to specify the stack size or the name of the thread, use this API
-/// instead.
+/// This function creates a thread with the default parameters of [`Builder`].
+/// To specify the new thread's stack size or the name, use [`Builder::spawn`].
 ///
 /// As you can see in the signature of `spawn` there are two constraints on
 /// both the closure given to `spawn` and its return value, let's explain them:
