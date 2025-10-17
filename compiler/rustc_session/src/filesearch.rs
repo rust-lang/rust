@@ -72,7 +72,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
             #[cfg(not(target_os = "aix"))]
             unsafe {
-                let addr = current_dll_path as usize as *mut _;
+                let addr = current_dll_path as fn() -> Result<PathBuf, String> as *mut _;
                 let mut info = std::mem::zeroed();
                 if libc::dladdr(addr, &mut info) == 0 {
                     return Err("dladdr failed".into());
@@ -151,7 +151,10 @@ fn current_dll_path() -> Result<PathBuf, String> {
     unsafe {
         GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-            PCWSTR(current_dll_path as *mut u16),
+            PCWSTR(
+                current_dll_path as fn() -> Result<std::path::PathBuf, std::string::String>
+                    as *mut u16,
+            ),
             &mut module,
         )
     }
