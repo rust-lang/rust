@@ -114,17 +114,14 @@ where
 impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         if self.del > 0 {
-            let idx = self.vec.to_physical_idx(self.idx);
+            let src = self.vec.to_physical_idx(self.idx);
+            let dst = self.vec.to_physical_idx(self.idx - self.del);
+            let len = self.old_len - self.idx;
             // SAFETY: Trailing unchecked items must be valid since we never touch them.
             unsafe {
-                ptr::copy(
-                    self.vec.ptr().add(idx),
-                    self.vec.ptr().add(idx - self.del),
-                    self.old_len - self.idx,
-                );
+                self.vec.wrap_copy(src, dst, len);
             }
         }
-        // SAFETY: After filling holes, all items are in contiguous memory.
         self.vec.len = self.old_len - self.del;
     }
 }
