@@ -1,5 +1,6 @@
 //@ edition:2018
 //@ proc-macro: builtin-attrs.rs
+//@ ignore-backends: gcc
 #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
 
 extern crate builtin_attrs;

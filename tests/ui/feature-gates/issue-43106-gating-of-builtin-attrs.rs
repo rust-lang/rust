@@ -50,9 +50,11 @@
 #![should_panic] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![ignore] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![no_implicit_prelude]
 #![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
@@ -61,22 +63,28 @@
 #![proc_macro_derive(Test)] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![doc = "2400"]
 #![cold] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
-#![link()] //~ WARN attribute should be applied to an `extern` block
+//~| HELP remove the attribute
+#![link(name = "x")] //~ WARN attribute should be applied to an `extern` block
 //~^ WARN this was previously accepted
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 #![link_section = "1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 #![must_use]
-//~^ WARN `#[must_use]` has no effect
+//~^ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
 //~| HELP remove the attribute
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
@@ -184,40 +192,62 @@ mod macro_use {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[macro_export]
-//~^ WARN `#[macro_export]` only has an effect on macro definitions
+//~^ WARN `#[macro_export]` attribute cannot be used on modules [unused_attributes]
+//~| WARN previously accepted
+//~| HELP can only be applied to
+//~| HELP remove the attribute
 mod macro_export {
     mod inner { #![macro_export] }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on modules
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] fn f() { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on function
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] struct S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on structs
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] type T = S;
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN `#[macro_export]` attribute cannot be used on type aliases
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[macro_export] impl S { }
-    //~^ WARN `#[macro_export]` only has an effect on macro definitions
+    //~^ WARN  `#[macro_export]` attribute cannot be used on inherent impl blocks
+    //~| WARN previously accepted
+    //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then
@@ -260,57 +290,68 @@ mod path {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"]  struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[automatically_derived]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod automatically_derived {
     mod inner { #![automatically_derived] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] fn f() { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] trait W { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] impl W for S { }
 }
@@ -319,11 +360,13 @@ mod automatically_derived {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod no_mangle {
     mod inner { #![no_mangle] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] fn f() { }
 
@@ -331,27 +374,32 @@ mod no_mangle {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     trait Tr {
         #[no_mangle] fn foo();
         //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
+        //~| HELP remove the attribute
 
         #[no_mangle] fn bar() {}
         //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
+        //~| HELP remove the attribute
     }
 }
 
@@ -359,11 +407,13 @@ mod no_mangle {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod should_panic {
     mod inner { #![should_panic] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] fn f() { }
 
@@ -371,27 +421,32 @@ mod should_panic {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[ignore]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod ignore {
     mod inner { #![ignore] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] fn f() { }
 
@@ -399,16 +454,19 @@ mod ignore {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[no_implicit_prelude]
@@ -419,40 +477,49 @@ mod no_implicit_prelude {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[reexport_test_harness_main = "2900"]
 //~^ WARN crate-level attribute should be
+//~| HELP add a `!`
 mod reexport_test_harness_main {
     mod inner { #![reexport_test_harness_main="2900"] }
     //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] fn f() { }
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] struct S;
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] type T = S;
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] impl S { }
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 }
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
@@ -467,40 +534,49 @@ mod macro_escape {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[no_std]
 //~^ WARN crate-level attribute should be an inner attribute
 mod no_std {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![no_std] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![no_std]` attribute can only be used at the crate root
 
     #[no_std] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[no_std] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[no_std] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[no_std] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 // At time of authorship, #[proc_macro_derive = "2500"] signals error
@@ -524,12 +600,14 @@ mod doc {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod cold {
 
     mod inner { #![cold] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] fn f() { }
 
@@ -537,64 +615,76 @@ mod cold {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod link_name {
     #[link_name = "1900"]
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
     extern "C" { }
 
     mod inner { #![link_name="1900"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] fn f() { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[link_section = "1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod link_section {
     mod inner { #![link_section="1800"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] fn f() { }
 
@@ -602,53 +692,82 @@ mod link_section {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
+
+    #[link_section = "1800"]
+    //~^ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
+    trait Tr {
+        #[link_section = "1800"]
+        fn inside_tr_no_default(&self);
+
+        #[link_section = "1800"]
+        fn inside_tr_default(&self) { }
+    }
+
+    impl S {
+        #[link_section = "1800"]
+        fn inside_abc_123(&self) { }
+    }
+
+    impl Tr for S {
+        #[link_section = "1800"]
+        fn inside_tr_no_default(&self) { }
+    }
+
+    #[link_section = "1800"]
+    fn should_always_link() { }
 }
 
 
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
-#[link()]
+#[link(name = "x")]
 //~^ WARN attribute should be applied to an `extern` block
 //~| WARN this was previously accepted
 mod link {
     //~^ NOTE not an `extern` block
 
-    mod inner { #![link()] }
+    mod inner { #![link(name = "x")] }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] fn f() { }
+    #[link(name = "x")] fn f() { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] struct S;
+    #[link(name = "x")] struct S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] type T = S;
+    #[link(name = "x")] type T = S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] impl S { }
+    #[link(name = "x")] impl S { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] extern "Rust" {}
+    #[link(name = "x")] extern "Rust" {}
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
 }
@@ -668,40 +787,53 @@ mod deprecated {
     #[deprecated] impl super::StructForDeprecated { }
 }
 
-#[must_use] //~ WARN `#[must_use]` has no effect
-//~^ HELP remove the attribute
+#[must_use] //~ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
+//~| HELP remove the attribute
 mod must_use {
-    mod inner { #![must_use] } //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    mod inner { #![must_use] } //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[must_use] fn f() { }
 
     #[must_use] struct S;
 
-    #[must_use] type T = S; //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    #[must_use] type T = S; //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 
-    #[must_use] impl S { } //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    #[must_use] impl S { } //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[windows_subsystem = "windows"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod windows_subsystem {
     mod inner { #![windows_subsystem="windows"] }
     //~^ WARN crate-level attribute should be in the root module
 
     #[windows_subsystem = "windows"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES
@@ -709,135 +841,170 @@ mod windows_subsystem {
 #[crate_name = "0900"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod crate_name {
+//~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_name="0900"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![crate_name]` attribute can only be used at the crate root
 
     #[crate_name = "0900"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[crate_name = "0900"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[crate_name = "0900"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[crate_name = "0900"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[crate_type = "0800"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod crate_type {
     mod inner { #![crate_type="0800"] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[crate_type = "0800"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[feature(x0600)]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod feature {
     mod inner { #![feature(x0600)] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 
 #[no_main]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod no_main_1 {
     mod inner { #![no_main] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[no_main] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[no_builtins]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod no_builtins {
     mod inner { #![no_builtins] }
     //~^ WARN crate-level attribute should be in the root module
 
     #[no_builtins] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[recursion_limit="0200"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod recursion_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![recursion_limit="0200"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![recursion_limit]` attribute can only be used at the crate root
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[recursion_limit="0200"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[recursion_limit="0200"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[recursion_limit="0200"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[type_length_limit="0100"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod type_length_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![type_length_limit="0100"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![type_length_limit]` attribute can only be used at the crate root
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[type_length_limit="0100"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[type_length_limit="0100"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[type_length_limit="0100"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 fn main() {}

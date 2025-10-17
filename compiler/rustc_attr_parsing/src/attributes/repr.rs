@@ -1,16 +1,10 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::{AttributeKind, IntType, ReprAttr};
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_hir::attrs::{IntType, ReprAttr};
 
-use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
-use crate::session_diagnostics;
-use crate::session_diagnostics::IncorrectReprFormatGenericCause;
+use super::prelude::*;
+use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
+
 /// Parse #[repr(...)] forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see
@@ -334,6 +328,33 @@ impl<S: Stage> AttributeParser<S> for AlignParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0?;
+        Some(AttributeKind::Align { align, span })
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct AlignStaticParser(AlignParser);
+
+impl AlignStaticParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_align_static];
+    const TEMPLATE: AttributeTemplate = AlignParser::TEMPLATE;
+
+    fn parse<'c, S: Stage>(
+        &mut self,
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) {
+        self.0.parse(cx, args)
+    }
+}
+
+impl<S: Stage> AttributeParser<S> for AlignStaticParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        let (align, span) = self.0.0?;
         Some(AttributeKind::Align { align, span })
     }
 }

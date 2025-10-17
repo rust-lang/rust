@@ -13,6 +13,7 @@
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(const_trait_impl)]
+#![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]

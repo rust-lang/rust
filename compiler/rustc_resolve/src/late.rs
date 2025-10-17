@@ -8,7 +8,6 @@
 
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
@@ -30,7 +29,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{DelegationFnSig, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
-use rustc_session::lint::{self, BuiltinLintDiag};
+use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
@@ -3665,7 +3664,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
-        pats: &[Box<Pat>],
+        pats: &[Pat],
     ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
@@ -3680,33 +3679,32 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .collect::<Vec<_>>();
 
         // 2) Record any missing bindings or binding mode inconsistencies.
-        for (map_outer, pat_outer) in not_never_pats.iter() {
+        for &(ref map_outer, pat_outer) in not_never_pats.iter() {
             // Check against all arms except for the same pattern which is always self-consistent.
-            let inners = not_never_pats
-                .iter()
-                .filter(|(_, pat)| pat.id != pat_outer.id)
-                .flat_map(|(map, _)| map);
+            let inners = not_never_pats.iter().filter(|(_, pat)| pat.id != pat_outer.id);
 
-            for (&name, binding_inner) in inners {
-                match map_outer.get(&name) {
-                    None => {
-                        // The inner binding is missing in the outer.
-                        let binding_error =
-                            missing_vars.entry(name).or_insert_with(|| BindingError {
-                                name,
-                                origin: BTreeSet::new(),
-                                target: BTreeSet::new(),
-                                could_be_path: name.as_str().starts_with(char::is_uppercase),
-                            });
-                        binding_error.origin.insert(binding_inner.span);
-                        binding_error.target.insert(pat_outer.span);
-                    }
-                    Some(binding_outer) => {
-                        if binding_outer.annotation != binding_inner.annotation {
-                            // The binding modes in the outer and inner bindings differ.
-                            inconsistent_vars
-                                .entry(name)
-                                .or_insert((binding_inner.span, binding_outer.span));
+            for &(ref map, pat) in inners {
+                for (&name, binding_inner) in map {
+                    match map_outer.get(&name) {
+                        None => {
+                            // The inner binding is missing in the outer.
+                            let binding_error =
+                                missing_vars.entry(name).or_insert_with(|| BindingError {
+                                    name,
+                                    origin: Default::default(),
+                                    target: Default::default(),
+                                    could_be_path: name.as_str().starts_with(char::is_uppercase),
+                                });
+                            binding_error.origin.push((binding_inner.span, pat.clone()));
+                            binding_error.target.push(pat_outer.clone());
+                        }
+                        Some(binding_outer) => {
+                            if binding_outer.annotation != binding_inner.annotation {
+                                // The binding modes in the outer and inner bindings differ.
+                                inconsistent_vars
+                                    .entry(name)
+                                    .or_insert((binding_inner.span, binding_outer.span));
+                            }
                         }
                     }
                 }
@@ -3719,7 +3717,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 v.could_be_path = false;
             }
             self.report_error(
-                *v.origin.iter().next().unwrap(),
+                v.origin.iter().next().unwrap().0,
                 ResolutionError::VariableNotBoundInPattern(v, self.parent_scope),
             );
         }
@@ -3922,7 +3920,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn record_patterns_with_skipped_bindings(&mut self, pat: &Pat, rest: &ast::PatFieldsRest) {
         match rest {
-            ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) => {
+            ast::PatFieldsRest::Rest(_) | ast::PatFieldsRest::Recovered(_) => {
                 // Record that the pattern doesn't introduce all the bindings it could.
                 if let Some(partial_res) = self.r.partial_res_map.get(&pat.id)
                     && let Some(res) = partial_res.full_res()
@@ -4270,7 +4268,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         if path.len() == 2
                             && let [segment] = prefix_path
                         {
-                            // Delay to check whether methond name is an associated function or not
+                            // Delay to check whether method name is an associated function or not
                             // ```
                             // let foo = Foo {};
                             // foo::bar(); // possibly suggest to foo.bar();
@@ -5016,7 +5014,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             ResolveDocLinks::Exported
                 if !maybe_exported.eval(self.r)
-                    && !rustdoc::has_primitive_or_keyword_docs(attrs) =>
+                    && !rustdoc::has_primitive_or_keyword_or_attribute_docs(attrs) =>
             {
                 return;
             }
@@ -5227,7 +5225,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 lint::builtin::UNUSED_LABELS,
                 *id,
                 *span,
-                BuiltinLintDiag::UnusedLabel,
+                errors::UnusedLabel,
             );
         }
     }

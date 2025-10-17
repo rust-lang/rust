@@ -4,14 +4,15 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync, update_lints, utils,
+    ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync,
+    update_lints,
 };
 use std::convert::Infallible;
 use std::env;
 
 fn main() {
     let dev = Dev::parse();
-    let clippy = utils::ClippyInfo::search_for_manifest();
+    let clippy = ClippyInfo::search_for_manifest();
     if let Err(e) = env::set_current_dir(&clippy.path) {
         panic!("error setting current directory to `{}`: {e}", clippy.path.display());
     }
@@ -26,8 +27,8 @@ fn main() {
             allow_staged,
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
-        DevCommand::Fmt { check } => fmt::run(utils::UpdateMode::from_check(check)),
-        DevCommand::UpdateLints { check } => update_lints::update(utils::UpdateMode::from_check(check)),
+        DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
+        DevCommand::UpdateLints { check } => update_lints::update(UpdateMode::from_check(check)),
         DevCommand::NewLint {
             pass,
             name,
@@ -35,7 +36,7 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => update_lints::update(utils::UpdateMode::Change),
+            Ok(()) => update_lints::update(UpdateMode::Change),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {

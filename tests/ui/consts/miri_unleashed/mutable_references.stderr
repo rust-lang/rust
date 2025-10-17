@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value at .<deref>: encountered mutable refere
 LL | static FOO: &&mut u32 = &&mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -15,7 +15,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | static OH_YES: &mut i32 = &mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -38,7 +38,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | const BLUNT: &mut i32 = &mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -49,7 +49,7 @@ error[E0080]: constructing invalid value: encountered mutable reference in `cons
 LL | const SUBTLE: &mut i32 = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -60,7 +60,7 @@ error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell`
 LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
    | ^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -71,7 +71,7 @@ error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell`
 LL | const MUH: Meh = Meh {
    | ^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -82,7 +82,7 @@ error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>.x: encounter
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -93,7 +93,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }

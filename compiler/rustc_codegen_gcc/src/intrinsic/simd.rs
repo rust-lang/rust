@@ -1497,7 +1497,6 @@ fn simd_funnel_shift<'a, 'gcc, 'tcx>(
         let index = bx.context.new_rvalue_from_int(bx.int_type, i as i32);
         let a_val = bx.context.new_vector_access(None, a, index).to_rvalue();
         let a_val = bx.context.new_bitcast(None, a_val, unsigned_type);
-        // TODO: we probably need to use gcc_int_cast instead.
         let a_val = bx.gcc_int_cast(a_val, new_int_type);
         let b_val = bx.context.new_vector_access(None, b, index).to_rvalue();
         let b_val = bx.context.new_bitcast(None, b_val, unsigned_type);

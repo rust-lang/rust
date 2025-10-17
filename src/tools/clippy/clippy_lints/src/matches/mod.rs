@@ -1073,7 +1073,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 significant_drop_in_scrutinee::check_match(cx, expr, ex, arms, source);
             }
 
-            collapsible_match::check_match(cx, arms, self.msrv);
+            collapsible_match::check_match(cx, ex, arms, self.msrv);
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
@@ -1137,7 +1137,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
-            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, self.msrv);
+            collapsible_match::check_if_let(
+                cx,
+                if_let.let_pat,
+                if_let.if_then,
+                if_let.if_else,
+                if_let.let_expr,
+                self.msrv,
+            );
             significant_drop_in_scrutinee::check_if_let(cx, expr, if_let.let_expr, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {

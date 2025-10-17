@@ -27,9 +27,6 @@ pub use hir::PrefixKind;
 /// How imports should be grouped into use statements.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ImportGranularity {
-    /// Do not change the granularity of any imports and preserve the original structure written
-    /// by the developer.
-    Preserve,
     /// Merge imports from the same crate into a single use statement.
     Crate,
     /// Merge imports from the same module into a single use statement.
@@ -174,7 +171,7 @@ fn insert_use_with_alias_option(
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
         ImportGranularity::Module => Some(MergeBehavior::Module),
         ImportGranularity::One => Some(MergeBehavior::One),
-        ImportGranularity::Item | ImportGranularity::Preserve => None,
+        ImportGranularity::Item => None,
     };
     if !cfg.enforce_granularity {
         let file_granularity = guess_granularity_from_scope(scope);
@@ -182,9 +179,18 @@ fn insert_use_with_alias_option(
             ImportGranularityGuess::Unknown => mb,
             ImportGranularityGuess::Item => None,
             ImportGranularityGuess::Module => Some(MergeBehavior::Module),
-            ImportGranularityGuess::ModuleOrItem => mb.and(Some(MergeBehavior::Module)),
+            // We use the user's setting to infer if this is module or item.
+            ImportGranularityGuess::ModuleOrItem => match mb {
+                Some(MergeBehavior::Module) | None => mb,
+                // There isn't really a way to decide between module or item here, so we just pick one.
+                // FIXME: Maybe it is possible to infer based on semantic analysis?
+                Some(MergeBehavior::One | MergeBehavior::Crate) => Some(MergeBehavior::Module),
+            },
             ImportGranularityGuess::Crate => Some(MergeBehavior::Crate),
-            ImportGranularityGuess::CrateOrModule => mb.or(Some(MergeBehavior::Crate)),
+            ImportGranularityGuess::CrateOrModule => match mb {
+                Some(MergeBehavior::Crate | MergeBehavior::Module) => mb,
+                Some(MergeBehavior::One) | None => Some(MergeBehavior::Crate),
+            },
             ImportGranularityGuess::One => Some(MergeBehavior::One),
         };
     }
@@ -194,7 +200,7 @@ fn insert_use_with_alias_option(
         use_tree = use_tree.clone_for_update();
         use_tree.wrap_in_tree_list();
     }
-    let use_item = make::use_(None, use_tree).clone_for_update();
+    let use_item = make::use_(None, None, use_tree).clone_for_update();
     for attr in
         scope.required_cfgs.iter().map(|attr| attr.syntax().clone_subtree().clone_for_update())
     {

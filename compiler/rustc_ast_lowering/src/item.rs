@@ -5,7 +5,9 @@ use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, HirId, LifetimeSource, PredicateOrigin, Target, find_attr};
+use rustc_hir::{
+    self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
+};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
@@ -251,7 +253,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Mod(_, ident, mod_kind) => {
                 let ident = self.lower_ident(*ident);
                 match mod_kind {
-                    ModKind::Loaded(items, _, spans, _) => {
+                    ModKind::Loaded(items, _, spans) => {
                         hir::ItemKind::Mod(ident, self.lower_mod(items, spans))
                     }
                     ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
@@ -1117,20 +1119,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
+        let span = self.lower_span(i.span);
         let item = hir::ImplItem {
             owner_id: hir_id.expect_owner(),
             ident: self.lower_ident(ident),
             generics,
+            impl_kind: if is_in_trait_impl {
+                ImplItemImplKind::Trait {
+                    defaultness,
+                    trait_item_def_id: self
+                        .resolver
+                        .get_partial_res(i.id)
+                        .and_then(|r| r.expect_full_res().opt_def_id())
+                        .ok_or_else(|| {
+                            self.dcx().span_delayed_bug(
+                                span,
+                                "could not resolve trait item being implemented",
+                            )
+                        }),
+                }
+            } else {
+                ImplItemImplKind::Inherent { vis_span: self.lower_span(i.vis.span) }
+            },
             kind,
-            vis_span: self.lower_span(i.vis.span),
-            span: self.lower_span(i.span),
-            defaultness,
+            span,
             has_delayed_lints: !self.delayed_lints.is_empty(),
-            trait_item_def_id: self
-                .resolver
-                .get_partial_res(i.id)
-                .map(|r| r.expect_full_res().opt_def_id())
-                .unwrap_or(None),
         };
         self.arena.alloc(item)
     }
@@ -1201,76 +1214,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
 
-            // Optionally lower the fn contract, which turns:
-            //
-            // { body }
-            //
-            // into:
-            //
-            // { contract_requires(PRECOND); let __postcond = |ret_val| POSTCOND; postcond({ body }) }
+            // Optionally lower the fn contract
             if let Some(contract) = contract {
-                let precond = if let Some(req) = &contract.requires {
-                    // Lower the precondition check intrinsic.
-                    let lowered_req = this.lower_expr_mut(&req);
-                    let req_span = this.mark_span_with_reason(
-                        DesugaringKind::Contract,
-                        lowered_req.span,
-                        None,
-                    );
-                    let precond = this.expr_call_lang_item_fn_mut(
-                        req_span,
-                        hir::LangItem::ContractCheckRequires,
-                        &*arena_vec![this; lowered_req],
-                    );
-                    Some(this.stmt_expr(req.span, precond))
-                } else {
-                    None
-                };
-                let (postcond, body) = if let Some(ens) = &contract.ensures {
-                    let ens_span = this.lower_span(ens.span);
-                    let ens_span =
-                        this.mark_span_with_reason(DesugaringKind::Contract, ens_span, None);
-                    // Set up the postcondition `let` statement.
-                    let check_ident: Ident =
-                        Ident::from_str_and_span("__ensures_checker", ens_span);
-                    let (checker_pat, check_hir_id) = this.pat_ident_binding_mode_mut(
-                        ens_span,
-                        check_ident,
-                        hir::BindingMode::NONE,
-                    );
-                    let lowered_ens = this.lower_expr_mut(&ens);
-                    let postcond_checker = this.expr_call_lang_item_fn(
-                        ens_span,
-                        hir::LangItem::ContractBuildCheckEnsures,
-                        &*arena_vec![this; lowered_ens],
-                    );
-                    let postcond = this.stmt_let_pat(
-                        None,
-                        ens_span,
-                        Some(postcond_checker),
-                        this.arena.alloc(checker_pat),
-                        hir::LocalSource::Contract,
-                    );
-
-                    // Install contract_ensures so we will intercept `return` statements,
-                    // then lower the body.
-                    this.contract_ensures = Some((ens_span, check_ident, check_hir_id));
-                    let body = this.arena.alloc(body(this));
-
-                    // Finally, inject an ensures check on the implicit return of the body.
-                    let body = this.inject_ensures_check(body, ens_span, check_ident, check_hir_id);
-                    (Some(postcond), body)
-                } else {
-                    let body = &*this.arena.alloc(body(this));
-                    (None, body)
-                };
-                // Flatten the body into precond, then postcond, then wrapped body.
-                let wrapped_body = this.block_all(
-                    body.span,
-                    this.arena.alloc_from_iter([precond, postcond].into_iter().flatten()),
-                    Some(body),
-                );
-                (params, this.expr_block(wrapped_body))
+                (params, this.lower_contract(body, contract))
             } else {
                 (params, body(this))
             }
@@ -1596,7 +1542,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { .. })
+        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { was_forced: false, .. })
             && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {

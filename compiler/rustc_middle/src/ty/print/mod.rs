@@ -2,7 +2,7 @@ use hir::def::Namespace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use tracing::{debug, instrument, trace};
 
@@ -124,6 +124,15 @@ pub trait Printer<'tcx>: Sized {
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
 
+    fn print_coroutine_with_kind(
+        &mut self,
+        def_id: DefId,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        kind: Ty<'tcx>,
+    ) -> Result<(), PrintError> {
+        self.print_path_with_generic_args(|p| p.print_def_path(def_id, parent_args), &[kind.into()])
+    }
+
     // Defaults (should not be overridden):
 
     #[instrument(skip(self), level = "debug")]
@@ -162,9 +171,10 @@ pub trait Printer<'tcx>: Sized {
                             )) = self.tcx().coroutine_kind(def_id)
                                 && args.len() > parent_args.len()
                             {
-                                return self.print_path_with_generic_args(
-                                    |p| p.print_def_path(def_id, parent_args),
-                                    &args[..parent_args.len() + 1][..1],
+                                return self.print_coroutine_with_kind(
+                                    def_id,
+                                    parent_args,
+                                    args[parent_args.len()].expect_ty(),
                                 );
                             } else {
                                 // Closures' own generics are only captures, don't print them.
@@ -383,16 +393,6 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistenti
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_const(*self)
-    }
-}
-
-// This is only used by query descriptions
-pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
-    let def_id = def_id.into();
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id))
     }
 }
 

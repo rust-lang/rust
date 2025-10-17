@@ -48,6 +48,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
+    fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
+
     fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
 
     fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
@@ -74,22 +76,27 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
 
-    fn new_foreign(interner: I, def_id: I::DefId) -> Self;
+    fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
-    fn new_dynamic(
+    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: I::Region) -> Self;
+
+    fn new_coroutine(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
+
+    fn new_coroutine_closure(
         interner: I,
-        preds: I::BoundExistentialPredicates,
-        region: I::Region,
-        kind: ty::DynKind,
+        def_id: I::CoroutineClosureId,
+        args: I::GenericArgs,
     ) -> Self;
 
-    fn new_coroutine(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_closure(interner: I, def_id: I::ClosureId, args: I::GenericArgs) -> Self;
 
-    fn new_coroutine_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_coroutine_witness(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
-    fn new_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
-
-    fn new_coroutine_witness(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_coroutine_witness_for_coroutine(
+        interner: I,
+        def_id: I::CoroutineId,
+        coroutine_args: I::GenericArgs,
+    ) -> Self;
 
     fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
 
@@ -106,7 +113,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         It: Iterator<Item = T>,
         T: CollectAndApply<Self, Self>;
 
-    fn new_fn_def(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_fn_def(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self;
 
     fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
 
@@ -157,7 +164,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn is_guaranteed_unsized_raw(self) -> bool {
         match self.kind() {
-            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
+            ty::Dynamic(_, _) | ty::Slice(_) | ty::Str => true,
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -225,6 +232,8 @@ pub trait Region<I: Interner<Region = Self>>:
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
 
+    fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
+
     fn new_static(interner: I) -> Self;
 
     fn new_placeholder(interner: I, var: I::PlaceholderRegion) -> Self;
@@ -254,6 +263,8 @@ pub trait Const<I: Interner<Const = Self>>:
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, bound_const: I::BoundConst) -> Self;
 
     fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
+
+    fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
     fn new_placeholder(interner: I, param: I::PlaceholderConst) -> Self;
 
@@ -593,7 +604,7 @@ pub trait ParamLike: Copy + Debug + Hash + Eq {
 }
 
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
-    fn def_id(self) -> I::DefId;
+    fn def_id(self) -> I::AdtId;
 
     fn is_struct(self) -> bool;
 
@@ -640,14 +651,24 @@ pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn as_local(self) -> Option<I::LocalDefId>;
 }
 
+pub trait SpecificDefId<I: Interner>:
+    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+{
+}
+
+impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
+    SpecificDefId<I> for T
+{
+}
+
 pub trait BoundExistentialPredicates<I: Interner>:
     Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
-    fn principal_def_id(self) -> Option<I::DefId>;
+    fn principal_def_id(self) -> Option<I::TraitId>;
 
     fn principal(self) -> Option<ty::Binder<I, ty::ExistentialTraitRef<I>>>;
 
-    fn auto_traits(self) -> impl IntoIterator<Item = I::DefId>;
+    fn auto_traits(self) -> impl IntoIterator<Item = I::TraitId>;
 
     fn projection_bounds(
         self,

@@ -231,9 +231,6 @@ const_eval_mutable_borrow_escaping =
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
-const_eval_partial_pointer_in_final = encountered partial pointer in final value of {const_eval_intern_kind}
-    .note = while pointers can be broken apart into individual bytes during const-evaluation, only complete pointers (with all their bytes in the right order) are supported in the final value
-
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 
 const_eval_non_const_await =
@@ -301,6 +298,9 @@ const_eval_overflow_shift =
 const_eval_panic = evaluation panicked: {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
+
+const_eval_partial_pointer_in_final = encountered partial pointer in final value of {const_eval_intern_kind}
+    .note = while pointers can be broken apart into individual bytes during const-evaluation, only complete pointers (with all their bytes in the right order) are supported in the final value
 
 const_eval_partial_pointer_read =
     unable to read parts of a pointer from memory at {$ptr}
@@ -457,7 +457,7 @@ const_eval_validation_failure =
     it is undefined behavior to use this value
 
 const_eval_validation_failure_note =
-    The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+    the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 const_eval_validation_front_matter_invalid_value = constructing invalid value
 const_eval_validation_front_matter_invalid_value_with_path = constructing invalid value at {$path}
@@ -476,14 +476,23 @@ const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wid
 const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
-const_eval_validation_null_box = {$front_matter}: encountered a null box
-const_eval_validation_null_fn_ptr = {$front_matter}: encountered a null function pointer
-const_eval_validation_null_ref = {$front_matter}: encountered a null reference
-const_eval_validation_nullable_ptr_out_of_range = {$front_matter}: encountered a potentially null pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_nonnull_ptr_out_of_range = {$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero
+const_eval_validation_null_box = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } box
+const_eval_validation_null_fn_ptr = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } function pointer
+const_eval_validation_null_ref = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } reference
 const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but expected something {$in_range}
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
-const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
+const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer with unknown absolute address, but expected something that is definitely {$in_range}
 const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})

@@ -1,0 +1,26 @@
+error[E0277]: `RefCell<isize>` cannot be shared between threads safely
+  --> $DIR/global-variable-promotion-error-7364.rs:5:15
+   |
+LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
+   |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<isize>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+   = note: required for `Unique<RefCell<isize>>` to implement `Sync`
+note: required because it appears within the type `Box<RefCell<isize>>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   = note: shared static variables must have a type that implements `Sync`
+
+error[E0015]: cannot call non-const associated function `Box::<RefCell<isize>>::new` in statics
+  --> $DIR/global-variable-promotion-error-7364.rs:5:37
+   |
+LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

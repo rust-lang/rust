@@ -38,18 +38,15 @@ impl SystemTime {
         SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.t.sub_timespec(&other.t)
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_add_duration(other)? })
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_sub_duration(other)? })
     }
 }
@@ -136,36 +133,26 @@ impl Timespec {
         Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap()
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
-        // FIXME: const PartialOrd
-        let mut cmp = self.tv_sec - other.tv_sec;
-        if cmp == 0 {
-            cmp = self.tv_nsec.as_inner() as i64 - other.tv_nsec.as_inner() as i64;
+    pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+        // When a >= b, the difference fits in u64.
+        fn sub_ge_to_unsigned(a: i64, b: i64) -> u64 {
+            debug_assert!(a >= b);
+            a.wrapping_sub(b).cast_unsigned()
         }
 
-        if cmp >= 0 {
-            // NOTE(eddyb) two aspects of this `if`-`else` are required for LLVM
-            // to optimize it into a branchless form (see also #75545):
-            //
-            // 1. `self.tv_sec - other.tv_sec` shows up as a common expression
-            //    in both branches, i.e. the `else` must have its `- 1`
-            //    subtraction after the common one, not interleaved with it
-            //    (it used to be `self.tv_sec - 1 - other.tv_sec`)
-            //
-            // 2. the `Duration::new` call (or any other additional complexity)
-            //    is outside of the `if`-`else`, not duplicated in both branches
-            //
-            // Ideally this code could be rearranged such that it more
-            // directly expresses the lower-cost behavior we want from it.
+        if self >= other {
             let (secs, nsec) = if self.tv_nsec.as_inner() >= other.tv_nsec.as_inner() {
                 (
-                    (self.tv_sec - other.tv_sec) as u64,
+                    sub_ge_to_unsigned(self.tv_sec, other.tv_sec),
                     self.tv_nsec.as_inner() - other.tv_nsec.as_inner(),
                 )
             } else {
+                // Following sequence of assertions explain why `self.tv_sec - 1` does not underflow.
+                debug_assert!(self.tv_nsec < other.tv_nsec);
+                debug_assert!(self.tv_sec > other.tv_sec);
+                debug_assert!(self.tv_sec > i64::MIN);
                 (
-                    (self.tv_sec - other.tv_sec - 1) as u64,
+                    sub_ge_to_unsigned(self.tv_sec - 1, other.tv_sec),
                     self.tv_nsec.as_inner() + (NSEC_PER_SEC as u32) - other.tv_nsec.as_inner(),
                 )
             };
@@ -179,8 +166,7 @@ impl Timespec {
         }
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
@@ -190,11 +176,10 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec as i64) })
+        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
@@ -203,7 +188,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec as i64) })
+        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
     }
 
     #[allow(dead_code)]

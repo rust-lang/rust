@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
             self.expect(exp!(OpenBrace))?;
             let (inner_attrs, items, inner_span) = self.parse_mod(exp!(CloseBrace))?;
             attrs.extend(inner_attrs);
-            ModKind::Loaded(items, Inline::Yes, inner_span, Ok(()))
+            ModKind::Loaded(items, Inline::Yes, inner_span)
         };
         Ok(ItemKind::Mod(safety, ident, mod_kind))
     }
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
     /// - `}` for mod items
     pub fn parse_mod(
         &mut self,
-        term: ExpTokenPair<'_>,
+        term: ExpTokenPair,
     ) -> PResult<'a, (AttrVec, ThinVec<Box<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
@@ -1201,7 +1201,7 @@ impl<'a> Parser<'a> {
         }?;
 
         let dash = exp!(Minus);
-        if self.token != *dash.tok {
+        if self.token != dash.tok {
             return Ok(ident);
         }
 
@@ -3111,7 +3111,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let pat = this.mk_pat(ty.span, PatKind::Missing);
-                        (pat, ty)
+                        (Box::new(pat), ty)
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),

@@ -39,7 +39,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
             "target_os" => KNOWN_OS.iter().copied().for_each(add_completion),
             "target_vendor" => KNOWN_VENDOR.iter().copied().for_each(add_completion),
             "target_endian" => ["little", "big"].into_iter().for_each(add_completion),
-            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
+            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).for_each(|s| {
                 let s = s.as_str();
                 let insert_text = format!(r#""{s}""#);
                 let mut item = CompletionItem::new(
@@ -53,14 +53,32 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
                 acc.add(item.build(ctx.db));
             }),
         },
-        None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().unique().for_each(|s| {
-            let s = s.as_str();
-            let item =
-                CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s, ctx.edition);
-            acc.add(item.build(ctx.db));
-        }),
+        None => ctx
+            .krate
+            .potential_cfg(ctx.db)
+            .get_cfg_keys()
+            .unique()
+            .map(|s| (s.as_str(), ""))
+            .chain(CFG_CONDITION.iter().copied())
+            .for_each(|(s, snippet)| {
+                let mut item = CompletionItem::new(
+                    SymbolKind::BuiltinAttr,
+                    ctx.source_range(),
+                    s,
+                    ctx.edition,
+                );
+                if let Some(cap) = ctx.config.snippet_cap
+                    && !snippet.is_empty()
+                {
+                    item.insert_snippet(cap, snippet);
+                }
+                acc.add(item.build(ctx.db));
+            }),
     }
 }
+
+const CFG_CONDITION: &[(&str, &str)] =
+    &[("all", "all($0)"), ("any", "any($0)"), ("not", "not($0)")];
 
 const KNOWN_ARCH: [&str; 20] = [
     "aarch64",

@@ -1,21 +1,13 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use super::prelude::*;
 
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
+const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
+    AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate), Warn(Target::MacroCall)]);
+
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
 }
 
@@ -23,8 +15,7 @@ pub(crate) struct ProcMacroAttributeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
 }
 
@@ -33,8 +24,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
@@ -110,7 +100,7 @@ fn parse_derive_like<S: Stage>(
             return None;
         };
         if !attr_list.path().word_is(sym::attributes) {
-            cx.expected_specific_argument(attrs.span(), vec!["attributes"]);
+            cx.expected_specific_argument(attrs.span(), &[sym::attributes]);
             return None;
         }
         let Some(attr_list) = attr_list.args().list() else {

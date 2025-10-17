@@ -17,7 +17,6 @@ pub mod os;
 pub mod pipe;
 pub mod stack_overflow;
 pub mod sync;
-pub mod thread;
 pub mod thread_parking;
 pub mod time;
 
@@ -55,10 +54,34 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // thread-id for the main thread and so renaming the main thread will rename the
     // process and we only want to enable this on platforms we've tested.
     if cfg!(target_vendor = "apple") {
-        thread::Thread::set_name(&c"main");
+        crate::sys::thread::set_name(c"main");
     }
 
     unsafe fn sanitize_standard_fds() {
+        #[allow(dead_code, unused_variables, unused_mut)]
+        let mut opened_devnull = -1;
+        #[allow(dead_code, unused_variables, unused_mut)]
+        let mut open_devnull = || {
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+            use libc::open;
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
+            use libc::open64 as open;
+
+            if opened_devnull != -1 {
+                if libc::dup(opened_devnull) != -1 {
+                    return;
+                }
+            }
+            opened_devnull = open(c"/dev/null".as_ptr(), libc::O_RDWR, 0);
+            if opened_devnull == -1 {
+                // If the stream is closed but we failed to reopen it, abort the
+                // process. Otherwise we wouldn't preserve the safety of
+                // operations on the corresponding Rust object Stdin, Stdout, or
+                // Stderr.
+                libc::abort();
+            }
+        };
+
         // fast path with a single syscall for systems with poll()
         #[cfg(not(any(
             miri,
@@ -74,11 +97,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_vendor = "apple",
         )))]
         'poll: {
-            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-            use libc::open as open64;
-            #[cfg(all(target_os = "linux", target_env = "gnu"))]
-            use libc::open64;
-
             use crate::sys::os::errno;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
@@ -106,13 +124,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
-                    // If the stream is closed but we failed to reopen it, abort the
-                    // process. Otherwise we wouldn't preserve the safety of
-                    // operations on the corresponding Rust object Stdin, Stdout, or
-                    // Stderr.
-                    libc::abort();
-                }
+                open_devnull();
             }
             return;
         }
@@ -129,21 +141,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "vita",
         )))]
         {
-            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-            use libc::open as open64;
-            #[cfg(all(target_os = "linux", target_env = "gnu"))]
-            use libc::open64;
-
             use crate::sys::os::errno;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
-                        // If the stream is closed but we failed to reopen it, abort the
-                        // process. Otherwise we wouldn't preserve the safety of
-                        // operations on the corresponding Rust object Stdin, Stdout, or
-                        // Stderr.
-                        libc::abort();
-                    }
+                    open_devnull();
                 }
             }
         }
@@ -362,6 +363,7 @@ pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
 // multithreaded C program.  It is much less severe for Rust, because Rust
 // stdlib doesn't use libc stdio buffering.  In a typical Rust program, which
 // does not use C stdio, even a buggy libc::abort() is, in fact, safe.
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
@@ -380,6 +382,7 @@ cfg_select! {
         unsafe extern "C" {}
     }
     target_os = "netbsd" => {
+        #[link(name = "execinfo")]
         #[link(name = "pthread")]
         #[link(name = "rt")]
         unsafe extern "C" {}

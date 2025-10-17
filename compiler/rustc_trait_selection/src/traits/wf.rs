@@ -915,7 +915,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // We recurse into the binder below.
             }
 
-            ty::Dynamic(data, r, _) => {
+            ty::Dynamic(data, r) => {
                 // WfObject
                 //
                 // Here, we defer WF checking due to higher-ranked

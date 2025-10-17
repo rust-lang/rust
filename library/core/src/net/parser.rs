@@ -497,16 +497,7 @@ pub struct AddrParseError(AddrKind);
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {
-    #[allow(deprecated, deprecated_in_future)]
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str(self.description())
-    }
-}
-
-#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
-impl Error for AddrParseError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             AddrKind::Ip => "invalid IP address syntax",
             AddrKind::Ipv4 => "invalid IPv4 address syntax",
@@ -515,5 +506,9 @@ impl Error for AddrParseError {
             AddrKind::SocketV4 => "invalid IPv4 socket address syntax",
             AddrKind::SocketV6 => "invalid IPv6 socket address syntax",
         }
+        .fmt(f)
     }
 }
+
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
+impl Error for AddrParseError {}

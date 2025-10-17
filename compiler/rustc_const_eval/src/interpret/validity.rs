@@ -449,7 +449,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.typing_env);
         match tail.kind() {
-            ty::Dynamic(data, _, ty::Dyn) => {
+            ty::Dynamic(data, _) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
                 // Make sure it is a genuine vtable pointer for the right trait.
                 try_validation!(
@@ -511,7 +511,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
             ),
             self.path,
-            Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind },
+            Ub(DanglingIntPointer { addr: 0, .. }) => NullPtr { ptr_kind, maybe: false },
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
@@ -538,8 +538,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         );
         // Make sure this is non-null. We checked dereferenceability above, but if `size` is zero
         // that does not imply non-null.
-        if self.ecx.scalar_may_be_null(Scalar::from_maybe_pointer(place.ptr(), self.ecx))? {
-            throw_validation_failure!(self.path, NullPtr { ptr_kind })
+        let scalar = Scalar::from_maybe_pointer(place.ptr(), self.ecx);
+        if self.ecx.scalar_may_be_null(scalar)? {
+            let maybe = !M::Provenance::OFFSET_IS_ADDR && matches!(scalar, Scalar::Ptr(..));
+            throw_validation_failure!(self.path, NullPtr { ptr_kind, maybe })
         }
         // Do not allow references to uninhabited types.
         if place.layout.is_uninhabited() {
@@ -755,9 +757,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     );
                     // FIXME: Check if the signature matches
                 } else {
-                    // Otherwise (for standalone Miri), we have to still check it to be non-null.
+                    // Otherwise (for standalone Miri and for `-Zextra-const-ub-checks`),
+                    // we have to still check it to be non-null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(self.path, NullFnPtr);
+                        let maybe =
+                            !M::Provenance::OFFSET_IS_ADDR && matches!(scalar, Scalar::Ptr(..));
+                        throw_validation_failure!(self.path, NullFnPtr { maybe });
                     }
                 }
                 if self.reset_provenance_and_padding {
@@ -819,10 +824,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if start == 1 && end == max_value {
                     // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(
-                            self.path,
-                            NullablePtrOutOfRange { range: valid_range, max_value }
-                        )
+                        throw_validation_failure!(self.path, NonnullPtrMaybeNull)
                     } else {
                         return interp_ok(());
                     }
@@ -1418,7 +1420,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(
             M,
             "validate_operand",
-            "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
+            recursive,
+            reset_provenance_and_padding,
+            ?val,
         );
 
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's

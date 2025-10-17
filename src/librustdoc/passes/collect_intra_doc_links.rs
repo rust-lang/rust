@@ -7,7 +7,6 @@ use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
-use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -18,8 +17,9 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
+use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
+    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_session::config::CrateType;
@@ -130,6 +130,7 @@ impl Res {
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
+            DefKind::TyAlias => "tyalias",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -210,7 +211,7 @@ impl UrlFragment {
             &UrlFragment::Item(def_id) => {
                 let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
-                        if tcx.defaultness(def_id).has_value() {
+                        if tcx.associated_item(def_id).defaultness(tcx).has_value() {
                             "method."
                         } else {
                             "tymethod."
@@ -1073,7 +1074,7 @@ impl LinkCollector<'_, '_> {
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs)
+            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
         {
             // Skip link resolution for non-exported items.
             return;
@@ -1708,6 +1709,7 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
+                "tyalias" | "typealias" => Kind(DefKind::TyAlias),
                 _ => return Err((format!("unknown disambiguator `{prefix}`"), 0..idx)),
             };
 

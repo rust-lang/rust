@@ -765,8 +765,8 @@ macro_rules! wrapping_int_impl {
             ///
             /// # Examples
             ///
-            /// Please note that this example is shared between integer types.
-            /// Which explains why `i16` is used here.
+            /// Please note that this example is shared among integer types, which is why `i16`
+            /// is used.
             ///
             /// Basic usage:
             ///

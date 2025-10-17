@@ -13,8 +13,8 @@ use rustc_hir::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModDefId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
+use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
-use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
@@ -31,6 +31,7 @@ use crate::ty::{
 
 thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
+    static SHOULD_PREFIX_WITH_CRATE_NAME: Cell<bool> = const { Cell::new(false) };
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
@@ -98,7 +99,18 @@ define_helper!(
     /// cycle errors, this can result in extra or suboptimal error output,
     /// so this variable disables that check.
     fn with_forced_impl_filename_line(ForcedImplGuard, FORCE_IMPL_FILENAME_LINE);
+    /// Adds the crate name prefix to paths where appropriate.
+    /// Unlike `with_crate_prefix`, this unconditionally uses `tcx.crate_name` instead of sometimes
+    /// using `crate::` for local items.
+    ///
+    /// Overrides `with_crate_prefix`.
+
+    // This function is not currently used in-tree, but it's used by a downstream rustc-driver in
+    // Ferrocene. Please check with them before removing it.
+    fn with_resolve_crate_name(CrateNamePrefixGuard, SHOULD_PREFIX_WITH_CRATE_NAME);
     /// Adds the `crate::` prefix to paths where appropriate.
+    ///
+    /// Ignored if `with_resolve_crate_name` is active.
     fn with_crate_prefix(CratePrefixGuard, SHOULD_PREFIX_WITH_CRATE);
     /// Prevent path trimming if it is turned on. Path trimming affects `Display` impl
     /// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
@@ -784,14 +796,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 },
             },
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
-            ty::Dynamic(data, r, repr) => {
+            ty::Dynamic(data, r) => {
                 let print_r = self.should_print_optional_region(r);
                 if print_r {
                     write!(self, "(")?;
                 }
-                match repr {
-                    ty::Dyn => write!(self, "dyn ")?,
-                }
+                write!(self, "dyn ")?;
                 data.print(self)?;
                 if print_r {
                     write!(self, " + ")?;
@@ -1436,8 +1446,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 // anonymized regions, but the super projections can still
                                 // contain named regions. So we erase and anonymize everything
                                 // here to compare the types modulo regions below.
-                                let proj = p.tcx().erase_regions(proj);
-                                let super_proj = p.tcx().erase_regions(super_proj);
+                                let proj = p.tcx().erase_and_anonymize_regions(proj);
+                                let super_proj = p.tcx().erase_and_anonymize_regions(super_proj);
 
                                 proj == super_proj
                             });
@@ -2315,7 +2325,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
-        if cnum == LOCAL_CRATE {
+        if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
             if self.tcx.sess.at_least_rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if with_crate_prefix() {
@@ -2666,7 +2676,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match r.kind() {
-            ty::ReBound(db, br) if db >= self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2689,7 +2699,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReBound(debruijn1, br) = region.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1), br) = region.kind() {
             assert_eq!(debruijn1, ty::INNERMOST);
             ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {
@@ -3179,8 +3189,7 @@ define_print! {
                 write!(p, "` can be evaluated")?;
             }
             ty::ClauseKind::UnstableFeature(symbol) => {
-                write!(p, "unstable feature: ")?;
-                write!(p, "`{symbol}`")?;
+                write!(p, "feature({symbol}) is enabled")?;
             }
         }
     }

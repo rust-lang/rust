@@ -99,38 +99,10 @@ impl GenericParamsOwnerEdit for ast::Trait {
 
     fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
-            let position = match self.assoc_item_list() {
-                Some(items) => Position::before(items.syntax()),
-                None => Position::last_child_of(self.syntax()),
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::TraitAlias {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    Position::after(name.syntax)
-                } else if let Some(trait_token) = self.trait_token() {
-                    Position::after(trait_token)
-                } else {
-                    Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match self.semicolon_token() {
-                Some(tok) => Position::before(tok),
-                None => Position::last_child_of(self.syntax()),
+            let position = match (self.assoc_item_list(), self.semicolon_token()) {
+                (Some(items), _) => Position::before(items.syntax()),
+                (_, Some(tok)) => Position::before(tok),
+                (None, None) => Position::last_child_of(self.syntax()),
             };
             create_where_clause(position);
         }
@@ -271,28 +243,6 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
                 }
                 remove_next_ws = false;
             }
-        }
-    }
-
-    fn add_attr(&self, attr: ast::Attr) {
-        add_attr(self.syntax(), attr);
-
-        fn add_attr(node: &SyntaxNode, attr: ast::Attr) {
-            let indent = IndentLevel::from_node(node);
-            attr.reindent_to(indent);
-
-            let after_attrs_and_comments = node
-                .children_with_tokens()
-                .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                .map_or(Position::first_child_of(node), Position::before);
-
-            ted::insert_all(
-                after_attrs_and_comments,
-                vec![
-                    attr.syntax().clone().into(),
-                    make::tokens::whitespace(&format!("\n{indent}")).into(),
-                ],
-            )
         }
     }
 }

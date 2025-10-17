@@ -51,7 +51,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(ptr_alignment_type)]
-#![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(sized_hierarchy)]
@@ -60,6 +59,7 @@
 #![feature(try_trait_v2_residual)]
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
+#![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

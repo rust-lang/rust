@@ -277,5 +277,41 @@ LL -     println!("Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
 LL +     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
    |
 
-error: aborting due to 22 previous errors
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:111:36
+   |
+LL |     println!("Hello {} is {2:.*}", "x", 5, 0.01);
+   |                                    ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {} is {2:.*}", "x", 5, 0.01);
+LL +     println!("Hello x is {1:.*}", 5, 0.01);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:114:36
+   |
+LL |     println!("Hello {} is {:.p$}", "x", 0.01, p = 5);
+   |                                    ^^^
+   |
+help: try
+   |
+LL -     println!("Hello {} is {:.p$}", "x", 0.01, p = 5);
+LL +     println!("Hello x is {:.p$}", 0.01, p = 5);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:119:9
+   |
+LL |         "name", 5, "x", 0.01
+   |         ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         "Hello {}: {2} is {3:.*} (which {3} with {1} places)",
+LL +         "Hello name: x is {1:.*} (which {1} with {0} places)", 5, 0.01
+   |
+
+error: aborting due to 25 previous errors
 

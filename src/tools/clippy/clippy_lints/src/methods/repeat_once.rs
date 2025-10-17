@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx Expr<'_>,
     repeat_arg: &'tcx Expr<'_>,
 ) {
-    if ConstEvalCtxt::new(cx).eval(repeat_arg) == Some(Constant::Int(1)) {
+    if ConstEvalCtxt::new(cx).eval_local(repeat_arg, expr.span.ctxt()) == Some(Constant::Int(1)) {
         let ty = cx.typeck_results().expr_ty(recv).peel_refs();
         if ty.is_str() {
             span_lint_and_sugg(

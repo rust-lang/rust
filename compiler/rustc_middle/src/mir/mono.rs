@@ -48,6 +48,9 @@ pub enum InstantiationMode {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+pub struct NormalizationErrorInMono;
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -149,7 +152,7 @@ impl<'tcx> MonoItem<'tcx> {
         // instantiation:
         // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
         let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
-        if codegen_fn_attrs.contains_extern_indicator(tcx, instance.def.def_id())
+        if codegen_fn_attrs.contains_extern_indicator()
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
         {
             return InstantiationMode::GloballyShared { may_conflict: false };
@@ -548,10 +551,27 @@ impl<'tcx> CodegenUnit<'tcx> {
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
         if !tcx.sess.opts.unstable_opts.codegen_source_order {
-            // It's already deterministic, so we can just use it.
-            return items;
+            // In this case, we do not need to keep the items in any specific order, as the input
+            // is already deterministic.
+            //
+            // However, it seems that moving related things (such as different
+            // monomorphizations of the same function) close to one another is actually beneficial
+            // for LLVM performance.
+            // LLVM will codegen the items in the order we pass them to it, and when it handles
+            // similar things in succession, it seems that it leads to better cache utilization,
+            // less branch mispredictions and in general to better performance.
+            // For example, if we have functions `a`, `c::<u32>`, `b`, `c::<i16>`, `d` and
+            // `c::<bool>`, it seems that it helps LLVM's performance to codegen the three `c`
+            // instantiations right after one another, as they will likely reference similar types,
+            // call similar functions, etc.
+            //
+            // See https://github.com/rust-lang/rust/pull/145358 for more details.
+            //
+            // Sorting by symbol name should not incur any new non-determinism.
+            items.sort_by_cached_key(|&(i, _)| i.symbol_name(tcx));
+        } else {
+            items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         }
-        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
     }
 

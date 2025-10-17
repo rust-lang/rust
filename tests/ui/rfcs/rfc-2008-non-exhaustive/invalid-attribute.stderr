@@ -13,7 +13,7 @@ error: `#[non_exhaustive]` attribute cannot be used on traits
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[non_exhaustive]` can be applied to data types, enum variants
+   = help: `#[non_exhaustive]` can be applied to data types and enum variants
 
 error: `#[non_exhaustive]` attribute cannot be used on unions
   --> $DIR/invalid-attribute.rs:9:1
@@ -21,7 +21,7 @@ error: `#[non_exhaustive]` attribute cannot be used on unions
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[non_exhaustive]` can be applied to data types, enum variants
+   = help: `#[non_exhaustive]` can be applied to data types and enum variants
 
 error: aborting due to 3 previous errors
 

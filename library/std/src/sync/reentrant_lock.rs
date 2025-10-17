@@ -355,7 +355,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     /// properly synchronized to avoid data races, and that it is not read
     /// through after the lock is dropped.
     #[unstable(feature = "reentrant_lock_data_ptr", issue = "140368")]
-    pub fn data_ptr(&self) -> *const T {
+    pub const fn data_ptr(&self) -> *const T {
         &raw const self.data
     }
 

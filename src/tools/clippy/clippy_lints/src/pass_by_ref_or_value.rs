@@ -14,7 +14,7 @@ use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, No
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, RegionKind, TyCtxt};
+use rustc_middle::ty::{self, BoundVarIndexKind, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -120,7 +120,7 @@ impl PassByRefOrValue {
         }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
+    fn check_poly_fn(&self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
@@ -151,7 +151,7 @@ impl PassByRefOrValue {
             match *ty.skip_binder().kind() {
                 ty::Ref(lt, ty, Mutability::Not) => {
                     match lt.kind() {
-                        RegionKind::ReBound(index, region)
+                        RegionKind::ReBound(BoundVarIndexKind::Bound(index), region)
                             if index.as_u32() == 0 && output_regions.contains(&region) =>
                         {
                             continue;

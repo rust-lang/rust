@@ -640,7 +640,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
 
         let op = typeck.infcx.param_env.and(DropckOutlives { dropped_ty });
 
-        match op.fully_perform(typeck.infcx, DUMMY_SP) {
+        match op.fully_perform(typeck.infcx, typeck.root_cx.root_def_id(), DUMMY_SP) {
             Ok(TypeOpOutput { output, constraints, .. }) => {
                 DropData { dropck_result: output, region_constraint_data: constraints }
             }
@@ -657,7 +657,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                     let errors = match dropck_outlives::compute_dropck_outlives_with_errors(
                         &ocx, op, span,
                     ) {
-                        Ok(_) => ocx.select_all_or_error(),
+                        Ok(_) => ocx.evaluate_obligations_error_on_ambiguity(),
                         Err(e) => e,
                     };
 

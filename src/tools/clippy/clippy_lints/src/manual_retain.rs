@@ -123,8 +123,8 @@ fn check_iter(
 ) {
     if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && (cx.tcx.is_diagnostic_item(sym::iter_copied, copied_def_id)
-            || cx.tcx.is_diagnostic_item(sym::iter_cloned, copied_def_id))
+        && let Some(copied_name) = cx.tcx.get_diagnostic_name(copied_def_id)
+        && matches!(copied_name, sym::iter_copied | sym::iter_cloned)
         && let hir::ExprKind::MethodCall(_, iter_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::iter_filter, filter_def_id)
@@ -243,9 +243,9 @@ fn make_sugg(
 }
 
 fn match_acceptable_sym(cx: &LateContext<'_>, collect_def_id: DefId) -> bool {
-    ACCEPTABLE_METHODS
-        .iter()
-        .any(|&method| cx.tcx.is_diagnostic_item(method, collect_def_id))
+    cx.tcx
+        .get_diagnostic_name(collect_def_id)
+        .is_some_and(|collect_name| ACCEPTABLE_METHODS.contains(&collect_name))
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: Msrv) -> bool {

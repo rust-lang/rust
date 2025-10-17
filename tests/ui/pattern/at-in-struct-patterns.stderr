@@ -1,4 +1,4 @@
-error: Unexpected `@` in struct pattern
+error: unexpected `@` in struct pattern
   --> $DIR/at-in-struct-patterns.rs:8:15
    |
 LL |     let Foo { var @ field1, .. } = foo;

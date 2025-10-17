@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, sugg};
+use clippy_utils::{SpanlessEq, contains_name, higher, is_integer_const, peel_hir_expr_while, sugg};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -253,12 +253,38 @@ struct VarVisitor<'a, 'tcx> {
 
 impl<'tcx> VarVisitor<'_, 'tcx> {
     fn check(&mut self, idx: &'tcx Expr<'_>, seqexpr: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) -> bool {
-        let index_used_directly = matches!(idx.kind, ExprKind::Path(_));
+        let mut used_cnt = 0;
+        // It is `true` if all indices are direct
+        let mut index_used_directly = true;
+
+        // Handle initial index
+        if is_local_used(self.cx, idx, self.var) {
+            used_cnt += 1;
+            index_used_directly &= matches!(idx.kind, ExprKind::Path(_));
+        }
+        // Handle nested indices
+        let seqexpr = peel_hir_expr_while(seqexpr, |e| {
+            if let ExprKind::Index(e, idx, _) = e.kind {
+                if is_local_used(self.cx, idx, self.var) {
+                    used_cnt += 1;
+                    index_used_directly &= matches!(idx.kind, ExprKind::Path(_));
+                }
+                Some(e)
+            } else {
+                None
+            }
+        });
+
+        match used_cnt {
+            0 => return true,
+            n if n > 1 => self.nonindex = true, // Optimize code like `a[i][i]`
+            _ => {},
+        }
+
         if let ExprKind::Path(ref seqpath) = seqexpr.kind
             // the indexed container is referenced by a name
             && let QPath::Resolved(None, seqvar) = *seqpath
             && seqvar.segments.len() == 1
-            && is_local_used(self.cx, idx, self.var)
         {
             if self.prefer_mutable {
                 self.indexed_mut.insert(seqvar.segments[0].ident.name);
@@ -312,7 +338,6 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
 impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind
-            // a range index op
             && let Some(trait_id) = self
                 .cx
                 .typeck_results()

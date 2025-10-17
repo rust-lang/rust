@@ -10,7 +10,12 @@ use crate::{
     syntax_highlighting::{HighlightConfig, highlight},
 };
 
-pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
+pub(crate) fn highlight_as_html_with_config(
+    db: &RootDatabase,
+    config: HighlightConfig,
+    file_id: FileId,
+    rainbow: bool,
+) -> String {
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
@@ -27,21 +32,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let hl_ranges = highlight(
-        db,
-        HighlightConfig {
-            strings: true,
-            punctuation: true,
-            specialize_punctuation: true,
-            specialize_operator: true,
-            operator: true,
-            inject_doc_comment: true,
-            macro_bang: true,
-            syntactic_name_ref_highlighting: false,
-        },
-        file_id.file_id(db),
-        None,
-    );
+    let hl_ranges = highlight(db, config, file_id.file_id(db), None);
     let text = file.to_string();
     let mut buf = String::new();
     buf.push_str(STYLE);
@@ -64,6 +55,25 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     }
     buf.push_str("</code></pre>");
     buf
+}
+
+pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
+    highlight_as_html_with_config(
+        db,
+        HighlightConfig {
+            strings: true,
+            comments: true,
+            punctuation: true,
+            specialize_punctuation: true,
+            specialize_operator: true,
+            operator: true,
+            inject_doc_comment: true,
+            macro_bang: true,
+            syntactic_name_ref_highlighting: false,
+        },
+        file_id,
+        rainbow,
+    )
 }
 
 //FIXME: like, real html escaping

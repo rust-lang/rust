@@ -1,6 +1,5 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use std::cell::Cell;
 use std::mem;
 
 use rustc_ast::NodeId;
@@ -9,7 +8,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{self, DefKind, PartialRes};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefIdMap};
 use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
@@ -30,8 +29,9 @@ use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub,
+    ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
 };
+use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
     Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope,
@@ -68,7 +68,7 @@ pub(crate) enum ImportKind<'ra> {
         /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
         /// Bindings introduced by the import.
-        bindings: PerNS<Cell<PendingBinding<'ra>>>,
+        bindings: PerNS<CmCell<PendingBinding<'ra>>>,
         /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
         /// Did this import result from a nested import? ie. `use foo::{bar, baz};`
@@ -89,7 +89,7 @@ pub(crate) enum ImportKind<'ra> {
     Glob {
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
-        max_vis: Cell<Option<Visibility>>,
+        max_vis: CmCell<Option<Visibility>>,
         id: NodeId,
     },
     ExternCrate {
@@ -182,8 +182,11 @@ pub(crate) struct ImportData<'ra> {
     /// |`use ::foo`      | `ModuleOrUniformRoot::ExternPrelude`          | 2018+ editions |
     /// |`use ::foo`      | `ModuleOrUniformRoot::ModuleAndExternPrelude` | a special case in 2015 edition |
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
-    pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
+    pub imported_module: CmCell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: Visibility,
+
+    /// Span of the visibility.
+    pub vis_span: Span,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -317,7 +320,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && (vis == import_vis
                 || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
         {
-            max_vis.set(Some(vis.expect_local()))
+            max_vis.set_unchecked(Some(vis.expect_local()))
         }
 
         self.arenas.alloc_name_binding(NameBindingData {
@@ -346,7 +349,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
         let key = BindingKey::new_disambiguated(ident, ns, || {
-            module.underscore_disambiguator.update(|d| d + 1);
+            module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
         self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
@@ -465,7 +468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
-            let resolution = &mut *self.resolution_or_default(module, key).borrow_mut();
+            let resolution = &mut *self.resolution_or_default(module, key).borrow_mut_unchecked();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -479,7 +482,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let Ok(glob_importers) = module.glob_importers.try_borrow_mut() else {
+        let Ok(glob_importers) = module.glob_importers.try_borrow_mut_unchecked() else {
             return t;
         };
 
@@ -548,12 +551,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     pub(crate) fn resolve_imports(&mut self) {
-        self.assert_speculative = true;
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
+            self.assert_speculative = true;
             for import in mem::take(&mut self.indeterminate_imports) {
                 let import_indeterminate_count = self.cm().resolve_import(import);
                 indeterminate_count += import_indeterminate_count;
@@ -562,14 +565,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     _ => self.indeterminate_imports.push(import),
                 }
             }
+            self.assert_speculative = false;
         }
-        self.assert_speculative = false;
     }
 
     pub(crate) fn finalize_imports(&mut self) {
-        for module in self.arenas.local_modules().iter() {
-            self.finalize_resolutions_in(*module);
+        let mut module_children = Default::default();
+        for module in &self.local_modules {
+            self.finalize_resolutions_in(*module, &mut module_children);
         }
+        self.module_children = module_children;
 
         let mut seen_spans = FxHashSet::default();
         let mut errors = vec![];
@@ -646,7 +651,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<NameBinding<'ra>>) {
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (key, resolution) in self.resolutions(*module).borrow().iter() {
                 let resolution = resolution.borrow();
                 let Some(binding) = resolution.best_binding() else { continue };
@@ -717,9 +722,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         EXPORTED_PRIVATE_DEPENDENCIES,
                         binding_id,
                         binding.span,
-                        BuiltinLintDiag::ReexportPrivateDependency {
-                            kind: binding.res().descr().to_string(),
-                            name: key.ident.name.to_string(),
+                        crate::errors::ReexportPrivateDependency {
+                            name: key.ident.name,
+                            kind: binding.res().descr(),
                             krate: self.tcx.crate_name(reexported_def_id.krate),
                         },
                     );
@@ -736,14 +741,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         errors.retain(|(_import, err)| match err.module {
             // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
             Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
-            _ => true,
-        });
-        errors.retain(|(_import, err)| {
             // If we've encountered something like `use _;`, we've already emitted an error stating
             // that `_` is not a valid identifier, so we ignore that resolve error.
-            err.segment != Some(kw::Underscore)
+            _ => err.segment != Some(kw::Underscore),
         });
-
         if errors.is_empty() {
             self.tcx.dcx().delayed_bug("expected a parse or \"`_` can't be an identifier\" error");
             return;
@@ -859,14 +860,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        import.imported_module.set(Some(module));
+        import.imported_module.set_unchecked(Some(module));
         let (source, target, bindings, type_ns_only) = match import.kind {
             ImportKind::Single { source, target, ref bindings, type_ns_only, .. } => {
                 (source, target, bindings, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // specualtive resolution.
                 self.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
             }
@@ -902,8 +901,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // specualtive resolution.
                         this.get_mut_unchecked().define_binding_local(
                             parent,
                             target,
@@ -916,8 +913,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
-                            // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // specualtive resolution.
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,
@@ -934,7 +929,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         PendingBinding::Pending
                     }
                 };
-                bindings[ns].set(binding);
+                bindings[ns].set_unchecked(binding);
             }
         });
 
@@ -1368,6 +1363,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             err.subdiagnostic( ConsiderAddingMacroExport {
                                 span: binding.span,
                             });
+                            err.subdiagnostic( ConsiderMarkingAsPubCrate {
+                                vis_span: import.vis_span,
+                            });
                         }
                         _ => {
                             err.subdiagnostic( ConsiderMarkingAsPub {
@@ -1440,7 +1438,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return;
                 }
 
-                match this.cm().early_resolve_ident_in_lexical_scope(
+                match this.cm().resolve_ident_in_scope_set(
                     target,
                     ScopeSet::All(ns),
                     &import.parent_scope,
@@ -1502,7 +1500,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
+        module.glob_importers.borrow_mut_unchecked().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1542,9 +1540,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
-    fn finalize_resolutions_in(&mut self, module: Module<'ra>) {
+    fn finalize_resolutions_in(
+        &self,
+        module: Module<'ra>,
+        module_children: &mut LocalDefIdMap<Vec<ModChild>>,
+    ) {
         // Since import resolution is finished, globs will not define any more names.
-        *module.globs.borrow_mut() = Vec::new();
+        *module.globs.borrow_mut(self) = Vec::new();
 
         let Some(def_id) = module.opt_def_id() else { return };
 
@@ -1567,7 +1569,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if !children.is_empty() {
             // Should be fine because this code is only called for local modules.
-            self.module_children.insert(def_id.expect_local(), children);
+            module_children.insert(def_id.expect_local(), children);
         }
     }
 }

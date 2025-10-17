@@ -350,6 +350,12 @@ Tests for FFI with C varargs (`va_list`).
 
 Tests for detection and handling of cyclic trait dependencies.
 
+## `tests/ui/darwin-objc/`: Darwin Objective-C
+
+Tests exercising `#![feature(darwin_objc)]`.
+
+See [Tracking Issue for `darwin_objc` #145496](https://github.com/rust-lang/rust/issues/145496).
+
 ## `tests/ui/dataflow_const_prop/`
 
 Contains a single regression test for const prop in `SwitchInt` pass crashing when `ptr2int` transmute is involved.

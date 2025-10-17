@@ -1,4 +1,5 @@
 //@ revisions: rpass1 rpass2
+//@ ignore-backends: gcc
 
 pub fn foo() {
     bar();

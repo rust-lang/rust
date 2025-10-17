@@ -35,7 +35,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg_nonzero`  | `r[3-12]`, `r[14-28]`              | `b`                  |
 | PowerPC      | `freg`         | `f[0-31]`                          | `f`                  |
 | PowerPC      | `vreg`         | `v[0-31]`                          | `v`                  |
+| PowerPC      | `vsreg         | `vs[0-63]`                         | `wa`                 |
 | PowerPC      | `cr`           | `cr[0-7]`, `cr`                    | Only clobbers        |
+| PowerPC      | `ctr`          | `ctr`                              | Only clobbers        |
+| PowerPC      | `lr`           | `lr`                               | Only clobbers        |
 | PowerPC      | `xer`          | `xer`                              | Only clobbers        |
 | wasm32       | `local`        | None\*                             | `r`                  |
 | BPF          | `reg`          | `r[0-10]`                          | `r`                  |
@@ -77,7 +80,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `freg`                          | None           | `f32`, `f64`                            |
 | PowerPC      | `vreg`                          | `altivec`      | `i8x16`, `i16x8`, `i32x4`, `f32x4`      |
 | PowerPC      | `vreg`                          | `vsx`          | `f32`, `f64`, `i64x2`, `f64x2`          |
+| PowerPC      | `vsreg`                         | `vsx`          | The union of vsx and altivec vreg types |
 | PowerPC      | `cr`                            | N/A            | Only clobbers                           |
+| PowerPC      | `ctr`                           | N/A            | Only clobbers                           |
+| PowerPC      | `lr`                            | N/A            | Only clobbers                           |
 | PowerPC      | `xer`                           | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
 | BPF          | `reg`                           | None           | `i8` `i16` `i32` `i64`                  |
@@ -150,8 +156,6 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | MIPS         | `$ra`                                   | Return address cannot be used as inputs or outputs.                                                                                                                                 |
 | Hexagon      | `lr`                                    | This is the link register which cannot be used as an input or output.                                                                                                               |
 | PowerPC      | `r2`, `r13`                             | These are system reserved registers.                                                                                                                                                |
-| PowerPC      | `lr`                                    | The link register cannot be used as an input or output.                                                                                                                             |
-| PowerPC      | `ctr`                                   | The counter register cannot be used as an input or output.                                                                                                                          |
 | PowerPC      | `vrsave`                                | The vrsave register cannot be used as an input or output.                                                                                                                           |
 | AVR          | `r0`, `r1`, `r1r0`                      | Due to an issue in LLVM, the `r0` and `r1` registers cannot be used as inputs or outputs.  If modified, they must be restored to their original values before the end of the block. |
 |MSP430        | `r0`, `r2`, `r3`                        | These are the program counter, status register, and constant generator respectively. Neither the status register nor constant generator can be written to.                          |
@@ -183,6 +187,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
 | PowerPC      | `freg`         | None     | `0`            | None          |
 | PowerPC      | `vreg`         | None     | `0`            | None          |
+| PowerPC      | `vsreg`        | None     | `0`            | None          |
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |

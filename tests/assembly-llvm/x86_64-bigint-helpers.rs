@@ -2,7 +2,6 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C target-cpu=x86-64-v4
 //@ compile-flags: -C llvm-args=-x86-asm-syntax=intel
-//@ min-llvm-version: 20
 
 #![no_std]
 #![feature(bigint_helper_methods)]
@@ -45,7 +44,7 @@ pub unsafe extern "sysv64" fn bigint_chain_borrowing_sub(
     n: usize,
     mut carry: bool,
 ) -> bool {
-    // CHECK: mov [[TEMP:r..]], qword ptr [rsi + 8*[[IND:r..]] + 8]
+    // CHECK: mov [[TEMP:r.+]], qword ptr [rsi + 8*[[IND:r.+]] + 8]
     // CHECK: sbb [[TEMP]], qword ptr [rdx + 8*[[IND]] + 8]
     // CHECK: mov qword ptr [rdi + 8*[[IND]] + 8], [[TEMP]]
     // CHECK: mov [[TEMP]], qword ptr [rsi + 8*[[IND]] + 16]

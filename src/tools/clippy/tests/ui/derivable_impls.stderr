@@ -1,5 +1,5 @@
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:20:1
+  --> tests/ui/derivable_impls.rs:22:1
    |
 LL | / impl std::default::Default for FooDefault<'_> {
 LL | |
@@ -18,7 +18,7 @@ LL ~ struct FooDefault<'a> {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:42:1
+  --> tests/ui/derivable_impls.rs:44:1
    |
 LL | / impl std::default::Default for TupleDefault {
 LL | |
@@ -35,7 +35,7 @@ LL ~ struct TupleDefault(bool, i32, u64);
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:95:1
+  --> tests/ui/derivable_impls.rs:97:1
    |
 LL | / impl Default for StrDefault<'_> {
 LL | |
@@ -52,7 +52,7 @@ LL ~ struct StrDefault<'a>(&'a str);
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:122:1
+  --> tests/ui/derivable_impls.rs:124:1
    |
 LL | / impl Default for Y {
 LL | |
@@ -69,7 +69,7 @@ LL ~ struct Y(u32);
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:162:1
+  --> tests/ui/derivable_impls.rs:164:1
    |
 LL | / impl Default for WithoutSelfCurly {
 LL | |
@@ -86,7 +86,7 @@ LL ~ struct WithoutSelfCurly {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:171:1
+  --> tests/ui/derivable_impls.rs:173:1
    |
 LL | / impl Default for WithoutSelfParan {
 LL | |
@@ -103,7 +103,7 @@ LL ~ struct WithoutSelfParan(bool);
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:194:1
+  --> tests/ui/derivable_impls.rs:196:1
    |
 LL | / impl Default for DirectDefaultDefaultCall {
 LL | |
@@ -119,7 +119,7 @@ LL ~ pub struct DirectDefaultDefaultCall {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:206:1
+  --> tests/ui/derivable_impls.rs:208:1
    |
 LL | / impl Default for EquivalentToDefaultDefaultCallVec {
 LL | |
@@ -135,7 +135,7 @@ LL ~ pub struct EquivalentToDefaultDefaultCallVec {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:234:1
+  --> tests/ui/derivable_impls.rs:236:1
    |
 LL | / impl Default for EquivalentToDefaultDefaultCallLocal {
 LL | |
@@ -151,7 +151,7 @@ LL ~ pub struct EquivalentToDefaultDefaultCallLocal {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:274:1
+  --> tests/ui/derivable_impls.rs:276:1
    |
 LL | / impl Default for RepeatDefault1 {
 LL | |
@@ -168,7 +168,7 @@ LL ~ pub struct RepeatDefault1 {
    |
 
 error: this `impl` can be derived
-  --> tests/ui/derivable_impls.rs:309:1
+  --> tests/ui/derivable_impls.rs:311:1
    |
 LL | / impl Default for SimpleEnum {
 LL | |
@@ -187,5 +187,28 @@ LL ~     #[default]
 LL ~     Bar,
    |
 
-error: aborting due to 11 previous errors
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:432:5
+   |
+LL | /     impl Default for Bar {
+LL | |
+LL | |         fn default() -> Self {
+LL | |             Self::A
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+LL ~     #[derive(Default)]
+LL ~     enum Bar {
+LL ~         #[default]
+LL ~         A,
+LL |         B,
+LL |     }
+LL |
+LL ~     
+   |
+
+error: aborting due to 12 previous errors
 

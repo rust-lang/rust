@@ -1,12 +1,6 @@
 //! Attributes that can be found in function body.
 
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
-
-use super::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AllowedTargets, Stage};
+use super::prelude::*;
 
 pub(crate) struct CoroutineParser;
 

@@ -59,7 +59,7 @@ fn check_validity_requirement_strict<'tcx>(
     if kind == ValidityRequirement::Zero {
         cx.write_bytes_ptr(
             allocated.ptr(),
-            std::iter::repeat(0_u8).take(ty.layout.size().bytes_usize()),
+            std::iter::repeat_n(0_u8, ty.layout.size().bytes_usize()),
         )
         .expect("failed to write bytes for zero valid check");
     }
@@ -129,7 +129,7 @@ fn check_validity_requirement_lax<'tcx>(
     if let Some(pointee) = this.ty.builtin_deref(false) {
         let pointee = cx.layout_of(pointee)?;
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
-        if pointee.align.abi.bytes() > 1 {
+        if pointee.align.bytes() > 1 {
             // 0x01-filling is not aligned.
             return Ok(false);
         }

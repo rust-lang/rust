@@ -1,19 +1,29 @@
 use rustc_errors::DiagArgValue;
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
-use crate::session_diagnostics;
+use super::prelude::*;
+use crate::session_diagnostics::IllFormedAttributeInputLint;
+
 pub(crate) struct MustUseParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Enum),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::ForeignFn),
+        // `impl Trait` in return position can trip
+        // `unused_must_use` if `Trait` is marked as
+        // `#[must_use]`
+        Allow(Target::Trait),
+        Error(Target::WherePredicate),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
@@ -35,9 +45,9 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                     Some(value_str)
                 }
                 ArgParser::List(_) => {
-                    let suggestions =
-                        <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "must_use");
-                    cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
+                    let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
+                        .suggestions(cx.attr_style, "must_use");
+                    cx.emit_err(IllFormedAttributeInputLint {
                         num_suggestions: suggestions.len(),
                         suggestions: DiagArgValue::StrListSepByAnd(
                             suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),

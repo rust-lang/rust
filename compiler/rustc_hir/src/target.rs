@@ -79,6 +79,8 @@ impl Display for Target {
     }
 }
 
+rustc_error_messages::into_diag_arg_using_display!(Target);
+
 impl Target {
     pub fn is_associated_item(self) -> bool {
         match self {

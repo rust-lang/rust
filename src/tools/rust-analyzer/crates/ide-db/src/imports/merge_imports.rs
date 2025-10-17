@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 
 use itertools::{EitherOrBoth, Itertools};
 use parser::T;
-use stdx::is_upper_snake_case;
 use syntax::{
     Direction, SyntaxElement, algo,
     ast::{
@@ -406,6 +405,8 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
                 } else {
                     ted::replace_with_many(subtree.syntax(), elements);
                 }
+                // Silence unused assignment warning on `modified`.
+                let _ = modified;
                 modified = true;
             } else {
                 modified |= recursive_normalize(&subtree, NormalizationStyle::Default).is_some();
@@ -543,12 +544,13 @@ fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
     }
 }
 
-/// Orders use trees following `rustfmt`'s algorithm for ordering imports, which is `self`, `super`
-/// and `crate` first, then identifier imports with lowercase ones first and upper snake case
-/// (e.g. UPPER_SNAKE_CASE) ones last, then glob imports, and at last list imports.
+/// Orders use trees following `rustfmt`'s version sorting algorithm for ordering imports.
 ///
-/// Example: `foo::{self, baz, foo, Baz, Qux, FOO_BAZ, *, {Bar}}`
-/// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
+/// Example: `foo::{self, Baz, FOO_BAZ, Qux, baz, foo, *, {Bar}}`
+///
+/// Ref:
+///   - <https://doc.rust-lang.org/style-guide/index.html#sorting>
+///   - <https://doc.rust-lang.org/edition-guide/rust-2024/rustfmt.html>
 pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
     let a_is_simple_path = a.is_simple_path() && a.rename().is_none();
     let b_is_simple_path = b.is_simple_path() && b.rename().is_none();
@@ -613,26 +615,9 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                 (Some(_), None) => Ordering::Greater,
                 (None, Some(_)) => Ordering::Less,
                 (Some(a_name), Some(b_name)) => {
-                    // snake_case < UpperCamelCase < UPPER_SNAKE_CASE
                     let a_text = a_name.as_str().trim_start_matches("r#");
                     let b_text = b_name.as_str().trim_start_matches("r#");
-                    if a_text.starts_with(char::is_lowercase)
-                        && b_text.starts_with(char::is_uppercase)
-                    {
-                        return Ordering::Less;
-                    }
-                    if a_text.starts_with(char::is_uppercase)
-                        && b_text.starts_with(char::is_lowercase)
-                    {
-                        return Ordering::Greater;
-                    }
-                    if !is_upper_snake_case(a_text) && is_upper_snake_case(b_text) {
-                        return Ordering::Less;
-                    }
-                    if is_upper_snake_case(a_text) && !is_upper_snake_case(b_text) {
-                        return Ordering::Greater;
-                    }
-                    a_text.cmp(b_text)
+                    version_sort::version_sort(a_text, b_text)
                 }
             }
         }
@@ -738,5 +723,191 @@ fn remove_subtree_if_only_self(use_tree: &ast::UseTree) {
             ted::remove_all_iter(single_subtree.syntax().children_with_tokens());
         }
         _ => (),
+    }
+}
+
+// Taken from rustfmt
+// https://github.com/rust-lang/rustfmt/blob/0332da01486508710f2a542111e40513bfb215aa/src/sort.rs
+mod version_sort {
+    // Original rustfmt code contains some clippy lints.
+    // Suppress them to minimize changes from upstream.
+    #![allow(clippy::all)]
+
+    use std::cmp::Ordering;
+
+    use itertools::{EitherOrBoth, Itertools};
+
+    struct VersionChunkIter<'a> {
+        ident: &'a str,
+        start: usize,
+    }
+
+    impl<'a> VersionChunkIter<'a> {
+        pub(crate) fn new(ident: &'a str) -> Self {
+            Self { ident, start: 0 }
+        }
+
+        fn parse_numeric_chunk(
+            &mut self,
+            mut chars: std::str::CharIndices<'a>,
+        ) -> Option<VersionChunk<'a>> {
+            let mut end = self.start;
+            let mut is_end_of_chunk = false;
+
+            while let Some((idx, c)) = chars.next() {
+                end = self.start + idx;
+
+                if c.is_ascii_digit() {
+                    continue;
+                }
+
+                is_end_of_chunk = true;
+                break;
+            }
+
+            let source = if is_end_of_chunk {
+                let value = &self.ident[self.start..end];
+                self.start = end;
+                value
+            } else {
+                let value = &self.ident[self.start..];
+                self.start = self.ident.len();
+                value
+            };
+
+            let zeros = source.chars().take_while(|c| *c == '0').count();
+            let value = source.parse::<usize>().ok()?;
+
+            Some(VersionChunk::Number { value, zeros, source })
+        }
+
+        fn parse_str_chunk(
+            &mut self,
+            mut chars: std::str::CharIndices<'a>,
+        ) -> Option<VersionChunk<'a>> {
+            let mut end = self.start;
+            let mut is_end_of_chunk = false;
+
+            while let Some((idx, c)) = chars.next() {
+                end = self.start + idx;
+
+                if c == '_' {
+                    is_end_of_chunk = true;
+                    break;
+                }
+
+                if !c.is_ascii_digit() {
+                    continue;
+                }
+
+                is_end_of_chunk = true;
+                break;
+            }
+
+            let source = if is_end_of_chunk {
+                let value = &self.ident[self.start..end];
+                self.start = end;
+                value
+            } else {
+                let value = &self.ident[self.start..];
+                self.start = self.ident.len();
+                value
+            };
+
+            Some(VersionChunk::Str(source))
+        }
+    }
+
+    impl<'a> Iterator for VersionChunkIter<'a> {
+        type Item = VersionChunk<'a>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let mut chars = self.ident[self.start..].char_indices();
+            let (_, next) = chars.next()?;
+
+            if next == '_' {
+                self.start = self.start + next.len_utf8();
+                return Some(VersionChunk::Underscore);
+            }
+
+            if next.is_ascii_digit() {
+                return self.parse_numeric_chunk(chars);
+            }
+
+            self.parse_str_chunk(chars)
+        }
+    }
+
+    /// Represents a chunk in the version-sort algorithm
+    #[derive(Debug, PartialEq, Eq)]
+    enum VersionChunk<'a> {
+        /// A single `_` in an identifier. Underscores are sorted before all other characters.
+        Underscore,
+        /// A &str chunk in the version sort.
+        Str(&'a str),
+        /// A numeric chunk in the version sort. Keeps track of the numeric value and leading zeros.
+        Number { value: usize, zeros: usize, source: &'a str },
+    }
+
+    /// Determine which side of the version-sort comparison had more leading zeros.
+    #[derive(Debug, PartialEq, Eq)]
+    enum MoreLeadingZeros {
+        Left,
+        Right,
+        Equal,
+    }
+
+    pub(super) fn version_sort(a: &str, b: &str) -> Ordering {
+        let iter_a = VersionChunkIter::new(a);
+        let iter_b = VersionChunkIter::new(b);
+        let mut more_leading_zeros = MoreLeadingZeros::Equal;
+
+        for either_or_both in iter_a.zip_longest(iter_b) {
+            match either_or_both {
+                EitherOrBoth::Left(_) => return std::cmp::Ordering::Greater,
+                EitherOrBoth::Right(_) => return std::cmp::Ordering::Less,
+                EitherOrBoth::Both(a, b) => match (a, b) {
+                    (VersionChunk::Underscore, VersionChunk::Underscore) => {
+                        continue;
+                    }
+                    (VersionChunk::Underscore, _) => return std::cmp::Ordering::Less,
+                    (_, VersionChunk::Underscore) => return std::cmp::Ordering::Greater,
+                    (VersionChunk::Str(ca), VersionChunk::Str(cb))
+                    | (VersionChunk::Str(ca), VersionChunk::Number { source: cb, .. })
+                    | (VersionChunk::Number { source: ca, .. }, VersionChunk::Str(cb)) => {
+                        match ca.cmp(&cb) {
+                            std::cmp::Ordering::Equal => {
+                                continue;
+                            }
+                            order @ _ => return order,
+                        }
+                    }
+                    (
+                        VersionChunk::Number { value: va, zeros: lza, .. },
+                        VersionChunk::Number { value: vb, zeros: lzb, .. },
+                    ) => match va.cmp(&vb) {
+                        std::cmp::Ordering::Equal => {
+                            if lza == lzb {
+                                continue;
+                            }
+
+                            if more_leading_zeros == MoreLeadingZeros::Equal && lza > lzb {
+                                more_leading_zeros = MoreLeadingZeros::Left;
+                            } else if more_leading_zeros == MoreLeadingZeros::Equal && lza < lzb {
+                                more_leading_zeros = MoreLeadingZeros::Right;
+                            }
+                            continue;
+                        }
+                        order @ _ => return order,
+                    },
+                },
+            }
+        }
+
+        match more_leading_zeros {
+            MoreLeadingZeros::Equal => std::cmp::Ordering::Equal,
+            MoreLeadingZeros::Left => std::cmp::Ordering::Less,
+            MoreLeadingZeros::Right => std::cmp::Ordering::Greater,
+        }
     }
 }

@@ -264,8 +264,11 @@ impl<'a> BootstrapCommand {
         self
     }
 
-    pub fn do_not_cache(&mut self) -> &mut Self {
-        self.should_cache = false;
+    /// Cache the command. If it will be executed multiple times with the exact same arguments
+    /// and environment variables in the same bootstrap invocation, the previous result will be
+    /// loaded from memory.
+    pub fn cached(&mut self) -> &mut Self {
+        self.should_cache = true;
         self
     }
 
@@ -425,7 +428,7 @@ impl From<Command> for BootstrapCommand {
     fn from(command: Command) -> Self {
         let program = command.get_program().to_owned();
         Self {
-            should_cache: true,
+            should_cache: false,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_in_dry_run: false,
@@ -627,7 +630,7 @@ impl ExecutionContext {
         &self.dry_run
     }
 
-    pub fn verbose(&self, f: impl Fn()) {
+    pub fn do_if_verbose(&self, f: impl Fn()) {
         if self.is_verbose() {
             f()
         }
@@ -683,7 +686,7 @@ impl ExecutionContext {
 
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
-            self.verbose(|| println!("Cache hit: {command:?}"));
+            self.do_if_verbose(|| println!("Cache hit: {command:?}"));
             self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
@@ -710,7 +713,7 @@ impl ExecutionContext {
             };
         }
 
-        self.verbose(|| {
+        self.do_if_verbose(|| {
             println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 

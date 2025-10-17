@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::marker::Freeze;
-use core::mem::MaybeUninit;
+use core::mem::{ManuallyDrop, MaybeUninit};
 use core::num::NonZero;
 use core::ptr;
 use core::ptr::*;
@@ -490,6 +490,14 @@ fn is_aligned() {
 }
 
 #[test]
+#[should_panic = "is_aligned_to: align is not a power-of-two"]
+fn invalid_is_aligned() {
+    let data = 42;
+    let ptr: *const i32 = &data;
+    assert!(ptr.is_aligned_to(3));
+}
+
+#[test]
 fn offset_from() {
     let mut a = [0; 5];
     let ptr1: *mut i32 = &mut a[1];
@@ -936,12 +944,13 @@ fn test_const_swap_ptr() {
         assert!(*s1.0.ptr == 666);
         assert!(*s2.0.ptr == 1);
 
-        // Swap them back, byte-for-byte
+        // Swap them back, again as an array.
+        // FIXME(#146291): we should be swapping back at type `u8` but that currently does not work.
         unsafe {
             ptr::swap_nonoverlapping(
-                ptr::from_mut(&mut s1).cast::<u8>(),
-                ptr::from_mut(&mut s2).cast::<u8>(),
-                size_of::<A>(),
+                ptr::from_mut(&mut s1).cast::<T>(),
+                ptr::from_mut(&mut s2).cast::<T>(),
+                1,
             );
         }
 
@@ -1035,4 +1044,43 @@ fn test_ptr_default() {
     }
     let default = PtrMutDefaultTest::default();
     assert!(default.ptr.is_null());
+}
+
+#[test]
+fn test_const_drop_in_place() {
+    const COUNTER: usize = {
+        let mut counter = 0;
+        let counter_ptr = &raw mut counter;
+
+        // only exists to make `Drop` indirect impl
+        #[allow(dead_code)]
+        struct Test(Dropped);
+
+        struct Dropped(*mut usize);
+        impl const Drop for Dropped {
+            fn drop(&mut self) {
+                unsafe {
+                    *self.0 += 1;
+                }
+            }
+        }
+
+        let mut one = ManuallyDrop::new(Test(Dropped(counter_ptr)));
+        let mut two = ManuallyDrop::new(Test(Dropped(counter_ptr)));
+        let mut three = ManuallyDrop::new(Test(Dropped(counter_ptr)));
+        assert!(counter == 0);
+        unsafe {
+            ManuallyDrop::drop(&mut one);
+        }
+        assert!(counter == 1);
+        unsafe {
+            ManuallyDrop::drop(&mut two);
+        }
+        assert!(counter == 2);
+        unsafe {
+            ManuallyDrop::drop(&mut three);
+        }
+        counter
+    };
+    assert_eq!(COUNTER, 3);
 }

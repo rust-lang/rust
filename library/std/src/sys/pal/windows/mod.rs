@@ -20,10 +20,10 @@ pub mod futex;
 pub mod handle;
 pub mod os;
 pub mod pipe;
-pub mod thread;
 pub mod time;
 cfg_select! {
-    not(target_vendor = "uwp") => {
+    // We don't care about printing nice error messages for panic=immediate-abort
+    all(not(target_vendor = "uwp"), not(panic = "immediate-abort")) => {
         pub mod stack_overflow;
     }
     _ => {
@@ -31,6 +31,7 @@ cfg_select! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
+pub mod winsock;
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 pub trait IoResult<T> {
@@ -48,16 +49,16 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
     unsafe {
         stack_overflow::init();
 
-        // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+        // Normally, `thread::spawn` will call `set_name` but since this thread already
         // exists, we have to call it ourselves.
-        thread::Thread::set_name_wide(wide_str!("main"));
+        crate::sys::thread::set_name_wide(wide_str!("main"));
     }
 }
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    crate::sys::net::cleanup();
+    winsock::cleanup();
 }
 
 #[inline]
@@ -356,6 +357,7 @@ pub fn abort_internal() -> ! {
 }
 
 #[cfg(miri)]
+#[track_caller] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
     crate::intrinsics::abort();
 }

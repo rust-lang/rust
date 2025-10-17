@@ -46,6 +46,8 @@ use crate::symbol::{Symbol, kw, sym};
 use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
+///
+/// See <https://rustc-dev-guide.rust-lang.org/macro-expansion.html> for more explanation.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
 
@@ -61,7 +63,10 @@ pub type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
 
 #[derive(Clone, Copy, Debug)]
 struct SyntaxContextData {
+    /// The last macro expansion in the chain.
+    /// (Here we say the most deeply nested macro expansion is the "outermost" expansion.)
     outer_expn: ExpnId,
+    /// Transparency of the last macro expansion
     outer_transparency: Transparency,
     parent: SyntaxContext,
     /// This context, but with all transparent and semi-opaque expansions filtered away.
@@ -450,11 +455,13 @@ impl HygieneData {
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
     }
 
+    /// See [`SyntaxContextData::outer_expn`]
     #[inline]
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
+    /// The last macro expansion and its Transparency
     #[inline]
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
         let data = &self.syntax_context_data[ctxt.0 as usize];
@@ -900,6 +907,7 @@ impl SyntaxContext {
         HygieneData::with(|data| data.normalize_to_macro_rules(self))
     }
 
+    /// See [`SyntaxContextData::outer_expn`]
     #[inline]
     pub fn outer_expn(self) -> ExpnId {
         HygieneData::with(|data| data.outer_expn(self))
@@ -912,6 +920,7 @@ impl SyntaxContext {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).clone())
     }
 
+    /// See [`HygieneData::outer_mark`]
     #[inline]
     fn outer_mark(self) -> (ExpnId, Transparency) {
         HygieneData::with(|data| data.outer_mark(self))
@@ -982,19 +991,20 @@ impl Span {
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
-    /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
-    /// The expansion that produced this expansion.
+    /// The expansion that contains the definition of the macro for this expansion.
     pub parent: ExpnId,
-    /// The location of the actual macro invocation or syntax sugar , e.g.
-    /// `let x = foo!();` or `if let Some(y) = x {}`
+    /// The span of the macro call which produced this expansion.
     ///
-    /// This may recursively refer to other macro invocations, e.g., if
-    /// `foo!()` invoked `bar!()` internally, and there was an
-    /// expression inside `bar!`; the call_site of the expression in
-    /// the expansion would point to the `bar!` invocation; that
-    /// call_site span would have its own ExpnData, with the call_site
-    /// pointing to the `foo!` invocation.
+    /// This span will typically have a different `ExpnData` and `call_site`.
+    /// This recursively traces back through any macro calls which expanded into further
+    /// macro calls, until the "source call-site" is reached at the root SyntaxContext.
+    /// For example, if `food!()` expands to `fruit!()` which then expands to `grape`,
+    /// then the call-site of `grape` is `fruit!()` and the call-site of `fruit!()`
+    /// is `food!()`.
+    ///
+    /// For a desugaring expansion, this is the span of the expression or node that was
+    /// desugared.
     pub call_site: Span,
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s

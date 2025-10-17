@@ -10,11 +10,12 @@ use rustc_ast::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans, listify, pluralize,
+    Applicability, BufferedEarlyLint, Diag, MultiSpan, PResult, SingleLabelManySpans, listify,
+    pluralize,
 };
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
+use rustc_lint_defs::{BuiltinLintDiag, LintId};
 use rustc_parse::exp;
 use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
@@ -68,35 +69,26 @@ struct MacroInput {
 /// Ok((fmtstr, parsed arguments))
 /// ```
 fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
-    let mut args = FormatArguments::new();
-
     let mut p = ecx.new_parser_from_tts(tts);
 
-    if p.token == token::Eof {
-        return Err(ecx.dcx().create_err(errors::FormatRequiresString { span: sp }));
-    }
-
-    let first_token = &p.token;
-
-    let fmtstr = if let token::Literal(lit) = first_token.kind
-        && matches!(lit.kind, token::Str | token::StrRaw(_))
-    {
+    // parse the format string
+    let fmtstr = match p.token.kind {
+        token::Eof => return Err(ecx.dcx().create_err(errors::FormatRequiresString { span: sp })),
         // This allows us to properly handle cases when the first comma
         // after the format string is mistakenly replaced with any operator,
         // which cause the expression parser to eat too much tokens.
-        p.parse_literal_maybe_minus()?
-    } else {
+        token::Literal(token::Lit { kind: token::Str | token::StrRaw(_), .. }) => {
+            p.parse_literal_maybe_minus()?
+        }
         // Otherwise, we fall back to the expression parser.
-        p.parse_expr()?
+        _ => p.parse_expr()?,
     };
 
-    // Only allow implicit captures to be used when the argument is a direct literal
-    // instead of a macro expanding to one.
-    let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
-
+    // parse comma FormatArgument pairs
+    let mut args = FormatArguments::new();
     let mut first = true;
-
     while p.token != token::Eof {
+        // parse a comma, or else report an error
         if !p.eat(exp!(Comma)) {
             if first {
                 p.clear_expected_token_types();
@@ -119,9 +111,11 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
             }
         }
         first = false;
+        // accept a trailing comma
         if p.token == token::Eof {
             break;
-        } // accept trailing commas
+        }
+        // parse a FormatArgument
         match p.token.ident() {
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
                 p.bump();
@@ -155,6 +149,10 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
             }
         }
     }
+
+    // Only allow implicit captures for direct literals
+    let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
+
     Ok(MacroInput { fmtstr, args, is_direct_literal })
 }
 
@@ -564,9 +562,11 @@ fn make_format_args(
             &used,
             &args,
             &pieces,
+            &invalid_refs,
             detect_foreign_fmt,
             str_style,
             fmt_str,
+            uncooked_fmt_str.1.as_str(),
             fmt_span,
         );
     }
@@ -595,7 +595,8 @@ fn make_format_args(
                     named_arg_sp: arg_name.span,
                     named_arg_name: arg_name.name.to_string(),
                     is_formatting_arg: matches!(used_as, Width | Precision),
-                },
+                }
+                .into(),
             });
         }
     }
@@ -643,9 +644,11 @@ fn report_missing_placeholders(
     used: &[bool],
     args: &FormatArguments,
     pieces: &[parse::Piece<'_>],
+    invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
+    uncooked_fmt_str: &str,
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
@@ -758,6 +761,35 @@ fn report_missing_placeholders(
     }
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
+    }
+
+    if !found_foreign && invalid_refs.is_empty() {
+        // Show example if user didn't use any format specifiers
+        let show_example = !used.contains(&true);
+
+        if !show_example {
+            if unused.len() > 1 {
+                diag.note(format!("consider adding {} format specifiers", unused.len()));
+            }
+        } else {
+            let msg = if unused.len() == 1 {
+                "a format specifier".to_string()
+            } else {
+                format!("{} format specifiers", unused.len())
+            };
+
+            let sugg = match str_style {
+                None => format!("\"{}{}\"", uncooked_fmt_str, "{}".repeat(unused.len())),
+                Some(n_hashes) => format!(
+                    "r{hashes}\"{uncooked_fmt_str}{fmt_specifiers}\"{hashes}",
+                    hashes = "#".repeat(n_hashes),
+                    fmt_specifiers = "{}".repeat(unused.len())
+                ),
+            };
+            let msg = format!("format specifiers use curly braces, consider adding {msg}");
+
+            diag.span_suggestion_verbose(fmt_span, msg, sugg, Applicability::MaybeIncorrect);
+        }
     }
 
     diag.emit();

@@ -8,7 +8,9 @@ struct S {
 }
 
 const C: S = unsafe { std::mem::transmute(()) };
-//~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+//~^ ERROR the type `S` has an unknown layout
+//~| ERROR cannot transmute between types of different sizes, or dependently-sized types
+
 const _: [(); {
     C;
     0

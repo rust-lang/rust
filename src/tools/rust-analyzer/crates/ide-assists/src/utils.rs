@@ -736,8 +736,11 @@ fn generate_impl_inner(
         generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
-    let impl_ = match trait_ {
+    let cfg_attrs =
+        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    match trait_ {
         Some(trait_) => make::impl_trait(
+            cfg_attrs,
             is_unsafe,
             None,
             None,
@@ -750,26 +753,9 @@ fn generate_impl_inner(
             adt.where_clause(),
             body,
         ),
-        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), body),
+        None => make::impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
     }
-    .clone_for_update();
-
-    // Copy any cfg attrs from the original adt
-    add_cfg_attrs_to(adt, &impl_);
-
-    impl_
-}
-
-pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
-where
-    T: HasAttrs,
-    U: AttrsOwnerEdit,
-{
-    let cfg_attrs =
-        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
-    for attr in cfg_attrs {
-        to.add_attr(attr.clone_for_update());
-    }
+    .clone_for_update()
 }
 
 pub(crate) fn add_method_to_adt(
@@ -1071,6 +1057,21 @@ fn test_string_suffix() {
     assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
+/// Calculate the string literal prefix length
+pub(crate) fn string_prefix(s: &str) -> Option<&str> {
+    s.split_once(['"', '\'', '#']).map(|(prefix, _)| prefix)
+}
+#[test]
+fn test_string_prefix() {
+    assert_eq!(Some(""), string_prefix(r#""abc""#));
+    assert_eq!(Some(""), string_prefix(r#""""#));
+    assert_eq!(Some(""), string_prefix(r#"""suffix"#));
+    assert_eq!(Some("c"), string_prefix(r#"c"""#));
+    assert_eq!(Some("r"), string_prefix(r#"r"""#));
+    assert_eq!(Some("cr"), string_prefix(r#"cr"""#));
+    assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
@@ -1163,4 +1164,20 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+// FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
+pub(crate) fn is_never_block(
+    sema: &Semantics<'_, RootDatabase>,
+    block_expr: &ast::BlockExpr,
+) -> bool {
+    if let Some(tail_expr) = block_expr.tail_expr() {
+        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
+    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
+        && let Some(expr) = expr_stmt.expr()
+    {
+        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
+    } else {
+        false
+    }
 }

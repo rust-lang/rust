@@ -112,19 +112,19 @@ use crate::sys_common::{FromInner, IntoInner};
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
-/// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
-/// | Darwin    | [clock_gettime (Monotonic Clock)]                                    |
-/// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
+/// | UNIX      | [clock_gettime] with `CLOCK_MONOTONIC`                               |
+/// | Darwin    | [clock_gettime] with `CLOCK_UPTIME_RAW`                              |
+/// | VXWorks   | [clock_gettime] with `CLOCK_MONOTONIC`                               |
 /// | SOLID     | `get_tim`                                                            |
-/// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
+/// | WASI      | [__wasi_clock_time_get] with `monotonic`                             |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
-/// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
-/// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
+/// [__wasi_clock_time_get]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
+/// [clock_gettime]: https://linux.die.net/man/3/clock_gettime
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
@@ -551,13 +551,8 @@ impl SystemTime {
     /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
-        // FIXME: map_err in const
-        match self.0.sub_time(&earlier.0) {
-            Ok(time) => Ok(time),
-            Err(err) => Err(SystemTimeError(err)),
-        }
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {
+        self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
     /// Returns the difference from this system time to the
@@ -594,8 +589,7 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
+    pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_add_duration(&duration).map(SystemTime)
     }
 
@@ -603,15 +597,13 @@ impl SystemTime {
     /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
+    pub fn checked_sub(&self, duration: Duration) -> Option<SystemTime> {
         self.0.checked_sub_duration(&duration).map(SystemTime)
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Add<Duration> for SystemTime {
+impl Add<Duration> for SystemTime {
     type Output = SystemTime;
 
     /// # Panics
@@ -624,16 +616,14 @@ impl const Add<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const AddAssign<Duration> for SystemTime {
+impl AddAssign<Duration> for SystemTime {
     fn add_assign(&mut self, other: Duration) {
         *self = *self + other;
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Sub<Duration> for SystemTime {
+impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
@@ -642,8 +632,7 @@ impl const Sub<Duration> for SystemTime {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const SubAssign<Duration> for SystemTime {
+impl SubAssign<Duration> for SystemTime {
     fn sub_assign(&mut self, other: Duration) {
         *self = *self - other;
     }
@@ -710,19 +699,13 @@ impl SystemTimeError {
     /// ```
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
-    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
-    pub const fn duration(&self) -> Duration {
+    pub fn duration(&self) -> Duration {
         self.0
     }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-impl Error for SystemTimeError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "other time was not earlier than self"
-    }
-}
+impl Error for SystemTimeError {}
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Display for SystemTimeError {

@@ -13,8 +13,13 @@ error[E0277]: the trait bound `Foo: Bar` is not satisfied
   --> $DIR/dst-bad-coerce1.rs:20:29
    |
 LL |     let f3: &Fat<dyn Bar> = f2;
-   |                             ^^ the trait `Bar` is not implemented for `Foo`
+   |                             ^^ unsatisfied trait bound
    |
+help: the trait `Bar` is not implemented for `Foo`
+  --> $DIR/dst-bad-coerce1.rs:7:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/dst-bad-coerce1.rs:8:1
    |

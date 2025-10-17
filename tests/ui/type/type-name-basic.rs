@@ -5,7 +5,7 @@
 
 #![allow(dead_code)]
 
-use std::any::type_name;
+use std::any::{Any, type_name, type_name_of_val};
 use std::borrow::Cow;
 
 struct Foo<T>(T);
@@ -26,6 +26,12 @@ trait TrLTA<'a, T> {
 macro_rules! t {
     ($ty:ty, $str:literal) => {
         assert_eq!(type_name::<$ty>(), $str);
+    }
+}
+
+macro_rules! v {
+    ($v:expr, $str:literal) => {
+        assert_eq!(type_name_of_val(&$v), $str);
     }
 }
 
@@ -91,4 +97,29 @@ pub fn main() {
         }
     }
     S::<u32>::test();
+
+    struct Wrap<T>(T);
+    impl Wrap<&()> {
+        fn get(&self) -> impl Any {
+            struct Info;
+            Info
+        }
+    }
+    let a = Wrap(&()).get();
+    v!(a, "type_name_basic::main::Wrap<&()>::get::Info");
+
+    struct Issue146249<T>(T);
+    impl Issue146249<Box<dyn FnOnce()>> {
+        pub fn bar(&self) {
+            let f = || {};
+            v!(
+                f,
+                "type_name_basic::main::Issue146249<\
+                    alloc::boxed::Box<dyn core::ops::function::FnOnce()>\
+                >::bar::{{closure}}"
+            );
+        }
+    }
+    let v: Issue146249<Box<dyn FnOnce()>> = Issue146249(Box::new(|| {}));
+    v.bar();
 }

@@ -183,7 +183,7 @@ fn get_impl_args(
         &ObligationCause::misc(impl1_span, impl1_def_id),
     );
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
@@ -275,7 +275,7 @@ fn check_duplicate_params<'tcx>(
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let mut base_params = cgp::parameters_for(tcx, parent_args, true);
-    base_params.sort_by_key(|param| param.0);
+    base_params.sort_unstable();
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
         return Err(tcx

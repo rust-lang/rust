@@ -303,7 +303,7 @@ impl Rewrite for Pat {
                 qself,
                 path,
                 fields,
-                rest == ast::PatFieldsRest::Rest,
+                matches!(rest, ast::PatFieldsRest::Rest(_)),
                 self.span,
                 context,
                 shape,
@@ -504,7 +504,7 @@ impl Rewrite for PatField {
 
 #[derive(Debug)]
 pub(crate) enum TuplePatField<'a> {
-    Pat(&'a Box<ast::Pat>),
+    Pat(&'a ast::Pat),
     Dotdot(Span),
 }
 
@@ -561,7 +561,7 @@ pub(crate) fn can_be_overflowed_pat(
 }
 
 fn rewrite_tuple_pat(
-    pats: &[Box<ast::Pat>],
+    pats: &[ast::Pat],
     path_str: Option<String>,
     span: Span,
     context: &RewriteContext<'_>,

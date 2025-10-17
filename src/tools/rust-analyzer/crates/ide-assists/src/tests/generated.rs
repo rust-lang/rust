@@ -1035,7 +1035,41 @@ fn foo(bar: Bar) {
 struct Bar { y: Y, z: Z }
 
 fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
+    let Bar { y, z } = bar;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_expand_slice_rest_pattern() {
+    check_doc_test(
+        "expand_slice_rest_pattern",
+        r#####"
+fn foo(bar: [i32; 3]) {
+    let [first, ..$0] = bar;
+}
+"#####,
+        r#####"
+fn foo(bar: [i32; 3]) {
+    let [first, _1, _2] = bar;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_expand_tuple_rest_pattern() {
+    check_doc_test(
+        "expand_tuple_rest_pattern",
+        r#####"
+fn foo(bar: (char, i32, i32)) {
+    let (ch, ..$0) = bar;
+}
+"#####,
+        r#####"
+fn foo(bar: (char, i32, i32)) {
+    let (ch, _1, _2) = bar;
 }
 "#####,
     )
@@ -1307,6 +1341,46 @@ fn foo<T: Clone +$0 Copy>() { }
 "#####,
         r#####"
 fn foo<T: Copy + Clone>() { }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_blanket_trait_impl() {
+    check_doc_test(
+        "generate_blanket_trait_impl",
+        r#####"
+trait $0Foo<T: Send>: ToOwned
+where
+    Self::Owned: Default,
+{
+    fn foo(&self) -> T;
+
+    fn print_foo(&self) {
+        println!("{}", self.foo());
+    }
+}
+"#####,
+        r#####"
+trait Foo<T: Send>: ToOwned
+where
+    Self::Owned: Default,
+{
+    fn foo(&self) -> T;
+
+    fn print_foo(&self) {
+        println!("{}", self.foo());
+    }
+}
+
+impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
+where
+    Self::Owned: Default,
+{
+    fn foo(&self) -> T {
+        todo!()
+    }
+}
 "#####,
     )
 }

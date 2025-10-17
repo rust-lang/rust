@@ -5,7 +5,6 @@
 use std::fmt;
 
 use base_db::Crate;
-use chalk_solve::rust_ir::AdtKind;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
@@ -24,6 +23,8 @@ use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     Adjust, InferenceResult, Interner, TraitEnvironment, Ty, TyExt, TyKind,
     db::HirDatabase,
@@ -75,24 +76,33 @@ impl BodyValidationDiagnostic {
         let infer = db.infer(owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
-        let mut validator =
-            ExprValidator { owner, body, infer, diagnostics: Vec::new(), validate_lints, env };
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let mut validator = ExprValidator {
+            owner,
+            body,
+            infer,
+            diagnostics: Vec::new(),
+            validate_lints,
+            env,
+            interner,
+        };
         validator.validate_body(db);
         validator.diagnostics
     }
 }
 
-struct ExprValidator {
+struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
-    infer: Arc<InferenceResult>,
-    env: Arc<TraitEnvironment>,
+    infer: Arc<InferenceResult<'db>>,
+    env: Arc<TraitEnvironment<'db>>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
+    interner: DbInterner<'db>,
 }
 
-impl ExprValidator {
-    fn validate_body(&mut self, db: &dyn HirDatabase) {
+impl<'db> ExprValidator<'db> {
+    fn validate_body(&mut self, db: &'db dyn HirDatabase) {
         let mut filter_map_next_checker = None;
         // we'll pass &mut self while iterating over body.exprs, so they need to be disjoint
         let body = Arc::clone(&self.body);
@@ -176,7 +186,7 @@ impl ExprValidator {
             }
 
             if let Some(receiver_ty) = self.infer.type_of_expr_with_adjust(*receiver) {
-                checker.prev_receiver_ty = Some(receiver_ty.clone());
+                checker.prev_receiver_ty = Some(receiver_ty.to_chalk(self.interner));
             }
         }
     }
@@ -191,6 +201,7 @@ impl ExprValidator {
         let Some(scrut_ty) = self.infer.type_of_expr_with_adjust(scrutinee_expr) else {
             return;
         };
+        let scrut_ty = scrut_ty.to_chalk(self.interner);
         if scrut_ty.contains_unknown() {
             return;
         }
@@ -206,6 +217,7 @@ impl ExprValidator {
             let Some(pat_ty) = self.infer.type_of_pat_with_adjust(arm.pat) else {
                 return;
             };
+            let pat_ty = pat_ty.to_chalk(self.interner);
             if pat_ty.contains_unknown() {
                 return;
             }
@@ -223,7 +235,7 @@ impl ExprValidator {
             if (pat_ty == scrut_ty
                 || scrut_ty
                     .as_reference()
-                    .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
+                    .map(|(match_expr_ty, ..)| *match_expr_ty == pat_ty)
                     .unwrap_or(false))
                 && types_of_subpatterns_do_match(arm.pat, &self.body, &self.infer)
             {
@@ -265,7 +277,7 @@ impl ExprValidator {
                 match_expr,
                 uncovered_patterns: missing_match_arms(
                     &cx,
-                    scrut_ty,
+                    &scrut_ty,
                     witnesses,
                     m_arms.is_empty(),
                     self.owner.krate(db),
@@ -299,14 +311,12 @@ impl ExprValidator {
                 );
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
-            Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
-                TyKind::Adt(adt, ..)
-                    if db.adt_datum(self.owner.krate(db), *adt).kind == AdtKind::Union =>
-                {
-                    false
+            Expr::Field { expr, .. } => {
+                match self.infer.type_of_expr[*expr].to_chalk(self.interner).kind(Interner) {
+                    TyKind::Adt(adt, ..) if matches!(adt.0, AdtId::UnionId(_)) => false,
+                    _ => self.is_known_valid_scrutinee(*expr, db),
                 }
-                _ => self.is_known_valid_scrutinee(*expr, db),
-            },
+            }
             Expr::Index { base, .. } => self.is_known_valid_scrutinee(*base, db),
             Expr::Cast { expr, .. } => self.is_known_valid_scrutinee(*expr, db),
             Expr::Missing => false,
@@ -332,6 +342,7 @@ impl ExprValidator {
             }
             let Some(initializer) = initializer else { continue };
             let Some(ty) = self.infer.type_of_expr_with_adjust(initializer) else { continue };
+            let ty = ty.to_chalk(self.interner);
             if ty.contains_unknown() {
                 continue;
             }
@@ -362,7 +373,7 @@ impl ExprValidator {
                     pat,
                     uncovered_patterns: missing_match_arms(
                         &cx,
-                        ty,
+                        &ty,
                         witnesses,
                         false,
                         self.owner.krate(db),
@@ -547,7 +558,7 @@ impl FilterMapNextChecker {
 
 pub fn record_literal_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'_>,
     id: ExprId,
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
@@ -577,7 +588,7 @@ pub fn record_literal_missing_fields(
 
 pub fn record_pattern_missing_fields(
     db: &dyn HirDatabase,
-    infer: &InferenceResult,
+    infer: &InferenceResult<'_>,
     id: PatId,
     pat: &Pat,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
@@ -605,8 +616,8 @@ pub fn record_pattern_missing_fields(
     Some((variant_def, missed_fields, exhaustive))
 }
 
-fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
-    fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
+fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult<'_>) -> bool {
+    fn walk(pat: PatId, body: &Body, infer: &InferenceResult<'_>, has_type_mismatches: &mut bool) {
         match infer.type_mismatch_for_pat(pat) {
             Some(_) => *has_type_mismatches = true,
             None if *has_type_mismatches => (),

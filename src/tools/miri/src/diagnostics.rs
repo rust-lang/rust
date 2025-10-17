@@ -1,9 +1,11 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
+use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_span::{DUMMY_SP, SpanData, Symbol};
+use rustc_hash::FxHashSet;
+use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -31,8 +33,9 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
-    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
-    GenmcStuckExecution,
+    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
+    /// No leak checks should be performed if this happens, since they would give false positives.
+    GenmcBlockedExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -77,7 +80,8 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
+            GenmcBlockedExecution =>
+                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -135,10 +139,18 @@ pub enum NonHaltingDiagnostic {
     NativeCallSharedMem {
         tracing: bool,
     },
+    NativeCallFnPtr,
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
     ExternTypeReborrow,
+    GenmcCompareExchangeWeak,
+    GenmcCompareExchangeOrderingMismatch {
+        success_ordering: AtomicRwOrd,
+        upgraded_success_ordering: AtomicRwOrd,
+        failure_ordering: AtomicReadOrd,
+        effective_failure_ordering: AtomicReadOrd,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -243,11 +255,12 @@ pub fn report_error<'tcx>(
                 labels.push(format!("this thread got stuck here"));
                 None
             }
-            GenmcStuckExecution => {
-                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+            GenmcBlockedExecution => {
+                // This case should only happen in GenMC mode.
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                tracing::info!("GenMC: found stuck execution");
-                return Some((0, true));
+                // The program got blocked by GenMC without finishing the execution.
+                // No cleanup code was executed, so we don't do any leak checks.
+                return Some((0, false));
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -282,7 +295,8 @@ pub fn report_error<'tcx>(
             },
             TreeBorrowsUb { title: _, details, history } => {
                 let mut helps = vec![
-                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")
+                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental"),
+                    note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information"),
                 ];
                 for m in details {
                     helps.push(note!("{m}"));
@@ -631,8 +645,15 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
             NativeCallSharedMem { .. } =>
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
+            NativeCallFnPtr =>
+                (
+                    "sharing a function pointer with a native function".to_string(),
+                    DiagLevel::Warning,
+                ),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
+            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+                ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
             | CreatedAlloc(..)
@@ -667,10 +688,29 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
             NativeCallSharedMem { .. } =>
                 format!("sharing memory with a native function called via FFI"),
+            NativeCallFnPtr =>
+                format!("sharing a function pointer with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
+            GenmcCompareExchangeWeak =>
+                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                    .to_string(),
+            GenmcCompareExchangeOrderingMismatch {
+                success_ordering,
+                upgraded_success_ordering,
+                failure_ordering,
+                effective_failure_ordering,
+            } => {
+                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
+                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
+                } else {
+                    assert_ne!(failure_ordering, effective_failure_ordering);
+                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
+                };
+                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
+            }
         };
 
         let notes = match &e {
@@ -747,6 +787,11 @@ impl<'tcx> MiriMachine<'tcx> {
                         ),
                     ]
                 },
+            NativeCallFnPtr => {
+                vec![note!(
+                    "calling Rust functions from C is not supported and will, in the best case, crash the program"
+                )]
+            }
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(
@@ -804,5 +849,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(this.active_thread()),
             &this.machine,
         );
+    }
+
+    /// Call `f` only if this is the first time we are seeing this span.
+    /// The `first` parameter indicates whether this is the first time *ever* that this diagnostic
+    /// is emitted.
+    fn dedup_diagnostic(
+        &self,
+        dedup: &SpanDedupDiagnostic,
+        f: impl FnOnce(/*first*/ bool) -> NonHaltingDiagnostic,
+    ) {
+        let this = self.eval_context_ref();
+        // We want to deduplicate both based on where the error seems to be located "from the user
+        // perspective", and the location of the actual operation (to avoid warning about the same
+        // operation called from different places in the local code).
+        let span1 = this.machine.current_user_relevant_span();
+        // For the "location of the operation", we still skip `track_caller` frames, to match the
+        // span that the diagnostic will point at.
+        let span2 = this
+            .active_thread_stack()
+            .iter()
+            .rev()
+            .find(|frame| !frame.instance().def.requires_caller_location(*this.tcx))
+            .map(|frame| frame.current_span())
+            .unwrap_or(span1);
+
+        let mut lock = dedup.0.lock().unwrap();
+        let first = lock.is_empty();
+        // Avoid mutating the hashset unless both spans are new.
+        if !lock.contains(&span2) && lock.insert(span1) && (span1 == span2 || lock.insert(span2)) {
+            // Both of the two spans were newly inserted.
+            this.emit_diagnostic(f(first));
+        }
+    }
+}
+
+/// Helps deduplicate a diagnostic to ensure it is only shown once per span.
+pub struct SpanDedupDiagnostic(Mutex<FxHashSet<Span>>);
+
+impl SpanDedupDiagnostic {
+    pub const fn new() -> Self {
+        Self(Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher)))
     }
 }

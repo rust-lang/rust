@@ -8,9 +8,9 @@
 
 
 #![macro_export]
-//~^ ERROR: `macro_export` attribute cannot be used at crate level
+//~^ ERROR:  `#[macro_export]` attribute cannot be used on crates
 #![rustc_main]
-//~^ ERROR: `rustc_main` attribute cannot be used at crate level
+//~^ ERROR: `#[rustc_main]` attribute cannot be used on crates
 //~| ERROR: use of an internal attribute [E0658]
 //~| NOTE: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
 //~| NOTE: the `#[rustc_main]` attribute is used internally to specify test entry point function
@@ -31,8 +31,6 @@
 //~^ ERROR attribute cannot be used on
 mod inline {
     //~^ NOTE the inner attribute doesn't annotate this module
-    //~| NOTE the inner attribute doesn't annotate this module
-    //~| NOTE the inner attribute doesn't annotate this module
 
     mod inner { #![inline] }
     //~^ ERROR attribute cannot be used on
@@ -40,7 +38,7 @@ mod inline {
     #[inline = "2100"] fn f() { }
     //~^ ERROR valid forms for the attribute are
     //~| WARN this was previously accepted
-    //~| NOTE #[deny(ill_formed_attribute_input)]` on by default
+    //~| NOTE `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
     //~| NOTE for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
     #[inline] struct S;

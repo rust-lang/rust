@@ -15,10 +15,10 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `*const` pointer
 LL |     let q = &raw mut *x;
    |             ^^^^^^^^^^^ `x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
    |
-help: consider changing this to be a mutable pointer
+help: consider specifying this binding's type
    |
-LL |     let x = &mut 0 as *const i32;
-   |              +++
+LL |     let x: *mut i32 = &0 as *const i32;
+   |          ++++++++++
 
 error: aborting due to 2 previous errors
 

@@ -112,6 +112,13 @@ fn from_str_issue7588() {
 }
 
 #[test]
+#[should_panic = "radix must lie in the range `[2, 36]`"]
+fn from_ascii_radix_panic() {
+    let radix = 1;
+    let _parsed = u64::from_str_radix("12345ABCD", radix);
+}
+
+#[test]
 fn test_int_from_str_overflow() {
     test_parse::<i8>("127", Ok(127));
     test_parse::<i8>("128", Err(IntErrorKind::PosOverflow));

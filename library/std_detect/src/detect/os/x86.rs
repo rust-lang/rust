@@ -137,6 +137,32 @@ pub(crate) fn detect_features() -> cache::Initializer {
             enable(ebx, 2, Feature::widekl);
         }
 
+        // This detects ABM on AMD CPUs and LZCNT on Intel CPUs.
+        // On intel CPUs with popcnt, lzcnt implements the
+        // "missing part" of ABM, so we map both to the same
+        // internal feature.
+        //
+        // The `is_x86_feature_detected!("lzcnt")` macro then
+        // internally maps to Feature::abm.
+        enable(extended_proc_info_ecx, 5, Feature::lzcnt);
+
+        // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
+        // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
+        // number(Family 18h).
+        //
+        // For CPUID feature bits, Hygon Dhyana(family 18h) share the same definition with AMD
+        // family 17h.
+        //
+        // Related AMD CPUID specification is https://www.amd.com/system/files/TechDocs/25481.pdf.
+        // Related Hygon kernel patch can be found on
+        // http://lkml.kernel.org/r/5ce86123a7b9dad925ac583d88d2f921040e859b.1538583282.git.puwen@hygon.cn
+        if vendor_id == *b"AuthenticAMD" || vendor_id == *b"HygonGenuine" {
+            // These features are available on AMD arch CPUs:
+            enable(extended_proc_info_ecx, 6, Feature::sse4a);
+            enable(extended_proc_info_ecx, 21, Feature::tbm);
+            enable(extended_proc_info_ecx, 11, Feature::xop);
+        }
+
         // `XSAVE` and `AVX` support:
         let cpu_xsave = bit::test(proc_info_ecx as usize, 26);
         if cpu_xsave {
@@ -161,6 +187,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 // * AVX -> `XCR0.AVX[2]`
                 // * AVX-512 -> `XCR0.AVX-512[7:5]`.
                 // * AMX -> `XCR0.AMX[18:17]`
+                // * APX -> `XCR0.APX[19]`
                 //
                 // by setting the corresponding bits of `XCR0` to `1`.
                 //
@@ -173,6 +200,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 let os_avx512_support = xcr0 & 0xe0 == 0xe0;
                 // Test `XCR0.AMX[18:17]` with the mask `0b110_0000_0000_0000_0000 == 0x60000`
                 let os_amx_support = xcr0 & 0x60000 == 0x60000;
+                // Test `XCR0.APX[19]` with the mask `0b1000_0000_0000_0000_0000 == 0x80000`
+                let os_apx_support = xcr0 & 0x80000 == 0x80000;
 
                 // Only if the OS and the CPU support saving/restoring the AVX
                 // registers we enable `xsave` support:
@@ -262,33 +291,20 @@ pub(crate) fn detect_features() -> cache::Initializer {
                         enable(amx_feature_flags_eax, 8, Feature::amx_movrs);
                     }
                 }
+
+                if os_apx_support {
+                    enable(extended_features_edx_leaf_1, 21, Feature::apxf);
+                }
+
+                let avx10_1 = enable(extended_features_edx_leaf_1, 19, Feature::avx10_1);
+                if avx10_1 {
+                    let CpuidResult { ebx, .. } = unsafe { __cpuid(0x24) };
+                    let avx10_version = ebx & 0xff;
+                    if avx10_version >= 2 {
+                        value.set(Feature::avx10_2 as u32);
+                    }
+                }
             }
-        }
-
-        // This detects ABM on AMD CPUs and LZCNT on Intel CPUs.
-        // On intel CPUs with popcnt, lzcnt implements the
-        // "missing part" of ABM, so we map both to the same
-        // internal feature.
-        //
-        // The `is_x86_feature_detected!("lzcnt")` macro then
-        // internally maps to Feature::abm.
-        enable(extended_proc_info_ecx, 5, Feature::lzcnt);
-
-        // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
-        // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
-        // number(Family 18h).
-        //
-        // For CPUID feature bits, Hygon Dhyana(family 18h) share the same definition with AMD
-        // family 17h.
-        //
-        // Related AMD CPUID specification is https://www.amd.com/system/files/TechDocs/25481.pdf.
-        // Related Hygon kernel patch can be found on
-        // http://lkml.kernel.org/r/5ce86123a7b9dad925ac583d88d2f921040e859b.1538583282.git.puwen@hygon.cn
-        if vendor_id == *b"AuthenticAMD" || vendor_id == *b"HygonGenuine" {
-            // These features are available on AMD arch CPUs:
-            enable(extended_proc_info_ecx, 6, Feature::sse4a);
-            enable(extended_proc_info_ecx, 21, Feature::tbm);
-            enable(extended_proc_info_ecx, 11, Feature::xop);
         }
     }
 

@@ -2,9 +2,6 @@ use std::env;
 use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use tracing::*;
-
-use crate::common::Config;
 
 #[cfg(test)]
 mod tests;
@@ -24,14 +21,6 @@ pub fn lib_path_env_var() -> &'static str {
 }
 fn path_div() -> &'static str {
     ";"
-}
-
-pub fn logv(config: &Config, s: String) {
-    debug!("{}", s);
-    if config.verbose {
-        // Note: `./x test ... --verbose --no-capture` is needed to see this print.
-        println!("{}", s);
-    }
 }
 
 pub trait Utf8PathBufExt {
@@ -56,7 +45,7 @@ impl Utf8PathBufExt for Utf8PathBuf {
 
 /// The name of the environment variable that holds dynamic library locations.
 pub fn dylib_env_var() -> &'static str {
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
@@ -113,7 +102,9 @@ macro_rules! string_enum {
         }
 
         impl $name {
+            #[allow(dead_code)]
             $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+            #[allow(dead_code)]
             $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
 
             $vis const fn to_str(&self) -> &'static str {

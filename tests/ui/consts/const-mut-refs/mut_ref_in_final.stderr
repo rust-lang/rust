@@ -34,7 +34,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -45,7 +45,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | static IMMUT_MUT_REF_STATIC: &mut u16 = unsafe { mem::transmute(&13) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }

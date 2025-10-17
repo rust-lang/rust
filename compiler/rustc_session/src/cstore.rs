@@ -6,8 +6,8 @@ use std::any::Any;
 use std::path::PathBuf;
 
 use rustc_abi::ExternAbi;
-use rustc_ast as ast;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
+use rustc_hir::attrs::{CfgEntry, NativeLibKind, PeImportNameType};
 use rustc_hir::def_id::{
     CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap,
 };
@@ -16,7 +16,6 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Span, Symbol};
 
 use crate::search_paths::PathKind;
-use crate::utils::NativeLibKind;
 
 // lonely orphan structs and enums looking for a better home
 
@@ -72,7 +71,7 @@ pub struct NativeLib {
     pub name: Symbol,
     /// If packed_bundled_libs enabled, actual filename of library is stored.
     pub filename: Option<Symbol>,
-    pub cfg: Option<ast::MetaItemInner>,
+    pub cfg: Option<CfgEntry>,
     pub foreign_module: Option<DefId>,
     pub verbatim: Option<bool>,
     pub dll_imports: Vec<DllImport>,
@@ -86,25 +85,6 @@ impl NativeLib {
     pub fn wasm_import_module(&self) -> Option<Symbol> {
         if self.kind == NativeLibKind::WasmImportModule { Some(self.name) } else { None }
     }
-}
-
-/// Different ways that the PE Format can decorate a symbol name.
-/// From <https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-name-type>
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq, Eq)]
-pub enum PeImportNameType {
-    /// IMPORT_ORDINAL
-    /// Uses the ordinal (i.e., a number) rather than the name.
-    Ordinal(u16),
-    /// Same as IMPORT_NAME
-    /// Name is decorated with all prefixes and suffixes.
-    Decorated,
-    /// Same as IMPORT_NAME_NOPREFIX
-    /// Prefix (e.g., the leading `_` or `@`) is skipped, but suffix is kept.
-    NoPrefix,
-    /// Same as IMPORT_NAME_UNDECORATE
-    /// Prefix (e.g., the leading `_` or `@`) and suffix (the first `@` and all
-    /// trailing characters) are skipped.
-    Undecorated,
 }
 
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]

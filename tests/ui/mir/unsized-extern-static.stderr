@@ -5,6 +5,11 @@ LL |     println!("C", unsafe { &symbol });
    |              ---  ^^^^^^^^^^^^^^^^^^ argument never used
    |              |
    |              formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     println!("C{}", unsafe { &symbol });
+   |                ++
 
 error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
   --> $DIR/unsized-extern-static.rs:6:5

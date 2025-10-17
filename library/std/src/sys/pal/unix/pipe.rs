@@ -20,6 +20,7 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // and musl 0.9.3, and some other targets also have it.
     cfg_select! {
         any(
+            target_os = "android",
             target_os = "dragonfly",
             target_os = "freebsd",
             target_os = "hurd",

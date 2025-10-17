@@ -1,8 +1,9 @@
-//@ edition: 2021
 //@ check-fail
 
 #![feature(derive_from)]
 #![allow(dead_code)]
+
+use std::from::From;
 
 #[derive(From)]
 //~^ ERROR `#[derive(From)]` used on a struct with no fields
@@ -28,8 +29,6 @@ struct S4 {
 enum E1 {}
 
 #[derive(From)]
-//~^ ERROR the size for values of type `T` cannot be known at compilation time [E0277]
-//~| ERROR the size for values of type `T` cannot be known at compilation time [E0277]
 struct SUnsizedField<T: ?Sized> {
     last: T,
     //~^ ERROR the size for values of type `T` cannot be known at compilation time [E0277]

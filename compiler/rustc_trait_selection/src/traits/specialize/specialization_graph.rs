@@ -113,7 +113,7 @@ impl<'tcx> Children {
                 // Found overlap, but no specialization; error out or report future-compat warning.
 
                 // Do we *still* get overlap if we disable the future-incompatible modes?
-                let should_err = traits::overlapping_impls(
+                let should_err = traits::overlapping_trait_impls(
                     tcx,
                     possible_sibling,
                     impl_def_id,
@@ -137,7 +137,7 @@ impl<'tcx> Children {
             };
 
             let last_lint_mut = &mut last_lint;
-            let (le, ge) = traits::overlapping_impls(
+            let (le, ge) = traits::overlapping_trait_impls(
                 tcx,
                 possible_sibling,
                 impl_def_id,
@@ -387,7 +387,7 @@ pub(crate) fn assoc_def(
     if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
         // Ensure that the impl is constrained, otherwise projection may give us
         // bad unconstrained infer vars.
-        if assoc_item.item.container == ty::AssocItemContainer::Impl
+        if let ty::AssocContainer::TraitImpl(_) = assoc_item.item.container
             && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
         {
             tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;

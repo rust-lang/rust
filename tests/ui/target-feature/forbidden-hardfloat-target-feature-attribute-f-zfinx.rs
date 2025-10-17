@@ -1,6 +1,7 @@
 //! Ensure ABI-incompatible features cannot be enabled via `#[target_feature]`.
 //@ compile-flags: --target=riscv64gc-unknown-linux-gnu --crate-type=lib
 //@ needs-llvm-components: riscv
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items, riscv_target_feature)]
 #![no_core]
 

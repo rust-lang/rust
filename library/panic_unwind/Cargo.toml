@@ -13,7 +13,6 @@ doc = false
 
 [dependencies]
 alloc = { path = "../alloc" }
-cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 core = { path = "../rustc-std-workspace-core", package = "rustc-std-workspace-core" }
 unwind = { path = "../unwind" }
 

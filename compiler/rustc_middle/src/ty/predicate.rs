@@ -638,21 +638,7 @@ impl<'tcx> Predicate<'tcx> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
-            PredicateKind::Clause(ClauseKind::Projection(..))
-            | PredicateKind::Clause(ClauseKind::HostEffect(..))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
-            | PredicateKind::NormalizesTo(..)
-            | PredicateKind::AliasRelate(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
-            | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::DynCompatible(..)
-            | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
-            | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous => None,
+            _ => None,
         }
     }
 
@@ -660,21 +646,7 @@ impl<'tcx> Predicate<'tcx> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
-            PredicateKind::Clause(ClauseKind::Trait(..))
-            | PredicateKind::Clause(ClauseKind::HostEffect(..))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::UnstableFeature(_))
-            | PredicateKind::NormalizesTo(..)
-            | PredicateKind::AliasRelate(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
-            | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::DynCompatible(..)
-            | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
-            | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous => None,
+            _ => None,
         }
     }
 

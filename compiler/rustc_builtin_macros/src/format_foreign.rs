@@ -416,7 +416,7 @@ pub(crate) mod printf {
                         // Yes, this *is* the parameter.
                         Some(('$', end2)) => {
                             state = Flags;
-                            parameter = Some(at.slice_between(end).unwrap().parse().unwrap());
+                            parameter = at.slice_between(end).unwrap().parse().ok();
                             move_to!(end2);
                         }
                         // Wait, no, actually, it's the width.

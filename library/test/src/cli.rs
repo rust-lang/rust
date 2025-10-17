@@ -57,6 +57,7 @@ fn optgroups() -> getopts::Options {
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
+        .optflag("", "fail-fast", "Don't start new tests after the first failure")
         .optflag("h", "help", "Display this message")
         .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
@@ -260,6 +261,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     // Unstable flags
     let force_run_in_process = unstable_optflag!(matches, allow_unstable, "force-run-in-process");
     let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
+    let fail_fast = unstable_optflag!(matches, allow_unstable, "fail-fast");
     let time_options = get_time_options(&matches, allow_unstable)?;
     let shuffle = get_shuffle(&matches, allow_unstable)?;
     let shuffle_seed = get_shuffle_seed(&matches, allow_unstable)?;
@@ -306,7 +308,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
-        fail_fast: false,
+        fail_fast,
     };
 
     Ok(test_opts)

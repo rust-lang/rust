@@ -152,7 +152,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     );
                     continue;
                 };
-                let ty::Dynamic(data, _, _) = *ty.kind() else {
+                let ty::Dynamic(data, _) = *ty.kind() else {
                     tcx.dcx()
                         .span_err(attr.span(), "`rustc_dump_vtable` to type alias of dyn type");
                     continue;

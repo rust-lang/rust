@@ -736,6 +736,31 @@ impl<T> Bound<T> {
     }
 }
 
+impl<T: Copy> Bound<&T> {
+    /// Map a `Bound<&T>` to a `Bound<T>` by copying the contents of the bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bound_copied)]
+    ///
+    /// use std::ops::Bound::*;
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert_eq!((1..12).start_bound(), Included(&1));
+    /// assert_eq!((1..12).start_bound().copied(), Included(1));
+    /// ```
+    #[unstable(feature = "bound_copied", issue = "145966")]
+    #[must_use]
+    pub fn copied(self) -> Bound<T> {
+        match self {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(x) => Bound::Included(*x),
+            Bound::Excluded(x) => Bound::Excluded(*x),
+        }
+    }
+}
+
 impl<T: Clone> Bound<&T> {
     /// Map a `Bound<&T>` to a `Bound<T>` by cloning the contents of the bound.
     ///
@@ -745,8 +770,11 @@ impl<T: Clone> Bound<&T> {
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
-    /// assert_eq!((1..12).start_bound(), Included(&1));
-    /// assert_eq!((1..12).start_bound().cloned(), Included(1));
+    /// let a1 = String::from("a");
+    /// let (a2, a3, a4) = (a1.clone(), a1.clone(), a1.clone());
+    ///
+    /// assert_eq!(Included(&a1), (a2..).start_bound());
+    /// assert_eq!(Included(a3), (a4..).start_bound().cloned());
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "bound_cloned", since = "1.55.0")]
@@ -808,6 +836,7 @@ pub trait RangeBounds<T: ?Sized> {
     /// assert!(!(0.0..1.0).contains(&f32::NAN));
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
+    /// ```
     #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     fn contains<U>(&self, item: &U) -> bool

@@ -64,10 +64,10 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 "`become` outside of functions should have been disallowed by hir_typeck"
             )
         };
-        // While the `caller_sig` does have its regions erased, it does not have its
-        // binders anonymized. We call `erase_regions` once again to anonymize any binders
+        // While the `caller_sig` does have its free regions erased, it does not have its
+        // binders anonymized. We call `erase_and_anonymize_regions` once again to anonymize any binders
         // within the signature, such as in function pointer or `dyn Trait` args.
-        let caller_sig = self.tcx.erase_regions(caller_sig);
+        let caller_sig = self.tcx.erase_and_anonymize_regions(caller_sig);
 
         let ExprKind::Scope { value, .. } = call.kind else {
             span_bug!(call.span, "expected scope, found: {call:?}")
@@ -135,30 +135,23 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_abi_mismatch(expr.span, caller_sig.abi, callee_sig.abi);
         }
 
+        // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
+        // e.g.
+        // ```
+        // fn a() -> impl Sized { become b() } // ICE
+        // fn b() -> u8 { 0 }
+        // ```
+        // we should think what is the expected behavior here.
+        // (we should probably just accept this by revealing opaques?)
         if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
-            if caller_sig.inputs() != callee_sig.inputs() {
-                self.report_arguments_mismatch(
-                    expr.span,
-                    self.tcx.liberate_late_bound_regions(
-                        CRATE_DEF_ID.to_def_id(),
-                        self.caller_ty.fn_sig(self.tcx),
-                    ),
-                    self.tcx
-                        .liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
-                );
-            }
-
-            // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
-            // e.g.
-            // ```
-            // fn a() -> impl Sized { become b() } // ICE
-            // fn b() -> u8 { 0 }
-            // ```
-            // we should think what is the expected behavior here.
-            // (we should probably just accept this by revealing opaques?)
-            if caller_sig.output() != callee_sig.output() {
-                span_bug!(expr.span, "hir typeck should have checked the return type already");
-            }
+            self.report_signature_mismatch(
+                expr.span,
+                self.tcx.liberate_late_bound_regions(
+                    CRATE_DEF_ID.to_def_id(),
+                    self.caller_ty.fn_sig(self.tcx),
+                ),
+                self.tcx.liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+            );
         }
 
         {
@@ -290,7 +283,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     fn report_calling_closure(&mut self, fun: &Expr<'_>, tupled_args: Ty<'_>, expr: &Expr<'_>) {
         let underscored_args = match tupled_args.kind() {
             ty::Tuple(tys) if tys.is_empty() => "".to_owned(),
-            ty::Tuple(tys) => std::iter::repeat("_, ").take(tys.len() - 1).chain(["_"]).collect(),
+            ty::Tuple(tys) => std::iter::repeat_n("_, ", tys.len() - 1).chain(["_"]).collect(),
             _ => "_".to_owned(),
         };
 
@@ -365,7 +358,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         self.found_errors = Err(err);
     }
 
-    fn report_arguments_mismatch(
+    fn report_signature_mismatch(
         &mut self,
         sp: Span,
         caller_sig: ty::FnSig<'_>,

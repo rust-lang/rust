@@ -9,7 +9,7 @@ use rustc_middle::infer::canonical::{
     Canonical, CanonicalQueryInput, CanonicalQueryResponse, QueryResponse,
 };
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, Upcast};
 use rustc_span::DUMMY_SP;
 use tracing::instrument;
 
@@ -25,25 +25,13 @@ impl<'tcx> InferCtxt<'tcx> {
             let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
                 return false;
             };
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     }
 
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
-
-        // FIXME(#132279): This should be removed as it causes us to incorrectly
-        // handle opaques in their defining scope, and stalled coroutines.
-        if !self.next_trait_solver() && !(param_env, ty).has_infer() && !ty.has_coroutines() {
-            return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
-        }
-
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, DUMMY_SP);
-
-        // This can get called from typeck (by euv), and `moves_by_default`
-        // rightly refuses to work with inference variables, but
-        // moves_by_default has a cache, which we want to use in other
-        // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
@@ -136,7 +124,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 param_env,
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
             ));
-            let errors = ocx.select_where_possible();
+            let errors = ocx.try_evaluate_obligations();
             // Find the original predicate in the list of predicates that could definitely not be fulfilled.
             // If it is in that list, then we know this doesn't even shallowly implement the trait.
             // If it is not in that list, it was fulfilled, but there may be nested obligations, which we don't care about here.
@@ -184,10 +172,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        let (infcx, key, canonical_inference_vars) =
-            self.build_with_canonical(DUMMY_SP, canonical_key);
+        let (infcx, key, var_values) = self.build_with_canonical(DUMMY_SP, canonical_key);
         let ocx = ObligationCtxt::new(&infcx);
         let value = operation(&ocx, key)?;
-        ocx.make_canonicalized_query_response(canonical_inference_vars, value)
+        ocx.make_canonicalized_query_response(var_values, value)
     }
 }

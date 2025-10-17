@@ -191,8 +191,7 @@ mod uninit;
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-#[const_trait]
-pub trait Clone: Sized {
+pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
     ///
     /// Note that what "duplicate" means varies by type:
@@ -576,7 +575,8 @@ mod impls {
         ($($t:ty)*) => {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
-                impl Clone for $t {
+                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                impl const Clone for $t {
                     #[inline(always)]
                     fn clone(&self) -> Self {
                         *self
@@ -594,7 +594,8 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Clone for ! {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl const Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
@@ -602,7 +603,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for *const T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -610,7 +612,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for *mut T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -619,7 +622,8 @@ mod impls {
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for &T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {

@@ -31,8 +31,8 @@ fn parse_fails_on_trailing_newline(ty: Ty<'_>) -> bool {
 }
 
 pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
-    if let Some(recv_adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
-        && cx.tcx.is_diagnostic_item(sym::Stdin, recv_adt.did())
+    let recv_ty = cx.typeck_results().expr_ty(recv);
+    if is_type_diagnostic_item(cx, recv_ty, sym::Stdin)
         && let ExprKind::Path(QPath::Resolved(_, path)) = arg.peel_borrows().kind
         && let Res::Local(local_id) = path.res
     {

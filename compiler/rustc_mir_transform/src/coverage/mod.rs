@@ -8,6 +8,7 @@ use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
 mod counters;
+mod expansion;
 mod graph;
 mod hir_info;
 mod mappings;

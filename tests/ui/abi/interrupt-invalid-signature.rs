@@ -22,6 +22,7 @@ This test uses `cfg` because it is not testing whether these ABIs work on the pl
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,
@@ -80,9 +81,25 @@ extern "riscv-interrupt-s" fn riscv_s_ret() -> u8 {
 }
 
 #[cfg(any(x64,i686))]
-extern "x86-interrupt" fn x86_ret() -> u8 {
+extern "x86-interrupt" fn x86_ret(_p: *const u8) -> u8 {
     //[x64,i686]~^ ERROR invalid signature
     1
+}
+
+#[cfg(any(x64,i686))]
+extern "x86-interrupt" fn x86_0() {
+    //[x64,i686]~^ ERROR invalid signature
+}
+
+#[cfg(any(x64,i686))]
+extern "x86-interrupt" fn x86_1(_p1: *const u8) { }
+
+#[cfg(any(x64,i686))]
+extern "x86-interrupt" fn x86_2(_p1: *const u8, _p2: *const u8) { }
+
+#[cfg(any(x64,i686))]
+extern "x86-interrupt" fn x86_3(_p1: *const u8, _p2: *const u8, _p3: *const u8) {
+    //[x64,i686]~^ ERROR invalid signature
 }
 
 

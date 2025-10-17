@@ -4,6 +4,7 @@ use std::iter::once;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::Mutability;
 use rustc_hir::def::{DefKind, MacroKinds, Res};
@@ -14,15 +15,14 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, sym};
-use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
 use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
-    self, Attributes, ImplKind, ItemId, Type, clean_bound_vars, clean_generics, clean_impl_item,
-    clean_middle_assoc_item, clean_middle_field, clean_middle_ty, clean_poly_fn_sig,
-    clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type, clean_ty_generics,
-    clean_variant_def, utils,
+    self, Attributes, CfgInfo, ImplKind, ItemId, Type, clean_bound_vars, clean_generics,
+    clean_impl_item, clean_middle_assoc_item, clean_middle_field, clean_middle_ty,
+    clean_poly_fn_sig, clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type,
+    clean_ty_generics, clean_variant_def, utils,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -409,6 +409,7 @@ pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
     old_attrs: &[hir::Attribute],
     new_attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
+    cfg_info: &mut CfgInfo,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -423,12 +424,12 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            extract_cfg_from_attrs(both.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(both.iter(), cx.tcx, cfg_info),
         )
     } else {
         (
             Attributes::from_hir(old_attrs),
-            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, cfg_info),
         )
     }
 }
@@ -572,29 +573,29 @@ pub(crate) fn build_impl(
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
 
-    // Return if the trait itself or any types of the generic parameters are doc(hidden).
-    let mut stack: Vec<&Type> = vec![&for_];
+    if !document_hidden {
+        // Return if the trait itself or any types of the generic parameters are doc(hidden).
+        let mut stack: Vec<&Type> = vec![&for_];
 
-    if let Some(did) = trait_.as_ref().map(|t| t.def_id())
-        && !document_hidden
-        && tcx.is_doc_hidden(did)
-    {
-        return;
-    }
-
-    if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
-        stack.extend(generics);
-    }
-
-    while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id(&cx.cache)
-            && !document_hidden
+        if let Some(did) = trait_.as_ref().map(|t| t.def_id())
             && tcx.is_doc_hidden(did)
         {
             return;
         }
-        if let Some(generics) = ty.generics() {
+
+        if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
             stack.extend(generics);
+        }
+
+        while let Some(ty) = stack.pop() {
+            if let Some(did) = ty.def_id(&cx.cache)
+                && tcx.is_doc_hidden(did)
+            {
+                return;
+            }
+            if let Some(generics) = ty.generics() {
+                stack.extend(generics);
+            }
         }
     }
 
@@ -604,7 +605,11 @@ pub(crate) fn build_impl(
         });
     }
 
-    let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs);
+    // In here, we pass an empty `CfgInfo` because the computation of `cfg` happens later, so it
+    // doesn't matter at this point.
+    //
+    // We need to pass this empty `CfgInfo` because `merge_attrs` is used when computing the `cfg`.
+    let (merged_attrs, cfg) = merge_attrs(cx, load_attrs(cx, did), attrs, &mut CfgInfo::default());
     trace!("merged_attrs={merged_attrs:?}");
 
     trace!(

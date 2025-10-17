@@ -4,6 +4,7 @@ use super::super::{
     Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce,
     Zip, try_process,
 };
+use super::TrustedLen;
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
@@ -3816,10 +3817,7 @@ pub trait Iterator {
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(eq)) {
-            ControlFlow::Continue(ord) => ord == Ordering::Equal,
-            ControlFlow::Break(()) => false,
-        }
+        SpecIterEq::spec_iter_eq(self, other.into_iter(), compare(eq))
     }
 
     /// Determines if the elements of this [`Iterator`] are not equal to those of
@@ -4038,6 +4036,42 @@ pub trait Iterator {
     }
 }
 
+trait SpecIterEq<B: Iterator>: Iterator {
+    fn spec_iter_eq<F>(self, b: B, f: F) -> bool
+    where
+        F: FnMut(Self::Item, <B as Iterator>::Item) -> ControlFlow<()>;
+}
+
+impl<A: Iterator, B: Iterator> SpecIterEq<B> for A {
+    #[inline]
+    default fn spec_iter_eq<F>(self, b: B, f: F) -> bool
+    where
+        F: FnMut(Self::Item, <B as Iterator>::Item) -> ControlFlow<()>,
+    {
+        iter_eq(self, b, f)
+    }
+}
+
+impl<A: Iterator + TrustedLen, B: Iterator + TrustedLen> SpecIterEq<B> for A {
+    #[inline]
+    fn spec_iter_eq<F>(self, b: B, f: F) -> bool
+    where
+        F: FnMut(Self::Item, <B as Iterator>::Item) -> ControlFlow<()>,
+    {
+        // we *can't* short-circuit if:
+        match (self.size_hint(), b.size_hint()) {
+            // ... both iterators have the same length
+            ((_, Some(a)), (_, Some(b))) if a == b => {}
+            // ... or both of them are longer than `usize::MAX` (i.e. have an unknown length).
+            ((_, None), (_, None)) => {}
+            // otherwise, we can ascertain that they are unequal without actually comparing items
+            _ => return false,
+        }
+
+        iter_eq(self, b, f)
+    }
+}
+
 /// Compares two iterators element-wise using the given function.
 ///
 /// If `ControlFlow::Continue(())` is returned from the function, the comparison moves on to the next
@@ -4076,6 +4110,16 @@ where
         }),
         ControlFlow::Break(x) => x,
     }
+}
+
+#[inline]
+fn iter_eq<A, B, F>(a: A, b: B, f: F) -> bool
+where
+    A: Iterator,
+    B: Iterator,
+    F: FnMut(A::Item, B::Item) -> ControlFlow<()>,
+{
+    iter_compare(a, b, f).continue_value().is_some_and(|ord| ord == Ordering::Equal)
 }
 
 /// Implements `Iterator` for mutable references to iterators, such as those produced by [`Iterator::by_ref`].

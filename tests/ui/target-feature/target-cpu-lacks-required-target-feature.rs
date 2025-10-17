@@ -3,6 +3,7 @@
 //@ compile-flags: -Ctarget-cpu=pentium
 // For now this is just a warning.
 //@ build-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
 #![no_core]

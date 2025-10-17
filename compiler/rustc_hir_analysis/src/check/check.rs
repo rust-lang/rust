@@ -219,7 +219,7 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
-    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
+    // Since rustdoc doesn't care about the hidden type behind `impl Trait`, just don't look at it!
     // See https://github.com/rust-lang/rust/issues/75100
     if tcx.sess.opts.actually_rustdoc {
         return;
@@ -252,7 +252,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     Ok(())
 }
 
-/// Check that the concrete type behind `impl Trait` actually implements `Trait`.
+/// Check that the hidden type behind `impl Trait` actually implements `Trait`.
 ///
 /// This is mostly checked at the places that specify the opaque type, but we
 /// check those cases in the `param_env` of that function, which may have
@@ -375,7 +375,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
@@ -978,7 +978,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         tcx.ensure_ok().fn_sig(def_id);
                         let item = tcx.hir_foreign_item(item);
                         let hir::ForeignItemKind::Fn(sig, ..) = item.kind else { bug!() };
-                        require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
+                        check_c_variadic_abi(tcx, sig.decl, abi, item.span);
                     }
                     DefKind::Static { .. } => {
                         tcx.ensure_ok().codegen_fn_attrs(def_id);
@@ -1009,8 +1009,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => {}
-                ty::AssocItemContainer::Trait => {
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {}
+                ty::AssocContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
             }
@@ -1026,8 +1026,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(check_associated_item(tcx, def_id));
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => {}
-                ty::AssocItemContainer::Trait => {
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {}
+                ty::AssocContainer::Trait => {
                     res = res.and(check_trait_item(tcx, def_id));
                 }
             }
@@ -1043,8 +1043,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
             let assoc_item = tcx.associated_item(def_id);
             let has_type = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => {
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                ty::AssocContainer::Trait => {
                     tcx.ensure_ok().explicit_item_bounds(def_id);
                     tcx.ensure_ok().explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
@@ -1177,12 +1177,9 @@ fn check_impl_items_against_trait<'tcx>(
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
-        let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
-            tcx.associated_item(trait_item_id)
-        } else {
-            // Checked in `associated_item`.
-            tcx.dcx().span_delayed_bug(tcx.def_span(impl_item), "missing associated item in trait");
-            continue;
+        let ty_trait_item = match ty_impl_item.expect_trait_impl() {
+            Ok(trait_item_id) => tcx.associated_item(trait_item_id),
+            Err(ErrorGuaranteed { .. }) => continue,
         };
 
         let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());
@@ -1513,11 +1510,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
     // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
     // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
-        let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
@@ -1529,11 +1526,16 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
             t: Ty<'tcx>,
         ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
+            // We can encounter projections during traversal, so ensure the type is normalized.
+            let t = tcx.try_normalize_erasing_regions(typing_env, t).unwrap_or(t);
             match t.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
-                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Tuple(list) => {
+                    list.iter().try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
+                }
+                ty::Array(ty, _) => check_non_exhaustive(tcx, typing_env, *ty),
                 ty::Adt(def, args) => {
                     if !def.did().is_local()
                         && !find_attr!(
@@ -1558,13 +1560,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     }
                     def.all_fields()
                         .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, t))
+                        .try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
                 }
                 _ => ControlFlow::Continue(()),
             }
         }
 
-        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, check_non_exhaustive(tcx, typing_env, ty).break_value())
     });
 
     let non_trivial_fields = field_infos
@@ -2031,7 +2033,7 @@ pub(super) fn check_coroutine_obligations(
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
@@ -2052,4 +2054,30 @@ pub(super) fn check_coroutine_obligations(
     }
 
     Ok(())
+}
+
+pub(super) fn check_potentially_region_dependent_goals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    if !tcx.next_trait_solver_globally() {
+        return Ok(());
+    }
+    let typeck_results = tcx.typeck(def_id);
+    let param_env = tcx.param_env(def_id);
+
+    // We use `TypingMode::Borrowck` as we want to use the opaque types computed by HIR typeck.
+    let typing_mode = TypingMode::borrowck(tcx, def_id);
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(typing_mode);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    for (predicate, cause) in &typeck_results.potentially_region_dependent_goals {
+        let predicate = fold_regions(tcx, *predicate, |_, _| {
+            infcx.next_region_var(RegionVariableOrigin::Misc(cause.span))
+        });
+        ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, predicate));
+    }
+
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+    debug!(?errors);
+    if errors.is_empty() { Ok(()) } else { Err(infcx.err_ctxt().report_fulfillment_errors(errors)) }
 }

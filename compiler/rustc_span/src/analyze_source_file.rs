@@ -81,8 +81,8 @@ cfg_select! {
                 // use `loadu`, which supports unaligned loading.
                 let chunk = unsafe { _mm_loadu_si128(chunk.as_ptr() as *const __m128i) };
 
-                // For character in the chunk, see if its byte value is < 0, which
-                // indicates that it's part of a UTF-8 char.
+                // For each character in the chunk, see if its byte value is < 0,
+                // which indicates that it's part of a UTF-8 char.
                 let multibyte_test = _mm_cmplt_epi8(chunk, _mm_set1_epi8(0));
                 // Create a bit mask from the comparison results.
                 let multibyte_mask = _mm_movemask_epi8(multibyte_test);
@@ -132,8 +132,111 @@ cfg_select! {
             }
         }
     }
+    target_arch = "loongarch64" => {
+        fn analyze_source_file_dispatch(
+            src: &str,
+            lines: &mut Vec<RelativeBytePos>,
+            multi_byte_chars: &mut Vec<MultiByteChar>,
+        ) {
+            use std::arch::is_loongarch_feature_detected;
+
+            if is_loongarch_feature_detected!("lsx") {
+                unsafe {
+                    analyze_source_file_lsx(src, lines, multi_byte_chars);
+                }
+            } else {
+                analyze_source_file_generic(
+                    src,
+                    src.len(),
+                    RelativeBytePos::from_u32(0),
+                    lines,
+                    multi_byte_chars,
+                );
+            }
+        }
+
+        /// Checks 16 byte chunks of text at a time. If the chunk contains
+        /// something other than printable ASCII characters and newlines, the
+        /// function falls back to the generic implementation. Otherwise it uses
+        /// LSX intrinsics to quickly find all newlines.
+        #[target_feature(enable = "lsx")]
+        unsafe fn analyze_source_file_lsx(
+            src: &str,
+            lines: &mut Vec<RelativeBytePos>,
+            multi_byte_chars: &mut Vec<MultiByteChar>,
+        ) {
+            use std::arch::loongarch64::*;
+
+            const CHUNK_SIZE: usize = 16;
+
+            let (chunks, tail) = src.as_bytes().as_chunks::<CHUNK_SIZE>();
+
+            // This variable keeps track of where we should start decoding a
+            // chunk. If a multi-byte character spans across chunk boundaries,
+            // we need to skip that part in the next chunk because we already
+            // handled it.
+            let mut intra_chunk_offset = 0;
+
+            for (chunk_index, chunk) in chunks.iter().enumerate() {
+                // All LSX memory instructions support unaligned access, so using
+                // vld is fine.
+                let chunk = unsafe { lsx_vld::<0>(chunk.as_ptr() as *const i8) };
+
+                // For each character in the chunk, see if its byte value is < 0,
+                // which indicates that it's part of a UTF-8 char.
+                let multibyte_mask = lsx_vmskltz_b(chunk);
+                // Create a bit mask from the comparison results.
+                let multibyte_mask = lsx_vpickve2gr_w::<0>(multibyte_mask);
+
+                // If the bit mask is all zero, we only have ASCII chars here:
+                if multibyte_mask == 0 {
+                    assert!(intra_chunk_offset == 0);
+
+                    // Check for newlines in the chunk
+                    let newlines_test = lsx_vseqi_b::<{b'\n' as i32}>(chunk);
+                    let newlines_mask = lsx_vmskltz_b(newlines_test);
+                    let mut newlines_mask = lsx_vpickve2gr_w::<0>(newlines_mask);
+
+                    let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
+
+                    while newlines_mask != 0 {
+                        let index = newlines_mask.trailing_zeros();
+
+                        lines.push(RelativeBytePos(index) + output_offset);
+
+                        // Clear the bit, so we can find the next one.
+                        newlines_mask &= newlines_mask - 1;
+                    }
+                } else {
+                    // The slow path.
+                    // There are multibyte chars in here, fallback to generic decoding.
+                    let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
+                    intra_chunk_offset = analyze_source_file_generic(
+                        &src[scan_start..],
+                        CHUNK_SIZE - intra_chunk_offset,
+                        RelativeBytePos::from_usize(scan_start),
+                        lines,
+                        multi_byte_chars,
+                    );
+                }
+            }
+
+            // There might still be a tail left to analyze
+            let tail_start = src.len() - tail.len() + intra_chunk_offset;
+            if tail_start < src.len() {
+                analyze_source_file_generic(
+                    &src[tail_start..],
+                    src.len() - tail_start,
+                    RelativeBytePos::from_usize(tail_start),
+                    lines,
+                    multi_byte_chars,
+                );
+            }
+        }
+    }
     _ => {
-        // The target (or compiler version) does not support SSE2 ...
+        // The target (or compiler version) does not support vector instructions
+        // our specialized implementations need (x86 SSE2, loongarch64 LSX)...
         fn analyze_source_file_dispatch(
             src: &str,
             lines: &mut Vec<RelativeBytePos>,

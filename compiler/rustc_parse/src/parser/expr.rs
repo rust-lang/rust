@@ -1163,7 +1163,10 @@ impl<'a> Parser<'a> {
                         suffix,
                     }) => {
                         if let Some(suffix) = suffix {
-                            self.expect_no_tuple_index_suffix(current.span, suffix);
+                            self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
+                                span: current.span,
+                                suffix,
+                            });
                         }
                         match self.break_up_float(symbol, current.span) {
                             // 1e2
@@ -1239,7 +1242,8 @@ impl<'a> Parser<'a> {
         suffix: Option<Symbol>,
     ) -> Box<Expr> {
         if let Some(suffix) = suffix {
-            self.expect_no_tuple_index_suffix(ident_span, suffix);
+            self.dcx()
+                .emit_err(errors::InvalidLiteralSuffixOnTupleIndex { span: ident_span, suffix });
         }
         self.mk_expr(lo.to(ident_span), ExprKind::Field(base, Ident::new(field, ident_span)))
     }
@@ -1622,7 +1626,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair<'_>) -> PResult<'a, Box<Expr>> {
+    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[` or other open delim
 
@@ -2180,7 +2184,7 @@ impl<'a> Parser<'a> {
 
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
     /// `Lit::from_token` (excluding unary negation).
-    fn eat_token_lit(&mut self) -> Option<token::Lit> {
+    pub fn eat_token_lit(&mut self) -> Option<token::Lit> {
         let check_expr = |expr: Box<Expr>| {
             if let ast::ExprKind::Lit(token_lit) = expr.kind {
                 Some(token_lit)
@@ -2247,24 +2251,6 @@ impl<'a> Parser<'a> {
                 }
             }
         })
-    }
-
-    pub(super) fn expect_no_tuple_index_suffix(&self, span: Span, suffix: Symbol) {
-        if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
-            // #59553: warn instead of reject out of hand to allow the fix to percolate
-            // through the ecosystem when people fix their macros
-            self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: true,
-            });
-        } else {
-            self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
-                span,
-                suffix,
-                exception: false,
-            });
-        }
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
@@ -2421,20 +2407,24 @@ impl<'a> Parser<'a> {
         let before = self.prev_token;
         let binder = if self.check_keyword(exp!(For)) {
             let lo = self.token.span;
-            let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
+            let (bound_vars, _) = self.parse_higher_ranked_binder()?;
             let span = lo.to(self.prev_token.span);
 
             self.psess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
-            ClosureBinder::For { span, generic_params: lifetime_defs }
+            ClosureBinder::For { span, generic_params: bound_vars }
         } else {
             ClosureBinder::NotPresent
         };
 
         let constness = self.parse_closure_constness();
 
-        let movability =
-            if self.eat_keyword(exp!(Static)) { Movability::Static } else { Movability::Movable };
+        let movability = if self.eat_keyword(exp!(Static)) {
+            self.psess.gated_spans.gate(sym::coroutines, self.prev_token.span);
+            Movability::Static
+        } else {
+            Movability::Movable
+        };
 
         let coroutine_kind = if self.token_uninterpolated_span().at_least_rust_2018() {
             self.parse_coroutine_kind(Case::Sensitive)
@@ -2621,7 +2611,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?;
+            let pat = Box::new(this.parse_pat_no_top_alt(Some(Expected::ParameterName), None)?);
             let ty = if this.eat(exp!(Colon)) {
                 this.parse_ty()?
             } else {
@@ -2762,7 +2752,7 @@ impl<'a> Parser<'a> {
     /// The specified `edition` in `let_chains_policy` should be that of the whole `if` construct,
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
-    // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
+    // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
     pub fn parse_expr_cond(
         &mut self,
         let_chains_policy: LetChainsPolicy,
@@ -2815,7 +2805,7 @@ impl<'a> Parser<'a> {
         let (expr, _) =
             self.parse_expr_assoc_with(Bound::Excluded(prec_let_scrutinee_needs_par()), attrs)?;
         let span = lo.to(expr.span);
-        Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
+        Ok(self.mk_expr(span, ExprKind::Let(Box::new(pat), expr, span, recovered)))
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
@@ -2930,7 +2920,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
+    // Public to use it for custom `for` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+    pub fn parse_for_head(&mut self) -> PResult<'a, (Pat, Box<Expr>)> {
         let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
@@ -3007,6 +2998,7 @@ impl<'a> Parser<'a> {
         let kind = if is_await { ForLoopKind::ForAwait } else { ForLoopKind::For };
 
         let (pat, expr) = self.parse_for_head()?;
+        let pat = Box::new(pat);
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
             && self.token.kind != token::OpenBrace
@@ -3114,7 +3106,7 @@ impl<'a> Parser<'a> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
             if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
-                self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
+                self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 
             self.bump();
@@ -3175,7 +3167,7 @@ impl<'a> Parser<'a> {
                     // Always push at least one arm to make the match non-empty
                     arms.push(Arm {
                         attrs: Default::default(),
-                        pat: self.mk_pat(span, ast::PatKind::Err(guar)),
+                        pat: Box::new(self.mk_pat(span, ast::PatKind::Err(guar))),
                         guard: None,
                         body: Some(self.mk_expr_err(span, guar)),
                         span,
@@ -3279,6 +3271,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
+            let pat = Box::new(pat);
 
             let span_before_body = this.prev_token.span;
             let arm_body;
@@ -3501,7 +3494,7 @@ impl<'a> Parser<'a> {
         Ok(Some(cond))
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Box<Pat>, Option<Box<Expr>>)> {
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
         if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(
@@ -3645,7 +3638,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Async) && self.is_gen_block(kw::Gen, 1)
     }
 
-    fn is_certainly_not_a_block(&self) -> bool {
+    fn is_likely_struct_lit(&self) -> bool {
         // `{ ident, ` and `{ ident: ` cannot start a block.
         self.look_ahead(1, |t| t.is_ident())
             && self.look_ahead(2, |t| t == &token::Comma || t == &token::Colon)
@@ -3657,31 +3650,57 @@ impl<'a> Parser<'a> {
         path: &ast::Path,
     ) -> Option<PResult<'a, Box<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        if struct_allowed || self.is_certainly_not_a_block() {
-            if let Err(err) = self.expect(exp!(OpenBrace)) {
-                return Some(Err(err));
+        match (struct_allowed, self.is_likely_struct_lit()) {
+            // A struct literal isn't expected and one is pretty much assured not to be present. The
+            // only situation that isn't detected is when a struct with a single field was attempted
+            // in a place where a struct literal wasn't expected, but regular parser errors apply.
+            // Happy path.
+            (false, false) => None,
+            (true, _) => {
+                // A struct is accepted here, try to parse it and rely on `parse_expr_struct` for
+                // any kind of recovery. Happy path.
+                if let Err(err) = self.expect(exp!(OpenBrace)) {
+                    return Some(Err(err));
+                }
+                Some(self.parse_expr_struct(qself.clone(), path.clone(), true))
             }
-            let expr = self.parse_expr_struct(qself.clone(), path.clone(), true);
-            if let (Ok(expr), false) = (&expr, struct_allowed) {
-                // This is a struct literal, but we don't can't accept them here.
-                self.dcx().emit_err(errors::StructLiteralNotAllowedHere {
-                    span: expr.span,
-                    sub: errors::StructLiteralNotAllowedHereSugg {
-                        left: path.span.shrink_to_lo(),
-                        right: expr.span.shrink_to_hi(),
-                    },
-                });
+            (false, true) => {
+                // We have something like `match foo { bar,` or `match foo { bar:`, which means the
+                // user might have meant to write a struct literal as part of the `match`
+                // discriminant. This is done purely for error recovery.
+                let snapshot = self.create_snapshot_for_diagnostic();
+                if let Err(err) = self.expect(exp!(OpenBrace)) {
+                    return Some(Err(err));
+                }
+                match self.parse_expr_struct(qself.clone(), path.clone(), false) {
+                    Ok(expr) => {
+                        // This is a struct literal, but we don't accept them here.
+                        self.dcx().emit_err(errors::StructLiteralNotAllowedHere {
+                            span: expr.span,
+                            sub: errors::StructLiteralNotAllowedHereSugg {
+                                left: path.span.shrink_to_lo(),
+                                right: expr.span.shrink_to_hi(),
+                            },
+                        });
+                        Some(Ok(expr))
+                    }
+                    Err(err) => {
+                        // We couldn't parse a valid struct, rollback and let the parser emit an
+                        // error elsewhere.
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        None
+                    }
+                }
             }
-            return Some(expr);
         }
-        None
     }
 
     pub(super) fn parse_struct_fields(
         &mut self,
         pth: ast::Path,
         recover: bool,
-        close: ExpTokenPair<'_>,
+        close: ExpTokenPair,
     ) -> PResult<
         'a,
         (
@@ -3700,8 +3719,8 @@ impl<'a> Parser<'a> {
             errors::HelpUseLatestEdition::new().add_to_diag(e);
         };
 
-        while self.token != *close.tok {
-            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(close.tok) {
+        while self.token != close.tok {
+            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(&close.tok) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(close) {

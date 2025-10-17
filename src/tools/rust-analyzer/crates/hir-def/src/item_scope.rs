@@ -872,7 +872,6 @@ impl PerNs {
                 PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
             }
             ModuleDefId::TraitId(_) => PerNs::types(def, v, import),
-            ModuleDefId::TraitAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
             ModuleDefId::MacroId(mac) => PerNs::macros(mac, v, import),

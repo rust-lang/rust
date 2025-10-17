@@ -11,7 +11,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
+use rustc_errors::{Diag, LintBuffer, LintDiagnostic, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -23,8 +23,8 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
-use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintBuffer, LintExpectationId, LintId};
-use rustc_session::{LintStoreMarker, Session};
+use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
+use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
@@ -62,7 +62,13 @@ pub struct LintStore {
     lint_groups: FxIndexMap<&'static str, LintGroup>,
 }
 
-impl LintStoreMarker for LintStore {}
+impl DynLintStore for LintStore {
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = rustc_session::LintGroup> + '_> {
+        Box::new(self.get_lint_groups().map(|(name, lints, is_externally_loaded)| {
+            rustc_session::LintGroup { name, lints, is_externally_loaded }
+        }))
+    }
+}
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
 #[derive(Debug)]

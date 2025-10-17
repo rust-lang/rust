@@ -106,10 +106,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         break hir::PatKind::Struct(
                             qpath,
                             fs,
-                            matches!(
-                                etc,
-                                ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_)
-                            ),
+                            match etc {
+                                ast::PatFieldsRest::Rest(sp) => Some(self.lower_span(*sp)),
+                                ast::PatFieldsRest::Recovered(_) => Some(Span::default()),
+                                _ => None,
+                            },
                         );
                     }
                     PatKind::Tuple(pats) => {
@@ -153,7 +154,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_pat_tuple(
         &mut self,
-        pats: &[Box<Pat>],
+        pats: &[Pat],
         ctx: &str,
     ) -> (&'hir [hir::Pat<'hir>], hir::DotDotPos) {
         let mut elems = Vec::with_capacity(pats.len());
@@ -208,7 +209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[Box<Pat>]) -> hir::PatKind<'hir> {
+    fn lower_pat_slice(&mut self, pats: &[Pat]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;

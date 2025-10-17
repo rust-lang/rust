@@ -12,7 +12,7 @@ pub fn function_with_bytes<const BYTES: &'static [u8]>() -> &'static [u8] {
 }
 
 // Also check the codepaths for custom DST
-#[derive(std::marker::UnsizedConstParamTy, PartialEq, Eq)]
+#[derive(std::marker::ConstParamTy, PartialEq, Eq)]
 struct MyStr(str);
 
 fn function_with_my_str<const S: &'static MyStr>() -> &'static MyStr {

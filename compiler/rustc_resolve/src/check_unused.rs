@@ -169,7 +169,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        BuiltinLintDiag::UnusedExternCrate {
+                        crate::errors::UnusedExternCrate {
                             span: extern_crate.span,
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -204,7 +204,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 .r
                 .extern_prelude
                 .get(&Macros20NormalizedIdent::new(extern_crate.ident))
-                .is_none_or(|entry| entry.introduced_by_item)
+                .is_none_or(|entry| entry.introduced_by_item())
             {
                 continue;
             }
@@ -406,7 +406,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                BuiltinLintDiag::MacroUseDeprecated,
+                                crate::errors::MacroUseDeprecated,
                             );
                         }
                     }
@@ -427,7 +427,7 @@ impl Resolver<'_, '_> {
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
-                        BuiltinLintDiag::UnusedMacroUse,
+                        crate::errors::UnusedMacroUse,
                     );
                 }
                 _ => {}
@@ -507,7 +507,7 @@ impl Resolver<'_, '_> {
 
         let unused_imports = visitor.unused_imports;
         let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 if let Some(binding) = resolution.borrow().best_binding()
                     && let NameBindingKind::Import { import, .. } = binding.kind

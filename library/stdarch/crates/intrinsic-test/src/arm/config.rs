@@ -1,14 +1,17 @@
-pub fn build_notices(line_prefix: &str) -> String {
-    format!(
-        "\
-{line_prefix}This is a transient test file, not intended for distribution. Some aspects of the
-{line_prefix}test are derived from a JSON specification, published under the same license as the
-{line_prefix}`intrinsic-test` crate.\n
-"
-    )
-}
+pub const NOTICE: &str = "\
+// This is a transient test file, not intended for distribution. Some aspects of the
+// test are derived from a JSON specification, published under the same license as the
+// `intrinsic-test` crate.\n";
 
-pub const POLY128_OSTREAM_DEF: &str = r#"std::ostream& operator<<(std::ostream& os, poly128_t value) {
+pub const POLY128_OSTREAM_DECL: &str = r#"
+#ifdef __aarch64__
+std::ostream& operator<<(std::ostream& os, poly128_t value);
+#endif
+"#;
+
+pub const POLY128_OSTREAM_DEF: &str = r#"
+#ifdef __aarch64__
+std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::stringstream temp;
     do {
       int n = value % 10;
@@ -19,7 +22,9 @@ pub const POLY128_OSTREAM_DEF: &str = r#"std::ostream& operator<<(std::ostream& 
     std::string res(tempstr.rbegin(), tempstr.rend());
     os << res;
     return os;
-}"#;
+}
+#endif
+"#;
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
 pub const F16_FORMATTING_DEF: &str = r#"
@@ -118,4 +123,10 @@ pub const AARCH_CONFIGURATIONS: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
 #![feature(fmt_helpers_for_derive)]
 #![feature(stdarch_neon_f16)]
+
+#[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
+use core::arch::aarch64::*;
+
+#[cfg(target_arch = "arm")]
+use core::arch::arm::*;
 "#;

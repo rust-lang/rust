@@ -18,7 +18,6 @@ use rustc_span::edition::Edition;
 use rustc_span::{BytePos, FileName, SourceFile};
 use tracing::{debug, trace, warn};
 
-use crate::formats::renderer::FormatRenderer;
 use crate::html::render::Context;
 use crate::{clean, config, formats};
 
@@ -276,7 +275,8 @@ pub(crate) fn run(
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
         renderopts.no_emit_shared = true;
-        let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
+        let (cx, _) = Context::init(krate, renderopts, cache, tcx, Default::default())
+            .map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
         // If two different versions of the crate in the dependency tree, then examples will be
@@ -333,14 +333,11 @@ pub(crate) fn run(
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: DiagCtxtHandle<'_>,
+    loaded_paths: &mut Vec<PathBuf>,
 ) -> AllCallLocations {
     let mut all_calls: AllCallLocations = FxIndexMap::default();
     for path in with_examples {
-        // FIXME: Figure out why this line is causing this feature to crash in specific contexts.
-        // Full issue backlog is available here: <https://github.com/rust-lang/rust/pull/144600>.
-        //
-        // Can be checked with `tests/run-make/rustdoc-scrape-examples-paths`.
-        // loaded_paths.push(path.clone().into());
+        loaded_paths.push(path.clone().into());
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
             Err(e) => dcx.fatal(format!("failed to load examples: {e}")),

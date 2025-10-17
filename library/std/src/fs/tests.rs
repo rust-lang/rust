@@ -226,6 +226,7 @@ fn file_test_io_seek_and_write() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_multiple_shared() {
@@ -249,6 +250,7 @@ fn file_lock_multiple_shared() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_blocking() {
@@ -273,6 +275,7 @@ fn file_lock_blocking() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_drop() {
@@ -294,6 +297,7 @@ fn file_lock_drop() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_dup() {
@@ -492,6 +496,85 @@ fn file_test_io_read_write_at() {
 
 #[test]
 #[cfg(unix)]
+fn test_read_buf_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Fill entire buffer with potentially short reads
+        while buf.unfilled().capacity() > 0 {
+            let len = buf.len();
+            check!(file.read_buf_at(buf.unfilled(), 2 + len as u64));
+            assert!(!buf.filled().is_empty());
+            assert!(b"23456".starts_with(buf.filled()));
+            assert_eq!(check!(file.stream_position()), 0);
+        }
+        assert_eq!(buf.filled(), b"23456");
+
+        // Already full
+        check!(file.read_buf_at(buf.unfilled(), 3));
+        check!(file.read_buf_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Read past eof is noop
+        check!(file.read_buf_at(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
+        check!(file.read_buf_at(buf.clear().unfilled(), 11));
+        assert_eq!(buf.filled(), b"");
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
+fn test_read_buf_exact_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_exact_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Exact read
+        check!(file.read_buf_exact_at(buf.unfilled(), 2));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Already full
+        check!(file.read_buf_exact_at(buf.unfilled(), 3));
+        check!(file.read_buf_exact_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Non-empty exact read past eof fails
+        let err = file.read_buf_exact_at(buf.clear().unfilled(), 6).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
 fn set_get_unix_permissions() {
     use crate::os::unix::fs::PermissionsExt;
 
@@ -562,6 +645,39 @@ fn file_test_io_seek_read_write() {
         assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek_read(&mut buf, 14)), 0);
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(windows)]
+fn test_seek_read_buf() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_buf.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit()];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Seek read
+        check!(file.seek_read_buf(buf.unfilled(), 8));
+        assert_eq!(buf.filled(), b"8");
+        assert_eq!(check!(file.stream_position()), 9);
+
+        // Empty seek read
+        check!(file.seek_read_buf(buf.unfilled(), 0));
+        assert_eq!(buf.filled(), b"8");
+
+        // Seek read past eof
+        check!(file.seek_read_buf(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
     }
     check!(fs::remove_file(&filename));
 }
@@ -1265,12 +1381,7 @@ fn open_flavors() {
     let mut ra = OO::new();
     ra.read(true).append(true);
 
-    #[cfg(windows)]
-    let invalid_options = 87; // ERROR_INVALID_PARAMETER
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    let invalid_options = "Invalid argument";
-    #[cfg(target_os = "vxworks")]
-    let invalid_options = "invalid argument";
+    let invalid_options = "creating or truncating a file requires write or append access";
 
     // Test various combinations of creation modes and access modes.
     //
@@ -1293,10 +1404,10 @@ fn open_flavors() {
     check!(c(&w).open(&tmpdir.join("a")));
 
     // read-only
-    error!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
     check!(c(&r).open(&tmpdir.join("a"))); // try opening the file created with write_only
 
     // read-write
@@ -1308,21 +1419,21 @@ fn open_flavors() {
 
     // append
     check!(c(&a).create_new(true).open(&tmpdir.join("d")));
-    error!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
-    error!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
     check!(c(&a).create(true).open(&tmpdir.join("d")));
     check!(c(&a).open(&tmpdir.join("d")));
 
     // read-append
     check!(c(&ra).create_new(true).open(&tmpdir.join("e")));
-    error!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
-    error!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
     check!(c(&ra).create(true).open(&tmpdir.join("e")));
     check!(c(&ra).open(&tmpdir.join("e")));
 
     // Test opening a file without setting an access mode
     let mut blank = OO::new();
-    error!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
+    error_contains!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
 
     // Test write works
     check!(check!(File::create(&tmpdir.join("h"))).write("foobar".as_bytes()));
@@ -2083,4 +2194,35 @@ fn test_rename_junction() {
     // Make sure that renaming `original` to `dest` preserves the junction point.
     // Junction links are always absolute so we just check the file name is correct.
     assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}
+
+#[test]
+fn test_open_options_invalid_combinations() {
+    use crate::fs::OpenOptions as OO;
+
+    let test_cases: &[(fn() -> OO, &str)] = &[
+        (|| OO::new().create(true).read(true).clone(), "create without write"),
+        (|| OO::new().create_new(true).read(true).clone(), "create_new without write"),
+        (|| OO::new().truncate(true).read(true).clone(), "truncate without write"),
+        (|| OO::new().truncate(true).append(true).clone(), "truncate with append"),
+    ];
+
+    for (make_opts, desc) in test_cases {
+        let opts = make_opts();
+        let result = opts.open("nonexistent.txt");
+        assert!(result.is_err(), "{desc} should fail");
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput, "{desc} - wrong error kind");
+        assert_eq!(
+            err.to_string(),
+            "creating or truncating a file requires write or append access",
+            "{desc} - wrong error message"
+        );
+    }
+
+    let result = OO::new().open("nonexistent.txt");
+    assert!(result.is_err(), "no access mode should fail");
+    let err = result.unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidInput);
+    assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
 }

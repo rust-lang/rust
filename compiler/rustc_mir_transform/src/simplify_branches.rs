@@ -2,6 +2,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
+use crate::patch::MirPatch;
+
 pub(super) enum SimplifyConstCondition {
     AfterConstProp,
     Final,
@@ -19,8 +21,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running SimplifyConstCondition on {:?}", body.source);
         let typing_env = body.typing_env(tcx);
-        'blocks: for block in body.basic_blocks_mut() {
-            for stmt in block.statements.iter_mut() {
+        let mut patch = MirPatch::new(body);
+
+        'blocks: for (bb, block) in body.basic_blocks.iter_enumerated() {
+            for (statement_index, stmt) in block.statements.iter().enumerate() {
                 // Simplify `assume` of a known value: either a NOP or unreachable.
                 if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind
                     && let NonDivergingIntrinsic::Assume(discr) = intrinsic
@@ -28,17 +32,16 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                     && let Some(constant) = c.const_.try_eval_bool(tcx, typing_env)
                 {
                     if constant {
-                        stmt.make_nop();
+                        patch.nop_statement(Location { block: bb, statement_index });
                     } else {
-                        block.statements.clear();
-                        block.terminator_mut().kind = TerminatorKind::Unreachable;
+                        patch.patch_terminator(bb, TerminatorKind::Unreachable);
                         continue 'blocks;
                     }
                 }
             }
 
-            let terminator = block.terminator_mut();
-            terminator.kind = match terminator.kind {
+            let terminator = block.terminator();
+            let terminator = match terminator.kind {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Constant(ref c), ref targets, ..
                 } => {
@@ -58,7 +61,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                 },
                 _ => continue,
             };
+            patch.patch_terminator(bb, terminator);
         }
+        patch.apply(body);
     }
 
     fn is_required(&self) -> bool {

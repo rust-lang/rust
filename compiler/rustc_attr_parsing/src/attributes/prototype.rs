@@ -7,8 +7,10 @@ use rustc_span::{Span, Symbol, sym};
 
 use super::{AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
-use crate::context::{AcceptContext, AllowedTargets, MaybeWarn, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::Allow;
 
 pub(crate) struct CustomMirParser;
 
@@ -19,8 +21,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[MaybeWarn::Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
@@ -108,7 +109,7 @@ fn parse_dialect<S: Stage>(
         sym::runtime => MirDialect::Runtime,
 
         _ => {
-            cx.expected_specific_argument(span, vec!["analysis", "built", "runtime"]);
+            cx.expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
             *failed = true;
             return None;
         }
@@ -130,7 +131,7 @@ fn parse_phase<S: Stage>(
         sym::optimized => MirPhase::Optimized,
 
         _ => {
-            cx.expected_specific_argument(span, vec!["initial", "post-cleanup", "optimized"]);
+            cx.expected_specific_argument(span, &[sym::initial, sym::post_cleanup, sym::optimized]);
             *failed = true;
             return None;
         }

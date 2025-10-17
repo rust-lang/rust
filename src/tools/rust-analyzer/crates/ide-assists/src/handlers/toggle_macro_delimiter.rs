@@ -1,6 +1,6 @@
 use ide_db::assists::AssistId;
 use syntax::{
-    AstNode, T,
+    AstNode, SyntaxToken, T,
     ast::{self, syntax_factory::SyntaxFactory},
 };
 
@@ -39,7 +39,7 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     let makro = ctx.find_node_at_offset::<ast::MacroCall>()?;
 
     let cursor_offset = ctx.offset();
-    let semicolon = makro.semicolon_token();
+    let semicolon = macro_semicolon(&makro);
     let token_tree = makro.token_tree()?;
 
     let ltoken = token_tree.left_delimiter_token()?;
@@ -95,6 +95,14 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     )
 }
 
+fn macro_semicolon(makro: &ast::MacroCall) -> Option<SyntaxToken> {
+    makro.semicolon_token().or_else(|| {
+        let macro_expr = ast::MacroExpr::cast(makro.syntax().parent()?)?;
+        let expr_stmt = ast::ExprStmt::cast(macro_expr.syntax().parent()?)?;
+        expr_stmt.semicolon_token()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
@@ -119,7 +127,29 @@ macro_rules! sth {
 
 sth!{ }
             "#,
-        )
+        );
+
+        check_assist(
+            toggle_macro_delimiter,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+
+fn foo() {
+    sth!$0( );
+}
+            "#,
+            r#"
+macro_rules! sth {
+    () => {};
+}
+
+fn foo() {
+    sth!{ }
+}
+            "#,
+        );
     }
 
     #[test]

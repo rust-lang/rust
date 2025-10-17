@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(
     if op == BinOpKind::Div
         && let ExprKind::MethodCall(method_path, self_arg, [], _) = left.kind
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_arg).peel_refs(), sym::Duration)
-        && let Some(Constant::Int(divisor)) = ConstEvalCtxt::new(cx).eval(right)
+        && let Some(Constant::Int(divisor)) = ConstEvalCtxt::new(cx).eval_local(right, expr.span.ctxt())
     {
         let suggested_fn = match (method_path.ident.name, divisor) {
             (sym::subsec_micros, 1_000) | (sym::subsec_nanos, 1_000_000) => "subsec_millis",

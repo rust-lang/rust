@@ -56,6 +56,9 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             // cannot check if it is `Sized` or not, such as an incomplete associated type in a
             // type alias. See an example in `issue14822()` of `tests/ui/zero_sized_hashmap_values.rs`.
             && !ty.has_non_region_param()
+            // Ensure that no region escapes to avoid an assertion error when computing the layout.
+            // See an example in `issue15429()` of `tests/ui/zero_sized_hashmap_values.rs`.
+            && !ty.has_escaping_bound_vars()
             && let Ok(layout) = cx.layout_of(ty)
             && layout.is_zst()
         {

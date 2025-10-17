@@ -1,10 +1,12 @@
 use std::array::IntoIter;
+use std::borrow::Cow;
 use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -438,6 +440,43 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
+
+    /// Returns `true` if `self` is a kind of definition that does not have its own
+    /// type-checking context, i.e. closure, coroutine or inline const.
+    #[inline]
+    pub fn is_typeck_child(self) -> bool {
+        match self {
+            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::Ctor(_, _)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Macro(_)
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl { .. } => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.
@@ -586,6 +625,12 @@ pub enum Res<Id = hir::HirId> {
     Err,
 }
 
+impl<Id> IntoDiagArg for Res<Id> {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 /// The result of resolving a path before lowering to HIR,
 /// with "module" segments resolved and associated item
 /// segments deferred to type checking.
@@ -670,6 +715,12 @@ impl Namespace {
             Self::ValueNS => "value",
             Self::MacroNS => "macro",
         }
+    }
+}
+
+impl IntoDiagArg for Namespace {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 

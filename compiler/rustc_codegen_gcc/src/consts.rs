@@ -8,6 +8,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_log::tracing::trace;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
@@ -81,6 +82,8 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         if global.to_rvalue().get_type() != val_llty {
             global.to_rvalue().set_type(val_llty);
         }
+
+        // NOTE: Alignment from attributes has already been applied to the allocation.
         set_global_alignment(self, global, alloc.align);
 
         global.global_set_initializer_rvalue(value);

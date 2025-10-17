@@ -54,7 +54,8 @@ use crate::{assert_unsafe_precondition, fmt};
 /// [chart]: https://www.unicode.org/charts/PDF/U0000.pdf
 /// [NIST FIPS 1-2]: https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub1-2-1977.pdf
 /// [NamesList]: https://www.unicode.org/Public/15.0.0/ucd/NamesList.txt
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Hash)]
+#[derive_const(Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
@@ -514,7 +515,7 @@ impl AsciiChar {
     #[track_caller]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_library_ub,
             "`ascii::Char::digit_unchecked` input cannot exceed 9.",
             (d: u8 = d) => d < 10
         );
@@ -1156,7 +1157,7 @@ macro_rules! into_int_impl {
     ($($ty:ty)*) => {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
-            #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             impl const From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {

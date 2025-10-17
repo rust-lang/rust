@@ -1,6 +1,5 @@
 use std::mem;
 
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
@@ -48,7 +47,7 @@ pub(crate) struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -126,8 +125,6 @@ pub(crate) struct Cache {
     ///
     /// Links are indexed by the DefId of the item they document.
     pub(crate) intra_doc_links: FxHashMap<ItemId, FxIndexSet<clean::ItemLink>>,
-    /// Cfg that have been hidden via #![doc(cfg_hide(...))]
-    pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
 
     /// Contains the list of `DefId`s which have been inlined. It is used when generating files
     /// to check if a stripped item should get its file generated or not: if it's inside a
@@ -147,6 +144,14 @@ struct CacheBuilder<'a, 'tcx> {
 impl Cache {
     pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
         Cache { document_private, document_hidden, ..Cache::default() }
+    }
+
+    fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {
+        if let Some(ParentStackItem::Impl { item_id, trait_, .. }) = self.parent_stack.last() {
+            (item_id.as_def_id(), trait_.as_ref().map(|tr| tr.def_id()))
+        } else {
+            (None, None)
+        }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -373,7 +378,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem => {
+            | clean::KeywordItem
+            | clean::AttributeItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -574,12 +580,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
-    let path = join_path_syms(parent_path);
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
-    };
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
     let search_type = get_function_type_for_search(
         item,
         tcx,
@@ -593,16 +594,19 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         ty: item.type_(),
         defid: Some(defid),
         name,
-        path,
+        module_path: parent_path.to_vec(),
         desc,
         parent: parent_did,
         parent_idx: None,
-        exact_path: None,
+        trait_parent,
+        trait_parent_idx: None,
+        exact_module_path: None,
         impl_id,
         search_type,
         aliases,
         deprecation,
     };
+
     cache.search_index.push(index_item);
 }
 
@@ -611,19 +615,21 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
 /// See [`Cache::orphan_impl_items`].
 fn handle_orphan_impl_child(cache: &mut Cache, item: &clean::Item, parent_did: DefId) {
     let impl_generics = clean_impl_generics(cache.parent_stack.last());
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
+    let orphan_item = OrphanImplItem {
+        parent: parent_did,
+        trait_parent,
+        item: item.clone(),
+        impl_generics,
+        impl_id,
     };
-    let orphan_item =
-        OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
     cache.orphan_impl_items.push(orphan_item);
 }
 
 pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
     pub(crate) impl_id: Option<DefId>,
+    pub(crate) trait_parent: Option<DefId>,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
 }

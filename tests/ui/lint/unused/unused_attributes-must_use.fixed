@@ -4,18 +4,23 @@
 #![deny(unused_attributes, unused_must_use)]
 #![feature(asm_experimental_arch, stmt_expr_attributes, trait_alias)]
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 extern crate std as std2;
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 mod test_mod {}
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 use std::arch::global_asm;
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 const CONST: usize = 4;
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 #[no_mangle]
 static STATIC: usize = 4;
 
@@ -32,7 +37,8 @@ union U {
     unit: (),
 }
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 impl U {
     #[must_use]
     fn method() -> i32 {
@@ -46,10 +52,12 @@ fn foo() -> i64 {
     4
 }
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 extern "Rust" {
     #[link_name = "STATIC"]
-     //~ ERROR `#[must_use]` has no effect
+     //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     static FOREIGN_STATIC: usize;
 
     #[link_name = "foo"]
@@ -57,19 +65,24 @@ extern "Rust" {
     fn foreign_foo() -> i64;
 }
 
- //~ ERROR unused attribute
+//~^ ERROR `#[must_use]` attribute cannot be used on macro calls
+//~| WARN this was previously accepted by the compiler but is being phased out
 global_asm!("");
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 type UseMe = ();
 
-fn qux< T>(_: T) {} //~ ERROR `#[must_use]` has no effect
+fn qux< T>(_: T) {} //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 
 #[must_use]
 trait Use {
-     //~ ERROR `#[must_use]` has no effect
+     //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     const ASSOC_CONST: usize = 4;
-     //~ ERROR `#[must_use]` has no effect
+     //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     type AssocTy;
 
     #[must_use]
@@ -78,20 +91,24 @@ trait Use {
     }
 }
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 impl Use for () {
     type AssocTy = ();
 
-     //~ ERROR `#[must_use]` has no effect
+     //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     fn get_four(&self) -> usize {
         4
     }
 }
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 trait Alias = Use;
 
- //~ ERROR `#[must_use]` has no effect
+ //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 macro_rules! cool_macro {
     () => {
         4
@@ -99,11 +116,13 @@ macro_rules! cool_macro {
 }
 
 fn main() {
-     //~ ERROR `#[must_use]` has no effect
+     //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     let x = || {};
     x();
 
-    let x =  //~ ERROR `#[must_use]` has no effect
+    let x =  //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     || {};
     x();
 
@@ -125,7 +144,8 @@ fn main() {
     let _ = ().get_four(); //~ ERROR that must be used
 
     match Some(4) {
-         //~ ERROR `#[must_use]` has no effect
+         //~ ERROR attribute cannot be used on
+        //~| WARN previously accepted
         Some(res) => res,
         None => 0,
     };
@@ -133,7 +153,9 @@ fn main() {
     struct PatternField {
         foo: i32,
     }
-    let s = PatternField {   foo: 123 }; //~ ERROR `#[must_use]` has no effect
-    let PatternField {  foo } = s; //~ ERROR `#[must_use]` has no effect
+    let s = PatternField {   foo: 123 }; //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
+    let PatternField {  foo } = s; //~ ERROR attribute cannot be used on
+    //~| WARN previously accepted
     let _ = foo;
 }

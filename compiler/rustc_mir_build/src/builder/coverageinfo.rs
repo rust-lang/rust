@@ -157,6 +157,21 @@ impl CoverageInfoBuilder {
         // if there's nothing interesting in it.
         Box::new(CoverageInfoHi { num_block_markers, branch_spans })
     }
+
+    pub(crate) fn as_done(&self) -> Box<CoverageInfoHi> {
+        let &Self { nots: _, markers: BlockMarkerGen { num_block_markers }, ref branch_info } =
+            self;
+
+        let branch_spans = branch_info
+            .as_ref()
+            .map(|branch_info| branch_info.branch_spans.as_slice())
+            .unwrap_or_default()
+            .to_owned();
+
+        // For simplicity, always return an info struct (without Option), even
+        // if there's nothing interesting in it.
+        Box::new(CoverageInfoHi { num_block_markers, branch_spans })
+    }
 }
 
 impl<'tcx> Builder<'_, 'tcx> {

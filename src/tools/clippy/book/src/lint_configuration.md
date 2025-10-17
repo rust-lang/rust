@@ -485,6 +485,16 @@ The maximum cognitive complexity a function can have
 * [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
 
 
+## `const-literal-digits-threshold`
+The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+
+**Default Value:** `30`
+
+---
+**Affected lints:**
+* [`excessive_precision`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision)
+
+
 ## `disallowed-macros`
 The list of disallowed macros, written as fully qualified paths.
 
@@ -555,7 +565,7 @@ default configuration of Clippy. By default, any configuration will replace the 
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
-**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
+**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "InfiniBand", "RoCE", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "PowerPC", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
 
 ---
 **Affected lints:**
@@ -835,6 +845,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`from_over_into`](https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into)
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
+* [`inefficient_to_string`](https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string)
 * [`io_other_error`](https://rust-lang.github.io/rust-clippy/master/index.html#io_other_error)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
 * [`legacy_numeric_constants`](https://rust-lang.github.io/rust-clippy/master/index.html#legacy_numeric_constants)
@@ -873,7 +884,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`needless_borrow`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
 * [`non_std_lazy_statics`](https://rust-lang.github.io/rust-clippy/master/index.html#non_std_lazy_statics)
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
-* [`option_map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or)
+* [`or_fun_call`](https://rust-lang.github.io/rust-clippy/master/index.html#or_fun_call)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
 * [`question_mark`](https://rust-lang.github.io/rust-clippy/master/index.html#question_mark)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
@@ -881,14 +892,14 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity)
 * [`same_item_push`](https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
-* [`seek_rewind`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_rewind)
 * [`to_digit_is_some`](https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some)
 * [`transmute_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref)
 * [`tuple_array_conversions`](https://rust-lang.github.io/rust-clippy/master/index.html#tuple_array_conversions)
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds)
-* [`unchecked_duration_subtraction`](https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction)
+* [`unchecked_time_subtraction`](https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_time_subtraction)
 * [`uninlined_format_args`](https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args)
 * [`unnecessary_lazy_evaluations`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations)
+* [`unnecessary_unwrap`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_unwrap)
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/master/index.html#unnested_or_patterns)
 * [`unused_trait_names`](https://rust-lang.github.io/rust-clippy/master/index.html#unused_trait_names)
 * [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)

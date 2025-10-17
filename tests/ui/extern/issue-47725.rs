@@ -4,12 +4,14 @@
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 struct Foo;
 
 #[link_name = "foobar"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 extern "C" {
     fn foo() -> u32;
 }
@@ -19,6 +21,7 @@ extern "C" {
 //~| HELP must be of the form
 //~| WARN attribute cannot be used on
 //~| WARN previously accepted
+//~| HELP remove the attribute
 //~| HELP can be applied to
 //~| NOTE for more information, visit
 extern "C" {

@@ -21,6 +21,7 @@ This test uses `cfg` because it is not testing whether these ABIs work on the pl
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,
@@ -56,7 +57,7 @@ extern "riscv-interrupt-s" fn riscv_s_ret_never() -> ! {
 }
 
 #[cfg(any(x64,i686))]
-extern "x86-interrupt" fn x86_ret_never() -> ! {
+extern "x86-interrupt" fn x86_ret_never(_p: *const u8) -> ! {
     loop {}
 }
 
@@ -83,7 +84,7 @@ extern "riscv-interrupt-s" fn riscv_s_ret_unit() -> () {
 }
 
 #[cfg(any(x64,i686))]
-extern "x86-interrupt" fn x86_ret_unit() -> () {
+extern "x86-interrupt" fn x86_ret_unit(_x: *const u8) -> () {
     ()
 }
 

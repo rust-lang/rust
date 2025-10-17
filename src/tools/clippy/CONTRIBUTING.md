@@ -17,7 +17,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
-    - [IntelliJ Rust](#intellij-rust)
+    - [RustRover](#rustrover)
     - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
   - [Issue and PR triage](#issue-and-pr-triage)
@@ -92,22 +92,22 @@ an AST expression).
 
 ## Getting code-completion for rustc internals to work
 
-### IntelliJ Rust
-Unfortunately, [`IntelliJ Rust`][IntelliJ_rust_homepage] does not (yet?) understand how Clippy uses compiler-internals
+### RustRover
+Unfortunately, [`RustRover`][RustRover_homepage] does not (yet?) understand how Clippy uses compiler-internals
 using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
 available via a `rustup` component at the time of writing.
 To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
 `git clone https://github.com/rust-lang/rust/`.
 Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
-which `IntelliJ Rust` will be able to understand.
+which `RustRover` will be able to understand.
 Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippy's `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
+Clippy's `Cargo.toml`s and should allow `RustRover` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
 [rustc_repo]: https://github.com/rust-lang/rust/
-[IntelliJ_rust_homepage]: https://intellij-rust.github.io/
+[RustRover_homepage]: https://www.jetbrains.com/rust/
 
 ### Rust Analyzer
 For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set

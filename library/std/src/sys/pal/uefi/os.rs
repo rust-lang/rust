@@ -2,7 +2,6 @@ use r_efi::efi::Status;
 use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
 use super::{RawOsError, helpers, unsupported_err};
-use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::uefi;
@@ -122,7 +121,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {}
+impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     let protocol = helpers::image_handle_protocol::<device_path::Protocol>(

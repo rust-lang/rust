@@ -3,8 +3,8 @@ name: rustc-pull
 on:
   workflow_dispatch:
   schedule:
-    # Run at 04:00 UTC every Monday and Thursday
-    - cron: '0 4 * * 1,4'
+    # Run at 04:00 UTC every Monday
+    - cron: '0 4 * * 1'
 
 jobs:
   pull:
@@ -14,7 +14,7 @@ jobs:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
       zulip-stream-id: 196385
       zulip-bot-email:  "rustc-dev-guide-gha-notif-bot@rust-lang.zulipchat.com"
-      pr-base-branch: master
+      pr-base-branch: main
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}

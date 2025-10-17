@@ -107,7 +107,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 // the assumed wf types of the trait's RPITIT GAT.
                 ty::ImplTraitInTraitData::Impl { .. } => {
                     let impl_def_id = tcx.local_parent(def_id);
-                    let rpitit_def_id = tcx.associated_item(def_id).trait_item_def_id.unwrap();
+                    let rpitit_def_id = tcx.trait_item_of(def_id).unwrap();
                     let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                         tcx,
                         impl_def_id.to_def_id(),

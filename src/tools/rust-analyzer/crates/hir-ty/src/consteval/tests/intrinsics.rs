@@ -354,8 +354,9 @@ fn overflowing_add() {
 fn needs_drop() {
     check_number(
         r#"
-        //- minicore: drop, manually_drop, copy, sized
+        //- minicore: drop, manually_drop, copy, sized, phantom_data
         use core::mem::ManuallyDrop;
+        use core::marker::PhantomData;
         extern "rust-intrinsic" {
             pub fn needs_drop<T: ?Sized>() -> bool;
         }
@@ -380,17 +381,19 @@ fn needs_drop() {
         const fn opaque_copy() -> impl Sized + Copy {
             || {}
         }
+        struct RecursiveType(RecursiveType);
         trait Everything {}
         impl<T> Everything for T {}
         const GOAL: bool = !needs_drop::<i32>() && !needs_drop::<X>()
             && needs_drop::<NeedsDrop>() && !needs_drop::<ManuallyDrop<NeedsDrop>>()
             && needs_drop::<[NeedsDrop; 1]>() && !needs_drop::<[NeedsDrop; 0]>()
-            && needs_drop::<(X, NeedsDrop)>()
+            && needs_drop::<(X, NeedsDrop)>() && !needs_drop::<PhantomData<NeedsDrop>>()
             && needs_drop::<Enum<NeedsDrop>>() && !needs_drop::<Enum<X>>()
             && closure_needs_drop()
             && !val_needs_drop(opaque()) && !val_needs_drop(opaque_copy())
             && needs_drop::<[NeedsDrop]>() && needs_drop::<dyn Everything>()
-            && !needs_drop::<&dyn Everything>() && !needs_drop::<str>();
+            && !needs_drop::<&dyn Everything>() && !needs_drop::<str>()
+            && !needs_drop::<RecursiveType>();
         "#,
         1,
     );

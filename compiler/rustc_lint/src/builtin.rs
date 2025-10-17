@@ -29,12 +29,12 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{Body, FnDecl, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+use rustc_middle::ty::{self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
 use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
@@ -61,7 +61,6 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
-use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
     fluent_generated as fluent,
@@ -311,15 +310,17 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(attr) = AttributeParser::parse_limited(
-                    cx.builder.sess(),
-                    &it.attrs,
-                    sym::allow_internal_unsafe,
-                    it.span,
-                    DUMMY_NODE_ID,
-                    Some(cx.builder.features()),
-                ) {
-                    self.report_unsafe(cx, attr.span(), BuiltinUnsafe::AllowInternalUnsafe);
+                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
+                    AttributeParser::parse_limited(
+                        cx.builder.sess(),
+                        &it.attrs,
+                        sym::allow_internal_unsafe,
+                        it.span,
+                        DUMMY_NODE_ID,
+                        Some(cx.builder.features()),
+                    )
+                {
+                    self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 
@@ -392,7 +393,7 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment() {
+    if attr.is_doc_comment().is_some() {
         return true;
     }
 
@@ -469,14 +470,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        let context = method_context(cx, impl_item.owner_id.def_id);
+        let container = cx.tcx.associated_item(impl_item.owner_id.def_id).container;
 
-        match context {
+        match container {
             // If the method is an impl for a trait, don't doc.
-            MethodLateContext::TraitImpl => return,
-            MethodLateContext::TraitAutoImpl => {}
+            AssocContainer::TraitImpl(_) => return,
+            AssocContainer::Trait => {}
             // If the method is an impl for an item with docs_hidden, don't doc.
-            MethodLateContext::PlainImpl => {
+            AssocContainer::InherentImpl => {
                 let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {
@@ -1321,9 +1322,8 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        // Only lint inherent impl items.
-        if cx.tcx.associated_item(impl_item.owner_id).trait_item_def_id.is_none() {
-            self.perform_lint(cx, "item", impl_item.owner_id.def_id, impl_item.vis_span, false);
+        if let ImplItemImplKind::Inherent { vis_span } = impl_item.impl_kind {
+            self.perform_lint(cx, "item", impl_item.owner_id.def_id, vis_span, false);
         }
     }
 }
@@ -2333,13 +2333,9 @@ declare_lint_pass!(
 impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         let features = cx.builder.features();
-        let lang_features =
-            features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
-        let lib_features =
-            features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
 
-        lang_features
-            .chain(lib_features)
+        features
+            .enabled_features_iter_stable_order()
             .filter(|(name, _)| features.incomplete(*name) || features.internal(*name))
             .for_each(|(name, span)| {
                 if features.incomplete(name) {
@@ -3097,7 +3093,7 @@ impl EarlyLintPass for SpecialModuleName {
             if let ast::ItemKind::Mod(
                 _,
                 ident,
-                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _, _),
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No { .. }, _),
             ) = item.kind
             {
                 if item.attrs.iter().any(|a| a.has_name(sym::path)) {

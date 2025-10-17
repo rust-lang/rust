@@ -9,6 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
@@ -183,6 +184,10 @@ pub(crate) struct GlobalState {
     /// this queue should run only *after* [`GlobalState::process_changes`] has
     /// been called.
     pub(crate) deferred_task_queue: TaskQueue,
+    /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
+    /// This is marked true if we failed to load a crate root file at crate graph creation,
+    /// which will usually end up causing a bunch of incorrect diagnostics on startup.
+    pub(crate) incomplete_crate_graph: bool,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -298,6 +303,7 @@ impl GlobalState {
             discover_workspace_queue: OpQueue::default(),
 
             deferred_task_queue: task_queue,
+            incomplete_crate_graph: false,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -779,6 +785,7 @@ impl GlobalStateSnapshot {
                         cargo_toml: package_data.manifest.clone(),
                         crate_id,
                         package: cargo.package_flag(package_data),
+                        package_id: package_data.id.clone(),
                         target: target_data.name.clone(),
                         target_kind: target_data.kind,
                         required_features: target_data.required_features.clone(),
@@ -804,6 +811,27 @@ impl GlobalStateSnapshot {
             };
         }
 
+        None
+    }
+
+    pub(crate) fn all_workspace_dependencies_for_package(
+        &self,
+        package: &Arc<PackageId>,
+    ) -> Option<FxHashSet<Arc<PackageId>>> {
+        for workspace in self.workspaces.iter() {
+            match &workspace.kind {
+                ProjectWorkspaceKind::Cargo { cargo, .. }
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                    let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+
+                    return cargo[package]
+                        .all_member_deps
+                        .as_ref()
+                        .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
+                }
+                _ => {}
+            }
+        }
         None
     }
 

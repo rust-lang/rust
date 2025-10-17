@@ -6,6 +6,7 @@
     all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))),
     target_family = "windows",
     target_os = "hermit",
+    target_os = "motor",
     target_os = "uefi",
     target_os = "wasi",
     target_os = "xous",
@@ -28,13 +29,21 @@ cfg_select! {
         mod sgx;
         pub use sgx::*;
     }
+    target_os = "motor" => {
+        mod motor;
+        pub use motor::*;
+    }
     target_os = "uefi" => {
         mod uefi;
         pub use uefi::*;
     }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use wasi::*;
+    all(target_os = "wasi", target_env = "p1") => {
+        mod wasip1;
+        pub use wasip1::*;
+    }
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+        mod wasip2;
+        pub use wasip2::*;
     }
     target_os = "xous" => {
         mod xous;

@@ -4,9 +4,13 @@ error: unnecessary use of `..` pattern in struct binding. All fields were alread
 LL |         A { a: 5, b: 42, c: "", .. } => {}, // Lint
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider removing `..` from this binding
    = note: `-D clippy::rest-pat-in-fully-bound-structs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::rest_pat_in_fully_bound_structs)]`
+help: consider removing `..` from this binding
+   |
+LL -         A { a: 5, b: 42, c: "", .. } => {}, // Lint
+LL +         A { a: 5, b: 42, c: "",  } => {}, // Lint
+   |
 
 error: unnecessary use of `..` pattern in struct binding. All fields were already bound
   --> tests/ui/rest_pat_in_fully_bound_structs.rs:25:9
@@ -14,7 +18,11 @@ error: unnecessary use of `..` pattern in struct binding. All fields were alread
 LL |         A { a: 0, b: 0, c: "", .. } => {}, // Lint
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider removing `..` from this binding
+help: consider removing `..` from this binding
+   |
+LL -         A { a: 0, b: 0, c: "", .. } => {}, // Lint
+LL +         A { a: 0, b: 0, c: "",  } => {}, // Lint
+   |
 
 error: unnecessary use of `..` pattern in struct binding. All fields were already bound
   --> tests/ui/rest_pat_in_fully_bound_structs.rs:32:9
@@ -22,7 +30,11 @@ error: unnecessary use of `..` pattern in struct binding. All fields were alread
 LL |         A { a: 0, b: 0, c: "", .. } => {}, // Lint
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider removing `..` from this binding
+help: consider removing `..` from this binding
+   |
+LL -         A { a: 0, b: 0, c: "", .. } => {}, // Lint
+LL +         A { a: 0, b: 0, c: "",  } => {}, // Lint
+   |
 
 error: aborting due to 3 previous errors
 

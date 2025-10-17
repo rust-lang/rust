@@ -13,7 +13,7 @@ pub struct Context {
     const_span: Option<Span>,
 }
 impl Context {
-    fn skip_expr(&mut self, e: &hir::Expr<'_>) -> bool {
+    fn skip_expr(&self, e: &hir::Expr<'_>) -> bool {
         self.expr_id.is_some() || self.const_span.is_some_and(|span| span.contains(e.span))
     }
 
@@ -55,7 +55,7 @@ impl Context {
             return;
         }
         let ty = cx.typeck_results().expr_ty(arg);
-        if ConstEvalCtxt::new(cx).eval_simple(expr).is_none() && ty.is_floating_point() {
+        if ConstEvalCtxt::new(cx).eval_local(expr, expr.span.ctxt()).is_none() && ty.is_floating_point() {
             span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
             self.expr_id = Some(expr.hir_id);
         }

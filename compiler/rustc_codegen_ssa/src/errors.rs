@@ -38,10 +38,6 @@ pub(crate) struct CguNotRecorded<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_autodiff_without_lto)]
-pub struct AutodiffWithoutLto;
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
 pub(crate) struct UnknownReuseKind {
     #[primary_span]
@@ -1121,14 +1117,6 @@ impl IntoDiagArg for ExpectedPointerMutability {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_no_sanitize)]
-#[note]
-pub(crate) struct InvalidNoSanitize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_target_feature_safe_trait)]
 pub(crate) struct TargetFeatureSafeTrait {
     #[primary_span]
@@ -1294,14 +1282,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag.arg("features", self.features.join(", "));
         diag
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_no_mangle_nameless)]
-pub(crate) struct NoMangleNameless {
-    #[primary_span]
-    pub span: Span,
-    pub definition: String,
 }
 
 #[derive(Diagnostic)]

@@ -77,6 +77,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod contract;
 mod delegation;
 mod errors;
 mod expr;
@@ -2028,7 +2029,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default },
                 )
             }
         }
@@ -2101,17 +2102,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 {
                     return;
                 }
-                if self.tcx.features().more_maybe_bounds() {
-                    return;
-                }
             }
             RelaxedBoundPolicy::Forbidden(reason) => {
-                if self.tcx.features().more_maybe_bounds() {
-                    return;
-                }
-
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
+                        if self.tcx.features().more_maybe_bounds() {
+                            return;
+                        }
+
                         self.dcx().span_err(
                             span,
                             "relaxed bounds are not permitted in trait object types",
@@ -2119,6 +2117,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
+                        if self.tcx.features().more_maybe_bounds() {
+                            return;
+                        }
+
                         let mut diag = self.dcx().struct_span_err(
                             span,
                             "relaxed bounds are not permitted in supertrait bounds",
@@ -2508,7 +2510,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span));
-        self.pat(span, hir::PatKind::Struct(qpath, fields, false))
+        self.pat(span, hir::PatKind::Struct(qpath, fields, None))
     }
 
     fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, HirId) {

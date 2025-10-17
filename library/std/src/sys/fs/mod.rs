@@ -27,6 +27,10 @@ cfg_select! {
         mod hermit;
         use hermit as imp;
     }
+    target_os = "motor" => {
+        mod motor;
+        use motor as imp;
+    }
     target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
@@ -34,6 +38,10 @@ cfg_select! {
     target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
+    }
+    target_os = "vexos" => {
+        mod vexos;
+        use vexos as imp;
     }
     target_os = "wasi" => {
         mod wasi;
@@ -112,6 +120,30 @@ pub fn symlink_metadata(path: &Path) -> io::Result<FileAttr> {
 
 pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
     with_native_path(path, &|path| imp::set_perm(path, perm.clone()))
+}
+
+#[cfg(unix)]
+pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
+    use crate::fs::OpenOptions;
+
+    let mut options = OpenOptions::new();
+
+    // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+    // Their filesystems do not have symbolic links, so no special handling is required.
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    {
+        use crate::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+
+    options.open(path)?.set_permissions(perm)
+}
+
+#[cfg(not(unix))]
+pub fn set_permissions_nofollow(_path: &Path, _perm: crate::fs::Permissions) -> io::Result<()> {
+    crate::unimplemented!(
+        "`set_permissions_nofollow` is currently only implemented on Unix platforms"
+    )
 }
 
 pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {

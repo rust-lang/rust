@@ -20,7 +20,7 @@ tests/ui/drop/dynamic-drop.rs
 tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
-tests/ui/issues/issue-14875.rs
+tests/ui/drop/panic-during-drop-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/lto/thin-lto-inlines2.rs
@@ -86,3 +86,5 @@ tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/attributes/fn-align-dyn.rs
 tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/explicit-tail-calls/recursion-etc.rs
+tests/ui/explicit-tail-calls/indexer.rs
+tests/ui/explicit-tail-calls/drop-order.rs

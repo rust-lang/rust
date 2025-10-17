@@ -51,8 +51,7 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
         - target: aarch64-pc-windows-msvc
-          os: windows-2025
-          build_only: 1
+          os: windows-11-arm
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-24.04
         - target: arm-unknown-linux-gnueabihf

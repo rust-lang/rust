@@ -26,7 +26,7 @@ use crate::parser::{
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
-pub(super) enum PathStyle {
+pub enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
     /// as a comparison and `segment ( ....` can be interpreted as a function call.
@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
         true
     }
 
-    pub(super) fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
+    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
         self.parse_path_inner(style, None)
     }
 
@@ -753,18 +753,13 @@ impl<'a> Parser<'a> {
                     }
                     let kind = if self.eat(exp!(Colon)) {
                         AssocItemConstraintKind::Bound { bounds: self.parse_generic_bounds()? }
-                    } else if self.eat(exp!(Eq)) {
-                        self.parse_assoc_equality_term(
-                            ident,
-                            gen_args.as_ref(),
-                            self.prev_token.span,
-                        )?
+                    } else if self.check(exp!(Eq)) {
+                        self.parse_assoc_equality_term(ident, gen_args.as_ref())?
                     } else {
                         unreachable!();
                     };
 
                     let span = lo.to(self.prev_token.span);
-
                     let constraint =
                         AssocItemConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
@@ -792,8 +787,10 @@ impl<'a> Parser<'a> {
         &mut self,
         ident: Ident,
         gen_args: Option<&GenericArgs>,
-        eq: Span,
     ) -> PResult<'a, AssocItemConstraintKind> {
+        let prev_token_span = self.prev_token.span;
+        let eq_span = self.token.span;
+        self.expect(exp!(Eq))?;
         let arg = self.parse_generic_arg(None)?;
         let span = ident.span.to(self.prev_token.span);
         let term = match arg {
@@ -814,20 +811,20 @@ impl<'a> Parser<'a> {
                 self.mk_ty(lt.ident.span, ast::TyKind::Err(guar)).into()
             }
             None => {
-                let after_eq = eq.shrink_to_hi();
+                let after_eq = eq_span.shrink_to_hi();
                 let before_next = self.token.span.shrink_to_lo();
                 let mut err = self
                     .dcx()
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
                 if matches!(self.token.kind, token::Comma | token::Gt) {
                     err.span_suggestion(
-                        self.psess.source_map().next_point(eq).to(before_next),
+                        self.psess.source_map().next_point(eq_span).to(before_next),
                         "to constrain the associated type, add a type after `=`",
                         " TheType",
                         Applicability::HasPlaceholders,
                     );
                     err.span_suggestion(
-                        eq.to(before_next),
+                        prev_token_span.shrink_to_hi().to(before_next),
                         format!("remove the `=` if `{ident}` is a type"),
                         "",
                         Applicability::MaybeIncorrect,

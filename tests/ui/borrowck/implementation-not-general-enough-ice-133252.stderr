@@ -23,7 +23,7 @@ LL |         force_send(async_load(&not_static));
 LL |     }
    |     - `not_static` dropped here while still borrowed
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: requirement that the value outlives `'1` introduced here
   --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18
    |
 LL | fn force_send<T: Send>(_: T) {}

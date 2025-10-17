@@ -1,3 +1,4 @@
+//@ compile-flags: -Zmir-opt-level=0
 //@ edition: 2024
 // skip-filecheck
 

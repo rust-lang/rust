@@ -741,7 +741,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     let mut ambiguous = false;
     let _ = selcx.for_each_item_bound(
         obligation.predicate.self_ty(),
-        |selcx, clause, _| {
+        |selcx, clause, _, _| {
             let Some(clause) = clause.as_projection_clause() else {
                 return ControlFlow::Continue(());
             };
@@ -1057,6 +1057,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     Some(LangItem::PointeeTrait) => {
                         let tail = selcx.tcx().struct_tail_raw(
                             self_ty,
+                            &obligation.cause,
                             |ty| {
                                 // We throw away any obligations we get from this, since we normalize
                                 // and confirm these obligations once again during confirmation

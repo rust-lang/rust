@@ -16,7 +16,7 @@ cfg_select! {
 }
 
 use super::{SocketAddr, sockaddr_un};
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+#[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(
     target_os = "android",
@@ -105,7 +105,7 @@ impl UnixStream {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         unsafe {
-            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
             cvt(libc::connect(inner.as_raw_fd(), (&raw const addr) as *const _, len))?;
@@ -139,7 +139,7 @@ impl UnixStream {
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
         unsafe {
-            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::connect(
                 inner.as_raw_fd(),
                 (&raw const socket_addr.addr) as *const _,
@@ -508,8 +508,14 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
-    #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;
@@ -539,7 +545,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "android", target_os = "linux"))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn recv_vectored_with_ancillary(
         &self,
@@ -557,8 +563,14 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
-    #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSlice;
@@ -582,7 +594,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "android", target_os = "linux"))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,

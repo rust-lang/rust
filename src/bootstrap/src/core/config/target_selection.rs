@@ -14,7 +14,7 @@ pub struct TargetSelection {
 }
 
 /// Newtype over `Vec<TargetSelection>` so we can implement custom parsing logic
-#[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Debug)]
 pub struct TargetSelectionList(pub Vec<TargetSelection>);
 
 pub fn target_selection_list(s: &str) -> Result<TargetSelectionList, String> {

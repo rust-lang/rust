@@ -1,4 +1,5 @@
 //! Test that we properly error when there is a pointer fragment in the final value.
+//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 use std::{mem::{self, MaybeUninit}, ptr};
 

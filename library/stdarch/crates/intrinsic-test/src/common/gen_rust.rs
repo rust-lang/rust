@@ -1,8 +1,10 @@
 use itertools::Itertools;
 use std::process::Command;
 
+use crate::common::intrinsic::Intrinsic;
+
 use super::indentation::Indentation;
-use super::intrinsic::{IntrinsicDefinition, format_f16_return_value};
+use super::intrinsic::format_f16_return_value;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
@@ -96,11 +98,10 @@ pub fn write_main_rs<'a>(
 
 pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
-    architecture: &str,
     notice: &str,
     cfg: &str,
     definitions: &str,
-    intrinsics: &[impl IntrinsicDefinition<T>],
+    intrinsics: &[Intrinsic<T>],
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
 
@@ -114,8 +115,6 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     writeln!(w, "#![allow(non_snake_case)]")?;
 
     writeln!(w, "{cfg}")?;
-
-    writeln!(w, "use core_arch::arch::{architecture}::*;")?;
 
     writeln!(w, "{definitions}")?;
 
@@ -189,16 +188,16 @@ pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Opti
 
 pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
+    intrinsic: &Intrinsic<T>,
     indentation: Indentation,
     specializations: &[Vec<u8>],
     passes: u32,
 ) -> std::io::Result<()> {
-    let intrinsic_name = intrinsic.name();
+    let intrinsic_name = &intrinsic.name;
 
     // Each function (and each specialization) has its own type. Erase that type with a cast.
     let mut coerce = String::from("unsafe fn(");
-    for _ in intrinsic.arguments().iter().filter(|a| !a.has_constraint()) {
+    for _ in intrinsic.arguments.iter().filter(|a| !a.has_constraint()) {
         coerce += "_, ";
     }
     coerce += ") -> _";
@@ -248,13 +247,13 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
                     }}\n\
                 }}\n\
             }}",
-        loaded_args = intrinsic.arguments().load_values_rust(indentation3),
-        args = intrinsic.arguments().as_call_param_rust(),
+        loaded_args = intrinsic.arguments.load_values_rust(indentation3),
+        args = intrinsic.arguments.as_call_param_rust(),
     )
 }
 
 /// Generate the specializations (unique sequences of const-generic arguments) for this intrinsic.
-fn generate_rust_specializations<'a>(
+fn generate_rust_specializations(
     constraints: &mut impl Iterator<Item = impl Iterator<Item = i64>>,
 ) -> Vec<Vec<u8>> {
     let mut specializations = vec![vec![]];
@@ -277,15 +276,15 @@ fn generate_rust_specializations<'a>(
 // Top-level function to create complete test program
 pub fn create_rust_test_module<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
+    intrinsic: &Intrinsic<T>,
 ) -> std::io::Result<()> {
-    trace!("generating `{}`", intrinsic.name());
+    trace!("generating `{}`", intrinsic.name);
     let indentation = Indentation::default();
 
-    writeln!(w, "pub fn run_{}() {{", intrinsic.name())?;
+    writeln!(w, "pub fn run_{}() {{", intrinsic.name)?;
 
     // Define the arrays of arguments.
-    let arguments = intrinsic.arguments();
+    let arguments = &intrinsic.arguments;
     arguments.gen_arglists_rust(w, indentation.nested(), PASSES)?;
 
     // Define any const generics as `const` items, then generate the actual test loop.

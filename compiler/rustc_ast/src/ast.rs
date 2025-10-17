@@ -114,8 +114,7 @@ impl PartialEq<Symbol> for Path {
 impl PartialEq<&[Symbol]> for Path {
     #[inline]
     fn eq(&self, names: &&[Symbol]) -> bool {
-        self.segments.len() == names.len()
-            && self.segments.iter().zip(names.iter()).all(|(s1, s2)| s1 == s2)
+        self.segments.iter().eq(*names)
     }
 }
 
@@ -870,11 +869,11 @@ pub enum PatKind {
     Struct(Option<Box<QSelf>>, Path, ThinVec<PatField>, PatFieldsRest),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<Box<QSelf>>, Path, ThinVec<Box<Pat>>),
+    TupleStruct(Option<Box<QSelf>>, Path, ThinVec<Pat>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(ThinVec<Box<Pat>>),
+    Or(ThinVec<Pat>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -883,7 +882,7 @@ pub enum PatKind {
     Path(Option<Box<QSelf>>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    Tuple(ThinVec<Box<Pat>>),
+    Tuple(ThinVec<Pat>),
 
     /// A `box` pattern.
     Box(Box<Pat>),
@@ -901,7 +900,7 @@ pub enum PatKind {
     Range(Option<Box<Expr>>, Option<Box<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
-    Slice(ThinVec<Box<Pat>>),
+    Slice(ThinVec<Pat>),
 
     /// A rest pattern `..`.
     ///
@@ -937,7 +936,7 @@ pub enum PatKind {
 #[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Walkable)]
 pub enum PatFieldsRest {
     /// `module::StructName { field, ..}`
-    Rest,
+    Rest(Span),
     /// `module::StructName { field, syntax error }`
     Recovered(ErrorGuaranteed),
     /// `module::StructName { field }`
@@ -2284,6 +2283,54 @@ pub struct FnSig {
     pub span: Span,
 }
 
+impl FnSig {
+    /// Return a span encompassing the header, or where to insert it if empty.
+    pub fn header_span(&self) -> Span {
+        match self.header.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => {
+                return self.span.with_hi(span.hi());
+            }
+            Extern::None => {}
+        }
+
+        match self.header.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => return self.span.with_hi(span.hi()),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.header.coroutine_kind {
+            return self.span.with_hi(coroutine_kind.span().hi());
+        }
+
+        if let Const::Yes(span) = self.header.constness {
+            return self.span.with_hi(span.hi());
+        }
+
+        self.span.shrink_to_lo()
+    }
+
+    /// The span of the header's safety, or where to insert it if empty.
+    pub fn safety_span(&self) -> Span {
+        match self.header.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => span,
+            Safety::Default => {
+                // Insert after the `coroutine_kind` if available.
+                if let Some(extern_span) = self.header.ext.span() {
+                    return extern_span.shrink_to_lo();
+                }
+
+                // Insert right at the front of the signature.
+                self.header_span().shrink_to_hi()
+            }
+        }
+    }
+
+    /// The span of the header's extern, or where to insert it if empty.
+    pub fn extern_span(&self) -> Span {
+        self.header.ext.span().unwrap_or(self.safety_span().shrink_to_hi())
+    }
+}
+
 /// A constraint on an associated item.
 ///
 /// ### Examples
@@ -2532,7 +2579,7 @@ pub enum TyPatKind {
     /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<Box<AnonConst>>, Option<Box<AnonConst>>, Spanned<RangeEnd>),
 
-    Or(ThinVec<Box<TyPat>>),
+    Or(ThinVec<TyPat>),
 
     /// Placeholder for a pattern that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
@@ -3137,7 +3184,7 @@ impl FnRetTy {
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
 pub enum Inline {
     Yes,
-    No,
+    No { had_parse_error: Result<(), ErrorGuaranteed> },
 }
 
 /// Module item kind.
@@ -3147,7 +3194,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(ThinVec<Box<Item>>, Inline, ModSpans, Result<(), ErrorGuaranteed>),
+    Loaded(ThinVec<Box<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }
@@ -3526,6 +3573,13 @@ impl Extern {
             None => Extern::Implicit(span),
         }
     }
+
+    pub fn span(self) -> Option<Span> {
+        match self {
+            Extern::None => None,
+            Extern::Implicit(span) | Extern::Explicit(_, span) => Some(span),
+        }
+    }
 }
 
 /// A function header.
@@ -3534,12 +3588,12 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub struct FnHeader {
-    /// Whether this is `unsafe`, or has a default safety.
-    pub safety: Safety,
-    /// Whether this is `async`, `gen`, or nothing.
-    pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
     pub constness: Const,
+    /// Whether this is `async`, `gen`, or nothing.
+    pub coroutine_kind: Option<CoroutineKind>,
+    /// Whether this is `unsafe`, or has a default safety.
+    pub safety: Safety,
     /// The `extern` keyword and corresponding ABI string, if any.
     pub ext: Extern,
 }
@@ -3552,38 +3606,6 @@ impl FnHeader {
             || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
-    }
-
-    /// Return a span encompassing the header, or none if all options are default.
-    pub fn span(&self) -> Option<Span> {
-        fn append(a: &mut Option<Span>, b: Span) {
-            *a = match a {
-                None => Some(b),
-                Some(x) => Some(x.to(b)),
-            }
-        }
-
-        let mut full_span = None;
-
-        match self.safety {
-            Safety::Unsafe(span) | Safety::Safe(span) => append(&mut full_span, span),
-            Safety::Default => {}
-        };
-
-        if let Some(coroutine_kind) = self.coroutine_kind {
-            append(&mut full_span, coroutine_kind.span());
-        }
-
-        if let Const::Yes(span) = self.constness {
-            append(&mut full_span, span);
-        }
-
-        match self.ext {
-            Extern::Implicit(span) | Extern::Explicit(_, span) => append(&mut full_span, span),
-            Extern::None => {}
-        }
-
-        full_span
     }
 }
 
@@ -4051,8 +4073,8 @@ mod size_asserts {
     static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 72);
-    static_assert_size!(PatKind, 48);
+    static_assert_size!(Pat, 80);
+    static_assert_size!(PatKind, 56);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);

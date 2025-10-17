@@ -46,7 +46,8 @@ fn check_rewrite(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect
     let (analysis, position) = fixture::position(ra_fixture);
     let sema = &Semantics::new(&analysis.db);
     let (cursor_def, docs, range) = def_under_cursor(sema, &position);
-    let res = rewrite_links(sema.db, docs.as_str(), cursor_def, Some(range));
+    let res =
+        hir::attach_db(sema.db, || rewrite_links(sema.db, docs.as_str(), cursor_def, Some(range)));
     expect.assert_eq(&res)
 }
 
@@ -63,9 +64,11 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         .flat_map(|(text_range, link, ns)| {
             let attr = range.map(text_range);
             let is_inner_attr = attr.map(|(_file, attr)| attr.is_inner_attr()).unwrap_or(false);
-            let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
-                .unwrap_or_else(|| panic!("Failed to resolve {link}"));
-            def.try_to_nav(sema.db).unwrap().into_iter().zip(iter::repeat(link))
+            let def = hir::attach_db(sema.db, || {
+                resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
+                    .unwrap_or_else(|| panic!("Failed to resolve {link}"))
+            });
+            def.try_to_nav(sema).unwrap().into_iter().zip(iter::repeat(link))
         })
         .map(|(nav_target, link)| {
             let range =
@@ -412,6 +415,30 @@ fn foo() {
         None,
         None,
     )
+}
+
+#[test]
+fn external_docs_macro_export() {
+    check_external_docs(
+        r#"
+//- /lib.rs crate:foo
+pub mod inner {
+    #[macro_export]
+    macro_rules! my_macro {
+        () => {};
+    }
+}
+
+//- /main.rs crate:bar deps:foo
+fn main() {
+    foo::my_m$0acro!();
+}
+        "#,
+        Some("/home/user/project"),
+        Some(expect![[r#"https://docs.rs/foo/*/foo/macro.my_macro.html"#]]),
+        Some(expect![[r#"file:///home/user/project/doc/foo/macro.my_macro.html"#]]),
+        Some("/sysroot"),
+    );
 }
 
 #[test]

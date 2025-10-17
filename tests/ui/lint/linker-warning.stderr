@@ -1,4 +1,4 @@
-warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+warning: crate-level attribute should be an inner attribute
   --> $DIR/linker-warning.rs:7:1
    |
 LL | #[allow(linker_messages)]
@@ -9,6 +9,10 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
+help: add a `!`
+   |
+LL | #![allow(linker_messages)]
+   |  +
 
 warning: unused attribute
   --> $DIR/linker-warning.rs:4:1

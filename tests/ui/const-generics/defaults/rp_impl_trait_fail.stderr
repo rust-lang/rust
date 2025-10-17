@@ -2,11 +2,16 @@ error[E0277]: the trait bound `Uwu<10, 12>: Trait` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:6:14
    |
 LL | fn rawr() -> impl Trait {
-   |              ^^^^^^^^^^ the trait `Trait` is not implemented for `Uwu<10, 12>`
+   |              ^^^^^^^^^^ unsatisfied trait bound
 LL |
 LL |     Uwu::<10, 12>
    |     ------------- return type was inferred to be `Uwu<10, 12>` here
    |
+help: the trait `Trait` is not implemented for `Uwu<10, 12>`
+  --> $DIR/rp_impl_trait_fail.rs:1:1
+   |
+LL | struct Uwu<const N: u32 = 1, const M: u32 = N>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: the trait `Trait` is implemented for `Uwu<N>`
 
 error[E0277]: the trait bound `u32: Traitor<N>` is not satisfied

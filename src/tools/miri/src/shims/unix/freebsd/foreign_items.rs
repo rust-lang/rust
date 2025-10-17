@@ -159,7 +159,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
-
+            "readdir" | "readdir@FBSD_1.0" => {
+                let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.readdir64("dirent", dirp)?;
+                this.write_scalar(result, dest)?;
+            }
             // Miscellaneous
             "__error" => {
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;

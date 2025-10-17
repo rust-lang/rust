@@ -370,7 +370,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
-        find_attr!(self.hir_krate_attrs(), AttributeKind::CoherenceIsCore)
+        find_attr!(self.hir_krate_attrs(), AttributeKind::RustcCoherenceIsCore(..))
     }
 
     pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {

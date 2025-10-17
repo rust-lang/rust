@@ -9,7 +9,6 @@
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-pub mod thread;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;

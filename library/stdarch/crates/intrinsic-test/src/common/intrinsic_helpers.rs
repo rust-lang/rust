@@ -325,4 +325,9 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
 
     /// can be directly defined in `impl` blocks
     fn c_single_vector_type(&self) -> String;
+
+    /// Generates a std::cout for the intrinsics results that will match the
+    /// rust debug output format for the return type. The generated line assumes
+    /// there is an int i in scope which is the current pass number.
+    fn print_result_c(&self, indentation: Indentation, additional: &str) -> String;
 }

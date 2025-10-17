@@ -98,33 +98,37 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let (db, position, selections) = single_file(input);
-    let position =
-        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset };
-    let mut match_finder = MatchFinder::in_context(
-        &db,
-        position,
-        selections
-            .into_iter()
-            .map(|selection| ide_db::FileRange {
-                file_id: selection.file_id.file_id(&db),
-                range: selection.range,
-            })
-            .collect(),
-    )
-    .unwrap();
-    for rule in rules {
-        let rule: SsrRule = rule.parse().unwrap();
-        match_finder.add_rule(rule).unwrap();
-    }
-    let edits = match_finder.edits();
-    if edits.is_empty() {
-        panic!("No edits were made");
-    }
-    // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
-    // stuff.
-    let mut actual = db.file_text(position.file_id).text(&db).to_string();
-    edits[&position.file_id].apply(&mut actual);
-    expected.assert_eq(&actual);
+    hir::attach_db(&db, || {
+        let position = ide_db::FilePosition {
+            file_id: position.file_id.file_id(&db),
+            offset: position.offset,
+        };
+        let mut match_finder = MatchFinder::in_context(
+            &db,
+            position,
+            selections
+                .into_iter()
+                .map(|selection| ide_db::FileRange {
+                    file_id: selection.file_id.file_id(&db),
+                    range: selection.range,
+                })
+                .collect(),
+        )
+        .unwrap();
+        for rule in rules {
+            let rule: SsrRule = rule.parse().unwrap();
+            match_finder.add_rule(rule).unwrap();
+        }
+        let edits = match_finder.edits();
+        if edits.is_empty() {
+            panic!("No edits were made");
+        }
+        // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
+        // stuff.
+        let mut actual = db.file_text(position.file_id).text(&db).to_string();
+        edits[&position.file_id].apply(&mut actual);
+        expected.assert_eq(&actual);
+    })
 }
 
 #[allow(clippy::print_stdout)]
@@ -142,47 +146,57 @@ fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: EditionedFile
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, selections) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(
-        &db,
-        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset },
-        selections
-            .into_iter()
-            .map(|selection| ide_db::FileRange {
-                file_id: selection.file_id.file_id(&db),
-                range: selection.range,
-            })
-            .collect(),
-    )
-    .unwrap();
-    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
-    let matched_strings: Vec<String> =
-        match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
-    if matched_strings != expected && !expected.is_empty() {
-        print_match_debug_info(&match_finder, position.file_id, expected[0]);
-    }
-    assert_eq!(matched_strings, expected);
+    hir::attach_db(&db, || {
+        let mut match_finder = MatchFinder::in_context(
+            &db,
+            ide_db::FilePosition {
+                file_id: position.file_id.file_id(&db),
+                offset: position.offset,
+            },
+            selections
+                .into_iter()
+                .map(|selection| ide_db::FileRange {
+                    file_id: selection.file_id.file_id(&db),
+                    range: selection.range,
+                })
+                .collect(),
+        )
+        .unwrap();
+        match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
+        let matched_strings: Vec<String> =
+            match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
+        if matched_strings != expected && !expected.is_empty() {
+            print_match_debug_info(&match_finder, position.file_id, expected[0]);
+        }
+        assert_eq!(matched_strings, expected);
+    })
 }
 
 fn assert_no_match(pattern: &str, code: &str) {
     let (db, position, selections) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(
-        &db,
-        ide_db::FilePosition { file_id: position.file_id.file_id(&db), offset: position.offset },
-        selections
-            .into_iter()
-            .map(|selection| ide_db::FileRange {
-                file_id: selection.file_id.file_id(&db),
-                range: selection.range,
-            })
-            .collect(),
-    )
-    .unwrap();
-    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
-    let matches = match_finder.matches().flattened().matches;
-    if !matches.is_empty() {
-        print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
-        panic!("Got {} matches when we expected none: {matches:#?}", matches.len());
-    }
+    hir::attach_db(&db, || {
+        let mut match_finder = MatchFinder::in_context(
+            &db,
+            ide_db::FilePosition {
+                file_id: position.file_id.file_id(&db),
+                offset: position.offset,
+            },
+            selections
+                .into_iter()
+                .map(|selection| ide_db::FileRange {
+                    file_id: selection.file_id.file_id(&db),
+                    range: selection.range,
+                })
+                .collect(),
+        )
+        .unwrap();
+        match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
+        let matches = match_finder.matches().flattened().matches;
+        if !matches.is_empty() {
+            print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
+            panic!("Got {} matches when we expected none: {matches:#?}", matches.len());
+        }
+    });
 }
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {

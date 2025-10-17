@@ -26,7 +26,8 @@ mod visibility;
 
 use base_db::SourceDatabase;
 use expect_test::Expect;
-use hir::PrefixKind;
+use hir::db::HirDatabase;
+use hir::{PrefixKind, setup_tracing};
 use ide_db::{
     FilePosition, RootDatabase, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -120,6 +121,8 @@ fn completion_list_with_config_raw(
     include_keywords: bool,
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
+    let _tracing = setup_tracing();
+
     // filter out all but one built-in type completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
     items
@@ -241,7 +244,7 @@ pub(crate) fn check_edit_with_config(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        crate::completions(&db, &config, position, None).unwrap();
+        hir::attach_db(&db, || crate::completions(&db, &config, position, None).unwrap());
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)
@@ -304,8 +307,11 @@ pub(crate) fn get_all_items(
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    let res = crate::completions(&db, &config, position, trigger_character)
-        .map_or_else(Vec::default, Into::into);
+    let res = hir::attach_db(&db, || {
+        HirDatabase::zalsa_register_downcaster(&db);
+        crate::completions(&db, &config, position, trigger_character)
+    })
+    .map_or_else(Vec::default, Into::into);
     // validate
     res.iter().for_each(|it| {
         let sr = it.source_range;

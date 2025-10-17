@@ -1,10 +1,5 @@
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
+use super::prelude::*;
 
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AllowedTargets, Stage};
 pub(crate) struct AsPtrParser;
 impl<S: Stage> NoArgsAttributeParser<S> for AsPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_as_ptr];

@@ -4,6 +4,7 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
+use rustc_hir::limit::Limit;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -12,7 +13,6 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypingEnv, Variance};
 use rustc_middle::{mir, span_bug};
-use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -325,8 +325,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(
             M,
             "instantiate_from_frame_and_normalize_erasing_regions",
-            "{}",
-            frame.instance
+            %frame.instance
         );
         frame
             .instance
@@ -470,7 +469,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 interp_ok(Some((full_size, full_align)))
             }
-            ty::Dynamic(expected_trait, _, ty::Dyn) => {
+            ty::Dynamic(expected_trait, _) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
@@ -583,6 +582,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         span: Span,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let _trace = enter_trace_span!(M, const_eval::eval_mir_constant, ?val);
         let const_val = val.eval(*self.tcx, self.typing_env, span).map_err(|err| {
                 if M::ALL_CONSTS_ARE_PRECHECKED {
                     match err {

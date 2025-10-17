@@ -1,6 +1,7 @@
 //@ proc-macro: custom-quote.rs
 //@ proc-macro: span-from-proc-macro.rs
 //@ compile-flags: -Z macro-backtrace
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate span_from_proc_macro;

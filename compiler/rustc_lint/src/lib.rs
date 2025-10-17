@@ -133,10 +133,9 @@ pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
+pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{
-    BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec,
-};
+pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -195,8 +194,7 @@ late_lint_methods!(
             DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
-            ImproperCTypesDeclarations: ImproperCTypesDeclarations,
-            ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            ImproperCTypesLint: ImproperCTypesLint,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             PathStatements: PathStatements,
@@ -656,6 +654,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     store.register_lints(&SymbolInternStringLiteral::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
+    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
+    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
@@ -678,6 +678,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
             LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
+            LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
         ],
     );
 }

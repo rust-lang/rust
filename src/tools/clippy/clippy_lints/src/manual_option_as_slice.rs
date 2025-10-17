@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::{is_none_arm, msrvs, peel_hir_expr_refs, sym};
+use clippy_utils::{is_none_pattern, msrvs, peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
@@ -60,8 +60,8 @@ impl LateLintPass<'_> for ManualOptionAsSlice {
         }
         match expr.kind {
             ExprKind::Match(scrutinee, [arm1, arm2], _) => {
-                if is_none_arm(cx, arm2) && check_arms(cx, arm2, arm1)
-                    || is_none_arm(cx, arm1) && check_arms(cx, arm1, arm2)
+                if is_none_pattern(cx, arm2.pat) && check_arms(cx, arm2, arm1)
+                    || is_none_pattern(cx, arm1.pat) && check_arms(cx, arm1, arm2)
                 {
                     check_as_ref(cx, scrutinee, span, self.msrv);
                 }

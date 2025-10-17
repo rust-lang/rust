@@ -194,7 +194,7 @@ error: casting `u8` to `i8` may wrap around the value
   --> tests/ui/cast.rs:88:5
    |
 LL |     1u8 as i8;
-   |     ^^^^^^^^^
+   |     ^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u8.cast_signed()`
    |
    = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
@@ -203,25 +203,25 @@ error: casting `u16` to `i16` may wrap around the value
   --> tests/ui/cast.rs:91:5
    |
 LL |     1u16 as i16;
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u16.cast_signed()`
 
 error: casting `u32` to `i32` may wrap around the value
   --> tests/ui/cast.rs:94:5
    |
 LL |     1u32 as i32;
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u32.cast_signed()`
 
 error: casting `u64` to `i64` may wrap around the value
   --> tests/ui/cast.rs:97:5
    |
 LL |     1u64 as i64;
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u64.cast_signed()`
 
 error: casting `usize` to `isize` may wrap around the value
   --> tests/ui/cast.rs:100:5
    |
 LL |     1usize as isize;
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1usize.cast_signed()`
 
 error: casting `usize` to `i8` may truncate the value
   --> tests/ui/cast.rs:104:5
@@ -321,43 +321,43 @@ error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:138:5
    |
 LL |     -1i32 as u32;
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-1i32).cast_unsigned()`
 
 error: casting `isize` to `usize` may lose the sign of the value
   --> tests/ui/cast.rs:142:5
    |
 LL |     -1isize as usize;
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-1isize).cast_unsigned()`
 
 error: casting `i8` to `u8` may lose the sign of the value
   --> tests/ui/cast.rs:154:5
    |
 LL |     (i8::MIN).abs() as u8;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(i8::MIN).abs().cast_unsigned()`
 
 error: casting `i64` to `u64` may lose the sign of the value
   --> tests/ui/cast.rs:159:5
    |
 LL |     (-1i64).abs() as u64;
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-1i64).abs().cast_unsigned()`
 
 error: casting `isize` to `usize` may lose the sign of the value
   --> tests/ui/cast.rs:161:5
    |
 LL |     (-1isize).abs() as usize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-1isize).abs().cast_unsigned()`
 
 error: casting `i64` to `u64` may lose the sign of the value
   --> tests/ui/cast.rs:169:5
    |
 LL |     (unsafe { (-1i64).checked_abs().unwrap_unchecked() }) as u64;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(unsafe { (-1i64).checked_abs().unwrap_unchecked() }).cast_unsigned()`
 
 error: casting `i64` to `u64` may lose the sign of the value
   --> tests/ui/cast.rs:185:5
    |
 LL |     (unsafe { (-1i64).checked_isqrt().unwrap_unchecked() }) as u64;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(unsafe { (-1i64).checked_isqrt().unwrap_unchecked() }).cast_unsigned()`
 
 error: casting `i64` to `i8` may truncate the value
   --> tests/ui/cast.rs:237:5
@@ -495,79 +495,79 @@ error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:438:9
    |
 LL |         (x * x) as u32;
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(x * x).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:444:32
    |
 LL |     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(x * x * x * x).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:447:5
    |
 LL |     (2_i32).checked_pow(3).unwrap() as u32;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(2_i32).checked_pow(3).unwrap().cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:449:5
    |
 LL |     (-2_i32).pow(3) as u32;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-2_i32).pow(3).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:454:5
    |
 LL |     (-5_i32 % 2) as u32;
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-5_i32 % 2).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:457:5
    |
 LL |     (-5_i32 % -2) as u32;
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-5_i32 % -2).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:461:5
    |
 LL |     (-2_i32 >> 1) as u32;
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(-2_i32 >> 1).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:465:5
    |
 LL |     (x * x) as u32;
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(x * x).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:467:5
    |
 LL |     (x * x * x) as u32;
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(x * x * x).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:471:5
    |
 LL |     (y * y * y * y * -2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y * y * y * y * -2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:474:5
    |
 LL |     (y * y * y / y * 2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y * y * y / y * 2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:476:5
    |
 LL |     (y * y / y * 2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y * y / y * 2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:479:5
    |
 LL |     (y / y * y * -2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y / y * y * -2).cast_unsigned()`
 
 error: equal expressions as operands to `/`
   --> tests/ui/cast.rs:479:6
@@ -581,97 +581,97 @@ error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:483:5
    |
 LL |     (y + y + y + -2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y + y + y + -2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:486:5
    |
 LL |     (y + y + y + 2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(y + y + y + 2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:490:5
    |
 LL |     (z + -2) as u16;
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(z + -2).cast_unsigned()`
 
 error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:493:5
    |
 LL |     (z + z + 2) as u16;
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(z + z + 2).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:497:9
    |
 LL |         (a * a * b * b * c * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * a * b * b * c * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:499:9
    |
 LL |         (a * b * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * b * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:502:9
    |
 LL |         (a * -b * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * -b * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:505:9
    |
 LL |         (a * b * c * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * b * c * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:507:9
    |
 LL |         (a * -2) as u32;
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * -2).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:510:9
    |
 LL |         (a * b * c * -2) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a * b * c * -2).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:513:9
    |
 LL |         (a / b) as u32;
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a / b).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:515:9
    |
 LL |         (a / b * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a / b * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:518:9
    |
 LL |         (a / b + b * c) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a / b + b * c).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:521:9
    |
 LL |         a.saturating_pow(3) as u32;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `a.saturating_pow(3).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:524:9
    |
 LL |         (a.abs() * b.pow(2) / c.abs()) as u32
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `(a.abs() * b.pow(2) / c.abs()).cast_unsigned()`
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:532:21
    |
 LL |             let _ = i32::MIN as u32; // cast_sign_loss
-   |                     ^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `i32::MIN.cast_unsigned()`
 ...
 LL |     m!();
    |     ---- in this macro invocation
@@ -752,5 +752,17 @@ LL -     (255 % 999999u64) as u8;
 LL +     u8::try_from(255 % 999999u64);
    |
 
-error: aborting due to 92 previous errors
+error: casting `u8` to `i8` may wrap around the value
+  --> tests/ui/cast.rs:576:13
+   |
+LL |         _ = 1u8 as i8;
+   |             ^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u8.cast_signed()`
+
+error: casting `u8` to `i8` may wrap around the value
+  --> tests/ui/cast.rs:581:13
+   |
+LL |         _ = 1u8 as i8;
+   |             ^^^^^^^^^
+
+error: aborting due to 94 previous errors
 

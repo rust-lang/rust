@@ -38,10 +38,16 @@ LL |     assert!(r.is_err());
    |     ^^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap_err()`
 
 error: called `assert!` with `Result::is_err`
-  --> tests/ui/assertions_on_result_states.rs:88:5
+  --> tests/ui/assertions_on_result_states.rs:87:5
    |
 LL |     assert!(res.is_err())
    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with: `res.unwrap_err();`
 
-error: aborting due to 7 previous errors
+error: called `assert!` with `Result::is_ok`
+  --> tests/ui/assertions_on_result_states.rs:95:14
+   |
+LL |         1 => assert!(res.is_ok()),
+   |              ^^^^^^^^^^^^^^^^^^^^ help: replace with: `{ res.unwrap(); }`
+
+error: aborting due to 8 previous errors
 

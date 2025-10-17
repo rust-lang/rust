@@ -10,7 +10,7 @@ extern crate rustc_span;
 use rustc_ast::ast::{AttrKind, Attribute, DUMMY_NODE_ID, Expr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeId;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token;
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, LazyAttrTokenStream};
 use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
@@ -23,6 +23,7 @@ pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Box<Expr>> {
         psess,
         FileName::anon_source_code(source_code),
         source_code.to_owned(),
+        rustc_parse::lexer::StripTokens::Nothing,
     ));
 
     let mut parser = parser.recovery(Recovery::Forbidden);

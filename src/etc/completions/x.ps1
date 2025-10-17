@@ -351,6 +351,7 @@ Register-ArgumentCompleter -Native -CommandName 'x' -ScriptBlock {
             [CompletionResult]::new('--compare-mode', '--compare-mode', [CompletionResultType]::ParameterName, 'mode describing what file the actual ui output will be compared to')
             [CompletionResult]::new('--pass', '--pass', [CompletionResultType]::ParameterName, 'force {check,build,run}-pass tests to this mode')
             [CompletionResult]::new('--run', '--run', [CompletionResultType]::ParameterName, 'whether to execute run-* tests')
+            [CompletionResult]::new('--test-codegen-backend', '--test-codegen-backend', [CompletionResultType]::ParameterName, 'Use a different codegen backend when running tests')
             [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', '--build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `bootstrap.toml`')
             [CompletionResult]::new('--build', '--build', [CompletionResultType]::ParameterName, 'host target of the stage0 compiler')

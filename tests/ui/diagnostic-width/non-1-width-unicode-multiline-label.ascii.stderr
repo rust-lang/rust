@@ -1,5 +1,5 @@
 error[E0369]: cannot add `&str` to `&str`
-  --> $DIR/non-1-width-unicode-multiline-label.rs:7:237
+  --> $DIR/non-1-width-unicode-multiline-label.rs:8:237
    |
 LL | ...👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
    |                                                           -------------- ^ -------------- &str
@@ -14,7 +14,7 @@ LL |     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧�
    |                                                                                                                                                                                                                                                                                                                                                                                                                                                +++++++++++
 
 error[E0369]: cannot add `&str` to `&str`
-  --> $DIR/non-1-width-unicode-multiline-label.rs:9:384
+  --> $DIR/non-1-width-unicode-multiline-label.rs:10:384
    |
 LL | ...👧👦👨👩👧👦👨👩👧👦"; let _a = unicode_is_fun + " really fun!";
    |                                       -------------- ^ -------------- &str
@@ -29,7 +29,7 @@ LL |     let _ = "👨👩👧👦👨👩👧👦👨👩👧👦👨👩👧�
    |                                                                                                                                                                                                                                                                                                                                                                                                                                                +++++++++++
 
 error[E0369]: cannot add `&str` to `&str`
-  --> $DIR/non-1-width-unicode-multiline-label.rs:11:260
+  --> $DIR/non-1-width-unicode-multiline-label.rs:12:260
    |
 LL | ...࿇࿈࿉࿊࿋࿌࿍࿎࿏࿐࿑࿒࿓࿔࿕࿖࿗࿘࿙࿚"; let _a = unicode_is_fun + " really fun!";
    |                                   -------------- ^ -------------- &str
@@ -44,7 +44,7 @@ LL |     let _ = "ༀ༁༂༃༄༅༆༇༈༉༊་༌།༎༏༐༑༒༓�
    |                                                                                                                                                                                         +++++++++++
 
 error[E0369]: cannot add `&str` to `&str`
-  --> $DIR/non-1-width-unicode-multiline-label.rs:13:219
+  --> $DIR/non-1-width-unicode-multiline-label.rs:14:219
    |
 LL | ...xxxxxxxxxxxxxxxxxxxx"; let _a = unicode_is_fun + " really fun!";
    |                                    -------------- ^ -------------- &str

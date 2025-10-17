@@ -1,5 +1,6 @@
 //! Test that various operations involving pointer fragments work as expected.
 //@ run-pass
+//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 use std::mem::{self, MaybeUninit, transmute};
 use std::ptr;

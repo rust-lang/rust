@@ -60,3 +60,18 @@ pub(super) fn enum_ty_to_nbits(adt: AdtDef<'_>, tcx: TyCtxt<'_>) -> u64 {
         neg_bits.max(pos_bits).into()
     }
 }
+
+pub(super) enum CastTo {
+    Signed,
+    Unsigned,
+}
+/// Returns `Some` if the type cast is between 2 integral types that differ
+/// only in signedness, otherwise `None`. The value of `Some` is which
+/// signedness is casted to.
+pub(super) fn is_signedness_cast(cast_from: Ty<'_>, cast_to: Ty<'_>) -> Option<CastTo> {
+    match (cast_from.kind(), cast_to.kind()) {
+        (ty::Int(from), ty::Uint(to)) if from.to_unsigned() == *to => Some(CastTo::Unsigned),
+        (ty::Uint(from), ty::Int(to)) if *from == to.to_unsigned() => Some(CastTo::Signed),
+        _ => None,
+    }
+}

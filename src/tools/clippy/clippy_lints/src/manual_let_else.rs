@@ -49,7 +49,7 @@ declare_clippy_lint! {
 }
 
 impl<'tcx> QuestionMark {
-    pub(crate) fn check_manual_let_else(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) {
+    pub(crate) fn check_manual_let_else(&self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) {
         if let StmtKind::Let(local) = stmt.kind
             && let Some(init) = local.init
             && local.els.is_none()
@@ -287,7 +287,7 @@ fn replace_in_pattern(
                 }
                 return or_pat;
             },
-            PatKind::Struct(path, fields, has_dot_dot) => {
+            PatKind::Struct(path, fields, dot_dot) => {
                 let fields = fields
                     .iter()
                     .map(|fld| {
@@ -311,7 +311,7 @@ fn replace_in_pattern(
                     .collect::<Vec<_>>();
                 let fields_string = fields.join(", ");
 
-                let dot_dot_str = if has_dot_dot { " .." } else { "" };
+                let dot_dot_str = if dot_dot.is_some() { " .." } else { "" };
                 let (sn_pth, _) = snippet_with_context(cx, path.span(), span.ctxt(), "", app);
                 return format!("{sn_pth} {{ {fields_string}{dot_dot_str} }}");
             },

@@ -68,7 +68,7 @@ pub enum PredicateKind<I: Interner> {
     Clause(ClauseKind<I>),
 
     /// Trait must be dyn-compatible.
-    DynCompatible(I::DefId),
+    DynCompatible(I::TraitId),
 
     /// `T1 <: T2`
     ///

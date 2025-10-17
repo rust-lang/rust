@@ -2,6 +2,7 @@
 //@ compile-flags: --target=riscv32e-unknown-none-elf --crate-type=lib
 //@ needs-llvm-components: riscv
 //@ check-pass
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![no_core]
 #![allow(unexpected_cfgs)]

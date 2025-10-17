@@ -8,7 +8,7 @@ use rustc_errors::DiagArgValue;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
-use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
+use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::Visitor;
@@ -522,7 +522,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .iter()
                             .copied()
                             .filter(|feature| {
-                                !feature.implied
+                                feature.kind == TargetFeatureKind::Enabled
                                     && !self
                                         .body_target_features
                                         .iter()
@@ -554,6 +554,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     visit::walk_expr(self, &self.thir[arg]);
                     return;
                 }
+
+                // Secondly, we allow raw borrows of union field accesses. Peel
+                // any of those off, and recurse normally on the LHS, which should
+                // reject any unsafe operations within.
+                let mut peeled = arg;
+                while let ExprKind::Scope { value: arg, .. } = self.thir[peeled].kind
+                    && let ExprKind::Field { lhs, name: _, variant_index: _ } = self.thir[arg].kind
+                    && let ty::Adt(def, _) = &self.thir[lhs].ty.kind()
+                    && def.is_union()
+                {
+                    peeled = lhs;
+                }
+                visit::walk_expr(self, &self.thir[peeled]);
+                // And return so we don't recurse directly onto the union field access(es).
+                return;
             }
             ExprKind::Deref { arg } => {
                 if let ExprKind::StaticRef { def_id, .. } | ExprKind::ThreadLocalRef(def_id) =

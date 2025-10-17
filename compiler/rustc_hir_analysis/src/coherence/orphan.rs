@@ -230,10 +230,12 @@ pub(crate) fn orphan_check_impl(
             ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Infer(..) => {
+            | ty::CoroutineWitness(..) => {
+                return Err(tcx
+                    .dcx()
+                    .delayed_bug("cannot define inherent `impl` for closure types"));
+            }
+            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 let sp = tcx.def_span(impl_def_id);
                 span_bug!(sp, "weird self type for autotrait impl")
             }
@@ -313,7 +315,7 @@ fn orphan_check<'tcx>(
         let ocx = traits::ObligationCtxt::new(&infcx);
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
         let ty = infcx.resolve_vars_if_possible(ty);
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return Ok(user_ty);
         }
@@ -404,7 +406,7 @@ fn emit_orphan_check_error<'tcx>(
                     of_trait.trait_ref.path.span
                 };
 
-                ty = tcx.erase_regions(ty);
+                ty = tcx.erase_and_anonymize_regions(ty);
 
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);

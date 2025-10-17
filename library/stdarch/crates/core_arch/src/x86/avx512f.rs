@@ -5823,7 +5823,7 @@ pub fn _mm512_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m512d) -> _
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 16))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_roundscale_pd<const IMM8: i32>(a: __m256d) -> __m256d {
     unsafe {
@@ -5897,7 +5897,7 @@ pub fn _mm256_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m256d) -> _
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 16))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_roundscale_pd<const IMM8: i32>(a: __m128d) -> __m128d {
     unsafe {

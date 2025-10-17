@@ -141,7 +141,7 @@ impl RequestDispatcher<'_> {
                 Result: Serialize,
             > + 'static,
     {
-        if !self.global_state.vfs_done {
+        if !self.global_state.vfs_done || self.global_state.incomplete_crate_graph {
             if let Some(lsp_server::Request { id, .. }) =
                 self.req.take_if(|it| it.method == R::METHOD)
             {

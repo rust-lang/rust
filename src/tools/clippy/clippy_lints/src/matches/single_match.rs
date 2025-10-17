@@ -2,10 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{
     SpanRangeExt, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
 };
-use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
-};
+use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
+use clippy_utils::{is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::ops::ControlFlow;
 use rustc_arena::DroplessArena;
 use rustc_errors::{Applicability, Diag};
@@ -24,17 +22,16 @@ use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 /// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
 /// match arms.
 fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
-    if let Some(ff) = span.get_source_range(cx)
-        && let Some(text) = ff.as_str()
-    {
-        text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")
-    } else {
-        false
-    }
+    span.check_source_text(cx, |text| text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*"))
 }
 
-#[rustfmt::skip]
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>, contains_comments: bool) {
+pub(crate) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    ex: &'tcx Expr<'_>,
+    arms: &'tcx [Arm<'_>],
+    expr: &'tcx Expr<'_>,
+    contains_comments: bool,
+) {
     if let [arm1, arm2] = arms
         && !arms.iter().any(|arm| arm.guard.is_some() || arm.pat.span.from_expansion())
         && !expr.span.from_expansion()
@@ -133,7 +130,7 @@ fn report_single_pattern(
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
-        && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
+        && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
         && (ty.is_integral()
@@ -226,13 +223,13 @@ enum PatState<'a> {
     Wild,
     /// A std enum we know won't be extended. Tracks the states of each variant separately.
     ///
-    /// This is not used for `Option` since it uses the current pattern to track it's state.
+    /// This is not used for `Option` since it uses the current pattern to track its state.
     StdEnum(&'a mut [PatState<'a>]),
     /// Either the initial state for a pattern or a non-std enum. There is currently no need to
     /// distinguish these cases.
     ///
     /// For non-std enums there's no need to track the state of sub-patterns as the state of just
-    /// this pattern on it's own is enough for linting. Consider two cases:
+    /// this pattern on its own is enough for linting. Consider two cases:
     /// * This enum has no wild match. This case alone is enough to determine we can lint.
     /// * This enum has a wild match and therefore all sub-patterns also have a wild match.
     ///
@@ -380,7 +377,11 @@ impl<'a> PatState<'a> {
                 self.add_pat(cx, pat)
             },
             PatKind::Tuple([sub_pat], pos)
-                if pos.as_opt_usize().is_none() || cx.typeck.pat_ty(pat).tuple_fields().len() == 1 =>
+                // `pat` looks like `(sub_pat)`, without a `..` -- has only one sub-pattern
+                if pos.as_opt_usize().is_none()
+                    // `pat` looks like `(sub_pat, ..)` or `(.., sub_pat)`, but its type is a unary tuple,
+                    // so it still only has one sub-pattern
+                    || cx.typeck.pat_ty(pat).tuple_fields().len() == 1 =>
             {
                 self.add_pat(cx, sub_pat)
             },

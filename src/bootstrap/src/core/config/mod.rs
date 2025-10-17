@@ -37,7 +37,7 @@ use serde_derive::Deserialize;
 pub use target_selection::TargetSelection;
 pub use toml::BUILDER_CONFIG_FILENAME;
 pub use toml::change_id::ChangeId;
-pub use toml::rust::LldMode;
+pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
 use crate::Display;
@@ -47,11 +47,17 @@ use crate::str::FromStr;
 #[macro_export]
 macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
-        $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
+        $(
+            $(#[$field_attr:meta])*
+            $field:ident: Option<$field_ty:ty> = $field_key:literal,
+        )*
     }) => {
         $(#[$attr])*
         pub struct $name {
-            $(pub $field: Option<$field_ty>,)*
+            $(
+                $(#[$field_attr])*
+                pub $field: Option<$field_ty>,
+            )*
         }
 
         impl Merge for $name {
@@ -218,6 +224,33 @@ impl<T> Merge for Option<T> {
     }
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum CompilerBuiltins {
+    #[default]
+    // Only build native rust intrinsic compiler functions.
+    BuildRustOnly,
+    // Some intrinsic functions have a C implementation provided by LLVM's
+    // compiler-rt builtins library. Build them from the LLVM source included
+    // with Rust.
+    BuildLLVMFuncs,
+    // Similar to BuildLLVMFuncs, but specify a path to an existing library
+    // containing LLVM's compiler-rt builtins instead of compiling them.
+    LinkLLVMBuiltinsLib(String),
+}
+
+impl<'de> Deserialize<'de> for CompilerBuiltins {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(false) => Self::BuildRustOnly,
+            StringOrBool::Bool(true) => Self::BuildLLVMFuncs,
+            StringOrBool::String(path) => Self::LinkLLVMBuiltinsLib(path),
+        })
+    }
+}
+
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum DebuginfoLevel {
     #[default]
@@ -324,7 +357,7 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SplitDebuginfo {
     Packed,
     Unpacked,
@@ -395,17 +428,11 @@ impl std::str::FromStr for RustcLto {
 #[derive(Default, Clone)]
 pub enum GccCiMode {
     /// Build GCC from the local `src/gcc` submodule.
-    #[default]
     BuildLocally,
     /// Try to download GCC from CI.
     /// If it is not available on CI, it will be built locally instead.
+    #[default]
     DownloadFromCi,
-}
-
-pub fn set<T>(field: &mut T, val: Option<T>) {
-    if let Some(v) = val {
-        *field = v;
-    }
 }
 
 pub fn threads_from_config(v: u32) -> u32 {

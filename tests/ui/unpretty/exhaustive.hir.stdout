@@ -12,6 +12,7 @@
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
 #![feature(const_trait_impl)]
+#![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
@@ -54,7 +55,7 @@ use self::prelude::*;
      */
 #[doc = "inner doc attribute"]
 #[allow(dead_code, unused_variables)]
-#[no_std]
+#[attr = NoStd]
 mod attributes {
 
     /// outer single-line doc comment
@@ -397,7 +398,8 @@ mod expressions {
         let expr;
         format_arguments::new_const(&[]);
         {
-            super let args = [format_argument::new_display(&expr)];
+            super let args = (&expr,);
+            super let args = [format_argument::new_display(args.0)];
             format_arguments::new_v1(&[""], &args)
         };
     }

@@ -17,12 +17,13 @@ use rustc_span::source_map::{Spanned, dummy_spanned};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use crate::deref_separator::deref_finder;
 use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
 use crate::patch::MirPatch;
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, inline,
-    instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads,
-    run_optimization_passes, simplify,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, inline, instsimplify,
+    mentioned_items, pass_manager as pm, remove_noop_landing_pads, run_optimization_passes,
+    simplify,
 };
 
 mod async_destructor_ctor;
@@ -222,6 +223,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
+    deref_finder(tcx, &mut result, false);
+
     // We don't validate MIR here because the shims may generate code that's
     // only valid in a `PostAnalysis` param-env. However, since we do initial
     // validation with the MirBuilt phase, which uses a user-facing param-env.
@@ -232,7 +235,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         &[
             &mentioned_items::MentionedItems,
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::MakeShim,
             &instsimplify::InstSimplify::BeforeInline,
@@ -1242,14 +1244,12 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 
     let body =
         new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);
-    dump_mir(
-        tcx,
-        false,
-        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" },
-        &0,
-        &body,
-        |_, _| Ok(()),
-    );
+
+    let pass_name =
+        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" };
+    if let Some(dumper) = MirDumper::new(tcx, pass_name, &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }

@@ -1,6 +1,7 @@
 //! Ensure "forbidden" target features cannot be enabled via `#[target_feature]`.
 //@ compile-flags: --target=riscv32e-unknown-none-elf --crate-type=lib
 //@ needs-llvm-components: riscv
+//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![no_core]
 

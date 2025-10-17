@@ -18,6 +18,8 @@
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(assert_matches)]
+#![feature(char_internals)]
+#![feature(char_max_len)]
 #![feature(core_intrinsics)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -41,11 +43,13 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
+#![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
 // Language features:
 // tidy-alphabetical-start
 #![feature(cfg_sanitize)]
+#![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
@@ -68,14 +72,17 @@ extern crate test;
 mod testing;
 use realalloc::*;
 
-// We are directly including collections and raw_vec here as both use non-public
-// methods and fields in tests and as such need to have the types to test in the
-// same crate as the tests themself.
+// We are directly including collections, raw_vec, and wtf8 here as they use non-public
+// methods and fields in tests and as such need to have the types to test in the same
+// crate as the tests themself.
 #[path = "../alloc/src/collections/mod.rs"]
 mod collections;
 
 #[path = "../alloc/src/raw_vec/mod.rs"]
 mod raw_vec;
+
+#[path = "../alloc/src/wtf8/mod.rs"]
+mod wtf8;
 
 #[allow(dead_code)] // Not used in all configurations
 pub(crate) mod test_helpers {

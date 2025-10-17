@@ -1,9 +1,10 @@
 // Checks that only functions with compatible attributes are inlined.
 //@ only-x86_64
 //@ compile-flags: -Cpanic=abort
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
+#![feature(sanitize)]
 #![feature(c_variadic)]
 
 #[inline]
@@ -37,22 +38,22 @@ pub unsafe fn f2() {
 }
 
 #[inline]
-#[no_sanitize(address)]
-pub unsafe fn no_sanitize() {}
+#[sanitize(address = "off")]
+pub unsafe fn sanitize_off() {}
 
-// CHECK-LABEL: fn inlined_no_sanitize()
+// CHECK-LABEL: fn inlined_sanitize_off()
 // CHECK:       bb0: {
 // CHECK-NEXT:  return;
-#[no_sanitize(address)]
-pub unsafe fn inlined_no_sanitize() {
-    no_sanitize();
+#[sanitize(address = "off")]
+pub unsafe fn inlined_sanitize_off() {
+    sanitize_off();
 }
 
-// CHECK-LABEL: fn not_inlined_no_sanitize()
+// CHECK-LABEL: fn not_inlined_sanitize_off()
 // CHECK:       bb0: {
-// CHECK-NEXT:  no_sanitize()
-pub unsafe fn not_inlined_no_sanitize() {
-    no_sanitize();
+// CHECK-NEXT:  sanitize_off()
+pub unsafe fn not_inlined_sanitize_off() {
+    sanitize_off();
 }
 
 // CHECK-LABEL: fn not_inlined_c_variadic()

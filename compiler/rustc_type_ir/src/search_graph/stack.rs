@@ -13,7 +13,7 @@ rustc_index::newtype_index! {
     pub(super) struct StackDepth {}
 }
 
-/// Stack entries of the evaluation stack. Its fields tend to be lazily
+/// Stack entries of the evaluation stack. Its fields tend to be lazily updated
 /// when popping a child goal or completely immutable.
 #[derive_where(Debug; X: Cx)]
 pub(super) struct StackEntry<X: Cx> {
@@ -42,7 +42,7 @@ pub(super) struct StackEntry<X: Cx> {
     /// Whether evaluating this goal encountered overflow. Lazily updated.
     pub encountered_overflow: bool,
 
-    /// Whether and how this goal has been used as the root of a cycle. Lazily updated.
+    /// Whether and how this goal has been used as a cycle head. Lazily updated.
     pub usages: Option<HeadUsages>,
 
     /// We want to be able to ignore head usages if they happen inside of candidates

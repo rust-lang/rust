@@ -1,0 +1,19 @@
+error: expected unsuffixed literal, found `:`
+  --> $DIR/malformed-never-type-options.rs:4:29
+   |
+LL | #![rustc_never_type_options(: Unsize<U> = "hi")]
+   |                             ^
+
+error[E0658]: use of an internal attribute
+  --> $DIR/malformed-never-type-options.rs:4:1
+   |
+LL | #![rustc_never_type_options(: Unsize<U> = "hi")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_never_type_options]` attribute is an internal implementation detail that will never be stable
+   = note: `rustc_never_type_options` is used to experiment with never type fallback and work on never type stabilization
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

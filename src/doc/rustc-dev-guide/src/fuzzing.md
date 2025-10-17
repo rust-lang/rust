@@ -90,14 +90,15 @@ Here are a few things you can do to help the Rust project after filing an ICE.
   triggering the ICE, such as syntax errors or borrow-checking errors
 - Minimize the test case (see below). If successful, you can label the
   issue with `S-has-mcve`. Otherwise, you can apply `E-needs-mcve`.
-- Add the minimal test case to the rust-lang/rust repo as a [crashes test].
+- Add the minimal test case to the rust-lang/rust repo as a [crash test].
   While you're at it, consider including other "untracked" crashes in your PR.
-  Please don't forget to mark your issue with `S-bug-has-test` afterwards.
+  Please don't forget to mark all relevant issues with `S-bug-has-test` once
+  your PR is merged.
 
 See also [applying and removing labels][labeling].
 
 [bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
-[crashes test]: tests/compiletest.html#crashes-tests
+[crash test]: tests/compiletest.html#crash-tests
 [labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
 ## Minimization

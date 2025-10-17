@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::hash::Hash;
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
@@ -40,6 +40,8 @@ pub trait CodegenBackend {
     /// Locale resources for diagnostic messages - a string the content of the Fluent resource.
     /// Called before `init` so that all other functions are able to emit translatable diagnostics.
     fn locale_resource(&self) -> &'static str;
+
+    fn name(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
 
@@ -96,7 +98,14 @@ pub trait CodegenBackend {
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
-        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, metadata, outputs);
+        link_binary(
+            sess,
+            &ArArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
     }
 }
 
@@ -107,8 +116,7 @@ pub trait ExtraBackendMethods:
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> Self::Module;
 
     /// This generates the codegen unit and returns it along with

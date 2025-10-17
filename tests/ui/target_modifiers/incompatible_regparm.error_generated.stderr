@@ -1,5 +1,5 @@
 error: mixing `-Zregparm` will cause an ABI mismatch in crate `incompatible_regparm`
-  --> $DIR/incompatible_regparm.rs:11:1
+  --> $DIR/incompatible_regparm.rs:12:1
    |
 LL | #![feature(no_core)]
    | ^

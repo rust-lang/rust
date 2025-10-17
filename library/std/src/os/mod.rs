@@ -103,7 +103,7 @@ pub mod linux;
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(any(target_os = "wasi", doc))]
+#[cfg(any(target_os = "wasi", any(target_env = "p1", target_env = "p2"), doc))]
 pub mod wasi;
 
 #[cfg(any(all(target_os = "wasi", target_env = "p2"), doc))]
@@ -155,6 +155,8 @@ pub mod ios;
 pub mod l4re;
 #[cfg(target_os = "macos")]
 pub mod macos;
+#[cfg(target_os = "motor")]
+pub mod motor;
 #[cfg(target_os = "netbsd")]
 pub mod netbsd;
 #[cfg(target_os = "nto")]
@@ -182,8 +184,15 @@ pub mod vxworks;
 #[cfg(target_os = "xous")]
 pub mod xous;
 
-#[cfg(any(unix, target_os = "hermit", target_os = "trusty", target_os = "wasi", doc))]
+#[cfg(any(
+    unix,
+    target_os = "hermit",
+    target_os = "trusty",
+    target_os = "wasi",
+    target_os = "motor",
+    doc
+))]
 pub mod fd;
 
-#[cfg(any(target_os = "linux", target_os = "android", doc))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin", doc))]
 mod net;

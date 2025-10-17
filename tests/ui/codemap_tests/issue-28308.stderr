@@ -1,27 +1,9 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-28308.rs:2:13
+error[E0600]: cannot apply unary operator `!` to type `&'static str`
+  --> $DIR/issue-28308.rs:2:5
    |
 LL |     assert!("foo");
-   |             ^^^^^ expected `bool`, found `str`
+   |     ^^^^^^^^^^^^^^ cannot apply unary operator `!`
 
-error[E0308]: mismatched types
-  --> $DIR/issue-28308.rs:6:13
-   |
-LL |     assert!(x);
-   |             ^ expected `bool`, found `Option<&{integer}>`
-   |
-   = note: expected enum `bool`
-              found type `Option<&{integer}>`
+error: aborting due to 1 previous error
 
-error[E0308]: mismatched types
-  --> $DIR/issue-28308.rs:11:13
-   |
-LL |     assert!(x, "");
-   |             ^ expected `bool`, found `Option<&{integer}>`
-   |
-   = note: expected enum `bool`
-              found type `Option<&{integer}>`
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0600`.

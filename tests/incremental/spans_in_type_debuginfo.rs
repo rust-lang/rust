@@ -3,6 +3,7 @@
 
 //@ revisions:rpass1 rpass2
 //@ compile-flags: -Z query-dep-graph -g
+//@ ignore-backends: gcc
 
 #![rustc_partition_reused(module="spans_in_type_debuginfo-structs", cfg="rpass2")]
 #![rustc_partition_reused(module="spans_in_type_debuginfo-enums", cfg="rpass2")]

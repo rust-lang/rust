@@ -18,7 +18,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -26,11 +25,9 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
 use crate::errors::AutoDiffWithoutEnable;
-use crate::llvm::{self, Metadata};
-use crate::type_::Type;
+use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
-use crate::value::Value;
 
 fn call_simple_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
@@ -298,7 +295,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    result.layout.align.abi.bytes() as u32
+                    result.layout.align.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -330,10 +327,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => bug!(),
                 };
                 let ptr = args[0].immediate();
+                let locality = fn_args.const_at(1).to_value().valtree.unwrap_leaf().to_i32();
                 self.call_intrinsic(
                     "llvm.prefetch",
                     &[self.val_ty(ptr)],
-                    &[ptr, self.const_i32(rw), args[1].immediate(), self.const_i32(cache_type)],
+                    &[
+                        ptr,
+                        self.const_i32(rw),
+                        self.const_i32(locality),
+                        self.const_i32(cache_type),
+                    ],
                 )
             }
             sym::carrying_mul_add => {
@@ -377,7 +380,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::rotate_left
             | sym::rotate_right
             | sym::saturating_add
-            | sym::saturating_sub => {
+            | sym::saturating_sub
+            | sym::unchecked_funnel_shl
+            | sym::unchecked_funnel_shr => {
                 let ty = args[0].layout.ty;
                 if !ty.is_integral() {
                     tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
@@ -418,18 +423,26 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::bitreverse => {
                         self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
                     }
-                    sym::rotate_left | sym::rotate_right => {
-                        let is_left = name == sym::rotate_left;
-                        let val = args[0].immediate();
-                        let raw_shift = args[1].immediate();
-                        // rotate = funnel shift with first two args the same
+                    sym::rotate_left
+                    | sym::rotate_right
+                    | sym::unchecked_funnel_shl
+                    | sym::unchecked_funnel_shr => {
+                        let is_left = name == sym::rotate_left || name == sym::unchecked_funnel_shl;
+                        let lhs = args[0].immediate();
+                        let (rhs, raw_shift) =
+                            if name == sym::rotate_left || name == sym::rotate_right {
+                                // rotate = funnel shift with first two args the same
+                                (lhs, args[1].immediate())
+                            } else {
+                                (args[1].immediate(), args[2].immediate())
+                            };
                         let llvm_name = format!("llvm.fsh{}", if is_left { 'l' } else { 'r' });
 
                         // llvm expects shift to be the same type as the values, but rust
                         // always uses `u32`.
-                        let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
+                        let raw_shift = self.intcast(raw_shift, self.val_ty(lhs), false);
 
-                        self.call_intrinsic(llvm_name, &[llty], &[val, val, raw_shift])
+                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs, raw_shift])
                     }
                     sym::saturating_add | sym::saturating_sub => {
                         let is_add = name == sym::saturating_add;
@@ -658,7 +671,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
     catch_func: &'ll Value,
     dest: PlaceRef<'tcx, &'ll Value>,
 ) {
-    if bx.sess().panic_strategy() == PanicStrategy::Abort {
+    if !bx.sess().panic_strategy().unwinds() {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.call(try_func_ty, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
@@ -1032,7 +1045,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         // create an alloca and pass a pointer to that.
         let ptr_size = bx.tcx().data_layout.pointer_size();
         let ptr_align = bx.tcx().data_layout.pointer_align().abi;
-        let i8_align = bx.tcx().data_layout.i8_align.abi;
+        let i8_align = bx.tcx().data_layout.i8_align;
         // Required in order for there to be no padding between the fields.
         assert!(i8_align <= ptr_align);
         let catch_data = bx.alloca(2 * ptr_size, ptr_align);
@@ -1192,9 +1205,13 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     adjust_activity_to_abi(
         tcx,
-        fn_source.ty(tcx, TypingEnv::fully_monomorphized()),
+        fn_source,
+        TypingEnv::fully_monomorphized(),
         &mut diff_attrs.input_activity,
     );
+
+    let fnc_tree =
+        rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
 
     // Build body
     generate_enzyme_call(
@@ -1206,6 +1223,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         &val_arr,
         diff_attrs.clone(),
         result,
+        fnc_tree,
     );
 }
 

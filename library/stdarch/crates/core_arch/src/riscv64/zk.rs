@@ -176,7 +176,7 @@ pub fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
 /// Version: v1.0.1
 ///
 /// Section: 3.9
-#[target_feature(enable = "zkne", enable = "zknd")]
+#[target_feature(enable = "zknd")]
 #[cfg_attr(test, assert_instr(aes64im))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]

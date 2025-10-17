@@ -15,7 +15,7 @@ use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
-use crate::{Build, DocTests};
+use crate::{Build, CodegenBackendKind, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -419,6 +419,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// don't capture stdout/stderr of tests
         no_capture: bool,
+        #[arg(long)]
+        /// Use a different codegen backend when running tests.
+        test_codegen_backend: Option<CodegenBackendKind>,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -658,6 +661,13 @@ impl Subcommand {
             _ => vec![],
         }
     }
+
+    pub fn test_codegen_backend(&self) -> Option<&CodegenBackendKind> {
+        match self {
+            Subcommand::Test { test_codegen_backend, .. } => test_codegen_backend.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current
@@ -690,4 +700,10 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
         return None;
     }
     Some(String::from_utf8(buf).expect("completion script should be UTF-8"))
+}
+
+/// Return the top level help of the bootstrap.
+pub fn top_level_help() -> String {
+    let mut cmd = Flags::command();
+    cmd.render_help().to_string()
 }

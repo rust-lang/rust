@@ -4,9 +4,9 @@
 
 use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{cmp, iter};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -28,9 +28,11 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate, may_use_unstable_feature,
+    self, CandidatePreferenceMode, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
+    may_use_unstable_feature,
 };
+use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 
@@ -474,7 +476,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
+            let candidate_preference_mode =
+                CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
+            if let Some(candidate) =
+                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
+            {
                 self.filter_reservation_impls(candidate)
             } else {
                 Ok(None)
@@ -1623,11 +1629,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn for_each_item_bound<T>(
         &mut self,
         mut self_ty: Ty<'tcx>,
-        mut for_each: impl FnMut(&mut Self, ty::Clause<'tcx>, usize) -> ControlFlow<T, ()>,
+        mut for_each: impl FnMut(
+            &mut Self,
+            ty::Clause<'tcx>,
+            usize,
+            AliasBoundKind,
+        ) -> ControlFlow<T, ()>,
         on_ambiguity: impl FnOnce(),
     ) -> ControlFlow<T, ()> {
         let mut idx = 0;
-        let mut in_parent_alias_type = false;
+        let mut alias_bound_kind = AliasBoundKind::SelfBounds;
 
         loop {
             let (kind, alias_ty) = match *self_ty.kind() {
@@ -1643,14 +1654,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // share the same type as `self_ty`. This is because for truly rigid
             // projections, we will never be able to equate, e.g. `<T as Tr>::A`
             // with `<<T as Tr>::A as Tr>::A`.
-            let relevant_bounds = if in_parent_alias_type {
+            let relevant_bounds = if matches!(alias_bound_kind, AliasBoundKind::NonSelfBounds) {
                 self.tcx().item_non_self_bounds(alias_ty.def_id)
             } else {
                 self.tcx().item_self_bounds(alias_ty.def_id)
             };
 
             for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
-                for_each(self, bound, idx)?;
+                for_each(self, bound, idx, alias_bound_kind)?;
                 idx += 1;
             }
 
@@ -1660,7 +1671,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return ControlFlow::Continue(());
             }
 
-            in_parent_alias_type = true;
+            alias_bound_kind = AliasBoundKind::NonSelfBounds;
         }
     }
 
@@ -1821,6 +1832,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn winnow_candidates(
         &mut self,
         has_non_region_infer: bool,
+        candidate_preference_mode: CandidatePreferenceMode,
         mut candidates: Vec<EvaluatedCandidate<'tcx>>,
     ) -> Option<SelectionCandidate<'tcx>> {
         if candidates.len() == 1 {
@@ -1874,6 +1886,29 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             break;
         }
 
+        let mut alias_bounds = candidates.iter().filter_map(|c| {
+            if let ProjectionCandidate { idx, kind } = c.candidate {
+                Some((idx, kind))
+            } else {
+                None
+            }
+        });
+        // Extract non-nested alias bound candidates, will be preferred over where bounds if
+        // we're proving an auto-trait, sizedness trait or default trait.
+        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) {
+            match alias_bounds
+                .clone()
+                .filter_map(|(idx, kind)| (kind == AliasBoundKind::SelfBounds).then_some(idx))
+                .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) })
+            {
+                Some(Some(idx)) => {
+                    return Some(ProjectionCandidate { idx, kind: AliasBoundKind::SelfBounds });
+                }
+                Some(None) => {}
+                None => return None,
+            }
+        }
+
         // The next highest priority is for non-global where-bounds. However, while we don't
         // prefer global where-clauses here, we do bail with ambiguity when encountering both
         // a global and a non-global where-clause.
@@ -1907,12 +1942,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // fairly arbitrary but once again necessary for backwards compatibility.
         // If there are multiple applicable candidates which don't affect type inference,
         // choose the one with the lowest index.
-        let alias_bound = candidates
-            .iter()
-            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
-            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
-        match alias_bound {
-            Some(Some(index)) => return Some(ProjectionCandidate(index)),
+        match alias_bounds.try_reduce(|(c1, k1), (c2, k2)| {
+            if has_non_region_infer {
+                None
+            } else if c1 < c2 {
+                Some((c1, k1))
+            } else {
+                Some((c2, k2))
+            }
+        }) {
+            Some(Some((idx, kind))) => return Some(ProjectionCandidate { idx, kind }),
             Some(None) => {}
             None => return None,
         }
@@ -2001,7 +2040,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
                 ParamCandidate(_) | ImplCandidate(_) => true,
-                ProjectionCandidate(_) | ObjectCandidate(_) => unreachable!(),
+                ProjectionCandidate { .. } | ObjectCandidate(_) => unreachable!(),
             }) {
                 return Some(ImplCandidate(def_id));
             } else {
@@ -2185,32 +2224,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(vec![ty])
             }
 
-            ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => {
-                        unreachable!("tried to assemble `Sized` for static coroutine")
-                    }
-                    hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
-                            ty::Binder::dummy(
-                                args.as_coroutine()
-                                    .upvar_tys()
-                                    .iter()
-                                    .chain([Ty::new_coroutine_witness(
-                                        self.tcx(),
-                                        coroutine_def_id,
-                                        self.tcx().mk_args(args.as_coroutine().parent_args()),
-                                    )])
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            unreachable!(
-                                "tried to assemble `Sized` for coroutine without enabled feature"
-                            )
-                        }
+            ty::Coroutine(def_id, args) => match self.tcx().coroutine_movability(def_id) {
+                hir::Movability::Static => {
+                    unreachable!("tried to assemble `Clone` for static coroutine")
+                }
+                hir::Movability::Movable => {
+                    if self.tcx().features().coroutine_clone() {
+                        ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),
+                        ])
+                    } else {
+                        unreachable!(
+                            "tried to assemble `Clone` for coroutine without enabled feature"
+                        )
                     }
                 }
-            }
+            },
 
             ty::CoroutineWitness(def_id, args) => self
                 .infcx
@@ -2334,25 +2364,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let tcx = self.tcx();
-                let witness = Ty::new_coroutine_witness(
-                    tcx,
-                    def_id,
-                    ty::GenericArgs::for_item(tcx, def_id, |def, _| match def.kind {
-                        // HACK: Coroutine witnesse types are lifetime erased, so they
-                        // never reference any lifetime args from the coroutine. We erase
-                        // the regions here since we may get into situations where a
-                        // coroutine is recursively contained within itself, leading to
-                        // witness types that differ by region args. This means that
-                        // cycle detection in fulfillment will not kick in, which leads
-                        // to unnecessary overflows in async code. See the issue:
-                        // <https://github.com/rust-lang/rust/issues/145151>.
-                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        ty::GenericParamDefKind::Type { .. }
-                        | ty::GenericParamDefKind::Const { .. } => args[def.index as usize],
-                    }),
-                );
+                let witness = Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args);
                 ty::Binder::dummy(AutoImplConstituents {
-                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
+                    types: vec![ty, witness],
                     assumptions: vec![],
                 })
             }
@@ -2384,7 +2398,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {
-                    // We can resolve the `impl Trait` to its concrete type,
+                    // We can resolve the opaque type to its hidden type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {

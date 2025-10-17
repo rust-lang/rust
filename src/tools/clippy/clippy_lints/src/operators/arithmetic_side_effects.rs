@@ -190,7 +190,7 @@ impl ArithmeticSideEffects {
         lhs: &'tcx hir::Expr<'_>,
         rhs: &'tcx hir::Expr<'_>,
     ) {
-        if ConstEvalCtxt::new(cx).eval_simple(expr).is_some() {
+        if ConstEvalCtxt::new(cx).eval_local(expr, expr.span.ctxt()).is_some() {
             return;
         }
         if !matches!(
@@ -283,7 +283,7 @@ impl ArithmeticSideEffects {
         let Some(arg) = args.first() else {
             return;
         };
-        if ConstEvalCtxt::new(cx).eval_simple(receiver).is_some() {
+        if ConstEvalCtxt::new(cx).eval_local(receiver, expr.span.ctxt()).is_some() {
             return;
         }
         let instance_ty = cx.typeck_results().expr_ty_adjusted(receiver);
@@ -325,7 +325,7 @@ impl ArithmeticSideEffects {
         self.issue_lint(cx, expr);
     }
 
-    fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
+    fn should_skip_expr<'tcx>(&self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
             || self.expr_span.is_some()
             || self.const_span.is_some_and(|sp| sp.contains(expr.span))

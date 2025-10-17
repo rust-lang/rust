@@ -229,8 +229,6 @@ mod tests {
     use span::{Edition, ROOT_ERASED_FILE_AST_ID, SpanAnchor, SyntaxContext};
     use syntax::{TextRange, TextSize};
 
-    use super::quote;
-
     const DUMMY: tt::Span = tt::Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: SpanAnchor {

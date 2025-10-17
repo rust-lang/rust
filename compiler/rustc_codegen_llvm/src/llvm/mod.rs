@@ -3,7 +3,6 @@
 use std::ffi::{CStr, CString};
 use std::num::NonZero;
 use std::ptr;
-use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
@@ -12,14 +11,16 @@ use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
 pub(crate) use self::CodeGenOptSize::*;
-pub(crate) use self::MetadataType::*;
+pub(crate) use self::conversions::*;
 pub(crate) use self::ffi::*;
+pub(crate) use self::metadata_kind::*;
 use crate::common::AsCCharPtr;
 
-pub(crate) mod archive_ro;
+mod conversions;
 pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
 mod ffi;
+mod metadata_kind;
 
 pub(crate) use self::enzyme_ffi::*;
 
@@ -114,16 +115,26 @@ pub(crate) fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &
 
 pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
     let lower = range.start;
+    // LLVM treats the upper bound as exclusive, but allows wrapping.
     let upper = range.end.wrapping_add(1);
-    let lower_words = [lower as u64, (lower >> 64) as u64];
-    let upper_words = [upper as u64, (upper >> 64) as u64];
+
+    // Pass each `u128` endpoint value as a `[u64; 2]` array, least-significant part first.
+    let as_u64_array = |x: u128| [x as u64, (x >> 64) as u64];
+    let lower_words: [u64; 2] = as_u64_array(lower);
+    let upper_words: [u64; 2] = as_u64_array(upper);
+
+    // To ensure that LLVM doesn't try to read beyond the `[u64; 2]` arrays,
+    // we must explicitly check that `size_bits` does not exceed 128.
+    let size_bits = size.bits();
+    assert!(size_bits <= 128);
+    // More robust assertions that are redundant with `size_bits <= 128` and
+    // should be optimized away.
+    assert!(size_bits.div_ceil(64) <= u64::try_from(lower_words.len()).unwrap());
+    assert!(size_bits.div_ceil(64) <= u64::try_from(upper_words.len()).unwrap());
+    let size_bits = c_uint::try_from(size_bits).unwrap();
+
     unsafe {
-        LLVMRustCreateRangeAttribute(
-            llcx,
-            size.bits().try_into().unwrap(),
-            lower_words.as_ptr(),
-            upper_words.as_ptr(),
-        )
+        LLVMRustCreateRangeAttribute(llcx, size_bits, lower_words.as_ptr(), upper_words.as_ptr())
     }
 }
 
@@ -150,21 +161,6 @@ pub(crate) enum CodeGenOptSize {
     CodeGenOptSizeNone = 0,
     CodeGenOptSizeDefault = 1,
     CodeGenOptSizeAggressive = 2,
-}
-
-impl FromStr for ArchiveKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gnu" => Ok(ArchiveKind::K_GNU),
-            "bsd" => Ok(ArchiveKind::K_BSD),
-            "darwin" => Ok(ArchiveKind::K_DARWIN),
-            "coff" => Ok(ArchiveKind::K_COFF),
-            "aix_big" => Ok(ArchiveKind::K_AIXBIG),
-            _ => Err(()),
-        }
-    }
 }
 
 pub(crate) fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
@@ -232,7 +228,7 @@ pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
 }
 
 pub(crate) fn set_global_constant(llglobal: &Value, is_constant: bool) {
-    LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
+    LLVMSetGlobalConstant(llglobal, is_constant.to_llvm_bool());
 }
 
 pub(crate) fn get_linkage(llglobal: &Value) -> Linkage {
@@ -246,7 +242,7 @@ pub(crate) fn set_linkage(llglobal: &Value, linkage: Linkage) {
 }
 
 pub(crate) fn is_declaration(llglobal: &Value) -> bool {
-    unsafe { LLVMIsDeclaration(llglobal) == ffi::True }
+    unsafe { LLVMIsDeclaration(llglobal) }.is_true()
 }
 
 pub(crate) fn get_visibility(llglobal: &Value) -> Visibility {
@@ -263,6 +259,10 @@ pub(crate) fn set_alignment(llglobal: &Value, align: Align) {
     unsafe {
         ffi::LLVMSetAlignment(llglobal, align.bytes() as c_uint);
     }
+}
+
+pub(crate) fn set_externally_initialized(llglobal: &Value, is_ext_init: bool) {
+    LLVMSetExternallyInitialized(llglobal, is_ext_init.to_llvm_bool());
 }
 
 /// Get the `name`d comdat from `llmod` and assign it to `llglobal`.

@@ -2,6 +2,10 @@
 
 use std::mem;
 
+#[path = "../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 trait Answer {
     fn answer() -> Self;
 }
@@ -30,6 +34,7 @@ fn i() -> i32 {
     73
 }
 
+#[inline(never)] // optimizations mask the non-determinism we test for below
 fn return_fn_ptr(f: fn() -> i32) -> fn() -> i32 {
     f
 }
@@ -85,7 +90,7 @@ fn main() {
     assert!(return_fn_ptr(i) as unsafe fn() -> i32 == i as fn() -> i32 as unsafe fn() -> i32);
     // Miri gives different addresses to different reifications of a generic function.
     // at least if we try often enough.
-    assert!((0..256).any(|_| return_fn_ptr(f) != f));
+    check_nondet(|| return_fn_ptr(f) == f);
     // However, if we only turn `f` into a function pointer and use that pointer,
     // it is equal to itself.
     let f2 = f as fn() -> i32;

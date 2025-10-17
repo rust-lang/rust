@@ -256,7 +256,7 @@ fn main() {}
           {
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
-              "executableArgs": ["test_eggs", "--exact", "--show-output"],
+              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -289,7 +289,7 @@ fn main() {}
               ],
               "executableArgs": [
                 "",
-                "--show-output"
+                "--nocapture"
               ]
             },
             "kind": "cargo",
@@ -1061,7 +1061,7 @@ fn main() {
         ),
         work_done_progress_params: Default::default(),
     });
-    assert!(res.to_string().contains("&'static str"));
+    assert!(res.to_string().contains("&str"));
 
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
@@ -1070,7 +1070,7 @@ fn main() {
         ),
         work_done_progress_params: Default::default(),
     });
-    assert!(res.to_string().contains("&'static str"));
+    assert!(res.to_string().contains("&str"));
 
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {

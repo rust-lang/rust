@@ -1,15 +1,18 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
+use super::prelude::*;
+use super::util::parse_single_integer;
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AcceptContext, AllowedTargets, Stage, parse_single_integer};
-use crate::parser::ArgParser;
-pub(crate) struct RustcLayoutScalarValidRangeStart;
+pub(crate) struct RustcMainParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
+impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_main];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
+}
+
+pub(crate) struct RustcLayoutScalarValidRangeStartParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
@@ -22,9 +25,9 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
     }
 }
 
-pub(crate) struct RustcLayoutScalarValidRangeEnd;
+pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEnd {
+impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
@@ -53,5 +56,23 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
         }
 
         Some(AttributeKind::RustcObjectLifetimeDefault)
+    }
+}
+
+pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
+    const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let ArgParser::NameValue(nv) = args else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
     }
 }

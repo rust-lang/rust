@@ -1,10 +1,5 @@
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, sym};
+use super::prelude::*;
 
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AllowedTargets, Stage};
 pub(crate) struct NoImplicitPreludeParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NoImplicitPreludeParser {

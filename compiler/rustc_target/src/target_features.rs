@@ -601,6 +601,49 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ),
     ("m", Stable, &[]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
+    (
+        "rva23u64",
+        Unstable(sym::riscv_target_feature),
+        &[
+            "m",
+            "a",
+            "f",
+            "d",
+            "c",
+            "b",
+            "v",
+            "zicsr",
+            "zicntr",
+            "zihpm",
+            "ziccif",
+            "ziccrse",
+            "ziccamoa",
+            "zicclsm",
+            "zic64b",
+            "za64rs",
+            "zihintpause",
+            "zba",
+            "zbb",
+            "zbs",
+            "zicbom",
+            "zicbop",
+            "zicboz",
+            "zfhmin",
+            "zkt",
+            "zvfhmin",
+            "zvbb",
+            "zvkt",
+            "zihintntl",
+            "zicond",
+            "zimop",
+            "zcmop",
+            "zcb",
+            "zfa",
+            "zawrs",
+            "supm",
+        ],
+    ),
+    ("supm", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
@@ -767,6 +810,7 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
+    ("32s", Unstable(sym::loongarch_target_feature), &[]),
     ("d", Stable, &["f"]),
     ("div32", Unstable(sym::loongarch_target_feature), &[]),
     ("f", Stable, &[]),
@@ -805,6 +849,7 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Unstable(sym::s390x_target_feature), &[]),
     ("miscellaneous-extensions-4", Unstable(sym::s390x_target_feature), &[]),
     ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("soft-float", Forbidden { reason: "currently unsupported ABI-configuration feature" }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
     ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
@@ -1132,6 +1177,13 @@ impl Target {
                     }
                     _ => unreachable!(),
                 }
+            }
+            "s390x" => {
+                // We don't currently support a softfloat target on this architecture.
+                // As usual, we have to reject swapping the `soft-float` target feature.
+                // The "vector" target feature does not affect the ABI for floats
+                // because the vector and float registers overlap.
+                FeatureConstraints { required: &[], incompatible: &["soft-float"] }
             }
             _ => NOTHING,
         }

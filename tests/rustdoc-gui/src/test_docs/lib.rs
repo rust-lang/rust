@@ -1,3 +1,4 @@
+//@ compile-flags: --enable-index-page -Z unstable-options
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
 #![doc(html_playground_url="https://play.rust-lang.org/")]
@@ -160,6 +161,10 @@ pub enum AnEnum {
 #[doc(keyword = "for")]
 /// Some keyword.
 pub mod keyword {}
+
+#[doc(attribute = "forbid")]
+/// Some attribute.
+pub mod repr {}
 
 /// Just some type alias.
 pub type SomeType = u32;
@@ -455,10 +460,10 @@ pub fn safe_fn() {}
 
 #[repr(C)]
 pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
-    s: S,
-    t: T,
-    e: E,
-    p: P,
+    pub s: S,
+    pub t: T,
+    pub e: E,
+    pub p: P,
 }
 
 pub struct StructWithPublicUndocumentedFields {

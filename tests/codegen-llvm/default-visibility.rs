@@ -32,6 +32,7 @@ pub static tested_symbol: [u8; 6] = *b"foobar";
 // INTERPOSABLE: @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
 // DEFAULT:      @{{.*}}default_visibility{{.*}}tested_symbol{{.*}} = constant
 
+#[inline(never)]
 pub fn do_memcmp(left: &[u8], right: &[u8]) -> i32 {
     left.cmp(right) as i32
 }

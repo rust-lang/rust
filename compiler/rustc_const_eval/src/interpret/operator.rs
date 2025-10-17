@@ -528,7 +528,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
                 }
-                let val = layout.align.abi.bytes();
+                let val = layout.align.bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
             OffsetOf(fields) => {

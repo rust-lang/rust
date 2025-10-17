@@ -209,7 +209,8 @@ mod llvm_enzyme {
         mut item: Annotatable,
         mode: DiffMode,
     ) -> Vec<Annotatable> {
-        if cfg!(not(llvm_enzyme)) {
+        // FIXME(bjorn3) maybe have the backend directly tell if autodiff is supported?
+        if cfg!(not(feature = "llvm_enzyme")) {
             ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
             return vec![item];
         }
@@ -376,8 +377,7 @@ mod llvm_enzyme {
                 (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
                     let a = &a.item.path;
                     let b = &b.item.path;
-                    a.segments.len() == b.segments.len()
-                        && a.segments.iter().zip(b.segments.iter()).all(|(a, b)| a.ident == b.ident)
+                    a.segments.iter().eq_by(&b.segments, |a, b| a.ident == b.ident)
                 }
                 _ => false,
             }

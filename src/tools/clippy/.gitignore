@@ -48,3 +48,6 @@ helper.txt
 
 # mdbook generated output
 /book/book
+
+# Remove jujutsu directory from search tools
+.jj

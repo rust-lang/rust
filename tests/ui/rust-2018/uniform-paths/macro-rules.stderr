@@ -9,6 +9,10 @@ help: consider adding a `#[macro_export]` to the macro in the imported module
    |
 LL |     macro_rules! legacy_macro { () => () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+   |
+LL |     pub(crate) use legacy_macro as _;
+   |        +++++++
 
 error: aborting due to 1 previous error
 

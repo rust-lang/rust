@@ -16,7 +16,7 @@ LL | |     }
 ...
 LL |   define_exported!();
    |   ------------------ in this macro invocation
-   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` on by default
+   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` (part of `#[deny(future_incompatible)]`) on by default
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
@@ -60,7 +60,7 @@ LL | |     }
 ...
 LL |   define_exported!();
    |   ------------------ in this macro invocation
-   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` on by default
+   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` (part of `#[deny(future_incompatible)]`) on by default
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -82,6 +82,6 @@ LL | |     }
 ...
 LL |   define_exported!();
    |   ------------------ in this macro invocation
-   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` on by default
+   = note: `#[deny(macro_expanded_macro_exports_accessed_by_absolute_paths)]` (part of `#[deny(future_incompatible)]`) on by default
    = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -16,6 +16,7 @@
 //@ build-pass
 // Remove some LLVM warnings that only show up sometimes.
 //@ normalize-stderr: "\n[^\n]*(target-abi|lp64f)[^\n]*" -> ""
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
 #![no_core]
