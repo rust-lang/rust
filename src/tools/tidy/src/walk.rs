@@ -6,7 +6,7 @@ use std::path::Path;
 
 use ignore::DirEntry;
 
-use crate::TidyCtx;
+use crate::diagnostics::TidyFlags;
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
@@ -49,30 +49,30 @@ pub fn filter_not_rust(path: &Path) -> bool {
 
 pub fn walk(
     path: &Path,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
-    walk_many(&[path], tidy_ctx, skip, f);
+    walk_many(&[path], tidy_flags, skip, f);
 }
 
 pub fn walk_many(
     paths: &[&Path],
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry, &str),
 ) {
     let mut contents = Vec::new();
 
-    let pre_push = tidy_ctx.map(|flags| flags.pre_push).unwrap_or(false);
-    let changed_files = match pre_push {
-        true => &tidy_ctx.unwrap().pre_push_file_content,
+    let pre_push = tidy_flags.pre_push;
+    let pre_push_content = match pre_push {
+        true => &tidy_flags.pre_push_content,
         false => &HashMap::new(),
     };
 
-    walk_no_read(paths, tidy_ctx, skip, &mut |entry| {
-        if pre_push && changed_files.keys().any(|k| k == entry.path()) {
-            if let Some(content) = changed_files.get(entry.path().into()) {
+    walk_no_read(paths, tidy_flags, skip, &mut |entry| {
+        if tidy_flags.pre_push && tidy_flags.pre_push_content.keys().any(|k| k == entry.path()) {
+            if let Some(content) = pre_push_content.get(entry.path().into()) {
                 f(entry, content);
             }
             return;
@@ -90,20 +90,13 @@ pub fn walk_many(
 
 pub(crate) fn walk_no_read(
     paths: &[&Path],
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     skip: impl Send + Sync + 'static + Fn(&Path, bool) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let include_untracked = tidy_ctx.map(|flags| flags.include_untracked).unwrap_or(false);
-    let untracked_files = match include_untracked {
+    let untracked_files = match tidy_flags.include_untracked {
         true => HashSet::new(),
-        false => {
-            if let Some(ctx) = tidy_ctx {
-                ctx.untracked_files.clone()
-            } else {
-                HashSet::new()
-            }
-        }
+        false => tidy_flags.untracked_files.clone(),
     };
 
     let mut walker = ignore::WalkBuilder::new(paths[0]);
@@ -125,13 +118,12 @@ pub(crate) fn walk_no_read(
 // Walk through directories and skip symlinks.
 pub(crate) fn walk_dir(
     path: &Path,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let include_untracked = tidy_ctx.map(|flags| flags.include_untracked).unwrap_or(false);
-    let untracked_files = match !include_untracked {
-        true => tidy_ctx.unwrap().untracked_files.clone(),
+    let untracked_files = match !tidy_flags.include_untracked {
+        true => tidy_flags.untracked_files.clone(),
         false => HashSet::new(),
     };
 

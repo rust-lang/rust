@@ -1,9 +1,53 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use build_helper::git::{get_git_untracked_files, output_result};
 use termcolor::{Color, WriteColor};
+
+#[derive(Clone, Default)]
+pub struct TidyFlags {
+    pub bless: bool,
+    pub pre_push: bool,
+    pub include_untracked: bool,
+    pub pre_push_content: HashMap<PathBuf, String>,
+    pub untracked_files: HashSet<PathBuf>,
+}
+
+impl TidyFlags {
+    pub fn new(root_path: &Path, cfg_args: &[String]) -> Self {
+        let mut flags = Self::default();
+
+        for arg in cfg_args {
+            match arg.as_str() {
+                "--bless" => flags.bless = true,
+                "--include-untracked" => flags.include_untracked = true,
+                "--pre-push" => flags.pre_push = true,
+                _ => continue,
+            }
+        }
+
+        //Get a map of file names and file content from last commit for `--pre-push`.
+        let pre_push_content = match flags.pre_push {
+            true => get_git_last_commit_content(root_path),
+            false => HashMap::new(),
+        };
+
+        //Get all of the untracked files, used by default to exclude untracked from tidy.
+        let untracked_files = match get_git_untracked_files(Some(root_path)) {
+            Ok(Some(untracked_paths)) => {
+                untracked_paths.into_iter().map(|s| PathBuf::from(root_path).join(s)).collect()
+            }
+            _ => HashSet::new(),
+        };
+
+        flags.pre_push_content = pre_push_content;
+        flags.untracked_files = untracked_files;
+
+        flags
+    }
+}
 
 /// Collects diagnostics from all tidy steps, and contains shared information
 /// that determines how should message and logs be presented.
@@ -11,22 +55,28 @@ use termcolor::{Color, WriteColor};
 /// Since checks are executed in parallel, the context is internally synchronized, to avoid
 /// all checks to lock it explicitly.
 #[derive(Clone)]
-pub struct DiagCtx(Arc<Mutex<DiagCtxInner>>);
+pub struct TidyCtx {
+    diag_ctx: Arc<Mutex<DiagCtx>>,
+    pub tidy_flags: TidyFlags,
+}
 
-impl DiagCtx {
-    pub fn new(root_path: &Path, verbose: bool) -> Self {
-        Self(Arc::new(Mutex::new(DiagCtxInner {
-            running_checks: Default::default(),
-            finished_checks: Default::default(),
-            root_path: root_path.to_path_buf(),
-            verbose,
-        })))
+impl TidyCtx {
+    pub fn new(root_path: &Path, tidy_flags: TidyFlags, verbose: bool) -> Self {
+        Self {
+            diag_ctx: Arc::new(Mutex::new(DiagCtx {
+                running_checks: Default::default(),
+                finished_checks: Default::default(),
+                root_path: root_path.to_path_buf(),
+                verbose,
+            })),
+            tidy_flags,
+        }
     }
 
     pub fn start_check<Id: Into<CheckId>>(&self, id: Id) -> RunningCheck {
         let mut id = id.into();
 
-        let mut ctx = self.0.lock().unwrap();
+        let mut ctx = self.diag_ctx.lock().unwrap();
 
         // Shorten path for shorter diagnostics
         id.path = match id.path {
@@ -38,27 +88,27 @@ impl DiagCtx {
         RunningCheck {
             id,
             bad: false,
-            ctx: self.0.clone(),
+            ctx: self.diag_ctx.clone(),
             #[cfg(test)]
             errors: vec![],
         }
     }
 
     pub fn into_failed_checks(self) -> Vec<FinishedCheck> {
-        let ctx = Arc::into_inner(self.0).unwrap().into_inner().unwrap();
+        let ctx = Arc::into_inner(self.diag_ctx).unwrap().into_inner().unwrap();
         assert!(ctx.running_checks.is_empty(), "Some checks are still running");
         ctx.finished_checks.into_iter().filter(|c| c.bad).collect()
     }
 }
 
-struct DiagCtxInner {
+struct DiagCtx {
     running_checks: HashSet<CheckId>,
     finished_checks: HashSet<FinishedCheck>,
     verbose: bool,
     root_path: PathBuf,
 }
 
-impl DiagCtxInner {
+impl DiagCtx {
     fn start_check(&mut self, id: CheckId) {
         if self.has_check_id(&id) {
             panic!("Starting a check named `{id:?}` for the second time");
@@ -140,7 +190,7 @@ impl FinishedCheck {
 pub struct RunningCheck {
     id: CheckId,
     bad: bool,
-    ctx: Arc<Mutex<DiagCtxInner>>,
+    ctx: Arc<Mutex<DiagCtx>>,
     #[cfg(test)]
     errors: Vec<String>,
 }
@@ -151,7 +201,7 @@ impl RunningCheck {
     /// Useful if you want to run some functions from tidy without configuring
     /// diagnostics.
     pub fn new_noop() -> Self {
-        let ctx = DiagCtx::new(Path::new(""), false);
+        let ctx = TidyCtx::new(Path::new(""), TidyFlags::default(), false);
         ctx.start_check("noop")
     }
 
@@ -240,4 +290,22 @@ pub fn output_message(msg: &str, id: Option<&CheckId>, color: Option<Color>) {
     }
 
     writeln!(&mut stderr, ": {msg}").unwrap();
+}
+
+fn get_git_last_commit_content(git_root: &Path) -> HashMap<PathBuf, String> {
+    let mut content_map = HashMap::new();
+    // Get all of the file names that have been modified in the working dir.
+    let file_names =
+        t!(output_result(std::process::Command::new("git").args(["diff", "--name-only", "HEAD"])))
+            .lines()
+            .map(|s| s.trim().to_owned())
+            .collect::<Vec<String>>();
+    for file in file_names {
+        let content = t!(output_result(
+            // Get the content of the files from the last commit. Used for '--pre-push' tidy flag.
+            std::process::Command::new("git").arg("show").arg(format!("HEAD:{}", &file))
+        ));
+        content_map.insert(PathBuf::from(&git_root).join(file), content);
+    }
+    content_map
 }

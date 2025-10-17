@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use tidy::diagnostics::RunningCheck;
+use tidy::diagnostics::{RunningCheck, TidyFlags};
 use tidy::features::{Feature, collect_lang_features, collect_lib_features};
 
 #[derive(Debug, Parser)]
@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     let Cli { compiler_path, library_path, output_path } = Cli::parse();
 
     let lang_features_status = collect_lang_features(&compiler_path, &mut RunningCheck::new_noop());
-    let lib_features_status = collect_lib_features(&library_path, None)
+    let lib_features_status = collect_lib_features(&library_path, &TidyFlags::default())
         .into_iter()
         .filter(|&(ref name, _)| !lang_features_status.contains_key(name))
         .collect();

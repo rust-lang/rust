@@ -9,8 +9,7 @@ use fluent_syntax::ast::Entry;
 use fluent_syntax::parser;
 use regex::Regex;
 
-use crate::TidyCtx;
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 fn message() -> &'static Regex {
@@ -88,14 +87,14 @@ fn sort_messages(
     out
 }
 
-pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("fluent_alphabetical").path(path));
-    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("fluent_alphabetical").path(path));
+    let bless = tidy_ctx.tidy_flags.bless;
 
     let mut all_defined_msgs = HashMap::new();
     walk(
         path,
-        tidy_ctx,
+        &tidy_ctx.tidy_flags,
         |path, is_dir| filter_dirs(path) || (!is_dir && !is_fluent(path)),
         &mut |ent, contents| {
             if bless {
@@ -123,5 +122,5 @@ pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
 
     assert!(!all_defined_msgs.is_empty());
 
-    crate::fluent_used::check(path, all_defined_msgs, tidy_ctx, diag_ctx);
+    crate::fluent_used::check(path, all_defined_msgs, tidy_ctx);
 }

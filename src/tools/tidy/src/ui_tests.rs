@@ -7,18 +7,17 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::TidyCtx;
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx, TidyFlags};
 
 const ISSUES_TXT_HEADER: &str = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
 ============================================================
 "#;
 
-pub fn check(root_path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
     let path = &root_path.join("tests");
-    let mut check = diag_ctx.start_check(CheckId::new("ui_tests").path(path));
-    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
+    let mut check = tidy_ctx.start_check(CheckId::new("ui_tests").path(path));
+    let bless = tidy_ctx.tidy_flags.bless;
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -47,7 +46,7 @@ pub fn check(root_path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
     deny_new_top_level_ui_tests(&mut check, &path.join("ui"));
 
     let remaining_issue_names =
-        recursively_check_ui_tests(&mut check, path, &allowed_issue_names, tidy_ctx);
+        recursively_check_ui_tests(&mut check, path, &allowed_issue_names, &tidy_ctx.tidy_flags);
 
     // if there are any file names remaining, they were moved on the fs.
     // our data must remain up to date, so it must be removed from issues.txt
@@ -107,13 +106,13 @@ fn recursively_check_ui_tests<'issues>(
     check: &mut RunningCheck,
     path: &Path,
     allowed_issue_names: &'issues BTreeSet<&'issues str>,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
 ) -> BTreeSet<&'issues str> {
     let mut remaining_issue_names: BTreeSet<&str> = allowed_issue_names.clone();
 
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
-    crate::walk::walk_no_read(&paths, tidy_ctx, |_, _| false, &mut |entry| {
+    crate::walk::walk_no_read(&paths, tidy_flags, |_, _| false, &mut |entry| {
         let file_path = entry.path();
         if let Some(ext) = file_path.extension().and_then(OsStr::to_str) {
             check_unexpected_extension(check, file_path, ext);

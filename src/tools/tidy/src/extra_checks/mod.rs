@@ -25,8 +25,8 @@ use std::{fmt, fs, io};
 
 use build_helper::git::get_git_untracked_files;
 
-use crate::diagnostics::DiagCtx;
-use crate::{CiInfo, TidyCtx};
+use crate::CiInfo;
+use crate::diagnostics::{TidyCtx, TidyFlags};
 
 mod rustdoc_js;
 
@@ -56,10 +56,9 @@ pub fn check(
     cargo: &Path,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    tidy_ctx: Option<&TidyCtx>,
-    diag_ctx: DiagCtx,
+    tidy_ctx: TidyCtx,
 ) {
-    let mut check = diag_ctx.start_check("extra_checks");
+    let mut check = tidy_ctx.start_check("extra_checks");
 
     if let Err(e) = check_impl(
         root_path,
@@ -71,7 +70,7 @@ pub fn check(
         cargo,
         extra_checks,
         pos_args,
-        tidy_ctx,
+        &tidy_ctx.tidy_flags,
     ) {
         check.error(e);
     }
@@ -87,11 +86,11 @@ fn check_impl(
     cargo: &Path,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
 ) -> Result<(), Error> {
     let show_diff =
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
-    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
+    let bless = tidy_flags.bless;
 
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
@@ -336,12 +335,12 @@ fn check_impl(
         } else {
             eprintln!("linting javascript files and applying suggestions");
         }
-        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, tidy_ctx);
+        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, tidy_flags);
         if res.is_err() {
             rerun_with_bless("js:lint", "apply eslint suggestions");
         }
         res?;
-        rustdoc_js::es_check(outdir, librustdoc_path, tidy_ctx)?;
+        rustdoc_js::es_check(outdir, librustdoc_path, tidy_flags)?;
     }
 
     if js_typecheck {

@@ -2,13 +2,12 @@
 
 use std::path::Path;
 
-use crate::TidyCtx;
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
-pub fn check(path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("edition").path(path));
-    walk(path, tidy_ctx, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("edition").path(path));
+    walk(path, &tidy_ctx.tidy_flags, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap();
         if filename != "Cargo.toml" {

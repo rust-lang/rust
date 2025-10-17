@@ -4,9 +4,9 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::diagnostics::DiagCtx;
+use crate::diagnostics::TidyCtx;
 
-pub fn check(root_path: &Path, compiler_path: &Path, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, compiler_path: &Path, diag_ctx: TidyCtx) {
     let mut check = diag_ctx.start_check("gcc_submodule");
 
     let cg_gcc_version_path = compiler_path.join("rustc_codegen_gcc/libgccjit.version");

@@ -4,11 +4,11 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 
 const RUSTDOC_JSON_TYPES: &str = "src/rustdoc-json-types";
 
-pub fn check(src_path: &Path, ci_info: &crate::CiInfo, diag_ctx: DiagCtx) {
+pub fn check(src_path: &Path, ci_info: &crate::CiInfo, diag_ctx: TidyCtx) {
     let mut check = diag_ctx.start_check(CheckId::new("rustdoc_json").path(src_path));
 
     let Some(base_commit) = &ci_info.base_commit else {

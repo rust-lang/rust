@@ -4,8 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::TidyCtx;
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::iter_header::*;
 use crate::walk::*;
 
@@ -23,12 +22,12 @@ const IGNORES: &[&str] = &[
 const EXTENSIONS: &[&str] = &["stdout", "stderr"];
 const SPECIAL_TEST: &str = "tests/ui/command/need-crate-arg-ignore-tidy.x.rs";
 
-pub fn check(tests_path: &Path, tidy_ctx: Option<&TidyCtx>, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx
+pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx
         .start_check(CheckId::new("tests_revision_unpaired_stdout_stderr").path(tests_path));
 
     // Recurse over subdirectories under `tests/`
-    walk_dir(tests_path.as_ref(), tidy_ctx, filter, &mut |entry| {
+    walk_dir(tests_path.as_ref(), &tidy_ctx.tidy_flags, filter, &mut |entry| {
         // We are inspecting a folder. Collect the paths to interesting files `.rs`, `.stderr`,
         // `.stdout` under the current folder (shallow).
         let mut files_under_inspection = BTreeSet::new();

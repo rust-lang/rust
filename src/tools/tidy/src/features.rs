@@ -16,8 +16,7 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
-use crate::TidyCtx;
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx, TidyFlags};
 use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 
 #[cfg(test)]
@@ -77,10 +76,10 @@ pub struct CollectedFeatures {
 }
 
 // Currently only used for unstable book generation
-pub fn collect_lib_features(base_src_path: &Path, tidy_ctx: Option<&TidyCtx>) -> Features {
+pub fn collect_lib_features(base_src_path: &Path, tidy_flags: &TidyFlags) -> Features {
     let mut lib_features = Features::new();
 
-    map_lib_features(base_src_path, tidy_ctx, &mut |res, _, _| {
+    map_lib_features(base_src_path, tidy_flags, &mut |res, _, _| {
         if let Ok((name, feature)) = res {
             lib_features.insert(name.to_owned(), feature);
         }
@@ -93,15 +92,15 @@ pub fn check(
     tests_path: &Path,
     compiler_path: &Path,
     lib_path: &Path,
-    tidy_ctx: Option<&TidyCtx>,
-    diag_ctx: DiagCtx,
+    tidy_ctx: TidyCtx,
 ) -> CollectedFeatures {
-    let mut check = diag_ctx.start_check("features");
+    let mut check = tidy_ctx.start_check("features");
 
     let mut features = collect_lang_features(compiler_path, &mut check);
     assert!(!features.is_empty());
 
-    let lib_features = get_and_check_lib_features(lib_path, tidy_ctx, &mut check, &features);
+    let lib_features =
+        get_and_check_lib_features(lib_path, &tidy_ctx.tidy_flags, &mut check, &features);
     assert!(!lib_features.is_empty());
 
     walk_many(
@@ -111,7 +110,7 @@ pub fn check(
             &tests_path.join("rustdoc-ui"),
             &tests_path.join("rustdoc"),
         ],
-        tidy_ctx,
+        &tidy_ctx.tidy_flags,
         |path, _is_dir| {
             filter_dirs(path)
                 || filter_not_rust(path)
@@ -443,12 +442,12 @@ fn collect_lang_features_in(
 
 fn get_and_check_lib_features(
     base_src_path: &Path,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     check: &mut RunningCheck,
     lang_features: &Features,
 ) -> Features {
     let mut lib_features = Features::new();
-    map_lib_features(base_src_path, tidy_ctx, &mut |res, file, line| match res {
+    map_lib_features(base_src_path, tidy_flags, &mut |res, file, line| match res {
         Ok((name, f)) => {
             let mut check_features = |f: &Feature, list: &Features, display: &str| {
                 if let Some(s) = list.get(name)
@@ -476,12 +475,12 @@ fn get_and_check_lib_features(
 
 fn map_lib_features(
     base_src_path: &Path,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
     mf: &mut (dyn Send + Sync + FnMut(Result<(&str, Feature), &str>, &Path, usize)),
 ) {
     walk(
         base_src_path,
-        tidy_ctx,
+        tidy_flags,
         |path, _is_dir| filter_dirs(path) || path.ends_with("tests"),
         &mut |entry, contents| {
             let file = entry.path();
@@ -618,13 +617,13 @@ fn should_document(var: &str) -> bool {
     ["SDKROOT", "QNX_TARGET", "COLORTERM", "TERM"].contains(&var)
 }
 
-pub fn collect_env_vars(compiler: &Path, tidy_ctx: Option<&TidyCtx>) -> BTreeSet<String> {
+pub fn collect_env_vars(compiler: &Path, tidy_flags: &TidyFlags) -> BTreeSet<String> {
     let env_var_regex: Regex = Regex::new(r#"env::var(_os)?\("([^"]+)"#).unwrap();
 
     let mut vars = BTreeSet::new();
     walk(
         compiler,
-        tidy_ctx,
+        tidy_flags,
         // skip build scripts, tests, and non-rust files
         |path, _is_dir| {
             filter_dirs(path)

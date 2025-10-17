@@ -22,8 +22,7 @@ use std::path::Path;
 
 use regex::Regex;
 
-use crate::TidyCtx;
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx, TidyFlags};
 use crate::walk::{filter_dirs, walk, walk_many};
 
 const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/lib.rs";
@@ -37,14 +36,8 @@ const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E07
 const IGNORE_UI_TEST_CHECK: &[&str] =
     &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
 
-pub fn check(
-    root_path: &Path,
-    search_paths: &[&Path],
-    ci_info: &crate::CiInfo,
-    tidy_ctx: Option<&TidyCtx>,
-    diag_ctx: DiagCtx,
-) {
-    let mut check = diag_ctx.start_check("error_codes");
+pub fn check(root_path: &Path, search_paths: &[&Path], ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("error_codes");
 
     // Check that no error code explanation was removed.
     check_removed_error_code_explanation(ci_info, &mut check);
@@ -55,13 +48,20 @@ pub fn check(
     check.verbose_msg(format!("Highest error code: `{}`", error_codes.iter().max().unwrap()));
 
     // Stage 2: check list has docs
-    let no_longer_emitted = check_error_codes_docs(root_path, &error_codes, &mut check, tidy_ctx);
+    let no_longer_emitted =
+        check_error_codes_docs(root_path, &error_codes, &mut check, &tidy_ctx.tidy_flags);
 
     // Stage 3: check list has UI tests
     check_error_codes_tests(root_path, &error_codes, &mut check, &no_longer_emitted);
 
     // Stage 4: check list is emitted by compiler
-    check_error_codes_used(search_paths, &error_codes, &mut check, &no_longer_emitted, tidy_ctx);
+    check_error_codes_used(
+        search_paths,
+        &error_codes,
+        &mut check,
+        &no_longer_emitted,
+        &tidy_ctx.tidy_flags,
+    );
 }
 
 fn check_removed_error_code_explanation(ci_info: &crate::CiInfo, check: &mut RunningCheck) {
@@ -161,13 +161,13 @@ fn check_error_codes_docs(
     root_path: &Path,
     error_codes: &[String],
     check: &mut RunningCheck,
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
 ) -> Vec<String> {
     let docs_path = root_path.join(Path::new(ERROR_DOCS_PATH));
 
     let mut no_longer_emitted_codes = Vec::new();
 
-    walk(&docs_path, tidy_ctx, |_, _| false, &mut |entry, contents| {
+    walk(&docs_path, &tidy_flags, |_, _| false, &mut |entry, contents| {
         let path = entry.path();
 
         // Error if the file isn't markdown.
@@ -339,43 +339,48 @@ fn check_error_codes_used(
     error_codes: &[String],
     check: &mut RunningCheck,
     no_longer_emitted: &[String],
-    tidy_ctx: Option<&TidyCtx>,
+    tidy_flags: &TidyFlags,
 ) {
     // Search for error codes in the form `E0123`.
     let regex = Regex::new(r#"\bE\d{4}\b"#).unwrap();
 
     let mut found_codes = Vec::new();
 
-    walk_many(search_paths, tidy_ctx, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
-        let path = entry.path();
+    walk_many(
+        search_paths,
+        tidy_flags,
+        |path, _is_dir| filter_dirs(path),
+        &mut |entry, contents| {
+            let path = entry.path();
 
-        // Return early if we aren't looking at a source file.
-        if path.extension() != Some(OsStr::new("rs")) {
-            return;
-        }
-
-        for line in contents.lines() {
-            // We want to avoid parsing error codes in comments.
-            if line.trim_start().starts_with("//") {
-                continue;
+            // Return early if we aren't looking at a source file.
+            if path.extension() != Some(OsStr::new("rs")) {
+                return;
             }
 
-            for cap in regex.captures_iter(line) {
-                if let Some(error_code) = cap.get(0) {
-                    let error_code = error_code.as_str().to_owned();
+            for line in contents.lines() {
+                // We want to avoid parsing error codes in comments.
+                if line.trim_start().starts_with("//") {
+                    continue;
+                }
 
-                    if !error_codes.contains(&error_code) {
-                        // This error code isn't properly defined, we must error.
-                        check.error(format!("Error code `{error_code}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/lib.rs`."));
-                        continue;
+                for cap in regex.captures_iter(line) {
+                    if let Some(error_code) = cap.get(0) {
+                        let error_code = error_code.as_str().to_owned();
+
+                        if !error_codes.contains(&error_code) {
+                            // This error code isn't properly defined, we must error.
+                            check.error(format!("Error code `{error_code}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/lib.rs`."));
+                            continue;
+                        }
+
+                        // This error code can now be marked as used.
+                        found_codes.push(error_code);
                     }
-
-                    // This error code can now be marked as used.
-                    found_codes.push(error_code);
                 }
             }
-        }
-    });
+        },
+    );
 
     for code in error_codes {
         if !found_codes.contains(code) && !no_longer_emitted.contains(code) {
