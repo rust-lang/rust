@@ -22,7 +22,7 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbigModChildKind, ModChild};
 use rustc_middle::ty::{Feed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
@@ -36,9 +36,9 @@ use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind, ModuleOrUniformRoot,
-    NameBinding, ParentScope, PathResult, ResolutionError, Resolver, Segment, Used,
-    VisResolutionError, errors,
+    AmbiguityKind, BindingKey, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
+    ResolutionError, Resolver, Segment, Used, VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -81,9 +81,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         res: Res,
         vis: Visibility<DefId>,
         span: Span,
-        expn_id: LocalExpnId,
+        expansion: LocalExpnId,
+        ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
+        warn_ambiguity: bool,
     ) {
-        let binding = self.arenas.new_res_binding(res, vis, span, expn_id);
+        let binding = self.arenas.alloc_name_binding(NameBindingData {
+            kind: NameBindingKind::Res(res),
+            ambiguity,
+            warn_ambiguity,
+            vis,
+            span,
+            expansion,
+        });
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
@@ -232,9 +241,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
-        for (i, child) in self.tcx.module_children(module.def_id()).into_iter().enumerate() {
-            let parent_scope = ParentScope::module(module, self.arenas);
-            self.build_reduced_graph_for_external_crate_res(child, parent_scope, i)
+        let def_id = module.def_id();
+        let children = self.tcx.module_children(def_id);
+        let parent_scope = ParentScope::module(module, self.arenas);
+        for (i, child) in self.tcx.module_children(def_id).iter().enumerate() {
+            self.build_reduced_graph_for_external_crate_res(child, parent_scope, i, None, false)
+        }
+        for (i, child) in
+            self.cstore().ambig_module_children_untracked(def_id, self.tcx.sess).enumerate()
+        {
+            self.build_reduced_graph_for_external_crate_res(
+                &child.main,
+                parent_scope,
+                children.len() + i,
+                Some((&child.second, child.kind)),
+                child.warn_ambiguity,
+            )
         }
     }
 
@@ -244,6 +266,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         child: &ModChild,
         parent_scope: ParentScope<'ra>,
         child_index: usize,
+        ambig_child: Option<(&ModChild, AmbigModChildKind)>,
+        warn_ambiguity: bool,
     ) {
         let parent = parent_scope.module;
         let ModChild { ident, res, vis, ref reexport_chain } = *child;
@@ -255,6 +279,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
         let res = res.expect_non_local();
         let expansion = parent_scope.expansion;
+        let ambig = ambig_child.map(|(ambig_child, ambig_kind)| {
+            let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
+            let span = self.def_span(
+                reexport_chain
+                    .first()
+                    .and_then(|reexport| reexport.id())
+                    .unwrap_or_else(|| res.def_id()),
+            );
+            let res = res.expect_non_local();
+            let ambig_kind = match ambig_kind {
+                AmbigModChildKind::GlobVsGlob => AmbiguityKind::GlobVsGlob,
+                AmbigModChildKind::GlobVsExpanded => AmbiguityKind::GlobVsExpanded,
+            };
+            (self.arenas.new_res_binding(res, vis, span, expansion), ambig_kind)
+        });
         // Record primary definitions.
         match res {
             Res::Def(
@@ -272,9 +311,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::ToolMod => {
-                self.define_extern(parent, ident, TypeNS, child_index, res, vis, span, expansion)
-            }
+            | Res::ToolMod => self.define_extern(
+                parent,
+                ident,
+                TypeNS,
+                child_index,
+                res,
+                vis,
+                span,
+                expansion,
+                ambig,
+                warn_ambiguity,
+            ),
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
@@ -283,10 +331,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
-            ) => self.define_extern(parent, ident, ValueNS, child_index, res, vis, span, expansion),
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.define_extern(parent, ident, MacroNS, child_index, res, vis, span, expansion)
-            }
+            ) => self.define_extern(
+                parent,
+                ident,
+                ValueNS,
+                child_index,
+                res,
+                vis,
+                span,
+                expansion,
+                ambig,
+                warn_ambiguity,
+            ),
+            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => self.define_extern(
+                parent,
+                ident,
+                MacroNS,
+                child_index,
+                res,
+                vis,
+                span,
+                expansion,
+                ambig,
+                warn_ambiguity,
+            ),
             Res::Def(
                 DefKind::TyParam
                 | DefKind::ConstParam

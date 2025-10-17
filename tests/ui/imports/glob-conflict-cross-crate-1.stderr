@@ -1,15 +1,39 @@
-error[E0425]: cannot find function `f` in crate `glob_conflict`
+error[E0659]: `f` is ambiguous
   --> $DIR/glob-conflict-cross-crate-1.rs:6:20
    |
 LL |     glob_conflict::f();
-   |                    ^ not found in `glob_conflict`
+   |                    ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:10:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:11:9
+   |
+LL | pub use m2::*;
+   |         ^^
 
-error[E0425]: cannot find function `f` in module `glob_conflict::glob`
-  --> $DIR/glob-conflict-cross-crate-1.rs:9:26
+error[E0659]: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:7:26
    |
 LL |     glob_conflict::glob::f();
-   |                          ^ not found in `glob_conflict::glob`
+   |                          ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:10:9
+   |
+LL | pub use m1::*;
+   |         ^^
+note: `f` could also refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:11:9
+   |
+LL | pub use m2::*;
+   |         ^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0659`.

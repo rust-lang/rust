@@ -1,0 +1,21 @@
+error[E0659]: `log` is ambiguous
+  --> $DIR/issue-114682-6.rs:9:9
+   |
+LL |     let log = 2;
+   |         ^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `log` could refer to the function defined here
+  --> $DIR/auxiliary/issue-114682-6-extern.rs:8:9
+   |
+LL | pub use self::a::*;
+   |         ^^^^^^^
+note: `log` could also refer to the function defined here
+  --> $DIR/auxiliary/issue-114682-6-extern.rs:9:9
+   |
+LL | pub use self::b::*;
+   |         ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

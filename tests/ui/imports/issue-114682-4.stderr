@@ -1,0 +1,36 @@
+error[E0659]: `Result` is ambiguous
+  --> $DIR/issue-114682-4.rs:9:11
+   |
+LL | fn a() -> Result<i32, ()> {
+   |           ^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Result` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-4-extern.rs:9:9
+   |
+LL | pub use a::*;
+   |         ^
+note: `Result` could also refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-4-extern.rs:10:9
+   |
+LL | pub use b::*;
+   |         ^
+
+error[E0107]: type alias takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/issue-114682-4.rs:9:11
+   |
+LL | fn a() -> Result<i32, ()> {
+   |           ^^^^^^    ---- help: remove the unnecessary generic argument
+   |           |
+   |           expected 1 generic argument
+   |
+note: type alias defined here, with 1 generic parameter: `T`
+  --> $DIR/auxiliary/issue-114682-4-extern.rs:2:14
+   |
+LL |     pub type Result<T> = std::result::Result<T, ()>;
+   |              ^^^^^^ -
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0659.
+For more information about an error, try `rustc --explain E0107`.
