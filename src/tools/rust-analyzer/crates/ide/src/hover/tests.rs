@@ -1,5 +1,5 @@
 use expect_test::{Expect, expect};
-use ide_db::{FileRange, base_db::SourceDatabase};
+use ide_db::{FileRange, MiniCore, base_db::SourceDatabase};
 use syntax::TextRange;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
 
 use hir::setup_tracing;
 
-const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
+const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
     links_in_hover: false,
     memory_layout: Some(MemoryLayoutHoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
@@ -25,6 +25,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
     show_drop_glue: true,
+    minicore: MiniCore::default(),
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {

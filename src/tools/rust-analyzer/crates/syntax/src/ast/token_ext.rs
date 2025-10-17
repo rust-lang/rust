@@ -201,6 +201,10 @@ pub trait IsString: AstToken {
             None
         }
     }
+    fn map_offset_down(&self, offset: TextSize) -> Option<TextSize> {
+        let contents_range = self.text_range_between_quotes()?;
+        offset.checked_sub(contents_range.start())
+    }
 }
 
 impl IsString for ast::String {

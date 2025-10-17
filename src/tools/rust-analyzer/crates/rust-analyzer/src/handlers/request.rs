@@ -7,8 +7,8 @@ use anyhow::Context;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
-    FilePosition, FileRange, FileStructureConfig, HoverAction, HoverGotoTypeData,
+    AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve, FilePosition,
+    FileRange, FileStructureConfig, FindAllRefsConfig, HoverAction, HoverGotoTypeData,
     InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
     SingleResolve, SourceChange, TextEdit,
 };
@@ -811,7 +811,8 @@ pub(crate) fn handle_goto_definition(
     let _p = tracing::info_span!("handle_goto_definition").entered();
     let position =
         try_default!(from_proto::file_position(&snap, params.text_document_position_params)?);
-    let nav_info = match snap.analysis.goto_definition(position)? {
+    let config = snap.config.goto_definition(snap.minicore());
+    let nav_info = match snap.analysis.goto_definition(position, &config)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -829,7 +830,8 @@ pub(crate) fn handle_goto_declaration(
         &snap,
         params.text_document_position_params.clone()
     )?);
-    let nav_info = match snap.analysis.goto_declaration(position)? {
+    let config = snap.config.goto_definition(snap.minicore());
+    let nav_info = match snap.analysis.goto_declaration(position, &config)? {
         None => return handle_goto_definition(snap, params),
         Some(it) => it,
     };
@@ -1106,7 +1108,7 @@ pub(crate) fn handle_completion(
         context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
 
     let source_root = snap.analysis.source_root_id(position.file_id)?;
-    let completion_config = &snap.config.completion(Some(source_root));
+    let completion_config = &snap.config.completion(Some(source_root), snap.minicore());
     // FIXME: We should fix up the position when retrying the cancelled request instead
     position.offset = position.offset.min(line_index.index.len());
     let items = match snap.analysis.completions(
@@ -1160,7 +1162,8 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
+    let mut forced_resolve_completions_config =
+        snap.config.completion(Some(source_root), snap.minicore());
     forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
     let position = FilePosition { file_id, offset };
@@ -1274,7 +1277,7 @@ pub(crate) fn handle_hover(
     };
     let file_range = try_default!(from_proto::file_range(&snap, &params.text_document, range)?);
 
-    let hover = snap.config.hover();
+    let hover = snap.config.hover(snap.minicore());
     let info = match snap.analysis.hover(&hover, file_range)? {
         None => return Ok(None),
         Some(info) => info,
@@ -1360,7 +1363,11 @@ pub(crate) fn handle_references(
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
-    let Some(refs) = snap.analysis.find_all_refs(position, None)? else {
+    let Some(refs) = snap.analysis.find_all_refs(
+        position,
+        &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+    )?
+    else {
         return Ok(None);
     };
 
@@ -1615,8 +1622,8 @@ pub(crate) fn handle_code_lens(
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
 
     let annotations = snap.analysis.annotations(
-        &AnnotationConfig {
-            binary_target: target_spec
+        &lens_config.into_annotation_config(
+            target_spec
                 .map(|spec| {
                     matches!(
                         spec.target_kind(),
@@ -1624,13 +1631,8 @@ pub(crate) fn handle_code_lens(
                     )
                 })
                 .unwrap_or(false),
-            annotate_runnables: lens_config.runnable(),
-            annotate_impls: lens_config.implementations,
-            annotate_references: lens_config.refs_adt,
-            annotate_method_references: lens_config.method_refs,
-            annotate_enum_variant_references: lens_config.enum_variant_refs,
-            location: lens_config.location.into(),
-        },
+            snap.minicore(),
+        ),
         file_id,
     )?;
 
@@ -1653,7 +1655,8 @@ pub(crate) fn handle_code_lens_resolve(
     let Some(annotation) = from_proto::annotation(&snap, code_lens.range, resolve)? else {
         return Ok(code_lens);
     };
-    let annotation = snap.analysis.resolve_annotation(annotation)?;
+    let config = snap.config.lens().into_annotation_config(false, snap.minicore());
+    let annotation = snap.analysis.resolve_annotation(&config, annotation)?;
 
     let mut acc = Vec::new();
     to_proto::code_lens(&mut acc, &snap, annotation)?;
@@ -1736,7 +1739,7 @@ pub(crate) fn handle_inlay_hints(
         range.end().min(line_index.index.len()),
     );
 
-    let inlay_hints_config = snap.config.inlay_hints();
+    let inlay_hints_config = snap.config.inlay_hints(snap.minicore());
     Ok(Some(
         snap.analysis
             .inlay_hints(&inlay_hints_config, file_id, Some(range))?
@@ -1777,7 +1780,7 @@ pub(crate) fn handle_inlay_hints_resolve(
     let line_index = snap.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, resolve_data.resolve_range)?;
 
-    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
+    let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints(snap.minicore());
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
@@ -1816,7 +1819,8 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let position =
         try_default!(from_proto::file_position(&snap, params.text_document_position_params)?);
 
-    let nav_info = match snap.analysis.call_hierarchy(position)? {
+    let config = snap.config.call_hierarchy(snap.minicore());
+    let nav_info = match snap.analysis.call_hierarchy(position, &config)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1842,8 +1846,8 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let frange = try_default!(from_proto::file_range(&snap, &doc, item.selection_range)?);
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let config = snap.config.call_hierarchy();
-    let call_items = match snap.analysis.incoming_calls(config, fpos)? {
+    let config = snap.config.call_hierarchy(snap.minicore());
+    let call_items = match snap.analysis.incoming_calls(&config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1881,8 +1885,8 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
     let line_index = snap.file_line_index(fpos.file_id)?;
 
-    let config = snap.config.call_hierarchy();
-    let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
+    let config = snap.config.call_hierarchy(snap.minicore());
+    let call_items = match snap.analysis.outgoing_calls(&config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1916,7 +1920,7 @@ pub(crate) fn handle_semantic_tokens_full(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config();
+    let mut highlight_config = snap.config.highlighting_config(snap.minicore());
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -1946,7 +1950,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config();
+    let mut highlight_config = snap.config.highlighting_config(snap.minicore());
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -1988,7 +1992,7 @@ pub(crate) fn handle_semantic_tokens_range(
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
-    let mut highlight_config = snap.config.highlighting_config();
+    let mut highlight_config = snap.config.highlighting_config(snap.minicore());
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
     highlight_config.syntactic_name_ref_highlighting =
         snap.workspaces.is_empty() || !snap.proc_macros_loaded;
@@ -2156,7 +2160,13 @@ fn show_ref_command_link(
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover_actions().references
         && snap.config.client_commands().show_reference
-        && let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None)
+        && let Some(ref_search_res) = snap
+            .analysis
+            .find_all_refs(
+                *position,
+                &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+            )
+            .unwrap_or(None)
     {
         let uri = to_proto::url(snap, position.file_id);
         let line_index = snap.file_line_index(position.file_id).ok()?;

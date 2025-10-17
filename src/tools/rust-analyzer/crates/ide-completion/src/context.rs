@@ -440,6 +440,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
+    pub(crate) trigger_character: Option<char>,
     /// The token before the cursor, in the original file.
     pub(crate) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -703,6 +704,7 @@ impl<'db> CompletionContext<'db> {
         db: &'db RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'db CompletionConfig<'db>,
+        trigger_character: Option<char>,
     ) -> Option<(CompletionContext<'db>, CompletionAnalysis<'db>)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -871,6 +873,7 @@ impl<'db> CompletionContext<'db> {
             db,
             config,
             position,
+            trigger_character,
             original_token,
             token,
             krate,
