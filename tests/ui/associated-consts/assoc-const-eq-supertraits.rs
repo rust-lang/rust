@@ -3,11 +3,13 @@
 
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 trait Trait: SuperTrait {}
 trait SuperTrait: SuperSuperTrait<i32> {}
 trait SuperSuperTrait<T> {
+    #[type_const]
     const K: T;
 }
 

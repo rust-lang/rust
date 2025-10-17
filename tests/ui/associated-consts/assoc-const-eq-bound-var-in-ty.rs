@@ -3,9 +3,11 @@
 //
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
 
 trait Trait<T> {
+    #[type_const]
     const K: T;
 }
 

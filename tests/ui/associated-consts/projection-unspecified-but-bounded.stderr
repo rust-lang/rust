@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<T as TraitWAssocConst>::A == 32`
-  --> $DIR/projection-unspecified-but-bounded.rs:12:11
+  --> $DIR/projection-unspecified-but-bounded.rs:14:11
    |
 LL |     foo::<T>();
    |           ^ expected `32`, found `<T as TraitWAssocConst>::A`
@@ -7,7 +7,7 @@ LL |     foo::<T>();
    = note: expected constant `32`
               found constant `<T as TraitWAssocConst>::A`
 note: required by a bound in `foo`
-  --> $DIR/projection-unspecified-but-bounded.rs:9:28
+  --> $DIR/projection-unspecified-but-bounded.rs:11:28
    |
 LL | fn foo<T: TraitWAssocConst<A = 32>>() {}
    |                            ^^^^^^ required by this bound in `foo`

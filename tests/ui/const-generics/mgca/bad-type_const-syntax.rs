@@ -9,8 +9,7 @@ struct S;
 
 impl Tr for S {
     #[type_const]
-    //~^ ERROR must only be applied to trait associated constants
-    //~| ERROR experimental
+    //~^ ERROR experimental
     const N: usize = 0;
 }
 

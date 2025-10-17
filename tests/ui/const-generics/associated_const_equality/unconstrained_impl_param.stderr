@@ -14,26 +14,13 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
 LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
    |      ^ unconstrained type parameter
 
-error[E0271]: type mismatch resolving `<(_,) as AssocConst>::A == 0`
+error[E0282]: type annotations needed
   --> $DIR/unconstrained_impl_param.rs:21:5
    |
 LL |     (): Trait,
-   |     ^^^^^^^^^ expected `0`, found `<(_,) as AssocConst>::A`
-   |
-   = note: expected constant `0`
-              found constant `<(_,) as AssocConst>::A`
-note: required for `()` to implement `Trait`
-  --> $DIR/unconstrained_impl_param.rs:15:9
-   |
-LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
-   |         ^^^^^     ^^                        --------- unsatisfied trait bound introduced here
-   = help: see issue #48214
-help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
-   |
-LL + #![feature(trivial_bounds)]
-   |
+   |     ^^^^^^^^^ cannot infer type for type parameter `U`
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0207, E0271, E0658.
+Some errors have detailed explanations: E0207, E0282, E0658.
 For more information about an error, try `rustc --explain E0207`.

@@ -422,6 +422,7 @@ macro_rules! common_visitor_and_walkers {
             Closure,
             Const,
             ConstItem,
+            ConstItemRhs,
             Defaultness,
             Delegation,
             DelegationMac,
