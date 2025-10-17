@@ -427,39 +427,35 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     where
         T: Ord,
     {
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return Difference { inner: DifferenceInner::Iterate(self.iter()) };
-            };
-        Difference {
-            inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
-                (Greater, _) | (_, Less) => DifferenceInner::Iterate(self.iter()),
-                (Equal, _) => {
-                    let mut self_iter = self.iter();
-                    self_iter.next();
-                    DifferenceInner::Iterate(self_iter)
-                }
-                (_, Equal) => {
-                    let mut self_iter = self.iter();
-                    self_iter.next_back();
-                    DifferenceInner::Iterate(self_iter)
-                }
-                _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    DifferenceInner::Search { self_iter: self.iter(), other_set: other }
-                }
-                _ => DifferenceInner::Stitch {
-                    self_iter: self.iter(),
-                    other_iter: other.iter().peekable(),
+        if let Some(self_min) = self.first()
+            && let Some(self_max) = self.last()
+            && let Some(other_min) = other.first()
+            && let Some(other_max) = other.last()
+        {
+            Difference {
+                inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
+                    (Greater, _) | (_, Less) => DifferenceInner::Iterate(self.iter()),
+                    (Equal, _) => {
+                        let mut self_iter = self.iter();
+                        self_iter.next();
+                        DifferenceInner::Iterate(self_iter)
+                    }
+                    (_, Equal) => {
+                        let mut self_iter = self.iter();
+                        self_iter.next_back();
+                        DifferenceInner::Iterate(self_iter)
+                    }
+                    _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
+                        DifferenceInner::Search { self_iter: self.iter(), other_set: other }
+                    }
+                    _ => DifferenceInner::Stitch {
+                        self_iter: self.iter(),
+                        other_iter: other.iter().peekable(),
+                    },
                 },
-            },
+            }
+        } else {
+            Difference { inner: DifferenceInner::Iterate(self.iter()) }
         }
     }
 
@@ -519,31 +515,27 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     where
         T: Ord,
     {
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return Intersection { inner: IntersectionInner::Answer(None) };
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return Intersection { inner: IntersectionInner::Answer(None) };
-            };
-        Intersection {
-            inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
-                (Greater, _) | (_, Less) => IntersectionInner::Answer(None),
-                (Equal, _) => IntersectionInner::Answer(Some(self_min)),
-                (_, Equal) => IntersectionInner::Answer(Some(self_max)),
-                _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search { small_iter: self.iter(), large_set: other }
-                }
-                _ if other.len() <= self.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
-                    IntersectionInner::Search { small_iter: other.iter(), large_set: self }
-                }
-                _ => IntersectionInner::Stitch { a: self.iter(), b: other.iter() },
-            },
+        if let Some(self_min) = self.first()
+            && let Some(self_max) = self.last()
+            && let Some(other_min) = other.first()
+            && let Some(other_max) = other.last()
+        {
+            Intersection {
+                inner: match (self_min.cmp(other_max), self_max.cmp(other_min)) {
+                    (Greater, _) | (_, Less) => IntersectionInner::Answer(None),
+                    (Equal, _) => IntersectionInner::Answer(Some(self_min)),
+                    (_, Equal) => IntersectionInner::Answer(Some(self_max)),
+                    _ if self.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
+                        IntersectionInner::Search { small_iter: self.iter(), large_set: other }
+                    }
+                    _ if other.len() <= self.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF => {
+                        IntersectionInner::Search { small_iter: other.iter(), large_set: self }
+                    }
+                    _ => IntersectionInner::Stitch { a: self.iter(), b: other.iter() },
+                },
+            }
+        } else {
+            Intersection { inner: IntersectionInner::Answer(None) }
         }
     }
 
@@ -694,55 +686,56 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
         // Same result as self.difference(other).next().is_none()
         // but the code below is faster (hugely in some cases).
         if self.len() > other.len() {
-            return false;
+            return false; // self has more elements than other
         }
-        let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
-                (self_min, self_max)
-            } else {
-                return true; // self is empty
-            };
-        let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
-                (other_min, other_max)
-            } else {
-                return false; // other is empty
-            };
+        let (Some(self_min), Some(self_max)) = (self.first(), self.last()) else {
+            return true; // self is empty
+        };
+        let (Some(other_min), Some(other_max)) = (other.first(), other.last()) else {
+            return false; // other is empty
+        };
         let mut self_iter = self.iter();
         match self_min.cmp(other_min) {
-            Less => return false,
+            Less => return false, // other does not contain self_min
             Equal => {
-                self_iter.next();
+                self_iter.next(); // self_min is contained in other, so remove it from consideration
+                // other_min is now not in self_iter (used below)
             }
-            Greater => (),
-        }
+            Greater => {} // other_min is not in self_iter (used below)
+        };
+
         match self_max.cmp(other_max) {
-            Greater => return false,
+            Greater => return false, // other does not contain self_max
             Equal => {
-                self_iter.next_back();
+                self_iter.next_back(); // self_max is contained in other, so remove it from consideration
+                // other_max is now not in self_iter (used below)
             }
-            Less => (),
-        }
+            Less => {} // other_max is not in self_iter (used below)
+        };
         if self_iter.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF {
-            for next in self_iter {
-                if !other.contains(next) {
-                    return false;
-                }
-            }
+            self_iter.all(|e| other.contains(e))
         } else {
             let mut other_iter = other.iter();
-            other_iter.next();
-            other_iter.next_back();
-            let mut self_next = self_iter.next();
-            while let Some(self1) = self_next {
-                match other_iter.next().map_or(Less, |other1| self1.cmp(other1)) {
-                    Less => return false,
-                    Equal => self_next = self_iter.next(),
-                    Greater => (),
-                }
+            {
+                // remove other_min and other_max as they are not in self_iter (see above)
+                other_iter.next();
+                other_iter.next_back();
             }
+            // custom `self_iter.all(|e| other.contains(e))`
+            self_iter.all(|self1| {
+                while let Some(other1) = other_iter.next() {
+                    match other1.cmp(self1) {
+                        // happens up to `ITER_PERFORMANCE_TIPPING_SIZE_DIFF * self.len() - 1` times
+                        Less => continue, // skip over elements that are smaller
+                        // happens `self.len()` times
+                        Equal => return true, // self1 is in other
+                        // happens only once
+                        Greater => return false, // self1 is not in other
+                    }
+                }
+                false
+            })
         }
-        true
     }
 
     /// Returns `true` if the set is a superset of another,
