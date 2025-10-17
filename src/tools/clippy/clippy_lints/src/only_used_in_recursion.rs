@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{get_expr_use_or_unification_node, path_def_id, path_to_local, path_to_local_id};
+use clippy_utils::get_expr_use_or_unification_node;
+use clippy_utils::res::{MaybeQPath, MaybeResPath};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -212,7 +213,7 @@ impl Usage {
 /// The parameters being checked by the lint, indexed by both the parameter's `HirId` and the
 /// `DefId` of the function paired with the parameter's index.
 #[derive(Default)]
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 struct Params {
     params: Vec<Param>,
     by_id: HirIdMap<usize>,
@@ -358,7 +359,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
-        if let Some(id) = path_to_local(e)
+        if let Some(id) = e.res_local_id()
             && let Some(param) = self.params.get_by_id_mut(id)
         {
             let typeck = cx.typeck_results();
@@ -370,7 +371,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     Some((Node::Expr(parent), child_id)) => match parent.kind {
                         // Recursive call. Track which index the parameter is used in.
                         ExprKind::Call(callee, args)
-                            if path_def_id(cx, callee).is_some_and(|id| {
+                            if callee.res(cx).opt_def_id().is_some_and(|id| {
                                 id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(callee.hir_id))
                             }) =>
                         {
@@ -395,7 +396,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         },
                         // Parameter update e.g. `x = x + 1`
                         ExprKind::Assign(lhs, rhs, _) | ExprKind::AssignOp(_, lhs, rhs)
-                            if rhs.hir_id == child_id && path_to_local_id(lhs, id) =>
+                            if rhs.hir_id == child_id && lhs.res_local_id() == Some(id) =>
                         {
                             return;
                         },

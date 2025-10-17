@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    is_diag_trait_item, is_from_proc_macro, is_res_lang_ctor, last_path_segment, path_res, std_or_core,
-};
+use clippy_utils::{is_from_proc_macro, last_path_segment, std_or_core};
 use rustc_errors::Applicability;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, LangItem, Node, UnOp};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, LangItem, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{EarlyBinder, TraitRef};
-use rustc_session::declare_lint_pass;
+use rustc_middle::ty::{EarlyBinder, TyCtxt, TypeckResults};
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
 
@@ -109,33 +108,96 @@ declare_clippy_lint! {
     suspicious,
     "non-canonical implementation of `PartialOrd` on an `Ord` type"
 }
-declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL_PARTIAL_ORD_IMPL]);
+impl_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL_PARTIAL_ORD_IMPL]);
+
+#[expect(
+    clippy::struct_field_names,
+    reason = "`_trait` suffix is meaningful on its own, \
+              and creating an inner `StoredTraits` struct would just add a level of indirection"
+)]
+pub(crate) struct NonCanonicalImpls {
+    partial_ord_trait: Option<DefId>,
+    ord_trait: Option<DefId>,
+    clone_trait: Option<DefId>,
+    copy_trait: Option<DefId>,
+}
+
+impl NonCanonicalImpls {
+    pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
+        let lang_items = tcx.lang_items();
+        Self {
+            partial_ord_trait: lang_items.partial_ord_trait(),
+            ord_trait: tcx.get_diagnostic_item(sym::Ord),
+            clone_trait: lang_items.clone_trait(),
+            copy_trait: lang_items.copy_trait(),
+        }
+    }
+}
+
+/// The traits that this lint looks at
+enum Trait {
+    Clone,
+    PartialOrd,
+}
 
 impl LateLintPass<'_> for NonCanonicalImpls {
-    fn check_impl_item<'tcx>(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'tcx>) {
-        if let ImplItemKind::Fn(_, impl_item_id) = impl_item.kind
-            && let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
-            && let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
-            && let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id)
-            // NOTE: check this early to avoid expensive checks that come after this one
-            && matches!(trait_name, Some(sym::Clone | sym::PartialOrd))
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        if let ItemKind::Impl(impl_) = item.kind
+            // Both `PartialOrd` and `Clone` have one required method, and `PartialOrd` can have 5 methods in total
+            && (1..=5).contains(&impl_.items.len())
+            && let Some(of_trait) = impl_.of_trait
+            && let Some(trait_did) = of_trait.trait_ref.trait_def_id()
+            // Check this early to hopefully bail out as soon as possible
+            && let trait_ = if Some(trait_did) == self.clone_trait {
+                Trait::Clone
+            } else if Some(trait_did) == self.partial_ord_trait {
+                Trait::PartialOrd
+            } else {
+                return;
+            }
             && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
-            && let body = cx.tcx.hir_body(impl_item_id)
-            && let ExprKind::Block(block, ..) = body.value.kind
-            && !block.span.in_external_macro(cx.sess().source_map())
-            && !is_from_proc_macro(cx, impl_item)
         {
-            if trait_name == Some(sym::Clone)
-                && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
-                && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
-            {
-                check_clone_on_copy(cx, impl_item, block);
-            } else if trait_name == Some(sym::PartialOrd)
-                && impl_item.ident.name == sym::partial_cmp
-                && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
-                && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
-            {
-                check_partial_ord_on_ord(cx, impl_item, item, &trait_impl, body, block);
+            let mut assoc_fns = impl_
+                .items
+                .iter()
+                .map(|id| cx.tcx.hir_impl_item(*id))
+                .filter_map(|assoc| {
+                    if let ImplItemKind::Fn(_, body_id) = assoc.kind
+                        && let body = cx.tcx.hir_body(body_id)
+                        && let ExprKind::Block(block, ..) = body.value.kind
+                        && !block.span.in_external_macro(cx.sess().source_map())
+                    {
+                        Some((assoc, body, block))
+                    } else {
+                        None
+                    }
+                });
+
+            match trait_ {
+                Trait::Clone => {
+                    if let Some(copy_trait) = self.copy_trait
+                        && let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
+                        && implements_trait(cx, trait_impl.self_ty(), copy_trait, &[])
+                    {
+                        for (assoc, _, block) in assoc_fns {
+                            check_clone_on_copy(cx, assoc, block);
+                        }
+                    }
+                },
+                Trait::PartialOrd => {
+                    if let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
+                        // If `Self` and `Rhs` are not the same type, then a corresponding `Ord` impl is not possible,
+                        // since it doesn't have an `Rhs`
+                        && let [lhs, rhs] = trait_impl.args.as_slice()
+                        && lhs == rhs
+                        && let Some(ord_trait) = self.ord_trait
+                        && implements_trait(cx, trait_impl.self_ty(), ord_trait, &[])
+                        && let Some((assoc, body, block)) =
+                            assoc_fns.find(|(assoc, _, _)| assoc.ident.name == sym::partial_cmp)
+                    {
+                        check_partial_ord_on_ord(cx, assoc, item, body, block);
+                    }
+                },
             }
         }
     }
@@ -153,6 +215,10 @@ fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, block: &B
             return;
         }
 
+        if is_from_proc_macro(cx, impl_item) {
+            return;
+        }
+
         span_lint_and_sugg(
             cx,
             NON_CANONICAL_CLONE_IMPL,
@@ -164,7 +230,7 @@ fn check_clone_on_copy(cx: &LateContext<'_>, impl_item: &ImplItem<'_>, block: &B
         );
     }
 
-    if impl_item.ident.name == sym::clone_from {
+    if impl_item.ident.name == sym::clone_from && !is_from_proc_macro(cx, impl_item) {
         span_lint_and_sugg(
             cx,
             NON_CANONICAL_CLONE_IMPL,
@@ -181,7 +247,6 @@ fn check_partial_ord_on_ord<'tcx>(
     cx: &LateContext<'tcx>,
     impl_item: &ImplItem<'_>,
     item: &Item<'_>,
-    trait_impl: &TraitRef<'_>,
     body: &Body<'_>,
     block: &Block<'tcx>,
 ) {
@@ -206,12 +271,7 @@ fn check_partial_ord_on_ord<'tcx>(
         && expr_is_cmp(cx, ret, impl_item, &mut needs_fully_qualified)
     {
         return;
-    }
-    // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
-    // suggestion tons more complex.
-    else if let [lhs, rhs, ..] = trait_impl.args.as_slice()
-        && lhs != rhs
-    {
+    } else if is_from_proc_macro(cx, impl_item) {
         return;
     }
 
@@ -261,7 +321,7 @@ fn expr_is_cmp<'tcx>(
     impl_item: &ImplItem<'_>,
     needs_fully_qualified: &mut bool,
 ) -> bool {
-    let impl_item_did = impl_item.owner_id.def_id;
+    let typeck = cx.tcx.typeck(impl_item.owner_id.def_id);
     match expr.kind {
         ExprKind::Call(
             Expr {
@@ -271,16 +331,16 @@ fn expr_is_cmp<'tcx>(
             },
             [cmp_expr],
         ) => {
-            is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
-            // Fix #11178, allow `Self::cmp(self, ..)` too
-            && self_cmp_call(cx, cmp_expr, impl_item_did, needs_fully_qualified)
+            typeck.qpath_res(some_path, *some_hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+                // Fix #11178, allow `Self::cmp(self, ..)`
+                && self_cmp_call(cx, typeck, cmp_expr, needs_fully_qualified)
         },
         ExprKind::MethodCall(_, recv, [], _) => {
-            cx.tcx
-                .typeck(impl_item_did)
-                .type_dependent_def_id(expr.hir_id)
-                .is_some_and(|def_id| is_diag_trait_item(cx, def_id, sym::Into))
-                && self_cmp_call(cx, recv, impl_item_did, needs_fully_qualified)
+            typeck
+                .type_dependent_def(expr.hir_id)
+                .assoc_parent(cx)
+                .is_diag_item(cx, sym::Into)
+                && self_cmp_call(cx, typeck, recv, needs_fully_qualified)
         },
         _ => false,
     }
@@ -289,12 +349,13 @@ fn expr_is_cmp<'tcx>(
 /// Returns whether this is any of `self.cmp(..)`, `Self::cmp(self, ..)` or `Ord::cmp(self, ..)`.
 fn self_cmp_call<'tcx>(
     cx: &LateContext<'tcx>,
+    typeck: &TypeckResults<'tcx>,
     cmp_expr: &'tcx Expr<'tcx>,
-    def_id: LocalDefId,
     needs_fully_qualified: &mut bool,
 ) -> bool {
     match cmp_expr.kind {
-        ExprKind::Call(path, [_, _]) => path_res(cx, path)
+        ExprKind::Call(path, [_, _]) => path
+            .res(typeck)
             .opt_def_id()
             .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id)),
         ExprKind::MethodCall(_, recv, [_], ..) => {
@@ -309,11 +370,7 @@ fn self_cmp_call<'tcx>(
             // `else` branch, it must be a method named `cmp` that isn't `Ord::cmp`
             *needs_fully_qualified = true;
 
-            // It's a bit annoying but `typeck_results` only gives us the CURRENT body, which we
-            // have none, not of any `LocalDefId` we want, so we must call the query itself to avoid
-            // an immediate ICE
-            cx.tcx
-                .typeck(def_id)
+            typeck
                 .type_dependent_def_id(cmp_expr.hir_id)
                 .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id))
         },

@@ -56,20 +56,14 @@ impl Display for ShiftDirection {
     }
 }
 
-fn parse_shift<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-) -> Option<(ShiftDirection, u128, &'tcx Expr<'tcx>)> {
+fn parse_shift<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<(ShiftDirection, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
     if let ExprKind::Binary(op, l, r) = expr.kind {
         let dir = match op.node {
             BinOpKind::Shl => ShiftDirection::Left,
             BinOpKind::Shr => ShiftDirection::Right,
             _ => return None,
         };
-        let const_expr = ConstEvalCtxt::new(cx).eval_local(r, expr.span.ctxt())?;
-        if let Constant::Int(shift) = const_expr {
-            return Some((dir, shift, l));
-        }
+        return Some((dir, l, r));
     }
     None
 }
@@ -78,40 +72,62 @@ impl LateLintPass<'_> for ManualRotate {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::Binary(op, l, r) = expr.kind
             && let BinOpKind::Add | BinOpKind::BitOr = op.node
-            && let Some((l_shift_dir, l_amount, l_expr)) = parse_shift(cx, l)
-            && let Some((r_shift_dir, r_amount, r_expr)) = parse_shift(cx, r)
-        {
-            if l_shift_dir == r_shift_dir {
-                return;
-            }
-            if !clippy_utils::eq_expr_value(cx, l_expr, r_expr) {
-                return;
-            }
-            let Some(bit_width) = (match cx.typeck_results().expr_ty(expr).kind() {
+            && let Some((l_shift_dir, l_expr, l_amount)) = parse_shift(l)
+            && let Some((r_shift_dir, r_expr, r_amount)) = parse_shift(r)
+            && l_shift_dir != r_shift_dir
+            && clippy_utils::eq_expr_value(cx, l_expr, r_expr)
+            && let Some(bit_width) = match cx.typeck_results().expr_ty(expr).kind() {
                 ty::Int(itype) => itype.bit_width(),
                 ty::Uint(itype) => itype.bit_width(),
                 _ => return,
-            }) else {
-                return;
-            };
-            if l_amount + r_amount == u128::from(bit_width) {
-                let (shift_function, amount) = if l_amount < r_amount {
+            }
+        {
+            let const_eval = ConstEvalCtxt::new(cx);
+
+            let ctxt = expr.span.ctxt();
+            let (shift_function, amount) = if let Some(Constant::Int(l_amount_val)) =
+                const_eval.eval_local(l_amount, ctxt)
+                && let Some(Constant::Int(r_amount_val)) = const_eval.eval_local(r_amount, ctxt)
+                && l_amount_val + r_amount_val == u128::from(bit_width)
+            {
+                if l_amount_val < r_amount_val {
                     (l_shift_dir, l_amount)
                 } else {
                     (r_shift_dir, r_amount)
+                }
+            } else {
+                let (amount1, binop, minuend, amount2, shift_direction) = match (l_amount.kind, r_amount.kind) {
+                    (_, ExprKind::Binary(binop, minuend, other)) => (l_amount, binop, minuend, other, l_shift_dir),
+                    (ExprKind::Binary(binop, minuend, other), _) => (r_amount, binop, minuend, other, r_shift_dir),
+                    _ => return,
                 };
-                let mut applicability = Applicability::MachineApplicable;
-                let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
-                span_lint_and_sugg(
-                    cx,
-                    MANUAL_ROTATE,
-                    expr.span,
-                    "there is no need to manually implement bit rotation",
-                    "this expression can be rewritten as",
-                    format!("{expr_sugg}.{shift_function}({amount})"),
-                    Applicability::MachineApplicable,
-                );
-            }
+
+                if let Some(Constant::Int(minuend)) = const_eval.eval_local(minuend, ctxt)
+                    && clippy_utils::eq_expr_value(cx, amount1, amount2)
+                    // (x << s) | (x >> bit_width - s)
+                    && ((binop.node == BinOpKind::Sub && u128::from(bit_width) == minuend)
+                        // (x << s) | (x >> (bit_width - 1) ^ s)
+                        || (binop.node == BinOpKind::BitXor && u128::from(bit_width).checked_sub(minuend) == Some(1)))
+                {
+                    // NOTE: we take these from the side that _doesn't_ have the binop, since it's probably simpler
+                    (shift_direction, amount1)
+                } else {
+                    return;
+                }
+            };
+
+            let mut applicability = Applicability::MachineApplicable;
+            let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
+            let amount = sugg::Sugg::hir_with_applicability(cx, amount, "_", &mut applicability);
+            span_lint_and_sugg(
+                cx,
+                MANUAL_ROTATE,
+                expr.span,
+                "there is no need to manually implement bit rotation",
+                "this expression can be rewritten as",
+                format!("{expr_sugg}.{shift_function}({amount})"),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }

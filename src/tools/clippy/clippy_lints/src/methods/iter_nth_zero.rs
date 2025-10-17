@@ -1,7 +1,8 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lang_item_or_ctor;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_lang_item_or_ctor, is_trait_method};
 use hir::{LangItem, OwnerNode};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -13,7 +14,7 @@ use super::ITER_NTH_ZERO;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     if let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir_get_parent_item(expr.hir_id))
         && let def_id = item.owner_id.to_def_id()
-        && is_trait_method(cx, expr, sym::Iterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let Some(Constant::Int(0)) = ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt())
         && !is_lang_item_or_ctor(cx, def_id, LangItem::IteratorNext)
     {

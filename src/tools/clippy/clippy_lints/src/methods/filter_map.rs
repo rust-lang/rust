@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks, sym};
+use clippy_utils::{SpanlessEq, higher, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -134,16 +134,16 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                         _ => map_arg,
                     }
                     // .map(|y| y[.acceptable_method()].unwrap())
-                    && let simple_equal = (path_to_local_id(receiver, filter_param_id)
-                        && path_to_local_id(map_arg_peeled, map_param_id))
+                    && let simple_equal = (receiver.res_local_id() == Some(filter_param_id)
+                        && map_arg_peeled.res_local_id() == Some(map_param_id))
                     && let eq_fallback = (|a: &Expr<'_>, b: &Expr<'_>| {
                         // in `filter(|x| ..)`, replace `*x` with `x`
                         let a_path = if !is_filter_param_ref
                             && let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind
                         { expr_path } else { a };
                         // let the filter closure arg and the map closure arg be equal
-                        path_to_local_id(a_path, filter_param_id)
-                            && path_to_local_id(b, map_param_id)
+                        a_path.res_local_id() == Some(filter_param_id)
+                            && b.res_local_id() == Some(map_param_id)
                             && cx.typeck_results().expr_ty_adjusted(a) == cx.typeck_results().expr_ty_adjusted(b)
                     })
                     && (simple_equal
@@ -166,7 +166,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 let expr_uses_local = |pat: &Pat<'_>, expr: &Expr<'_>| {
                     if let PatKind::TupleStruct(QPath::Resolved(_, path), [subpat], _) = pat.kind
                         && let PatKind::Binding(_, local_id, ident, _) = subpat.kind
-                        && path_to_local_id(expr.peel_blocks(), local_id)
+                        && expr.peel_blocks().res_local_id() == Some(local_id)
                         && let Some(local_variant_def_id) = path.res.opt_def_id()
                         && local_variant_def_id == variant_def_id
                     {
@@ -204,7 +204,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                         _ => return None,
                     };
 
-                if path_to_local_id(scrutinee, map_param_id)
+                if scrutinee.res_local_id() == Some(map_param_id)
                     // else branch should be a `panic!` or `unreachable!` macro call
                     && let Some(mac) = root_macro_call(else_.peel_blocks().span)
                     && (is_panic(cx, mac.def_id) || cx.tcx.opt_item_name(mac.def_id) == Some(sym::unreachable))
@@ -247,7 +247,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
         } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             // we know for a fact that the wildcard pattern is the second arm
             && let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
-            && path_to_local_id(scrutinee, filter_param_id)
+            && scrutinee.res_local_id() == Some(filter_param_id)
             && let PatKind::TupleStruct(QPath::Resolved(_, path), ..) = arm.pat.kind
             && let Some(variant_def_id) = path.res.opt_def_id()
         {
@@ -266,8 +266,8 @@ fn is_filter_some_map_unwrap(
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
 ) -> bool {
-    let iterator = is_trait_method(cx, expr, sym::Iterator);
-    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::Option);
+    let iterator = cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator);
+    let option = cx.typeck_results().expr_ty(filter_recv).is_diag_item(cx, sym::Option);
 
     (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg)
 }
@@ -275,12 +275,12 @@ fn is_filter_some_map_unwrap(
 /// is `filter(|x| x.is_ok()).map(|x| x.unwrap())`
 fn is_filter_ok_map_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
     // result has no filter, so we only check for iterators
-    let iterator = is_trait_method(cx, expr, sym::Iterator);
+    let iterator = cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator);
     iterator && is_ok_filter_map(cx, filter_arg, map_arg)
 }
 
 /// lint use of `filter().map()` or `find().map()` for `Iterators`
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
@@ -398,7 +398,7 @@ fn is_find_or_filter<'a>(
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
 ) -> Option<(Ident, CheckResult<'a>)> {
-    if is_trait_method(cx, map_recv, sym::Iterator)
+    if cx.ty_based_def(map_recv).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // filter(|x| ...is_some())...
         && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
         && let filter_body = cx.tcx.hir_body(filter_body_id)

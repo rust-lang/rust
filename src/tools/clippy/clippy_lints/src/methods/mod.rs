@@ -133,6 +133,7 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_map_or;
 mod unnecessary_min_or_max;
+mod unnecessary_option_map_or_else;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
@@ -151,7 +152,8 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::{contains_return, is_trait_method, iter_input_pats, peel_blocks, sym};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::{contains_return, iter_input_pats, peel_blocks, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
@@ -4639,6 +4641,30 @@ declare_clippy_lint! {
     "detects redundant calls to `Iterator::cloned`"
 }
 
+declare_clippy_lint! {
+    /// Checks for usage of `.map_or_else()` "map closure" for `Option` type.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or_else()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.map_or_else(|| 2 * k, |n| n);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.unwrap_or_else(|| 2 * k);
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub UNNECESSARY_OPTION_MAP_OR_ELSE,
+    suspicious,
+    "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4820,6 +4846,7 @@ impl_lint_pass!(Methods => [
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
     REDUNDANT_ITER_CLONED,
+    UNNECESSARY_OPTION_MAP_OR_ELSE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4842,8 +4869,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        self.check_methods(cx, expr);
-
         match expr.kind {
             ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
@@ -4854,24 +4879,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
             },
-            ExprKind::MethodCall(method_call, receiver, args, _) => {
-                let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args, self.msrv);
-                expect_fun_call::check(
-                    cx,
-                    &self.format_args,
-                    expr,
-                    method_span,
-                    method_call.ident.name,
-                    receiver,
-                    args,
-                );
-                clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
-                clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
-                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
-                single_char_add_str::check(cx, expr, receiver, args);
-                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
+            ExprKind::MethodCall(..) => {
+                self.check_methods(cx, expr);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -4886,7 +4895,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
@@ -4958,7 +4966,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 }
 
 impl Methods {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Handle method calls whose receiver and arguments may not come from expansion
         if let Some((name, recv, args, span, call_span)) = method_call(expr) {
@@ -5044,7 +5052,7 @@ impl Methods {
                     cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
                     option_as_ref_cloned::check(cx, recv, span);
                 },
-                (sym::collect, []) if is_trait_method(cx, expr, sym::Iterator) => {
+                (sym::collect, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
                     match method_call(recv) {
                         Some((name @ (sym::cloned | sym::copied), recv2, [], _, _)) => {
@@ -5065,17 +5073,26 @@ impl Methods {
                         _ => {},
                     }
                 },
-                (sym::count, []) if is_trait_method(cx, expr, sym::Iterator) => match method_call(recv) {
-                    Some((sym::cloned, recv2, [], _, _)) => {
-                        iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::RmCloned, false);
-                    },
-                    Some((name2 @ (sym::into_iter | sym::iter | sym::iter_mut), recv2, [], _, _)) => {
-                        iter_count::check(cx, expr, recv2, name2);
-                    },
-                    Some((sym::map, _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
-                    Some((sym::filter, recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
-                    Some((sym::bytes, recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
-                    _ => {},
+                (sym::count, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
+                    match method_call(recv) {
+                        Some((sym::cloned, recv2, [], _, _)) => {
+                            iter_overeager_cloned::check(
+                                cx,
+                                expr,
+                                recv,
+                                recv2,
+                                iter_overeager_cloned::Op::RmCloned,
+                                false,
+                            );
+                        },
+                        Some((name2 @ (sym::into_iter | sym::iter | sym::iter_mut), recv2, [], _, _)) => {
+                            iter_count::check(cx, expr, recv2, name2);
+                        },
+                        Some((sym::map, _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
+                        Some((sym::filter, recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
+                        Some((sym::bytes, recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
+                        _ => {},
+                    }
                 },
                 (sym::min | sym::max, [arg]) => {
                     unnecessary_min_or_max::check(cx, expr, name, recv, arg);
@@ -5294,6 +5311,7 @@ impl Methods {
                 },
                 (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
+                    unnecessary_option_map_or_else::check(cx, expr, recv, def, map);
                     unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
                 (sym::next, []) => {
@@ -5457,7 +5475,7 @@ impl Methods {
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
                 },
-                (sym::try_into, []) if is_trait_method(cx, expr, sym::TryInto) => {
+                (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);
                 },
                 (sym::to_owned, []) => {
@@ -5502,7 +5520,14 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, name);
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                then_method,
+                                obfuscated_if_else::Unwrap::Or(u_arg),
+                            );
                         },
                         _ => {},
                     }
@@ -5519,9 +5544,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                None,
                                 then_method,
-                                sym::unwrap_or_default,
+                                obfuscated_if_else::Unwrap::OrDefault,
                             );
                         },
                         _ => {},
@@ -5538,9 +5562,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                Some(u_arg),
                                 then_method,
-                                sym::unwrap_or_else,
+                                obfuscated_if_else::Unwrap::OrElse(u_arg),
                             );
                         },
                         _ => {
@@ -5567,8 +5590,18 @@ impl Methods {
         }
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+            let method_span = path.ident.span;
+
+            // Those methods do their own method name checking as they deal with multiple methods.
+            or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+
             match (path.ident.name, args) {
-                (sym::expect, [_]) => {
+                (sym::clone, []) => {
+                    clone_on_ref_ptr::check(cx, expr, recv);
+                    clone_on_copy::check(cx, expr, recv);
+                },
+                (sym::expect, [arg]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5578,6 +5611,7 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                    expect_fun_call::check(cx, &self.format_args, expr, method_span, recv, arg);
                 },
                 (sym::expect_err, [_]) => {
                     unwrap_expect_used::check(
@@ -5589,6 +5623,15 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                },
+                (sym::insert_str | sym::push_str, _) => {
+                    single_char_add_str::check(cx, expr, recv, args);
+                },
+                (sym::into_iter, []) => {
+                    into_iter_on_ref::check(cx, expr, method_span, recv);
+                },
+                (sym::to_string, []) => {
+                    inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(

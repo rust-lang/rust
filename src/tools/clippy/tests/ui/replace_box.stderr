@@ -1,0 +1,52 @@
+error: creating a new box
+  --> tests/ui/replace_box.rs:4:5
+   |
+LL |     *b = Box::new(T::default());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `**b = T::default()`
+   |
+   = note: this creates a needless allocation
+   = note: `-D clippy::replace-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::replace_box)]`
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:9:5
+   |
+LL |     *b = Box::new(t);
+   |     ^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `**b = t`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box with default content
+  --> tests/ui/replace_box.rs:44:5
+   |
+LL |     b = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with default instead: `*b = Default::default()`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box with default content
+  --> tests/ui/replace_box.rs:46:5
+   |
+LL |     b = Box::default();
+   |     ^^^^^^^^^^^^^^^^^^ help: replace existing content with default instead: `*b = Default::default()`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:58:5
+   |
+LL |     b = Box::new(5);
+   |     ^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*b = 5`
+   |
+   = note: this creates a needless allocation
+
+error: creating a new box
+  --> tests/ui/replace_box.rs:61:5
+   |
+LL |     b = Box::new(mac!(three));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `*b = mac!(three)`
+   |
+   = note: this creates a needless allocation
+
+error: aborting due to 6 previous errors
+

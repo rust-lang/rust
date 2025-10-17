@@ -645,6 +645,7 @@ version = "0.0.1"
 dependencies = [
  "clippy_config",
  "clippy_utils",
+ "itertools",
  "regex",
  "rustc-semver",
 ]

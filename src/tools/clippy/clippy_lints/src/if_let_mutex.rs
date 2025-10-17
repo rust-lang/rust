@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, higher, sym};
 use core::ops::ControlFlow;
@@ -95,7 +95,7 @@ fn mutex_lock_call<'tcx>(
     if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
         && path.ident.name == sym::lock
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
-        && is_type_diagnostic_item(cx, ty, sym::Mutex)
+        && ty.is_diag_item(cx, sym::Mutex)
         && op_mutex.is_none_or(|op| eq_expr_value(cx, self_arg, op))
     {
         ControlFlow::Break(self_arg)
