@@ -165,3 +165,11 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     #[cfg(windows)]
     with_native_path(path, &imp::exists)
 }
+
+pub fn set_times(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times(path, times.clone()))
+}
+
+pub fn set_times_nofollow(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times_nofollow(path, times.clone()))
+}
