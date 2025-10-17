@@ -96,8 +96,6 @@ case ${TARGET} in
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
         TEST_SAMPLE_INTRINSICS_PERCENTAGE=5
         export STDARCH_DISABLE_ASSERT_INSTR=1
-        PATH="$PATH":"$(pwd)"/c_programs
-        export PATH
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "${PROFILE}"
