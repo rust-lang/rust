@@ -566,6 +566,14 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }
 
+pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    Err(Error::from_raw_os_error(22))
+}
+
+pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    Err(Error::from_raw_os_error(22))
+}
+
 pub fn rmdir(path: &Path) -> io::Result<()> {
     run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ()))
 }
