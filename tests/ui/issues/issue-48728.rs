@@ -5,7 +5,7 @@
 #[derive(Clone)]
 struct Node<T: ?Sized>(Box<T>);
 
-impl<T: Clone + ?Sized> Clone for Node<[T]> {
+impl<T: Clone> Clone for Node<[T]> {
     fn clone(&self) -> Self {
         Node(Box::clone(&self.0))
     }

@@ -42,6 +42,7 @@
 #![allow(clippy::overly_complex_bool_expr)]
 #![allow(unexpected_cfgs)]
 #![allow(enum_intrinsics_non_enums)]
+#![allow(redundant_sizedness_bounds)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::expect_used)]
@@ -109,6 +110,7 @@
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::maybe_misused_cfg`
 #![warn(enum_intrinsics_non_enums)] //~ ERROR: lint `clippy::mem_discriminant_non_enum`
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::mismatched_target_os`
+#![warn(redundant_sizedness_bounds)] //~ ERROR: lint `clippy::needless_maybe_sized`
 #![warn(clippy::new_without_default)] //~ ERROR: lint `clippy::new_without_default_derive`
 #![warn(clippy::bind_instead_of_map)] //~ ERROR: lint `clippy::option_and_then_some`
 #![warn(clippy::expect_used)] //~ ERROR: lint `clippy::option_expect_used`

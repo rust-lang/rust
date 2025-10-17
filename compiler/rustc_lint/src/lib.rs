@@ -71,6 +71,7 @@ mod passes;
 mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
+mod redundant_sizedness_bounds;
 mod reference_casting;
 mod shadowed_into_iter;
 mod static_mut_refs;
@@ -111,6 +112,7 @@ use pass_by_value::*;
 use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
+use redundant_sizedness_bounds::RedundantSizednessBounds;
 use reference_casting::*;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
@@ -246,6 +248,7 @@ late_lint_methods!(
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
+            RedundantSizednessBounds: RedundantSizednessBounds,
         ]
     ]
 );
