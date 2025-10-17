@@ -128,6 +128,8 @@ fn prefix_and_suffix<'tcx>(
 
     let is_arm = tcx.sess.target.arch == Arch::Arm;
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
+    let function_sections =
+        tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections);
 
     // If we're compiling the compiler-builtins crate, e.g., the equivalent of
     // compiler-rt, then we want to implicitly compile everything with hidden
@@ -278,8 +280,11 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".type 32").unwrap();
             writeln!(begin, ".endef").unwrap();
 
-            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
-            writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
+            if let Some(section) = &link_section {
+                writeln!(begin, ".pushsection {section},\"xr\"").unwrap()
+            } else if function_sections {
+                writeln!(begin, ".pushsection .text${asm_name},\"xr\"").unwrap()
+            }
             write_linkage(&mut begin).unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
             writeln!(begin, "{asm_name}:").unwrap();
