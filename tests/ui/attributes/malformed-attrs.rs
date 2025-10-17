@@ -73,6 +73,7 @@
 //~| ERROR attribute cannot be used on
 #[crate_name]
 //~^ ERROR malformed
+//~| WARN crate-level attribute should be an inner attribute
 #[doc]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
@@ -82,8 +83,12 @@
 //~^ ERROR malformed
 #[link]
 //~^ ERROR malformed
+//~| WARN attribute should be applied to an `extern` block with non-Rust ABI
+//~| WARN previously accepted
 #[link_name]
 //~^ ERROR malformed
+//~| WARN cannot be used on functions
+//~| WARN previously accepted
 #[link_section]
 //~^ ERROR malformed
 #[coverage]
@@ -95,6 +100,8 @@
 //~| WARN this was previously accepted by the compiler
 #[no_implicit_prelude = 23]
 //~^ ERROR malformed
+//~| WARN cannot be used on functions
+//~| WARN previously accepted
 #[proc_macro = 18]
 //~^ ERROR malformed
 //~| ERROR the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
@@ -188,6 +195,8 @@ extern "C" {
 //~^ ERROR malformed `debugger_visualizer` attribute input
 #[automatically_derived = 18]
 //~^ ERROR malformed
+//~| WARN cannot be used on modules
+//~| WARN previously accepted
 mod yooo {
 
 }
