@@ -560,6 +560,90 @@ impl RunnableDocTest {
     }
 }
 
+fn compile_merged_doctest_and_caller_binary(
+    mut child: process::Child,
+    doctest: &RunnableDocTest,
+    rustdoc_options: &RustdocOptions,
+    rustc_binary: &Path,
+    output_file: &Path,
+    compiler_args: Vec<String>,
+    test_code: &str,
+    instant: Instant,
+) -> Result<process::Output, (Duration, Result<(), RustdocResult>)> {
+    // compile-fail tests never get merged, so this should always pass
+    let status = child.wait().expect("Failed to wait");
+
+    // the actual test runner is a separate component, built with nightly-only features;
+    // build it now
+    let runner_input_file = doctest.path_for_merged_doctest_runner();
+
+    let mut runner_compiler =
+        wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+    // the test runner does not contain any user-written code, so this doesn't allow
+    // the user to exploit nightly-only features on stable
+    runner_compiler.env("RUSTC_BOOTSTRAP", "1");
+    runner_compiler.args(compiler_args);
+    runner_compiler.args(["--crate-type=bin", "-o"]).arg(output_file);
+    let mut extern_path = std::ffi::OsString::from(format!(
+        "--extern=doctest_bundle_{edition}=",
+        edition = doctest.edition
+    ));
+
+    // Deduplicate passed -L directory paths, since usually all dependencies will be in the
+    // same directory (e.g. target/debug/deps from Cargo).
+    let mut seen_search_dirs = FxHashSet::default();
+    for extern_str in &rustdoc_options.extern_strs {
+        if let Some((_cratename, path)) = extern_str.split_once('=') {
+            // Direct dependencies of the tests themselves are
+            // indirect dependencies of the test runner.
+            // They need to be in the library search path.
+            let dir = Path::new(path)
+                .parent()
+                .filter(|x| x.components().count() > 0)
+                .unwrap_or(Path::new("."));
+            if seen_search_dirs.insert(dir) {
+                runner_compiler.arg("-L").arg(dir);
+            }
+        }
+    }
+
+    let output_bundle_file = doctest
+        .test_opts
+        .outdir
+        .path()
+        .join(format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition));
+    extern_path.push(&output_bundle_file);
+    runner_compiler.arg(extern_path);
+    runner_compiler.arg(&runner_input_file);
+    if std::fs::write(&runner_input_file, test_code).is_err() {
+        // If we cannot write this file for any reason, we leave. All combined tests will be
+        // tested as standalone tests.
+        return Err((instant.elapsed(), Err(RustdocResult::CompileError)));
+    }
+    if !rustdoc_options.no_capture {
+        // If `no_capture` is disabled, then we don't display rustc's output when compiling
+        // the merged doctests.
+        runner_compiler.stderr(Stdio::null());
+    }
+    runner_compiler.arg("--error-format=short");
+    debug!("compiler invocation for doctest runner: {runner_compiler:?}");
+
+    let status = if !status.success() {
+        status
+    } else {
+        let mut child_runner = match runner_compiler.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
+                return Err((Duration::default(), Err(RustdocResult::CompileError)));
+            }
+        };
+        child_runner.wait().expect("Failed to wait")
+    };
+
+    Ok(process::Output { status, stdout: Vec::new(), stderr: Vec::new() })
+}
+
 /// Execute a `RunnableDoctest`.
 ///
 /// This is the function that calculates the compiler command line, invokes the compiler, then
@@ -675,7 +759,6 @@ fn run_test(
             .arg(input_file);
     } else {
         compiler.arg("--crate-type=bin").arg("-o").arg(&output_file);
-        // Setting these environment variables is unneeded if this is a merged doctest.
         compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
         compiler.env(
             "UNSTABLE_RUSTDOC_TEST_LINE",
@@ -692,81 +775,23 @@ fn run_test(
         Ok(child) => child,
         Err(error) => {
             eprintln!("Failed to spawn {:?}: {error:?}", compiler.get_program());
-            return (Duration::default(), Err(TestFailure::CompileError));
+            return (Duration::default(), Err(RustdocResult::CompileError));
         }
     };
     let output = if let Some(merged_test_code) = &doctest.merged_test_code {
-        // compile-fail tests never get merged, so this should always pass
-        let status = child.wait().expect("Failed to wait");
-
-        // the actual test runner is a separate component, built with nightly-only features;
-        // build it now
-        let runner_input_file = doctest.path_for_merged_doctest_runner();
-
-        let mut runner_compiler =
-            wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
-        // the test runner does not contain any user-written code, so this doesn't allow
-        // the user to exploit nightly-only features on stable
-        runner_compiler.env("RUSTC_BOOTSTRAP", "1");
-        runner_compiler.args(compiler_args);
-        runner_compiler.args(["--crate-type=bin", "-o"]).arg(&output_file);
-        let mut extern_path = std::ffi::OsString::from(format!(
-            "--extern=doctest_bundle_{edition}=",
-            edition = doctest.edition
-        ));
-
-        // Deduplicate passed -L directory paths, since usually all dependencies will be in the
-        // same directory (e.g. target/debug/deps from Cargo).
-        let mut seen_search_dirs = FxHashSet::default();
-        for extern_str in &rustdoc_options.extern_strs {
-            if let Some((_cratename, path)) = extern_str.split_once('=') {
-                // Direct dependencies of the tests themselves are
-                // indirect dependencies of the test runner.
-                // They need to be in the library search path.
-                let dir = Path::new(path)
-                    .parent()
-                    .filter(|x| x.components().count() > 0)
-                    .unwrap_or(Path::new("."));
-                if seen_search_dirs.insert(dir) {
-                    runner_compiler.arg("-L").arg(dir);
-                }
-            }
+        match compile_merged_doctest_and_caller_binary(
+            child,
+            &doctest,
+            rustdoc_options,
+            rustc_binary,
+            &output_file,
+            compiler_args,
+            merged_test_code,
+            instant,
+        ) {
+            Ok(out) => out,
+            Err(err) => return err,
         }
-        let output_bundle_file = doctest
-            .test_opts
-            .outdir
-            .path()
-            .join(format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition));
-        extern_path.push(&output_bundle_file);
-        runner_compiler.arg(extern_path);
-        runner_compiler.arg(&runner_input_file);
-        if std::fs::write(&runner_input_file, merged_test_code).is_err() {
-            // If we cannot write this file for any reason, we leave. All combined tests will be
-            // tested as standalone tests.
-            return (instant.elapsed(), Err(RustdocResult::CompileError));
-        }
-        if !rustdoc_options.no_capture {
-            // If `no_capture` is disabled, then we don't display rustc's output when compiling
-            // the merged doctests.
-            runner_compiler.stderr(Stdio::null());
-        }
-        runner_compiler.arg("--error-format=short");
-        debug!("compiler invocation for doctest runner: {runner_compiler:?}");
-
-        let status = if !status.success() {
-            status
-        } else {
-            let mut child_runner = match runner_compiler.spawn() {
-                Ok(child) => child,
-                Err(error) => {
-                    eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
-                    return (Duration::default(), Err(TestFailure::CompileError));
-                }
-            };
-            child_runner.wait().expect("Failed to wait")
-        };
-
-        process::Output { status, stdout: Vec::new(), stderr: Vec::new() }
     } else {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
