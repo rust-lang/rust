@@ -94,12 +94,10 @@ where
                 // SAFETY: We never touch this element again after returning it.
                 return Some(unsafe { ptr::read(cur) });
             } else if self.del > 0 {
+                let hole_slot = self.vec.to_physical_idx(i - self.del);
                 // SAFETY: `self.del` > 0, so the hole slot must not overlap with current element.
                 // We use copy for move, and never touch this element again.
-                unsafe {
-                    let hole_slot = self.vec.ptr().add(idx - self.del);
-                    ptr::copy_nonoverlapping(cur, hole_slot, 1);
-                }
+                unsafe { self.vec.wrap_copy(idx, hole_slot, 1) };
             }
         }
         None
@@ -118,9 +116,7 @@ impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
             let dst = self.vec.to_physical_idx(self.idx - self.del);
             let len = self.old_len - self.idx;
             // SAFETY: Trailing unchecked items must be valid since we never touch them.
-            unsafe {
-                self.vec.wrap_copy(src, dst, len);
-            }
+            unsafe { self.vec.wrap_copy(src, dst, len) };
         }
         self.vec.len = self.old_len - self.del;
     }
