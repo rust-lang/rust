@@ -814,7 +814,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // };
                 // let borrow = Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place);
                 let place = unpack!(block = this.as_place(block, source));
-                this.cfg.push_assign(block, source_info, destination, Rvalue::Reborrow(place.into()));
+                this.cfg.push_assign(
+                    block,
+                    source_info,
+                    destination,
+                    Rvalue::Reborrow(place.into()),
+                );
                 block.unit()
             }
         };
