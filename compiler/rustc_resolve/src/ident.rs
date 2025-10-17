@@ -6,6 +6,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRe
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Span, kw, sym};
 use tracing::{debug, instrument};
@@ -716,16 +717,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 {
                                     // Turn ambiguity errors for core vs std panic into warnings.
                                     // FIXME: Remove with lang team approval.
-                                    let is_issue_147319_hack = matches!(
-                                        (binding.res(), innermost_binding.res()),
-                                        (
-                                            Res::Def(DefKind::Macro(_), def_id_core),
-                                            Res::Def(DefKind::Macro(_), def_id_std)
-                                        ) if this.tcx.def_path_debug_str(def_id_core)
-                                                == "core[234c]::macros::panic"
-                                            && this.tcx.def_path_debug_str(def_id_std)
-                                                == "std[d474]::macros::panic"
-                                    );
+                                    let is_issue_147319_hack = ctxt.edition()
+                                        <= Edition::Edition2024
+                                        && matches!(orig_ident.name, sym::panic)
+                                        && this.is_builtin_macro(binding.res())
+                                        && this.is_builtin_macro(innermost_binding.res());
 
                                     let warning = if is_issue_147319_hack {
                                         Some(AmbiguityWarning::PanicImport)
