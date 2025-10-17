@@ -66,11 +66,6 @@ pub use self::condvar::Condvar;
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::mutex::{Mutex, MutexGuard};
-#[stable(feature = "rust1", since = "1.0.0")]
-#[expect(deprecated)]
-pub use self::once::ONCE_INIT;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::once::{Once, OnceState};
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -85,7 +80,6 @@ use crate::thread;
 mod condvar;
 #[stable(feature = "rust1", since = "1.0.0")]
 mod mutex;
-pub(crate) mod once;
 mod rwlock;
 
 pub(crate) struct Flag {

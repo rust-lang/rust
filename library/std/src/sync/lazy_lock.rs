@@ -1,4 +1,4 @@
-use super::poison::once::OnceExclusiveState;
+use super::once::OnceExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};

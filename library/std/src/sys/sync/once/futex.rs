@@ -1,7 +1,7 @@
 use crate::cell::Cell;
 use crate::sync as public;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::poison::once::OnceExclusiveState;
+use crate::sync::once::OnceExclusiveState;
 use crate::sys::futex::{Futex, Primitive, futex_wait, futex_wake_all};
 
 // On some platforms, the OS is very nice and handles the waiter queue for us.

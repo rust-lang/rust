@@ -185,11 +185,15 @@ pub use alloc_crate::sync::{Arc, Weak};
 pub mod mpmc;
 pub mod mpsc;
 
-// TODO: Make this `self::once::ONCE_INIT`.
+pub(crate) mod once; // `pub(crate)` for the `sys::sync::once` implementations and `LazyLock`.
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::once::{Once, OnceState};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 #[expect(deprecated)]
-pub use self::poison::ONCE_INIT;
+pub use self::once::ONCE_INIT;
 
 mod barrier;
 mod lazy_lock;
@@ -231,7 +235,6 @@ pub use self::poison::{
     Mutex, MutexGuard,
     RwLock, RwLockReadGuard, RwLockWriteGuard,
     Condvar,
-    Once, OnceState,
 };
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]

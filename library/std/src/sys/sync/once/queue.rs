@@ -58,7 +58,7 @@
 use crate::cell::Cell;
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
-use crate::sync::poison::once::OnceExclusiveState;
+use crate::sync::once::OnceExclusiveState;
 use crate::thread::{self, Thread};
 use crate::{fmt, ptr, sync as public};
 
