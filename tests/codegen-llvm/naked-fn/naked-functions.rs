@@ -24,7 +24,7 @@ use minicore::*;
 // linux,win: .intel_syntax
 //
 // linux:    .pushsection .text.naked_empty,\22ax\22, @progbits
-// macos:    .pushsection __TEXT,__text,regular,pure_instructions
+// macos-NOT: .pushsection
 // win_x86_msvc:     .pushsection .text$naked_empty,\22xr\22
 // win_x86_gnu-NOT:  .pushsection
 // win_i686_gnu-NOT: .pushsection
@@ -76,7 +76,7 @@ pub extern "C" fn naked_empty() {
 // linux,win: .intel_syntax
 //
 // linux:    .pushsection .text.naked_with_args_and_return,\22ax\22, @progbits
-// macos:    .pushsection __TEXT,__text,regular,pure_instructions
+// macos-NOT: .pushsection
 // win_x86_msvc:     .pushsection .text$naked_with_args_and_return,\22xr\22
 // win_x86_gnu-NOT:  .pushsection
 // win_i686_gnu-NOT: .pushsection
