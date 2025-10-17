@@ -10,13 +10,10 @@
 //! proc_macro, this module should probably be removed or simplified.
 
 use std::cell::RefCell;
-use std::num::NonZero;
 use std::fmt;
+use std::num::NonZero;
 
-// Explicit import to avoid macro namespace collision.
-use super::{
-    DecodeMut, Encode, Mark, Marked, Reader, Unmark, Writer, arena, client, fxhash, server,
-};
+use super::*;
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
