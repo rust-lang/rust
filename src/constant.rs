@@ -141,11 +141,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         if alloc.inner().len() == 0 {
-                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
-                            fx.bcx.ins().iconst(
-                                fx.pointer_type,
-                                fx.tcx.truncate_to_target_usize(val) as i64,
-                            )
+                            fx.bcx.ins().iconst(fx.pointer_type, alloc.inner().align.bytes() as i64)
                         } else {
                             let data_id = data_id_for_alloc_id(
                                 &mut fx.constants_cx,
@@ -213,7 +209,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                     }
                 };
                 let val = if offset.bytes() != 0 {
-                    fx.bcx.ins().iadd_imm(base_addr, i64::try_from(offset.bytes()).unwrap())
+                    fx.bcx
+                        .ins()
+                        .iadd_imm(base_addr, fx.tcx.truncate_to_target_usize(offset.bytes()) as i64)
                 } else {
                     base_addr
                 };

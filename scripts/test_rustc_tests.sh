@@ -49,6 +49,7 @@ rm -r tests/run-make/c-link-to-rust-va-list-fn # requires callee side vararg sup
 rm tests/ui/c-variadic/valid.rs # same
 rm tests/ui/c-variadic/trait-method.rs # same
 rm tests/ui/c-variadic/inherent-method.rs # same
+rm tests/ui/sanitizer/kcfi-c-variadic.rs # same
 rm tests/ui/c-variadic/same-program-multiple-abis-x86_64.rs # variadics for calling conventions other than C unsupported
 rm tests/ui/delegation/fn-header.rs
 
@@ -62,6 +63,7 @@ rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't 
 rm tests/ui/asm/global-asm-mono-sym-fn.rs # same
 rm tests/ui/asm/naked-asm-mono-sym-fn.rs # same
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
+rm tests/ui/asm/label-operand.rs # same
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/used-proc-macro # used(linker) isn't supported yet
 rm tests/ui/linking/no-gc-encapsulation-symbols.rs # same
