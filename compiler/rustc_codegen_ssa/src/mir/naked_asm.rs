@@ -127,6 +127,8 @@ fn prefix_and_suffix<'tcx>(
 
     let is_arm = tcx.sess.target.arch == Arch::Arm;
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
+    let function_sections =
+        tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections);
 
     let attrs = tcx.codegen_instance_attrs(instance.def);
     let link_section = attrs.link_section.map(|symbol| symbol.as_str().to_string());
@@ -256,8 +258,11 @@ fn prefix_and_suffix<'tcx>(
             }
         }
         BinaryFormat::Coff => {
-            let section = link_section.unwrap_or_else(|| format!(".text.{asm_name}"));
-            writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
+            if let Some(section) = &link_section {
+                writeln!(begin, ".pushsection {section},\"xr\"").unwrap()
+            } else if function_sections {
+                writeln!(begin, ".pushsection .text${asm_name},\"xr\"").unwrap()
+            }
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             writeln!(begin, ".def {asm_name}").unwrap();
@@ -268,7 +273,9 @@ fn prefix_and_suffix<'tcx>(
 
             writeln!(end).unwrap();
             writeln!(end, ".Lfunc_end_{asm_name}:").unwrap();
-            writeln!(end, ".popsection").unwrap();
+            if link_section.is_some() || function_sections {
+                writeln!(end, ".popsection").unwrap();
+            }
             if !arch_suffix.is_empty() {
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
