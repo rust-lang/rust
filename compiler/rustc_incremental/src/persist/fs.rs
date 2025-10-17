@@ -721,10 +721,19 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
         }
     }
 
+    let current_session_directory_name =
+        session_directory.file_name().expect("session directory is not ..");
+
     // Now garbage collect the valid session directories.
     let deletion_candidates =
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
+
+            if directory_name.as_str() == current_session_directory_name {
+                // Skip our own session's directory: we know it's not garbage
+                // because we're using it.
+                return None;
+            }
 
             let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
                 debug!(
