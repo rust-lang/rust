@@ -334,7 +334,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub output_filenames: Arc<OutputFilenames>,
     pub invocation_temp: Option<String>,
     pub module_config: Arc<ModuleConfig>,
-    pub allocator_config: Arc<ModuleConfig>,
     pub tm_factory: TargetMachineFactoryFn<B>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
@@ -799,18 +798,11 @@ pub(crate) fn compute_per_cgu_lto_type(
     sess_lto: &Lto,
     opts: &config::Options,
     sess_crate_types: &[CrateType],
-    module_kind: ModuleKind,
 ) -> ComputedLtoType {
     // If the linker does LTO, we don't have to do it. Note that we
     // keep doing full LTO, if it is requested, as not to break the
     // assumption that the output will be a single module.
     let linker_does_lto = opts.cg.linker_plugin_lto.enabled();
-
-    // When we're automatically doing ThinLTO for multi-codegen-unit
-    // builds we don't actually want to LTO the allocator module if
-    // it shows up. This is due to various linker shenanigans that
-    // we'll encounter later.
-    let is_allocator = module_kind == ModuleKind::Allocator;
 
     // We ignore a request for full crate graph LTO if the crate type
     // is only an rlib, as there is no full crate graph to process,
@@ -823,7 +815,7 @@ pub(crate) fn compute_per_cgu_lto_type(
     let is_rlib = matches!(sess_crate_types, [CrateType::Rlib]);
 
     match sess_lto {
-        Lto::ThinLocal if !linker_does_lto && !is_allocator => ComputedLtoType::Thin,
+        Lto::ThinLocal if !linker_does_lto => ComputedLtoType::Thin,
         Lto::Thin if !linker_does_lto && !is_rlib => ComputedLtoType::Thin,
         Lto::Fat if !is_rlib => ComputedLtoType::Fat,
         _ => ComputedLtoType::No,
@@ -839,23 +831,18 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
-    let module_config = match module.kind {
-        ModuleKind::Regular => &cgcx.module_config,
-        ModuleKind::Allocator => &cgcx.allocator_config,
-    };
-
-    B::optimize(cgcx, dcx, &mut module, module_config);
+    B::optimize(cgcx, dcx, &mut module, &cgcx.module_config);
 
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
     // back to the coordinator thread for further LTO processing (which
     // has to wait for all the initial modules to be optimized).
 
-    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types, module.kind);
+    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types);
 
     // If we're doing some form of incremental LTO then we need to be sure to
     // save our module to disk first.
-    let bitcode = if module_config.emit_pre_lto_bc {
+    let bitcode = if cgcx.module_config.emit_pre_lto_bc {
         let filename = pre_lto_bitcode_filename(&module.name);
         cgcx.incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
     } else {
@@ -864,7 +851,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
 
     match lto_type {
         ComputedLtoType::No => {
-            let module = B::codegen(cgcx, module, module_config);
+            let module = B::codegen(cgcx, module, &cgcx.module_config);
             WorkItemResult::Finished(module)
         }
         ComputedLtoType::Thin => {
@@ -1245,7 +1232,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     coordinator_receive: Receiver<Message<B>>,
     regular_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
-    allocator_module: Option<ModuleCodegen<B::Module>>,
+    mut allocator_module: Option<ModuleCodegen<B::Module>>,
     coordinator_send: Sender<Message<B>>,
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let sess = tcx.sess;
@@ -1303,7 +1290,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         diag_emitter: shared_emitter.clone(),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
-        allocator_config,
         tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
@@ -1497,16 +1483,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         let mut llvm_start_time: Option<VerboseTimingGuard<'_>> = None;
 
-        let compiled_allocator_module = allocator_module.and_then(|allocator_module| {
-            match execute_optimize_work_item(&cgcx, allocator_module) {
-                WorkItemResult::Finished(compiled_module) => return Some(compiled_module),
-                WorkItemResult::NeedsFatLto(fat_lto_input) => needs_fat_lto.push(fat_lto_input),
-                WorkItemResult::NeedsThinLto(name, thin_buffer) => {
-                    needs_thin_lto.push((name, thin_buffer))
-                }
-            }
-            None
-        });
+        if let Some(allocator_module) = &mut allocator_module {
+            let dcx = cgcx.create_dcx();
+            let dcx = dcx.handle();
+
+            B::optimize(&cgcx, dcx, allocator_module, &allocator_config);
+        }
 
         // Run the message loop while there's still anything that needs message
         // processing. Note that as soon as codegen is aborted we simply want to
@@ -1733,6 +1715,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
             assert!(compiled_modules.is_empty());
             assert!(needs_thin_lto.is_empty());
 
+            if let Some(allocator_module) = allocator_module.take() {
+                needs_fat_lto.push(FatLtoInput::InMemory(allocator_module));
+            }
+
             // This uses the implicit token
             let module = do_fat_lto(
                 &cgcx,
@@ -1745,6 +1731,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
+
+            if cgcx.lto != Lto::ThinLocal {
+                if let Some(allocator_module) = allocator_module.take() {
+                    let (name, thin_buffer) = B::prepare_thin(allocator_module);
+                    needs_thin_lto.push((name, thin_buffer));
+                }
+            }
 
             compiled_modules.extend(do_thin_lto(
                 &cgcx,
@@ -1762,7 +1755,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         Ok(CompiledModules {
             modules: compiled_modules,
-            allocator_module: compiled_allocator_module,
+            allocator_module: allocator_module
+                .map(|allocator_module| B::codegen(&cgcx, allocator_module, &allocator_config)),
         })
     })
     .expect("failed to spawn coordinator thread");
