@@ -800,7 +800,7 @@ impl<'db> InferenceTable<'db> {
             while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
                 let struct_data = id.fields(self.db);
                 if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
-                    let last_field_ty = self.db.field_types_ns(id.into())[last_field]
+                    let last_field_ty = self.db.field_types(id.into())[last_field]
                         .instantiate(self.interner(), subst);
                     if structs.contains(&ty) {
                         // A struct recursively contains itself as a tail field somewhere.

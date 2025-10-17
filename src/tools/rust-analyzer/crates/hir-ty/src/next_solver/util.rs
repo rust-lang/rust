@@ -1,46 +1,42 @@
 //! Various utilities for the next-trait-solver.
 
-use std::iter;
-use std::ops::{self, ControlFlow};
+use std::{
+    iter,
+    ops::{self, ControlFlow},
+};
 
 use base_db::Crate;
-use hir_def::lang_item::LangItem;
-use hir_def::{BlockId, HasModule};
+use hir_def::{BlockId, HasModule, lang_item::LangItem};
 use intern::sym;
 use la_arena::Idx;
 use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
-use rustc_type_ir::data_structures::IndexMap;
-use rustc_type_ir::inherent::{
-    AdtDef, GenericArg as _, GenericArgs as _, ParamEnv as _, SliceLike, Ty as _,
-};
-use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
-    BoundVar, Canonical, DebruijnIndex, GenericArgKind, INNERMOST, Interner, PredicatePolarity,
-    TypeVisitableExt,
+    ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, GenericArgKind, INNERMOST, IntTy, Interner,
+    PredicatePolarity, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex,
+    inherent::{
+        AdtDef, GenericArg as _, GenericArgs as _, IntoKind, ParamEnv as _, SliceLike, Ty as _,
+    },
+    lang_items::SolverTraitLangItem,
+    solve::SizedTraitKind,
 };
-use rustc_type_ir::{
-    ConstKind, CoroutineArgs, FloatTy, IntTy, RegionKind, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitor, UintTy, UniverseIndex, inherent::IntoKind,
-};
-use rustc_type_ir::{InferCtxtLike, TypeFoldable};
 
-use crate::lower_nextsolver::{LifetimeElisionKind, TyLoweringContext};
-use crate::next_solver::infer::InferCtxt;
-use crate::next_solver::{
-    BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
-};
 use crate::{
     db::HirDatabase,
+    lower::{LifetimeElisionKind, TyLoweringContext},
     method_resolution::{TraitImpls, TyFingerprint},
+    next_solver::{
+        BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
+        infer::InferCtxt,
+    },
 };
 
-use super::fold::{BoundVarReplacer, FnMutDelegate};
 use super::{
     AliasTerm, AliasTy, Binder, BoundRegion, BoundTy, BoundTyKind, BoundVarKind, BoundVarKinds,
-    CanonicalVars, Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder, GenericArg,
-    GenericArgs, Predicate, PredicateKind, ProjectionPredicate, Region, SolverContext, SolverDefId,
-    Term, TraitPredicate, TraitRef, Ty, TyKind,
+    Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder, GenericArgs, Predicate,
+    PredicateKind, ProjectionPredicate, Region, SolverDefId, Term, TraitPredicate, TraitRef, Ty,
+    TyKind,
+    fold::{BoundVarReplacer, FnMutDelegate},
 };
 
 #[derive(Clone, Debug)]
@@ -510,151 +506,6 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
     b.skip_binder().fold_with(&mut instantiate)
 }
 
-pub(crate) fn mini_canonicalize<'db, T: TypeFoldable<DbInterner<'db>>>(
-    mut context: SolverContext<'db>,
-    val: T,
-) -> Canonical<DbInterner<'db>, T> {
-    let mut canon = MiniCanonicalizer {
-        context: &mut context,
-        db: DebruijnIndex::ZERO,
-        vars: IndexMap::default(),
-    };
-    let canon_val = val.fold_with(&mut canon);
-    let vars = canon.vars;
-    Canonical {
-        value: canon_val,
-        max_universe: UniverseIndex::from_u32(1),
-        variables: CanonicalVars::new_from_iter(
-            context.cx(),
-            vars.iter().enumerate().map(|(idx, (k, _v))| match (*k).kind() {
-                GenericArgKind::Type(ty) => match ty.kind() {
-                    TyKind::Int(..) | TyKind::Uint(..) => rustc_type_ir::CanonicalVarKind::Int,
-                    TyKind::Float(..) => rustc_type_ir::CanonicalVarKind::Float,
-                    _ => rustc_type_ir::CanonicalVarKind::Ty {
-                        ui: UniverseIndex::ZERO,
-                        sub_root: BoundVar::from_usize(idx),
-                    },
-                },
-                GenericArgKind::Lifetime(_) => {
-                    rustc_type_ir::CanonicalVarKind::Region(UniverseIndex::ZERO)
-                }
-                GenericArgKind::Const(_) => {
-                    rustc_type_ir::CanonicalVarKind::Const(UniverseIndex::ZERO)
-                }
-            }),
-        ),
-    }
-}
-
-struct MiniCanonicalizer<'a, 'db> {
-    context: &'a mut SolverContext<'db>,
-    db: DebruijnIndex,
-    vars: IndexMap<GenericArg<'db>, usize>,
-}
-
-impl<'db> TypeFolder<DbInterner<'db>> for MiniCanonicalizer<'_, 'db> {
-    fn cx(&self) -> DbInterner<'db> {
-        self.context.cx()
-    }
-
-    fn fold_binder<T: TypeFoldable<DbInterner<'db>>>(
-        &mut self,
-        t: rustc_type_ir::Binder<DbInterner<'db>, T>,
-    ) -> rustc_type_ir::Binder<DbInterner<'db>, T> {
-        self.db.shift_in(1);
-        let res = t.map_bound(|t| t.fold_with(self));
-        self.db.shift_out(1);
-        res
-    }
-
-    fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
-        match t.kind() {
-            rustc_type_ir::TyKind::Bound(db, _) => {
-                if db >= self.db {
-                    panic!("Unexpected bound var");
-                }
-                t
-            }
-            rustc_type_ir::TyKind::Infer(infer) => {
-                let t = match infer {
-                    rustc_type_ir::InferTy::TyVar(vid) => {
-                        self.context.opportunistic_resolve_ty_var(vid)
-                    }
-                    rustc_type_ir::InferTy::IntVar(vid) => {
-                        self.context.opportunistic_resolve_int_var(vid)
-                    }
-                    rustc_type_ir::InferTy::FloatVar(vid) => {
-                        self.context.opportunistic_resolve_float_var(vid)
-                    }
-                    _ => t,
-                };
-                let len = self.vars.len();
-                let var = *self.vars.entry(t.into()).or_insert(len);
-                Ty::new(
-                    self.cx(),
-                    TyKind::Bound(
-                        self.db,
-                        BoundTy { kind: super::BoundTyKind::Anon, var: BoundVar::from_usize(var) },
-                    ),
-                )
-            }
-            _ => t.super_fold_with(self),
-        }
-    }
-
-    fn fold_region(
-        &mut self,
-        r: <DbInterner<'db> as rustc_type_ir::Interner>::Region,
-    ) -> <DbInterner<'db> as rustc_type_ir::Interner>::Region {
-        match r.kind() {
-            RegionKind::ReBound(db, _) => {
-                if db >= self.db {
-                    panic!("Unexpected bound var");
-                }
-                r
-            }
-            RegionKind::ReVar(_vid) => {
-                let len = self.vars.len();
-                let var = *self.vars.entry(r.into()).or_insert(len);
-                Region::new(
-                    self.cx(),
-                    RegionKind::ReBound(
-                        self.db,
-                        BoundRegion {
-                            kind: super::BoundRegionKind::Anon,
-                            var: BoundVar::from_usize(var),
-                        },
-                    ),
-                )
-            }
-            _ => r,
-        }
-    }
-
-    fn fold_const(
-        &mut self,
-        c: <DbInterner<'db> as rustc_type_ir::Interner>::Const,
-    ) -> <DbInterner<'db> as rustc_type_ir::Interner>::Const {
-        match c.kind() {
-            ConstKind::Bound(db, _) => {
-                if db >= self.db {
-                    panic!("Unexpected bound var");
-                }
-                c
-            }
-            ConstKind::Infer(_infer) => {
-                let len = self.vars.len();
-                let var = *self.vars.entry(c.into()).or_insert(len);
-                Const::new(
-                    self.cx(),
-                    ConstKind::Bound(self.db, BoundConst { var: BoundVar::from_usize(var) }),
-                )
-            }
-            _ => c.super_fold_with(self),
-        }
-    }
-}
-
 pub fn explicit_item_bounds<'db>(
     interner: DbInterner<'db>,
     def_id: SolverDefId,
@@ -713,7 +564,7 @@ pub fn explicit_item_bounds<'db>(
             match full_id {
                 crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                     let datas = db
-                        .return_type_impl_traits_ns(func)
+                        .return_type_impl_traits(func)
                         .expect("impl trait id without impl traits");
                     let datas = (*datas).as_ref().skip_binder();
                     let data = &datas.impl_traits[Idx::from_raw(idx.into_raw())];
@@ -721,7 +572,7 @@ pub fn explicit_item_bounds<'db>(
                 }
                 crate::ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                     let datas = db
-                        .type_alias_impl_traits_ns(alias)
+                        .type_alias_impl_traits(alias)
                         .expect("impl trait id without impl traits");
                     let datas = (*datas).as_ref().skip_binder();
                     let data = &datas.impl_traits[Idx::from_raw(idx.into_raw())];

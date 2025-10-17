@@ -1271,7 +1271,7 @@ impl<'db> InstantiatedField<'db> {
         let interner = DbInterner::new_with(db, Some(krate.base()), None);
 
         let var_id = self.inner.parent.into();
-        let field = db.field_types_ns(var_id)[self.inner.id];
+        let field = db.field_types(var_id)[self.inner.id];
         let ty = field.instantiate(interner, self.args);
         TypeNs::new(db, var_id, ty)
     }
@@ -1350,7 +1350,7 @@ impl Field {
     /// context of the field definition.
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
         let var_id = self.parent.into();
-        let ty = db.field_types_ns(var_id)[self.id].skip_binder();
+        let ty = db.field_types(var_id)[self.id].skip_binder();
         TypeNs::new(db, var_id, ty)
     }
 
@@ -1368,7 +1368,7 @@ impl Field {
         };
         let interner = DbInterner::new_with(db, None, None);
         let args = generic_args_from_tys(interner, def_id.into(), generics.map(|ty| ty.ty));
-        let ty = db.field_types_ns(var_id)[self.id].instantiate(interner, args);
+        let ty = db.field_types(var_id)[self.id].instantiate(interner, args);
         Type::new(db, var_id, ty)
     }
 
@@ -3693,7 +3693,7 @@ impl GenericDef {
         };
 
         expr_store_diagnostics(db, acc, &source_map);
-        push_ty_diagnostics(db, acc, db.generic_defaults_ns_with_diagnostics(def).1, &source_map);
+        push_ty_diagnostics(db, acc, db.generic_defaults_with_diagnostics(def).1, &source_map);
         push_ty_diagnostics(
             db,
             acc,
@@ -4192,7 +4192,7 @@ impl TypeParam {
     /// parameter, not additional bounds that might be added e.g. by a method if
     /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param_ns(self.id.parent(), self.id.into(), None)
+        db.generic_predicates_for_param(self.id.parent(), self.id.into(), None)
             .iter()
             .filter_map(|pred| match &pred.kind().skip_binder() {
                 ClauseKind::Trait(trait_ref) => Some(Trait::from(trait_ref.def_id().0)),
@@ -4282,7 +4282,7 @@ impl ConstParam {
 
 fn generic_arg_from_param(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<GenericArg<'_>> {
     let local_idx = hir_ty::param_idx(db, id)?;
-    let defaults = db.generic_defaults_ns(id.parent);
+    let defaults = db.generic_defaults(id.parent);
     let ty = defaults.get(local_idx)?;
     // FIXME: This shouldn't be `instantiate_identity()`, we shouldn't leak `TyKind::Param`s.
     Some(ty.instantiate_identity())
@@ -4883,7 +4883,7 @@ impl<'db> Type<'db> {
                             if variant_data.fields().is_empty() {
                                 vec![]
                             } else {
-                                let field_types = self.interner.db().field_types_ns(id);
+                                let field_types = self.interner.db().field_types(id);
                                 variant_data
                                     .fields()
                                     .iter()
@@ -5216,7 +5216,7 @@ impl<'db> Type<'db> {
             _ => return Vec::new(),
         };
 
-        db.field_types_ns(variant_id)
+        db.field_types(variant_id)
             .iter()
             .map(|(local_id, ty)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
@@ -6450,7 +6450,7 @@ fn generic_args_from_tys<'db>(
 
 fn has_non_default_type_params(db: &dyn HirDatabase, generic_def: GenericDefId) -> bool {
     let params = db.generic_params(generic_def);
-    let defaults = db.generic_defaults_ns(generic_def);
+    let defaults = db.generic_defaults(generic_def);
     params
         .iter_type_or_consts()
         .filter(|(_, param)| matches!(param, TypeOrConstParamData::TypeParamData(_)))

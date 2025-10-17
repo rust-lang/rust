@@ -484,7 +484,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
         let param_data = &params[self.id.local_id()];
         let krate = self.id.parent().krate(f.db).id;
         let ty = self.ty(f.db).ty;
-        let predicates = f.db.generic_predicates_ns(self.id.parent());
+        let predicates = f.db.generic_predicates(self.id.parent());
         let predicates = predicates
             .instantiate_identity()
             .into_iter()

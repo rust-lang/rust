@@ -626,7 +626,7 @@ fn write_projection<'db>(
         // FIXME: We shouldn't use `param.id`, it should be removed. We should know the
         // `GenericDefId` from the formatted type (store it inside the `HirFormatter`).
         let bounds =
-            f.db.generic_predicates_ns(param.id.parent())
+            f.db.generic_predicates(param.id.parent())
                 .instantiate_identity()
                 .into_iter()
                 .flatten()
@@ -902,7 +902,7 @@ fn render_const_scalar_inner<'db>(
                 hir_def::AdtId::StructId(s) => {
                     let data = f.db.struct_signature(s);
                     write!(f, "{}", data.name.display(f.db, f.edition()))?;
-                    let field_types = f.db.field_types_ns(s.into());
+                    let field_types = f.db.field_types(s.into());
                     render_variant_after_name(
                         s.fields(f.db),
                         f,
@@ -934,7 +934,7 @@ fn render_const_scalar_inner<'db>(
                             .1
                             .display(f.db, f.edition())
                     )?;
-                    let field_types = f.db.field_types_ns(var_id.into());
+                    let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
                         var_id.fields(f.db),
                         f,
@@ -1121,7 +1121,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             let datas = db
-                                .return_type_impl_traits_ns(func)
+                                .return_type_impl_traits(func)
                                 .expect("impl trait id without data");
                             let data = (*datas).as_ref().map_bound(|rpit| {
                                 &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
@@ -1353,9 +1353,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
                 match impl_trait_id {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let datas = db
-                            .return_type_impl_traits_ns(func)
-                            .expect("impl trait id without data");
+                        let datas =
+                            db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas).as_ref().map_bound(|rpit| {
                             &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
                         });
@@ -1373,9 +1372,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        let datas = db
-                            .type_alias_impl_traits_ns(alias)
-                            .expect("impl trait id without data");
+                        let datas =
+                            db.type_alias_impl_traits(alias).expect("impl trait id without data");
                         let data = (*datas).as_ref().map_bound(|rpit| {
                             &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
                         });
@@ -1501,7 +1499,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         }
                         TypeParamProvenance::ArgumentImplTrait => {
                             let bounds = db
-                                .generic_predicates_ns(param.id.parent())
+                                .generic_predicates(param.id.parent())
                                 .instantiate_identity()
                                 .into_iter()
                                 .flatten()
@@ -1621,7 +1619,7 @@ fn generic_args_sans_defaults<'ga, 'db>(
     parameters: &'ga [GenericArg<'db>],
 ) -> &'ga [GenericArg<'db>] {
     if f.display_kind.is_source_code() || f.omit_verbose_types() {
-        match generic_def.map(|generic_def_id| f.db.generic_defaults_ns(generic_def_id)) {
+        match generic_def.map(|generic_def_id| f.db.generic_defaults(generic_def_id)) {
             None => parameters,
             Some(default_parameters) => {
                 let should_show = |arg: GenericArg<'db>, i: usize| match default_parameters.get(i) {

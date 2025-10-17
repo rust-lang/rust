@@ -63,8 +63,9 @@ use crate::{
         expr::ExprIsRead,
         unify::InferenceTable,
     },
-    lower::diagnostics::TyLoweringDiagnostic,
-    lower_nextsolver::{ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind},
+    lower::{
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
+    },
     mir::MirSpan,
     next_solver::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region, Ty, TyKind,
@@ -1159,7 +1160,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     },
                 );
                 let return_ty = self.insert_type_vars(return_ty);
-                if let Some(rpits) = self.db.return_type_impl_traits_ns(func) {
+                if let Some(rpits) = self.db.return_type_impl_traits(func) {
                     let mut mode = ImplTraitReplacingMode::ReturnPosition(FxHashSet::default());
                     let result = self.insert_inference_vars_for_impl_trait(return_ty, &mut mode);
                     if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
@@ -1234,7 +1235,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                         }
                         return ty;
                     }
-                    (self.db.return_type_impl_traits_ns(def), idx)
+                    (self.db.return_type_impl_traits(def), idx)
                 }
                 ImplTraitId::TypeAliasImplTrait(def, idx) => {
                     if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
@@ -1243,7 +1244,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                         taits.insert(ty);
                         return ty;
                     }
-                    (self.db.type_alias_impl_traits_ns(def), idx)
+                    (self.db.type_alias_impl_traits(def), idx)
                 }
                 _ => unreachable!(),
             };
@@ -1604,8 +1605,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             match ty.kind() {
                 TyKind::Adt(adt_def, substs) => match adt_def.def_id().0 {
                     AdtId::StructId(struct_id) => {
-                        match self.db.field_types_ns(struct_id.into()).values().next_back().copied()
-                        {
+                        match self.db.field_types(struct_id.into()).values().next_back().copied() {
                             Some(field) => {
                                 ty = field.instantiate(self.interner(), substs);
                             }

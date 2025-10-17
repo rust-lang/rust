@@ -156,7 +156,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
         }
 
         let is_enum = matches!(variant, VariantId::EnumVariantId(..));
-        let field_tys = self.db().field_types_ns(variant);
+        let field_tys = self.db().field_types(variant);
         let field_vis = if is_enum { None } else { Some(self.db().field_visibilities(variant)) };
 
         for (fid, _) in fields.iter() {
