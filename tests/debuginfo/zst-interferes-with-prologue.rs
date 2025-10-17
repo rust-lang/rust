@@ -5,25 +5,25 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:break zst_interferes_with_prologue::Foo::var_return_opt_try
-// gdb-command:run
+//@ gdb-command:break zst_interferes_with_prologue::Foo::var_return_opt_try
+//@ gdb-command:run
 
-// gdb-command:print self
-// gdb-command:next
-// gdb-command:print self
-// gdb-command:print $1 == $2
-// gdb-check:true
+//@ gdb-command:print self
+//@ gdb-command:next
+//@ gdb-command:print self
+//@ gdb-command:print $1 == $2
+//@ gdb-check:true
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:b "zst_interferes_with_prologue::Foo::var_return_opt_try"
-// lldb-command:run
+//@ lldb-command:b "zst_interferes_with_prologue::Foo::var_return_opt_try"
+//@ lldb-command:run
 
-// lldb-command:expr self
-// lldb-command:next
-// lldb-command:expr self
-// lldb-command:print $0 == $1
-// lldb-check:true
+//@ lldb-command:expr self
+//@ lldb-command:next
+//@ lldb-command:expr self
+//@ lldb-command:print $0 == $1
+//@ lldb-check:true
 
 struct Foo {
     a: usize,

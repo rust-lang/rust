@@ -3,70 +3,70 @@
 //@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print arg
-// gdb-check:$1 = associated_types::Struct<i32> {b: -1, b1: 0}
-// gdb-command:continue
+//@ gdb-command:print arg
+//@ gdb-check:$1 = associated_types::Struct<i32> {b: -1, b1: 0}
+//@ gdb-command:continue
 
-// gdb-command:print inferred
-// gdb-check:$2 = 1
-// gdb-command:print explicitly
-// gdb-check:$3 = 1
-// gdb-command:continue
+//@ gdb-command:print inferred
+//@ gdb-check:$2 = 1
+//@ gdb-command:print explicitly
+//@ gdb-check:$3 = 1
+//@ gdb-command:continue
 
-// gdb-command:print arg
-// gdb-check:$4 = 2
-// gdb-command:continue
+//@ gdb-command:print arg
+//@ gdb-check:$4 = 2
+//@ gdb-command:continue
 
-// gdb-command:print arg
-// gdb-check:$5 = (4, 5)
-// gdb-command:continue
+//@ gdb-command:print arg
+//@ gdb-check:$5 = (4, 5)
+//@ gdb-command:continue
 
-// gdb-command:print a
-// gdb-check:$6 = 6
-// gdb-command:print b
-// gdb-check:$7 = 7
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$6 = 6
+//@ gdb-command:print b
+//@ gdb-check:$7 = 7
+//@ gdb-command:continue
 
-// gdb-command:print a
-// gdb-check:$8 = 8
-// gdb-command:print b
-// gdb-check:$9 = 9
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$8 = 8
+//@ gdb-command:print b
+//@ gdb-check:$9 = 9
+//@ gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v arg
-// lldb-check:[...] { b = -1 b1 = 0 }
-// lldb-command:continue
+//@ lldb-command:v arg
+//@ lldb-check:[...] { b = -1 b1 = 0 }
+//@ lldb-command:continue
 
-// lldb-command:v inferred
-// lldb-check:[...] 1
-// lldb-command:v explicitly
-// lldb-check:[...] 1
-// lldb-command:continue
+//@ lldb-command:v inferred
+//@ lldb-check:[...] 1
+//@ lldb-command:v explicitly
+//@ lldb-check:[...] 1
+//@ lldb-command:continue
 
-// lldb-command:v arg
-// lldb-check:[...] 2
-// lldb-command:continue
+//@ lldb-command:v arg
+//@ lldb-check:[...] 2
+//@ lldb-command:continue
 
-// lldb-command:v arg
-// lldb-check:[...] { 0 = 4 1 = 5 }
-// lldb-command:continue
+//@ lldb-command:v arg
+//@ lldb-check:[...] { 0 = 4 1 = 5 }
+//@ lldb-command:continue
 
-// lldb-command:v a
-// lldb-check:[...] 6
-// lldb-command:v b
-// lldb-check:[...] 7
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 6
+//@ lldb-command:v b
+//@ lldb-check:[...] 7
+//@ lldb-command:continue
 
-// lldb-command:v a
-// lldb-check:[...] 8
-// lldb-command:v b
-// lldb-check:[...] 9
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 8
+//@ lldb-command:v b
+//@ lldb-check:[...] 9
+//@ lldb-command:continue
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
