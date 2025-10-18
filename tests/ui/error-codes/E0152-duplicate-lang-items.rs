@@ -3,7 +3,7 @@
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/31788>
 
-//@ normalize-stderr: "loaded from .*libstd-.*.rlib" -> "loaded from SYSROOT/libstd-*.rlib"
+//@ normalize-stderr: "loaded from .*libstd-.*.rmeta" -> "loaded from SYSROOT/libstd-*.rmeta"
 //@ dont-require-annotations: NOTE
 
 #![feature(lang_items)]
