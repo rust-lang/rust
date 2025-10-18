@@ -723,6 +723,15 @@ pub enum AttributeKind {
     /// Represents `#[unstable_feature_bound]`.
     UnstableFeatureBound(ThinVec<(Symbol, Span)>),
 
+    /// Represents `#[unstable_removed]`
+    UnstableRemoved {
+        feature: Symbol,
+        since: Symbol,
+        issue: Symbol,
+        reason: Option<Symbol>,
+        attr_span: Span,
+    },
+
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
     // tidy-alphabetical-end

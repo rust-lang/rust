@@ -573,6 +573,18 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Crate properties:
     ungated!(
+        unstable_removed, CrateLevel,
+        template!(
+            List: &[
+                r#"feature = "name""#,
+                r#"since = "version""#,
+                r#"issue = "number""#,
+                r#"reason = "text" (optional)"#,
+            ]
+        ),
+        FutureWarnFollowing, EncodeCrossCrate::No
+    ),
+    ungated!(
         crate_name, CrateLevel,
         template!(
             NameValueStr: "name",

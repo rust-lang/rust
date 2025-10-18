@@ -147,3 +147,65 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
 }
+
+pub(crate) struct UnstableRemovedParser;
+
+impl<S: Stage> SingleAttributeParser<S> for UnstableRemovedParser {
+    const PATH: &[Symbol] = &[sym::unstable_removed];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &[
+            r#"feature = "name""#,
+            r#"since = "version""#,
+            r#"issue = "number""#,
+            r#"reason = "text" (optional)"#,
+        ],
+        "https://doc.rust-lang.org/nightly/unstable-book/"
+    );
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let list = args.list()?;
+        let mut feature = None;
+        let mut since = None;
+        let mut issue = None;
+        let mut reason = None;
+
+        for item in list.mixed() {
+            let Some(mi) = item.meta_item() else {
+                cx.expected_list(item.span());
+                continue;
+            };
+
+            let Some(nv) = mi.args().name_value() else {
+                cx.expected_list(item.span());
+                continue;
+            };
+
+            let key = mi.path().word_sym();
+            let Some(value) = nv.value_as_str() else {
+                cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                continue;
+            };
+
+            match key {
+                Some(sym::feature) => feature = Some(value),
+                Some(sym::since) => since = Some(value),
+                Some(sym::issue) => issue = Some(value),
+                Some(sym::reason) => reason = Some(value),
+                _ => {
+                    cx.expected_list(item.span());
+                }
+            }
+        }
+
+        Some(AttributeKind::UnstableRemoved {
+            feature: feature?,
+            since: since?,
+            issue: issue?,
+            reason,
+            attr_span: cx.attr_span,
+        })
+    }
+}

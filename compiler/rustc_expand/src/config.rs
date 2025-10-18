@@ -19,7 +19,7 @@ use rustc_attr_parsing::{
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
-    REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
+    REMOVED_LANG_FEATURES, RemovedFeatureInfo, UNSTABLE_LANG_FEATURES,
 };
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
@@ -29,7 +29,8 @@ use tracing::instrument;
 
 use crate::errors::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
+    FeatureRemovedReason, InvalidCfg, LibFeatureRemoved, LibFeatureRemovedIssue,
+    LibFeatureRemovedReason, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
     RemoveExprNotSupported,
 };
 
@@ -57,6 +58,44 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
     let mut features = Features::default();
 
+    // Populate the removed_features map.
+    for attr in krate_attrs {
+        if attr.has_name(sym::unstable_removed) {
+            if let Some(list) = attr.meta_item_list() {
+                let mut feature = None;
+                let mut since = None;
+                let mut issue = None;
+                let mut reason = None;
+
+                for nested in list {
+                    let Some(mi) = nested.meta_item() else {
+                        continue;
+                    };
+
+                    if let Some(val) = mi.name_value_literal() {
+                        let key_name = mi.ident().map(|ident| ident.name);
+
+                        if let Some(name) = key_name {
+                            match name {
+                                sym::feature => feature = Some(val.symbol),
+                                sym::since => since = Some(val.symbol),
+                                sym::issue => issue = Some(val.symbol),
+                                sym::reason => reason = Some(val.symbol),
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+
+                if let (Some(feature), Some(since), Some(issue)) = (feature, since, issue) {
+                    features
+                        .removed_features
+                        .insert(feature, RemovedFeatureInfo { since, issue, reason });
+                }
+            }
+        }
+    }
+
     // Process all features enabled in the code.
     for attr in krate_attrs {
         for mi in feature_list(attr) {
@@ -80,6 +119,18 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                     continue;
                 }
             };
+
+            // If the enabled lib feature has been removed, issue an error.
+            if let Some(removed) = features.removed_features.get(&name) {
+                sess.dcx().emit_err(LibFeatureRemoved {
+                    span: mi.span(),
+                    feature: name,
+                    since: removed.since,
+                    issue: LibFeatureRemovedIssue { issue: removed.issue },
+                    reason: removed.reason.map(|reason| LibFeatureRemovedReason { reason }),
+                });
+                continue;
+            }
 
             // If the enabled feature has been removed, issue an error.
             if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| name == f.feature.name) {

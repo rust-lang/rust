@@ -103,6 +103,7 @@ impl AttributeKind {
             TypeLengthLimit { .. } => No,
             UnsafeSpecializationMarker(..) => No,
             UnstableFeatureBound(..) => No,
+            UnstableRemoved { .. } => No,
             Used { .. } => No,
             // tidy-alphabetical-end
         }

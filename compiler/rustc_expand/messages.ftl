@@ -72,6 +72,13 @@ expand_invalid_fragment_specifier =
     invalid fragment specifier `{$fragment}`
     .help = {$help}
 
+expand_lib_feature_removed = the feature `{ $feature }` has been removed
+    .label =  removed since {$since}
+
+expand_lib_feature_removed_issue = see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information
+
+expand_lib_feature_removed_reason = {$reason}
+
 expand_macro_args_bad_delim = `{$rule_kw}` rule argument matchers require parentheses
 expand_macro_args_bad_delim_sugg = the delimiters should be `(` and `)`
 

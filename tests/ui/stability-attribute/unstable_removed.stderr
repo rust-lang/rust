@@ -1,0 +1,18 @@
+error: the feature `old_bad_feature1` has been removed
+  --> $DIR/unstable_removed.rs:2:12
+   |
+LL | #![feature(old_bad_feature1)]
+   |            ^^^^^^^^^^^^^^^^ removed since 1.80.0
+   |
+   = note: see issue #12345 <https://github.com/rust-lang/rust/issues/12345> for more information
+   = help: it was replaced by the 'new_good_feature' gate
+
+error[E0635]: unknown feature `old_bad_feature2`
+  --> $DIR/unstable_removed.rs:11:12
+   |
+LL | #![feature(old_bad_feature2)]
+   |            ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0635`.

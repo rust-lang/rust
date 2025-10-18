@@ -574,3 +574,29 @@ pub(crate) struct UnusedBuiltinAttribute {
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub attr_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_lib_feature_removed)]
+pub(crate) struct LibFeatureRemoved {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub feature: Symbol,
+    pub since: Symbol,
+    #[subdiagnostic]
+    pub issue: LibFeatureRemovedIssue,
+    #[subdiagnostic]
+    pub reason: Option<LibFeatureRemovedReason>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(expand_lib_feature_removed_issue)]
+pub(crate) struct LibFeatureRemovedIssue {
+    pub issue: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[help(expand_lib_feature_removed_reason)]
+pub(crate) struct LibFeatureRemovedReason {
+    pub reason: Symbol,
+}

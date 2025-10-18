@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
@@ -43,6 +43,16 @@ pub struct Features {
     enabled_lib_features: Vec<EnabledLibFeature>,
     /// `enabled_lang_features` + `enabled_lib_features`.
     enabled_features: FxHashSet<Symbol>,
+    /// `#![unstable_removed]` attrs
+    pub removed_features: FxIndexMap<Symbol, RemovedFeatureInfo>,
+}
+
+/// Information about an lib removed feature
+#[derive(Clone, Debug)]
+pub struct RemovedFeatureInfo {
+    pub since: Symbol,
+    pub issue: Symbol,
+    pub reason: Option<Symbol>,
 }
 
 /// Information about an enabled language feature.

@@ -277,6 +277,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MoveSizeLimit { .. }
                     | AttributeKind::TypeLengthLimit { .. }
                     | AttributeKind::PatternComplexityLimit { .. }
+                    | AttributeKind::UnstableRemoved { .. }
                     | AttributeKind::NoCore { .. }
                     | AttributeKind::NoStd { .. }
                     | AttributeKind::ObjcClass { .. }
