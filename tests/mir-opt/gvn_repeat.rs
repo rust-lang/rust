@@ -27,8 +27,7 @@ pub fn index_place(mut idx1: usize, idx2: usize, array: [i32; 5]) -> i32 {
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_place(mut idx1: usize, idx2: usize, val: &i32) -> i32 {
     // CHECK-LABEL: fn repeat_place(
-    // CHECK: let mut [[ELEM:.*]]: &i32;
-    // CHECK: _0 = copy (*[[ELEM]])
+    // CHECK: _0 = copy (*_3)
     mir! {
         let array;
         let elem;
@@ -46,8 +45,7 @@ pub fn repeat_place(mut idx1: usize, idx2: usize, val: &i32) -> i32 {
 #[custom_mir(dialect = "runtime")]
 pub fn repeat_local(mut idx1: usize, idx2: usize, val: i32) -> i32 {
     // CHECK-LABEL: fn repeat_local(
-    // CHECK: let mut [[ELEM:.*]]: &i32;
-    // CHECK: _0 = copy (*[[ELEM]]);
+    // CHECK: _0 = copy _3;
     mir! {
         let array;
         let elem;

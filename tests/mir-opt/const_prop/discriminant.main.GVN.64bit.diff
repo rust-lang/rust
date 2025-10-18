@@ -15,7 +15,8 @@
   
       bb0: {
           StorageLive(_1);
-          StorageLive(_2);
+-         StorageLive(_2);
++         nop;
           StorageLive(_3);
 -         _3 = Option::<bool>::Some(const true);
 -         _4 = discriminant(_3);
@@ -41,8 +42,10 @@
       }
   
       bb4: {
-          _1 = Add(move _2, const 0_i32);
-          StorageDead(_2);
+-         _1 = Add(move _2, const 0_i32);
+-         StorageDead(_2);
++         _1 = copy _2;
++         nop;
           StorageDead(_3);
           _0 = const ();
           StorageDead(_1);
