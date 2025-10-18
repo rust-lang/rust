@@ -8,7 +8,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, PolyTraitRef};
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -35,52 +35,6 @@ use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Check for duplicate relaxed bounds and relaxed bounds of non-default traits.
-    pub(crate) fn check_and_report_invalid_relaxed_bounds(
-        &self,
-        relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
-    ) {
-        let tcx = self.tcx();
-
-        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
-
-        for bound in &relaxed_bounds {
-            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
-                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
-            }
-        }
-
-        for (trait_def_id, spans) in grouped_bounds {
-            if spans.len() > 1 {
-                let name = tcx.item_name(trait_def_id);
-                self.dcx()
-                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
-                    .with_code(E0203)
-                    .emit();
-            }
-        }
-
-        let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP);
-
-        for bound in relaxed_bounds {
-            if let Res::Def(DefKind::Trait, def_id) = bound.trait_ref.path.res
-                && (def_id == sized_def_id || tcx.is_default_trait(def_id))
-            {
-                continue;
-            }
-            self.dcx().span_err(
-                bound.span,
-                if tcx.sess.opts.unstable_opts.experimental_default_bounds
-                    || tcx.features().more_maybe_bounds()
-                {
-                    "bound modifier `?` can only be applied to default traits like `Sized`"
-                } else {
-                    "bound modifier `?` can only be applied to `Sized`"
-                },
-            );
-        }
-    }
-
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn report_missing_type_params(
