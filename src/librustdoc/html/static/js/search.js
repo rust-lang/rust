@@ -149,7 +149,10 @@ const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 const UNBOXING_LIMIT = 5;
 
 // used for search query verification
-const REGEX_IDENT = /\p{ID_Start}\p{ID_Continue}*|_\p{ID_Continue}+/uy;
+// because searches are often performed using substrings of identifiers,
+// and not just full identiferes, we allow them to start with chars that otherwise
+// can only appear in the middle of identifiers
+const REGEX_IDENT = /\p{ID_Continue}+/uy;
 const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
 
 const MAX_RESULTS = 200;
