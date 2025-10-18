@@ -11,6 +11,7 @@
 //@ check-pass
 
 #![cfg_attr(fallback, feature(never_type_fallback))]
+#![cfg_attr(nofallback, expect(dependency_on_unit_never_type_fallback))]
 
 trait Bar {}
 impl Bar for () {}
@@ -19,7 +20,5 @@ impl Bar for u32 {}
 fn foo<R: Bar>(_: impl Fn() -> R) {}
 
 fn main() {
-    //[nofallback]~^ warn: this function depends on never type fallback being `()`
-    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     foo(|| panic!());
 }
