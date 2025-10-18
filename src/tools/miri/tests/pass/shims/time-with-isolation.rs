@@ -27,7 +27,7 @@ fn test_time_passes() {
     // if `NANOSECONDS_PER_BASIC_BLOCK` changes. It may also need updating if the standard library
     // code that runs in the loop above changes.
     assert!(diff.as_millis() > 5);
-    assert!(diff.as_millis() < 20);
+    assert!(diff.as_millis() < 25);
 }
 
 fn test_block_for_one_second() {
