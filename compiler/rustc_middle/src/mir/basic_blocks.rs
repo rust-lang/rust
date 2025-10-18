@@ -8,7 +8,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
-use crate::mir::traversal::Postorder;
+use crate::mir::traversal::{Postorder, Preorder};
 use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
@@ -32,6 +32,7 @@ pub enum SwitchTargetValue {
 #[derive(Clone, Default, Debug)]
 struct Cache {
     predecessors: OnceLock<Predecessors>,
+    preorder: OnceLock<Vec<BasicBlock>>,
     reverse_postorder: OnceLock<Vec<BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
 }
@@ -63,9 +64,21 @@ impl<'tcx> BasicBlocks<'tcx> {
         })
     }
 
+    /// Returns basic blocks in a preorder.
+    ///
+    /// See [`traversal::preorder`]'s docs to learn what is preorder traversal.
+    ///
+    /// [`traversal::preorder`]: crate::mir::traversal::preorder
+    #[inline]
+    pub fn preorder(&self) -> &[BasicBlock] {
+        self.cache.preorder.get_or_init(|| {
+            Preorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect()
+        })
+    }
+
     /// Returns basic blocks in a reverse postorder.
     ///
-    /// See [`traversal::reverse_postorder`]'s docs to learn what is preorder traversal.
+    /// See [`traversal::reverse_postorder`]'s docs to learn what is postorder traversal.
     ///
     /// [`traversal::reverse_postorder`]: crate::mir::traversal::reverse_postorder
     #[inline]
