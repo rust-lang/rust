@@ -1,5 +1,6 @@
 //@ build-fail
 //@ normalize-stderr: "\[&usize; \d+\]" -> "[&usize; usize::MAX]"
+//@ normalize-stderr: "\[&n; 0x[0-9A-F]+_usize\]" -> "[&n; SIZE]"
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
@@ -15,4 +16,5 @@ fn main() {
     println!("{}", a[0xFFFFFF_usize]);
 }
 
+//~? ERROR are too big for the target architecture
 //~? ERROR are too big for the target architecture

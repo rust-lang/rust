@@ -126,21 +126,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let tcx = this.tcx;
                 let source_info = this.source_info(expr_span);
 
-                let size = this.temp(tcx.types.usize, expr_span);
-                this.cfg.push_assign(
-                    block,
-                    source_info,
-                    size,
-                    Rvalue::NullaryOp(NullOp::SizeOf, value_ty),
-                );
+                let size = tcx.require_lang_item(LangItem::SizeOf, expr_span);
+                let size = Const::from_unevaluated(tcx, size).instantiate(tcx, &[value_ty.into()]);
+                let size = Operand::Constant(Box::new(ConstOperand {
+                    span: expr_span,
+                    user_ty: None,
+                    const_: size,
+                }));
 
-                let align = this.temp(tcx.types.usize, expr_span);
-                this.cfg.push_assign(
-                    block,
-                    source_info,
-                    align,
-                    Rvalue::NullaryOp(NullOp::AlignOf, value_ty),
-                );
+                let align = tcx.require_lang_item(LangItem::AlignOf, expr_span);
+                let align =
+                    Const::from_unevaluated(tcx, align).instantiate(tcx, &[value_ty.into()]);
+                let align = Operand::Constant(Box::new(ConstOperand {
+                    span: expr_span,
+                    user_ty: None,
+                    const_: align,
+                }));
 
                 // malloc some memory of suitable size and align:
                 let exchange_malloc = Operand::function_handle(
@@ -157,8 +158,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::Call {
                         func: exchange_malloc,
                         args: [
-                            Spanned { node: Operand::Move(size), span: DUMMY_SP },
-                            Spanned { node: Operand::Move(align), span: DUMMY_SP },
+                            Spanned { node: size, span: DUMMY_SP },
+                            Spanned { node: align, span: DUMMY_SP },
                         ]
                         .into(),
                         destination: storage,

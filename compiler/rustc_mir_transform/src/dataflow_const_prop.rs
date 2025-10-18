@@ -466,8 +466,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
                 let val = match null_op {
-                    NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
-                    NullOp::AlignOf if layout.is_sized() => layout.align.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx

@@ -90,15 +90,13 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
-        // We would like to check intrinsic definition.
-        #![feature(core_intrinsics)]
         static STATIC_STR: &str = "foo";
         const CONST_U32: u32 = 0u32;
 
         fn main() {{
             let _c = core::char::from_u32(99);
             let _v = Vec::<u8>::new();
-            let _i = std::intrinsics::size_of::<u8>();
+            let _i = std::mem::size_of::<u8>();
         }}
 
         extern "C" {{

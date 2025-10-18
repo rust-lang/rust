@@ -264,6 +264,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
+        let source_info = terminator.source_info;
         if let TerminatorKind::Call {
             func, args, destination, target: Some(destination_block), ..
         } = &terminator.kind
@@ -272,12 +273,17 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             && self.tcx.is_intrinsic(fn_def_id, sym::align_of_val)
             && let ty::Slice(elem_ty) = *generics.type_at(0).kind()
         {
+            let align_def_id = self.tcx.require_lang_item(LangItem::AlignOf, source_info.span);
+            let align_const = Const::from_unevaluated(self.tcx, align_def_id)
+                .instantiate(self.tcx, &[elem_ty.into()]);
+            let align_const = Operand::Constant(Box::new(ConstOperand {
+                span: source_info.span,
+                user_ty: None,
+                const_: align_const,
+            }));
             statements.push(Statement::new(
-                terminator.source_info,
-                StatementKind::Assign(Box::new((
-                    *destination,
-                    Rvalue::NullaryOp(NullOp::AlignOf, elem_ty),
-                ))),
+                source_info,
+                StatementKind::Assign(Box::new((*destination, Rvalue::Use(align_const)))),
             ));
             terminator.kind = TerminatorKind::Goto { target: *destination_block };
         }

@@ -72,10 +72,6 @@ pub fn debug_tuple() -> DebugTuple {
     DebugTuple(())
 }
 
-pub fn size_of<T>() -> usize {
-    intrinsics::size_of::<T>()
-}
-
 pub fn use_size_of() -> usize {
     size_of::<u64>()
 }
