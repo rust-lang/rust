@@ -108,7 +108,8 @@
           _18 = &(*_1);
           StorageLive(_19);
           StorageLive(_20);
-          _20 = copy (*_18);
+-         _20 = copy (*_18);
++         _20 = copy (*_1);
           _19 = opaque::<u32>(move _20) -> [return: bb7, unwind continue];
       }
   
@@ -117,7 +118,8 @@
           StorageDead(_19);
           StorageLive(_21);
           StorageLive(_22);
-          _22 = copy (*_18);
+-         _22 = copy (*_18);
++         _22 = copy (*_1);
           _21 = opaque::<u32>(move _22) -> [return: bb8, unwind continue];
       }
   

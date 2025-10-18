@@ -32,7 +32,7 @@ fn stable_projection(_1: (Adt,)) {
     // CHECK-LABEL: fn stable_projection(
     // CHECK: let mut _2: *mut Adt;
     // CHECK: let mut _4: &Adt;
-    // CHECK: (_1.0: Adt) = copy (*_4);
+    // CHECK: (_1.0: Adt) = copy (*_2);
     mir! {
         let _2: *mut Adt;
         let _3: u32;
@@ -67,6 +67,9 @@ fn fields(_1: (Adt, Adt)) {
 // EMIT_MIR gvn_overlapping.copy_overlapping.GVN.diff
 #[custom_mir(dialect = "runtime")]
 fn copy_overlapping() {
+    // CHECK-LABEL: fn copy_overlapping(
+    // CHECK-NOT: _1 = copy (*_{{.*}});
+    // CHECK: _1 = Adt::Some(copy _2);
     mir! {
         let _1;
         let _2;
