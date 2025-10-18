@@ -9,17 +9,16 @@ LL | #[cfg]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
-error: malformed `cfg_attr` attribute input
+error[E0539]: malformed `cfg_attr` attribute input
   --> $DIR/malformed-attrs.rs:103:1
    |
 LL | #[cfg_attr]
    | ^^^^^^^^^^^
+   | |
+   | expected this to be a list
+   | help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
-help: missing condition and attribute
-   |
-LL | #[cfg_attr(condition, attribute, other_attribute, ...)]
-   |           ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0463]: can't find crate for `wloop`
   --> $DIR/malformed-attrs.rs:209:1
