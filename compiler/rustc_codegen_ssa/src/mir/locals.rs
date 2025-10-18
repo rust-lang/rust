@@ -40,12 +40,12 @@ impl<'tcx, V> Locals<'tcx, V> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(super) fn initialize_locals(&mut self, values: Vec<LocalRef<'tcx, Bx::Value>>) {
         assert!(self.locals.values.is_empty());
+        self.locals.values = IndexVec::from_raw(values);
         // FIXME(#115215): After #115025 get's merged this might not be necessary
-        for (local, value) in values.into_iter().enumerate() {
+        for (local, value) in self.locals.values.iter_enumerated() {
             match value {
                 LocalRef::Place(_) | LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => (),
                 LocalRef::Operand(op) => {
-                    let local = mir::Local::from_usize(local);
                     let expected_ty = self.monomorphize(self.mir.local_decls[local].ty);
                     if expected_ty != op.layout.ty {
                         warn!(
@@ -56,7 +56,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            self.locals.values.push(value);
         }
     }
 
