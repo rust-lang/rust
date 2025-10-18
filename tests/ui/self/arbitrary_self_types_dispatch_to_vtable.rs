@@ -3,7 +3,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 use std::ops::Receiver;
 
 // `CoercePointee` isn't needed here, it's just a simpler
