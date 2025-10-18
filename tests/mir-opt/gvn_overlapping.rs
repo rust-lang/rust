@@ -64,6 +64,23 @@ fn fields(_1: (Adt, Adt)) {
     }
 }
 
+// EMIT_MIR gvn_overlapping.copy_overlapping.GVN.diff
+#[custom_mir(dialect = "runtime")]
+fn copy_overlapping() {
+    mir! {
+        let _1;
+        let _2;
+        let _3;
+        {
+            place!(Field(Variant(_1, 1), 0)) = 0u32;
+            _3 = &_1;
+            _2 = Field(Variant(*_3, 1), 0);
+            _1 = Adt::Some(_2);
+            Return()
+        }
+    }
+}
+
 fn main() {
     overlapping(Adt::Some(0));
 }
