@@ -3,7 +3,7 @@ name = "llvm-bitcode-linker"
 version = "0.0.1"
 description = "A self-contained linker for llvm bitcode"
 license = "MIT OR Apache-2.0"
-edition = "2021"
+edition = "2024"
 publish = false
 
 [dependencies]
