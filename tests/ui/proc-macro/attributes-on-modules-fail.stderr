@@ -6,7 +6,7 @@ LL | #[derive(Copy)]
 LL | mod n {}
    | -------- not a `struct`, `enum` or `union`
 
-error[E0658]: non-inline modules in proc macro input are unstable
+error[E0658]: file modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:20:1
    |
 LL | mod module;
@@ -16,7 +16,7 @@ LL | mod module;
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: non-inline modules in proc macro input are unstable
+error[E0658]: file modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:24:5
    |
 LL |     mod inner;
@@ -26,7 +26,7 @@ LL |     mod inner;
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: non-inline modules in proc macro input are unstable
+error[E0658]: file modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:33:9
    |
 LL |         mod inner;
@@ -36,7 +36,7 @@ LL |         mod inner;
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: non-inline modules in proc macro input are unstable
+error[E0658]: file modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:42:5
    |
 LL |     mod inner;
