@@ -1,0 +1,9 @@
+error: `super` cannot be a raw identifier
+  |
+  = note: this error occurred on the command line: `--check-cfg=cfg(r#super)`
+
+error: invalid `--check-cfg` argument: `cfg(r#super)`
+   |
+   = note: argument key must be an identifier, but `super` cannot be a raw identifier
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

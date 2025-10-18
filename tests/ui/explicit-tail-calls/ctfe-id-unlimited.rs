@@ -1,5 +1,5 @@
-//@ revisions: become return
-//@ [become] run-pass
+//@ revisions: become_ return_
+//@ [become_] run-pass
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
@@ -13,8 +13,8 @@ const fn rec_id(n: u32) -> u32 {
     const fn inner(acc: u32, n: u32) -> u32 {
         match n {
             0 => acc,
-            #[cfg(r#become)] _ => become inner(acc + 1, n - 1),
-            #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
+            #[cfg(become_)] _ => become inner(acc + 1, n - 1),
+            #[cfg(return_)] _ => return inner(acc + 1, n - 1),
         }
     }
 
@@ -25,7 +25,7 @@ const fn rec_id(n: u32) -> u32 {
 const ORIGINAL: u32 = 12345;
 // Original number, but with identity function applied
 // (this is the same, but requires execution of the recursion)
-const ID_ED: u32 = rec_id(ORIGINAL); //[return]~ ERROR: reached the configured maximum number of stack frames
+const ID_ED: u32 = rec_id(ORIGINAL); //[return_]~ ERROR: reached the configured maximum number of stack frames
 // Assert to make absolutely sure the computation actually happens
 const ASSERT: () = assert!(ORIGINAL == ID_ED);
 

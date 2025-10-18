@@ -1,3 +1,8 @@
+error: expected identifier, found `#`
+  |
+  = note: this error occurred on the command line: `--cfg=#!/usr/bin/shebang
+          key`
+
 error: invalid `--cfg` argument: `#!/usr/bin/shebang
        key` (expected `key` or `key="value"`)
 

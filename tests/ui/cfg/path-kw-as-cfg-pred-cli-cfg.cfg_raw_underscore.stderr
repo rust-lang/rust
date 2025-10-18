@@ -1,0 +1,6 @@
+error: `_` cannot be a raw identifier
+  |
+  = note: this error occurred on the command line: `--cfg=r#_`
+
+error: invalid `--cfg` argument: `r#_` (argument key must be an identifier, but `_` cannot be a raw identifier)
+

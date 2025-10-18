@@ -1,0 +1,6 @@
+error: expected identifier, found keyword `struct`
+  |
+  = note: this error occurred on the command line: `--cfg=struct`
+
+error: invalid `--cfg` argument: `struct` (expected `key` or `key="value"`)
+

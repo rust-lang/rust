@@ -534,30 +534,28 @@ impl Emitter for HumanEmitter {
     }
 }
 
-/// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
+/// An emitter that does nothing when emitting a non-error diagnostic.
+/// Error diagnostics are forwarded to `error_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
-pub struct FatalOnlyEmitter {
-    pub fatal_emitter: Box<dyn Emitter + DynSend>,
-    pub fatal_note: Option<String>,
+pub struct ErrorOnlyEmitter {
+    pub error_emitter: Box<dyn Emitter + DynSend>,
+    pub error_note: String,
 }
 
-impl Emitter for FatalOnlyEmitter {
+impl Emitter for ErrorOnlyEmitter {
     fn source_map(&self) -> Option<&SourceMap> {
         None
     }
 
     fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
-        if diag.level == Level::Fatal {
-            if let Some(fatal_note) = &self.fatal_note {
-                diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
-            }
-            self.fatal_emitter.emit_diagnostic(diag, registry);
+        if diag.is_error() {
+            diag.sub(Level::Note, self.error_note.clone(), MultiSpan::new());
+            self.error_emitter.emit_diagnostic(diag, registry);
         }
     }
 
     fn translator(&self) -> &Translator {
-        self.fatal_emitter.translator()
+        self.error_emitter.translator()
     }
 }
 

@@ -1,3 +1,7 @@
+error: this file contains an unclosed delimiter
+  |
+  = note: this error occurred on the command line: `--check-cfg=cfg(`
+
 error: invalid `--check-cfg` argument: `cfg(`
    |
    = note: expected `cfg(name, values("value1", "value2", ... "valueN"))`

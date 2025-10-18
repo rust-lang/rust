@@ -1,3 +1,9 @@
+error: expected identifier, found `-`
+  |
+  = note: this error occurred on the command line: `--check-cfg=---
+          ---
+          cfg(key)`
+
 error: invalid `--check-cfg` argument: `---
        ---
        cfg(key)`
