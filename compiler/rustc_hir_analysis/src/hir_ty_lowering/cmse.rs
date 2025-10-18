@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, ExternAbi, Float, Integer, Primitive, Scalar};
+use rustc_abi::{BackendRepr, ExternAbi, Float, Integer, Primitive};
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
@@ -163,11 +163,7 @@ fn is_valid_cmse_output_layout<'tcx>(layout: TyAndLayout<'tcx>) -> bool {
         return false;
     };
 
-    let Scalar::Initialized { value, .. } = scalar else {
-        return false;
-    };
-
-    matches!(value, Primitive::Int(Integer::I64, _) | Primitive::Float(Float::F64))
+    matches!(scalar.primitive(), Primitive::Int(Integer::I64, _) | Primitive::Float(Float::F64))
 }
 
 fn should_emit_layout_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {

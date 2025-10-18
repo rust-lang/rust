@@ -49,7 +49,10 @@ pub union ReprRustUnionU64 {
 
 #[no_mangle]
 pub fn test_union(
-    f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64, //~ ERROR [E0798]
-    f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,    //~ ERROR [E0798]
+    f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64,
+    f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,
+    //~^ ERROR return value of `"cmse-nonsecure-call"` function too large to pass via registers [E0798]
+    f3: extern "cmse-nonsecure-call" fn() -> MaybeUninit<u32>,
+    f4: extern "cmse-nonsecure-call" fn() -> MaybeUninit<u64>,
 ) {
 }

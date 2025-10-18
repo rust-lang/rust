@@ -62,15 +62,6 @@ LL |     f5: extern "cmse-nonsecure-call" fn() -> [u8; 5],
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
-  --> $DIR/return-via-stack.rs:52:46
-   |
-LL |     f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64,
-   |                                              ^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
-   |
-   = note: functions with the `"cmse-nonsecure-call"` ABI must pass their result via the available return registers
-   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
-
-error[E0798]: return value of `"cmse-nonsecure-call"` function too large to pass via registers
   --> $DIR/return-via-stack.rs:53:46
    |
 LL |     f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,
@@ -79,6 +70,6 @@ LL |     f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,
    = note: functions with the `"cmse-nonsecure-call"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0798`.
