@@ -21,10 +21,12 @@ LL | fn b() -> impl Fn() -> (impl Debug + Send) {
    |                        +                 +
 
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/impl-fn-parsing-ambiguities.rs:4:40
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:27
    |
 LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
-   |                                        ^^
+   |                           ^^^^^^^^^^^^^--
+   |                           |
+   |                           `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/impl-fn-parsing-ambiguities.rs:4:19

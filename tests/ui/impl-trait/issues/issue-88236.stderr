@@ -1,8 +1,10 @@
 error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
-  --> $DIR/issue-88236.rs:15:61
+  --> $DIR/issue-88236.rs:15:49
    |
 LL | fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
-   |                                                             ^^
+   |                                                 ^^^^^^^^^^^^--
+   |                                                 |
+   |                                                 `impl Trait` implicitly captures all lifetimes in scope
    |
 note: lifetime declared here
   --> $DIR/issue-88236.rs:15:28
