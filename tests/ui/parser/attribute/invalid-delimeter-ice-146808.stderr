@@ -1,5 +1,5 @@
 error: wrong meta list delimiters
-  --> $DIR/invalid-delimeter-ice-146808.rs:8:1
+  --> $DIR/invalid-delimeter-ice-146808.rs:10:1
    |
 LL | #[all_spans_same::all_spans_same]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

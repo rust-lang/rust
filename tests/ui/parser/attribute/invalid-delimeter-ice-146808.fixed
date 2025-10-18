@@ -1,7 +1,9 @@
 // regression test for #146808
 //@ proc-macro: all_spans_same.rs
 //@ run-rustfix
-//@ rustfix-only-machine-applicable
+// the fixed program is still broken, but rustfix didn't crash!
+// that's what we want to test here.
+//@ rustfix-dont-test-fixed
 
 extern crate all_spans_same;
 
