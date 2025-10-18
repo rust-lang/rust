@@ -476,9 +476,8 @@ pub fn report_dyn_incompatibility<'tcx>(
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Trait(_, _, _, ident, ..) | hir::ItemKind::TraitAlias(ident, _, _) => {
-                Some(ident.span)
-            }
+            hir::ItemKind::Trait(_, _, _, ident, ..)
+            | hir::ItemKind::TraitAlias(_, ident, _, _) => Some(ident.span),
             _ => unreachable!(),
         },
         _ => None,
