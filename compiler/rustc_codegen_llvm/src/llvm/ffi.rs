@@ -2327,10 +2327,6 @@ unsafe extern "C" {
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         UseEmulatedTls: bool,
-        Argv0: *const c_uchar, // See "PTR_LEN_STR".
-        Argv0Len: size_t,
-        CommandLineArgs: *const c_uchar, // See "PTR_LEN_STR".
-        CommandLineArgsLen: size_t,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
 

@@ -74,7 +74,6 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
-        expanded_args: Default::default(),
     };
 
     interface::run_compiler(config, |compiler| {
