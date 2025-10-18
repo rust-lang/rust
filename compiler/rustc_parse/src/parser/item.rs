@@ -1041,32 +1041,11 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
-        let before_where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
-
-        let where_clauses = TyAliasWhereClauses {
-            before: TyAliasWhereClause {
-                has_where_token: before_where_clause.has_where_token,
-                span: before_where_clause.span,
-            },
-            after: TyAliasWhereClause {
-                has_where_token: after_where_clause.has_where_token,
-                span: after_where_clause.span,
-            },
-            split: before_where_clause.predicates.len(),
-        };
-        let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates);
-        let where_clause = WhereClause {
-            has_where_token: before_where_clause.has_where_token
-                || after_where_clause.has_where_token,
-            predicates,
-            span: DUMMY_SP,
-        };
-        generics.where_clause = where_clause;
 
         self.expect_semi()?;
 
@@ -1074,7 +1053,7 @@ impl<'a> Parser<'a> {
             defaultness,
             ident,
             generics,
-            where_clauses,
+            after_where_clause,
             bounds,
             ty,
         })))
