@@ -27,6 +27,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR ISC OR MIT",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
+    "Apache-2.0 WITH LLVM-exception",
     "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
@@ -169,16 +170,13 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
 #[rustfmt::skip]
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
-    ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
     ("arrayref", "BSD-2-Clause"),                            // rustc
     ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
     ("foldhash", "Zlib"),                                    // rustc
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
-    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
-    ("wasi-preview1-component-adapter-provider", "Apache-2.0 WITH LLVM-exception"), // rustc
     // tidy-alphabetical-end
 ];
 
@@ -218,7 +216,6 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("foldhash", "Zlib"),
     ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
                                       // tidy-alphabetical-end
 ];
@@ -250,28 +247,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
-    ("cranelift-assembler-x64", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-assembler-x64-meta", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-control", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-jit", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-srcgen", "Apache-2.0 WITH LLVM-exception"),
     ("foldhash", "Zlib"),
     ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
-    ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
-    ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
-    ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
-    ("wasmtime-math", "Apache-2.0 WITH LLVM-exception"),
     // tidy-alphabetical-end
 ];
 
