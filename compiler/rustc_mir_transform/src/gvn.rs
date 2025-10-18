@@ -131,9 +131,19 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let dominators = body.basic_blocks.dominators().clone();
         let maybe_loop_headers = loops::maybe_loop_headers(body);
 
+        let immutable_borrows = ImmutableBorrows::new(tcx, body, typing_env, &ssa);
+
         let arena = DroplessArena::default();
-        let mut state =
-            VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls, &arena);
+        let mut state = VnState::new(
+            tcx,
+            body,
+            typing_env,
+            &ssa,
+            dominators,
+            &body.local_decls,
+            &arena,
+            immutable_borrows,
+        );
 
         for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
             let opaque = state.new_opaque(body.local_decls[local].ty);
@@ -204,7 +214,6 @@ enum AddressBase {
 enum Value<'a, 'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
-    /// The `usize` is a counter incremented by `new_opaque`.
     Opaque(VnOpaque),
     /// Evaluated or unevaluated constant value.
     Constant {
@@ -380,6 +389,7 @@ struct VnState<'body, 'a, 'tcx> {
     dominators: Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
     arena: &'a DroplessArena,
+    immutable_borrows: ImmutableBorrows,
 }
 
 impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
@@ -391,6 +401,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
         arena: &'a DroplessArena,
+        immutable_borrows: ImmutableBorrows,
     ) -> Self {
         // Compute a rough estimate of the number of values in the body from the number of
         // statements. This is meant to reduce the number of allocations, but it's all right if
@@ -413,11 +424,26 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             dominators,
             reused_locals: DenseBitSet::new_empty(local_decls.len()),
             arena,
+            immutable_borrows,
         }
     }
 
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         self.ecx.typing_env()
+    }
+
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        evaluated: bool,
+        value: impl FnOnce(VnOpaque) -> Value<'a, 'tcx>,
+    ) -> VnIndex {
+        let index = self.values.insert_unique(ty, value);
+        let _index = self.evaluated.push(if evaluated { Some(None) } else { None });
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -437,12 +463,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let index = self.values.insert_unique(ty, Value::Opaque);
-        let _index = self.evaluated.push(Some(None));
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
-        index
+        self.insert_unique(ty, true, Value::Opaque)
     }
 
     /// Create a new `Value::Address` distinct from all the others.
@@ -470,42 +491,30 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
         let projection = self.arena.try_alloc_from_iter(projection).ok()?;
 
-        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+        let index = self.insert_unique(ty, false, |provenance| Value::Address {
             base,
             projection,
             kind,
             provenance,
         });
-        let _index = self.evaluated.push(None);
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
 
         Some(index)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let (index, new) = if value.is_deterministic() {
+        if value.is_deterministic() {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
-            self.values.insert(value.ty(), constant)
+            self.insert(value.ty(), constant)
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let index = self.values.insert_unique(value.ty(), |disambiguator| Value::Constant {
+            self.insert_unique(value.ty(), false, |disambiguator| Value::Constant {
                 value,
                 disambiguator: Some(disambiguator),
-            });
-            (index, true)
-        };
-        if new {
-            let _index = self.evaluated.push(None);
-            debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
-            debug_assert_eq!(index, _index);
+            })
         }
-        index
     }
 
     #[inline]
@@ -544,9 +553,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.insert(ty, Value::Aggregate(VariantIdx::ZERO, self.arena.alloc_slice(values)))
     }
 
-    fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
+    fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex, always_valid: bool) -> VnIndex {
         let value = self.insert(ty, Value::Projection(value, ProjectionElem::Deref));
-        self.derefs.push(value);
+        // If the borrow lifetime is the whole body, we don't need to invalidate it.
+        if !always_valid {
+            self.derefs.push(value);
+        }
         value
     }
 
@@ -821,7 +833,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
+                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value, true)));
                 } else {
                     return None;
                 }
@@ -1856,7 +1868,17 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         let other = self.rev_locals.get(index)?;
         other
             .iter()
-            .find(|&&other| self.ssa.assignment_dominates(&self.dominators, other, loc))
+            .find(|&&other| {
+                if !self.ssa.assignment_dominates(&self.dominators, other, loc) {
+                    return false;
+                }
+                if self.immutable_borrows.locals.contains(other)
+                    && !self.immutable_borrows.always_live.contains(other)
+                {
+                    return false;
+                }
+                return true;
+            })
             .copied()
     }
 }
@@ -1965,5 +1987,51 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
             }
             _ => self.super_statement(stmt, loc),
         }
+    }
+}
+
+struct ImmutableBorrows {
+    locals: DenseBitSet<Local>,
+    always_live: DenseBitSet<Local>,
+}
+
+impl ImmutableBorrows {
+    fn new<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        ssa: &SsaLocals,
+    ) -> ImmutableBorrows {
+        let mut locals: DenseBitSet<Local> = DenseBitSet::new_empty(body.local_decls().len());
+        for (local, decl) in body.local_decls.iter_enumerated() {
+            if let Some(Mutability::Not) = decl.ty.ref_mutability()
+                && ssa.is_ssa(local)
+                && decl.ty.builtin_deref(true).unwrap().is_freeze(tcx, typing_env)
+            {
+                locals.insert(local);
+            }
+        }
+        let mut always_live: DenseBitSet<Local> = DenseBitSet::new_empty(body.local_decls().len());
+        for local in body.args_iter() {
+            if locals.contains(local) {
+                always_live.insert(local);
+            }
+        }
+        let mut always_live_immutable_borrows = ImmutableBorrows { locals, always_live };
+        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
+            always_live_immutable_borrows.visit_basic_block_data(bb, bb_data);
+        }
+        always_live_immutable_borrows
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ImmutableBorrows {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, _: Location) {
+        if let Some(local) = place.as_local()
+            && self.locals.contains(local)
+            && let Rvalue::Use(Operand::Constant(_)) = rvalue
+        {
+            self.always_live.insert(local);
+        };
     }
 }

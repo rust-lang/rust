@@ -24,13 +24,13 @@ fn all_copy(v: &AllCopy) -> AllCopy {
     AllCopy { a, b, c }
 }
 
+// FIXME: This can be a dereference of the dereference of `v`.
+// This requires that we know the dereference is in its valid liveness.
 // EMIT_MIR gvn_copy_aggregate.all_copy_2.GVN.diff
 fn all_copy_2(v: &&AllCopy) -> AllCopy {
     // CHECK-LABEL: fn all_copy_2(
     // CHECK: bb0: {
-    // CHECK-NOT: = AllCopy { {{.*}} };
-    // CHECK: [[V1:_.*]] = copy (*_1);
-    // CHECK: _0 = copy (*[[V1]]);
+    // CHECK: _0 = AllCopy { {{.*}} };
     let a = v.a;
     let b = v.b;
     let c = v.c;
@@ -264,6 +264,10 @@ pub struct Single(u8);
 
 // EMIT_MIR gvn_copy_aggregate.deref_nonssa.GVN.diff
 fn deref_nonssa() -> Single {
+    // CHECK-LABEL: fn deref_nonssa(
+    // CHECK: debug c => [[C:_.*]];
+    // CHECK-NOT: _0 = copy (*_{{.*}});
+    // CHECK: _0 = Single(copy [[C]]);
     let mut a = Single(0);
     let b = &a;
     let c = (*b).0;

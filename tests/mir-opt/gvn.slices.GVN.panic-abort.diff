@@ -112,9 +112,8 @@
           StorageDead(_5);
           StorageLive(_7);
           StorageLive(_8);
--         StorageLive(_9);
+          StorageLive(_9);
 -         StorageLive(_10);
-+         nop;
 +         nop;
           StorageLive(_11);
           _11 = &(*_1);
@@ -124,9 +123,8 @@
       bb3: {
           StorageDead(_11);
           _9 = &_10;
--         StorageLive(_12);
+          StorageLive(_12);
 -         StorageLive(_13);
-+         nop;
 +         nop;
           StorageLive(_14);
 -         _14 = &(*_4);
@@ -137,18 +135,13 @@
       bb4: {
           StorageDead(_14);
           _12 = &_13;
--         _8 = (move _9, move _12);
--         StorageDead(_12);
--         StorageDead(_9);
-+         _8 = (copy _9, copy _12);
-+         nop;
-+         nop;
+          _8 = (move _9, move _12);
+          StorageDead(_12);
+          StorageDead(_9);
           StorageLive(_15);
--         _15 = copy (_8.0: &*const u8);
-+         _15 = copy _9;
+          _15 = copy (_8.0: &*const u8);
           StorageLive(_16);
--         _16 = copy (_8.1: &*const u8);
-+         _16 = copy _12;
+          _16 = copy (_8.1: &*const u8);
           StorageLive(_17);
           StorageLive(_18);
 -         _18 = copy (*_15);
@@ -174,8 +167,7 @@
 +         nop;
           StorageDead(_8);
           StorageDead(_7);
--         StorageLive(_29);
-+         nop;
+          StorageLive(_29);
           StorageLive(_30);
           _30 = &(*_1);
           _29 = move _30 as &[u8] (Transmute);
@@ -183,8 +175,7 @@
           StorageLive(_31);
           StorageLive(_32);
           _32 = copy _29;
--         _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind unreachable];
-+         _31 = opaque::<&[u8]>(copy _29) -> [return: bb7, unwind unreachable];
+          _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind unreachable];
       }
   
       bb6: {
@@ -200,13 +191,11 @@
 +         _23 = const core::panicking::AssertKind::Eq;
           StorageLive(_24);
           StorageLive(_25);
--         _25 = &(*_15);
-+         _25 = &(*_9);
+          _25 = &(*_15);
           _24 = &(*_25);
           StorageLive(_26);
           StorageLive(_27);
--         _27 = &(*_16);
-+         _27 = &(*_12);
+          _27 = &(*_16);
           _26 = &(*_27);
           StorageLive(_28);
 -         _28 = Option::<Arguments<'_>>::None;
@@ -220,9 +209,8 @@
           StorageDead(_31);
           StorageLive(_33);
           StorageLive(_34);
--         StorageLive(_35);
+          StorageLive(_35);
 -         StorageLive(_36);
-+         nop;
 +         nop;
           StorageLive(_37);
           _37 = &(*_1);
@@ -232,9 +220,8 @@
       bb8: {
           StorageDead(_37);
           _35 = &_36;
--         StorageLive(_38);
+          StorageLive(_38);
 -         StorageLive(_39);
-+         nop;
 +         nop;
           StorageLive(_40);
           _40 = &(*_29);
@@ -244,18 +231,13 @@
       bb9: {
           StorageDead(_40);
           _38 = &_39;
--         _34 = (move _35, move _38);
--         StorageDead(_38);
--         StorageDead(_35);
-+         _34 = (copy _35, copy _38);
-+         nop;
-+         nop;
+          _34 = (move _35, move _38);
+          StorageDead(_38);
+          StorageDead(_35);
           StorageLive(_41);
--         _41 = copy (_34.0: &*const u8);
-+         _41 = copy _35;
+          _41 = copy (_34.0: &*const u8);
           StorageLive(_42);
--         _42 = copy (_34.1: &*const u8);
-+         _42 = copy _38;
+          _42 = copy (_34.1: &*const u8);
           StorageLive(_43);
           StorageLive(_44);
 -         _44 = copy (*_41);
@@ -282,8 +264,7 @@
           StorageDead(_34);
           StorageDead(_33);
           _0 = const ();
--         StorageDead(_29);
-+         nop;
+          StorageDead(_29);
           StorageDead(_4);
 -         StorageDead(_1);
 +         nop;
@@ -303,13 +284,11 @@
 +         _49 = const core::panicking::AssertKind::Eq;
           StorageLive(_50);
           StorageLive(_51);
--         _51 = &(*_41);
-+         _51 = &(*_35);
+          _51 = &(*_41);
           _50 = &(*_51);
           StorageLive(_52);
           StorageLive(_53);
--         _53 = &(*_42);
-+         _53 = &(*_38);
+          _53 = &(*_42);
           _52 = &(*_53);
           StorageLive(_54);
 -         _54 = Option::<Arguments<'_>>::None;

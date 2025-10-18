@@ -1,6 +1,6 @@
-// This does not currently propagate (#67862)
 //@ test-mir-pass: GVN
 
+// Checks that GVN knows a is 5.
 // EMIT_MIR ref_deref_project.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
