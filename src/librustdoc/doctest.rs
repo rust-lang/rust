@@ -406,7 +406,7 @@ pub(crate) fn run_tests(
         // We failed to compile all compatible tests as one so we push them into the
         // `standalone_tests` doctests.
         debug!("Failed to compile compatible doctests for edition {} all at once", edition);
-        for (doctest, scraped_test) in doctests {
+        for (pos, (doctest, scraped_test)) in doctests.into_iter().enumerate() {
             doctest.generate_unique_doctest(
                 &scraped_test.text,
                 scraped_test.langstr.test_harness,
@@ -419,6 +419,7 @@ pub(crate) fn run_tests(
                 opts.clone(),
                 Arc::clone(rustdoc_options),
                 unused_extern_reports.clone(),
+                pos,
             ));
         }
     }
@@ -548,11 +549,21 @@ pub(crate) struct RunnableDocTest {
 }
 
 impl RunnableDocTest {
-    fn path_for_merged_doctest_bundle(&self) -> PathBuf {
-        self.test_opts.outdir.path().join(format!("doctest_bundle_{}.rs", self.edition))
+    fn path_for_merged_doctest_bundle(&self, id: Option<usize>) -> PathBuf {
+        let name = if let Some(id) = id {
+            format!("doctest_bundle_id_{id}.rs")
+        } else {
+            format!("doctest_bundle_{}.rs", self.edition)
+        };
+        self.test_opts.outdir.path().join(name)
     }
-    fn path_for_merged_doctest_runner(&self) -> PathBuf {
-        self.test_opts.outdir.path().join(format!("doctest_runner_{}.rs", self.edition))
+    fn path_for_merged_doctest_runner(&self, id: Option<usize>) -> PathBuf {
+        let name = if let Some(id) = id {
+            format!("doctest_runner_id_{id}.rs")
+        } else {
+            format!("doctest_runner_{}.rs", self.edition)
+        };
+        self.test_opts.outdir.path().join(name)
     }
     fn is_multiple_tests(&self) -> bool {
         self.merged_test_code.is_some()
@@ -568,13 +579,14 @@ fn compile_merged_doctest_and_caller_binary(
     compiler_args: Vec<String>,
     test_code: &str,
     instant: Instant,
+    id: Option<usize>,
 ) -> Result<process::Output, (Duration, Result<(), RustdocResult>)> {
     // compile-fail tests never get merged, so this should always pass
     let status = child.wait().expect("Failed to wait");
 
     // the actual test runner is a separate component, built with nightly-only features;
     // build it now
-    let runner_input_file = doctest.path_for_merged_doctest_runner();
+    let runner_input_file = doctest.path_for_merged_doctest_runner(id);
 
     let mut runner_compiler =
         wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
@@ -583,10 +595,14 @@ fn compile_merged_doctest_and_caller_binary(
     runner_compiler.env("RUSTC_BOOTSTRAP", "1");
     runner_compiler.args(compiler_args);
     runner_compiler.args(["--crate-type=bin", "-o"]).arg(output_file);
-    let mut extern_path = std::ffi::OsString::from(format!(
-        "--extern=doctest_bundle_{edition}=",
-        edition = doctest.edition
-    ));
+    let mut extern_path = if let Some(id) = id {
+        std::ffi::OsString::from(format!("--extern=doctest_bundle_id_{id}="))
+    } else {
+        std::ffi::OsString::from(format!(
+            "--extern=doctest_bundle_{edition}=",
+            edition = doctest.edition
+        ))
+    };
 
     // Deduplicate passed -L directory paths, since usually all dependencies will be in the
     // same directory (e.g. target/debug/deps from Cargo).
@@ -605,11 +621,12 @@ fn compile_merged_doctest_and_caller_binary(
             }
         }
     }
-    let output_bundle_file = doctest
-        .test_opts
-        .outdir
-        .path()
-        .join(format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition));
+    let filename = if let Some(id) = id {
+        format!("libdoctest_bundle_id_{id}.rlib")
+    } else {
+        format!("libdoctest_bundle_{edition}.rlib", edition = doctest.edition)
+    };
+    let output_bundle_file = doctest.test_opts.outdir.path().join(filename);
     extern_path.push(&output_bundle_file);
     runner_compiler.arg(extern_path);
     runner_compiler.arg(&runner_input_file);
@@ -647,6 +664,7 @@ fn run_test(
     rustdoc_options: &RustdocOptions,
     supports_color: bool,
     report_unused_externs: impl Fn(UnusedExterns),
+    doctest_id: usize,
 ) -> (Duration, Result<(), RustdocResult>) {
     let langstr = &doctest.langstr;
     // Make sure we emit well-formed executable names for our target.
@@ -727,12 +745,19 @@ fn run_test(
 
     compiler.args(&compiler_args);
 
+    compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
+    compiler.env(
+        "UNSTABLE_RUSTDOC_TEST_LINE",
+        format!("{}", doctest.line as isize - doctest.full_test_line_offset as isize),
+    );
     // If this is a merged doctest, we need to write it into a file instead of using stdin
     // because if the size of the merged doctests is too big, it'll simply break stdin.
-    if doctest.is_multiple_tests() {
+    if doctest.is_multiple_tests() || (!langstr.compile_fail && langstr.should_panic) {
         // It makes the compilation failure much faster if it is for a combined doctest.
         compiler.arg("--error-format=short");
-        let input_file = doctest.path_for_merged_doctest_bundle();
+        let input_file = doctest.path_for_merged_doctest_bundle(
+            if !langstr.compile_fail && langstr.should_panic { Some(doctest_id) } else { None },
+        );
         if std::fs::write(&input_file, &doctest.full_test_code).is_err() {
             // If we cannot write this file for any reason, we leave. All combined tests will be
             // tested as standalone tests.
@@ -751,11 +776,6 @@ fn run_test(
             .arg(input_file);
     } else {
         compiler.arg("--crate-type=bin").arg("-o").arg(&output_file);
-        compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
-        compiler.env(
-            "UNSTABLE_RUSTDOC_TEST_LINE",
-            format!("{}", doctest.line as isize - doctest.full_test_line_offset as isize),
-        );
         compiler.arg("-");
         compiler.stdin(Stdio::piped());
         compiler.stderr(Stdio::piped());
@@ -774,6 +794,37 @@ fn run_test(
             compiler_args,
             merged_test_code,
             instant,
+            None,
+        ) {
+            Ok(out) => out,
+            Err(err) => return err,
+        }
+    } else if !langstr.compile_fail && langstr.should_panic {
+        match compile_merged_doctest_and_caller_binary(
+            child,
+            &doctest,
+            rustdoc_options,
+            rustc_binary,
+            &output_file,
+            compiler_args,
+            &format!(
+                "\
+#![feature(test)]
+extern crate test;
+
+use std::process::{{ExitCode, Termination}};
+
+fn main() -> ExitCode {{
+    if test::cannot_handle_should_panic() {{
+        ExitCode::SUCCESS
+    }} else {{
+        extern crate doctest_bundle_id_{doctest_id} as doctest_bundle;
+        doctest_bundle::main().report()
+    }}
+}}"
+            ),
+            instant,
+            Some(doctest_id),
         ) {
             Ok(out) => out,
             Err(err) => return err,
@@ -1087,6 +1138,7 @@ impl CreateRunnableDocTests {
             self.opts.clone(),
             Arc::clone(&self.rustdoc_options),
             self.unused_extern_reports.clone(),
+            self.standalone_tests.len(),
         )
     }
 }
@@ -1097,6 +1149,7 @@ fn generate_test_desc_and_fn(
     opts: GlobalTestOptions,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    doctest_id: usize,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
     let rustdoc_test_options =
@@ -1131,6 +1184,7 @@ fn generate_test_desc_and_fn(
                 scraped_test,
                 rustdoc_options,
                 unused_externs,
+                doctest_id,
             )
         })),
     }
@@ -1143,6 +1197,7 @@ fn doctest_run_fn(
     scraped_test: ScrapedDocTest,
     rustdoc_options: Arc<RustdocOptions>,
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
+    doctest_id: usize,
 ) -> Result<(), String> {
     #[cfg(not(bootstrap))]
     if scraped_test.langstr.should_panic && test::cannot_handle_should_panic() {
@@ -1168,8 +1223,13 @@ fn doctest_run_fn(
         no_run: scraped_test.no_run(&rustdoc_options),
         merged_test_code: None,
     };
-    let (_, res) =
-        run_test(runnable_test, &rustdoc_options, doctest.supports_color, report_unused_externs);
+    let (_, res) = run_test(
+        runnable_test,
+        &rustdoc_options,
+        doctest.supports_color,
+        report_unused_externs,
+        doctest_id,
+    );
 
     if let Err(err) = res {
         eprint!("{err}");
