@@ -5,9 +5,10 @@ use ide_db::{
     RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast,
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
+use syntax::syntax_editor::{Element, Position};
 use syntax::{
     TokenText,
-    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName, edit, edit_in_place::Indent},
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit},
 };
 
 use crate::{
@@ -111,9 +112,8 @@ pub(crate) fn generate_single_field_struct_from(
                 false,
                 false,
             )
-            .clone_for_update();
+            .indent(1.into());
 
-            fn_.indent(1.into());
             let cfg_attrs = strukt
                 .attrs()
                 .filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
@@ -129,16 +129,25 @@ pub(crate) fn generate_single_field_struct_from(
                 make::ty("From"),
                 ty.clone(),
                 None,
-                ty_where_clause.map(|wc| edit::AstNodeEdit::reset_indent(&wc)),
+                ty_where_clause.map(|wc| wc.reset_indent()),
                 None,
             )
             .clone_for_update();
 
             impl_.get_or_create_assoc_item_list().add_item(fn_.into());
+            let impl_ = impl_.indent(indent);
 
-            impl_.reindent_to(indent);
+            let mut edit = builder.make_editor(strukt.syntax());
 
-            builder.insert(strukt.syntax().text_range().end(), format!("\n\n{indent}{impl_}"));
+            edit.insert_all(
+                Position::after(strukt.syntax()),
+                vec![
+                    make::tokens::whitespace(&format!("\n\n{indent}")).syntax_element(),
+                    impl_.syntax().syntax_element(),
+                ],
+            );
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }
