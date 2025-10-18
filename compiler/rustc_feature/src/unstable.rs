@@ -658,6 +658,8 @@ declare_features! (
     (unstable, trait_alias, "1.24.0", Some(41517)),
     /// Allows for transmuting between arrays with sizes that contain generic consts.
     (unstable, transmute_generic_consts, "1.70.0", Some(109929)),
+    /// Allows #[transparent] on modules to inherit lexical scopes.
+    (unstable, transparent_modules, "1.91.0", Some(79260)),
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (unstable, transparent_unions, "1.37.0", Some(60405)),
     /// Allows inconsistent bounds in where clauses.

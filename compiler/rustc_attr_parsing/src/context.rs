@@ -43,6 +43,7 @@ use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::macro_attrs::{
     AllowInternalUnsafeParser, MacroEscapeParser, MacroExportParser, MacroUseParser,
 };
+use crate::attributes::modules::TransparentParser;
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
@@ -242,6 +243,7 @@ attribute_parsers!(
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<TransparentParser>>,
         Single<WithoutArgs<TypeConstParser>>,
         Single<WithoutArgs<UnsafeSpecializationMarkerParser>>,
         // tidy-alphabetical-end

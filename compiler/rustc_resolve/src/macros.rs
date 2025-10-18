@@ -171,7 +171,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if let Some(name) = name => name,
+                ModuleKind::Def(.., name_and_transparent)
+                    if let Some((name, _transparent)) = name_and_transparent =>
+                {
+                    name
+                }
                 _ => kw::Crate,
             }
         });
@@ -1118,8 +1122,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
                 let location = match parent_scope.module.kind {
-                    ModuleKind::Def(kind, def_id, name) => {
-                        if let Some(name) = name {
+                    ModuleKind::Def(kind, def_id, name_and_transparent) => {
+                        if let Some((name, _transparent)) = name_and_transparent {
                             format!("{} `{name}`", kind.descr(def_id))
                         } else {
                             "the crate root".to_string()

@@ -1,0 +1,26 @@
+error: cannot find macro `s` in this scope
+  --> $DIR/transparent-fail.rs:19:13
+   |
+LL |             s!();
+   |             ^
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+help: consider importing this macro through its public re-export
+   |
+LL +             use crate::s;
+   |
+
+error[E0412]: cannot find type `S` in this scope
+  --> $DIR/transparent-fail.rs:21:22
+   |
+LL |             struct Y(S);
+   |                      ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL +             use crate::S;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

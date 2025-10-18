@@ -524,9 +524,11 @@ enum ModuleKind {
     /// * A normal module – either `mod from_file;` or `mod from_block { }` –
     ///   or the crate root (which is conceptually a top-level module).
     ///   The crate root will have `None` for the symbol.
+    ///     * the bool in the tuple next to symbol represents whether the "transparent"
+    ///     attribute is present on the module, only applies to named `mod` items.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, Option<Symbol>),
+    Def(DefKind, DefId, Option<(Symbol, bool)>),
 }
 
 impl ModuleKind {
@@ -534,7 +536,7 @@ impl ModuleKind {
     fn name(&self) -> Option<Symbol> {
         match *self {
             ModuleKind::Block => None,
-            ModuleKind::Def(.., name) => name,
+            ModuleKind::Def(.., name_and_transparent) => name_and_transparent.map(|(name, _)| name),
         }
     }
 }
@@ -756,6 +758,13 @@ impl<'ra> Module<'ra> {
         match self.kind {
             ModuleKind::Def(DefKind::Mod, def_id, _) => def_id,
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
+        }
+    }
+
+    fn is_transparent(self) -> bool {
+        match self.kind {
+            ModuleKind::Def(DefKind::Mod, _, Some((_, transparent))) => transparent,
+            _ => false,
         }
     }
 
@@ -2456,7 +2465,7 @@ fn module_to_string(mut module: Module<'_>) -> Option<String> {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
                 // `unwrap` is safe: the presence of a parent means it's not the crate root.
-                names.push(name.unwrap());
+                names.push(name.unwrap().0);
                 module = parent
             } else {
                 break;
