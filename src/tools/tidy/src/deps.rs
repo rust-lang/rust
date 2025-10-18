@@ -60,7 +60,7 @@ const LICENSES_TOOLS: &[&str] = &[
     // tidy-alphabetical-start
     "(Apache-2.0 OR MIT) AND BSD-3-Clause",
     "Apache-2.0 AND ISC",
-    "Apache-2.0 OR BSL-1.0",  // BSL is not acceptble, but we use it under Apache-2.0
+    "Apache-2.0 OR BSL-1.0",  // BSL is not acceptable, but we use it under Apache-2.0
     "BSD-2-Clause",
     "BSD-3-Clause",
     "CC0-1.0",
