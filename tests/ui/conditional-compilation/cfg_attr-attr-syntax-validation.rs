@@ -42,6 +42,8 @@ struct S11;
 struct S12;
 
 #[cfg_attr(true, link_section)] //~ ERROR malformed `link_section` attribute input
+//~^ WARN attribute cannot be used on
+//~| WARN previously accepted
 struct S13;
 
 #[cfg_attr(true, inline())] //~ ERROR malformed `inline` attribute input
