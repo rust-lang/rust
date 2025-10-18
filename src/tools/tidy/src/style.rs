@@ -67,9 +67,9 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ compile-flags",
     "// error-pattern",
     "//@ error-pattern",
-    "// gdb",
-    "// lldb",
-    "// cdb",
+    "//@ gdb",
+    "//@ lldb",
+    "//@ cdb",
     "//@ normalize-stderr",
 ];
 

@@ -2,23 +2,23 @@
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 
-// gdb-command:run
+//@ gdb-command:run
 
 // STRUCT
-// gdb-command:print arg1
-// gdb-check:$1 = 1
-// gdb-command:print arg2
-// gdb-check:$2 = 2
-// gdb-command:continue
+//@ gdb-command:print arg1
+//@ gdb-check:$1 = 1
+//@ gdb-command:print arg2
+//@ gdb-check:$2 = 2
+//@ gdb-command:continue
 
 // ENUM
-// gdb-command:print arg1
-// gdb-check:$3 = -3
-// gdb-command:print arg2
-// gdb-check:$4 = 4.5
-// gdb-command:print arg3
-// gdb-check:$5 = 5
-// gdb-command:continue
+//@ gdb-command:print arg1
+//@ gdb-check:$3 = -3
+//@ gdb-command:print arg2
+//@ gdb-check:$4 = 4.5
+//@ gdb-command:print arg3
+//@ gdb-check:$5 = 5
+//@ gdb-command:continue
 
 
 struct Struct {

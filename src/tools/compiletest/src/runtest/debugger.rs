@@ -38,7 +38,7 @@ impl DebuggerCommands {
                 continue;
             }
 
-            let Some(line) = line.trim_start().strip_prefix("//").map(str::trim_start) else {
+            let Some(line) = line.trim_start().strip_prefix("//@").map(str::trim_start) else {
                 continue;
             };
 

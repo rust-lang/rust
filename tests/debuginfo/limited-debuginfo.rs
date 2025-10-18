@@ -5,18 +5,18 @@
 //@ ignore-backends: gcc
 
 // Make sure functions have proper names
-// gdb-command:info functions
-// gdb-check:fn limited_debuginfo::main();
-// gdb-check:fn limited_debuginfo::some_function();
-// gdb-check:fn limited_debuginfo::some_other_function();
-// gdb-check:fn limited_debuginfo::zzz();
+//@ gdb-command:info functions
+//@ gdb-check:fn limited_debuginfo::main();
+//@ gdb-check:fn limited_debuginfo::some_function();
+//@ gdb-check:fn limited_debuginfo::some_other_function();
+//@ gdb-check:fn limited_debuginfo::zzz();
 
-// gdb-command:run
+//@ gdb-command:run
 
 // Make sure there is no information about locals
-// gdb-command:info locals
-// gdb-check:No locals.
-// gdb-command:continue
+//@ gdb-command:info locals
+//@ gdb-check:No locals.
+//@ gdb-command:continue
 
 
 #![allow(unused_variables)]

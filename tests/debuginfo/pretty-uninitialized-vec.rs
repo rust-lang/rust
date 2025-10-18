@@ -5,10 +5,10 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command: run
+//@ gdb-command: run
 
-// gdb-command: print vec
-// gdb-check:$1 = Vec(size=[...])[...]
+//@ gdb-command: print vec
+//@ gdb-check:$1 = Vec(size=[...])[...]
 
 
 #![allow(unused_variables)]
