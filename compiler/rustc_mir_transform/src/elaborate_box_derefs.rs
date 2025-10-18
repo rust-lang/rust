@@ -1,6 +1,9 @@
 //! This pass transforms derefs of Box into a deref of the pointer inside Box.
 //!
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
+//!
+//! `ShallowInitBox` being a device for drop elaboration to understand deferred assignment to box
+//! contents, we do not need this any more on runtime MIR.
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::{IndexVec, indexvec};
