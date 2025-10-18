@@ -38,6 +38,9 @@ trait TestableFloat: Sized {
     const MUL_ADD_RESULT: Self;
     /// The result of (-12.3).mul_add(-4.5, -6.7)
     const NEG_MUL_ADD_RESULT: Self;
+    /// Reciprocal of the maximum value and an acceptable precision
+    const MAX_RECIP: Self = Self::APPROX;
+    const MAX_RECIP_APPROX: Self = Self::APPROX;
 }
 
 impl TestableFloat for f16 {
@@ -64,6 +67,8 @@ impl TestableFloat for f16 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
     const MUL_ADD_RESULT: Self = 62.031;
     const NEG_MUL_ADD_RESULT: Self = 48.625;
+    const MAX_RECIP: Self = 1.526624e-5f16;
+    const MAX_RECIP_APPROX: Self = 1e-4;
 }
 
 impl TestableFloat for f32 {
@@ -140,6 +145,8 @@ impl TestableFloat for f128 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
     const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
     const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
+    const MAX_RECIP: Self = 8.40525785778023376565669454330438228902076605e-4933;
+    const MAX_RECIP_APPROX: Self = 1e-4900;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -1572,5 +1579,16 @@ float_test! {
         assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
         assert_biteq!(flt(8.9).mul_add(inf, 3.2), inf);
         assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
+    }
+}
+
+float_test! {
+    name: max_recip,
+    attrs: {
+        f16:  #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        assert_approx_eq!(Float::MAX.recip(), Float::MAX_RECIP, Float::MAX_RECIP_APPROX);
     }
 }
