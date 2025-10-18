@@ -37,7 +37,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
     + Deref<Target = Self::CodegenCx>
     + CoverageInfoBuilderMethods<'tcx>
-    + DebugInfoBuilderMethods
+    + DebugInfoBuilderMethods<'tcx>
     + ArgAbiBuilderMethods<'tcx>
     + AbiBuilderMethods
     + IntrinsicCallBuilderMethods<'tcx>

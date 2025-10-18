@@ -557,9 +557,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
-                    LocalRef::Place(cg_place) => {
-                        OperandRef { val: Ref(cg_place.val), layout: cg_place.layout }
-                    }
+                    LocalRef::Place(cg_place) => OperandRef {
+                        val: Ref(cg_place.val),
+                        layout: cg_place.layout,
+                        move_annotation: None,
+                    },
                     LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 };
                 let llslot = match op.val {
