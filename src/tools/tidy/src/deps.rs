@@ -34,7 +34,7 @@ const LICENSES: &[&str] = &[
     "MIT / Apache-2.0",
     "MIT AND (MIT OR Apache-2.0)",
     "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
-    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc; LGPL is not acceptable, but we use it under MIT OR Apache-2.0
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
@@ -174,13 +174,10 @@ const EXCEPTIONS: ExceptionList = &[
     ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
-    ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
-    ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("foldhash", "Zlib"),                                    // rustc
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
-    ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("wasi-preview1-component-adapter-provider", "Apache-2.0 WITH LLVM-exception"), // rustc
     // tidy-alphabetical-end
 ];
@@ -201,9 +198,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
     ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
-    ("ciborium", "Apache-2.0"),
-    ("ciborium-io", "Apache-2.0"),
-    ("ciborium-ll", "Apache-2.0"),
     ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
@@ -211,30 +205,22 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
     ("libz-rs-sys", "Zlib"),
-    ("normalize-line-endings", "Apache-2.0"),
-    ("openssl", "Apache-2.0"),
     ("ring", "Apache-2.0 AND ISC"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
-    ("supports-hyperlinks", "Apache-2.0"),
-    ("unicode-bom", "Apache-2.0"),
     ("zlib-rs", "Zlib"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("dissimilar", "Apache-2.0"),
     ("foldhash", "Zlib"),
     ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("pulldown-cmark-to-cmark", "Apache-2.0"),
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("scip", "Apache-2.0"),
-    // tidy-alphabetical-end
+                                      // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
@@ -300,9 +286,7 @@ const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
     ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0
 ];
 
-const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
-    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
-];
+const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
 
 #[derive(Clone, Copy)]
 struct ListLocation {
@@ -866,6 +850,11 @@ fn check_license_exceptions(
                     }
                 }
             }
+        }
+        if LICENSES.contains(license) {
+            check.error(format!(
+                "dependency exception `{name}` is not necessary. `{license}` is an allowed license"
+            ));
         }
     }
 
