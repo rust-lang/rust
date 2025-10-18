@@ -54,6 +54,20 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
+/// These are licenses that are allowed for rustc, tools, etc. But not for the runtime!
+#[rustfmt::skip]
+const LICENSES_TOOLS: &[&str] = &[
+    // tidy-alphabetical-start
+    "(Apache-2.0 OR MIT) AND BSD-3-Clause",
+    "Apache-2.0 AND ISC",
+    "Apache-2.0 OR BSL-1.0",  // BSL is not acceptble, but we use it under Apache-2.0
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "Zlib",
+    // tidy-alphabetical-end
+];
+
 type ExceptionList = &'static [(&'static str, &'static str)];
 
 #[derive(Clone, Copy)]
@@ -175,11 +189,8 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
 #[rustfmt::skip]
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
-    ("arrayref", "BSD-2-Clause"),                            // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
-    ("foldhash", "Zlib"),                                    // rustc
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     // tidy-alphabetical-end
 ];
 
@@ -196,39 +207,22 @@ const EXCEPTIONS_STDLIB: ExceptionList = &[
 
 const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
-    ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
-    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
-    ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
-    ("libz-rs-sys", "Zlib"),
-    ("ring", "Apache-2.0 AND ISC"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("sized-chunks", "MPL-2.0+"),
-    ("subtle", "BSD-3-Clause"),
-    ("zlib-rs", "Zlib"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("foldhash", "Zlib"),
-    ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-                                      // tidy-alphabetical-end
+    // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
-    ("alloc-no-stdlib", "BSD-3-Clause"),
-    ("alloc-stdlib", "BSD-3-Clause"),
-    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
-    ("snap", "BSD-3-Clause"),
-    ("subtle", "BSD-3-Clause"),
     // tidy-alphabetical-end
 ];
 
@@ -238,15 +232,10 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("cssparser-macros", "MPL-2.0"),
     ("dtoa-short", "MPL-2.0"),
     ("mdbook", "MPL-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_CRANELIFT: ExceptionList = &[
-    // tidy-alphabetical-start
-    ("foldhash", "Zlib"),
-    // tidy-alphabetical-end
-];
+const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 
 const EXCEPTIONS_GCC: ExceptionList = &[
     // tidy-alphabetical-start
@@ -255,9 +244,7 @@ const EXCEPTIONS_GCC: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0
-];
+const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[];
 
 const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
 
@@ -824,7 +811,7 @@ fn check_license_exceptions(
                 }
             }
         }
-        if LICENSES.contains(license) {
+        if LICENSES.contains(license) || LICENSES_TOOLS.contains(license) {
             check.error(format!(
                 "dependency exception `{name}` is not necessary. `{license}` is an allowed license"
             ));
@@ -852,7 +839,7 @@ fn check_license_exceptions(
                 continue;
             }
         };
-        if !LICENSES.contains(&license.as_str()) {
+        if !LICENSES.contains(&license.as_str()) && !LICENSES_TOOLS.contains(&license.as_str()) {
             check.error(format!(
                 "invalid license `{}` for package `{}` in workspace `{workspace}`",
                 license, pkg.id
