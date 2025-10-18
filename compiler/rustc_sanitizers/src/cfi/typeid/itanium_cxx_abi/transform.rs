@@ -10,8 +10,8 @@ use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
+    self, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, sym};
@@ -458,6 +458,30 @@ pub(crate) fn transform_instance<'tcx>(
     instance
 }
 
+fn default_or_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Option<DefId> {
+    match instance.def {
+        ty::InstanceKind::Item(def_id) | ty::InstanceKind::FnPtrShim(def_id, _) => {
+            tcx.opt_associated_item(def_id).map(|item| item.def_id)
+        }
+        _ => None,
+    }
+}
+
+/// Determines if an instance represents a trait method implementation and returns the necessary
+/// information for type erasure.
+///
+/// This function handles two main cases:
+///
+/// * **Implementation in an `impl` block**: When the instance represents a concrete implementation
+///   of a trait method in an `impl` block, it extracts the trait reference, method ID, and trait
+///   ID from the implementation. The method ID is obtained from the `trait_item_def_id` field of
+///   the associated item, which points to the original trait method definition.
+///
+/// * **Provided method in a `trait` block or synthetic `shim`**: When the instance represents a
+///   default implementation provided in the trait definition itself or a synthetic shim, it uses
+///   the instance's own `def_id` as the method ID and determines the trait ID from the associated
+///   item.
+///
 fn implemented_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -473,11 +497,9 @@ fn implemented_method<'tcx>(
         trait_method = tcx.associated_item(method_id);
         trait_id = trait_ref.skip_binder().def_id;
         impl_id
-    } else if let InstanceKind::Item(def_id) = instance.def
-        && let Some(trait_method_bound) = tcx.opt_associated_item(def_id)
-    {
-        // Provided method in a `trait` block
-        trait_method = trait_method_bound;
+    } else if let Some(trait_method_def_id) = default_or_shim(tcx, instance) {
+        // Provided method in a `trait` block or a synthetic `shim`
+        trait_method = tcx.associated_item(trait_method_def_id);
         method_id = instance.def_id();
         trait_id = tcx.trait_of_assoc(method_id)?;
         trait_ref = ty::EarlyBinder::bind(TraitRef::from_assoc(tcx, trait_id, instance.args));
