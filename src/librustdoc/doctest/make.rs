@@ -388,17 +388,17 @@ impl DocTestBuilder {
             let (main_pre, main_post) = if returns_result {
                 (
                     format!(
-                        "fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{\n",
+                        "pub fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{\n",
                     ),
                     format!("\n}} {inner_fn_name}().unwrap() }}"),
                 )
             } else if self.test_id.is_some() {
                 (
-                    format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
+                    format!("pub fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
                     format!("\n}} {inner_fn_name}() }}"),
                 )
             } else {
-                ("fn main() {\n".into(), "\n}".into())
+                ("pub fn main() {\n".into(), "\n}".into())
             };
             // Note on newlines: We insert a line/newline *before*, and *after*
             // the doctest and adjust the `line_offset` accordingly.
