@@ -134,6 +134,8 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
             && let hir::ExprKind::Call(path, [_]) = &arg.kind
             && let hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoIterIntoIter, ..)) =
                 &path.kind
+            && !receiver_arg.span.from_expansion()
+            && !expr.span.from_expansion()
         {
             Some(ShadowedIntoIterDiagSub::RemoveIntoIter {
                 span: receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
