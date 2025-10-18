@@ -1049,38 +1049,37 @@ fn test_ptr_default() {
 #[test]
 fn test_const_drop_in_place() {
     const COUNTER: usize = {
-        let mut counter = 0;
-        let counter_ptr = &raw mut counter;
+        use core::cell::Cell;
+
+        let counter = Cell::new(0);
 
         // only exists to make `Drop` indirect impl
         #[allow(dead_code)]
-        struct Test(Dropped);
+        struct Test<'a>(Dropped<'a>);
 
-        struct Dropped(*mut usize);
-        impl const Drop for Dropped {
+        struct Dropped<'a>(&'a Cell<usize>);
+        impl const Drop for Dropped<'_> {
             fn drop(&mut self) {
-                unsafe {
-                    *self.0 += 1;
-                }
+                self.0.set(self.0.get() + 1);
             }
         }
 
-        let mut one = ManuallyDrop::new(Test(Dropped(counter_ptr)));
-        let mut two = ManuallyDrop::new(Test(Dropped(counter_ptr)));
-        let mut three = ManuallyDrop::new(Test(Dropped(counter_ptr)));
-        assert!(counter == 0);
+        let mut one = ManuallyDrop::new(Test(Dropped(&counter)));
+        let mut two = ManuallyDrop::new(Test(Dropped(&counter)));
+        let mut three = ManuallyDrop::new(Test(Dropped(&counter)));
+        assert!(counter.get() == 0);
         unsafe {
             ManuallyDrop::drop(&mut one);
         }
-        assert!(counter == 1);
+        assert!(counter.get() == 1);
         unsafe {
             ManuallyDrop::drop(&mut two);
         }
-        assert!(counter == 2);
+        assert!(counter.get() == 2);
         unsafe {
             ManuallyDrop::drop(&mut three);
         }
-        counter
+        counter.get()
     };
     assert_eq!(COUNTER, 3);
 }
