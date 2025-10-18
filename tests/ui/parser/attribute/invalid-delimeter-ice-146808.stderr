@@ -1,0 +1,11 @@
+error: wrong meta list delimiters
+  --> $DIR/invalid-delimeter-ice-146808.rs:10:1
+   |
+LL | #[all_spans_same::all_spans_same]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `all_spans_same::all_spans_same` (in Nightly builds, run with -Z macro-backtrace for more info)
+rendering error: omitted 1 suggestion that failed to render, likely because of macro expansions
+
+error: aborting due to 1 previous error
+
