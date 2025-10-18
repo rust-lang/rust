@@ -137,6 +137,7 @@ pub enum RuntimePhase {
     /// And the following variants are allowed:
     /// * [`StatementKind::Retag`]
     /// * [`StatementKind::SetDiscriminant`]
+    /// * [`PlaceElem::ConstantIndex`] / [`PlaceElem::Subslice`] after [`PlaceElem::Subslice`]
     ///
     /// Furthermore, `Copy` operands are allowed for non-`Copy` types.
     Initial = 0,
@@ -1246,6 +1247,9 @@ pub enum ProjectionElem<V, T> {
     ///
     /// If `from_end` is true `slice[from..slice.len() - to]`.
     /// Otherwise `array[from..to]`.
+    ///
+    /// This projection cannot have `ConstantIndex` or additional `Subslice` projections after it
+    /// before runtime MIR.
     Subslice {
         from: u64,
         to: u64,

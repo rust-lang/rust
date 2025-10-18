@@ -655,20 +655,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::OpaqueCast(ty)
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                self.fail(
-                    location,
-                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
-                )
-            }
-            ProjectionElem::Index(index) => {
-                let index_ty = self.body.local_decls[index].ty;
-                if index_ty != self.tcx.types.usize {
-                    self.fail(location, format!("bad index ({index_ty} != usize)"))
-                }
-            }
             ProjectionElem::Deref
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
             {
@@ -815,6 +801,78 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
+            ProjectionElem::Index(index) => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) | ty::Slice(_) => {}
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
+                }
+
+                let index_ty = self.body.local_decls[index].ty;
+                if index_ty != self.tcx.types.usize {
+                    self.fail(location, format!("bad index ({index_ty} != usize)"))
+                }
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) => {
+                        if from_end {
+                            self.fail(location, "arrays should not be indexed from end");
+                        }
+                    }
+                    ty::Slice(_) => {}
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
+                }
+
+                if from_end {
+                    if offset > min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset -{offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                } else {
+                    if offset >= min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset {offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) => {
+                        if from_end {
+                            self.fail(location, "arrays should not be subsliced from end");
+                        }
+                    }
+                    ty::Slice(_) => {
+                        if !from_end {
+                            self.fail(location, "slices should be subsliced from end");
+                        }
+                    }
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
+                }
+
+                if !from_end && from > to {
+                    self.fail(location, "backwards subslice {from}..{to}");
+                }
+            }
+            ProjectionElem::OpaqueCast(ty)
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+            {
+                self.fail(
+                    location,
+                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
+                )
+            }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
@@ -919,6 +977,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
                 );
             }
+        }
+
+        if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+            && let Some(i) = place
+                .projection
+                .iter()
+                .position(|elem| matches!(elem, ProjectionElem::Subslice { .. }))
+            && let Some(tail) = place.projection.get(i + 1..)
+            && tail.iter().any(|elem| {
+                matches!(
+                    elem,
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
+                )
+            })
+        {
+            self.fail(
+                location,
+                format!("place {place:?} has `ConstantIndex` or `Subslice` after `Subslice`"),
+            );
         }
 
         self.super_place(place, cntxt, location);
