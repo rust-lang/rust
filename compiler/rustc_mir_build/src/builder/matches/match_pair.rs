@@ -43,13 +43,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
-            match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (
-                    length
-                        .try_to_target_usize(tcx)
-                        .expect("expected len of array pat to be definite"),
-                    true,
-                ),
+            let place_ty = place_resolved.ty(&self.local_decls, tcx).ty;
+            match place_ty.kind() {
+                ty::Array(_, length) => {
+                    if let Some(length) = length.try_to_target_usize(tcx) {
+                        (length, true)
+                    } else {
+                        // This can happen when the array length is a generic const
+                        // expression that couldn't be evaluated (e.g., due to an error).
+                        // Since there's already a compilation error, we use a fallback
+                        // to avoid an ICE.
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(self.def_id),
+                            "array length in pattern couldn't be evaluated",
+                        );
+                        ((prefix.len() + suffix.len()).try_into().unwrap(), false)
+                    }
+                }
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {
