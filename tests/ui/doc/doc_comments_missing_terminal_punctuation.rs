@@ -47,6 +47,7 @@ enum Exceptions {
     /// | Markdown table | A-ok  |
     MarkdownTable,
     /// Here is a snippet
+    //~^ doc_comments_missing_terminal_punctuation
     ///
     /// ```
     /// // Code blocks are no issues.
@@ -134,12 +135,17 @@ enum OrderedLists {
 ///
 struct TrailingBlankLine;
 
-/// The first paragraph is not checked
-///
-/// Other sentences are not either
-/// Only the last sentence is
+/// This doc comment has multiple paragraph.
+/// This first paragraph is missing punctuation
 //~^ doc_comments_missing_terminal_punctuation
-struct OnlyLastSentence;
+///
+/// The second one as well
+/// And it has multiple sentences
+//~^ doc_comments_missing_terminal_punctuation
+///
+/// Same for this third and last one
+//~^ doc_comments_missing_terminal_punctuation
+struct MultiParagraphDocComment;
 
 /// ```
 struct IncompleteBlockCode;

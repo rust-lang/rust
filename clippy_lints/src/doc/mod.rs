@@ -673,19 +673,24 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for doc comments that do not end with a period or another punctuation mark.
+    /// Checks for doc comments whose paragraphs do not end with a period or another punctuation mark.
     /// Various Markdowns constructs are taken into account to avoid false positives.
     ///
     /// ### Why is this bad?
-    /// A project may wish to enforce consistent doc comments by making sure they end with a punctuation mark.
+    /// A project may wish to enforce consistent doc comments by making sure paragraphs end with a
+    /// punctuation mark.
     ///
     /// ### Example
     /// ```no_run
-    /// /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything
+    /// /// Returns a random number
+    /// ///
+    /// /// It was chosen by a fair dice roll
     /// ```
     /// Use instead:
     /// ```no_run
-    /// /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything.
+    /// /// Returns a random number.
+    /// ///
+    /// /// It was chosen by a fair dice roll.
     /// ```
     #[clippy::version = "1.92.0"]
     pub DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,

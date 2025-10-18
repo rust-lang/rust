@@ -10,50 +10,50 @@ const MSG: &str = "doc comments should end with a terminal punctuation mark";
 const PUNCTUATION_SUGGESTION: char = '.';
 
 pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
-    match is_missing_punctuation(doc) {
-        IsMissingPunctuation::Fixable(offset) => {
-            // This ignores `#[doc]` attributes, which we do not handle.
-            if let Some(span) = fragments.span(cx, offset..offset) {
-                clippy_utils::diagnostics::span_lint_and_sugg(
-                    cx,
-                    DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
-                    span,
-                    MSG,
-                    "end the doc comment with some punctuation",
-                    PUNCTUATION_SUGGESTION.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        },
-        IsMissingPunctuation::Unfixable(offset) => {
-            // This ignores `#[doc]` attributes, which we do not handle.
-            if let Some(span) = fragments.span(cx, offset..offset) {
-                clippy_utils::diagnostics::span_lint_and_help(
-                    cx,
-                    DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
-                    span,
-                    MSG,
-                    None,
-                    "end the doc comment with some punctuation",
-                );
-            }
-        },
-        IsMissingPunctuation::No => {},
+    for missing_punctuation in is_missing_punctuation(doc) {
+        match missing_punctuation {
+            MissingPunctuation::Fixable(offset) => {
+                // This ignores `#[doc]` attributes, which we do not handle.
+                if let Some(span) = fragments.span(cx, offset..offset) {
+                    clippy_utils::diagnostics::span_lint_and_sugg(
+                        cx,
+                        DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+                        span,
+                        MSG,
+                        "end the doc comment with some punctuation",
+                        PUNCTUATION_SUGGESTION.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            },
+            MissingPunctuation::Unfixable(offset) => {
+                // This ignores `#[doc]` attributes, which we do not handle.
+                if let Some(span) = fragments.span(cx, offset..offset) {
+                    clippy_utils::diagnostics::span_lint_and_help(
+                        cx,
+                        DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+                        span,
+                        MSG,
+                        None,
+                        "end the doc comment with some punctuation",
+                    );
+                }
+            },
+        }
     }
 }
 
 #[must_use]
 /// If punctuation is missing, returns the offset where new punctuation should be inserted.
-fn is_missing_punctuation(doc_string: &str) -> IsMissingPunctuation {
-    const TERMINAL_PUNCTUATION_MARKS: &[char] = &['.', '?', '!', '…'];
-
-    // Short-circuit in simple, common cases to avoid Markdown parsing.
-    if doc_string.trim_end().ends_with(TERMINAL_PUNCTUATION_MARKS) {
-        return IsMissingPunctuation::No;
-    }
+fn is_missing_punctuation(doc_string: &str) -> Vec<MissingPunctuation> {
+    // The colon is not exactly a terminal punctuation mark, but this is required for paragraphs that
+    // introduce a table or a list for example.
+    const TERMINAL_PUNCTUATION_MARKS: &[char] = &['.', '?', '!', '…', ':'];
 
     let mut no_report_depth = 0;
-    let mut missing_punctuation = IsMissingPunctuation::No;
+    let mut missing_punctuation = Vec::new();
+    let mut current_paragraph = None;
+
     for (event, offset) in
         Parser::new_ext(doc_string, main_body_opts() - Options::ENABLE_SMART_PUNCTUATION).into_offset_iter()
     {
@@ -75,10 +75,15 @@ fn is_missing_punctuation(doc_string: &str) -> IsMissingPunctuation {
                 TagEnd::CodeBlock | TagEnd::Heading(_) | TagEnd::HtmlBlock | TagEnd::List(_) | TagEnd::Table,
             ) => {
                 no_report_depth -= 1;
-                missing_punctuation = IsMissingPunctuation::No;
+                current_paragraph = None;
             },
             Event::InlineHtml(_) | Event::Start(Tag::Image { .. }) | Event::End(TagEnd::Image) => {
-                missing_punctuation = IsMissingPunctuation::No;
+                current_paragraph = None;
+            },
+            Event::End(TagEnd::Paragraph) => {
+                if let Some(mp) = current_paragraph {
+                    missing_punctuation.push(mp);
+                }
             },
             Event::Code(..) | Event::Start(Tag::Link { .. }) | Event::End(TagEnd::Link)
                 if no_report_depth == 0 && !offset.is_empty() =>
@@ -87,24 +92,24 @@ fn is_missing_punctuation(doc_string: &str) -> IsMissingPunctuation {
                     .trim_end()
                     .ends_with(TERMINAL_PUNCTUATION_MARKS)
                 {
-                    missing_punctuation = IsMissingPunctuation::No;
+                    current_paragraph = None;
                 } else {
-                    missing_punctuation = IsMissingPunctuation::Fixable(offset.end);
+                    current_paragraph = Some(MissingPunctuation::Fixable(offset.end));
                 }
             },
             Event::Text(..) if no_report_depth == 0 && !offset.is_empty() => {
                 let trimmed = doc_string[..offset.end].trim_end();
                 if trimmed.ends_with(TERMINAL_PUNCTUATION_MARKS) {
-                    missing_punctuation = IsMissingPunctuation::No;
+                    current_paragraph = None;
                 } else if let Some(t) = trimmed.strip_suffix(|c| c == ')' || c == '"') {
                     if t.ends_with(TERMINAL_PUNCTUATION_MARKS) {
                         // Avoid false positives.
-                        missing_punctuation = IsMissingPunctuation::No;
+                        current_paragraph = None;
                     } else {
-                        missing_punctuation = IsMissingPunctuation::Unfixable(offset.end);
+                        current_paragraph = Some(MissingPunctuation::Unfixable(offset.end));
                     }
                 } else {
-                    missing_punctuation = IsMissingPunctuation::Fixable(offset.end);
+                    current_paragraph = Some(MissingPunctuation::Fixable(offset.end));
                 }
             },
             _ => {},
@@ -115,8 +120,7 @@ fn is_missing_punctuation(doc_string: &str) -> IsMissingPunctuation {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum IsMissingPunctuation {
+enum MissingPunctuation {
     Fixable(usize),
     Unfixable(usize),
-    No,
 }
