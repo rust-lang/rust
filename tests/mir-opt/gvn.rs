@@ -499,11 +499,10 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     unsafe { opaque(*z) };
     unsafe { opaque(*z) };
 
-    // Do not reuse dereferences of `&Freeze`.
     // CHECK: [[ref:_.*]] = &(*_1);
-    // CHECK: [[st7:_.*]] = copy (*[[ref]]);
+    // CHECK: [[st7:_.*]] = copy (*_1);
     // CHECK: opaque::<u32>(move [[st7]])
-    // CHECK: [[st8:_.*]] = copy (*[[ref]]);
+    // CHECK: [[st8:_.*]] = copy (*_1);
     // CHECK: opaque::<u32>(move [[st8]])
     let z = &*t;
     opaque(*z);

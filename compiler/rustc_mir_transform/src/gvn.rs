@@ -795,7 +795,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             // The base is a pointer's deref, so we introduce the implicit deref.
             AddressBase::Deref(reborrow) => {
                 let place_ty = PlaceTy::from_ty(self.ty(reborrow));
-                self.project(place_ty, reborrow, ProjectionElem::Deref)?
+                self.project(place_ty, reborrow, ProjectionElem::Deref).unwrap_or_else(|| {
+                    // Insert a deref instead if `reborrow` cannot be dereferenced.
+                    let projection_ty =
+                        place_ty.projection_ty::<VnIndex>(self.tcx, ProjectionElem::Deref);
+                    return (projection_ty, self.insert_deref(projection_ty.ty, reborrow));
+                })
             }
         };
         for &proj in projection {
@@ -817,9 +822,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
                     && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
                 {
-                    if let Value::Address { base, projection, .. } = self.get(value)
-                        && let Some(value) = self.dereference_address(base, projection)
-                    {
+                    if let Value::Address { base, projection, .. } = self.get(value) {
+                        // Bail out if the address cannot be dereferenced.
+                        let value = self.dereference_address(base, projection)?;
                         return Some((projection_ty, value));
                     }
 
