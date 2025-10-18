@@ -9,7 +9,7 @@ LL |     pub use self::handwritten::*;
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
-warning: `id` is ambiguous
+warning[E0759]: `id` is ambiguous
   --> $DIR/ambiguous-1.rs:29:5
    |
 LL |     id();
@@ -38,8 +38,9 @@ LL | #![warn(ambiguous_glob_imports)]
 
 warning: 2 warnings emitted
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-warning: `id` is ambiguous
+warning[E0759]: `id` is ambiguous
   --> $DIR/ambiguous-1.rs:29:5
    |
 LL |     id();
