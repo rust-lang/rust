@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ run-pass
 //@ check-run-results
 #![feature(macro_attr)]

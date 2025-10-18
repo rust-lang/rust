@@ -1,5 +1,5 @@
 error[E0599]: no method named `abc` found for struct `S` in the current scope
-  --> $DIR/use-placement-typeck.rs:11:7
+  --> $DIR/use-placement-typeck.rs:12:7
    |
 LL |     s.abc();
    |       ^^^ method not found in `S`

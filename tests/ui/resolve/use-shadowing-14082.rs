@@ -1,3 +1,4 @@
+//@ edition:2015
 //! Regression test for https://github.com/rust-lang/rust/issues/14082
 
 //@ check-pass

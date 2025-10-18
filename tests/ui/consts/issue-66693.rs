@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Tests that the compiler does not ICE when const-evaluating a `panic!()` invocation with a
 // non-`&str` argument.
 

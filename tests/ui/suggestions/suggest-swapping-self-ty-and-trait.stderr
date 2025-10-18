@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found struct `Struct`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:13:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:14:13
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |             ^^^^^^^^^ not a trait
@@ -11,7 +11,7 @@ LL + impl<'a, T> Trait<'a, T> for Struct<T> {}
    |
 
 error[E0404]: expected trait, found enum `Enum`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:19:13
    |
 LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |             ^^^^^^^ not a trait
@@ -23,7 +23,7 @@ LL + impl<'a, T> Trait<'a, T> for Enum<T> {}
    |
 
 error[E0404]: expected trait, found union `Union`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:23:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:24:13
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |             ^^^^^^^^ not a trait
@@ -35,7 +35,7 @@ LL + impl<'a, T> Trait<'a, T> for Union<T> {}
    |
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:3:19
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:4:19
    |
 LL | pub struct Struct<T>;
    |                   ^ unused type parameter
@@ -44,7 +44,7 @@ LL | pub struct Struct<T>;
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:5:15
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:6:15
    |
 LL | pub enum Enum<T> {}
    |               ^ unused type parameter
@@ -53,7 +53,7 @@ LL | pub enum Enum<T> {}
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:8:17
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:9:17
    |
 LL | pub union Union<T> {
    |                 ^ unused type parameter
@@ -62,7 +62,7 @@ LL | pub union Union<T> {
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:13:27
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:14:27
    |
 LL | impl<'a, T> Struct<T> for Trait<'a, T> {}
    |                           ^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:25
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:19:25
    |
 LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
    |                         ^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
    |                         +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:23:26
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:24:26
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |                          ^^^^^^^^^^^^

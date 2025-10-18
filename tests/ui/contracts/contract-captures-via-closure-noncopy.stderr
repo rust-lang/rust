@@ -1,5 +1,5 @@
 warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/contract-captures-via-closure-noncopy.rs:3:12
+  --> $DIR/contract-captures-via-closure-noncopy.rs:4:12
    |
 LL | #![feature(contracts)]
    |            ^^^^^^^^^
@@ -7,20 +7,20 @@ LL | #![feature(contracts)]
    = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`
-  --> $DIR/contract-captures-via-closure-noncopy.rs:12:1
+error[E0277]: the trait bound `Baz: std::marker::Copy` is not satisfied in `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`
+  --> $DIR/contract-captures-via-closure-noncopy.rs:13:1
    |
 LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz*2 })]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------^^^^
    | |                                        |
-   | |                                        within this `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`
-   | |                                        this tail expression is of type `{closure@contract-captures-via-closure-noncopy.rs:12:42}`
+   | |                                        within this `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`
+   | |                                        this tail expression is of type `{closure@contract-captures-via-closure-noncopy.rs:13:42}`
    | unsatisfied trait bound
    | required by a bound introduced by this call
    |
-   = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:12:42: 12:57}`, the trait `std::marker::Copy` is not implemented for `Baz`
+   = help: within `{closure@$DIR/contract-captures-via-closure-noncopy.rs:13:42: 13:57}`, the trait `std::marker::Copy` is not implemented for `Baz`
 note: required because it's used within this closure
-  --> $DIR/contract-captures-via-closure-noncopy.rs:12:42
+  --> $DIR/contract-captures-via-closure-noncopy.rs:13:42
    |
 LL | #[core::contracts::ensures({let old = x; move |ret:&Baz| ret.baz == old.baz*2 })]
    |                                          ^^^^^^^^^^^^^^^
