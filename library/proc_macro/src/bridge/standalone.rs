@@ -1,119 +1,93 @@
-#![allow(unused_variables)]
 #![warn(warnings)]
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::{Bound, Range};
 
-use crate::{Delimiter, LEGAL_PUNCT_CHARS};
 use crate::bridge::client::Symbol;
 use crate::bridge::fxhash::FxHashMap;
-use crate::bridge::{server, DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Literal, Punct, TokenTree};
+use crate::bridge::{DelimSpan, Diagnostic, ExpnGlobals, Group, Literal, Punct, TokenTree, server};
+use crate::{Delimiter, LEGAL_PUNCT_CHARS};
 
 pub struct NoRustc;
 
 impl server::Span for NoRustc {
-    fn debug(&mut self, span: Self::Span) -> String {
-        format!("{} bytes({}..{})", span.hi - span.lo, span.lo, span.hi)
+    fn debug(&mut self, _: Self::Span) -> String {
+        "Span".to_string()
     }
 
-    fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {
+    fn parent(&mut self, _: Self::Span) -> Option<Self::Span> {
+        None
+    }
+
+    fn source(&mut self, _: Self::Span) -> Self::Span {
+        Span
+    }
+
+    fn byte_range(&mut self, _: Self::Span) -> Range<usize> {
         todo!()
     }
 
-    fn source(&mut self, span: Self::Span) -> Self::Span {
+    fn start(&mut self, _: Self::Span) -> Self::Span {
+        Span
+    }
+
+    fn end(&mut self, _: Self::Span) -> Self::Span {
+        Span
+    }
+
+    fn line(&mut self, _: Self::Span) -> usize {
         todo!()
     }
 
-    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
-        span.lo as usize..span.hi as usize
-    }
-
-    fn start(&mut self, span: Self::Span) -> Self::Span {
-        Span { lo: span.lo, hi: span.lo }
-    }
-
-    fn end(&mut self, span: Self::Span) -> Self::Span {
-        Span { lo: span.hi, hi: span.hi }
-    }
-
-    fn line(&mut self, span: Self::Span) -> usize {
+    fn column(&mut self, _: Self::Span) -> usize {
         todo!()
     }
 
-    fn column(&mut self, span: Self::Span) -> usize {
-        todo!()
+    fn file(&mut self, _: Self::Span) -> String {
+        "<anon>".to_string()
     }
 
-    fn file(&mut self, span: Self::Span) -> String {
-        todo!()
+    fn local_file(&mut self, _: Self::Span) -> Option<String> {
+        None
     }
 
-    fn local_file(&mut self, span: Self::Span) -> Option<String> {
-        todo!()
-    }
-
-    fn join(&mut self, span: Self::Span, other: Self::Span) -> Option<Self::Span> {
-        todo!()
+    fn join(&mut self, _: Self::Span, _: Self::Span) -> Option<Self::Span> {
+        Some(Span)
     }
 
     fn subspan(
         &mut self,
-        span: Self::Span,
-        start: Bound<usize>,
-        end: Bound<usize>,
+        _: Self::Span,
+        _start: Bound<usize>,
+        _end: Bound<usize>,
     ) -> Option<Self::Span> {
-        let length = span.hi as usize - span.lo as usize;
-
-        let start = match start {
-            Bound::Included(lo) => lo,
-            Bound::Excluded(lo) => lo.checked_add(1)?,
-            Bound::Unbounded => 0,
-        };
-
-        let end = match end {
-            Bound::Included(hi) => hi.checked_add(1)?,
-            Bound::Excluded(hi) => hi,
-            Bound::Unbounded => length,
-        };
-
-        // Bounds check the values, preventing addition overflow and OOB spans.
-        if start > u32::MAX as usize
-            || end > u32::MAX as usize
-            || (u32::MAX - start as u32) < span.lo
-            || (u32::MAX - end as u32) < span.lo
-            || start >= end
-            || end > length
-        {
-            return None;
-        }
-
-        let new_lo = span.lo + start as u32;
-        let new_hi = span.lo + end as u32;
-        Some(Span { lo: new_lo, hi: new_hi })
+        Some(Span)
     }
 
-    fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {
-        todo!()
+    fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
+        Span
     }
 
-    fn source_text(&mut self, span: Self::Span) -> Option<String> {
-        todo!()
+    fn source_text(&mut self, _: Self::Span) -> Option<String> {
+        None
     }
 
-    fn save_span(&mut self, span: Self::Span) -> usize {
-        SAVED_SPANS.with_borrow_mut(|spans| {
-            let idx = spans.len();
-            spans.push(span);
-            idx
-        })
+    fn save_span(&mut self, _: Self::Span) -> usize {
+        let n = SAVED_SPAN_COUNT.get();
+        SAVED_SPAN_COUNT.set(n + 1);
+        n
     }
 
     fn recover_proc_macro_span(&mut self, id: usize) -> Self::Span {
-        SAVED_SPANS.with_borrow(|spans| spans[id])
+        if id < SAVED_SPAN_COUNT.get() {
+            Span
+        } else {
+            panic!("recovered span index out of bounds");
+        }
     }
 }
 
 thread_local! {
-    static SAVED_SPANS: RefCell<Vec<Span>> = const { RefCell::new(Vec::new()) };
+    static SAVED_SPAN_COUNT: Cell<usize> = const { Cell::new(0) };
     static TRACKED_ENV_VARS: RefCell<FxHashMap<String, Option<String>>> = RefCell::new(FxHashMap::default());
 }
 
@@ -144,11 +118,11 @@ impl server::FreeFunctions for NoRustc {
             '0'..='9' | '-' => todo!(),
             '\'' => todo!(),
             '"' => todo!(),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 
-    fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
+    fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {
         panic!("cannot emit diagnostic in standalone mode");
     }
 }
@@ -188,7 +162,7 @@ impl server::TokenStream for NoRustc {
                     let group = TokenTree::<_, _, Symbol>::Group(Group {
                         delimiter: delim,
                         stream: unfinished_streams.pop(),
-                        span: DelimSpan::from_single(Span::DUMMY)
+                        span: DelimSpan::from_single(Span),
                     });
                     unfinished_streams.last_mut().unwrap().0.push(group);
                 } else {
@@ -198,7 +172,7 @@ impl server::TokenStream for NoRustc {
                 unfinished_streams.last_mut().unwrap().0.push(TokenTree::Punct(Punct {
                     ch: c as u8,
                     joint: false, // TODO
-                    span: Span::DUMMY,
+                    span: Span,
                 }));
             }
             match c {
@@ -365,13 +339,7 @@ impl TokenStream {
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy)]
-pub struct Span {
-    pub lo: u32,
-    pub hi: u32,
-}
-impl Span {
-    pub const DUMMY: Self = Self { lo: 0, hi: 0 };
-}
+pub struct Span;
 
 impl server::Types for NoRustc {
     type FreeFunctions = FreeFunctions;
@@ -382,7 +350,7 @@ impl server::Types for NoRustc {
 
 impl server::Server for NoRustc {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
-        ExpnGlobals { def_site: Span::DUMMY, call_site: Span::DUMMY, mixed_site: Span::DUMMY }
+        ExpnGlobals { def_site: Span, call_site: Span, mixed_site: Span }
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
