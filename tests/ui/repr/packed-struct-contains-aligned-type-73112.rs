@@ -1,9 +1,10 @@
-//@ aux-build:issue-73112.rs
+// https://github.com/rust-lang/rust/issues/73112
+//@ aux-build:aux-73112.rs
 
-extern crate issue_73112;
+extern crate aux_73112;
 
 fn main() {
-    use issue_73112::PageTable;
+    use aux_73112::PageTable;
 
     #[repr(C, packed)]
     struct SomeStruct {

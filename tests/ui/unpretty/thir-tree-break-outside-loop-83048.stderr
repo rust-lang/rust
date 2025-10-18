@@ -1,5 +1,5 @@
 error[E0268]: `break` outside of a loop or labeled block
-  --> $DIR/break-outside-loop-error-83048.rs:5:5
+  --> $DIR/thir-tree-break-outside-loop-83048.rs:5:5
    |
 LL |     break;
    |     ^^^^^ cannot `break` outside of a loop or labeled block

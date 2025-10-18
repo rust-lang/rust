@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/mismatched-types-in-trait-implementation-87490.rs:10:5
+  --> $DIR/mismatched-types-in-associated-type-87490.rs:10:5
    |
 LL | fn follow(_: &str) -> <&str as StreamOnce>::Position {
    |                       ------------------------------ expected `usize` because of return type

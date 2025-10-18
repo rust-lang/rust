@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/69683
 pub trait Element<S> {
     type Array;
 }
