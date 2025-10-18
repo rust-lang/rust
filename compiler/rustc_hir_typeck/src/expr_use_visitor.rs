@@ -1859,9 +1859,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// builder code does a more specific check, filtering out variants that
     /// happen to be uninhabited.
     ///
-    /// Here, we cannot perform such an accurate checks, because querying
-    /// whether a type is inhabited requires that it has been fully inferred,
-    /// which cannot be guaranteed at this point.
+    /// Here, it is not practical to perform such a check, because inhabitedness
+    /// queries require typeck results, and typeck requires closure capture analysis.
+    ///
+    /// Moreover, the language is moving towards uninhabited variants still semantically
+    /// causing a discriminant read, so we *shouldn't* perform any such check.
+    ///
+    /// FIXME(never_patterns): update this comment once the aforementioned MIR builder
+    /// code is changed to be insensitive to inhhabitedness.
     #[instrument(skip(self, span), level = "debug")]
     fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {
         if let ty::Adt(def, _) = self.cx.structurally_resolve_type(span, ty).kind() {
