@@ -2537,6 +2537,8 @@ mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
     use std::ops::Deref;
+    #[cfg(not(bootstrap))]
+    use std::ops::Receiver;
 
     use crate::Resolver;
 
@@ -2552,6 +2554,10 @@ mod ref_mut {
         fn deref(&self) -> &Self::Target {
             self.p
         }
+    }
+    #[cfg(not(bootstrap))]
+    impl<'a, T> Receiver for RefOrMut<'a, T> {
+        type Target = T;
     }
 
     impl<'a, T> AsRef<T> for RefOrMut<'a, T> {
