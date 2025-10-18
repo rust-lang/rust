@@ -551,54 +551,47 @@ install_components() {
         # Decide the destination of the file
         local _file_install_path="$_dest_prefix/$_file"
 
-        if echo "$_file" | grep "^etc/" > /dev/null
-        then
-        local _f="$(echo "$_file" | sed 's/^etc\///')"
-        _file_install_path="$CFG_SYSCONFDIR/$_f"
-        fi
-
-        if echo "$_file" | grep "^bin/" > /dev/null
-        then
-        local _f="$(echo "$_file" | sed 's/^bin\///')"
-        _file_install_path="$CFG_BINDIR/$_f"
-        fi
-
-        if echo "$_file" | grep "^lib/" > /dev/null
-        then
-        local _f="$(echo "$_file" | sed 's/^lib\///')"
-        _file_install_path="$CFG_LIBDIR/$_f"
-        fi
-
-        if echo "$_file" | grep "^share" > /dev/null
-        then
-        local _f="$(echo "$_file" | sed 's/^share\///')"
-        _file_install_path="$CFG_DATADIR/$_f"
-        fi
-
-        if echo "$_file" | grep "^share/man/" > /dev/null
-        then
-        local _f="$(echo "$_file" | sed 's/^share\/man\///')"
-        _file_install_path="$CFG_MANDIR/$_f"
-        fi
-
-            # HACK: Try to support overriding --docdir.  Paths with the form
-            # "share/doc/$product/" can be redirected to a single --docdir
-            # path. If the following detects that --docdir has been specified
-            # then it will replace everything preceding the "$product" path
-            # component. The problem here is that the combined rust installer
-            # contains two "products": rust and cargo; so the contents of those
-            # directories will both be dumped into the same directory; and the
-            # contents of those directories are _not_ disjoint. Since this feature
-            # is almost entirely to support 'make install' anyway I don't expect
-            # this problem to be a big deal in practice.
-            if [ "$CFG_DOCDIR" != "<default>" ]
-            then
-            if echo "$_file" | grep "^share/doc/" > /dev/null
-            then
-            local _f="$(echo "$_file" | sed 's/^share\/doc\/[^/]*\///')"
-            _file_install_path="$CFG_DOCDIR/$_f"
-            fi
-            fi
+        local _is_bin=false
+        case "$_file" in
+            etc/*)
+                local _f="$(echo "$_file" | sed 's/^etc\///')"
+                _file_install_path="$CFG_SYSCONFDIR/$_f"
+                ;;
+            bin/*)
+                local _f="$(echo "$_file" | sed 's/^bin\///')"
+                _is_bin=true
+                _file_install_path="$CFG_BINDIR/$_f"
+                ;;
+            lib/*)
+                local _f="$(echo "$_file" | sed 's/^lib\///')"
+                _file_install_path="$CFG_LIBDIR/$_f"
+                ;;
+            share/man/*)
+                local _f="$(echo "$_file" | sed 's/^share\/man\///')"
+                _file_install_path="$CFG_MANDIR/$_f"
+                ;;
+            share/doc/*)
+                # HACK: Try to support overriding --docdir.  Paths with the form
+                # "share/doc/$product/" can be redirected to a single --docdir
+                # path. If the following detects that --docdir has been specified
+                # then it will replace everything preceding the "$product" path
+                # component. The problem here is that the combined rust installer
+                # contains two "products": rust and cargo; so the contents of those
+                # directories will both be dumped into the same directory; and the
+                # contents of those directories are _not_ disjoint. Since this feature
+                # is almost entirely to support 'make install' anyway I don't expect
+                # this problem to be a big deal in practice.
+                if [ "$CFG_DOCDIR" != "<default>" ]
+                then
+                    local _f="$(echo "$_file" | sed 's/^share\/doc\/[^/]*\///')"
+                    _file_install_path="$CFG_DOCDIR/$_f"
+                fi
+                ;;
+            share/*)
+                local _f="$(echo "$_file" | sed 's/^share\///')"
+                _file_install_path="$CFG_DATADIR/$_f"
+                ;;
+        esac
 
         # Make sure there's a directory for it
         make_dir_recursive "$(dirname "$_file_install_path")"
@@ -617,13 +610,11 @@ install_components() {
 
             maybe_backup_path "$_file_install_path"
 
-            if echo "$_file" | grep "^bin/" > /dev/null || test -x "$_src_dir/$_component/$_file"
-            then
             run cp "$_src_dir/$_component/$_file" "$_file_install_path"
-            run chmod 755 "$_file_install_path"
+            if $_is_bin || test -x "$_src_dir/$_component/$_file"; then
+                run chmod 755 "$_file_install_path"
             else
-            run cp "$_src_dir/$_component/$_file" "$_file_install_path"
-            run chmod 644 "$_file_install_path"
+                run chmod 644 "$_file_install_path"
             fi
             critical_need_ok "file creation failed"
 
