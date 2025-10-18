@@ -6,9 +6,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
-use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind};
+use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, ConstKind, EarlyBinder, GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
@@ -320,15 +320,14 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
                 owner_id,
+                impl_kind,
                 ..
             }) => {
-                if let Node::Item(item) = cx.tcx.parent_hir_node(owner_id.into())
-                    && let Some(trait_ref) = cx
-                        .tcx
-                        .impl_trait_ref(item.owner_id)
-                        .map(EarlyBinder::instantiate_identity)
-                    && let Some(trait_item_id) = cx.tcx.trait_item_of(owner_id)
+                if let ImplItemImplKind::Trait { trait_item_def_id, .. } = impl_kind
+                    && let Ok(trait_item_id) = trait_item_def_id
                 {
+                    let impl_id = cx.tcx.parent(owner_id.into());
+                    let trait_ref = cx.tcx.impl_trait_ref(impl_id).instantiate_identity();
                     (
                         trait_item_id,
                         FnKind::ImplTraitFn(

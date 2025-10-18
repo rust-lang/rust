@@ -473,7 +473,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             // Find all the types that have an `impl` for the trait.
             tcx.all_impls(trait_def_id)
-                .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
+                .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
                     tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)

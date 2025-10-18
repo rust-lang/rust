@@ -191,7 +191,7 @@ late_lint_methods!(
         BuiltinCombinedModuleLateLintPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
+            DefaultCouldBeDerived: DefaultCouldBeDerived,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesLint: ImproperCTypesLint,

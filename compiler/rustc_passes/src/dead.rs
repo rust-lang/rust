@@ -377,7 +377,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
             && self.tcx.is_automatically_derived(impl_of)
-            && let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap().instantiate_identity()
+            && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
             && self.tcx.has_attr(trait_ref.def_id, sym::rustc_trivial_field_reads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
@@ -486,12 +486,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 (self.tcx.local_parent(local_def_id), trait_item_id)
             }
             // impl items are live if the corresponding traits are live
-            DefKind::Impl { of_trait: true } => (
-                local_def_id,
-                self.tcx
-                    .impl_trait_ref(local_def_id)
-                    .and_then(|trait_ref| trait_ref.skip_binder().def_id.as_local()),
-            ),
+            DefKind::Impl { of_trait: true } => {
+                (local_def_id, self.tcx.impl_trait_id(local_def_id).as_local())
+            }
             _ => bug!(),
         };
 

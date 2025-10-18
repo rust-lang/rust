@@ -679,7 +679,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn impl_trait_ref(self, impl_def_id: DefId) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
-        self.impl_trait_ref(impl_def_id).unwrap()
+        self.impl_trait_ref(impl_def_id)
     }
 
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {
@@ -3472,7 +3472,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
-            && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
+            && self.impl_trait_header(def_id).constness == hir::Constness::Const
     }
 
     pub fn is_sdylib_interface_build(self) -> bool {
@@ -3528,19 +3528,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
         crate::dep_graph::make_metadata(self)
-    }
-
-    /// Given an `impl_id`, return the trait it implements.
-    /// Return `None` if this is an inherent impl.
-    pub fn impl_trait_ref(
-        self,
-        def_id: impl IntoQueryParam<DefId>,
-    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.trait_ref)
-    }
-
-    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
 
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {

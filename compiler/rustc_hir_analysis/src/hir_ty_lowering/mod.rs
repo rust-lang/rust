@@ -1387,10 +1387,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
-                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
-                    // A cycle error occurred, most likely.
-                    self.dcx().span_bug(span, "expected cycle error");
-                };
+                let trait_ref = tcx.impl_trait_ref(impl_def_id);
 
                 self.probe_single_bound_for_assoc_item(
                     || {
@@ -1618,7 +1615,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let header = tcx.impl_trait_header(impl_def_id).unwrap();
+                            let header = tcx.impl_trait_header(impl_def_id);
                             let trait_ref = header.trait_ref.instantiate(
                                 tcx,
                                 infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),

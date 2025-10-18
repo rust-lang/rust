@@ -344,13 +344,14 @@ trait VisibilityLike: Sized {
     // associated types for which we can't determine visibility precisely.
     fn of_impl<const SHALLOW: bool>(
         def_id: LocalDefId,
+        of_trait: bool,
         tcx: TyCtxt<'_>,
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
         find.visit(tcx.type_of(def_id).instantiate_identity());
-        if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-            find.visit_trait(trait_ref.instantiate_identity());
+        if of_trait {
+            find.visit_trait(tcx.impl_trait_ref(def_id).instantiate_identity());
         }
         find.min
     }
@@ -699,13 +700,20 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 // its trait if it exists (which require reaching the `DefId`s in them).
                 let item_ev = EffectiveVisibility::of_impl::<true>(
                     owner_id.def_id,
+                    of_trait,
                     self.tcx,
                     &self.effective_visibilities,
                 );
 
                 self.update_eff_vis(owner_id.def_id, item_ev, None, Level::Direct);
 
-                self.reach(owner_id.def_id, item_ev).generics().predicates().ty().trait_ref();
+                {
+                    let mut reach = self.reach(owner_id.def_id, item_ev);
+                    reach.generics().predicates().ty();
+                    if of_trait {
+                        reach.trait_ref();
+                    }
+                }
 
                 for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
                     if assoc_item.is_impl_trait_in_trait() {
@@ -820,9 +828,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn trait_ref(&mut self) -> &mut Self {
-        if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
-            self.visit_trait(trait_ref.instantiate_identity());
-        }
+        self.visit_trait(self.ev.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
         self
     }
 }
@@ -1395,9 +1401,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn trait_ref(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.item_def_id) {
-            let _ = self.visit_trait(trait_ref.instantiate_identity());
-        }
+        let _ = self.visit_trait(self.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
         self
     }
 
@@ -1666,7 +1670,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
             DefKind::Impl { of_trait } => {
-                let impl_vis = ty::Visibility::of_impl::<false>(def_id, tcx, &Default::default());
+                let impl_vis =
+                    ty::Visibility::of_impl::<false>(def_id, of_trait, tcx, &Default::default());
 
                 // We are using the non-shallow version here, unlike when building the
                 // effective visisibilities table to avoid large number of false positives.
@@ -1679,8 +1684,12 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 // lints shouldn't be emitted even if `from` effective visibility
                 // is larger than `Priv` nominal visibility and if `Priv` can leak
                 // in some scenarios due to type inference.
-                let impl_ev =
-                    EffectiveVisibility::of_impl::<false>(def_id, tcx, self.effective_visibilities);
+                let impl_ev = EffectiveVisibility::of_impl::<false>(
+                    def_id,
+                    of_trait,
+                    tcx,
+                    self.effective_visibilities,
+                );
 
                 let mut check = self.check(def_id, impl_vis, Some(impl_ev));
 
@@ -1694,7 +1703,10 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 // normalization they produce very ridiculous false positives.
                 // FIXME: Remove this when full normalization is implemented.
                 check.skip_assoc_tys = true;
-                check.ty().trait_ref();
+                check.ty();
+                if of_trait {
+                    check.trait_ref();
+                }
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
                     if assoc_item.is_impl_trait_in_trait() {
@@ -1763,7 +1775,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
 
         if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
-            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(def_id);
             let trait_ref = trait_ref.instantiate_identity();
             visitor.span =
                 tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().trait_ref.path.span;
