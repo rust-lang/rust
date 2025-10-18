@@ -264,8 +264,9 @@ fn explain_lint_level_source(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
                 if matches!(orig_level, Level::Warn | Level::Deny) {
+                    let suggestion = if name == "dead_code" { "expect" } else { "allow" };
                     err.help_once(format!(
-                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                        "to override `{flag} {hyphen_case_flag_val}` add `#[{suggestion}({name})]`"
                     ));
                 }
             }
