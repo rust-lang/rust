@@ -1,23 +1,18 @@
 use std::char;
 use std::collections::BTreeMap;
-use std::fmt::{self, Write};
 
-use crate::{UnicodeData, fmt_list};
+use crate::{CharEscape, UnicodeData, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [usize; 2]) {
-    let mut file = String::new();
-
-    write!(file, "const INDEX_MASK: u32 = 0x{INDEX_MASK:x};").unwrap();
-    file.push_str("\n\n");
-    file.push_str(HEADER.trim_start());
-    file.push('\n');
     let (lower_tables, lower_size) = generate_tables("LOWER", &data.to_lower);
-    file.push_str(&lower_tables);
-    file.push_str("\n\n");
     let (upper_tables, upper_size) = generate_tables("UPPER", &data.to_upper);
-    file.push_str(&upper_tables);
+    let file = format!(
+        "{HEADER}
+        {lower_tables}
+        {upper_tables}"
+    );
     (file, [lower_size, upper_size])
 }
 
@@ -47,43 +42,23 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
         mappings.push((CharEscape(key), value));
     }
 
-    let mut tables = String::new();
-    let mut size = 0;
+    let size = size_of_val(mappings.as_slice()) + size_of_val(multis.as_slice());
+    let file = format!(
+        "
+    #[rustfmt::skip]\nstatic {case}CASE_TABLE: &[(char, u32); {mappings_len}] = &[{mappings}];
+    #[rustfmt::skip]\nstatic {case}CASE_TABLE_MULTI: &[[char; 3]; {multis_len}] = &[{multis}];",
+        mappings = fmt_list(&mappings),
+        mappings_len = mappings.len(),
+        multis = fmt_list(&multis),
+        multis_len = multis.len(),
+    );
 
-    size += size_of_val(mappings.as_slice());
-    write!(
-        tables,
-        "static {}CASE_TABLE: &[(char, u32); {}] = &[{}];",
-        case,
-        mappings.len(),
-        fmt_list(mappings),
-    )
-    .unwrap();
-
-    tables.push_str("\n\n");
-
-    size += size_of_val(multis.as_slice());
-    write!(
-        tables,
-        "static {}CASE_TABLE_MULTI: &[[char; 3]; {}] = &[{}];",
-        case,
-        multis.len(),
-        fmt_list(multis),
-    )
-    .unwrap();
-
-    (tables, size)
-}
-
-struct CharEscape(char);
-
-impl fmt::Debug for CharEscape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}'", self.0.escape_default())
-    }
+    (file, size)
 }
 
 static HEADER: &str = r"
+const INDEX_MASK: u32 = 1 << 22;
+
 pub fn to_lower(c: char) -> [char; 3] {
     if c.is_ascii() {
         [(c as u8).to_ascii_lowercase() as char, '\0', '\0']
