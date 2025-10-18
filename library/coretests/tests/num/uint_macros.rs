@@ -606,14 +606,15 @@ macro_rules! uint_module {
             fn test_exact_div() {
                 // 42 / 6
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), EXACT_DIV_SUCCESS_QUOTIENT1);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
 
                 // 18 / 3
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), EXACT_DIV_SUCCESS_QUOTIENT2);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
 
                 // failures
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(1, 2), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(1, 2), None);
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(0, 0), None);
             }
         }
