@@ -40,6 +40,8 @@ error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `F
 LL | fn make_fn<F: Fn()>(f: F) -> F { f }
    |                        - change this to accept `FnMut` instead of `Fn`
 ...
+LL |     let mut x = 0;
+   |         ----- `x` declared here, outside the closure
 LL |     let f = make_fn(|| {
    |             ------- -- in this closure
    |             |
