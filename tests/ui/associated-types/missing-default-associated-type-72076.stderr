@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-72076.rs:3:23
+  --> $DIR/missing-default-associated-type-72076.rs:4:23
    |
 LL |     fn f() -> Self::S {}
    |                       ^^ expected associated type, found `()`

@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/73229
 //@ check-pass
 
 fn any<T>() -> T {

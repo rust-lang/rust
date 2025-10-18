@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/70724
 fn a() -> i32 {
     3
 }

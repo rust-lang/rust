@@ -1,11 +1,11 @@
 error[E0437]: type `M` is not a member of trait `TraitB`
-  --> $DIR/issue-69602-type-err-during-codegen-ice.rs:17:5
+  --> $DIR/trait-implementation-ambiguity-69602.rs:18:5
    |
 LL |     type M   = A;
    |     ^^^^^^^^^^^^^ not a member of trait `TraitB`
 
 error[E0046]: not all trait items implemented, missing: `MyA`
-  --> $DIR/issue-69602-type-err-during-codegen-ice.rs:16:1
+  --> $DIR/trait-implementation-ambiguity-69602.rs:17:1
    |
 LL |     type MyA: TraitA;
    |     ---------------- `MyA` from trait

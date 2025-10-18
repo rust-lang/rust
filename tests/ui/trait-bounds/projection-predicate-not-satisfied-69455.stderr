@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed
-  --> $DIR/issue-69455.rs:29:41
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
@@ -13,7 +13,7 @@ LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
    |                                            +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-69455.rs:29:41
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
@@ -21,7 +21,7 @@ LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          required by a bound introduced by this call
    |
 note: multiple `impl`s satisfying `u64: Test<_>` found
-  --> $DIR/issue-69455.rs:11:1
+  --> $DIR/projection-predicate-not-satisfied-69455.rs:11:1
    |
 LL | impl Test<u32> for u64 {
    | ^^^^^^^^^^^^^^^^^^^^^^

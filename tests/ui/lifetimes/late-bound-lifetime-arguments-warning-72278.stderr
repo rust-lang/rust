@@ -1,5 +1,5 @@
 warning: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/issue-72278.rs:14:14
+  --> $DIR/late-bound-lifetime-arguments-warning-72278.rs:16:14
    |
 LL |     fn func<'a, U>(&'a self) -> U {
    |             -- the late bound lifetime parameter is introduced here

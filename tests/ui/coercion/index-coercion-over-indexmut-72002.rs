@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/72002
 //@ check-pass
 struct Indexable;
 

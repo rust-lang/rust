@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/71406
 use std::sync::mpsc;
 
 fn main() {

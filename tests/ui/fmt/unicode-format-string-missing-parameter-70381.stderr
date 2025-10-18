@@ -1,5 +1,5 @@
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/issue-70381.rs:4:16
+  --> $DIR/unicode-format-string-missing-parameter-70381.rs:5:16
    |
 LL |   println!("\r¡{}")
    |                ^^

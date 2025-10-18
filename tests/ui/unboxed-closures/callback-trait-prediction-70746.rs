@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/70746
 //@ check-pass
 
 pub trait Trait1 {

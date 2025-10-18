@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/74082
 #![allow(dead_code)]
 
 #[repr(i128)] //~ ERROR: attribute should be applied to an enum

@@ -1,5 +1,5 @@
 error[E0517]: attribute should be applied to an enum
-  --> $DIR/issue-74082.rs:3:8
+  --> $DIR/invalid-repr-on-structs-74082.rs:4:8
    |
 LL | #[repr(i128)]
    |        ^^^^
@@ -7,7 +7,7 @@ LL | struct Foo;
    | ----------- not an enum
 
 error[E0517]: attribute should be applied to an enum
-  --> $DIR/issue-74082.rs:6:8
+  --> $DIR/invalid-repr-on-structs-74082.rs:7:8
    |
 LL | #[repr(u128)]
    |        ^^^^
