@@ -132,8 +132,8 @@ struct SelfArgVisitor<'tcx> {
 }
 
 impl<'tcx> SelfArgVisitor<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, elem: ProjectionElem<Local, Ty<'tcx>>) -> Self {
-        Self { tcx, new_base: Place { local: SELF_ARG, projection: tcx.mk_place_elems(&[elem]) } }
+    fn new(tcx: TyCtxt<'tcx>, new_base: Place<'tcx>) -> Self {
+        Self { tcx, new_base }
     }
 }
 
@@ -146,16 +146,14 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
         assert_ne!(*local, SELF_ARG);
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
         if place.local == SELF_ARG {
             replace_base(place, self.new_base, self.tcx);
-        } else {
-            self.visit_local(&mut place.local, context, location);
+        }
 
-            for elem in place.projection.iter() {
-                if let PlaceElem::Index(local) = elem {
-                    assert_ne!(local, SELF_ARG);
-                }
+        for elem in place.projection.iter() {
+            if let PlaceElem::Index(local) = elem {
+                assert_ne!(local, SELF_ARG);
             }
         }
     }
@@ -176,6 +174,7 @@ const SELF_ARG: Local = Local::from_u32(1);
 const CTX_ARG: Local = Local::from_u32(2);
 
 /// A `yield` point in the coroutine.
+#[derive(Debug)]
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
     state: usize,
@@ -520,20 +519,22 @@ fn make_aggregate_adt<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(SELF_ARG.into())).visit_body(body);
 }
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+
+    let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, body.span);
     let pin_adt_ref = tcx.adt_def(pin_did);
@@ -541,11 +542,33 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = pin_ref_coroutine_ty;
+
+    let unpinned_local = body.local_decls.push(LocalDecl::new(ref_coroutine_ty, body.span));
 
     // Add the Pin field access to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty))
-        .visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(unpinned_local.into())).visit_body(body);
+
+    let source_info = SourceInfo::outermost(body.span);
+    let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
+
+    let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
+    // Miri requires retags to be the very first thing in the body.
+    // We insert this assignment just after.
+    let insert_point = statements
+        .iter()
+        .position(|stmt| !matches!(stmt.kind, StatementKind::Retag(..)))
+        .unwrap_or(statements.len());
+    statements.insert(
+        insert_point,
+        Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                unpinned_local.into(),
+                Rvalue::Use(Operand::Copy(pin_field)),
+            ))),
+        ),
+    );
 }
 
 /// Transforms the `body` of the coroutine applying the following transforms:
@@ -634,7 +657,7 @@ fn replace_resume_ty_local<'tcx>(
     // We have to replace the `ResumeTy` that is used for type and borrow checking
     // with `&mut Context<'_>` in MIR.
     #[cfg(debug_assertions)]
-    {
+    if local_ty != context_mut_ref {
         if let ty::Adt(resume_ty_adt, _) = local_ty.kind() {
             let expected_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, body.span));
             assert_eq!(*resume_ty_adt, expected_adt);
@@ -1297,8 +1320,6 @@ fn create_coroutine_resume_function<'tcx>(
     let default_block = insert_term_block(body, TerminatorKind::Unreachable);
     insert_switch(body, cases, &transform, default_block);
 
-    make_coroutine_state_argument_indirect(tcx, body);
-
     match transform.coroutine_kind {
         CoroutineKind::Coroutine(_)
         | CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _) =>
@@ -1307,17 +1328,9 @@ fn create_coroutine_resume_function<'tcx>(
         }
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
-    }
-
-    // Make sure we remove dead blocks to remove
-    // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(body);
-
-    pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
-
-    if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
-        dumper.dump_mir(body);
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+            make_coroutine_state_argument_indirect(tcx, body);
+        }
     }
 }
 
@@ -1673,6 +1686,21 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         // Create the Coroutine::resume / Future::poll function
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
+
+        if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
+            dumper.dump_mir(body);
+        }
+
+        pm::run_passes_no_validate(
+            tcx,
+            body,
+            &[
+                &crate::abort_unwinding_calls::AbortUnwindingCalls,
+                &crate::simplify::SimplifyCfg::PostStateTransform,
+                &crate::simplify::SimplifyLocals::PostStateTransform,
+            ],
+            None,
+        );
 
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body, false);
