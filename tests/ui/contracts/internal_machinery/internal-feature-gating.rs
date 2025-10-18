@@ -11,8 +11,8 @@ fn main() {
     //~^ ERROR use of unstable library feature `contracts_internals`
 
     // ast extensions are guarded by contracts_internals feature gate
-    fn identity_1() -> i32 contract_requires(|| true) { 10 }
+    fn identity_1() -> i32 contract_requires { true } { 10 }
     //~^ ERROR contract internal machinery is for internal use only
-    fn identity_2() -> i32 contract_ensures(|_| true) { 10 }
+    fn identity_2() -> i32 contract_ensures { |_| true } { 10 }
     //~^ ERROR contract internal machinery is for internal use only
 }

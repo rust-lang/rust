@@ -1,17 +1,17 @@
 //@ run-pass
+//@ compile-flags: -Zcontract-checks=yes
 #![feature(contracts)]
 //~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 extern crate core;
-use core::contracts::ensures;
+use core::contracts::{ensures, requires};
 
-#[ensures(*x = 0; |_ret| true)]
-fn buggy_add(x: &mut u32, y: u32) {
-    *x = *x + y;
+#[requires(let y = 1; true)]
+#[ensures(move |_ret| { y == 1 })]
+fn foo(x: u32) -> u32 {
+    x * 2
 }
 
 fn main() {
-    let mut x = 10;
-    buggy_add(&mut x, 100);
-    assert_eq!(x, 110);
+    foo(1);
 }
