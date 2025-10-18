@@ -18,6 +18,7 @@ fn main() {
 // Don't actually mutate it though, it will fail because it has a Frozen parent.
 unsafe fn ref_to_cell() {
     let x = &42i32;
+    #[expect(unsafe_cell_transmutes)]
     let cell_x: &UnsafeCell<i32> = mem::transmute(x);
     let val = *cell_x.get();
     assert_eq!(val, 42);
