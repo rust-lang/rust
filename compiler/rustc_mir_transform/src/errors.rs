@@ -99,6 +99,7 @@ pub(crate) enum ConstMutate {
 pub(crate) struct UnalignedPackedRef {
     #[primary_span]
     pub span: Span,
+    pub actual: u64,
 }
 
 #[derive(Diagnostic)]

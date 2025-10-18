@@ -3,22 +3,21 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
-/// Returns `true` if this place is allowed to be less aligned
-/// than its containing struct (because it is within a packed
-/// struct).
+/// Returns the packed alignment if this place is allowed to be less aligned
+/// than its type normally requires (because it is within a packed struct).
 pub fn is_disaligned<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     typing_env: ty::TypingEnv<'tcx>,
     place: Place<'tcx>,
-) -> bool
+) -> Option<Align>
 where
     L: HasLocalDecls<'tcx>,
 {
     debug!("is_disaligned({:?})", place);
     let Some(pack) = is_within_packed(tcx, local_decls, place) else {
         debug!("is_disaligned({:?}) - not within packed", place);
-        return false;
+        return None;
     };
 
     let ty = place.ty(local_decls, tcx).ty;
@@ -40,12 +39,12 @@ where
                 layout.align.bytes(),
                 pack.bytes()
             );
-            false
+            None
         }
         _ => {
             // We cannot figure out the layout. Conservatively assume that this is disaligned.
             debug!("is_disaligned({:?}) - true", place);
-            true
+            Some(pack)
         }
     }
 }
