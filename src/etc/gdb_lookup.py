@@ -3,7 +3,7 @@ import gdb.printing
 import re
 
 from gdb_providers import *
-from rust_types import *
+from rust_types import RustType, classify_struct, classify_union
 
 
 _gdb_version_matched = re.search("([0-9]+)\\.([0-9]+)", gdb.VERSION)
@@ -28,7 +28,7 @@ def classify_rust_type(type):
     if type_class == gdb.TYPE_CODE_UNION:
         return classify_union(type.fields())
 
-    return RustType.OTHER
+    return RustType.Other
 
 
 def check_enum_discriminant(valobj):
@@ -85,7 +85,7 @@ class RustPrettyPrinter(gdb.printing.PrettyPrinter):
 
     def add(self, rust_type, provider):
         # Just use the rust_type as the name.
-        printer = PrintByRustType(rust_type, provider)
+        printer = PrintByRustType(rust_type.name, provider)
         self.type_map[rust_type] = printer
         self.subprinters.append(printer)
 
@@ -99,23 +99,23 @@ class RustPrettyPrinter(gdb.printing.PrettyPrinter):
 printer = RustPrettyPrinter("rust")
 # use enum provider only for GDB <7.12
 if gdb_version[0] < 7 or (gdb_version[0] == 7 and gdb_version[1] < 12):
-    printer.add(RustType.ENUM, enum_provider)
-printer.add(RustType.STD_STRING, StdStringProvider)
-printer.add(RustType.STD_OS_STRING, StdOsStringProvider)
-printer.add(RustType.STD_STR, StdStrProvider)
-printer.add(RustType.STD_SLICE, StdSliceProvider)
-printer.add(RustType.STD_VEC, StdVecProvider)
-printer.add(RustType.STD_VEC_DEQUE, StdVecDequeProvider)
-printer.add(RustType.STD_BTREE_SET, StdBTreeSetProvider)
-printer.add(RustType.STD_BTREE_MAP, StdBTreeMapProvider)
-printer.add(RustType.STD_HASH_MAP, hashmap_provider)
-printer.add(RustType.STD_HASH_SET, hashset_provider)
-printer.add(RustType.STD_RC, StdRcProvider)
-printer.add(RustType.STD_ARC, lambda valobj: StdRcProvider(valobj, is_atomic=True))
+    printer.add(RustType.Enum, enum_provider)
+printer.add(RustType.StdString, StdStringProvider)
+printer.add(RustType.StdOsString, StdOsStringProvider)
+printer.add(RustType.StdStr, StdStrProvider)
+printer.add(RustType.StdSlice, StdSliceProvider)
+printer.add(RustType.StdVec, StdVecProvider)
+printer.add(RustType.StdVecDeque, StdVecDequeProvider)
+printer.add(RustType.StdBTreeSet, StdBTreeSetProvider)
+printer.add(RustType.StdBTreeMap, StdBTreeMapProvider)
+printer.add(RustType.StdHashMap, hashmap_provider)
+printer.add(RustType.StdHashSet, hashset_provider)
+printer.add(RustType.StdRc, StdRcProvider)
+printer.add(RustType.StdArc, lambda valobj: StdRcProvider(valobj, is_atomic=True))
 
-printer.add(RustType.STD_CELL, StdCellProvider)
-printer.add(RustType.STD_REF, StdRefProvider)
-printer.add(RustType.STD_REF_MUT, StdRefProvider)
-printer.add(RustType.STD_REF_CELL, StdRefCellProvider)
+printer.add(RustType.StdCell, StdCellProvider)
+printer.add(RustType.StdRef, StdRefProvider)
+printer.add(RustType.StdRefMut, StdRefProvider)
+printer.add(RustType.StdRefCell, StdRefCellProvider)
 
-printer.add(RustType.STD_NONZERO_NUMBER, StdNonZeroNumberProvider)
+printer.add(RustType.StdNonZeroNumber, StdNonZeroNumberProvider)

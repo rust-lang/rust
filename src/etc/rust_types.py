@@ -1,40 +1,42 @@
+from enum import Enum
 from typing import List
 import re
 
 
-class RustType(object):
-    OTHER = "Other"
-    STRUCT = "Struct"
-    TUPLE = "Tuple"
-    CSTYLE_VARIANT = "CStyleVariant"
-    TUPLE_VARIANT = "TupleVariant"
-    STRUCT_VARIANT = "StructVariant"
-    ENUM = "Enum"
-    EMPTY = "Empty"
-    SINGLETON_ENUM = "SingletonEnum"
-    REGULAR_ENUM = "RegularEnum"
-    COMPRESSED_ENUM = "CompressedEnum"
-    REGULAR_UNION = "RegularUnion"
+class RustType(Enum):
+    Other = 0
+    Struct = 1
+    Tuple = 2
+    CStyleVariant = 3
+    TupleVariant = 4
+    StructVariant = 5
+    Enum = 6
+    Empty = 7
+    SingletonEnum = 8
+    RegularEnum = 9
+    CompressedEnum = 10
+    Union = 11
+    Indirection = 12
 
-    STD_STRING = "StdString"
-    STD_OS_STRING = "StdOsString"
-    STD_STR = "StdStr"
-    STD_SLICE = "StdSlice"
-    STD_VEC = "StdVec"
-    STD_VEC_DEQUE = "StdVecDeque"
-    STD_BTREE_SET = "StdBTreeSet"
-    STD_BTREE_MAP = "StdBTreeMap"
-    STD_HASH_MAP = "StdHashMap"
-    STD_HASH_SET = "StdHashSet"
-    STD_RC = "StdRc"
-    STD_ARC = "StdArc"
-    STD_CELL = "StdCell"
-    STD_REF = "StdRef"
-    STD_REF_MUT = "StdRefMut"
-    STD_REF_CELL = "StdRefCell"
-    STD_NONZERO_NUMBER = "StdNonZeroNumber"
-    STD_PATH = "StdPath"
-    STD_PATHBUF = "StdPathBuf"
+    StdString = 13
+    StdOsString = 14
+    StdStr = 15
+    StdSlice = 16
+    StdVec = 17
+    StdVecDeque = 18
+    StdBTreeSet = 19
+    StdBTreeMap = 20
+    StdHashMap = 21
+    StdHashSet = 22
+    StdRc = 23
+    StdArc = 24
+    StdCell = 25
+    StdRef = 26
+    StdRefMut = 27
+    StdRefCell = 28
+    StdNonZeroNumber = 29
+    StdPath = 30
+    StdPathBuf = 31
 
 
 STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String$")
@@ -57,42 +59,45 @@ STD_NONZERO_NUMBER_REGEX = re.compile(r"^(core::([a-z_]+::)+)NonZero<.+>$")
 STD_PATHBUF_REGEX = re.compile(r"^(std::([a-z_]+::)+)PathBuf$")
 STD_PATH_REGEX = re.compile(r"^&(mut )?(std::([a-z_]+::)+)Path$")
 
-TUPLE_ITEM_REGEX = re.compile(r"__\d+$")
-
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "<<variant>>"
 ENUM_LLDB_ENCODED_VARIANTS = "$variants$"
 
 STD_TYPE_TO_REGEX = {
-    RustType.STD_STRING: STD_STRING_REGEX,
-    RustType.STD_OS_STRING: STD_OS_STRING_REGEX,
-    RustType.STD_STR: STD_STR_REGEX,
-    RustType.STD_SLICE: STD_SLICE_REGEX,
-    RustType.STD_VEC: STD_VEC_REGEX,
-    RustType.STD_VEC_DEQUE: STD_VEC_DEQUE_REGEX,
-    RustType.STD_HASH_MAP: STD_HASH_MAP_REGEX,
-    RustType.STD_HASH_SET: STD_HASH_SET_REGEX,
-    RustType.STD_BTREE_SET: STD_BTREE_SET_REGEX,
-    RustType.STD_BTREE_MAP: STD_BTREE_MAP_REGEX,
-    RustType.STD_RC: STD_RC_REGEX,
-    RustType.STD_ARC: STD_ARC_REGEX,
-    RustType.STD_REF: STD_REF_REGEX,
-    RustType.STD_REF_MUT: STD_REF_MUT_REGEX,
-    RustType.STD_REF_CELL: STD_REF_CELL_REGEX,
-    RustType.STD_CELL: STD_CELL_REGEX,
-    RustType.STD_NONZERO_NUMBER: STD_NONZERO_NUMBER_REGEX,
-    RustType.STD_PATHBUF: STD_PATHBUF_REGEX,
-    RustType.STD_PATH: STD_PATH_REGEX,
+    RustType.StdString: STD_STRING_REGEX,
+    RustType.StdOsString: STD_OS_STRING_REGEX,
+    RustType.StdStr: STD_STR_REGEX,
+    RustType.StdSlice: STD_SLICE_REGEX,
+    RustType.StdVec: STD_VEC_REGEX,
+    RustType.StdVecDeque: STD_VEC_DEQUE_REGEX,
+    RustType.StdHashMap: STD_HASH_MAP_REGEX,
+    RustType.StdHashSet: STD_HASH_SET_REGEX,
+    RustType.StdBTreeSet: STD_BTREE_SET_REGEX,
+    RustType.StdBTreeMap: STD_BTREE_MAP_REGEX,
+    RustType.StdRc: STD_RC_REGEX,
+    RustType.StdArc: STD_ARC_REGEX,
+    RustType.StdRef: STD_REF_REGEX,
+    RustType.StdRefMut: STD_REF_MUT_REGEX,
+    RustType.StdRefCell: STD_REF_CELL_REGEX,
+    RustType.StdCell: STD_CELL_REGEX,
+    RustType.StdNonZeroNumber: STD_NONZERO_NUMBER_REGEX,
+    RustType.StdPath: STD_PATH_REGEX,
+    RustType.StdPathBuf: STD_PATHBUF_REGEX,
 }
 
 
 def is_tuple_fields(fields: List) -> bool:
-    return all(TUPLE_ITEM_REGEX.match(str(field.name)) for field in fields)
+    for f in fields:
+        name = str(f.name)
+        if not name.startswith("__") or not name[2:].isdigit():
+            return False
+
+    return True
 
 
-def classify_struct(name: str, fields: List) -> str:
+def classify_struct(name: str, fields: List) -> RustType:
     if len(fields) == 0:
-        return RustType.EMPTY
+        return RustType.Empty
 
     for ty, regex in STD_TYPE_TO_REGEX.items():
         if regex.match(name):
@@ -103,26 +108,26 @@ def classify_struct(name: str, fields: List) -> str:
         fields[0].name == ENUM_DISR_FIELD_NAME
         or fields[0].name == ENUM_LLDB_ENCODED_VARIANTS
     ):
-        return RustType.ENUM
+        return RustType.Enum
 
     if is_tuple_fields(fields):
-        return RustType.TUPLE
+        return RustType.Tuple
 
-    return RustType.STRUCT
+    return RustType.Struct
 
 
-def classify_union(fields: List) -> str:
+def classify_union(fields: List) -> RustType:
     if len(fields) == 0:
-        return RustType.EMPTY
+        return RustType.Empty
 
     first_variant_name = fields[0].name
     if first_variant_name is None:
         if len(fields) == 1:
-            return RustType.SINGLETON_ENUM
+            return RustType.SingletonEnum
         else:
-            return RustType.REGULAR_ENUM
+            return RustType.RegularEnum
     elif first_variant_name.startswith(ENCODED_ENUM_PREFIX):
         assert len(fields) == 1
-        return RustType.COMPRESSED_ENUM
+        return RustType.CompressedEnum
     else:
-        return RustType.REGULAR_UNION
+        return RustType.RegularEnum
