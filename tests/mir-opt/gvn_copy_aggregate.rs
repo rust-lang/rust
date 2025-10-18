@@ -259,3 +259,15 @@ fn remove_storage_dead_from_index(f: fn() -> usize, v: [SameType; 5]) -> SameTyp
         }
     }
 }
+
+pub struct Single(u8);
+
+// EMIT_MIR gvn_copy_aggregate.deref_nonssa.GVN.diff
+fn deref_nonssa() -> Single {
+    let mut a = Single(0);
+    let b = &a;
+    let c = (*b).0;
+    a = Single(1);
+    // GVN shouldn't replace `Single(c)` with `*b`.
+    Single(c)
+}
