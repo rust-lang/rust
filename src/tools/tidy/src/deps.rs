@@ -109,17 +109,15 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         )),
         submodules: &[],
     },
-    {
-        WorkspaceInfo {
-            path: "compiler/rustc_codegen_cranelift",
-            exceptions: EXCEPTIONS_CRANELIFT,
-            crates_and_deps: Some((
-                &["rustc_codegen_cranelift"],
-                PERMITTED_CRANELIFT_DEPENDENCIES,
-                PERMITTED_CRANELIFT_DEPS_LOCATION,
-            )),
-            submodules: &[],
-        }
+    WorkspaceInfo {
+        path: "compiler/rustc_codegen_cranelift",
+        exceptions: EXCEPTIONS_CRANELIFT,
+        crates_and_deps: Some((
+            &["rustc_codegen_cranelift"],
+            PERMITTED_CRANELIFT_DEPENDENCIES,
+            PERMITTED_CRANELIFT_DEPS_LOCATION,
+        )),
+        submodules: &[],
     },
     WorkspaceInfo {
         path: "compiler/rustc_codegen_gcc",
