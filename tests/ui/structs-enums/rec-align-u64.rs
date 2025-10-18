@@ -1,6 +1,8 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
+#![allow(module_inception)]
+
 
 // Issue #2303
 

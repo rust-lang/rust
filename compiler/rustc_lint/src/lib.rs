@@ -59,6 +59,7 @@ pub mod lifetime_syntax;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
+mod module_inception;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -100,6 +101,7 @@ use let_underscore::*;
 use lifetime_syntax::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
+use module_inception::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -181,6 +183,16 @@ early_lint_methods!(
             Expr2024: Expr2024,
             Precedence: Precedence,
             DoubleNegations: DoubleNegations,
+        ]
+    ]
+);
+
+late_lint_methods!(
+    declare_combined_late_lint_pass,
+    [
+        BuiltinCombinedLateLintPass,
+        [
+            ModuleInception: ModuleInception::new(),
         ]
     ]
 );
@@ -273,6 +285,7 @@ fn register_builtins(store: &mut LintStore) {
 
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&foreign_modules::get_lints());
     store.register_lints(&HardwiredLints::lint_vec());
