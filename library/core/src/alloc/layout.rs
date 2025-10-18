@@ -131,7 +131,7 @@ impl Layout {
         assert_unsafe_precondition!(
             check_library_ub,
             "Layout::from_size_align_unchecked requires that align is a power of 2 \
-            and the rounded-up allocation size does not exceed isize::MAX",
+            and the rounded-up allocation size does not exceed isize::MAX (size:{size}, align:{align})",
             (
                 size: usize = size,
                 align: usize = align,

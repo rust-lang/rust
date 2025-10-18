@@ -1883,6 +1883,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{Foo:0>8}"), "Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
     }
