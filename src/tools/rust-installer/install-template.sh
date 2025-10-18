@@ -551,7 +551,7 @@ install_components() {
         # Decide the destination of the file
         local _file_install_path="$_dest_prefix/$_file"
 
-	local _is_bin=false
+        local _is_bin=false
         case "$_file" in
             etc/*)
                 local _f="$(echo "$_file" | sed 's/^etc\///')"
@@ -559,7 +559,7 @@ install_components() {
                 ;;
             bin/*)
                 local _f="$(echo "$_file" | sed 's/^bin\///')"
-		_is_bin=true
+                _is_bin=true
                 _file_install_path="$CFG_BINDIR/$_f"
                 ;;
             lib/*)
