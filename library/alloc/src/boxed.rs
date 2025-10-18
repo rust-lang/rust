@@ -237,6 +237,7 @@ pub struct Box<
 /// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
 ///
 /// This is the surface syntax for `box <expr>` expressions.
+#[doc(hidden)]
 #[rustc_intrinsic]
 #[unstable(feature = "liballoc_internals", issue = "none")]
 pub fn box_new<T>(x: T) -> Box<T>;
