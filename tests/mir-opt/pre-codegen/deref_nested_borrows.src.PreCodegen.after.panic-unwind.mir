@@ -6,8 +6,6 @@ fn src(_1: &&u8) -> bool {
     let mut _2: &u8;
     let _3: u8;
     let _4: ();
-    let mut _5: &u8;
-    let mut _6: u8;
     scope 1 {
         debug y => _3;
     }
@@ -19,11 +17,7 @@ fn src(_1: &&u8) -> bool {
     }
 
     bb1: {
-        StorageLive(_6);
-        _5 = copy (*_1);
-        _6 = copy (*_5);
-        _0 = Eq(move _6, copy _3);
-        StorageDead(_6);
+        _0 = const true;
         return;
     }
 }

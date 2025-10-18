@@ -15,7 +15,8 @@ pub enum Value {
 fn loop_deref_mut(val: &mut Value) -> Value {
     // CHECK-LABEL: fn loop_deref_mut(
     // CHECK: [[VAL_REF:_.*]] = get::<Value>(
-    // CHECK: [[V:_.*]] = copy (((*[[VAL_REF]]) as V0).0: i32);
+    // CHECK: [[VAL_REF_2:_.*]] = &(*[[VAL_REF]]);
+    // CHECK: [[V:_.*]] = copy (((*[[VAL_REF_2]]) as V0).0: i32);
     // CHECK-NOT: copy (*[[VAL_REF]]);
     // CHECK: [[RET:_*]] = Value::V0(copy [[V]]);
     // CHECK-NOT: copy (*[[VAL_REF]]);

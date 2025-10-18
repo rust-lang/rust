@@ -21,9 +21,8 @@
       bb0: {
           StorageLive(_1);
 -         _1 = Single(const 0_u8);
--         StorageLive(_2);
 +         _1 = const Single(0_u8);
-+         nop;
+          StorageLive(_2);
           _2 = &_1;
 -         StorageLive(_3);
 +         nop;
@@ -37,12 +36,11 @@
           StorageLive(_5);
           _5 = copy _3;
 -         _0 = Single(move _5);
-+         _0 = copy (*_2);
++         _0 = Single(copy _3);
           StorageDead(_5);
 -         StorageDead(_3);
--         StorageDead(_2);
 +         nop;
-+         nop;
+          StorageDead(_2);
           StorageDead(_1);
           return;
       }

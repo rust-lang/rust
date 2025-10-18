@@ -5,7 +5,7 @@
 use std::intrinsics::mir::*;
 
 // EMIT_MIR gvn_overlapping.overlapping.GVN.diff
-/// Check that we do not create overlapping assignments.
+// Check that we do not create overlapping assignments.
 #[custom_mir(dialect = "runtime")]
 fn overlapping(_17: Adt) {
     // CHECK-LABEL: fn overlapping(
@@ -25,14 +25,39 @@ fn overlapping(_17: Adt) {
     }
 }
 
+// EMIT_MIR gvn_overlapping.stable_projection_nonoverlapping.GVN.diff
+// FIXME: We allow dereferences in the RHS if the LHS is a stable projection.
+#[custom_mir(dialect = "runtime")]
+fn stable_projection_nonoverlapping(_1: (Adt,)) {
+    // CHECK-LABEL: fn stable_projection_nonoverlapping(
+    // CHECK: let mut _2: *mut Adt;
+    // CHECK: let mut _4: &Adt;
+    // CHECK: (_5.0: Adt) = Adt::Some(copy {{.*}});
+    mir! {
+        let _2: *mut Adt;
+        let _3: u32;
+        let _4: &Adt;
+        let _5: (Adt, );
+        {
+            _2 = core::ptr::addr_of_mut!(_1.0);
+            _4 = &(*_2);
+            _3 = Field(Variant((*_4), 1), 0);
+            _5.0 = Adt::Some(_3);
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR gvn_overlapping.stable_projection.GVN.diff
-/// Check that we allow dereferences in the RHS if the LHS is a stable projection.
+// This introduces copy overlapping if dereferencing `_2` or `_4`.
 #[custom_mir(dialect = "runtime")]
 fn stable_projection(_1: (Adt,)) {
     // CHECK-LABEL: fn stable_projection(
     // CHECK: let mut _2: *mut Adt;
     // CHECK: let mut _4: &Adt;
-    // CHECK: (_1.0: Adt) = copy (*_4);
+    // CHECK-NOT: (_1.0: Adt) = copy (*_2);
+    // CHECK: (_1.0: Adt) = Adt::Some(copy {{.*}});
+    // CHECK-NOT: (_1.0: Adt) = copy (*_2);
     mir! {
         let _2: *mut Adt;
         let _3: u32;
@@ -67,6 +92,9 @@ fn fields(_1: (Adt, Adt)) {
 // EMIT_MIR gvn_overlapping.copy_overlapping.GVN.diff
 #[custom_mir(dialect = "runtime")]
 fn copy_overlapping() {
+    // CHECK-LABEL: fn copy_overlapping(
+    // CHECK-NOT: _1 = copy (*_{{.*}});
+    // CHECK: _1 = Adt::Some(copy _2);
     mir! {
         let _1;
         let _2;
