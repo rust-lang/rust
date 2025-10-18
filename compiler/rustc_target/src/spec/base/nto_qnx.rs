@@ -12,6 +12,9 @@ pub(crate) fn opts() -> TargetOptions {
         has_thread_local: false,
         linker: Some("qcc".into()),
         os: "nto".into(),
+        // We want backtraces to work by default and they rely on unwind tables
+        // (regardless of `-C panic` strategy).
+        default_uwtable: true,
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
