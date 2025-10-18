@@ -158,6 +158,7 @@ pub(crate) fn get_result_from_exit_code(
     result
 }
 
+#[derive(Debug)]
 pub enum RustdocResult {
     /// The test failed to compile.
     CompileError,

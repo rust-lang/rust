@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
-use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
+use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind, VisibilityKind};
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{AutoStream, ColorConfig, DiagCtxtHandle};
 use rustc_parse::lexer::StripTokens;
@@ -124,7 +124,16 @@ impl<'a> BuildDocTestBuilder<'a> {
 
         let result = rustc_driver::catch_fatal_errors(|| {
             rustc_span::create_session_if_not_set_then(edition, |_| {
-                parse_source(source, &crate_name, dcx, span)
+                parse_source(
+                    source,
+                    &crate_name,
+                    dcx,
+                    span,
+                    !can_merge_doctests
+                        && lang_str.is_some_and(|lang_str| {
+                            !lang_str.compile_fail && lang_str.should_panic
+                        }),
+                )
             })
         });
 
@@ -444,6 +453,7 @@ fn parse_source(
     crate_name: &Option<&str>,
     parent_dcx: Option<DiagCtxtHandle<'_>>,
     span: Span,
+    should_panic: bool,
 ) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
     use rustc_errors::emitter::{Emitter, HumanEmitter};
@@ -492,8 +502,13 @@ fn parse_source(
         *prev_span_hi = hi;
     }
 
-    fn check_item(item: &ast::Item, info: &mut ParseSourceInfo, crate_name: &Option<&str>) -> bool {
+    fn check_item(
+        item: &ast::Item,
+        info: &mut ParseSourceInfo,
+        crate_name: &Option<&str>,
+    ) -> (bool, bool) {
         let mut is_extern_crate = false;
+        let mut found_main = false;
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.has_name(sym::global_allocator))
         {
@@ -503,6 +518,7 @@ fn parse_source(
             ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
                 if fn_item.ident.name == sym::main {
                     info.has_main_fn = true;
+                    found_main = true;
                 }
             }
             ast::ItemKind::ExternCrate(original, ident) => {
@@ -521,7 +537,39 @@ fn parse_source(
             }
             _ => {}
         }
-        is_extern_crate
+        (is_extern_crate, found_main)
+    }
+
+    fn push_code(
+        stmt: &ast::Stmt,
+        is_extern_crate: bool,
+        info: &mut ParseSourceInfo,
+        source: &str,
+        prev_span_hi: &mut usize,
+        cut_to_hi: Option<rustc_span::BytePos>,
+    ) {
+        // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
+        // tweak the span to include the attributes as well.
+        let mut span = stmt.span;
+        if let Some(attr) = stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer) {
+            span = span.with_lo(attr.span.lo());
+        }
+        if let Some(cut_to_hi) = cut_to_hi {
+            span = span.with_hi(cut_to_hi);
+        }
+        if info.everything_else.is_empty()
+            && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
+        {
+            // To keep the doctest code "as close as possible" to the original, we insert
+            // all the code located between this new span and the previous span which
+            // might contain code comments and backlines.
+            push_to_s(&mut info.crates, source, span.shrink_to_lo(), prev_span_hi);
+        }
+        if !is_extern_crate {
+            push_to_s(&mut info.everything_else, source, span, prev_span_hi);
+        } else {
+            push_to_s(&mut info.crates, source, span, prev_span_hi);
+        }
     }
 
     let mut prev_span_hi = 0;
@@ -560,7 +608,51 @@ fn parse_source(
                 let mut is_extern_crate = false;
                 match stmt.kind {
                     StmtKind::Item(ref item) => {
-                        is_extern_crate = check_item(item, &mut info, crate_name);
+                        let (found_is_extern_crate, found_main) =
+                            check_item(item, &mut info, crate_name);
+                        is_extern_crate = found_is_extern_crate;
+                        if found_main
+                            && should_panic
+                            && !matches!(item.vis.kind, VisibilityKind::Public)
+                        {
+                            if matches!(item.vis.kind, VisibilityKind::Inherited) {
+                                push_code(
+                                    stmt,
+                                    is_extern_crate,
+                                    &mut info,
+                                    source,
+                                    &mut prev_span_hi,
+                                    Some(item.span.lo()),
+                                );
+                            } else {
+                                push_code(
+                                    stmt,
+                                    is_extern_crate,
+                                    &mut info,
+                                    source,
+                                    &mut prev_span_hi,
+                                    Some(item.vis.span.lo()),
+                                );
+                                prev_span_hi +=
+                                    (item.vis.span.hi().0 - item.vis.span.lo().0) as usize;
+                            };
+                            if !info
+                                .everything_else
+                                .chars()
+                                .last()
+                                .is_some_and(|c| c.is_whitespace())
+                            {
+                                info.everything_else.push(' ');
+                            }
+                            info.everything_else.push_str("pub ");
+                            push_to_s(
+                                &mut info.everything_else,
+                                source,
+                                item.span,
+                                &mut prev_span_hi,
+                            );
+                            continue;
+                        }
                     }
                     // We assume that the macro calls will expand to item(s) even though they could
                     // expand to statements and expressions.
@@ -596,28 +688,7 @@ fn parse_source(
                     }
                     StmtKind::Let(_) | StmtKind::Semi(_) | StmtKind::Empty => has_non_items = true,
                 }
-
-                // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
-                // tweak the span to include the attributes as well.
-                let mut span = stmt.span;
-                if let Some(attr) =
-                    stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer)
-                {
-                    span = span.with_lo(attr.span.lo());
-                }
-                if info.everything_else.is_empty()
-                    && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
-                {
-                    // To keep the doctest code "as close as possible" to the original, we insert
-                    // all the code located between this new span and the previous span which
-                    // might contain code comments and backlines.
-                    push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
-                }
-                if !is_extern_crate {
-                    push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
-                } else {
-                    push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
-                }
+                push_code(stmt, is_extern_crate, &mut info, source, &mut prev_span_hi, None);
             }
             if has_non_items {
                 if info.has_main_fn

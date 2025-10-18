@@ -45,7 +45,7 @@ fn make_test_basic() {
     let opts = default_global_opts("");
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -60,7 +60,7 @@ fn make_test_crate_name_no_use() {
     let opts = default_global_opts("asdf");
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -78,7 +78,7 @@ assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -95,7 +95,7 @@ fn make_test_no_crate_inject() {
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -113,7 +113,7 @@ fn make_test_ignore_std() {
     let input = "use std::*;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 use std::*;
 assert_eq!(2+2, 4);
 }"
@@ -132,7 +132,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 extern crate asdf;
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -149,7 +149,7 @@ use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #[macro_use] extern crate asdf;
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -168,7 +168,7 @@ assert_eq!(2+2, 4);";
     let expected = "#![feature(sick_rad)]
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -181,7 +181,7 @@ assert_eq!(2+2, 4);
 #![feature(hella_dope)]
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
-fn main() {
+pub fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -211,7 +211,7 @@ assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #![feature(sick_rad)]
 
-fn main() {
+pub fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -242,7 +242,7 @@ fn make_test_fake_main() {
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);
 }"
@@ -273,7 +273,7 @@ fn make_test_issues_21299() {
 assert_eq!(2+2, 4);";
 
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
 // fn main
 assert_eq!(2+2, 4);
 }"
@@ -294,7 +294,7 @@ assert_eq!(asdf::foo, 4);";
 extern crate hella_qwop;
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
-fn main() {
+pub fn main() {
 assert_eq!(asdf::foo, 4);
 }"
     .to_string();
@@ -330,7 +330,7 @@ let mut input = String::new();
 io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())";
     let expected = "#![allow(unused)]
-fn main() { fn _inner() -> core::result::Result<(), impl core::fmt::Debug> {
+pub fn main() { fn _inner() -> core::result::Result<(), impl core::fmt::Debug> {
 use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
@@ -347,7 +347,7 @@ fn make_test_named_wrapper() {
     let opts = default_global_opts("");
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
+pub fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
 assert_eq!(2+2, 4);
 } _doctest_main__some_unique_name() }"
         .to_string();
@@ -364,7 +364,7 @@ assert_eq!(2+2, 4);
 eprintln!(\"hello anan\");
 ";
     let expected = "#![allow(unused)]
-fn main() {
+pub fn main() {
     use std::*;
     assert_eq!(2+2, 4);
     eprintln!(\"hello anan\");
@@ -411,7 +411,7 @@ fn comment_in_attrs() {
 #![allow(internal_features)]
 #![doc(rust_logo)]
 //! This crate has the Rust(tm) branding on it.
-fn main() {
+pub fn main() {
 
 }"
     .to_string();
@@ -457,7 +457,7 @@ pub mod outer_module {
 //! A doc comment that applies to the implicit anonymous module of this crate
 
 
-fn main() {
+pub fn main() {
 pub mod outer_module {
     //!! - Still an inner line doc (but with a bang at the beginning)
 }
