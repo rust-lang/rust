@@ -118,10 +118,12 @@
 //!
 //! # Representation
 //!
-//! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`.
-//! It is therefore sound to transmute `t: T` to `Option<T>` (which will produce `Some(t)`), and
-//! to transmute `Some(t): Option<T>` to `T` (which will produce `t`).
+//! Rust guarantees to optimize the following types `T` such that [`Option<T>`]
+//! has the same size, alignment, and [function call ABI] as `T`. It is
+//! therefore sound, when `T` is one of these types, to transmute a value `t` of
+//! type `T` to type `Option<T>` (producing the value `Some(t)`) and to
+//! transmute a value `Some(t)` of type `Option<T>` to type `T` (producing the
+//! value `t`).
 //!
 //! In some of these cases, Rust further guarantees the following:
 //! - `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and produces

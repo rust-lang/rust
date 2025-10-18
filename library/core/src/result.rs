@@ -230,20 +230,25 @@
 //!
 //! # Representation
 //!
-//! In some cases, [`Result<T, E>`] comes with size, alignment, and ABI guarantees.
-//! Specifically, one of either the `T` or `E` type must be a type that qualifies for the `Option`
-//! [representation guarantees][opt-rep] (let's call that type `I`), and the *other* type
-//! is a zero-sized type with alignment 1 (a "1-ZST").
+//! In some cases, [`Result<T, E>`] comes with size, alignment, and ABI
+//! guarantees. Specifically, one of either the `T` or `E` type must be a type
+//! that qualifies for the `Option` [representation guarantees][opt-rep] (let's
+//! call that type `I`), and the *other* type is a zero-sized type with
+//! alignment 1 (a "1-ZST").
 //!
-//! If that is the case, then `Result<T, E>` has the same size, alignment, and [function call ABI]
-//! as `I` (and therefore, as `Option<I>`). If `I` is `T`, it is therefore sound to transmute `t: I`
-//! to `Result<T, E>` (which will produce `Ok(t)`), and to transmute `Ok(t): Result<T, E>` to `I`
-//! (which will produce `t`). If `I` is `E`, the same applies with `Ok` replaced by `Err`.
+//! If that is the case, then `Result<T, E>` has the same size, alignment, and
+//! [function call ABI] as `I` (and therefore, as `Option<I>`). If `I` is `T`,
+//! it is therefore sound to transmute a value `t` of type `I` to type
+//! `Result<T, E>` (producing the value `Ok(t)`) and to transmute a value
+//! `Ok(t)` of type `Result<T, E>` to type `I` (producing the value `t`). If `I`
+//! is `E`, the same applies with `Ok` replaced by `Err`.
 //!
-//! For example, `NonZeroI32` qualifies for the `Option` representation guarantees, and `()` is a
-//! zero-sized type with alignment 1. This means that both `Result<NonZeroI32, ()>` and
-//! `Result<(), NonZeroI32>` have the same size, alignment, and ABI
-//! as `NonZeroI32` (and `Option<NonZeroI32>`). The only difference is the implied semantics:
+//! For example, `NonZeroI32` qualifies for the `Option` representation
+//! guarantees and `()` is a zero-sized type with alignment 1. This means that
+//! both `Result<NonZeroI32, ()>` and `Result<(), NonZeroI32>` have the same
+//! size, alignment, and ABI as `NonZeroI32` (and `Option<NonZeroI32>`). The
+//! only difference between these is in the implied semantics:
+//!
 //! * `Option<NonZeroI32>` is "a non-zero i32 might be present"
 //! * `Result<NonZeroI32, ()>` is "a non-zero i32 success result, if any"
 //! * `Result<(), NonZeroI32>` is "a non-zero i32 error result, if any"
