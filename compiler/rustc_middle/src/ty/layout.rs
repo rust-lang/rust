@@ -72,7 +72,10 @@ impl abi::Integer {
     /// signed discriminant range and `#[repr]` attribute.
     /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'tcx>(
+    ///
+    /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
+    /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
+    fn discr_range_of_repr<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
@@ -108,7 +111,8 @@ impl abi::Integer {
             abi::Integer::I8
         };
 
-        // Pick the smallest fit.
+        // Pick the smallest fit. Prefer unsigned; that matches clang in cases where this makes a
+        // difference (https://godbolt.org/z/h4xEasW1d) so it is crucial for repr(C).
         if unsigned_fit <= signed_fit {
             (cmp::max(unsigned_fit, at_least), false)
         } else {
