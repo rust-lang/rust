@@ -2154,7 +2154,11 @@ impl HumanEmitter {
 
             assert!(!file_lines.lines.is_empty() || parts[0].span.is_dummy());
 
-            let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
+            let line_start = if let Some(span) = span.primary_spans().get(i) {
+                sm.lookup_char_pos(span.lo()).line
+            } else {
+                sm.lookup_char_pos(parts[0].span.lo()).line
+            };
             let mut lines = complete.lines();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
