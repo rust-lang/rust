@@ -18,8 +18,8 @@ LL | #![print_attr]
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: non-inline modules in proc macro input are unstable
-  --> $DIR/inner-attr-non-inline-mod.rs:11:1
+error[E0658]: file modules in proc macro input are unstable
+  --> $DIR/inner-attr-file-mod.rs:11:1
    |
 LL | mod module_with_attrs;
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | mod module_with_attrs;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: custom inner attributes are unstable
-  --> $DIR/inner-attr-non-inline-mod.rs:11:1
+  --> $DIR/inner-attr-file-mod.rs:11:1
    |
 LL | mod module_with_attrs;
    | ^^^^^^^^^^^^^^^^^^^^^^

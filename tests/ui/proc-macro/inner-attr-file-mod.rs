@@ -9,7 +9,7 @@ extern crate test_macros;
 
 #[deny(unused_attributes)]
 mod module_with_attrs;
-//~^ ERROR non-inline modules in proc macro input are unstable
+//~^ ERROR file modules in proc macro input are unstable
 //~| ERROR custom inner attributes are unstable
 
 fn main() {}
