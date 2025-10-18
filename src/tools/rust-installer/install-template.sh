@@ -551,6 +551,7 @@ install_components() {
         # Decide the destination of the file
         local _file_install_path="$_dest_prefix/$_file"
 
+	local _is_bin=false
         case "$_file" in
             etc/*)
                 local _f="$(echo "$_file" | sed 's/^etc\///')"
@@ -558,6 +559,7 @@ install_components() {
                 ;;
             bin/*)
                 local _f="$(echo "$_file" | sed 's/^bin\///')"
+		_is_bin=true
                 _file_install_path="$CFG_BINDIR/$_f"
                 ;;
             lib/*)
@@ -608,20 +610,11 @@ install_components() {
 
             maybe_backup_path "$_file_install_path"
 
-            if test -x "$_src_dir/$_component/$_file"; then
-                run cp "$_src_dir/$_component/$_file" "$_file_install_path"
+            run cp "$_src_dir/$_component/$_file" "$_file_install_path"
+            if $_is_bin || test -x "$_src_dir/$_component/$_file"; then
                 run chmod 755 "$_file_install_path"
             else
-                case "$_file" in
-                    bin/*)
-                        run cp "$_src_dir/$_component/$_file" "$_file_install_path"
-                        run chmod 755 "$_file_install_path"
-                        ;;
-                    *)
-                        run cp "$_src_dir/$_component/$_file" "$_file_install_path"
-                        run chmod 644 "$_file_install_path"
-                        ;;
-                esac
+                run chmod 644 "$_file_install_path"
             fi
             critical_need_ok "file creation failed"
 
