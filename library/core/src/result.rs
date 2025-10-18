@@ -230,24 +230,31 @@
 //!
 //! # Representation
 //!
-//! In some cases, [`Result<T, E>`] will gain the same size, alignment, and ABI
-//! guarantees as [`Option<U>`] has. One of either the `T` or `E` type must be a
-//! type that qualifies for the `Option` [representation guarantees][opt-rep],
-//! and the *other* type must meet all of the following conditions:
-//! * Is a zero-sized type with alignment 1 (a "1-ZST").
-//! * Has no fields.
-//! * Does not have the `#[non_exhaustive]` attribute.
+//! In some cases, [`Result<T, E>`] comes with size, alignment, and ABI
+//! guarantees. Specifically, one of either the `T` or `E` type must be a type
+//! that qualifies for the `Option` [representation guarantees][opt-rep] (let's
+//! call that type `I`), and the *other* type is a zero-sized type with
+//! alignment 1 (a "1-ZST").
+//!
+//! If that is the case, then `Result<T, E>` has the same size, alignment, and
+//! [function call ABI] as `I` (and therefore, as `Option<I>`). If `I` is `T`,
+//! it is therefore sound to transmute a value `t` of type `I` to type
+//! `Result<T, E>` (producing the value `Ok(t)`) and to transmute a value
+//! `Ok(t)` of type `Result<T, E>` to type `I` (producing the value `t`). If `I`
+//! is `E`, the same applies with `Ok` replaced by `Err`.
 //!
 //! For example, `NonZeroI32` qualifies for the `Option` representation
-//! guarantees, and `()` is a zero-sized type with alignment 1, no fields, and
-//! it isn't `non_exhaustive`. This means that both `Result<NonZeroI32, ()>` and
-//! `Result<(), NonZeroI32>` have the same size, alignment, and ABI guarantees
-//! as `Option<NonZeroI32>`. The only difference is the implied semantics:
+//! guarantees and `()` is a zero-sized type with alignment 1. This means that
+//! both `Result<NonZeroI32, ()>` and `Result<(), NonZeroI32>` have the same
+//! size, alignment, and ABI as `NonZeroI32` (and `Option<NonZeroI32>`). The
+//! only difference between these is in the implied semantics:
+//!
 //! * `Option<NonZeroI32>` is "a non-zero i32 might be present"
 //! * `Result<NonZeroI32, ()>` is "a non-zero i32 success result, if any"
 //! * `Result<(), NonZeroI32>` is "a non-zero i32 error result, if any"
 //!
 //! [opt-rep]: ../option/index.html#representation "Option Representation"
+//! [function call ABI]: ../primitive.fn.html#abi-compatibility
 //!
 //! # Method overview
 //!
