@@ -322,19 +322,26 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
     }
 }
 
+/// Represents suggestions that were emitted because their span was ambiguous.
+pub(crate) struct SuggestionsOmitted(usize);
+
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub(crate) fn splice_lines(
         &self,
         sm: &SourceMap,
-    ) -> Vec<(String, Vec<TrimmedSubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, ConfusionType)>
-    {
+    ) -> (
+        Vec<(String, Vec<TrimmedSubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, ConfusionType)>,
+        SuggestionsOmitted,
+    ) {
         // For the `Vec<Vec<SubstitutionHighlight>>` value, the first level of the vector
         // corresponds to the output snippet's lines, while the second level corresponds to the
         // substrings within that line that should be highlighted.
 
         use rustc_span::{CharPos, Pos};
+
+        let num_omitted = Cell::new(0);
 
         /// Extracts a substring from the provided `line_opt` based on the specified low and high
         /// indices, appends it to the given buffer `buf`, and returns the count of newline
@@ -384,13 +391,15 @@ impl CodeSuggestion {
 
         assert!(!self.substitutions.is_empty());
 
-        self.substitutions
+        let res = self
+            .substitutions
             .iter()
             .filter(|subst| {
                 // Suggestions coming from macros can have malformed spans. This is a heavy
                 // handed approach to avoid ICEs by ignoring the suggestion outright.
                 let invalid = subst.parts.iter().any(|item| sm.is_valid_span(item.span).is_err());
                 if invalid {
+                    num_omitted.update(|i| i + 1);
                     debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
                 }
                 !invalid
@@ -400,6 +409,21 @@ impl CodeSuggestion {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
+                if substitution
+                    .parts
+                    .array_windows()
+                    .find(|[a, b]| a.span.overlaps(b.span))
+                    .is_some()
+                {
+                    debug!("splice_lines: suggestion contains an invalid span: {substitution:?}");
+                    num_omitted.update(|i| i + 1);
+                    return None;
+                }
+
+                // Account for cases where we are suggesting the same code that's already
+                // there. This shouldn't happen often, but in some cases for multipart
+                // suggestions it's much easier to handle it here than in the origin.
+                substitution.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
                 // Find the bounding span.
                 let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
@@ -541,7 +565,9 @@ impl CodeSuggestion {
                     Some((buf, trimmed_parts, highlights, confusion_type))
                 }
             })
-            .collect()
+            .collect();
+
+        (res, SuggestionsOmitted(num_omitted.get()))
     }
 }
 

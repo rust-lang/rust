@@ -2038,8 +2038,19 @@ impl HumanEmitter {
         };
 
         // Render the replacements for each suggestion
-        let suggestions = suggestion.splice_lines(sm);
+        let (suggestions, num_omitted) = suggestion.splice_lines(sm);
         debug!(?suggestions);
+
+        let mut buffer = StyledBuffer::new();
+
+        if num_omitted.0 > 0 {
+            // in this case, do push that we omitted some
+            buffer.append(
+                0,
+                &format!("rendering error: omitted {} suggestion{} that failed to render, likely because of macro expansions", num_omitted.0, if num_omitted.0 > 1 {"s"} else {""}),
+                Style::Level(Level::Error),
+            );
+        }
 
         if suggestions.is_empty() {
             // Here we check if there are suggestions that have actual code changes. We sometimes
@@ -2047,10 +2058,10 @@ impl HumanEmitter {
             // suggestions and filtering there, we just don't emit the suggestion.
             // Suggestions coming from macros can also have malformed spans. This is a heavy handed
             // approach to avoid ICEs by ignoring the suggestion outright.
+
+            emit_to_destination(&buffer.render(), &Level::Note, &mut self.dst, self.short_message)?;
             return Ok(());
         }
-
-        let mut buffer = StyledBuffer::new();
 
         // Render the suggestion message
         buffer.append(0, level.to_str(), Style::Level(*level));
