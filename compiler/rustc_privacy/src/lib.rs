@@ -75,6 +75,8 @@ pub trait DefIdVisitor<'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx>;
+    /// NOTE: Def-id visiting should be idempotent, because `DefIdVisitorSkeleton` will avoid
+    /// visiting duplicate def-ids. All the current visitors follow this rule.
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display)
     -> Self::Result;
 
@@ -82,7 +84,7 @@ pub trait DefIdVisitor<'tcx> {
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
-            visited_opaque_tys: Default::default(),
+            visited_tys: Default::default(),
             dummy: Default::default(),
         }
     }
@@ -102,7 +104,7 @@ pub trait DefIdVisitor<'tcx> {
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_opaque_tys: FxHashSet<DefId>,
+    visited_tys: FxHashSet<Ty<'tcx>>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -183,13 +185,19 @@ where
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
-        match *ty.kind() {
+        let ty_kind = *ty.kind();
+        match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
             | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
+                if let ty::Adt(..) = ty_kind
+                    && !self.visited_tys.insert(ty)
+                {
+                    return V::Result::output();
+                }
                 try_visit!(self.def_id_visitor.visit_def_id(def_id, "type", &ty));
                 if V::SHALLOW {
                     return V::Result::output();
@@ -197,7 +205,7 @@ where
                 // Default type visitor doesn't visit signatures of fn types.
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
-                if let ty::FnDef(..) = ty.kind() {
+                if let ty::FnDef(..) = ty_kind {
                     // FIXME: this should probably use `args` from `FnDef`
                     try_visit!(tcx.fn_sig(def_id).instantiate_identity().visit_with(self));
                 }
@@ -258,20 +266,19 @@ where
                 }
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
-                // Skip repeated `Opaque`s to avoid infinite recursion.
-                if self.visited_opaque_tys.insert(def_id) {
-                    // The intent is to treat `impl Trait1 + Trait2` identically to
-                    // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
-                    // (it either has no visibility, or its visibility is insignificant, like
-                    // visibilities of type aliases) and recurse into bounds instead to go
-                    // through the trait list (default type visitor doesn't visit those traits).
-                    // All traits in the list are considered the "primary" part of the type
-                    // and are visited by shallow visitors.
-                    try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
                 }
+                // The intent is to treat `impl Trait1 + Trait2` identically to
+                // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
+                // (it either has no visibility, or its visibility is insignificant, like
+                // visibilities of type aliases) and recurse into bounds instead to go
+                // through the trait list (default type visitor doesn't visit those traits).
+                // All traits in the list are considered the "primary" part of the type
+                // and are visited by shallow visitors.
+                try_visit!(self.visit_clauses(tcx.explicit_item_bounds(def_id).skip_binder()));
             }
-            // These types don't have their own def-ids (but may have subcomponents
-            // with def-ids that should be visited recursively).
+            // These types have neither their own def-ids nor subcomponents.
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -279,7 +286,12 @@ where
             | ty::Float(..)
             | ty::Str
             | ty::Never
-            | ty::Array(..)
+            | ty::Bound(..)
+            | ty::Param(..) => {}
+
+            // These types don't have their own def-ids (but may have subcomponents
+            // with def-ids that should be visited recursively).
+            ty::Array(..)
             | ty::Slice(..)
             | ty::Tuple(..)
             | ty::RawPtr(..)
@@ -287,8 +299,6 @@ where
             | ty::Pat(..)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Param(..)
-            | ty::Bound(..)
             | ty::Error(_)
             | ty::CoroutineWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
@@ -929,7 +939,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
-        &mut self,
+        &self,
         hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
@@ -947,7 +957,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn emit_unreachable_field_error(
-        &mut self,
+        &self,
         fields: Vec<(Symbol, Span, bool /* field is present */)>,
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         update_syntax: Option<Span>,
@@ -1010,7 +1020,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     }
 
     fn check_expanded_fields(
-        &mut self,
+        &self,
         adt: ty::AdtDef<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &[hir::ExprField<'tcx>],
@@ -1148,7 +1158,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
         result.is_break()
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
             self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
@@ -1405,7 +1415,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         self
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
             self.tcx.emit_node_span_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
