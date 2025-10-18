@@ -6,7 +6,6 @@
 //@[sparcv8plus] needs-llvm-components: sparc
 //@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
 //@[sparc64] needs-llvm-components: sparc
-//@ needs-asm-support
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
