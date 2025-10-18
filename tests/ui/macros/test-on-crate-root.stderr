@@ -1,5 +1,5 @@
 error[E0658]: inner macro attributes are unstable
-  --> $DIR/test-on-crate-root.rs:3:4
+  --> $DIR/test-on-crate-root.rs:4:4
    |
 LL | #![core::prelude::v1::test]
    |    ^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,8 +8,8 @@ LL | #![core::prelude::v1::test]
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: the `#[test]` attribute may only be used on a non-associated function
-  --> $DIR/test-on-crate-root.rs:3:1
+error: the `#[test]` attribute may only be used on a free function
+  --> $DIR/test-on-crate-root.rs:4:1
    |
 LL | #![core::prelude::v1::test]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `#[test]` macro causes a function to be run as a test and has no effect on non-functions

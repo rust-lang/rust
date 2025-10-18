@@ -1,4 +1,4 @@
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/issue-111749.rs:8:17
    |
 LL |     cbor_map! { #[test(test)] 4i32};
