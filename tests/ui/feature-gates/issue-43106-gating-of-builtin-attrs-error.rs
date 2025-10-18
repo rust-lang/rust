@@ -16,15 +16,23 @@
 //~| NOTE: the `#[rustc_main]` attribute is used internally to specify test entry point function
 #![repr()]
 //~^ ERROR: `repr` attribute cannot be used at crate level
+//~| WARN unused attribute
+//~| NOTE empty list has no effect
 #![path = "3800"]
 //~^ ERROR: attribute cannot be used on
 #![automatically_derived]
 //~^ ERROR: attribute cannot be used on
 #![no_mangle]
+//~^ WARN may not be used in combination with `#[export_name]`
+//~| NOTE is ignored
+//~| NOTE requested on the command line
+//~| WARN cannot be used on crates
+//~| WARN previously accepted
 #![no_link]
 //~^ ERROR: attribute should be applied to an `extern crate` item
 #![export_name = "2200"]
 //~^ ERROR: attribute cannot be used on
+//~| NOTE takes precedence
 #![inline]
 //~^ ERROR: attribute cannot be used on
 #[inline]

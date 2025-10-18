@@ -1,0 +1,12 @@
+warning: `#[track_caller]` attribute cannot be used on macro defs
+  --> $DIR/macro-declaration.rs:4:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[track_caller]` can only be applied to functions
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: 1 warning emitted
+
