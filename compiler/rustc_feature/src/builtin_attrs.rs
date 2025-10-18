@@ -1378,6 +1378,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_force_inline]` forces a free function to be inlined"
     ),
+    rustc_attr!(
+        rustc_defer_codegen, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        "`#[rustc_defer_codegen]` makes a non-generic function instantiated in crates that use it instead of the defining crates"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

@@ -270,7 +270,7 @@ pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
 /// The behavior of this macro is described in detail [here](PartialEq#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, structural_match)]
+#[allow_internal_unstable(core_intrinsics, structural_match, rustc_attrs)]
 pub macro PartialEq($item:item) {
     /* compiler built-in */
 }
@@ -351,7 +351,7 @@ pub const trait Eq: [const] PartialEq<Self> + PointeeSized {
 /// Derive macro generating an impl of the trait [`Eq`].
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, rustc_attrs)]
 #[allow_internal_unstable(coverage_attribute)]
 pub macro Eq($item:item) {
     /* compiler built-in */
@@ -1102,7 +1102,7 @@ pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
 /// The behavior of this macro is described in detail [here](Ord#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, rustc_attrs)]
 pub macro Ord($item:item) {
     /* compiler built-in */
 }
@@ -1517,7 +1517,7 @@ where
 /// The behavior of this macro is described in detail [here](PartialOrd#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, rustc_attrs)]
 pub macro PartialOrd($item:item) {
     /* compiler built-in */
 }
