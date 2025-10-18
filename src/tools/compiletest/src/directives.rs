@@ -181,6 +181,8 @@ pub(crate) struct TestProps {
     pub run_rustfix: bool,
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub rustfix_only_machine_applicable: bool,
+    // If true, don't test the fixed program. It's still broken in some way.
+    pub rustfix_dont_test_fixed: bool,
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
@@ -245,6 +247,7 @@ mod directives {
     pub const DONT_CHECK_FAILURE_STATUS: &'static str = "dont-check-failure-status";
     pub const RUN_RUSTFIX: &'static str = "run-rustfix";
     pub const RUSTFIX_ONLY_MACHINE_APPLICABLE: &'static str = "rustfix-only-machine-applicable";
+    pub const RUSTFIX_DONT_TEST_FIXED: &'static str = "rustfix-dont-test-fixed";
     pub const ASSEMBLY_OUTPUT: &'static str = "assembly-output";
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
@@ -303,6 +306,7 @@ impl TestProps {
             dont_check_failure_status: false,
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
+            rustfix_dont_test_fixed: false,
             assembly_output: None,
             should_ice: false,
             stderr_per_bitwidth: false,
@@ -542,6 +546,11 @@ impl TestProps {
                         ln,
                         RUSTFIX_ONLY_MACHINE_APPLICABLE,
                         &mut self.rustfix_only_machine_applicable,
+                    );
+                    config.set_name_directive(
+                        ln,
+                        RUSTFIX_DONT_TEST_FIXED,
+                        &mut self.rustfix_dont_test_fixed,
                     );
                     config.set_name_value_directive(
                         ln,
