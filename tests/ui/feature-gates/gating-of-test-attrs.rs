@@ -26,22 +26,22 @@ mod test {
 // non-crate-level #[bench] attributes seem to be ignored.
 
 #[bench]
-//~^ ERROR the `#[test]` attribute may only be used on a non-associated function
+//~^ ERROR the `#[bench]` attribute may only be used on a non-associated function
 mod bench {
     mod inner { #![bench] }
     //~^ ERROR inner macro attributes are unstable
-    //~| ERROR the `#[test]` attribute may only be used on a non-associated function
+    //~| ERROR the `#[bench]` attribute may only be used on a non-associated function
 
     #[bench]
-    //~^ ERROR the `#[test]` attribute may only be used on a non-associated function
+    //~^ ERROR the `#[bench]` attribute may only be used on a non-associated function
     struct S;
 
     #[bench]
-    //~^ ERROR the `#[test]` attribute may only be used on a non-associated function
+    //~^ ERROR the `#[bench]` attribute may only be used on a non-associated function
     type T = S;
 
     #[bench]
-    //~^ ERROR the `#[test]` attribute may only be used on a non-associated function
+    //~^ ERROR the `#[bench]` attribute may only be used on a non-associated function
     impl S { }
 }
 
