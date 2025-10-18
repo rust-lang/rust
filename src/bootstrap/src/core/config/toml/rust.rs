@@ -321,7 +321,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_rustc,
         llvm_tools,
         llvm_bitcode_linker,
-        lto,
         stack_protector,
         strip,
         jemalloc,
@@ -354,6 +353,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         save_toolstates: _,
         codegen_backends: _,
         lld: _,
+        lto: _,
         deny_warnings: _,
         backtrace_on_ice: _,
         verify_llvm_ir: _,
@@ -393,7 +393,6 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.jemalloc, jemalloc, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
-    err!(current_rust_config.lto, lto, "rust");
     err!(current_rust_config.std_features, std_features, "rust");
 
     warn!(current_rust_config.channel, channel, "rust");
