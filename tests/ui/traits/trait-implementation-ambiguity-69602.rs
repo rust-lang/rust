@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/69602
 trait TraitA {
     const VALUE: usize;
 }
