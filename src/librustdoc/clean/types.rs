@@ -37,6 +37,7 @@ use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_evaluated_const};
+use crate::config::ExternHtmlRootTakesPrecedence;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -159,7 +160,7 @@ impl ExternalCrate {
     pub(crate) fn location(
         &self,
         extern_url: Option<&str>,
-        extern_url_takes_precedence: bool,
+        extern_url_takes_precedence: ExternHtmlRootTakesPrecedence,
         dst: &std::path::Path,
         tcx: TyCtxt<'_>,
     ) -> ExternalLocation {
@@ -181,7 +182,9 @@ impl ExternalCrate {
             return Local;
         }
 
-        if extern_url_takes_precedence && let Some(url) = extern_url {
+        if extern_url_takes_precedence.0
+            && let Some(url) = extern_url
+        {
             return to_remote(url);
         }
 

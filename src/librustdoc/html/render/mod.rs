@@ -2963,9 +2963,9 @@ fn repr_attribute<'tcx>(
     };
     let repr = adt.repr();
 
-    let is_visible = |def_id| cache.document_hidden || !tcx.is_doc_hidden(def_id);
+    let is_visible = |def_id| cache.document_hidden.0 || !tcx.is_doc_hidden(def_id);
     let is_public_field = |field: &ty::FieldDef| {
-        (cache.document_private || field.vis.is_public()) && is_visible(field.did)
+        (cache.document_private.0 || field.vis.is_public()) && is_visible(field.did)
     };
 
     if repr.transparent() {

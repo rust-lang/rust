@@ -27,7 +27,7 @@ struct TypeLayoutSize {
 
 pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        if !cx.shared.show_type_layout {
+        if !cx.shared.show_type_layout.0 {
             return Ok(());
         }
 

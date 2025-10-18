@@ -79,7 +79,7 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
 
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
     let text = fmt::from_fn(|f| {
-        if !options.markdown_no_toc {
+        if !options.markdown_no_toc.0 {
             MarkdownWithToc {
                 content: text,
                 links: &[],

@@ -2,6 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 
+use crate::config::DocumentHidden;
 use crate::core::DocContext;
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
@@ -47,7 +48,7 @@ struct LibEmbargoVisitor<'a, 'tcx> {
     extern_public: &'a mut DefIdSet,
     // Keeps track of already visited modules, in case a module re-exports its parent
     visited_mods: DefIdSet,
-    document_hidden: bool,
+    document_hidden: DocumentHidden,
 }
 
 impl LibEmbargoVisitor<'_, '_> {
@@ -66,7 +67,7 @@ impl LibEmbargoVisitor<'_, '_> {
     }
 
     fn visit_item(&mut self, def_id: DefId) {
-        if self.document_hidden || !self.tcx.is_doc_hidden(def_id) {
+        if self.document_hidden.0 || !self.tcx.is_doc_hidden(def_id) {
             self.extern_public.insert(def_id);
             if self.tcx.def_kind(def_id) == DefKind::Mod {
                 self.visit_mod(def_id);
