@@ -1,8 +1,6 @@
 //@ run-pass
 //@ edition: 2024
 
-#![feature(if_let_guard)]
-
 fn check_if_let(opt: Option<Option<Option<i32>>>, value: i32) -> bool {
     if let Some(first) = opt
         && let Some(second) = first
@@ -10,20 +8,21 @@ fn check_if_let(opt: Option<Option<Option<i32>>>, value: i32) -> bool {
         && third == value
     {
         true
-    }
-    else {
+    } else {
         false
     }
 }
 
 fn check_let_guard(opt: Option<Option<Option<i32>>>, value: i32) -> bool {
     match opt {
-        Some(first) if let Some(second) = first && let Some(third) = second && third == value => {
+        Some(first)
+            if let Some(second) = first
+                && let Some(third) = second
+                && third == value =>
+        {
             true
         }
-        _ => {
-            false
-        }
+        _ => false,
     }
 }
 

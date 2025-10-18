@@ -1,7 +1,6 @@
 //@ build-pass
 //@ edition:2018
 
-#![feature(if_let_guard)]
 
 static A: [i32; 5] = [1, 2, 3, 4, 5];
 

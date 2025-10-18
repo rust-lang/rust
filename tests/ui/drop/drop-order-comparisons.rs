@@ -27,7 +27,6 @@
 //@ [e2024] edition: 2024
 //@ run-pass
 
-#![feature(if_let_guard)]
 #![cfg_attr(e2021, warn(rust_2024_compatibility))]
 
 fn t_bindings() {

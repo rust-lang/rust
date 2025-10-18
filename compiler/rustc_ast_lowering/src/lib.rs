@@ -32,9 +32,10 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![doc(rust_logo)]
 #![feature(box_patterns)]
-#![feature(if_let_guard)]
+#![feature(exact_size_is_empty)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 

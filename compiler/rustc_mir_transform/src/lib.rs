@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -6,7 +7,6 @@
 #![feature(cow_is_borrowed)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
-#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
