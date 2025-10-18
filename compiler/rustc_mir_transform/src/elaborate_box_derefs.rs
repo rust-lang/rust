@@ -1,13 +1,16 @@
 //! This pass transforms derefs of Box into a deref of the pointer inside Box.
 //!
 //! Box is not actually a pointer so it is incorrect to dereference it directly.
+//!
+//! `ShallowInitBox` being a device for drop elaboration to understand deferred assignment to box
+//! contents, we do not need this any more on runtime MIR.
 
-use rustc_abi::FieldIdx;
-use rustc_hir::def_id::DefId;
+use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_index::{IndexVec, indexvec};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -15,12 +18,12 @@ use crate::patch::MirPatch;
 fn build_ptr_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     pointee: Ty<'tcx>,
-    unique_did: DefId,
-    nonnull_did: DefId,
+    unique_def: ty::AdtDef<'tcx>,
+    nonnull_def: ty::AdtDef<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     let args = tcx.mk_args(&[pointee.into()]);
-    let unique_ty = tcx.type_of(unique_did).instantiate(tcx, args);
-    let nonnull_ty = tcx.type_of(nonnull_did).instantiate(tcx, args);
+    let unique_ty = Ty::new_adt(tcx, unique_def, args);
+    let nonnull_ty = Ty::new_adt(tcx, nonnull_def, args);
     let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
 
     (unique_ty, nonnull_ty, ptr_ty)
@@ -36,8 +39,8 @@ pub(super) fn build_projection<'tcx>(
 
 struct ElaborateBoxDerefVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    unique_did: DefId,
-    nonnull_did: DefId,
+    unique_def: ty::AdtDef<'tcx>,
+    nonnull_def: ty::AdtDef<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     patch: MirPatch<'tcx>,
 }
@@ -64,7 +67,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
             let source_info = self.local_decls[place.local].source_info;
 
             let (unique_ty, nonnull_ty, ptr_ty) =
-                build_ptr_tys(tcx, boxed_ty, self.unique_did, self.nonnull_did);
+                build_ptr_tys(tcx, boxed_ty, self.unique_def, self.nonnull_def);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
 
@@ -86,6 +89,68 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
 
         self.super_place(place, context, location);
     }
+
+    fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
+        self.super_statement(stmt, location);
+
+        let tcx = self.tcx;
+        let source_info = stmt.source_info;
+
+        if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
+            && let Rvalue::ShallowInitBox(ref mut mutptr_to_u8, pointee) = *rvalue
+            && let ty::Adt(box_adt, box_args) = Ty::new_box(tcx, pointee).kind()
+        {
+            let args = tcx.mk_args(&[pointee.into()]);
+            let (unique_ty, nonnull_ty, ptr_ty) =
+                build_ptr_tys(tcx, pointee, self.unique_def, self.nonnull_def);
+            let adt_kind = |def: ty::AdtDef<'tcx>, args| {
+                Box::new(AggregateKind::Adt(def.did(), VariantIdx::ZERO, args, None, None))
+            };
+            let zst = |ty| {
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::zero_sized(ty),
+                }))
+            };
+
+            let constptr = self.patch.new_temp(ptr_ty, source_info.span);
+            self.patch.add_assign(
+                location,
+                constptr.into(),
+                Rvalue::Cast(CastKind::Transmute, mutptr_to_u8.clone(), ptr_ty),
+            );
+
+            let nonnull = self.patch.new_temp(nonnull_ty, source_info.span);
+            self.patch.add_assign(
+                location,
+                nonnull.into(),
+                Rvalue::Aggregate(
+                    adt_kind(self.nonnull_def, args),
+                    indexvec![Operand::Move(constptr.into())],
+                ),
+            );
+
+            let unique = self.patch.new_temp(unique_ty, source_info.span);
+            let phantomdata_ty =
+                self.unique_def.non_enum_variant().fields[FieldIdx::ONE].ty(tcx, args);
+            self.patch.add_assign(
+                location,
+                unique.into(),
+                Rvalue::Aggregate(
+                    adt_kind(self.unique_def, args),
+                    indexvec![Operand::Move(nonnull.into()), zst(phantomdata_ty)],
+                ),
+            );
+
+            let global_alloc_ty =
+                box_adt.non_enum_variant().fields[FieldIdx::ONE].ty(tcx, box_args);
+            *rvalue = Rvalue::Aggregate(
+                adt_kind(*box_adt, box_args),
+                indexvec![Operand::Move(unique.into()), zst(global_alloc_ty)],
+            );
+        }
+    }
 }
 
 pub(super) struct ElaborateBoxDerefs;
@@ -97,18 +162,22 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
 
-        let Some(nonnull_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def() else {
+        let Some(unique_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def() else {
             span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
         };
 
-        let nonnull_did = nonnull_def.non_enum_variant().fields[FieldIdx::ZERO].did;
+        let nonnull_did = unique_def.non_enum_variant().fields[FieldIdx::ZERO].did;
+
+        let Some(nonnull_def) = tcx.type_of(nonnull_did).instantiate_identity().ty_adt_def() else {
+            span_bug!(tcx.def_span(nonnull_did), "expected Unique to contain Nonnull")
+        };
 
         let patch = MirPatch::new(body);
 
         let local_decls = &mut body.local_decls;
 
         let mut visitor =
-            ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
+            ElaborateBoxDerefVisitor { tcx, unique_def, nonnull_def, local_decls, patch };
 
         for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             visitor.visit_basic_block_data(block, data);
@@ -131,7 +200,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                             new_projections.get_or_insert_with(|| base.projection.to_vec());
 
                         let (unique_ty, nonnull_ty, ptr_ty) =
-                            build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
+                            build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
                         new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
                         // While we can't project into `NonNull<_>` in a basic block
