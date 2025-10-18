@@ -59,30 +59,29 @@
 +                         scope 12 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
 +                         }
 +                         scope 13 (inlined <std::future::Ready<()> as Future>::poll) {
-+                             let mut _43: ();
-+                             let mut _44: std::option::Option<()>;
-+                             let mut _45: &mut std::option::Option<()>;
-+                             let mut _46: &mut std::future::Ready<()>;
-+                             let mut _47: &mut std::pin::Pin<&mut std::future::Ready<()>>;
++                             let mut _43: std::option::Option<()>;
++                             let mut _44: &mut std::option::Option<()>;
++                             let mut _45: &mut std::future::Ready<()>;
++                             let mut _46: &mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                             scope 14 (inlined <Pin<&mut std::future::Ready<()>> as DerefMut>::deref_mut) {
-+                                 let mut _48: *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>>;
-+                                 let mut _49: *mut std::pin::Pin<&mut std::future::Ready<()>>;
++                                 let mut _47: *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>>;
++                                 let mut _48: *mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                                 scope 15 (inlined <pin::helper::PinHelper<&mut std::future::Ready<()>> as pin::helper::PinDerefMutHelper>::deref_mut) {
-+                                     let mut _50: &mut &mut std::future::Ready<()>;
++                                     let mut _49: &mut &mut std::future::Ready<()>;
 +                                     scope 16 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {
 +                                     }
 +                                 }
 +                             }
 +                             scope 17 (inlined Option::<()>::take) {
-+                                 let mut _51: std::option::Option<()>;
++                                 let mut _50: std::option::Option<()>;
 +                                 scope 18 (inlined std::mem::replace::<Option<()>>) {
 +                                     scope 19 {
 +                                     }
 +                                 }
 +                             }
 +                             scope 20 (inlined #[track_caller] Option::<()>::expect) {
-+                                 let mut _52: isize;
-+                                 let mut _53: !;
++                                 let mut _51: isize;
++                                 let mut _52: !;
 +                                 scope 21 {
 +                                 }
 +                             }
@@ -231,24 +230,23 @@
 +         _23 = move _24;
 +         _22 = &mut (*_23);
 +         StorageDead(_24);
-+         StorageLive(_46);
-+         StorageLive(_48);
-+         StorageLive(_53);
 +         StorageLive(_43);
-+         StorageLive(_44);
-+         StorageLive(_49);
-+         _49 = &raw mut _19;
-+         _48 = copy _49 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
-+         StorageDead(_49);
-+         _46 = copy ((*_48).0: &mut std::future::Ready<()>);
-+         StorageLive(_51);
-+         _51 = Option::<()>::None;
-+         _44 = copy ((*_46).0: std::option::Option<()>);
-+         ((*_46).0: std::option::Option<()>) = copy _51;
-+         StorageDead(_51);
++         StorageLive(_45);
++         StorageLive(_47);
 +         StorageLive(_52);
-+         _52 = discriminant(_44);
-+         switchInt(move _52) -> [0: bb16, 1: bb17, otherwise: bb7];
++         StorageLive(_48);
++         _48 = &raw mut _19;
++         _47 = copy _48 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
++         StorageDead(_48);
++         _45 = copy ((*_47).0: &mut std::future::Ready<()>);
++         StorageLive(_50);
++         _50 = Option::<()>::None;
++         _43 = copy ((*_45).0: std::option::Option<()>);
++         ((*_45).0: std::option::Option<()>) = copy _50;
++         StorageDead(_50);
++         StorageLive(_51);
++         _51 = discriminant(_43);
++         switchInt(move _51) -> [0: bb16, 1: bb17, otherwise: bb7];
       }
   
 -     bb6 (cleanup): {
@@ -335,18 +333,16 @@
 +     }
 + 
 +     bb16: {
-+         _53 = option::expect_failed(const "`Ready` polled after completion") -> bb11;
++         _52 = option::expect_failed(const "`Ready` polled after completion") -> bb11;
 +     }
 + 
 +     bb17: {
-+         _43 = move ((_44 as Some).0: ());
++         StorageDead(_51);
++         _18 = Poll::<()>::Ready(move ((_43 as Some).0: ()));
 +         StorageDead(_52);
-+         StorageDead(_44);
-+         _18 = Poll::<()>::Ready(move _43);
++         StorageDead(_47);
++         StorageDead(_45);
 +         StorageDead(_43);
-+         StorageDead(_53);
-+         StorageDead(_48);
-+         StorageDead(_46);
 +         StorageDead(_22);
 +         StorageDead(_19);
 +         _25 = discriminant(_18);

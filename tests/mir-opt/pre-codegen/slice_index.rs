@@ -35,9 +35,8 @@ pub fn slice_index_range(slice: &[u32], index: Range<usize>) -> &[u32] {
 pub unsafe fn slice_get_unchecked_mut_range(slice: &mut [u32], index: Range<usize>) -> &mut [u32] {
     // CHECK-LABEL: slice_get_unchecked_mut_range
     // CHECK: [[START:_[0-9]+]] = move (_2.0: usize);
-    // CHECK: [[END:_[0-9]+]] = move (_2.1: usize);
     // CHECK: precondition_check
-    // CHECK: [[LEN:_[0-9]+]] = SubUnchecked(copy [[END]], copy [[START]]);
+    // CHECK: [[LEN:_[0-9]+]] = SubUnchecked(copy (_2.1: usize), copy [[START]]);
     // CHECK: [[PTR:_[0-9]+]] = Offset(copy {{_[0-9]+}}, copy [[START]]);
     // CHECK: [[SLICE:_[0-9]+]] = *mut [u32] from (copy [[PTR]], copy [[LEN]])
     // CHECK: _0 = &mut (*[[SLICE]]);
@@ -51,9 +50,8 @@ pub unsafe fn slice_ptr_get_unchecked_range(
 ) -> *const [u32] {
     // CHECK-LABEL: slice_ptr_get_unchecked_range
     // CHECK: [[START:_[0-9]+]] = move (_2.0: usize);
-    // CHECK: [[END:_[0-9]+]] = move (_2.1: usize);
     // CHECK: precondition_check
-    // CHECK: [[LEN:_[0-9]+]] = SubUnchecked(copy [[END]], copy [[START]]);
+    // CHECK: [[LEN:_[0-9]+]] = SubUnchecked(copy (_2.1: usize), copy [[START]]);
     // CHECK: [[PTR:_[0-9]+]] = Offset(copy {{_[0-9]+}}, copy [[START]]);
     // CHECK: _0 = *const [u32] from (copy [[PTR]], copy [[LEN]])
     slice.get_unchecked(index)

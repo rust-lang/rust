@@ -11,12 +11,12 @@ fn f(_1: usize) -> usize {
     }
 
     bb0: {
-        nop;
+        StorageLive(_2);
         _2 = copy _1;
         _1 = const 5_usize;
         nop;
+        _1 = copy _2;
         nop;
-        _1 = move _2;
         nop;
         nop;
         nop;
@@ -25,7 +25,7 @@ fn f(_1: usize) -> usize {
 
     bb1: {
         nop;
-        nop;
+        StorageDead(_2);
         return;
     }
 }
