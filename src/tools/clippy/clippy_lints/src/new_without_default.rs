@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 // can't be implemented for unsafe new
                 && !sig.header.is_unsafe()
                 // shouldn't be implemented when it is hidden in docs
-                && !cx.tcx.is_doc_hidden(impl_item.owner_id.def_id)
+                && !cx.tcx.is_doc_hidden(impl_item.owner_id.def_id.to_def_id())
                 // when the result of `new()` depends on a parameter we should not require
                 // an impl of `Default`
                 && impl_item.generics.params.is_empty()
