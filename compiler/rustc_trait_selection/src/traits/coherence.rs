@@ -735,9 +735,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // For bound predicates we simply call `infcx.enter_forall`
         // and then prove the resulting predicate as a nested goal.
         let Goal { param_env, predicate } = goal.goal();
-        let trait_ref = match predicate.kind().no_bound_vars() {
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)))
+        let predicate_kind = goal.infcx().enter_forall_and_leak_universe(predicate.kind());
+        let trait_ref = match predicate_kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.trait_ref,
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))
                 if matches!(
                     infcx.tcx.def_kind(proj.projection_term.def_id),
                     DefKind::AssocTy | DefKind::AssocConst

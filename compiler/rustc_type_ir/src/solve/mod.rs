@@ -78,8 +78,6 @@ pub enum GoalSource {
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
     AliasBoundConstCondition,
-    /// Instantiating a higher-ranked goal and re-proving it.
-    InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
     /// This is used in three places:
     /// 1. projecting to an opaque whose hidden type is already registered in
