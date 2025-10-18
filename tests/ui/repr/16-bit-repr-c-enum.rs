@@ -7,7 +7,7 @@
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items, intrinsics, staged_api, rustc_attrs)]
+#![feature(no_core, intrinsics, staged_api, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 #![stable(feature = "intrinsics_for_test", since = "3.3.3")]

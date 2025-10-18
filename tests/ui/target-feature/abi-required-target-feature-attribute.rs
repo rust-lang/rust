@@ -4,17 +4,12 @@
 //@ needs-llvm-components: x86
 //@ build-pass
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items, x87_target_feature)]
+//@ add-core-stubs
+#![feature(no_core, x87_target_feature)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
+extern crate minicore;
+use minicore::*;
 
 #[target_feature(enable = "x87")]
 pub unsafe fn my_fun() {}

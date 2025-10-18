@@ -7,17 +7,12 @@
 //@[riscv] compile-flags: --target=riscv32e-unknown-none-elf
 //@[riscv] needs-llvm-components: riscv
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items, riscv_target_feature, x87_target_feature)]
+//@ add-core-stubs
+#![feature(no_core, riscv_target_feature, x87_target_feature)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[cfg_attr(x86, target_feature(enable = "soft-float"))] #[cfg_attr(riscv, target_feature(enable = "d"))]
 //~^ERROR: cannot be enabled with

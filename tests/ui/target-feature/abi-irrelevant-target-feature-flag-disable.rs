@@ -6,16 +6,11 @@
 //@ compile-flags: -Ctarget-feature=-x87
 //@ build-pass
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items)]
+//@ add-core-stubs
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
+extern crate minicore;
+use minicore::*;
 
 //~? WARN unstable feature specified for `-Ctarget-feature`: `x87`
