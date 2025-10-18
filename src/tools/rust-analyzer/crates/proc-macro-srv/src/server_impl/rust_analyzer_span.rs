@@ -65,9 +65,14 @@ impl server::TokenStream for RaSpanServer {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
-    fn from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
-        Self::TokenStream::from_str(src, self.call_site)
-            .map_err(|e| format!("failed to parse str to token stream: {e}"))
+    fn from_str(&mut self, src: &str) -> Self::TokenStream {
+        Self::TokenStream::from_str(src, self.call_site).unwrap_or_else(|e| {
+            Self::TokenStream::from_str(
+                &format!("compile_error!(\"failed to parse str to token stream: {e}\")"),
+                self.call_site,
+            )
+            .unwrap()
+        })
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
