@@ -34,10 +34,6 @@ pub(crate) fn expand_test_case(
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
     warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
 
-    if !ecx.ecfg.should_test {
-        return vec![];
-    }
-
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let (mut item, is_stmt) = match anno_item {
         Annotatable::Item(item) => (item, false),
@@ -53,6 +49,10 @@ pub(crate) fn expand_test_case(
             return vec![];
         }
     };
+
+    if !ecx.ecfg.should_test {
+        return vec![];
+    }
 
     // `#[test_case]` is valid on functions, consts, and statics. Only modify
     // the item in those cases.
@@ -113,11 +113,6 @@ pub(crate) fn expand_test_or_bench(
     item: Annotatable,
     is_bench: bool,
 ) -> Vec<Annotatable> {
-    // If we're not in test configuration, remove the annotated item
-    if !cx.ecfg.should_test {
-        return vec![];
-    }
-
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(box ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
@@ -135,6 +130,11 @@ pub(crate) fn expand_test_or_bench(
             vec![Annotatable::Item(item)]
         };
     };
+
+    // If we're not in test configuration, remove the annotated item
+    if !cx.ecfg.should_test {
+        return vec![];
+    }
 
     if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
         cx.dcx().emit_err(errors::NakedFunctionTestingAttribute {
