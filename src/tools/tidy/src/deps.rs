@@ -19,21 +19,15 @@ mod proc_macro_deps;
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
-    "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
-    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
     "0BSD OR MIT OR Apache-2.0",                           // adler2 license
-    "0BSD",
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
-    "Apache-2.0 WITH LLVM-exception",
-    "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "BSD-2-Clause OR MIT OR Apache-2.0",
     "BSD-3-Clause/MIT",
-    "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
     "CC0-1.0 OR MIT-0 OR Apache-2.0",
     "ISC",
     "MIT / Apache-2.0",
@@ -46,11 +40,8 @@ const LICENSES: &[&str] = &[
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
     "MIT",
     "MIT/Apache-2.0",
-    "Unicode-3.0",                                         // icu4x
-    "Unicode-DFS-2016",                                    // tinystr
     "Unlicense OR MIT",
     "Unlicense/MIT",
-    "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
     // tidy-alphabetical-end
 ];
 
@@ -59,11 +50,20 @@ const LICENSES: &[&str] = &[
 const LICENSES_TOOLS: &[&str] = &[
     // tidy-alphabetical-start
     "(Apache-2.0 OR MIT) AND BSD-3-Clause",
+    "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
+    "0BSD",
     "Apache-2.0 AND ISC",
     "Apache-2.0 OR BSL-1.0",  // BSL is not acceptable, but we use it under Apache-2.0
+    "Apache-2.0 WITH LLVM-exception",
+    "Apache-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
     "CC0-1.0",
+    "Unicode-3.0",                                         // icu4x
+    "Unicode-DFS-2016",                                    // tinystr
+    "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
     "Zlib",
     // tidy-alphabetical-end
 ];
