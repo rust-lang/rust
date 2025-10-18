@@ -1965,6 +1965,9 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--default-codegen-backend")
                 .arg(builder.config.default_codegen_backend(test_compiler.host).name());
         }
+        if builder.config.cmd.bypass_ignore_backends() {
+            cmd.arg("--bypass-ignore-backends");
+        }
 
         if builder.build.config.llvm_enzyme {
             cmd.arg("--has-enzyme");
