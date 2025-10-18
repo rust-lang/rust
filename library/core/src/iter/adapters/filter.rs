@@ -4,7 +4,7 @@ use core::ops::ControlFlow;
 
 use crate::fmt;
 use crate::iter::adapters::SourceIter;
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused};
+use crate::iter::{FusedIterator, InPlaceIterable, InfiniteIterator, TrustedFused};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -213,4 +213,15 @@ where
 unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, P> !ExactSizeIterator for Filter<I, P> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, P> InfiniteIterator for Filter<I, P>
+where
+    I: InfiniteIterator,
+    P: FnMut(&I::Item) -> bool,
+{
 }
