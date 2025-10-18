@@ -1,0 +1,189 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:33:9
+   |
+LL |     use crate;
+   |         ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:34:11
+   |
+LL |     use ::crate;
+   |           ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:35:14
+   |
+LL |     use bar::crate;
+   |              ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:36:16
+   |
+LL |     use crate::crate;
+   |                ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:37:16
+   |
+LL |     use super::crate;
+   |                ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:38:15
+   |
+LL |     use self::crate;
+   |               ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:39:20
+   |
+LL |     use ::crate as _crate2;
+   |                    ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:40:23
+   |
+LL |     use bar::crate as _crate3;
+   |                       ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:41:25
+   |
+LL |     use crate::crate as _crate4;
+   |                         ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:42:25
+   |
+LL |     use super::crate as _crate5;
+   |                         ^^^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:43:24
+   |
+LL |     use self::crate as _crate6;
+   |                        ^^^^^^^
+
+error: imports need to be explicitly named: `use super as name;`
+  --> $DIR/use-path-segment-kw.rs:46:9
+   |
+LL |     use super;
+   |         ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:47:11
+   |
+LL |     use ::super;
+   |           ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:48:14
+   |
+LL |     use bar::super;
+   |              ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:49:16
+   |
+LL |     use crate::super;
+   |                ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:50:16
+   |
+LL |     use super::super;
+   |                ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:51:15
+   |
+LL |     use self::super;
+   |               ^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:52:20
+   |
+LL |     use ::super as _super2;
+   |                    ^^^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:53:23
+   |
+LL |     use bar::super as _super3;
+   |                       ^^^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:54:25
+   |
+LL |     use crate::super as _super4;
+   |                         ^^^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:55:25
+   |
+LL |     use super::super as _super5;
+   |                         ^^^^^^^
+
+error: `super` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:56:23
+   |
+LL |     use bar::super as _super6;
+   |                       ^^^^^^^
+
+error: imports need to be explicitly named: `use self as name;`
+  --> $DIR/use-path-segment-kw.rs:59:9
+   |
+LL |     use self;
+   |         ^^^^
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:60:11
+   |
+LL |     use ::self;
+   |           ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:62:16
+   |
+LL |     use crate::self;
+   |                ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:63:16
+   |
+LL |     use super::self;
+   |                ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:64:15
+   |
+LL |     use self::self;
+   |               ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:65:11
+   |
+LL |     use ::self as _self2;
+   |           ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:67:16
+   |
+LL |     use crate::self as _self4;
+   |                ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:68:16
+   |
+LL |     use super::self as _self5;
+   |                ^^^^ can only appear in an import list with a non-empty prefix
+
+error[E0431]: `self` import can only appear in an import list with a non-empty prefix
+  --> $DIR/use-path-segment-kw.rs:69:15
+   |
+LL |     use self::self as _self6;
+   |               ^^^^ can only appear in an import list with a non-empty prefix
+
+error: aborting due to 31 previous errors
+
+For more information about this error, try `rustc --explain E0431`.
