@@ -1247,6 +1247,7 @@ pub enum DesugaringKind {
         /// rewriting it.
         source: bool,
     },
+    RangeExpr,
 }
 
 impl DesugaringKind {
@@ -1268,6 +1269,7 @@ impl DesugaringKind {
             DesugaringKind::FormatLiteral { source: false } => {
                 "expression that expanded into a format string literal"
             }
+            DesugaringKind::RangeExpr => "range expression",
         }
     }
 
@@ -1287,6 +1289,7 @@ impl DesugaringKind {
             DesugaringKind::Contract => value == "Contract",
             DesugaringKind::PatTyRange => value == "PatTyRange",
             DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
+            DesugaringKind::RangeExpr => value == "RangeExpr",
         }
     }
 }
