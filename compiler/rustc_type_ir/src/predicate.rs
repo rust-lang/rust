@@ -655,7 +655,7 @@ impl<I: Interner> AliasTerm<I> {
             | AliasTermKind::UnevaluatedConst
             | AliasTermKind::ProjectionConst => I::Const::new_unevaluated(
                 interner,
-                ty::UnevaluatedConst::new(self.def_id, self.args),
+                ty::UnevaluatedConst::new(self.def_id.try_into().unwrap(), self.args),
             )
             .into(),
         }
@@ -747,7 +747,7 @@ impl<I: Interner> From<ty::AliasTy<I>> for AliasTerm<I> {
 
 impl<I: Interner> From<ty::UnevaluatedConst<I>> for AliasTerm<I> {
     fn from(ct: ty::UnevaluatedConst<I>) -> Self {
-        AliasTerm { args: ct.args, def_id: ct.def, _use_alias_term_new_instead: () }
+        AliasTerm { args: ct.args, def_id: ct.def.into(), _use_alias_term_new_instead: () }
     }
 }
 

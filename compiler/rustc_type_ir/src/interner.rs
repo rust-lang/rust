@@ -53,6 +53,7 @@ pub trait Interner:
     type CoroutineId: SpecificDefId<Self>;
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
+    type UnevaluatedConstId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -341,7 +342,10 @@ pub trait Interner:
 
     fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem>;
 
-    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
+    fn associated_type_def_ids(
+        self,
+        def_id: Self::TraitId,
+    ) -> impl IntoIterator<Item = Self::DefId>;
 
     fn for_each_relevant_impl(
         self,
