@@ -47,7 +47,7 @@
           StorageLive(_7);
           _7 = copy _4;
 -         _0 = AllCopy { a: move _5, b: move _6, c: move _7 };
-+         _0 = copy (*_8);
++         _0 = AllCopy { a: copy _2, b: copy _3, c: copy _4 };
           StorageDead(_7);
           StorageDead(_6);
           StorageDead(_5);

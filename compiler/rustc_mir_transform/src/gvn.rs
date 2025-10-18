@@ -136,8 +136,8 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls, &arena);
 
         for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
-            let opaque = state.new_opaque(body.local_decls[local].ty);
-            state.assign(local, opaque);
+            let argument = state.insert_parameter(body.local_decls[local].ty);
+            state.assign(local, argument);
         }
 
         let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
@@ -204,8 +204,9 @@ enum AddressBase {
 enum Value<'a, 'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
-    /// The `usize` is a counter incremented by `new_opaque`.
     Opaque(VnOpaque),
+    /// Used to represent values we know nothing except that it is a function parameter.
+    Parameter(VnOpaque),
     /// Evaluated or unevaluated constant value.
     Constant {
         value: Const<'tcx>,
@@ -290,7 +291,7 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
         let value = value(VnOpaque);
 
         debug_assert!(match value {
-            Value::Opaque(_) | Value::Address { .. } => true,
+            Value::Opaque(_) | Value::Parameter(_) | Value::Address { .. } => true,
             Value::Constant { disambiguator, .. } => disambiguator.is_some(),
             _ => false,
         });
@@ -308,7 +309,7 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
     #[allow(rustc::pass_by_value)] // closures take `&VnIndex`
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> (VnIndex, bool) {
         debug_assert!(match value {
-            Value::Opaque(_) | Value::Address { .. } => false,
+            Value::Opaque(_) | Value::Parameter(_) | Value::Address { .. } => false,
             Value::Constant { disambiguator, .. } => disambiguator.is_none(),
             _ => true,
         });
@@ -420,6 +421,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.ecx.typing_env()
     }
 
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        evaluated: bool,
+        value: impl FnOnce(VnOpaque) -> Value<'a, 'tcx>,
+    ) -> VnIndex {
+        let index = self.values.insert_unique(ty, value);
+        let _index = self.evaluated.push(if evaluated { Some(None) } else { None });
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
+    }
+
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> VnIndex {
         let (index, new) = self.values.insert(ty, value);
@@ -437,12 +452,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let index = self.values.insert_unique(ty, Value::Opaque);
-        let _index = self.evaluated.push(Some(None));
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
-        index
+        self.insert_unique(ty, true, Value::Opaque)
     }
 
     /// Create a new `Value::Address` distinct from all the others.
@@ -470,42 +480,30 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
         let projection = self.arena.try_alloc_from_iter(projection).ok()?;
 
-        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+        let index = self.insert_unique(ty, false, |provenance| Value::Address {
             base,
             projection,
             kind,
             provenance,
         });
-        let _index = self.evaluated.push(None);
-        debug_assert_eq!(index, _index);
-        let _index = self.rev_locals.push(SmallVec::new());
-        debug_assert_eq!(index, _index);
 
         Some(index)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let (index, new) = if value.is_deterministic() {
+        if value.is_deterministic() {
             // The constant is deterministic, no need to disambiguate.
             let constant = Value::Constant { value, disambiguator: None };
-            self.values.insert(value.ty(), constant)
+            self.insert(value.ty(), constant)
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let index = self.values.insert_unique(value.ty(), |disambiguator| Value::Constant {
+            self.insert_unique(value.ty(), false, |disambiguator| Value::Constant {
                 value,
                 disambiguator: Some(disambiguator),
-            });
-            (index, true)
-        };
-        if new {
-            let _index = self.evaluated.push(None);
-            debug_assert_eq!(index, _index);
-            let _index = self.rev_locals.push(SmallVec::new());
-            debug_assert_eq!(index, _index);
+            })
         }
-        index
     }
 
     #[inline]
@@ -540,13 +538,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.insert(ty, Value::Constant { value, disambiguator: None })
     }
 
+    fn insert_parameter(&mut self, ty: Ty<'tcx>) -> VnIndex {
+        self.insert_unique(ty, true, Value::Parameter)
+    }
+
     fn insert_tuple(&mut self, ty: Ty<'tcx>, values: &[VnIndex]) -> VnIndex {
         self.insert(ty, Value::Aggregate(VariantIdx::ZERO, self.arena.alloc_slice(values)))
     }
 
-    fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
+    fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex, always_valid: bool) -> VnIndex {
         let value = self.insert(ty, Value::Projection(value, ProjectionElem::Deref));
-        self.derefs.push(value);
+        // If the borrow lifetime is the whole body, we don't need to invalidate it.
+        if !always_valid {
+            self.derefs.push(value);
+        }
         value
     }
 
@@ -569,7 +574,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let op = match self.get(value) {
             _ if ty.is_zst() => ImmTy::uninit(ty).into(),
 
-            Opaque(_) => return None,
+            Opaque(_) | Parameter(_) => return None,
             // Do not bother evaluating repeat expressions. This would uselessly consume memory.
             Repeat(..) => return None,
 
@@ -817,15 +822,38 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
                     && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
                 {
-                    if let Value::Address { base, projection, .. } = self.get(value)
-                        && let Some(value) = self.dereference_address(base, projection)
-                    {
+                    if let Value::Address { base, projection, .. } = self.get(value) {
+                        // Bail out if the address cannot be dereferenced.
+                        let value = self.dereference_address(base, projection)?;
                         return Some((projection_ty, value));
                     }
 
-                    // An immutable borrow `_x` always points to the same value for the
-                    // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
+                    if let Value::Parameter(_) | Value::Constant { .. } = self.get(value) {
+                        // An immutable borrow `_x` that is an parameter or a constant always points to the same value in the whole body,
+                        // so we can merge all instances of `*_x`.
+                        return Some((
+                            projection_ty,
+                            self.insert_deref(projection_ty.ty, value, true),
+                        ));
+                    }
+
+                    // FIXME: We could introduce new deref that the immutable borrow lifetime scope is not the whole body,
+                    // but we must invalidate it when out of the lifetime scope.
+                    // The lifetime scope here is unrelated to storage markers, but rather does not violate the Stacked Borrows rules.
+                    // Known related issues:
+                    // - https://github.com/rust-lang/rust/issues/130853 (Fixed by invalidating)
+                    // - https://github.com/rust-lang/rust/issues/132353 (Fixed by invalidating)
+                    // - https://github.com/rust-lang/rust/issues/141038 (Not fixed well)
+                    // - https://github.com/rust-lang/rust/issues/141251 (Fixed by #144477)
+                    // - https://github.com/rust-lang/rust/issues/141313
+                    // - https://github.com/rust-lang/rust/pull/147607 (Fixed by invalidating)
+                    if self.tcx.sess.opts.unstable_opts.unsound_mir_opts {
+                        return Some((
+                            projection_ty,
+                            self.insert_deref(projection_ty.ty, value, false),
+                        ));
+                    }
+                    return None;
                 } else {
                     return None;
                 }
