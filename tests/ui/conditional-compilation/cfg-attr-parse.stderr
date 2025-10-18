@@ -21,7 +21,7 @@ LL | #[cfg_attr(all())]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
-  --> $DIR/cfg-attr-parse.rs:16:18
+  --> $DIR/cfg-attr-parse.rs:17:18
    |
 LL | #[cfg_attr(all(),,)]
    | -----------------^--
@@ -32,7 +32,7 @@ LL | #[cfg_attr(all(),,)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
-  --> $DIR/cfg-attr-parse.rs:28:28
+  --> $DIR/cfg-attr-parse.rs:29:28
    |
 LL | #[cfg_attr(all(), must_use,,)]
    | ---------------------------^--
@@ -43,7 +43,7 @@ LL | #[cfg_attr(all(), must_use,,)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
-  --> $DIR/cfg-attr-parse.rs:40:40
+  --> $DIR/cfg-attr-parse.rs:41:40
    |
 LL | #[cfg_attr(all(), must_use, deprecated,,)]
    | ---------------------------------------^--
@@ -54,7 +54,7 @@ LL | #[cfg_attr(all(), must_use, deprecated,,)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: wrong `cfg_attr` delimiters
-  --> $DIR/cfg-attr-parse.rs:44:11
+  --> $DIR/cfg-attr-parse.rs:45:11
    |
 LL | #[cfg_attr[all(),,]]
    |           ^^^^^^^^^
@@ -66,7 +66,7 @@ LL + #[cfg_attr(all(),,)]
    |
 
 error: expected identifier, found `,`
-  --> $DIR/cfg-attr-parse.rs:44:18
+  --> $DIR/cfg-attr-parse.rs:45:18
    |
 LL | #[cfg_attr[all(),,]]
    | -----------------^--
@@ -77,7 +77,7 @@ LL | #[cfg_attr[all(),,]]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: wrong `cfg_attr` delimiters
-  --> $DIR/cfg-attr-parse.rs:50:11
+  --> $DIR/cfg-attr-parse.rs:51:11
    |
 LL | #[cfg_attr{all(),,}]
    |           ^^^^^^^^^
@@ -89,7 +89,7 @@ LL + #[cfg_attr(all(),,)]
    |
 
 error: expected identifier, found `,`
-  --> $DIR/cfg-attr-parse.rs:50:18
+  --> $DIR/cfg-attr-parse.rs:51:18
    |
 LL | #[cfg_attr{all(),,}]
    | -----------------^--
@@ -99,6 +99,14 @@ LL | #[cfg_attr{all(),,}]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
-error: aborting due to 9 previous errors
+warning: `#[cfg_attr]` does not expand to any attributes
+  --> $DIR/cfg-attr-parse.rs:12:1
+   |
+LL | #[cfg_attr(all(),)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 9 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0539`.

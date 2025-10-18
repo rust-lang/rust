@@ -1838,8 +1838,9 @@ impl<'test> TestCx<'test> {
 
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
         // overwrite this.
+        // Don't allow `unused_attributes` since these are usually actual mistakes, rather than just unused code.
         if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
+            rustc.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
         // Allow tests to use internal features.

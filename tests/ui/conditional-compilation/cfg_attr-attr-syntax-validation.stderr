@@ -118,7 +118,7 @@ LL | #[cfg_attr(true, link_section)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
 
 error[E0805]: malformed `inline` attribute input
-  --> $DIR/cfg_attr-attr-syntax-validation.rs:47:18
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:49:18
    |
 LL | #[cfg_attr(true, inline())]
    |                  ^^^^^^--
@@ -138,7 +138,17 @@ LL - #[cfg_attr(true, inline())]
 LL + #[cfg_attr(true, #[inline])]
    |
 
-error: aborting due to 13 previous errors
+warning: `#[link_section]` attribute cannot be used on structs
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:44:18
+   |
+LL | #[cfg_attr(true, link_section)]
+   |                  ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[link_section]` can be applied to functions and statics
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 13 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0537, E0539, E0805.
 For more information about an error, try `rustc --explain E0537`.

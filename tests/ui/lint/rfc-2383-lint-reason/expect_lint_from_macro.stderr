@@ -1,3 +1,16 @@
+warning: unused attribute `expect`
+  --> $DIR/expect_lint_from_macro.rs:26:5
+   |
+LL |     #[expect(unused_variables)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the built-in attribute `expect` will be ignored, since it's applied to the macro invocation `trigger_unused_variables_macro`
+  --> $DIR/expect_lint_from_macro.rs:27:5
+   |
+LL |     trigger_unused_variables_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: requested on the command line with `-W unused-attributes`
+
 warning: unused variable: `x`
   --> $DIR/expect_lint_from_macro.rs:7:13
    |
@@ -41,5 +54,5 @@ LL |     trigger_unused_variables_macro!();
    |     --------------------------------- in this macro invocation
    = note: this warning originates in the macro `trigger_unused_variables_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 2 warnings emitted
+warning: 3 warnings emitted
 
