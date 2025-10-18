@@ -562,13 +562,17 @@ impl server::TokenStream for Rustc<'_, '_> {
         stream.is_empty()
     }
 
-    fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        unwrap_or_emit_fatal(source_str_to_stream(
+    fn from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
+        source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
             Some(self.call_site),
-        ))
+        )
+        .map_err(|diags| {
+            diags.into_iter().for_each(Diag::cancel);
+            "cannot parse string into token stream".to_string()
+        })
     }
 
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
