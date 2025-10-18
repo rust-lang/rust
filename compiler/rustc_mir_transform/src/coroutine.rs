@@ -736,53 +736,53 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
-        if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            let loc = Location { block, statement_index: data.statements.len() };
+        let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
 
-            liveness.seek_to_block_end(block);
-            let mut live_locals = liveness.get().clone();
+        let loc = Location { block, statement_index: data.statements.len() };
 
-            if !movable {
-                // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
-                // This is correct for movable coroutines since borrows cannot live across
-                // suspension points. However for immovable coroutines we need to account for
-                // borrows, so we conservatively assume that all borrowed locals are live until
-                // we find a StorageDead statement referencing the locals.
-                // To do this we just union our `liveness` result with `borrowed_locals`, which
-                // contains all the locals which has been borrowed before this suspension point.
-                // If a borrow is converted to a raw reference, we must also assume that it lives
-                // forever. Note that the final liveness is still bounded by the storage liveness
-                // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor2.seek_before_primary_effect(loc);
-                live_locals.union(borrowed_locals_cursor2.get());
-            }
+        liveness.seek_to_block_end(block);
+        let mut live_locals = liveness.get().clone();
 
-            // Store the storage liveness for later use so we can restore the state
-            // after a suspension point
-            storage_live.seek_before_primary_effect(loc);
-            storage_liveness_map[block] = Some(storage_live.get().clone());
-
-            // Locals live are live at this point only if they are used across
-            // suspension points (the `liveness` variable)
-            // and their storage is required (the `storage_required` variable)
-            requires_storage_cursor.seek_before_primary_effect(loc);
-            live_locals.intersect(requires_storage_cursor.get());
-
-            // The coroutine argument is ignored.
-            live_locals.remove(SELF_ARG);
-
-            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
-
-            // Add the locals live at this suspension point to the set of locals which live across
-            // any suspension points
-            live_locals_at_any_suspension_point.union(&live_locals);
-
-            live_locals_at_suspension_points.push(live_locals);
-            source_info_at_suspension_points.push(data.terminator().source_info);
+        if !movable {
+            // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
+            // This is correct for movable coroutines since borrows cannot live across
+            // suspension points. However for immovable coroutines we need to account for
+            // borrows, so we conservatively assume that all borrowed locals are live until
+            // we find a StorageDead statement referencing the locals.
+            // To do this we just union our `liveness` result with `borrowed_locals`, which
+            // contains all the locals which has been borrowed before this suspension point.
+            // If a borrow is converted to a raw reference, we must also assume that it lives
+            // forever. Note that the final liveness is still bounded by the storage liveness
+            // of the local, which happens using the `intersect` operation below.
+            borrowed_locals_cursor2.seek_before_primary_effect(loc);
+            live_locals.union(borrowed_locals_cursor2.get());
         }
+
+        // Store the storage liveness for later use so we can restore the state
+        // after a suspension point
+        storage_live.seek_before_primary_effect(loc);
+        storage_liveness_map[block] = Some(storage_live.get().clone());
+
+        // Locals live are live at this point only if they are used across
+        // suspension points (the `liveness` variable)
+        // and their storage is required (the `storage_required` variable)
+        requires_storage_cursor.seek_before_primary_effect(loc);
+        live_locals.intersect(requires_storage_cursor.get());
+
+        // The coroutine argument is ignored.
+        live_locals.remove(SELF_ARG);
+
+        debug!(?loc, ?live_locals);
+
+        // Add the locals live at this suspension point to the set of locals which live across
+        // any suspension points
+        live_locals_at_any_suspension_point.union(&live_locals);
+
+        live_locals_at_suspension_points.push(live_locals);
+        source_info_at_suspension_points.push(data.terminator().source_info);
     }
 
-    debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
+    debug!(?live_locals_at_any_suspension_point);
     let saved_locals = CoroutineSavedLocals(live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
