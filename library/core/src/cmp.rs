@@ -1096,6 +1096,54 @@ pub const trait Ord: [const] Eq + [const] PartialOrd<Self> + PointeeSized {
             self
         }
     }
+
+    /// Restricts a value to a maximum bound.
+    ///
+    /// Returns `max` if `self` is greater than `max`, otherwise returns `self`.
+    ///
+    /// This is identical to `min`, but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_min_max)]
+    /// assert_eq!(12.clamp_max(10), 10);
+    /// assert_eq!(4.clamp_max(7), 4);
+    /// let s = "hello";
+    /// assert_eq!(&s[..32.clamp_max(s.len())], s);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_min_max", issue = "147781")]
+    fn clamp_max(self, min: Self) -> Self
+    where
+        Self: Sized + [const] Destruct,
+    {
+        self.min(min)
+    }
+
+    /// Restricts a value to a minimum bound.
+    ///
+    /// Returns `min` if `self` is less than `min`, otherwise returns `self`.
+    ///
+    /// This is identical to `max`, but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_min_max)]
+    /// assert_eq!((-3).clamp_min(0), 0);
+    /// assert_eq!(4.clamp_min(0), 4);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_min_max", issue = "147781")]
+    fn clamp_min(self, min: Self) -> Self
+    where
+        Self: Sized + [const] Destruct,
+    {
+        self.max(min)
+    }
 }
 
 /// Derive macro generating an impl of the trait [`Ord`].
