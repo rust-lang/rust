@@ -31,10 +31,15 @@ const LICENSES: &[&str] = &[
     "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
+    "BSD-2-Clause OR MIT OR Apache-2.0",
+    "BSD-3-Clause/MIT",
+    "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+    "CC0-1.0 OR MIT-0 OR Apache-2.0",
     "ISC",
     "MIT / Apache-2.0",
     "MIT AND (MIT OR Apache-2.0)",
     "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
+    "MIT OR Apache-2.0 OR BSD-1-Clause",
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc; LGPL is not acceptable, but we use it under MIT OR Apache-2.0
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
@@ -171,9 +176,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
     ("arrayref", "BSD-2-Clause"),                            // rustc
-    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
-    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
     ("foldhash", "Zlib"),                                    // rustc
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
@@ -195,11 +198,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
     ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
-    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
-    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
-    ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
-    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
     ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
     ("libz-rs-sys", "Zlib"),
@@ -224,8 +223,6 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
     ("alloc-no-stdlib", "BSD-3-Clause"),
     ("alloc-stdlib", "BSD-3-Clause"),
-    ("brotli", "BSD-3-Clause/MIT"),
-    ("brotli-decompressor", "BSD-3-Clause/MIT"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
@@ -248,7 +245,6 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("foldhash", "Zlib"),
-    ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     // tidy-alphabetical-end
 ];
 
