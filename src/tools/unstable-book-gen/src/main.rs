@@ -124,11 +124,11 @@ fn main() {
     let dest_path = Path::new(&dest_path_str);
 
     let lang_features = collect_lang_features(compiler_path, &mut RunningCheck::new_noop());
-    let lib_features = collect_lib_features(library_path)
+    let lib_features = collect_lib_features(library_path, None)
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))
         .collect();
-    let env_vars = collect_env_vars(compiler_path);
+    let env_vars = collect_env_vars(compiler_path, None);
 
     let doc_src_path = src_path.join(PATH_STR);
 

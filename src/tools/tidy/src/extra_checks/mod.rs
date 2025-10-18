@@ -23,8 +23,10 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
-use crate::CiInfo;
+use build_helper::git::get_git_untracked_files;
+
 use crate::diagnostics::DiagCtx;
+use crate::{CiInfo, TidyCtx};
 
 mod rustdoc_js;
 
@@ -52,9 +54,9 @@ pub fn check(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
+    tidy_ctx: Option<&TidyCtx>,
     diag_ctx: DiagCtx,
 ) {
     let mut check = diag_ctx.start_check("extra_checks");
@@ -67,9 +69,9 @@ pub fn check(
         tools_path,
         npm,
         cargo,
-        bless,
         extra_checks,
         pos_args,
+        tidy_ctx,
     ) {
         check.error(e);
     }
@@ -83,12 +85,13 @@ fn check_impl(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
+    tidy_ctx: Option<&TidyCtx>,
 ) -> Result<(), Error> {
     let show_diff =
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
+    let bless = tidy_ctx.map(|flags| flags.bless).unwrap_or(false);
 
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
@@ -333,12 +336,12 @@ fn check_impl(
         } else {
             eprintln!("linting javascript files and applying suggestions");
         }
-        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless);
+        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, tidy_ctx);
         if res.is_err() {
             rerun_with_bless("js:lint", "apply eslint suggestions");
         }
         res?;
-        rustdoc_js::es_check(outdir, librustdoc_path)?;
+        rustdoc_js::es_check(outdir, librustdoc_path, tidy_ctx)?;
     }
 
     if js_typecheck {
@@ -372,12 +375,19 @@ fn run_ruff(
         cache_dir.as_os_str(),
     ]);
 
+    let untracked;
+    if let Ok(Some(untracked_files)) = get_git_untracked_files(Some(root_path)) {
+        untracked = format!("--exclude={}", untracked_files.join(","));
+        cfg_args_ruff.push(untracked.as_ref());
+    }
+
     if file_args_ruff.is_empty() {
         file_args_ruff.push(root_path.as_os_str());
     }
 
     let mut args: Vec<&OsStr> = ruff_args.to_vec();
     args.extend(merge_args(&cfg_args_ruff, &file_args_ruff));
+
     py_runner(py_path, true, None, "ruff", &args)
 }
 

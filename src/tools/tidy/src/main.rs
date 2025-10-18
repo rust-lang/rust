@@ -46,7 +46,15 @@ fn main() {
         None => (&args[..], [].as_slice()),
     };
     let verbose = cfg_args.iter().any(|s| *s == "--verbose");
-    let bless = cfg_args.iter().any(|s| *s == "--bless");
+
+    let tidy_ctx = TidyCtx::new(cfg_args);
+
+    if !tidy_ctx.include_untracked {
+        let num_untracked = tidy_ctx.untracked_files.len();
+        println!("tidy: skipped {num_untracked} untracked files");
+        println!("tidy: to include untracked files use `--include-untracked`");
+    }
+
     let extra_checks =
         cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
@@ -94,59 +102,65 @@ fn main() {
             }
         }
 
-        check!(target_specific_tests, &tests_path);
+        check!(target_specific_tests, &tests_path, Some(&tidy_ctx));
 
         // Checks that are done on the cargo workspace.
-        check!(deps, &root_path, &cargo, bless);
+        check!(deps, &root_path, &cargo, Some(&tidy_ctx));
         check!(extdeps, &root_path);
 
         // Checks over tests.
         check!(tests_placement, &root_path);
-        check!(tests_revision_unpaired_stdout_stderr, &tests_path);
-        check!(debug_artifacts, &tests_path);
-        check!(ui_tests, &root_path, bless);
-        check!(mir_opt_tests, &tests_path, bless);
-        check!(rustdoc_gui_tests, &tests_path);
+        check!(tests_revision_unpaired_stdout_stderr, &tests_path, Some(&tidy_ctx));
+        check!(debug_artifacts, &tests_path, Some(&tidy_ctx));
+        check!(ui_tests, &root_path, Some(&tidy_ctx));
+        check!(mir_opt_tests, &tests_path, Some(&tidy_ctx));
+        check!(rustdoc_gui_tests, &tests_path, Some(&tidy_ctx));
         check!(rustdoc_css_themes, &librustdoc_path);
-        check!(rustdoc_templates, &librustdoc_path);
+        check!(rustdoc_templates, &librustdoc_path, Some(&tidy_ctx));
         check!(rustdoc_json, &src_path, &ci_info);
-        check!(known_bug, &crashes_path);
-        check!(unknown_revision, &tests_path);
+        check!(known_bug, &crashes_path, Some(&tidy_ctx));
+        check!(unknown_revision, &tests_path, Some(&tidy_ctx));
 
         // Checks that only make sense for the compiler.
-        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info);
-        check!(fluent_alphabetical, &compiler_path, bless);
-        check!(fluent_period, &compiler_path);
-        check!(fluent_lowercase, &compiler_path);
-        check!(target_policy, &root_path);
+        check!(
+            error_codes,
+            &root_path,
+            &[&compiler_path, &librustdoc_path],
+            &ci_info,
+            Some(&tidy_ctx)
+        );
+        check!(fluent_alphabetical, &compiler_path, Some(&tidy_ctx));
+        check!(fluent_period, &compiler_path, Some(&tidy_ctx));
+        check!(fluent_lowercase, &compiler_path, Some(&tidy_ctx));
+        check!(target_policy, &root_path, Some(&tidy_ctx));
         check!(gcc_submodule, &root_path, &compiler_path);
 
         // Checks that only make sense for the std libs.
-        check!(pal, &library_path);
+        check!(pal, &library_path, Some(&tidy_ctx));
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path, false);
-        check!(unit_tests, &compiler_path, false);
-        check!(unit_tests, &library_path, true);
+        check!(unit_tests, &src_path, false, Some(&tidy_ctx));
+        check!(unit_tests, &compiler_path, false, Some(&tidy_ctx));
+        check!(unit_tests, &library_path, true, Some(&tidy_ctx));
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
-            check!(bins, &root_path);
+            check!(bins, &root_path, Some(&tidy_ctx));
         }
 
-        check!(style, &src_path);
-        check!(style, &tests_path);
-        check!(style, &compiler_path);
-        check!(style, &library_path);
+        check!(style, &src_path, Some(&tidy_ctx));
+        check!(style, &tests_path, Some(&tidy_ctx));
+        check!(style, &compiler_path, Some(&tidy_ctx));
+        check!(style, &library_path, Some(&tidy_ctx));
 
-        check!(edition, &src_path);
-        check!(edition, &compiler_path);
-        check!(edition, &library_path);
+        check!(edition, &src_path, Some(&tidy_ctx));
+        check!(edition, &compiler_path, Some(&tidy_ctx));
+        check!(edition, &library_path, Some(&tidy_ctx));
 
-        check!(alphabetical, &root_manifest);
-        check!(alphabetical, &src_path);
-        check!(alphabetical, &tests_path);
-        check!(alphabetical, &compiler_path);
-        check!(alphabetical, &library_path);
+        check!(alphabetical, &root_manifest, Some(&tidy_ctx));
+        check!(alphabetical, &src_path, Some(&tidy_ctx));
+        check!(alphabetical, &tests_path, Some(&tidy_ctx));
+        check!(alphabetical, &compiler_path, Some(&tidy_ctx));
+        check!(alphabetical, &library_path, Some(&tidy_ctx));
 
         check!(x_version, &root_path, &cargo);
 
@@ -156,7 +170,14 @@ fn main() {
         let collected = {
             drain_handles(&mut handles);
 
-            features::check(&src_path, &tests_path, &compiler_path, &library_path, diag_ctx.clone())
+            features::check(
+                &src_path,
+                &tests_path,
+                &compiler_path,
+                &library_path,
+                Some(&tidy_ctx),
+                diag_ctx.clone(),
+            )
         };
         check!(unstable_book, &src_path, collected);
 
@@ -169,9 +190,9 @@ fn main() {
             &tools_path,
             &npm,
             &cargo,
-            bless,
             extra_checks,
-            pos_args
+            pos_args,
+            Some(&tidy_ctx)
         );
     });
 
