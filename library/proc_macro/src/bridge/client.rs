@@ -207,7 +207,7 @@ mod state {
 
     fn standalone_bridge() -> Bridge<'static> {
         let mut store = HandleStore::new(&COUNTERS);
-        let id = store.Span.alloc(Marked { value: standalone::Span::DUMMY, _marker: PhantomData });
+        let id = store.Span.alloc(Marked { value: standalone::Span, _marker: PhantomData });
         let dummy = super::Span { handle: id };
         let dispatcher =
             Dispatcher { handle_store: store, server: MarkedTypes(standalone::NoRustc) };
