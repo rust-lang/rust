@@ -24,15 +24,17 @@
                   scope 4 {
                       debug _x => _8;
                   }
-                  scope 7 (inlined foo) {
+                  scope 8 (inlined foo) {
                       let mut _13: *const [()];
                   }
               }
-              scope 5 (inlined slice_from_raw_parts::<()>) {
-                  scope 6 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+              scope 6 (inlined slice_from_raw_parts::<()>) {
+                  scope 7 (inlined std::ptr::from_raw_parts::<[()], ()>) {
                   }
               }
           }
+      }
+      scope 5 (inlined Box::<()>::new) {
       }
   
       bb0: {
@@ -42,12 +44,22 @@
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = ();
--         _3 = Box::<()>::new(move _4) -> [return: bb1, unwind continue];
+-         _3 = Box::<()>::new_in(move _4, const std::alloc::Global) -> [return: bb3, unwind continue];
 +         _4 = const ();
-+         _3 = Box::<()>::new(const ()) -> [return: bb1, unwind continue];
++         _3 = Box::<()>::new_in(const (), const std::alloc::Global) -> [return: bb3, unwind continue];
       }
   
       bb1: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb2 (cleanup): {
+          resume;
+      }
+  
+      bb3: {
           StorageDead(_4);
           _2 = &_3;
           _1 = &(*_2);
@@ -85,17 +97,7 @@
 -         StorageDead(_5);
 +         nop;
 +         nop;
-          drop(_3) -> [return: bb2, unwind: bb3];
-      }
-  
-      bb2: {
-          StorageDead(_3);
-          StorageDead(_1);
-          return;
-      }
-  
-      bb3 (cleanup): {
-          resume;
+          drop(_3) -> [return: bb1, unwind: bb2];
       }
   }
   

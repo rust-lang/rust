@@ -1073,7 +1073,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
 
             // Unsupported values.
-            Rvalue::ThreadLocalRef(..) | Rvalue::ShallowInitBox(..) => return None,
+            Rvalue::ThreadLocalRef(..) => return None,
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
         };
         let ty = rvalue.ty(self.local_decls, self.tcx);

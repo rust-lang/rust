@@ -769,7 +769,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // these are the cases that are more naturally handled by some other mode
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
-            | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }

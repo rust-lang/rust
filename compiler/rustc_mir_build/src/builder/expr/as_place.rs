@@ -554,7 +554,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
             | ExprKind::LogicalOp { .. }
-            | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::Use { .. }
             | ExprKind::NeverToAny { .. }

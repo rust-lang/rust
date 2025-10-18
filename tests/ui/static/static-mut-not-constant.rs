@@ -1,4 +1,4 @@
 static mut a: Box<isize> = Box::new(3);
-//~^ ERROR cannot call non-const associated function
+//~^ ERROR allocations are not allowed in statics [E0010]
 
 fn main() {}
