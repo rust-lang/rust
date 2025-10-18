@@ -107,6 +107,7 @@ use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -2656,7 +2657,7 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
+    query deduced_param_attrs(def_id: DefId) -> &'tcx [DeducedParamAttrs] {
         desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
