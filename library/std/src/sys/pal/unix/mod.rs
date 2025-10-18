@@ -2,10 +2,6 @@
 
 use crate::io::ErrorKind;
 
-#[cfg(not(target_os = "espidf"))]
-#[macro_use]
-pub mod weak;
-
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;
@@ -19,6 +15,7 @@ pub mod stack_overflow;
 pub mod sync;
 pub mod thread_parking;
 pub mod time;
+pub mod weak;
 
 #[cfg(target_os = "espidf")]
 pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
