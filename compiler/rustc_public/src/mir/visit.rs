@@ -181,7 +181,7 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(projections);
                     }
                     StatementKind::Coverage(coverage) => visit_opaque(coverage),
-                    StatementKind::Intrinsic(intrisic) => match intrisic {
+                    StatementKind::Intrinsic(intrinsic) => match intrinsic {
                         NonDivergingIntrinsic::Assume(operand) => {
                             self.visit_operand(operand, location);
                         }

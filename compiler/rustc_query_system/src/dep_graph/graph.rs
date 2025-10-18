@@ -507,7 +507,7 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
-    /// This encodes a diagnostic by creating a node with an unique index and assoicating
+    /// This encodes a diagnostic by creating a node with an unique index and associating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
     pub fn record_diagnostic<Qcx: QueryContext>(&self, qcx: Qcx, diagnostic: &DiagInner) {
@@ -657,7 +657,7 @@ impl<D: Deps> DepGraphData<D> {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 
-    /// This encodes a diagnostic by creating a node with an unique index and assoicating
+    /// This encodes a diagnostic by creating a node with an unique index and associating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
     fn encode_diagnostic<Qcx: QueryContext>(

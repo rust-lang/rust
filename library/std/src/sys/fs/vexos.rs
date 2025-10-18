@@ -106,7 +106,7 @@ impl FilePermissions {
     }
 
     pub fn set_readonly(&mut self, _readonly: bool) {
-        panic!("Perimissions do not exist")
+        panic!("Permissions do not exist")
     }
 }
 

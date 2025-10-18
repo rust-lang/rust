@@ -367,7 +367,7 @@ fn test_rotate_right_panic() {
 
 #[test]
 fn test_binary_search() {
-    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // If the given VecDeque is not sorted, the returned result is unspecified and meaningless,
     // as this method performs a binary search.
 
     let tester: VecDeque<_> = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
@@ -391,7 +391,7 @@ fn test_binary_search() {
 
 #[test]
 fn test_binary_search_by() {
-    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // If the given VecDeque is not sorted, the returned result is unspecified and meaningless,
     // as this method performs a binary search.
 
     let tester: VecDeque<_> = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
@@ -406,7 +406,7 @@ fn test_binary_search_by() {
 
 #[test]
 fn test_binary_search_key() {
-    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // If the given VecDeque is not sorted, the returned result is unspecified and meaningless,
     // as this method performs a binary search.
 
     let tester: VecDeque<_> = [
