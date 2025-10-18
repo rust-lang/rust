@@ -18,7 +18,6 @@ pub const LLVM_PGO_CRATES: &[&str] = &[
     "ripgrep-14.1.1",
     "regex-automata-0.4.8",
     "clap_derive-4.5.32",
-    "hyper-1.6.0",
 ];
 
 /// The default set of crates for opt-dist to collect rustc profiles.
