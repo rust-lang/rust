@@ -13,16 +13,15 @@
 extern crate empty;
 
 fn main() {
-    Ok::<_, std::convert::Infallible>(()); //~ warn: unused `Result` that must be used
-    Ok::<_, empty::EmptyForeignEnum>(()); //~ warn: unused `Result` that must be used
-    Ok::<_, empty::VisiblyUninhabitedForeignStruct>(()); //~ warn: unused `Result` that must be used
+    Ok::<_, std::convert::Infallible>(());
+    Ok::<_, empty::EmptyForeignEnum>(());
+    Ok::<_, empty::VisiblyUninhabitedForeignStruct>(());
     Ok::<_, empty::SecretlyUninhabitedForeignStruct>(()); //~ warn: unused `Result` that must be used
-    Ok::<_, !>(()); //~ warn: unused `Result` that must be used
+    Ok::<_, !>(());
 
-    Ok::<_, !>(Important); //~ warn: unused `Result` that must be used
+    Ok::<_, !>(Important); //~ warn: unused `Important` that must be used
 
     very_important(); //~ warn: unused return value of `very_important` that must be used
-                      //~| warn: unused `Result` that must be used
 }
 
 #[must_use]

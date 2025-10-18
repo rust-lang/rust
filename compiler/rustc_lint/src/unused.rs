@@ -293,6 +293,19 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
                 }
+                ty::Adt(def, args)
+                    // Do not warn against `Result<T, !>` (or in general when `E` is uninhabitted)
+                    // being unused, unless `T` must be used.
+                    if cx.tcx.is_diagnostic_item(sym::Result, def.did())
+                        && !args.type_at(1).is_inhabited_from(
+                            cx.tcx,
+                            cx.tcx.parent_module(expr.hir_id).to_def_id(),
+                            cx.typing_env(),
+                        ) =>
+                {
+                    is_ty_must_use(cx, args.type_at(0), expr, span)
+                }
+
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
                     elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
