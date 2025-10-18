@@ -4,7 +4,7 @@
 #
 # To build rustfmt and proc macro server for r-a run the following command:
 # ```
-# x b proc-macro-srv-cli rustfmt --stage 0 --build-dir build-rust-analyzer
+# x b proc-macro-srv-cli rustfmt --build-dir build-rust-analyzer
 # ```
 
 [language-server.rust-analyzer.config]
@@ -18,7 +18,6 @@ linkedProjects = [
 ]
 
 [language-server.rust-analyzer.config.check]
-invocationLocation = "root"
 invocationStrategy = "once"
 overrideCommand = [
     "python3",
@@ -57,7 +56,7 @@ overrideCommand = [
     "x.py",
     "check",
     "--json-output",
+    "--compile-time-deps",
     "--build-dir",
     "build-rust-analyzer",
-    "--compile-time-deps",
 ]
