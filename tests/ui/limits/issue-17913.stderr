@@ -9,9 +9,9 @@ error[E0080]: values of the type `[&usize; usize::MAX]` are too big for the targ
    = note: evaluation of `<[&usize; usize::MAX] as std::mem::SizedTypeProperties>::ALIGN` failed here
 
 note: the above error was encountered while instantiating `fn Box::<[&usize; usize::MAX]>::new`
-  --> $DIR/issue-17913.rs:7:21
+  --> $DIR/issue-17913.rs:8:21
    |
-LL |     let a: Box<_> = Box::new([&n; 0xF000000000000000_usize]);
+LL |     let a: Box<_> = Box::new([&n; SIZE]);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

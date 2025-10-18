@@ -1,5 +1,6 @@
 //@ build-fail
 //@ normalize-stderr: "\[&usize; \d+\]" -> "[&usize; usize::MAX]"
+//@ normalize-stderr: "\[&n; 0x[0-9A-F]+_usize\]" -> "[&n; SIZE]"
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
