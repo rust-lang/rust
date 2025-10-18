@@ -1,3 +1,4 @@
+//@ only-msvc
 //@ min-lldb-version: 1800
 //@ ignore-gdb
 //@ compile-flags:-g
