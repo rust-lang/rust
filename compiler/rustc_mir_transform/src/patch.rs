@@ -24,6 +24,8 @@ pub(crate) struct MirPatch<'tcx> {
     // Cached block for UnwindTerminate (with reason)
     terminate_block: Option<(BasicBlock, UnwindTerminateReason)>,
     body_span: Span,
+    /// The number of locals at the start of the transformation. New locals
+    /// get appended at the end.
     next_local: usize,
     /// The number of blocks at the start of the transformation. New blocks
     /// get appended at the end.
@@ -176,8 +178,7 @@ impl<'tcx> MirPatch<'tcx> {
         span: Span,
         local_info: LocalInfo<'tcx>,
     ) -> Local {
-        let index = self.next_local;
-        self.next_local += 1;
+        let index = self.next_local + self.new_locals.len();
         let mut new_decl = LocalDecl::new(ty, span);
         **new_decl.local_info.as_mut().unwrap_crate_local() = local_info;
         self.new_locals.push(new_decl);
@@ -186,8 +187,7 @@ impl<'tcx> MirPatch<'tcx> {
 
     /// Queues the addition of a new temporary.
     pub(crate) fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
-        let index = self.next_local;
-        self.next_local += 1;
+        let index = self.next_local + self.new_locals.len();
         self.new_locals.push(LocalDecl::new(ty, span));
         Local::new(index)
     }
@@ -195,8 +195,8 @@ impl<'tcx> MirPatch<'tcx> {
     /// Returns the type of a local that's newly-added in the patch.
     pub(crate) fn local_ty(&self, local: Local) -> Ty<'tcx> {
         let local = local.as_usize();
-        assert!(local < self.next_local);
-        let new_local_idx = self.new_locals.len() - (self.next_local - local);
+        assert!(local < self.next_local + self.new_locals.len());
+        let new_local_idx = local - self.next_local;
         self.new_locals[new_local_idx].ty
     }
 
