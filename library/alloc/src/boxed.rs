@@ -402,8 +402,17 @@ impl<T, A: Allocator> Box<T, A> {
         A: Allocator,
     {
         let mut boxed = Self::new_uninit_in(alloc);
-        boxed.write(x);
-        unsafe { boxed.assume_init() }
+        unsafe {
+            // SAFETY: `x` is valid for writing and has the same layout as `T`.
+            //
+            // We use `ptr::write` as `MaybeUninit::write` creates
+            // extra stack copies of `T` in debug mode.
+            //
+            // See https://github.com/rust-lang/rust/issues/136043 for more context.
+            ptr::write(&raw mut *boxed as *mut T, x);
+            // SAFETY: `x` was just initialized above.
+            boxed.assume_init()
+        }
     }
 
     /// Allocates memory in the given allocator then places `x` into it,

@@ -12,7 +12,7 @@
       let mut _10: std::boxed::Box<()>;
       let mut _11: *const ();
       let mut _12: std::alloc::Global;
-      let mut _28: usize;
+      let mut _27: usize;
       scope 1 {
           debug vp_ctx => _1;
           let _5: *const ();
@@ -25,12 +25,12 @@
                   scope 4 {
                       debug _x => _8;
                   }
-                  scope 30 (inlined foo) {
-                      let mut _29: *const [()];
+                  scope 26 (inlined foo) {
+                      let mut _28: *const [()];
                   }
               }
-              scope 28 (inlined slice_from_raw_parts::<()>) {
-                  scope 29 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+              scope 24 (inlined slice_from_raw_parts::<()>) {
+                  scope 25 (inlined std::ptr::from_raw_parts::<[()], ()>) {
                   }
               }
           }
@@ -38,58 +38,49 @@
       scope 5 (inlined Box::<()>::new) {
           scope 6 (inlined Box::<()>::new_in) {
               let mut _13: std::boxed::Box<std::mem::MaybeUninit<()>>;
-              let mut _14: *const std::mem::MaybeUninit<()>;
-              let mut _26: std::alloc::Global;
-              let mut _27: std::ptr::NonNull<std::mem::MaybeUninit<()>>;
+              let mut _14: *mut ();
+              let mut _15: *mut std::mem::MaybeUninit<()>;
+              let mut _16: *const std::mem::MaybeUninit<()>;
+              let mut _25: std::alloc::Global;
+              let mut _26: std::ptr::NonNull<std::mem::MaybeUninit<()>>;
               scope 7 {
-                  scope 8 (inlined MaybeUninit::<()>::write) {
-                      let mut _15: std::mem::MaybeUninit<()>;
-                      scope 9 (inlined MaybeUninit::<()>::new) {
-                          let mut _16: std::mem::ManuallyDrop<()>;
-                          scope 10 (inlined ManuallyDrop::<()>::new) {
-                          }
-                      }
-                      scope 11 (inlined MaybeUninit::<()>::assume_init_mut) {
-                          let _17: ();
-                          scope 12 (inlined MaybeUninit::<()>::as_mut_ptr) {
-                          }
-                      }
+                  scope 8 (inlined #[track_caller] std::ptr::write::<()>) {
                   }
-                  scope 13 (inlined Box::<MaybeUninit<()>>::assume_init) {
-                      let mut _18: *mut ();
-                      scope 14 {
-                          scope 23 (inlined Box::<()>::from_raw_in) {
-                              let mut _20: std::ptr::Unique<()>;
-                              scope 24 (inlined Unique::<()>::new_unchecked) {
-                                  let mut _21: std::ptr::NonNull<()>;
-                                  scope 25 (inlined #[track_caller] NonNull::<()>::new_unchecked) {
-                                      let _22: ();
-                                      let mut _23: *mut ();
-                                      let mut _24: *const ();
-                                      scope 26 (inlined core::ub_checks::check_language_ub) {
-                                          let mut _25: bool;
-                                          scope 27 (inlined core::ub_checks::check_language_ub::runtime) {
+                  scope 9 (inlined Box::<MaybeUninit<()>>::assume_init) {
+                      let mut _17: *mut ();
+                      scope 10 {
+                          scope 19 (inlined Box::<()>::from_raw_in) {
+                              let mut _19: std::ptr::Unique<()>;
+                              scope 20 (inlined Unique::<()>::new_unchecked) {
+                                  let mut _20: std::ptr::NonNull<()>;
+                                  scope 21 (inlined #[track_caller] NonNull::<()>::new_unchecked) {
+                                      let _21: ();
+                                      let mut _22: *mut ();
+                                      let mut _23: *const ();
+                                      scope 22 (inlined core::ub_checks::check_language_ub) {
+                                          let mut _24: bool;
+                                          scope 23 (inlined core::ub_checks::check_language_ub::runtime) {
                                           }
                                       }
                                   }
                               }
                           }
                       }
-                      scope 15 (inlined Box::<MaybeUninit<()>>::into_raw_with_allocator) {
-                          scope 16 {
-                              let _19: *mut std::mem::MaybeUninit<()>;
-                              scope 17 {
-                                  scope 18 {
+                      scope 11 (inlined Box::<MaybeUninit<()>>::into_raw_with_allocator) {
+                          scope 12 {
+                              let _18: *mut std::mem::MaybeUninit<()>;
+                              scope 13 {
+                                  scope 14 {
                                   }
-                                  scope 21 (inlined <ManuallyDrop<Box<MaybeUninit<()>>> as Deref>::deref) {
+                                  scope 17 (inlined <ManuallyDrop<Box<MaybeUninit<()>>> as Deref>::deref) {
                                   }
-                                  scope 22 (inlined #[track_caller] std::ptr::read::<std::alloc::Global>) {
+                                  scope 18 (inlined #[track_caller] std::ptr::read::<std::alloc::Global>) {
                                   }
                               }
-                              scope 20 (inlined <ManuallyDrop<Box<MaybeUninit<()>>> as DerefMut>::deref_mut) {
+                              scope 16 (inlined <ManuallyDrop<Box<MaybeUninit<()>>> as DerefMut>::deref_mut) {
                               }
                           }
-                          scope 19 (inlined ManuallyDrop::<Box<MaybeUninit<()>>>::new) {
+                          scope 15 (inlined ManuallyDrop::<Box<MaybeUninit<()>>>::new) {
                           }
                       }
                   }
@@ -107,11 +98,10 @@
 +         _4 = const ();
           StorageLive(_12);
           _12 = const std::alloc::Global;
-          StorageLive(_14);
-          StorageLive(_17);
-          StorageLive(_22);
+          StorageLive(_16);
+          StorageLive(_21);
+          StorageLive(_25);
           StorageLive(_26);
-          StorageLive(_27);
           StorageLive(_13);
 -         _13 = Box::<()>::new_uninit_in(move _12) -> [return: bb2, unwind unreachable];
 +         _13 = Box::<()>::new_uninit_in(const std::alloc::Global) -> [return: bb2, unwind unreachable];
@@ -124,69 +114,62 @@
       }
   
       bb2: {
-          _14 = copy ((_13.0: std::ptr::Unique<std::mem::MaybeUninit<()>>).0: std::ptr::NonNull<std::mem::MaybeUninit<()>>) as *const std::mem::MaybeUninit<()> (Transmute);
+          StorageLive(_14);
           StorageLive(_15);
-          StorageLive(_16);
--         _16 = ManuallyDrop::<()> { value: copy _4 };
--         _15 = MaybeUninit::<()> { uninit: move _16 };
-+         _16 = const ManuallyDrop::<()> {{ value: () }};
-+         _15 = const MaybeUninit::<()> {{ uninit: (), value: ManuallyDrop::<()> {{ value: () }} }};
-          StorageDead(_16);
--         (*_14) = move _15;
-+         (*_14) = const MaybeUninit::<()> {{ uninit: (), value: ManuallyDrop::<()> {{ value: () }} }};
+          _16 = copy ((_13.0: std::ptr::Unique<std::mem::MaybeUninit<()>>).0: std::ptr::NonNull<std::mem::MaybeUninit<()>>) as *const std::mem::MaybeUninit<()> (Transmute);
+          _15 = &raw mut (*_16);
+          _14 = copy _15 as *mut () (PtrToPtr);
           StorageDead(_15);
-          _17 = assert_inhabited::<()>() -> [return: bb3, unwind unreachable];
+-         (*_14) = copy _4;
++         (*_14) = const ();
+          StorageDead(_14);
+          _26 = move ((_13.0: std::ptr::Unique<std::mem::MaybeUninit<()>>).0: std::ptr::NonNull<std::mem::MaybeUninit<()>>);
+-         _25 = move (_13.1: std::alloc::Global);
++         _25 = const std::alloc::Global;
+          StorageLive(_18);
+          _18 = &raw mut (*_16);
+-         StorageLive(_17);
++         nop;
+          _17 = copy _18 as *mut () (PtrToPtr);
+          StorageLive(_19);
+          StorageLive(_20);
+          StorageLive(_23);
+          StorageLive(_24);
+          _24 = UbChecks();
+          switchInt(copy _24) -> [0: bb5, otherwise: bb3];
       }
   
       bb3: {
-          _27 = move ((_13.0: std::ptr::Unique<std::mem::MaybeUninit<()>>).0: std::ptr::NonNull<std::mem::MaybeUninit<()>>);
--         _26 = move (_13.1: std::alloc::Global);
-+         _26 = const std::alloc::Global;
-          StorageLive(_19);
-          _19 = &raw mut (*_14);
--         StorageLive(_18);
-+         nop;
-          _18 = copy _19 as *mut () (PtrToPtr);
-          StorageLive(_20);
-          StorageLive(_21);
-          StorageLive(_24);
-          StorageLive(_25);
-          _25 = UbChecks();
-          switchInt(copy _25) -> [0: bb6, otherwise: bb4];
+          StorageLive(_22);
+-         _22 = copy _18 as *mut () (PtrToPtr);
+-         _21 = NonNull::<T>::new_unchecked::precondition_check(move _22) -> [return: bb4, unwind unreachable];
++         _22 = copy _17;
++         _21 = NonNull::<T>::new_unchecked::precondition_check(copy _17) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
-          StorageLive(_23);
--         _23 = copy _19 as *mut () (PtrToPtr);
--         _22 = NonNull::<T>::new_unchecked::precondition_check(move _23) -> [return: bb5, unwind unreachable];
-+         _23 = copy _18;
-+         _22 = NonNull::<T>::new_unchecked::precondition_check(copy _18) -> [return: bb5, unwind unreachable];
+          StorageDead(_22);
+          goto -> bb5;
       }
   
       bb5: {
-          StorageDead(_23);
-          goto -> bb6;
-      }
-  
-      bb6: {
-          _24 = copy _19 as *const () (PtrToPtr);
-          _21 = NonNull::<()> { pointer: copy _24 };
-          StorageDead(_25);
+          _23 = copy _18 as *const () (PtrToPtr);
+          _20 = NonNull::<()> { pointer: copy _23 };
           StorageDead(_24);
-          _20 = Unique::<()> { pointer: move _21, _marker: const PhantomData::<()> };
-          StorageDead(_21);
--         _3 = Box::<()>(move _20, copy _26);
-+         _3 = Box::<()>(move _20, const std::alloc::Global);
+          StorageDead(_23);
+          _19 = Unique::<()> { pointer: move _20, _marker: const PhantomData::<()> };
           StorageDead(_20);
--         StorageDead(_18);
-+         nop;
+-         _3 = Box::<()>(move _19, copy _25);
++         _3 = Box::<()>(move _19, const std::alloc::Global);
           StorageDead(_19);
+-         StorageDead(_17);
++         nop;
+          StorageDead(_18);
           StorageDead(_13);
-          StorageDead(_27);
           StorageDead(_26);
-          StorageDead(_22);
-          StorageDead(_17);
-          StorageDead(_14);
+          StorageDead(_25);
+          StorageDead(_21);
+          StorageDead(_16);
           StorageDead(_12);
           StorageDead(_4);
           _2 = &_3;
@@ -203,21 +186,21 @@
 +         nop;
           StorageLive(_7);
           _7 = copy _5;
-          StorageLive(_28);
-          _28 = const 1_usize;
--         _6 = *const [()] from (copy _7, copy _28);
+          StorageLive(_27);
+          _27 = const 1_usize;
+-         _6 = *const [()] from (copy _7, copy _27);
 +         _6 = *const [()] from (copy _5, const 1_usize);
-          StorageDead(_28);
+          StorageDead(_27);
           StorageDead(_7);
           StorageLive(_8);
           StorageLive(_9);
           _9 = copy _6;
-          StorageLive(_29);
--         _29 = copy _9;
+          StorageLive(_28);
+-         _28 = copy _9;
 -         _8 = copy _9 as *mut () (PtrToPtr);
-+         _29 = copy _6;
++         _28 = copy _6;
 +         _8 = copy _5 as *mut () (PtrToPtr);
-          StorageDead(_29);
+          StorageDead(_28);
           StorageDead(_9);
           _0 = const ();
           StorageDead(_8);
