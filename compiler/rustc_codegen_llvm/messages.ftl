@@ -18,6 +18,9 @@ codegen_llvm_lto_bitcode_from_rlib = failed to get bitcode from object file for 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
 
+codegen_llvm_offload_without_enable = using the offload feature requires -Z offload=Enable
+codegen_llvm_offload_without_fat_lto = using the offload feature requires -C lto=fat
+
 codegen_llvm_parse_bitcode = failed to parse bitcode for LTO module
 codegen_llvm_parse_bitcode_with_llvm_err = failed to parse bitcode for LTO module: {$llvm_err}
 
