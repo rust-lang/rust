@@ -34,6 +34,7 @@ struct ParseSourceInfo {
     crates: String,
     crate_attrs: String,
     maybe_crate_attrs: String,
+    need_stability_attr: bool,
 }
 
 /// Builder type for `DocTestBuilder`.
@@ -147,6 +148,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             crates,
             crate_attrs,
             maybe_crate_attrs,
+            need_stability_attr,
         })) = result
         else {
             // If the AST returned an error, we don't want this doctest to be merged with the
@@ -184,6 +186,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             test_id,
             invalid_ast: false,
             can_be_merged,
+            need_stability_attr,
         }
     }
 }
@@ -204,6 +207,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) test_id: Option<String>,
     pub(crate) invalid_ast: bool,
     pub(crate) can_be_merged: bool,
+    need_stability_attr: bool,
 }
 
 /// Contains needed information for doctest to be correctly generated with expected "wrapping".
@@ -301,6 +305,7 @@ impl DocTestBuilder {
             test_id,
             invalid_ast: true,
             can_be_merged: false,
+            need_stability_attr: false,
         }
     }
 
@@ -379,53 +384,58 @@ impl DocTestBuilder {
         }
 
         // FIXME: This code cannot yet handle no_std test cases yet
-        let wrapper = if dont_insert_main
-            || self.has_main_fn
-            || crate_level_code.contains("![no_std]")
-        {
-            None
-        } else {
-            let returns_result = processed_code.ends_with("(())");
-            // Give each doctest main function a unique name.
-            // This is for example needed for the tooling around `-C instrument-coverage`.
-            let inner_fn_name = if let Some(ref test_id) = self.test_id {
-                format!("_doctest_main_{test_id}")
+        let wrapper =
+            if dont_insert_main || self.has_main_fn || crate_level_code.contains("![no_std]") {
+                None
             } else {
-                "_inner".into()
-            };
-            let inner_attr = if self.test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
-            let (main_pre, main_post) = if returns_result {
-                (
-                    format!(
-                        "pub fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{\n",
-                    ),
-                    format!("\n}} {inner_fn_name}().unwrap() }}"),
-                )
-            } else if self.test_id.is_some() {
-                (
-                    format!("pub fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
-                    format!("\n}} {inner_fn_name}() }}"),
-                )
-            } else {
-                ("pub fn main() {\n".into(), "\n}".into())
-            };
-            // Note on newlines: We insert a line/newline *before*, and *after*
-            // the doctest and adjust the `line_offset` accordingly.
-            // In the case of `-C instrument-coverage`, this means that the generated
-            // inner `main` function spans from the doctest opening codeblock to the
-            // closing one. For example
-            // /// ``` <- start of the inner main
-            // /// <- code under doctest
-            // /// ``` <- end of the inner main
-            line_offset += 1;
+                let extra = if self.need_stability_attr {
+                    "#[stable(feature = \"doctest\", since = \"1.0.0\")]\n"
+                } else {
+                    ""
+                };
+                let returns_result = processed_code.ends_with("(())");
+                // Give each doctest main function a unique name.
+                // This is for example needed for the tooling around `-C instrument-coverage`.
+                let inner_fn_name = if let Some(ref test_id) = self.test_id {
+                    format!("_doctest_main_{test_id}")
+                } else {
+                    "_inner".into()
+                };
+                let inner_attr =
+                    if self.test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
+                let (main_pre, main_post) = if returns_result {
+                    (
+                        format!(
+                            "{extra}pub fn main() {{ {inner_attr}fn {inner_fn_name}() \
+                         -> core::result::Result<(), impl core::fmt::Debug> {{\n",
+                        ),
+                        format!("\n}} {inner_fn_name}().unwrap() }}"),
+                    )
+                } else if self.test_id.is_some() {
+                    (
+                        format!("{extra}pub fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
+                        format!("\n}} {inner_fn_name}() }}"),
+                    )
+                } else {
+                    (format!("{extra}pub fn main() {{\n"), "\n}".into())
+                };
+                // Note on newlines: We insert a line/newline *before*, and *after*
+                // the doctest and adjust the `line_offset` accordingly.
+                // In the case of `-C instrument-coverage`, this means that the generated
+                // inner `main` function spans from the doctest opening codeblock to the
+                // closing one. For example
+                // /// ``` <- start of the inner main
+                // /// <- code under doctest
+                // /// ``` <- end of the inner main
+                line_offset += 1;
 
-            Some(WrapperInfo {
-                before: main_pre,
-                after: main_post,
-                returns_result,
-                insert_indent_space: opts.insert_indent_space,
-            })
-        };
+                Some(WrapperInfo {
+                    before: main_pre,
+                    after: main_post,
+                    returns_result,
+                    insert_indent_space: opts.insert_indent_space,
+                })
+            };
 
         (
             DocTestWrapResult::Valid {
@@ -575,6 +585,7 @@ fn parse_source(
     let mut prev_span_hi = 0;
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
     let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
+    let mut need_crate_stability_attr = false;
 
     let result = match parsed {
         Ok(Some(ref item))
@@ -600,10 +611,28 @@ fn parse_source(
                         );
                     }
                 } else {
+                    if !info.need_stability_attr
+                        && attr.has_name(sym::feature)
+                        && let Some(sub_attrs) = attr.meta_item_list()
+                        && sub_attrs.iter().any(|attr| {
+                            if let ast::MetaItemInner::MetaItem(attr) = attr {
+                                matches!(attr.kind, ast::MetaItemKind::Word)
+                                    && attr.has_name(sym::staged_api)
+                            } else {
+                                false
+                            }
+                        })
+                    {
+                        info.need_stability_attr = true;
+                    }
+                    if attr.has_any_name(&[sym::stable, sym::unstable]) {
+                        need_crate_stability_attr = false;
+                    }
                     push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                 }
             }
             let mut has_non_items = false;
+            let mut fn_main_pos = None;
             for stmt in &body.stmts {
                 let mut is_extern_crate = false;
                 match stmt.kind {
@@ -611,47 +640,47 @@ fn parse_source(
                         let (found_is_extern_crate, found_main) =
                             check_item(item, &mut info, crate_name);
                         is_extern_crate = found_is_extern_crate;
-                        if found_main
-                            && should_panic
-                            && !matches!(item.vis.kind, VisibilityKind::Public)
-                        {
-                            if matches!(item.vis.kind, VisibilityKind::Inherited) {
-                                push_code(
-                                    stmt,
-                                    is_extern_crate,
-                                    &mut info,
+                        if found_main {
+                            fn_main_pos = Some(info.everything_else.len());
+                            if !matches!(item.vis.kind, VisibilityKind::Public) && should_panic {
+                                if matches!(item.vis.kind, VisibilityKind::Inherited) {
+                                    push_code(
+                                        stmt,
+                                        is_extern_crate,
+                                        &mut info,
+                                        source,
+                                        &mut prev_span_hi,
+                                        Some(item.span.lo()),
+                                    );
+                                } else {
+                                    push_code(
+                                        stmt,
+                                        is_extern_crate,
+                                        &mut info,
+                                        source,
+                                        &mut prev_span_hi,
+                                        Some(item.vis.span.lo()),
+                                    );
+                                    prev_span_hi +=
+                                        (item.vis.span.hi().0 - item.vis.span.lo().0) as usize;
+                                };
+                                if !info
+                                    .everything_else
+                                    .chars()
+                                    .last()
+                                    .is_some_and(|c| c.is_whitespace())
+                                {
+                                    info.everything_else.push(' ');
+                                }
+                                info.everything_else.push_str("pub ");
+                                push_to_s(
+                                    &mut info.everything_else,
                                     source,
+                                    item.span,
                                     &mut prev_span_hi,
-                                    Some(item.span.lo()),
                                 );
-                            } else {
-                                push_code(
-                                    stmt,
-                                    is_extern_crate,
-                                    &mut info,
-                                    source,
-                                    &mut prev_span_hi,
-                                    Some(item.vis.span.lo()),
-                                );
-                                prev_span_hi +=
-                                    (item.vis.span.hi().0 - item.vis.span.lo().0) as usize;
-                            };
-                            if !info
-                                .everything_else
-                                .chars()
-                                .last()
-                                .is_some_and(|c| c.is_whitespace())
-                            {
-                                info.everything_else.push(' ');
+                                continue;
                             }
-                            info.everything_else.push_str("pub ");
-                            push_to_s(
-                                &mut info.everything_else,
-                                source,
-                                item.span,
-                                &mut prev_span_hi,
-                            );
-                            continue;
                         }
                     }
                     // We assume that the macro calls will expand to item(s) even though they could
@@ -689,6 +718,19 @@ fn parse_source(
                     StmtKind::Let(_) | StmtKind::Semi(_) | StmtKind::Empty => has_non_items = true,
                 }
                 push_code(stmt, is_extern_crate, &mut info, source, &mut prev_span_hi, None);
+            }
+            if info.need_stability_attr {
+                if let Some(fn_main_pos) = fn_main_pos {
+                    info.everything_else.insert_str(
+                        fn_main_pos,
+                        "#[stable(feature = \"doctest\", since = \"1.0.0\")]\n",
+                    );
+                    info.need_stability_attr = false;
+                }
+                if need_crate_stability_attr {
+                    info.crate_attrs
+                        .push_str("#![stable(feature = \"doctest\", since = \"1.0.0\")]\n");
+                }
             }
             if has_non_items {
                 if info.has_main_fn
