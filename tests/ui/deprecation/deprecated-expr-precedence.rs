@@ -5,4 +5,6 @@
 pub fn public() {
     #[deprecated] 0
     //~^ ERROR mismatched types
+    //~| WARN attribute cannot be used on expressions
+    //~| WARN previously accepted
 }
