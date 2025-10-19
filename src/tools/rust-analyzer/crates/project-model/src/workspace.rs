@@ -383,7 +383,6 @@ impl ProjectWorkspace {
                         toolchain.clone(),
                     )),
                     config.no_deps,
-                    workspace_dir,
                     &target_dir,
                     progress,
                 )
@@ -487,7 +486,6 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
                         config.no_deps,
-                        project_root,
                         &target_dir,
                         progress,
                     )
@@ -499,7 +497,6 @@ impl ProjectWorkspace {
                             toolchain.clone(),
                         )),
                         config.no_deps,
-                        project_root,
                         &target_dir,
                         progress,
                     )
@@ -561,7 +558,6 @@ impl ProjectWorkspace {
                 toolchain.clone(),
             )),
             config.no_deps,
-            dir,
             &target_dir,
             &|_| (),
         );
@@ -747,7 +743,7 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         let mk_sysroot = || {
             let mut r = match self.sysroot.workspace() {
-                RustLibSrcWorkspace::Workspace(ws) => ws
+                RustLibSrcWorkspace::Workspace { ws, .. } => ws
                     .packages()
                     .filter_map(|pkg| {
                         if ws[pkg].is_local {
@@ -1735,7 +1731,7 @@ fn sysroot_to_crate_graph(
 ) -> (SysrootPublicDeps, Option<CrateBuilderId>) {
     let _p = tracing::info_span!("sysroot_to_crate_graph").entered();
     match sysroot.workspace() {
-        RustLibSrcWorkspace::Workspace(cargo) => {
+        RustLibSrcWorkspace::Workspace { ws: cargo, .. } => {
             let (sysroot_cg, sysroot_pm) = cargo_to_crate_graph(
                 load,
                 None,
