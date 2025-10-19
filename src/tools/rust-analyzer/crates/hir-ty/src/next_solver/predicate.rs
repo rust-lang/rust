@@ -647,6 +647,26 @@ impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Reg
         PredicateKind::Clause(ClauseKind::RegionOutlives(from)).upcast(interner)
     }
 }
+impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Ty<'db>>>
+    for Clause<'db>
+{
+    fn upcast_from(
+        from: ty::OutlivesPredicate<DbInterner<'db>, Ty<'db>>,
+        interner: DbInterner<'db>,
+    ) -> Self {
+        Clause(from.upcast(interner))
+    }
+}
+impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Region<'db>>>
+    for Clause<'db>
+{
+    fn upcast_from(
+        from: ty::OutlivesPredicate<DbInterner<'db>, Region<'db>>,
+        interner: DbInterner<'db>,
+    ) -> Self {
+        Clause(from.upcast(interner))
+    }
+}
 
 impl<'db> UpcastFrom<DbInterner<'db>, PolyRegionOutlivesPredicate<'db>> for Predicate<'db> {
     fn upcast_from(from: PolyRegionOutlivesPredicate<'db>, tcx: DbInterner<'db>) -> Self {

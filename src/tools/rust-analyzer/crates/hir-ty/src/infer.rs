@@ -55,8 +55,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    ImplTraitId, IncorrectGenericsLenKind, Interner, PathLoweringDiagnostic, TargetFeatures,
-    TraitEnvironment,
+    ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
     db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
     generics::Generics,
     infer::{
@@ -77,7 +76,7 @@ use crate::{
             DefineOpaqueTypes,
             traits::{Obligation, ObligationCause},
         },
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        mapping::ChalkToNextSolver,
     },
     traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
@@ -164,31 +163,6 @@ pub(crate) fn infer_cycle_result(
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_with(db, None, None), ErrorGuaranteed))
     })
-}
-
-/// Fully normalize all the types found within `ty` in context of `owner` body definition.
-///
-/// This is appropriate to use only after type-check: it assumes
-/// that normalization will succeed, for example.
-#[tracing::instrument(level = "debug", skip(db))]
-pub(crate) fn normalize(
-    db: &dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment<'_>>,
-    ty: crate::Ty,
-) -> crate::Ty {
-    // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
-    // works for the type case, so we check array unconditionally. Remove the array part
-    // when the bug in chalk becomes fixed.
-    if !ty.data(Interner).flags.intersects(crate::TypeFlags::HAS_PROJECTION)
-        && !matches!(ty.kind(Interner), crate::TyKind::Array(..))
-    {
-        return ty;
-    }
-    let mut table = unify::InferenceTable::new(db, trait_env);
-
-    let ty_with_vars = table.normalize_associated_types_in(ty.to_nextsolver(table.interner()));
-    table.select_obligations_where_possible();
-    table.resolve_completely(ty_with_vars).to_chalk(table.interner())
 }
 
 /// Binding modes inferred for patterns.

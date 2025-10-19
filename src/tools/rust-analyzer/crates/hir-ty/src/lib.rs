@@ -81,22 +81,17 @@ use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
 
-#[cfg(not(debug_assertions))]
-use crate::next_solver::ErrorGuaranteed;
 use crate::{
+    builder::{ParamKind, TyBuilder},
+    chalk_ext::*,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
     infer::unify::InferenceTable,
-    next_solver::{
-        DbInterner,
-        mapping::{ChalkToNextSolver, NextSolverToChalk, convert_ty_for_result},
-    },
+    next_solver::DbInterner,
 };
 
 pub use autoderef::autoderef;
-pub use builder::{ParamKind, TyBuilder};
-pub use chalk_ext::*;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
@@ -124,7 +119,7 @@ pub use utils::{
 };
 pub use variance::Variance;
 
-use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Safety, Scalar};
+use chalk_ir::{BoundVar, DebruijnIndex, Safety, Scalar};
 
 pub(crate) type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
@@ -156,7 +151,6 @@ pub(crate) type GenericArgData = chalk_ir::GenericArgData<Interner>;
 
 pub(crate) type Ty = chalk_ir::Ty<Interner>;
 pub type TyKind = chalk_ir::TyKind<Interner>;
-pub(crate) type TypeFlags = chalk_ir::TypeFlags;
 pub(crate) type DynTy = chalk_ir::DynTy<Interner>;
 pub(crate) type FnPointer = chalk_ir::FnPointer<Interner>;
 pub(crate) use chalk_ir::FnSubst; // a re-export so we don't lose the tuple constructor
@@ -174,7 +168,6 @@ pub(crate) type ConstValue = chalk_ir::ConstValue<Interner>;
 
 pub(crate) type Const = chalk_ir::Const<Interner>;
 pub(crate) type ConstData = chalk_ir::ConstData<Interner>;
-pub(crate) type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
 pub(crate) type TraitRef = chalk_ir::TraitRef<Interner>;
 pub(crate) type QuantifiedWhereClause = Binders<WhereClause>;
@@ -382,7 +375,7 @@ pub(crate) fn variable_kinds_from_iter(
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct CallableSig {
+pub(crate) struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
     safety: Safety,
@@ -534,112 +527,6 @@ impl FnAbi {
     }
 }
 
-/// A polymorphic function signature.
-pub type PolyFnSig = Binders<CallableSig>;
-
-impl CallableSig {
-    pub fn from_params_and_return(
-        params: impl Iterator<Item = Ty>,
-        ret: Ty,
-        is_varargs: bool,
-        safety: Safety,
-        abi: FnAbi,
-    ) -> CallableSig {
-        let mut params_and_return = Vec::with_capacity(params.size_hint().0 + 1);
-        params_and_return.extend(params);
-        params_and_return.push(ret);
-        CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }
-    }
-
-    pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
-        let callable_def = ToChalk::from_chalk(db, def);
-        let interner = DbInterner::new_with(db, None, None);
-        let args: crate::next_solver::GenericArgs<'_> = substs.to_nextsolver(interner);
-        let sig = db.callable_item_signature(callable_def);
-        sig.instantiate(interner, args).skip_binder().to_chalk(interner)
-    }
-    pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
-        CallableSig {
-            // FIXME: what to do about lifetime params? -> return PolyFnSig
-            params_and_return: Arc::from_iter(
-                fn_ptr
-                    .substitution
-                    .clone()
-                    .shifted_out_to(Interner, DebruijnIndex::ONE)
-                    .expect("unexpected lifetime vars in fn ptr")
-                    .0
-                    .as_slice(Interner)
-                    .iter()
-                    .map(|arg| arg.assert_ty_ref(Interner).clone()),
-            ),
-            is_varargs: fn_ptr.sig.variadic,
-            safety: fn_ptr.sig.safety,
-            abi: fn_ptr.sig.abi,
-        }
-    }
-    pub fn from_fn_sig_and_header<'db>(
-        interner: DbInterner<'db>,
-        sig: crate::next_solver::Binder<'db, rustc_type_ir::FnSigTys<DbInterner<'db>>>,
-        header: rustc_type_ir::FnHeader<DbInterner<'db>>,
-    ) -> CallableSig {
-        CallableSig {
-            // FIXME: what to do about lifetime params? -> return PolyFnSig
-            params_and_return: Arc::from_iter(
-                sig.skip_binder()
-                    .inputs_and_output
-                    .iter()
-                    .map(|t| convert_ty_for_result(interner, t)),
-            ),
-            is_varargs: header.c_variadic,
-            safety: match header.safety {
-                next_solver::abi::Safety::Safe => chalk_ir::Safety::Safe,
-                next_solver::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
-            },
-            abi: header.abi,
-        }
-    }
-
-    pub fn to_fn_ptr(&self) -> FnPointer {
-        FnPointer {
-            num_binders: 0,
-            sig: FnSig { abi: self.abi, safety: self.safety, variadic: self.is_varargs },
-            substitution: FnSubst(Substitution::from_iter(
-                Interner,
-                self.params_and_return.iter().cloned(),
-            )),
-        }
-    }
-
-    pub fn abi(&self) -> FnAbi {
-        self.abi
-    }
-
-    pub fn params(&self) -> &[Ty] {
-        &self.params_and_return[0..self.params_and_return.len() - 1]
-    }
-
-    pub fn ret(&self) -> &Ty {
-        &self.params_and_return[self.params_and_return.len() - 1]
-    }
-}
-
-impl TypeFoldable<Interner> for CallableSig {
-    fn try_fold_with<E>(
-        self,
-        folder: &mut dyn chalk_ir::fold::FallibleTypeFolder<Interner, Error = E>,
-        outer_binder: DebruijnIndex,
-    ) -> Result<Self, E> {
-        let vec = self.params_and_return.to_vec();
-        let folded = vec.try_fold_with(folder, outer_binder)?;
-        Ok(CallableSig {
-            params_and_return: folded.into(),
-            is_varargs: self.is_varargs,
-            safety: self.safety,
-            abi: self.abi,
-        })
-    }
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx), // FIXME(next-solver): Should be crate::nextsolver::ImplTraitIdx.
@@ -764,7 +651,12 @@ where
             #[cfg(debug_assertions)]
             let error = || Err(());
             #[cfg(not(debug_assertions))]
-            let error = || Ok(crate::next_solver::Ty::new_error(self.interner, ErrorGuaranteed));
+            let error = || {
+                Ok(crate::next_solver::Ty::new_error(
+                    self.interner,
+                    crate::next_solver::ErrorGuaranteed,
+                ))
+            };
 
             match t.kind() {
                 crate::next_solver::TyKind::Error(_) => {

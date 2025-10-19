@@ -17,17 +17,20 @@ use std::{
 
 use base_db::Crate;
 use either::Either;
-use hir_def::hir::generics::GenericParamDataRef;
-use hir_def::item_tree::FieldsShape;
 use hir_def::{
-    AdtId, AssocItemId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
-    GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup,
-    StructId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
+    AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, VariantId,
     expr_store::{
         ExpressionStore,
         path::{GenericArg, Path},
     },
-    hir::generics::{TypeOrConstParamData, WherePredicate},
+    hir::generics::{
+        GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
+        WherePredicate,
+    },
+    item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
@@ -36,7 +39,6 @@ use hir_def::{
         TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
     },
 };
-use hir_def::{ConstId, LifetimeParamId, StaticId, TypeParamId};
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use la_arena::{Arena, ArenaMap, Idx};
@@ -48,20 +50,17 @@ use rustc_type_ir::{
     AliasTyKind, ConstKind, DebruijnIndex, ExistentialPredicate, ExistentialProjection,
     ExistentialTraitRef, FnSig, OutlivesPredicate,
     TyKind::{self},
-    TypeVisitableExt,
+    TypeFoldable, TypeFolder, TypeVisitableExt, Upcast,
     inherent::{GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike, Ty as _},
 };
-use rustc_type_ir::{TypeFoldable, TypeFolder, Upcast};
 use salsa::plumbing::AsId;
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
-use crate::ValueTyDefId;
-use crate::next_solver::ParamConst;
 use crate::{
     FnAbi, ImplTraitId, Interner, ParamKind, TraitEnvironment, TyDefId, TyLoweringDiagnostic,
-    TyLoweringDiagnosticKind,
+    TyLoweringDiagnosticKind, ValueTyDefId,
     consteval::{intern_const_ref, path_to_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics, trait_self_param_idx},
@@ -69,8 +68,8 @@ use crate::{
     next_solver::{
         AdtDef, AliasTy, Binder, BoundExistentialPredicates, BoundRegionKind, BoundTyKind,
         BoundVarKind, BoundVarKinds, Clause, Clauses, Const, DbInterner, EarlyBinder,
-        EarlyParamRegion, ErrorGuaranteed, GenericArgs, ParamEnv, PolyFnSig, Predicate, Region,
-        SolverDefId, TraitPredicate, TraitRef, Ty, Tys,
+        EarlyParamRegion, ErrorGuaranteed, GenericArgs, ParamConst, ParamEnv, PolyFnSig, Predicate,
+        Region, SolverDefId, TraitPredicate, TraitRef, Ty, Tys,
         abi::Safety,
         mapping::{ChalkToNextSolver, convert_ty_for_result},
     },
@@ -187,8 +186,9 @@ pub struct TyLoweringContext<'db, 'a> {
     pub(crate) unsized_types: FxHashSet<Ty<'db>>,
     pub(crate) diagnostics: Vec<TyLoweringDiagnostic>,
     lifetime_elision: LifetimeElisionKind<'db>,
-    /// We disallow referencing generic parameters that have an index greater than or equal to this number.
-    disallow_params_after: u32,
+    /// When lowering the defaults for generic params, this contains the index of the currently lowered param.
+    /// We disallow referring to later params, or to ADT's `Self`.
+    lowering_param_default: Option<u32>,
 }
 
 impl<'db, 'a> TyLoweringContext<'db, 'a> {
@@ -213,7 +213,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             unsized_types: FxHashSet::default(),
             diagnostics: Vec::new(),
             lifetime_elision,
-            disallow_params_after: u32::MAX,
+            lowering_param_default: None,
         }
     }
 
@@ -249,8 +249,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self
     }
 
-    pub(crate) fn disallow_params_after(&mut self, after: u32) {
-        self.disallow_params_after = after;
+    pub(crate) fn lowering_param_default(&mut self, index: u32) {
+        self.lowering_param_default = Some(index);
     }
 
     pub(crate) fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
@@ -333,8 +333,13 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self.generics.get_or_init(|| generics(self.db, self.def))
     }
 
+    fn param_index_is_disallowed(&self, index: u32) -> bool {
+        self.lowering_param_default
+            .is_some_and(|disallow_params_after| index >= disallow_params_after)
+    }
+
     fn type_param(&mut self, id: TypeParamId, index: u32, name: Symbol) -> Ty<'db> {
-        if index >= self.disallow_params_after {
+        if self.param_index_is_disallowed(index) {
             // FIXME: Report an error.
             Ty::new_error(self.interner, ErrorGuaranteed)
         } else {
@@ -343,7 +348,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     fn const_param(&mut self, id: ConstParamId, index: u32) -> Const<'db> {
-        if index >= self.disallow_params_after {
+        if self.param_index_is_disallowed(index) {
             // FIXME: Report an error.
             Const::error(self.interner)
         } else {
@@ -352,7 +357,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 
     fn region_param(&mut self, id: LifetimeParamId, index: u32) -> Region<'db> {
-        if index >= self.disallow_params_after {
+        if self.param_index_is_disallowed(index) {
             // FIXME: Report an error.
             Region::error(self.interner)
         } else {
@@ -394,7 +399,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                     type_data
                         .name
                         .as_ref()
-                        .map_or_else(|| sym::MISSING_NAME.clone(), |d| d.symbol().clone()),
+                        .map_or_else(|| sym::MISSING_NAME, |d| d.symbol().clone()),
                 )
             }
             &TypeRef::RawPtr(inner, mutability) => {
@@ -1603,8 +1608,6 @@ where
         for pred in maybe_parent_generics.where_predicates() {
             tracing::debug!(?pred);
             if filter(maybe_parent_generics.def()) {
-                // We deliberately use `generics` and not `maybe_parent_generics` here. This is not a mistake!
-                // If we use the parent generics
                 predicates.extend(ctx.lower_where_predicate(
                     pred,
                     false,
@@ -1619,49 +1622,53 @@ where
 
     let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
     if let Some(sized_trait) = sized_trait {
-        let (mut generics, mut def_id) =
-            (crate::next_solver::generics::generics(db, def.into()), def);
-        loop {
-            if filter(def_id) {
-                let self_idx = trait_self_param_idx(db, def_id);
-                for (idx, p) in generics.own_params.iter().enumerate() {
-                    if let Some(self_idx) = self_idx
-                        && p.index() as usize == self_idx
-                    {
-                        continue;
-                    }
-                    let GenericParamId::TypeParamId(param_id) = p.id else {
-                        continue;
-                    };
-                    let idx = idx as u32 + generics.parent_count as u32;
-                    let param_ty = Ty::new_param(interner, param_id, idx, p.name.clone());
-                    if explicitly_unsized_tys.contains(&param_ty) {
-                        continue;
-                    }
-                    let trait_ref = TraitRef::new_from_args(
-                        interner,
-                        sized_trait.into(),
-                        GenericArgs::new_from_iter(interner, [param_ty.into()]),
-                    );
-                    let clause = Clause(Predicate::new(
-                        interner,
-                        Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                            rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                trait_ref,
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            }),
-                        )),
-                    ));
-                    predicates.push(clause);
-                }
+        let mut add_sized_clause = |param_idx, param_id, param_data| {
+            let (
+                GenericParamId::TypeParamId(param_id),
+                GenericParamDataRef::TypeParamData(param_data),
+            ) = (param_id, param_data)
+            else {
+                return;
+            };
+
+            if param_data.provenance == TypeParamProvenance::TraitSelf {
+                return;
             }
 
-            if let Some(g) = generics.parent {
-                generics = crate::next_solver::generics::generics(db, g.into());
-                def_id = g;
-            } else {
-                break;
+            let param_name = param_data
+                .name
+                .as_ref()
+                .map_or_else(|| sym::MISSING_NAME, |name| name.symbol().clone());
+            let param_ty = Ty::new_param(interner, param_id, param_idx, param_name);
+            if explicitly_unsized_tys.contains(&param_ty) {
+                return;
             }
+            let trait_ref = TraitRef::new_from_args(
+                interner,
+                sized_trait.into(),
+                GenericArgs::new_from_iter(interner, [param_ty.into()]),
+            );
+            let clause = Clause(Predicate::new(
+                interner,
+                Binder::dummy(rustc_type_ir::PredicateKind::Clause(
+                    rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                        trait_ref,
+                        polarity: rustc_type_ir::PredicatePolarity::Positive,
+                    }),
+                )),
+            ));
+            predicates.push(clause);
+        };
+        if generics.parent_generics().is_some_and(|parent| filter(parent.def())) {
+            generics.iter_parent().enumerate().for_each(|(param_idx, (param_id, param_data))| {
+                add_sized_clause(param_idx as u32, param_id, param_data);
+            });
+        }
+        if filter(def) {
+            let parent_params_len = generics.len_parent();
+            generics.iter_self().enumerate().for_each(|(param_idx, (param_id, param_data))| {
+                add_sized_clause((param_idx + parent_params_len) as u32, param_id, param_data);
+            });
         }
     }
 
@@ -1860,10 +1867,7 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
         p: GenericParamDataRef<'_>,
         generic_params: &Generics,
     ) -> (Option<EarlyBinder<'db, crate::next_solver::GenericArg<'db>>>, bool) {
-        // Each default can only refer to previous parameters.
-        // Type variable default referring to parameter coming
-        // after it is forbidden.
-        ctx.disallow_params_after(idx as u32);
+        ctx.lowering_param_default(idx as u32);
         match p {
             GenericParamDataRef::TypeParamData(p) => {
                 let ty = p.default.map(|ty| ctx.lower_ty(ty));

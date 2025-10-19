@@ -314,7 +314,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         self.lower_ty_relative_path(ty, Some(resolution), infer_args)
     }
 
-    fn handle_type_ns_resolution(&mut self, resolution: &TypeNs) {
+    /// This returns whether to keep the resolution (`true`) of throw it (`false`).
+    #[must_use]
+    fn handle_type_ns_resolution(&mut self, resolution: &TypeNs) -> bool {
         let mut prohibit_generics_on_resolved = |reason| {
             if self.current_or_prev_segment.args_and_bindings.is_some() {
                 let segment = self.current_segment_u32();
@@ -333,7 +335,13 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 prohibit_generics_on_resolved(GenericArgsProhibitedReason::TyParam)
             }
             TypeNs::AdtSelfType(_) => {
-                prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy);
+
+                if self.ctx.lowering_param_default.is_some() {
+                    // Generic defaults are not allowed to refer to `Self`.
+                    // FIXME: Emit an error.
+                    return false;
+                }
             }
             TypeNs::BuiltinType(_) => {
                 prohibit_generics_on_resolved(GenericArgsProhibitedReason::PrimitiveTy)
@@ -346,6 +354,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             | TypeNs::TypeAliasId(_)
             | TypeNs::TraitId(_) => {}
         }
+
+        true
     }
 
     pub(crate) fn resolve_path_in_type_ns_fully(&mut self) -> Option<TypeNs> {
@@ -379,11 +389,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         self.current_or_prev_segment =
             segments.get(resolved_segment_idx).expect("should have resolved segment");
 
-        if matches!(self.path, Path::BarePath(..)) {
-            // Bare paths cannot have generics, so skip them as an optimization.
-            return Some((resolution, remaining_index));
-        }
-
         for (i, mod_segment) in module_segments.iter().enumerate() {
             if mod_segment.args_and_bindings.is_some() {
                 self.on_diagnostic(PathLoweringDiagnostic::GenericArgsProhibited {
@@ -403,7 +408,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             });
         }
 
-        self.handle_type_ns_resolution(&resolution);
+        if !self.handle_type_ns_resolution(&resolution) {
+            return None;
+        }
 
         Some((resolution, remaining_index))
     }
@@ -475,7 +482,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
                 match resolution {
                     ValueNs::ImplSelf(_) => {
-                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy);
                     }
                     // FIXME: rustc generates E0107 (incorrect number of generic arguments) and not
                     // E0109 (generic arguments provided for a type that doesn't accept them) for
@@ -499,7 +506,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 }
             }
             ResolveValueResult::Partial(resolution, _, _) => {
-                self.handle_type_ns_resolution(resolution);
+                if !self.handle_type_ns_resolution(resolution) {
+                    return None;
+                }
             }
         };
         Some(res)

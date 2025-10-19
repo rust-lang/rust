@@ -1211,6 +1211,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             | SolverDefId::AdtId(_)
             | SolverDefId::TraitId(_)
             | SolverDefId::ImplId(_)
+            | SolverDefId::EnumVariantId(..)
             | SolverDefId::Ctor(..)
             | SolverDefId::InternedOpaqueTyId(..) => panic!(),
         };
@@ -1969,8 +1970,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
-        // FIXME(next-solver)
-        unimplemented!()
+        Default::default()
     }
 
     type Probe = rustc_type_ir::solve::inspect::Probe<DbInterner<'db>>;

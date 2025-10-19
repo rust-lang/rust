@@ -24,7 +24,6 @@ use crate::{
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    traits::NextTraitSolveResult,
 };
 
 #[query_group::query_group]
@@ -96,6 +95,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     ) -> Result<i128, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
+    #[salsa::transparent]
     fn lookup_impl_method<'db>(
         &'db self,
         env: Arc<TraitEnvironment<'db>>,
@@ -321,23 +321,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         cycle_result = crate::variance::variances_of_cycle_initial,
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
-
-    #[salsa::invoke(crate::traits::normalize_projection_query)]
-    #[salsa::transparent]
-    fn normalize_projection(
-        &self,
-        projection: crate::ProjectionTy,
-        env: Arc<TraitEnvironment<'_>>,
-    ) -> Ty;
-
-    #[salsa::invoke(crate::traits::trait_solve_query)]
-    #[salsa::transparent]
-    fn trait_solve(
-        &self,
-        krate: Crate,
-        block: Option<BlockId>,
-        goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
-    ) -> NextTraitSolveResult;
 
     // next trait solver
 

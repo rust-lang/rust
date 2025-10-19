@@ -43,7 +43,6 @@ use crate::{
     next_solver::{
         Const, DbInterner, ParamConst, Region, TyKind, TypingMode, UnevaluatedConst,
         infer::{DbInternerInferExt, InferCtxt},
-        mapping::NextSolverToChalk,
     },
     traits::FnTrait,
 };
@@ -303,6 +302,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         let resolver = owner.resolver(db);
         let env = db.trait_environment_for_body(owner);
         let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
         MirLowerCtx {
@@ -1766,8 +1766,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn is_uninhabited(&self, expr_id: ExprId) -> bool {
         is_ty_uninhabited_from(
-            self.db,
-            &self.infer[expr_id].to_chalk(self.interner()),
+            &self.infcx,
+            self.infer[expr_id],
             self.owner.module(self.db),
             self.env.clone(),
         )
