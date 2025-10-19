@@ -2717,3 +2717,19 @@ fn vec_null_ptr_roundtrip() {
     let new = roundtripped.with_addr(ptr.addr());
     unsafe { new.read() };
 }
+
+#[test]
+fn const_heap() {
+    const X: &'static [u32] = {
+        let mut v = Vec::with_capacity(6);
+        let mut x = 1;
+        while x < 42 {
+            v.push(x);
+            x *= 2;
+        }
+        assert!(v.len() == 6);
+        v.const_leak()
+    };
+
+    assert_eq!([1, 2, 4, 8, 16, 32], X);
+}
