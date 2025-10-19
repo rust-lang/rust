@@ -111,6 +111,7 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(uint_bit_width)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
