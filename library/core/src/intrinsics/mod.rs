@@ -3324,6 +3324,10 @@ pub const fn copysignf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload<F, R>(f: F) -> R;
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]

@@ -4,17 +4,18 @@ use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
+use rustc_middle::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 use crate::builder::SBuilder;
-use crate::common::AsCCharPtr;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, Type, Value};
+use crate::llvm::{self, BasicBlock, Linkage, Type, Value};
 use crate::{LlvmCodegenBackend, SimpleCx, attributes};
 
 pub(crate) fn handle_gpu_code<'ll>(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
-    cx: &'ll SimpleCx<'_>,
+    _cx: &'ll SimpleCx<'_>,
 ) {
+    /*
     // The offload memory transfer type for each kernel
     let mut memtransfer_types = vec![];
     let mut region_ids = vec![];
@@ -32,6 +33,7 @@ pub(crate) fn handle_gpu_code<'ll>(
     }
 
     gen_call_handling(&cx, &memtransfer_types, &region_ids);
+    */
 }
 
 // ; Function Attrs: nounwind
@@ -79,7 +81,7 @@ fn generate_at_one<'ll>(cx: &'ll SimpleCx<'_>) -> &'ll llvm::Value {
     at_one
 }
 
-struct TgtOffloadEntry {
+pub(crate) struct TgtOffloadEntry {
     //   uint64_t Reserved;
     //   uint16_t Version;
     //   uint16_t Kind;
@@ -256,11 +258,14 @@ pub(crate) fn add_global<'ll>(
 // This function returns a memtransfer value which encodes how arguments to this kernel shall be
 // mapped to/from the gpu. It also returns a region_id with the name of this kernel, to be
 // concatenated into the list of region_ids.
-fn gen_define_handling<'ll>(
-    cx: &'ll SimpleCx<'_>,
+pub(crate) fn gen_define_handling<'ll, 'tcx>(
+    cx: &SimpleCx<'ll>,
+    tcx: TyCtxt<'tcx>,
     kernel: &'ll llvm::Value,
     offload_entry_ty: &'ll llvm::Type,
-    num: i64,
+    // TODO(Sa4dUs): Define a typetree once i have a better idea of what do we exactly need
+    tt: Vec<Ty<'tcx>>,
+    symbol: &str,
 ) -> (&'ll llvm::Value, &'ll llvm::Value) {
     let types = cx.func_params_types(cx.get_type_of_global(kernel));
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
@@ -270,11 +275,21 @@ fn gen_define_handling<'ll>(
         .filter(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer))
         .count();
 
+    // TODO(Sa4dUs): Add typetrees here
+    let ptr_sizes = types
+        .iter()
+        .zip(tt)
+        .filter_map(|(&x, ty)| match cx.type_kind(x) {
+            rustc_codegen_ssa::common::TypeKind::Pointer => Some(get_payload_size(tcx, ty)),
+            _ => None,
+        })
+        .collect::<Vec<u64>>();
+
     // We do not know their size anymore at this level, so hardcode a placeholder.
     // A follow-up pr will track these from the frontend, where we still have Rust types.
     // Then, we will be able to figure out that e.g. `&[f32;256]` will result in 4*256 bytes.
     // I decided that 1024 bytes is a great placeholder value for now.
-    add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{num}"), &vec![1024; num_ptr_types]);
+    add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
@@ -282,25 +297,28 @@ fn gen_define_handling<'ll>(
     // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
     let memtransfer_types = add_priv_unnamed_arr(
         &cx,
-        &format!(".offload_maptypes.{num}"),
+        &format!(".offload_maptypes.{symbol}"),
         &vec![1 + 2 + 32; num_ptr_types],
     );
+
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
 
-    let name = format!(".kernel_{num}.region_id");
+    let name = format!(".{symbol}.region_id");
     let initializer = cx.get_const_i8(0);
     let region_id = add_unnamed_global(&cx, &name, initializer, WeakAnyLinkage);
 
-    let c_entry_name = CString::new(format!("kernel_{num}")).unwrap();
+    let c_entry_name = CString::new(symbol).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
-    let offload_entry_name = format!(".offloading.entry_name.{num}");
+    let offload_entry_name = format!(".offloading.entry_name.{symbol}");
 
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
     let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
     llvm::set_alignment(llglobal, Align::ONE);
     llvm::set_section(llglobal, c".llvm.rodata.offloading");
-    let name = format!(".offloading.entry.kernel_{num}");
+
+    // Not actively used yet, for calling real kernels
+    let name = format!(".offloading.entry.{symbol}");
 
     // See the __tgt_offload_entry documentation above.
     let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
@@ -317,7 +335,57 @@ fn gen_define_handling<'ll>(
     (memtransfer_types, region_id)
 }
 
-pub(crate) fn declare_offload_fn<'ll>(
+// TODO(Sa4dUs): move this to a proper place
+fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u64 {
+    match ty.kind() {
+        /*
+        rustc_middle::infer::canonical::ir::TyKind::Bool => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Char => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Int(int_ty) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Uint(uint_ty) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Float(float_ty) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Adt(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Foreign(_) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Str => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Array(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Pat(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Slice(_) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::RawPtr(_, mutability) => todo!(),
+        */
+        ty::Ref(_, inner, _) => get_payload_size(tcx, *inner),
+        /*
+        rustc_middle::infer::canonical::ir::TyKind::FnDef(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::FnPtr(binder, fn_header) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::UnsafeBinder(unsafe_binder_inner) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Dynamic(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Closure(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::CoroutineClosure(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Coroutine(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::CoroutineWitness(_, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Never => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Tuple(_) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Alias(alias_ty_kind, alias_ty) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Param(_) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Bound(bound_var_index_kind, _) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Placeholder(_) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Infer(infer_ty) => todo!(),
+        rustc_middle::infer::canonical::ir::TyKind::Error(_) => todo!(),
+        */
+        _ => {
+            tcx
+                // TODO(Sa4dUs): Maybe `.as_query_input()`?
+                .layout_of(PseudoCanonicalInput {
+                    typing_env: TypingEnv::fully_monomorphized(),
+                    value: ty,
+                })
+                .unwrap()
+                .size
+                .bytes()
+        }
+    }
+}
+
+fn declare_offload_fn<'ll>(
     cx: &'ll SimpleCx<'_>,
     name: &str,
     ty: &'ll llvm::Type,
@@ -352,10 +420,13 @@ pub(crate) fn declare_offload_fn<'ll>(
 // 4. set insert point after kernel call.
 // 5. generate all the GEPS and stores, to be used in 6)
 // 6. generate __tgt_target_data_end calls to move data from the GPU
-fn gen_call_handling<'ll>(
-    cx: &'ll SimpleCx<'_>,
+pub(crate) fn gen_call_handling<'ll>(
+    cx: &SimpleCx<'ll>,
+    bb: &BasicBlock,
+    kernels: &[&'ll llvm::Value],
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
+    llfn: &'ll Value,
 ) {
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
@@ -368,27 +439,14 @@ fn gen_call_handling<'ll>(
     let tgt_kernel_decl = KernelArgsTy::new_decl(&cx);
     let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
 
-    let main_fn = cx.get_function("main");
-    let Some(main_fn) = main_fn else { return };
-    let kernel_name = "kernel_1";
-    let call = unsafe {
-        llvm::LLVMRustGetFunctionCall(main_fn, kernel_name.as_c_char_ptr(), kernel_name.len())
-    };
-    let Some(kernel_call) = call else {
-        return;
-    };
-    let kernel_call_bb = unsafe { llvm::LLVMGetInstructionParent(kernel_call) };
-    let called = unsafe { llvm::LLVMGetCalledValue(kernel_call).unwrap() };
-    let mut builder = SBuilder::build(cx, kernel_call_bb);
+    let mut builder = SBuilder::build(cx, bb);
 
-    let types = cx.func_params_types(cx.get_type_of_global(called));
+    let types = cx.func_params_types(cx.get_type_of_global(kernels[0]));
     let num_args = types.len() as u64;
 
     // Step 0)
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
     // %6 = alloca %struct.__tgt_bin_desc, align 8
-    unsafe { llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, main_fn) };
-
     let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
 
     let ty = cx.type_array(cx.type_ptr(), num_args);
@@ -404,15 +462,14 @@ fn gen_call_handling<'ll>(
     let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
 
     // Step 1)
-    unsafe { llvm::LLVMRustPositionBefore(builder.llbuilder, kernel_call) };
     builder.memset(tgt_bin_desc_alloca, cx.get_const_i8(0), cx.get_const_i64(32), Align::EIGHT);
 
     // Now we allocate once per function param, a copy to be passed to one of our maps.
     let mut vals = vec![];
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
-    for index in 0..types.len() {
-        let v = unsafe { llvm::LLVMGetOperand(kernel_call, index as u32).unwrap() };
+    for index in 0..num_args {
+        let v = unsafe { llvm::LLVMGetParam(llfn, index as u32) };
         let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
         vals.push(v);
         geps.push(gep);
@@ -504,13 +561,8 @@ fn gen_call_handling<'ll>(
         region_ids[0],
         a5,
     ];
-    let offload_success = builder.call(tgt_target_kernel_ty, tgt_decl, &args, None);
+    builder.call(tgt_target_kernel_ty, tgt_decl, &args, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
-    unsafe {
-        let next = llvm::LLVMGetNextInstruction(offload_success).unwrap();
-        llvm::LLVMRustPositionAfter(builder.llbuilder, next);
-        llvm::LLVMInstructionEraseFromParent(next);
-    }
 
     // Step 4)
     let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
@@ -519,8 +571,4 @@ fn gen_call_handling<'ll>(
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 
     drop(builder);
-    // FIXME(offload) The issue is that we right now add a call to the gpu version of the function,
-    // and then delete the call to the CPU version. In the future, we should use an intrinsic which
-    // directly resolves to a call to the GPU version.
-    unsafe { llvm::LLVMDeleteFunction(called) };
 }

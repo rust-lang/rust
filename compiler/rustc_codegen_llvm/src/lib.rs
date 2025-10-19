@@ -4,6 +4,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// TODO(Sa4dUs): remove this once we have a great version, just to ignore unused LLVM wrappers
+#![allow(unused)]
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(slice_as_array))]
 #![feature(assert_matches)]

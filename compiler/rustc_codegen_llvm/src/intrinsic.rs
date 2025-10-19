@@ -25,6 +25,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
+use crate::builder::gpu_offload::TgtOffloadEntry;
 use crate::context::CodegenCx;
 use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLto};
 use crate::llvm::{self, Metadata, Type, Value};
@@ -195,6 +196,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::autodiff => {
                 codegen_autodiff(self, tcx, instance, args, result);
+                return Ok(());
+            }
+            sym::offload => {
+                codegen_offload(self, tcx, instance, args, result);
                 return Ok(());
             }
             sym::is_val_statically_known => {
@@ -1228,6 +1233,72 @@ fn codegen_autodiff<'ll, 'tcx>(
         diff_attrs.clone(),
         result,
         fnc_tree,
+    );
+}
+
+fn codegen_offload<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+    _args: &[OperandRef<'tcx, &'ll Value>],
+    _result: PlaceRef<'tcx, &'ll Value>,
+) {
+    let cx = bx.cx;
+    let fn_args = instance.args;
+
+    let (target_id, target_args) = match fn_args.into_type_list(tcx)[0].kind() {
+        ty::FnDef(def_id, params) => (def_id, params),
+        _ => bug!("invalid offload intrinsic arg"),
+    };
+
+    let fn_target = match Instance::try_resolve(tcx, cx.typing_env(), *target_id, target_args) {
+        Ok(Some(instance)) => instance,
+        Ok(None) => bug!(
+            "could not resolve ({:?}, {:?}) to a specific offload instance",
+            target_id,
+            target_args
+        ),
+        Err(_) => {
+            // An error has already been emitted
+            return;
+        }
+    };
+
+    // TODO(Sa4dUs): Will need typetrees
+    let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target.clone(), LOCAL_CRATE);
+    let Some(kernel) = cx.get_function(&target_symbol) else {
+        bug!("could not find target function")
+    };
+
+    let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
+
+    // Build TypeTree (or something similar)
+    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
+    let inputs = sig.inputs();
+
+    // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
+    let (memtransfer_type, region_id) = crate::builder::gpu_offload::gen_define_handling(
+        cx,
+        tcx,
+        kernel,
+        offload_entry_ty,
+        inputs.to_vec(),
+        &target_symbol,
+    );
+
+    let kernels = &[kernel];
+
+    let llfn = bx.llfn();
+
+    // TODO(Sa4dUs): this is a patch for delaying lifetime's issue fix
+    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
+    crate::builder::gpu_offload::gen_call_handling(
+        cx,
+        bb,
+        kernels,
+        &[memtransfer_type],
+        &[region_id],
+        llfn,
     );
 }
 
