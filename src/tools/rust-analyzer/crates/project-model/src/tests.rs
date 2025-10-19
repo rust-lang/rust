@@ -241,7 +241,6 @@ fn smoke_test_real_sysroot_cargo() {
     let loaded_sysroot = sysroot.load_workspace(
         &RustSourceWorkspaceConfig::default_cargo(),
         false,
-        &cwd,
         &Utf8PathBuf::default(),
         &|_| (),
     );

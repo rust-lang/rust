@@ -210,7 +210,6 @@ impl Sysroot {
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
         no_deps: bool,
-        current_dir: &AbsPath,
         target_dir: &Utf8Path,
         progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
@@ -224,7 +223,7 @@ impl Sysroot {
             if fs::metadata(&library_manifest).is_ok() {
                 match self.load_library_via_cargo(
                     &library_manifest,
-                    current_dir,
+                    src_root,
                     target_dir,
                     cargo_config,
                     no_deps,
