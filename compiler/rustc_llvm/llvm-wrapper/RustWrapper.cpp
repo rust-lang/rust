@@ -245,6 +245,7 @@ enum class LLVMRustAttributeKind {
   DeadOnUnwind = 43,
   DeadOnReturn = 44,
   CapturesReadOnly = 45,
+  CapturesNone = 46,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -339,6 +340,7 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
 #endif
   case LLVMRustAttributeKind::CapturesAddress:
   case LLVMRustAttributeKind::CapturesReadOnly:
+  case LLVMRustAttributeKind::CapturesNone:
     report_fatal_error("Should be handled separately");
   }
   report_fatal_error("bad LLVMRustAttributeKind");
@@ -390,6 +392,9 @@ extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
 extern "C" LLVMAttributeRef
 LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
 #if LLVM_VERSION_GE(21, 0)
+  if (RustAttr == LLVMRustAttributeKind::CapturesNone) {
+    return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  }
   if (RustAttr == LLVMRustAttributeKind::CapturesAddress) {
     return wrap(Attribute::getWithCaptureInfo(
         *unwrap(C), CaptureInfo(CaptureComponents::Address)));
