@@ -118,6 +118,7 @@
 #![feature(uint_bit_width)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 #![feature(widening_mul)]

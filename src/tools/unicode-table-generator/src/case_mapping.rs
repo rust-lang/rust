@@ -1,7 +1,8 @@
 use std::char;
 use std::collections::BTreeMap;
-use std::fmt::{self, Write};
+use std::fmt::Write;
 
+use crate::fmt_helpers::CharEscape;
 use crate::{UnicodeData, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
@@ -73,14 +74,6 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, usize
     .unwrap();
 
     (tables, size)
-}
-
-struct CharEscape(char);
-
-impl fmt::Debug for CharEscape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'{}'", self.0.escape_default())
-    }
 }
 
 static HEADER: &str = r"
