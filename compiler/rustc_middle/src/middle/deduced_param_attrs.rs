@@ -3,7 +3,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use crate::ty::{Ty, TyCtxt, TypingEnv};
 
 /// Flags that dictate how a parameter is mutated. If the flags are empty, the param is
-/// read-only. If non-empty, it is read-only with conditions.
+/// read-only. If non-empty, it is read-only if *all* flags' conditions are met.
 #[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, HashStable)]
 pub struct DeducedReadOnlyParam(u8);
 
@@ -53,6 +53,7 @@ impl DeducedParamAttrs {
         ty: Ty<'tcx>,
     ) -> bool {
         let read_only = self.read_only;
+        // We have to check *all* set bits; only if all checks pass is this truly read-only.
         if read_only.contains(DeducedReadOnlyParam::MUTATED) {
             return false;
         }
