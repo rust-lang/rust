@@ -23,8 +23,8 @@ Features provided by lang items include:
   `core::marker`; lang item `phantom_data`.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses `Box`
-then there is no need to define functions for `exchange_malloc` and
-`box_free`. `rustc` will emit an error when an item is needed but not found
+then there is no need to define struct `global_alloc_ty`.
+`rustc` will emit an error when an item is needed but not found
 in the current crate or any that it depends on.
 
 Most lang items are defined by the `core` library, but if you're trying to build an
