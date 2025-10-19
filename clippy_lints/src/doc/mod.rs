@@ -28,7 +28,7 @@ use url::Url;
 
 mod broken_link;
 mod doc_comment_double_space_linebreaks;
-mod doc_comments_missing_terminal_punctuation;
+mod doc_paragraphs_missing_punctuation;
 mod doc_suspicious_footnotes;
 mod include_in_doc_without_cfg;
 mod lazy_continuation;
@@ -693,7 +693,7 @@ declare_clippy_lint! {
     /// /// It was chosen by a fair dice roll.
     /// ```
     #[clippy::version = "1.92.0"]
-    pub DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+    pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
     nursery,
     "missing terminal punctuation in doc comments"
 }
@@ -732,7 +732,7 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
     DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     DOC_SUSPICIOUS_FOOTNOTES,
-    DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+    DOC_PARAGRAPHS_MISSING_PUNCTUATION,
 ]);
 
 impl EarlyLintPass for Documentation {
@@ -904,7 +904,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         },
     );
 
-    doc_comments_missing_terminal_punctuation::check(
+    doc_paragraphs_missing_punctuation::check(
         cx,
         &doc,
         Fragments {

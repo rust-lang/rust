@@ -4,7 +4,7 @@ use rustc_resolve::rustdoc::main_body_opts;
 
 use rustc_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
-use super::{DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION, Fragments};
+use super::{DOC_PARAGRAPHS_MISSING_PUNCTUATION, Fragments};
 
 const MSG: &str = "doc comments should end with a terminal punctuation mark";
 const PUNCTUATION_SUGGESTION: char = '.';
@@ -17,7 +17,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
                 if let Some(span) = fragments.span(cx, offset..offset) {
                     clippy_utils::diagnostics::span_lint_and_sugg(
                         cx,
-                        DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+                        DOC_PARAGRAPHS_MISSING_PUNCTUATION,
                         span,
                         MSG,
                         "end the doc comment with some punctuation",
@@ -31,7 +31,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
                 if let Some(span) = fragments.span(cx, offset..offset) {
                     clippy_utils::diagnostics::span_lint_and_help(
                         cx,
-                        DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+                        DOC_PARAGRAPHS_MISSING_PUNCTUATION,
                         span,
                         MSG,
                         None,

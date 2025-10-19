@@ -1,15 +1,15 @@
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation_unfixable.rs:7:68
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation_unfixable.rs:7:68
    |
 LL |     /// Sometimes the doc comment ends with parentheses (like this)
    |                                                                    ^
    |
    = help: end the doc comment with some punctuation
-   = note: `-D clippy::doc-comments-missing-terminal-punctuation` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::doc_comments_missing_terminal_punctuation)]`
+   = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_paragraphs_missing_punctuation)]`
 
 error: doc comments should end with a terminal punctuation mark
-  --> tests/ui/doc/doc_comments_missing_terminal_punctuation_unfixable.rs:10:41
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation_unfixable.rs:10:41
    |
 LL |     /// This comment ends with "a quote"
    |                                         ^

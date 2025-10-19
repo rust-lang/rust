@@ -1,20 +1,20 @@
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip]
-#![warn(clippy::doc_comments_missing_terminal_punctuation)]
+#![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 fn answer() -> i32 {
     42
 }
 
 /// The `Option` type
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 // Triggers even in the presence of another attribute.
 #[derive(Debug)]
 enum MyOption<T> {
     /// No value
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     None,
     /// Some value of type `T`.
     Some(T),
@@ -25,7 +25,7 @@ enum MyOption<T> {
 #[derive(Debug)]
 /// doc comment:
 /// only the last line triggers the lint
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 enum Exceptions {
     /// Question marks are fine?
     QuestionMark,
@@ -38,7 +38,7 @@ enum Exceptions {
     RawHtml,
     /// The raw HTML exception actually does the right thing to autolinks:
     /// <https://spec.commonmark.org/0.31.2/#autolinks>
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     MarkdownAutolink,
     /// This table introduction ends with a colon:
     ///
@@ -47,7 +47,7 @@ enum Exceptions {
     /// | Markdown table | A-ok  |
     MarkdownTable,
     /// Here is a snippet
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     ///
     /// ```
     /// // Code blocks are no issues.
@@ -56,7 +56,7 @@ enum Exceptions {
 }
 
 // Check the lint can be expected on a whole enum at once.
-#[expect(clippy::doc_comments_missing_terminal_punctuation)]
+#[expect(clippy::doc_paragraphs_missing_punctuation)]
 enum Char {
     /// U+0000
     Null,
@@ -66,18 +66,18 @@ enum Char {
 
 // Check the lint can be expected on a single variant without affecting others.
 enum Char2 {
-    #[expect(clippy::doc_comments_missing_terminal_punctuation)]
+    #[expect(clippy::doc_paragraphs_missing_punctuation)]
     /// U+0000
     Null,
     /// U+0001
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     StartOfHeading,
 }
 
 mod module {
     //! Works on
     //! inner attributes too
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
 }
 
 enum Trailers {
@@ -88,12 +88,12 @@ enum Trailers {
     /// **Sometimes the last sentence is in bold, and that's ok.**
     DoubleStarPassing,
     /// **But sometimes it is missing a period**
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     DoubleStarFailing,
     /// _Sometimes the last sentence is in italics, and that's ok._
     UnderscorePassing,
     /// _But sometimes it is missing a period_
-    //~^ doc_comments_missing_terminal_punctuation
+    //~^ doc_paragraphs_missing_punctuation
     UnderscoreFailing,
     /// This comment ends with "a quote."
     AmericanStyleQuotePassing,
@@ -102,11 +102,11 @@ enum Trailers {
 }
 
 /// Doc comments can end with an [inline link](#anchor)
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 struct InlineLink;
 
 /// Some doc comments contain [link reference definitions][spec]
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 ///
 /// [spec]: https://spec.commonmark.org/0.31.2/#link-reference-definitions
 struct LinkRefDefinition;
@@ -131,27 +131,27 @@ enum OrderedLists {
 }
 
 /// Doc comments with trailing blank lines are supported
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 ///
 struct TrailingBlankLine;
 
 /// This doc comment has multiple paragraph.
 /// This first paragraph is missing punctuation
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 ///
 /// The second one as well
 /// And it has multiple sentences
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 ///
 /// Same for this third and last one
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 struct MultiParagraphDocComment;
 
 /// ```
 struct IncompleteBlockCode;
 
 /// This ends with a code `span`
-//~^ doc_comments_missing_terminal_punctuation
+//~^ doc_paragraphs_missing_punctuation
 struct CodeSpan;
 
 #[expect(clippy::empty_docs)]
@@ -162,7 +162,7 @@ struct EmptyDocComment;
  * Block doc comments work
  *
  */
-//~^^^ doc_comments_missing_terminal_punctuation
+//~^^^ doc_paragraphs_missing_punctuation
 struct BlockDocComment;
 
 /// Sometimes a doc attribute is used for concatenation
