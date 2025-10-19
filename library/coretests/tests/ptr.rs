@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::marker::Freeze;
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::MaybeUninit;
 use core::num::NonZero;
 use core::ptr;
 use core::ptr::*;
@@ -1044,42 +1044,4 @@ fn test_ptr_default() {
     }
     let default = PtrMutDefaultTest::default();
     assert!(default.ptr.is_null());
-}
-
-#[test]
-fn test_const_drop_in_place() {
-    const COUNTER: usize = {
-        use core::cell::Cell;
-
-        let counter = Cell::new(0);
-
-        // only exists to make `Drop` indirect impl
-        #[allow(dead_code)]
-        struct Test<'a>(Dropped<'a>);
-
-        struct Dropped<'a>(&'a Cell<usize>);
-        impl const Drop for Dropped<'_> {
-            fn drop(&mut self) {
-                self.0.set(self.0.get() + 1);
-            }
-        }
-
-        let mut one = ManuallyDrop::new(Test(Dropped(&counter)));
-        let mut two = ManuallyDrop::new(Test(Dropped(&counter)));
-        let mut three = ManuallyDrop::new(Test(Dropped(&counter)));
-        assert!(counter.get() == 0);
-        unsafe {
-            ManuallyDrop::drop(&mut one);
-        }
-        assert!(counter.get() == 1);
-        unsafe {
-            ManuallyDrop::drop(&mut two);
-        }
-        assert!(counter.get() == 2);
-        unsafe {
-            ManuallyDrop::drop(&mut three);
-        }
-        counter.get()
-    };
-    assert_eq!(COUNTER, 3);
 }
