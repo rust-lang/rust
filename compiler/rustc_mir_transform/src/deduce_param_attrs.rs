@@ -4,6 +4,10 @@
 //! body of the function instead of just the signature. These can be useful for optimization
 //! purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 //! dependent crates can use them.
+//!
+//! Note that this *crucially* relies on codegen *not* doing any more MIR-level transformations
+//! after `optimized_mir`! We check for things that are *not* guaranteed to be preserved by MIR
+//! transforms, such as which local variables happen to be mutated.
 
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
