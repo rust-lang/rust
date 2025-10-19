@@ -14,7 +14,7 @@ impl<'a> FileDirectives<'a> {
         for (line_number, ln) in (1..).zip(file_contents.lines()) {
             let ln = ln.trim();
 
-            if let Some(directive_line) = line_directive(line_number, ln) {
+            if let Some(directive_line) = line_directive(path, line_number, ln) {
                 lines.push(directive_line);
             }
         }
