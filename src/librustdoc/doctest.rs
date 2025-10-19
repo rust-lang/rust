@@ -785,7 +785,7 @@ fn run_test(
         if doctest.no_run && !langstr.compile_fail && rustdoc_options.persist_doctests.is_none() {
             // FIXME: why does this code check if it *shouldn't* persist doctests
             //        -- shouldn't it be the negation?
-            compiler_args.push("--emit=metadata".to_owned());
+            compiler.arg("--emit=metadata".to_owned());
         }
     }
 
@@ -811,7 +811,7 @@ fn run_test(
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         stdin.write_all(doctest.full_test_code.as_bytes()).expect("could write out test sources");
 
-        if !langstr.compile_fail && langstr.should_panic {
+        if is_should_panic {
             match compile_merged_doctest_and_caller_binary(
                 child,
                 &doctest,
