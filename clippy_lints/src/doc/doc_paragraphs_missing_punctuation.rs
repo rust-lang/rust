@@ -6,7 +6,7 @@ use rustc_resolve::rustdoc::pulldown_cmark::{Event, Options, Parser, Tag, TagEnd
 
 use super::{DOC_PARAGRAPHS_MISSING_PUNCTUATION, Fragments};
 
-const MSG: &str = "doc comments should end with a terminal punctuation mark";
+const MSG: &str = "doc paragraphs should end with a terminal punctuation mark";
 const PUNCTUATION_SUGGESTION: char = '.';
 
 pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
