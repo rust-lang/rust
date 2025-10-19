@@ -863,20 +863,33 @@ fn elision_suggestions(
         //     ^^^^
         vec![(generics.span, String::new())]
     } else {
+        // 1. Start from the last elidable lifetime
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
+        //    lifetime to the comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
+        //    current lifetime to the comma _after_ it
+        let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()
+            .rev()
             .map(|&id| {
-                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
-                let param = explicit_params.get(pos)?;
+                let (idx, param) = explicit_params.iter().find_position(|param| param.def_id == id)?;
 
-                let span = if let Some(next) = explicit_params.get(pos + 1) {
+                let span = if let Some(next) = explicit_params.get(idx + 1)
+                    && end != Some(next.def_id)
+                {
+                    // Extend the current span forward, up until the next param in the list.
                     // fn x<'prev, 'a, 'next>() {}
                     //             ^^^^
                     param.span.until(next.span)
                 } else {
-                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
-                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
-                    let prev = explicit_params.get(pos - 1)?;
+                    // Extend the current span back to include the comma following the previous
+                    // param. If the span of the next param in the list has already been
+                    // extended, we continue the chain. This is why we're iterating in reverse.
+                    end = Some(param.def_id);
+
+                    // `idx` will never be 0, else we'd be removing the entire list of generics
+                    let prev = explicit_params.get(idx - 1)?;
 
                     // fn x<'prev, 'a>() {}
                     //           ^^^^
