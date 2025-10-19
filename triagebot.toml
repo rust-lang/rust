@@ -1050,6 +1050,12 @@ cc = ["@rust-lang/clippy"]
 [mentions."src/tools/compiletest"]
 cc = ["@jieyouxu"]
 
+[mentions."src/tools/compiletest/src/directives"]
+message = """
+`compiletest` directives have been modified. Please add or update docs for the
+new or modified directive in `src/doc/rustc-dev-guide/`.
+"""
+
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]

@@ -956,9 +956,9 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(0, &line_with_comment).unwrap();
+    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
 
-    super::parse_edition_range(&config, &line, "tmp.rs".into())
+    super::parse_edition_range(&config, &line)
 }
 
 #[test]

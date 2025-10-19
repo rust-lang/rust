@@ -66,8 +66,8 @@ impl EarlyProps {
             file_directives,
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
-                parse_and_update_aux(config, ln, testfile, &mut props.aux);
-                config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
+                parse_and_update_aux(config, ln, &mut props.aux);
+                config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
 
@@ -376,25 +376,17 @@ impl TestProps {
                     config.push_name_value_directive(
                         ln,
                         ERROR_PATTERN,
-                        testfile,
                         &mut self.error_patterns,
                         |r| r,
                     );
                     config.push_name_value_directive(
                         ln,
                         REGEX_ERROR_PATTERN,
-                        testfile,
                         &mut self.regex_error_patterns,
                         |r| r,
                     );
 
-                    config.push_name_value_directive(
-                        ln,
-                        DOC_FLAGS,
-                        testfile,
-                        &mut self.doc_flags,
-                        |r| r,
-                    );
+                    config.push_name_value_directive(ln, DOC_FLAGS, &mut self.doc_flags, |r| r);
 
                     fn split_flags(flags: &str) -> Vec<String> {
                         // Individual flags can be single-quoted to preserve spaces; see
@@ -409,9 +401,7 @@ impl TestProps {
                             .collect::<Vec<_>>()
                     }
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, COMPILE_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                         let flags = split_flags(&flags);
                         for (i, flag) in flags.iter().enumerate() {
                             if flag == "--edition" || flag.starts_with("--edition=") {
@@ -428,14 +418,11 @@ impl TestProps {
                         }
                         self.compile_flags.extend(flags);
                     }
-                    if config
-                        .parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS, testfile)
-                        .is_some()
-                    {
+                    if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
                         panic!("`compiler-flags` directive should be spelled `compile-flags`");
                     }
 
-                    if let Some(range) = parse_edition_range(config, ln, testfile) {
+                    if let Some(range) = parse_edition_range(config, ln) {
                         // The edition is added at the start, since flags from //@compile-flags must
                         // be passed to rustc last.
                         self.compile_flags.insert(
@@ -445,15 +432,14 @@ impl TestProps {
                         has_edition = true;
                     }
 
-                    config.parse_and_update_revisions(testfile, ln, &mut self.revisions);
+                    config.parse_and_update_revisions(ln, &mut self.revisions);
 
-                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
                         self.run_flags.extend(split_flags(&flags));
                     }
 
                     if self.pp_exact.is_none() {
-                        self.pp_exact = config.parse_pp_exact(ln, testfile);
+                        self.pp_exact = config.parse_pp_exact(ln);
                     }
 
                     config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
@@ -475,7 +461,7 @@ impl TestProps {
                     );
                     config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
 
-                    if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE, testfile) {
+                    if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
                         self.pretty_mode = m;
                     }
 
@@ -486,40 +472,35 @@ impl TestProps {
                     );
 
                     // Call a helper method to deal with aux-related directives.
-                    parse_and_update_aux(config, ln, testfile, &mut self.aux);
+                    parse_and_update_aux(config, ln, &mut self.aux);
 
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
-                        testfile,
                         &mut self.exec_env,
                         Config::parse_env,
                     );
                     config.push_name_value_directive(
                         ln,
                         UNSET_EXEC_ENV,
-                        testfile,
                         &mut self.unset_exec_env,
                         |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
                         RUSTC_ENV,
-                        testfile,
                         &mut self.rustc_env,
                         Config::parse_env,
                     );
                     config.push_name_value_directive(
                         ln,
                         UNSET_RUSTC_ENV,
-                        testfile,
                         &mut self.unset_rustc_env,
                         |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
                         FORBID_OUTPUT,
-                        testfile,
                         &mut self.forbid_output,
                         |r| r,
                     );
@@ -555,7 +536,7 @@ impl TestProps {
                     }
 
                     if let Some(code) = config
-                        .parse_name_value_directive(ln, FAILURE_STATUS, testfile)
+                        .parse_name_value_directive(ln, FAILURE_STATUS)
                         .and_then(|code| code.trim().parse::<i32>().ok())
                     {
                         self.failure_status = Some(code);
@@ -576,7 +557,6 @@ impl TestProps {
                     config.set_name_value_directive(
                         ln,
                         ASSEMBLY_OUTPUT,
-                        testfile,
                         &mut self.assembly_output,
                         |r| r.trim().to_string(),
                     );
@@ -589,9 +569,7 @@ impl TestProps {
 
                     // Unlike the other `name_value_directive`s this needs to be handled manually,
                     // because it sets a `bool` flag.
-                    if let Some(known_bug) =
-                        config.parse_name_value_directive(ln, KNOWN_BUG, testfile)
-                    {
+                    if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
                         let known_bug = known_bug.trim();
                         if known_bug == "unknown"
                             || known_bug.split(',').all(|issue_ref| {
@@ -619,21 +597,16 @@ impl TestProps {
                     config.set_name_value_directive(
                         ln,
                         TEST_MIR_PASS,
-                        testfile,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
                     config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, LLVM_COV_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
                         self.llvm_cov_flags.extend(split_flags(&flags));
                     }
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, FILECHECK_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
                         self.filecheck_flags.extend(split_flags(&flags));
                     }
 
@@ -642,7 +615,7 @@ impl TestProps {
                     self.update_add_core_stubs(ln, config);
 
                     if let Some(flags) =
-                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS, testfile)
+                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS)
                     {
                         let flags = split_flags(&flags);
                         for flag in &flags {
@@ -654,7 +627,7 @@ impl TestProps {
                     }
 
                     if let Some(err_kind) =
-                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS, testfile)
+                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
                     {
                         self.dont_require_annotations
                             .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
@@ -870,7 +843,7 @@ fn iter_directives(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive_str in extra_directives {
-            let directive_line = line_directive(0, directive_str)
+            let directive_line = line_directive(testfile, 0, directive_str)
                 .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
             it(&directive_line);
         }
@@ -911,12 +884,7 @@ fn iter_directives(
 }
 
 impl Config {
-    fn parse_and_update_revisions(
-        &self,
-        testfile: &Utf8Path,
-        line: &DirectiveLine<'_>,
-        existing: &mut Vec<String>,
-    ) {
+    fn parse_and_update_revisions(&self, line: &DirectiveLine<'_>, existing: &mut Vec<String>) {
         const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
             // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
             // weird for the test, since if the test writer wants a cfg of the same revision name
@@ -927,7 +895,9 @@ impl Config {
         const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
-        if let Some(raw) = self.parse_name_value_directive(line, "revisions", testfile) {
+        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            let &DirectiveLine { file_path: testfile, .. } = line;
+
             if self.mode == TestMode::RunMake {
                 panic!("`run-make` mode tests do not support revisions: {}", testfile);
             }
@@ -972,11 +942,11 @@ impl Config {
         (name.to_owned(), value.to_owned())
     }
 
-    fn parse_pp_exact(&self, line: &DirectiveLine<'_>, testfile: &Utf8Path) -> Option<Utf8PathBuf> {
-        if let Some(s) = self.parse_name_value_directive(line, "pp-exact", testfile) {
+    fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
+        if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
             Some(Utf8PathBuf::from(&s))
         } else if self.parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(Utf8PathBuf::from)
+            line.file_path.file_name().map(Utf8PathBuf::from)
         } else {
             None
         }
@@ -1013,9 +983,8 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
     ) -> Option<String> {
-        let &DirectiveLine { line_number, .. } = line;
+        let &DirectiveLine { file_path, line_number, .. } = line;
 
         if line.name != directive {
             return None;
@@ -1029,7 +998,7 @@ impl Config {
         let value = expand_variables(value.to_owned(), self);
 
         if value.is_empty() {
-            error!("{testfile}:{line_number}: empty value for directive `{directive}`");
+            error!("{file_path}:{line_number}: empty value for directive `{directive}`");
             help!("expected syntax is: `{directive}: value`");
             panic!("empty directive value detected");
         }
@@ -1046,12 +1015,11 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
         value: &mut Option<T>,
         parse: impl FnOnce(String) -> T,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive, testfile).map(parse);
+            *value = self.parse_name_value_directive(line, directive).map(parse);
         }
     }
 
@@ -1059,11 +1027,10 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
         values: &mut Vec<T>,
         parse: impl FnOnce(String) -> T,
     ) {
-        if let Some(value) = self.parse_name_value_directive(line, directive, testfile).map(parse) {
+        if let Some(value) = self.parse_name_value_directive(line, directive).map(parse) {
             values.push(value);
         }
     }
@@ -1380,9 +1347,9 @@ pub(crate) fn make_test_description(
             decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
-            decision!(ignore_llvm(config, path, ln));
-            decision!(ignore_backends(config, path, ln));
-            decision!(needs_backends(config, path, ln));
+            decision!(ignore_llvm(config, ln));
+            decision!(ignore_backends(config, ln));
+            decision!(needs_backends(config, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1523,10 +1490,9 @@ fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if let Some(backends_to_ignore) =
-        config.parse_name_value_directive(line, "ignore-backends", path)
-    {
+fn ignore_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
+    if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
         for backend in backends_to_ignore.split_whitespace().map(|backend| {
             match CodegenBackend::try_from(backend) {
                 Ok(backend) => backend,
@@ -1545,8 +1511,9 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -
     IgnoreDecision::Continue
 }
 
-fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends", path) {
+fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
+    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
         if !needed_backends
             .split_whitespace()
             .map(|backend| match CodegenBackend::try_from(backend) {
@@ -1568,9 +1535,10 @@ fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) ->
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
     if let Some(needed_components) =
-        config.parse_name_value_directive(line, "needs-llvm-components", path)
+        config.parse_name_value_directive(line, "needs-llvm-components")
     {
         let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
         if let Some(missing_component) = needed_components
@@ -1579,8 +1547,8 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
         {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
-                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
-                    missing_component, path
+                    "missing LLVM component {missing_component}, \
+                    and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {path}",
                 );
             }
             return IgnoreDecision::Ignore {
@@ -1591,9 +1559,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
     if let Some(actual_version) = &config.llvm_version {
         // Note that these `min` versions will check for not just major versions.
 
-        if let Some(version_string) =
-            config.parse_name_value_directive(line, "min-llvm-version", path)
-        {
+        if let Some(version_string) = config.parse_name_value_directive(line, "min-llvm-version") {
             let min_version = extract_llvm_version(&version_string);
             // Ignore if actual version is smaller than the minimum required version.
             if *actual_version < min_version {
@@ -1604,7 +1570,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "max-llvm-major-version", path)
+            config.parse_name_value_directive(line, "max-llvm-major-version")
         {
             let max_version = extract_llvm_version(&version_string);
             // Ignore if actual major version is larger than the maximum required major version.
@@ -1618,7 +1584,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "min-system-llvm-version", path)
+            config.parse_name_value_directive(line, "min-system-llvm-version")
         {
             let min_version = extract_llvm_version(&version_string);
             // Ignore if using system LLVM and actual version
@@ -1631,7 +1597,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_range) =
-            config.parse_name_value_directive(line, "ignore-llvm-version", path)
+            config.parse_name_value_directive(line, "ignore-llvm-version")
         {
             // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
             let (v_min, v_max) =
@@ -1657,7 +1623,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 }
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "exact-llvm-major-version", path)
+            config.parse_name_value_directive(line, "exact-llvm-major-version")
         {
             // Syntax is "exact-llvm-major-version: <version>"
             let version = extract_llvm_version(&version_string);
@@ -1680,13 +1646,9 @@ enum IgnoreDecision {
     Error { message: String },
 }
 
-fn parse_edition_range(
-    config: &Config,
-    line: &DirectiveLine<'_>,
-    testfile: &Utf8Path,
-) -> Option<EditionRange> {
-    let raw = config.parse_name_value_directive(line, "edition", testfile)?;
-    let line_number = line.line_number;
+fn parse_edition_range(config: &Config, line: &DirectiveLine<'_>) -> Option<EditionRange> {
+    let raw = config.parse_name_value_directive(line, "edition")?;
+    let &DirectiveLine { file_path: testfile, line_number, .. } = line;
 
     // Edition range is half-open: `[lower_bound, upper_bound)`
     if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
