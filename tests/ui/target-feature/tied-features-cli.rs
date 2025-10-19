@@ -12,17 +12,14 @@
 //@ [four] build-pass
 //@ [four] compile-flags: -C target-feature=-paca,+pacg -C target-feature=+paca
 //@ ignore-backends: gcc
-#![feature(no_core, lang_items)]
+//@ add-core-stubs
+// FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
+//@ core-stubs-compile-flags: -C target-feature=-pacg,-paca
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
+extern crate minicore;
+use minicore::*;
 
 fn main() {}
 
