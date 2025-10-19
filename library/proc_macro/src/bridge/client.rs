@@ -202,7 +202,7 @@ mod state {
     thread_local! {
         static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
         static STANDALONE: RefCell<Bridge<'static>> = RefCell::new(standalone_bridge());
-        pub(super) static USE_STANDALONE: Cell<StandaloneLevel> = const { Cell::new(StandaloneLevel::FallbackOnly) };
+        pub(super) static USE_STANDALONE: Cell<StandaloneLevel> = const { Cell::new(StandaloneLevel::Never) };
     }
 
     fn standalone_bridge() -> Bridge<'static> {
