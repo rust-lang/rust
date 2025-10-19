@@ -25,7 +25,7 @@ The actual numbers will depend on your code.
 
 ## 2) Check your llvm-ir reproducer
 
-To confirm that your previous step worked, we will use llvm's `opt` tool. find your path to the opt binary, with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/build/bin/opt`. also find `llvmenzyme-19.<so/dll/dylib>` path, similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-19`. Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21, ...). Once you have both, run the following command:
+To confirm that your previous step worked, we will use llvm's `opt` tool. Find your path to the opt binary, with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/ci-llvm/bin/opt`. If you build LLVM from source, you'll likely need to replace `ci-llvm` with `build`. Also find `llvmenzyme-21.<so/dll/dylib>` path, similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-21`. Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21, ...). Once you have both, run the following command:
 
 ```sh
 <path/to/opt> out.ll -load-pass-plugin=/path/to/build/<target-triple>/stage1/lib/libEnzyme-21.so -passes="enzyme" -enzyme-strict-aliasing=0  -s
