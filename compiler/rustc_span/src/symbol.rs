@@ -1558,6 +1558,7 @@ symbols! {
         object_safe_for_dispatch,
         of,
         off,
+        offload,
         offset,
         offset_of,
         offset_of_enum,
