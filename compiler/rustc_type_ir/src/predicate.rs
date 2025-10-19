@@ -121,7 +121,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
     }
 
     pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
-        self.map_bound(|trait_ref| {
+        self.map_bound(|trait_ref: TraitRef<I>| {
             ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
         })
         .upcast(cx)
