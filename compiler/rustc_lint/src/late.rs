@@ -89,6 +89,14 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        // The typeck_result shouldn't be tainted, otherwise it will cause ICE.
+        // If rustdoc is the caller of this function, we shouldn't run typeck_body here.
+        if !self.context.tcx.sess.opts.actually_rustdoc
+            && self.context.tcx.typeck_body(body_id).tainted_by_errors.is_some()
+        {
+            return;
+        }
+
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_cached_typeck_results = self.context.cached_typeck_results.get();
 
