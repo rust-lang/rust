@@ -4,7 +4,9 @@ use std::ops::{Bound, Range};
 
 use crate::bridge::client::Symbol;
 use crate::bridge::fxhash::FxHashMap;
-use crate::bridge::{DelimSpan, Diagnostic, ExpnGlobals, Group, Literal, Punct, TokenTree, server};
+use crate::bridge::{
+    DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Literal, Punct, TokenTree, server,
+};
 use crate::{Delimiter, LEGAL_PUNCT_CHARS};
 
 pub struct NoRustc;
@@ -23,7 +25,7 @@ impl server::Span for NoRustc {
     }
 
     fn byte_range(&mut self, _: Self::Span) -> Range<usize> {
-        todo!()
+        0..0
     }
 
     fn start(&mut self, _: Self::Span) -> Self::Span {
@@ -35,11 +37,11 @@ impl server::Span for NoRustc {
     }
 
     fn line(&mut self, _: Self::Span) -> usize {
-        todo!()
+        1
     }
 
     fn column(&mut self, _: Self::Span) -> usize {
-        todo!()
+        1
     }
 
     fn file(&mut self, _: Self::Span) -> String {
@@ -91,6 +93,82 @@ thread_local! {
     static TRACKED_ENV_VARS: RefCell<FxHashMap<String, Option<String>>> = RefCell::new(FxHashMap::default());
 }
 
+fn parse_maybe_raw_str(
+    mut s: &str,
+    raw_variant: fn(u8) -> LitKind,
+    regular_variant: LitKind,
+) -> Result<Literal<Span, Symbol>, ()> {
+    /// Returns a string containing exactly `num` '#' characters.
+    /// Uses a 256-character source string literal which is always safe to
+    /// index with a `u8` index.
+    fn get_hashes_str(num: u8) -> &'static str {
+        const HASHES: &str = "\
+        ################################################################\
+        ################################################################\
+        ################################################################\
+        ################################################################\
+        ";
+        const _: () = assert!(HASHES.len() == 256);
+        &HASHES[..num as usize]
+    }
+    let mut hash_count = None;
+
+    if s.starts_with('r') {
+        s = s.strip_prefix('r').unwrap();
+        let mut h = 0;
+        for c in s.chars() {
+            if c == '#' {
+                if h == u8::MAX {
+                    return Err(());
+                }
+                h += 1;
+            } else {
+                break;
+            }
+        }
+        hash_count = Some(h);
+        let hashes = get_hashes_str(h);
+        s = s.strip_prefix(hashes).unwrap();
+        s = s.strip_suffix(hashes).ok_or(())?;
+    }
+    let sym = parse_plain_str(s)?;
+
+    Ok(make_literal(
+        if let Some(h) = hash_count { raw_variant(h) } else { regular_variant },
+        sym,
+        None,
+    ))
+}
+
+fn parse_char(s: &str) -> Result<Literal<Span, Symbol>, ()> {
+    if s.chars().count() == 1 {
+        Ok(make_literal(LitKind::Char, Symbol::new(s), None))
+    } else {
+        Err(())
+    }
+}
+
+fn parse_plain_str(mut s: &str) -> Result<Symbol, ()> {
+    s = s.strip_prefix("\"").ok_or(())?.strip_suffix('\"').ok_or(())?;
+    Ok(Symbol::new(s))
+}
+
+fn parse_numeral(s: &str) -> Result<Literal<Span, Symbol>, ()> {
+    /*if s.ends_with("f16")
+        || s.ends_with("f32")
+        || s.ends_with("f64")
+        || s.ends_with("f128")
+    {
+        Literal { kind: todo!(), symbol: todo!(), suffix: todo!(), span: Span };
+    }
+    todo!()*/
+    todo!()
+}
+
+fn make_literal(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal<Span, Symbol> {
+    Literal { kind, symbol, suffix, span: Span }
+}
+
 impl server::FreeFunctions for NoRustc {
     fn injected_env_var(&mut self, var: &str) -> Option<String> {
         TRACKED_ENV_VARS.with_borrow(|vars| vars.get(var)?.clone())
@@ -108,16 +186,24 @@ impl server::FreeFunctions for NoRustc {
         let Some(first) = chars.next() else {
             return Err(());
         };
-        br"";
-        cr"";
+        let rest = &s[1..];
 
         match first {
-            'b' => todo!(),
-            'c' => todo!(),
-            'r' => todo!(),
-            '0'..='9' | '-' => todo!(),
-            '\'' => todo!(),
-            '"' => todo!(),
+            'b' => {
+                if chars.next() == Some('\'') {
+                    parse_char(rest).map(|mut lit| {
+                        lit.kind = LitKind::Byte;
+                        lit
+                    })
+                } else {
+                    parse_maybe_raw_str(rest, LitKind::ByteStrRaw, LitKind::ByteStr)
+                }
+            }
+            'c' => parse_maybe_raw_str(rest, LitKind::CStrRaw, LitKind::CStr),
+            'r' => parse_maybe_raw_str(rest, LitKind::StrRaw, LitKind::Str),
+            '0'..='9' | '-' => parse_numeral(s),
+            '\'' => parse_char(s),
+            '"' => Ok(make_literal(LitKind::Str, parse_plain_str(s)?, None)),
             _ => Err(()),
         }
     }
@@ -132,8 +218,8 @@ impl server::TokenStream for NoRustc {
         tokens.0.is_empty()
     }
 
-    fn expand_expr(&mut self, tokens: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
-        todo!()
+    fn expand_expr(&mut self, _tokens: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+        todo!("`expand_expr` is not yet supported in the standalone backend")
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
@@ -171,7 +257,7 @@ impl server::TokenStream for NoRustc {
             } else if LEGAL_PUNCT_CHARS.contains(&c) {
                 unfinished_streams.last_mut().unwrap().0.push(TokenTree::Punct(Punct {
                     ch: c as u8,
-                    joint: false, // TODO
+                    joint: todo!(),
                     span: Span,
                 }));
             }
