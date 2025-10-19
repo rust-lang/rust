@@ -1,13 +1,16 @@
 use std::fmt;
 
+use camino::Utf8Path;
+
 const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
 
 /// If the given line begins with the appropriate comment prefix for a directive,
 /// returns a struct containing various parts of the directive.
-pub(crate) fn line_directive<'line>(
+pub(crate) fn line_directive<'a>(
+    file_path: &'a Utf8Path,
     line_number: usize,
-    original_line: &'line str,
-) -> Option<DirectiveLine<'line>> {
+    original_line: &'a str,
+) -> Option<DirectiveLine<'a>> {
     // Ignore lines that don't start with the comment prefix.
     let after_comment =
         original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
@@ -33,7 +36,7 @@ pub(crate) fn line_directive<'line>(
     // The directive name ends at the first occurrence of colon, space, or end-of-string.
     let name = raw_directive.split([':', ' ']).next().expect("split is never empty");
 
-    Some(DirectiveLine { line_number, revision, raw_directive, name })
+    Some(DirectiveLine { file_path, line_number, revision, raw_directive, name })
 }
 
 /// The (partly) broken-down contents of a line containing a test directive,
@@ -51,25 +54,30 @@ pub(crate) fn line_directive<'line>(
 ///           ^^^^^^^^^^^^^^^^^ raw_directive
 ///           ^^^^^^^^^^^^^     name
 /// ```
-pub(crate) struct DirectiveLine<'ln> {
+pub(crate) struct DirectiveLine<'a> {
+    /// Path of the file containing this line.
+    ///
+    /// Mostly used for diagnostics, but some directives (e.g. `//@ pp-exact`)
+    /// also use it to compute a value based on the filename.
+    pub(crate) file_path: &'a Utf8Path,
     pub(crate) line_number: usize,
 
     /// Some test directives start with a revision name in square brackets
     /// (e.g. `[foo]`), and only apply to that revision of the test.
     /// If present, this field contains the revision name (e.g. `foo`).
-    pub(crate) revision: Option<&'ln str>,
+    pub(crate) revision: Option<&'a str>,
 
     /// The main part of the directive, after removing the comment prefix
     /// and the optional revision specifier.
     ///
     /// This is "raw" because the directive's name and colon-separated value
     /// (if present) have not yet been extracted or checked.
-    raw_directive: &'ln str,
+    raw_directive: &'a str,
 
     /// Name of the directive.
     ///
     /// Invariant: `self.raw_directive.starts_with(self.name)`
-    pub(crate) name: &'ln str,
+    pub(crate) name: &'a str,
 }
 
 impl<'ln> DirectiveLine<'ln> {
