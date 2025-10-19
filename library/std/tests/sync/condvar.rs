@@ -279,17 +279,20 @@ nonpoison_and_poison_unwrap_test!(
     test_body: {
         use locks::Mutex;
         use locks::Condvar;
+        use std::sync::Barrier;
 
         let sent = Mutex::new(false);
         let cond = Condvar::new();
+        let barrier = Barrier::new(2);
 
         thread::scope(|s| {
             s.spawn(|| {
+                barrier.wait();
                 thread::sleep(Duration::from_secs(2));
                 maybe_unwrap(sent.set(true));
                 cond.notify_all();
             });
-
+            barrier.wait();
             let guard = maybe_unwrap(sent.lock());
             // If there is internal overflow, this call will return almost
             // immediately, before the other thread has reached the `notify_all`
