@@ -8,7 +8,8 @@ use tracing::*;
 
 use crate::common::{CodegenBackend, Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
-use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
+pub(crate) use crate::directives::auxiliary::AuxProps;
+use crate::directives::auxiliary::parse_and_update_aux;
 use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
@@ -21,7 +22,7 @@ use crate::executor::{CollectedTestDesc, ShouldPanic};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
-pub(crate) mod auxiliary;
+mod auxiliary;
 mod cfg;
 mod directive_names;
 mod file;
@@ -44,10 +45,6 @@ impl DirectivesCache {
 /// the test.
 #[derive(Default)]
 pub(crate) struct EarlyProps {
-    /// Auxiliary crates that should be built and made available to this test.
-    /// Included in [`EarlyProps`] so that the indicated files can participate
-    /// in up-to-date checking. Building happens via [`TestProps::aux`] instead.
-    pub(crate) aux: AuxProps,
     pub(crate) revisions: Vec<String>,
 }
 
@@ -66,7 +63,6 @@ impl EarlyProps {
             file_directives,
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
-                parse_and_update_aux(config, ln, &mut props.aux);
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
@@ -1310,6 +1306,7 @@ pub(crate) fn make_test_description(
     file_directives: &FileDirectives<'_>,
     test_revision: Option<&str>,
     poisoned: &mut bool,
+    aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
@@ -1326,6 +1323,9 @@ pub(crate) fn make_test_description(
             if !ln.applies_to_test_revision(test_revision) {
                 return;
             }
+
+            // Parse `aux-*` directives, for use by up-to-date checks.
+            parse_and_update_aux(config, ln, aux_props);
 
             macro_rules! decision {
                 ($e:expr) => {
