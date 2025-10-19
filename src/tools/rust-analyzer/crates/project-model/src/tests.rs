@@ -248,7 +248,7 @@ fn smoke_test_real_sysroot_cargo() {
         sysroot.set_workspace(loaded_sysroot);
     }
     assert!(
-        matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace(_)),
+        matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace { .. }),
         "got {}",
         sysroot.workspace()
     );

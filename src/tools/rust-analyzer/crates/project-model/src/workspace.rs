@@ -743,7 +743,7 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         let mk_sysroot = || {
             let mut r = match self.sysroot.workspace() {
-                RustLibSrcWorkspace::Workspace(ws) => ws
+                RustLibSrcWorkspace::Workspace { ws, .. } => ws
                     .packages()
                     .filter_map(|pkg| {
                         if ws[pkg].is_local {
@@ -1731,7 +1731,7 @@ fn sysroot_to_crate_graph(
 ) -> (SysrootPublicDeps, Option<CrateBuilderId>) {
     let _p = tracing::info_span!("sysroot_to_crate_graph").entered();
     match sysroot.workspace() {
-        RustLibSrcWorkspace::Workspace(cargo) => {
+        RustLibSrcWorkspace::Workspace { ws: cargo, .. } => {
             let (sysroot_cg, sysroot_pm) = cargo_to_crate_graph(
                 load,
                 None,
