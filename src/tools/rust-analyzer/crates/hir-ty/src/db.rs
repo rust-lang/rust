@@ -291,7 +291,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         // cycle_initial = crate::variance::variances_of_cycle_initial,
         cycle_result = crate::variance::variances_of_cycle_initial,
     )]
-    fn variances_of(&self, def: GenericDefId) -> VariancesOf<'_>;
+    fn variances_of<'db>(&'db self, def: GenericDefId) -> VariancesOf<'db>;
 }
 
 #[test]
