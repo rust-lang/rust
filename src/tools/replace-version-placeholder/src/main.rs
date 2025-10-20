@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use tidy::diagnostics::TidyFlags;
 use tidy::{t, walk};
 
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
@@ -16,7 +17,7 @@ fn main() {
             &root_path.join("src/doc/rustc"),
             &root_path.join("src/doc/rustdoc"),
         ],
-        None,
+        &TidyFlags::default(),
         |path, _is_dir| walk::filter_dirs(path),
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {
