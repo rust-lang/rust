@@ -21,6 +21,8 @@ standard library, and documentation.
 
 ## Why Rust?
 
+Hii job queue!
+
 - **Performance:** Fast and memory-efficient, suitable for critical services, embedded devices, and easily integrated with other languages.
 
 - **Reliability:** Our rich type system and ownership model ensure memory and thread safety, reducing bugs at compile-time.
