@@ -273,13 +273,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr: &hir::Expr<'_>,
             span: Span,
         ) -> Option<MustUsePath> {
-            if ty.is_unit()
-                || !ty.is_inhabited_from(
-                    cx.tcx,
-                    cx.tcx.parent_module(expr.hir_id).to_def_id(),
-                    cx.typing_env(),
-                )
-            {
+            if ty.is_unit() {
+                return Some(MustUsePath::Suppressed);
+            }
+            let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
+            let is_uninhabited =
+                |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
+            if is_uninhabited(ty) {
                 return Some(MustUsePath::Suppressed);
             }
 
@@ -292,6 +292,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let pinned_ty = args.type_at(0);
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
+                }
+                // Suppress warnings on `Result<(), Uninhabited>` (e.g. `Result<(), !>`).
+                ty::Adt(def, args)
+                    if cx.tcx.is_diagnostic_item(sym::Result, def.did())
+                        && args.type_at(0).is_unit()
+                        && is_uninhabited(args.type_at(1)) =>
+                {
+                    Some(MustUsePath::Suppressed)
+                }
+                // Suppress warnings on `ControlFlow<Uninhabited, ()>` (e.g. `ControlFlow<!, ()>`).
+                ty::Adt(def, args)
+                    if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
+                        && args.type_at(1).is_unit()
+                        && is_uninhabited(args.type_at(0)) =>
+                {
+                    Some(MustUsePath::Suppressed)
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
