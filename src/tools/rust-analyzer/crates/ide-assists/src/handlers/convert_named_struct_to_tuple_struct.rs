@@ -202,6 +202,9 @@ fn process_struct_name_reference(
                             .record_pat_field_list()?
                             .fields()
                             .filter_map(|pat| pat.pat())
+                            .chain(record_struct_pat.record_pat_field_list()?
+                                .rest_pat()
+                                .map(Into::into))
                     )
                     .to_string()
                 );
@@ -343,6 +346,37 @@ impl A {
         self.0
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn convert_struct_and_rest_pat() {
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct Inner;
+struct A$0 { inner: Inner }
+fn foo(A { .. }: A) {}
+"#,
+            r#"
+struct Inner;
+struct A(Inner);
+fn foo(A(..): A) {}
+"#,
+        );
+
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct Inner;
+struct A$0 { inner: Inner, extra: Inner }
+fn foo(A { inner, .. }: A) {}
+"#,
+            r#"
+struct Inner;
+struct A(Inner, Inner);
+fn foo(A(inner, ..): A) {}
+"#,
         );
     }
 
