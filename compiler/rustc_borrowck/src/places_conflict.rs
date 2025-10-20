@@ -504,6 +504,11 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
             Overlap::EqualOrDisjoint
         }
+        (ProjectionElem::UnwrapUnsafeBinder(_), ProjectionElem::UnwrapUnsafeBinder(_)) => {
+            // UnwrapUnsafeBinder is a transparent wrapper that doesn't affect aliasing
+            debug!("place_element_conflict: DISJOINT-OR-EQ-UNWRAP-UNSAFE-BINDER");
+            Overlap::EqualOrDisjoint
+        }
         (
             ProjectionElem::Deref
             | ProjectionElem::Field(..)
@@ -511,16 +516,13 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..),
+            | ProjectionElem::Downcast(..)
+            | ProjectionElem::UnwrapUnsafeBinder(_),
             _,
         ) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",
             pi1_elem,
             pi2_elem
         ),
-
-        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
-            todo!()
-        }
     }
 }
