@@ -22,7 +22,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
     trait_ref.error_reported()?;
 
     match orphan_check(tcx, impl_def_id, OrphanCheckMode::Proper) {
@@ -294,7 +294,7 @@ fn orphan_check<'tcx>(
 ) -> Result<(), OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>> {
     // We only accept this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id);
     debug!(trait_ref = ?trait_ref.skip_binder());
 
     // If the *trait* is local to the crate, ok.
@@ -315,7 +315,7 @@ fn orphan_check<'tcx>(
         let ocx = traits::ObligationCtxt::new(&infcx);
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
         let ty = infcx.resolve_vars_if_possible(ty);
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return Ok(user_ty);
         }

@@ -1,0 +1,25 @@
+error[E0061]: this function takes 6 arguments but 5 arguments were supplied
+ --> $DIR/trimmed_multiline_suggestion.rs:6:5
+  |
+6 |     function_with_lots_of_arguments(
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+7 |         variable_name,
+8 |         variable_name,
+  |         ------------- argument #2 of type `char` is missing
+  |
+note: function defined here
+ --> $DIR/trimmed_multiline_suggestion.rs:2:4
+  |
+2 | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32, f: i32) {}
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^         -------
+help: provide the argument
+  |
+6 |     function_with_lots_of_arguments(
+7 |         variable_name,
+8 ~         /* char */,
+9 ~         variable_name,
+  |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

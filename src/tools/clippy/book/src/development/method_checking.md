@@ -15,20 +15,20 @@ the [`ExprKind`] that we can access from `expr.kind`:
 ```rust
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_span::sym;
-use clippy_utils::is_trait_method;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::sym;
 
 impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         // Check our expr is calling a method with pattern matching
         if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind
             // Check if the name of this method is `our_fancy_method`
-            && path.ident.name.as_str() == "our_fancy_method"
+            && path.ident.name == sym::our_fancy_method
             // We can check the type of the self argument whenever necessary.
             // (It's necessary if we want to check that method is specifically belonging to a specific trait,
             // for example, a `map` method could belong to user-defined trait instead of to `Iterator`)
             // See the next section for more information.
-            && is_trait_method(cx, self_arg, sym::OurFancyTrait)
+            && cx.ty_based_def(self_arg).opt_parent(cx).is_diag_item(cx, sym::OurFancyTrait)
         {
             println!("`expr` is a method call for `our_fancy_method`");
         }
@@ -40,6 +40,10 @@ Take a closer look at the `ExprKind` enum variant [`MethodCall`] for more
 information on the pattern matching. As mentioned in [Define
 Lints](defining_lints.md#lint-types), the `methods` lint type is full of pattern
 matching with `MethodCall` in case the reader wishes to explore more.
+
+New symbols such as `our_fancy_method` need to be added to the `clippy_utils::sym` module.
+This module extends the list of symbols already provided by the compiler crates
+in `rustc_span::sym`.
 
 ## Checking if a `impl` block implements a method
 
@@ -56,11 +60,10 @@ Let us take a look at how we might check for the implementation of
 `our_fancy_method` on a type:
 
 ```rust
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::return_ty;
+use clippy_utils::{return_ty, sym};
+use clippy_utils::res::MaybeDef;
 use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_span::symbol::sym;
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
@@ -71,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go even further and even check if its return type is `String`
-            && is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::String)
+            && return_ty(cx, impl_item.hir_id).is_diag_item(cx, sym::String)
         {
             println!("`our_fancy_method` is implemented!");
         }

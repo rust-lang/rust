@@ -180,7 +180,8 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
                     }
 
                     (sym::as_dash_needed, Some(NativeLibKind::Dylib { as_needed }))
-                    | (sym::as_dash_needed, Some(NativeLibKind::Framework { as_needed })) => {
+                    | (sym::as_dash_needed, Some(NativeLibKind::Framework { as_needed }))
+                    | (sym::as_dash_needed, Some(NativeLibKind::RawDylib { as_needed })) => {
                         report_unstable_modifier!(native_link_modifiers_as_needed);
                         assign_modifier(as_needed)
                     }
@@ -219,12 +220,12 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
 
         // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
         if let Some((_, span)) = import_name_type {
-            if kind != Some(NativeLibKind::RawDylib) {
+            if !matches!(kind, Some(NativeLibKind::RawDylib { .. })) {
                 cx.emit_err(ImportNameTypeRaw { span });
             }
         }
 
-        if let Some(NativeLibKind::RawDylib) = kind
+        if let Some(NativeLibKind::RawDylib { .. }) = kind
             && name.as_str().contains('\0')
         {
             cx.emit_err(RawDylibNoNul { span: name_span });
@@ -315,7 +316,7 @@ impl LinkParser {
                     cx.emit_err(RawDylibOnlyWindows { span: nv.value_span });
                 }
 
-                NativeLibKind::RawDylib
+                NativeLibKind::RawDylib { as_needed: None }
             }
             sym::link_dash_arg => {
                 if !features.link_arg_attribute() {
@@ -466,8 +467,14 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Static), Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Static),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"

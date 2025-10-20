@@ -19,16 +19,15 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
-use rustc_macros::TryFromU32;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
-    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
-    DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags, DILocation,
+    DISPFlags, DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind,
+    DebugNameTableKind,
 };
-use crate::llvm;
 use crate::llvm::MetadataKindId;
+use crate::{TryFromU32, llvm};
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -782,7 +781,6 @@ pub(crate) mod debuginfo {
     pub(crate) type DIDerivedType = DIType;
     pub(crate) type DICompositeType = DIDerivedType;
     pub(crate) type DIVariable = DIDescriptor;
-    pub(crate) type DIGlobalVariableExpression = DIDescriptor;
     pub(crate) type DIArray = DIDescriptor;
     pub(crate) type DIEnumerator = DIDescriptor;
     pub(crate) type DITemplateTypeParameter = DIDescriptor;
@@ -906,7 +904,9 @@ pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) ->
 
 unsafe extern "C" {
     // Create and destroy contexts.
+    pub(crate) fn LLVMContextCreate() -> &'static mut Context;
     pub(crate) fn LLVMContextDispose(C: &'static mut Context);
+    pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
     pub(crate) fn LLVMGetMDKindIDInContext(
         C: &Context,
         Name: *const c_char,
@@ -1117,6 +1117,7 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
@@ -1146,12 +1147,15 @@ unsafe extern "C" {
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
+    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
 
     // Operations on load/store instructions (only)
     pub(crate) fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
+    pub(crate) fn LLVMSetOrdering(MemoryAccessInst: &Value, Ordering: AtomicOrdering);
 
     // Operations on phi nodes
     pub(crate) fn LLVMAddIncoming<'a>(
@@ -1875,6 +1879,22 @@ unsafe extern "C" {
         Length: size_t,
     ) -> &'ll Metadata;
 
+    pub(crate) fn LLVMDIBuilderCreateGlobalVariableExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        Linkage: *const c_uchar, // See "PTR_LEN_STR".
+        LinkLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Ty: &'ll Metadata,
+        LocalToUnit: llvm::Bool,
+        Expr: &'ll Metadata,
+        Decl: Option<&'ll Metadata>,
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
+
     pub(crate) fn LLVMDIBuilderInsertDeclareRecordAtEnd<'ll>(
         Builder: &DIBuilder<'ll>,
         Storage: &'ll Value,
@@ -1925,9 +1945,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustInstallErrorHandlers();
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
 
-    // Create and destroy contexts.
-    pub(crate) fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
-
     // Operations on all values
     pub(crate) fn LLVMRustGlobalAddMetadata<'a>(
         Val: &'a Value,
@@ -1955,7 +1972,6 @@ unsafe extern "C" {
         NameLen: size_t,
         T: &'a Type,
     ) -> &'a Value;
-    pub(crate) fn LLVMRustInsertPrivateGlobal<'a>(M: &'a Module, T: &'a Type) -> &'a Value;
     pub(crate) fn LLVMRustGetNamedValue(
         M: &Module,
         Name: *const c_char,
@@ -2042,69 +2058,6 @@ unsafe extern "C" {
         Val: &'a Value,
         Size: &'a Value,
         IsVolatile: bool,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildVectorReduceFAdd<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMul<'a>(
-        B: &Builder<'a>,
-        Acc: &'a Value,
-        Src: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAdd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMul<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceAnd<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceOr<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceXor<'a>(B: &Builder<'a>, Src: &'a Value) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsSigned: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMin<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildVectorReduceFMax<'a>(
-        B: &Builder<'a>,
-        Src: &'a Value,
-        IsNaN: bool,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildMinNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustBuildMaxNum<'a>(
-        B: &Builder<'a>,
-        LHS: &'a Value,
-        RHS: &'a Value,
-    ) -> &'a Value;
-
-    // Atomic Operations
-    pub(crate) fn LLVMRustBuildAtomicLoad<'a>(
-        B: &Builder<'a>,
-        ElementType: &'a Type,
-        PointerVal: &'a Value,
-        Name: *const c_char,
-        Order: AtomicOrdering,
-    ) -> &'a Value;
-
-    pub(crate) fn LLVMRustBuildAtomicStore<'a>(
-        B: &Builder<'a>,
-        Val: &'a Value,
-        Ptr: &'a Value,
-        Order: AtomicOrdering,
     ) -> &'a Value;
 
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
@@ -2277,22 +2230,6 @@ unsafe extern "C" {
         Flags: DIFlags,
         Ty: &'a DIType,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
-        Builder: &DIBuilder<'a>,
-        Context: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        LinkageName: *const c_char,
-        LinkageNameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        Ty: &'a DIType,
-        isLocalToUnit: bool,
-        Val: &'a Value,
-        Decl: Option<&'a DIDescriptor>,
-        AlignInBits: u32,
-    ) -> &'a DIGlobalVariableExpression;
 
     pub(crate) fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,

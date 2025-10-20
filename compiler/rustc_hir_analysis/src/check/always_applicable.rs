@@ -148,8 +148,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
         ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
         ty::ImplPolarity::Negative => "!",
     };
-    let trait_name = tcx
-        .item_name(tcx.trait_id_of_impl(impl_def_id.to_def_id()).expect("expected impl of trait"));
+    let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let mut err = struct_span_code_err!(
         tcx.dcx(),
         impl_span,
@@ -187,8 +186,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
-    let trait_name = tcx
-        .item_name(tcx.trait_id_of_impl(impl_def_id.to_def_id()).expect("expected impl of trait"));
+    let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let polarity = match tcx.impl_polarity(impl_def_id) {
         ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
         ty::ImplPolarity::Negative => "!",
@@ -212,8 +210,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
 
     let fresh_impl_args = infcx.fresh_args_for_item(impl_span, impl_def_id.to_def_id());
-    let fresh_adt_ty =
-        tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, fresh_impl_args).self_ty();
+    let fresh_adt_ty = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_impl_args).self_ty();
 
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");
@@ -235,7 +232,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // They can probably get removed with better treatment of the new `DropImpl`
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();

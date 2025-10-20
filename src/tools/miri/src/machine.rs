@@ -12,10 +12,13 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
+use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_hir::attrs::InlineAttr;
+use rustc_log::tracing;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
@@ -26,12 +29,15 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
-use crate::concurrency::{AllocDataRaceHandler, GenmcCtx, GlobalDataRaceHandler, weak_memory};
+use crate::concurrency::{
+    AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
+};
 use crate::*;
 
 /// First real-time signal.
@@ -649,16 +655,10 @@ pub struct MiriMachine<'tcx> {
     pub(crate) pthread_rwlock_sanity: Cell<bool>,
     pub(crate) pthread_condvar_sanity: Cell<bool>,
 
-    /// Remembers whether we already warned about an extern type with Stacked Borrows.
-    pub(crate) sb_extern_type_warned: Cell<bool>,
-    /// Remember whether we already warned about sharing memory with a native call.
-    #[allow(unused)]
-    pub(crate) native_call_mem_warned: Cell<bool>,
-    /// Remembers which shims have already shown the warning about erroring in isolation.
-    pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
-    /// Remembers which int2ptr casts we have already warned about.
-    pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
-
+    /// (Foreign) symbols that are synthesized as part of the allocator shim: the key indicates the
+    /// name of the symbol being synthesized; the value indicates whether this should invoke some
+    /// other symbol or whether this has special allocator semantics.
+    pub(crate) allocator_shim_symbols: FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>>,
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
@@ -777,9 +777,8 @@ impl<'tcx> MiriMachine<'tcx> {
             local_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
-            allocator: if !config.native_lib.is_empty() {
-                Some(Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new())))
-            } else { None },
+            allocator: (!config.native_lib.is_empty())
+                .then(|| Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new()))),
             tracked_alloc_ids: config.tracked_alloc_ids.clone(),
             track_alloc_accesses: config.track_alloc_accesses,
             check_alignment: config.check_alignment,
@@ -827,16 +826,43 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_mutex_sanity: Cell::new(false),
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
-            sb_extern_type_warned: Cell::new(false),
-            native_call_mem_warned: Cell::new(false),
-            reject_in_isolation_warned: Default::default(),
-            int2ptr_warned: Default::default(),
+            allocator_shim_symbols: Self::allocator_shim_symbols(tcx),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
             short_fd_operations: config.short_fd_operations,
         }
+    }
+
+    fn allocator_shim_symbols(
+        tcx: TyCtxt<'tcx>,
+    ) -> FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>> {
+        use rustc_codegen_ssa::base::allocator_shim_contents;
+
+        // codegen uses `allocator_kind_for_codegen` here, but that's only needed to deal with
+        // dylibs which we do not support.
+        let Some(kind) = tcx.allocator_kind(()) else {
+            return Default::default();
+        };
+        let methods = allocator_shim_contents(tcx, kind);
+        let mut symbols = FxHashMap::default();
+        for method in methods {
+            let from_name = Symbol::intern(&mangle_internal_symbol(
+                tcx,
+                &allocator::global_fn_name(method.name),
+            ));
+            let to = match method.special {
+                Some(special) => Either::Right(special),
+                None =>
+                    Either::Left(Symbol::intern(&mangle_internal_symbol(
+                        tcx,
+                        &allocator::default_fn_name(method.name),
+                    ))),
+            };
+            symbols.try_insert(from_name, to).unwrap();
+        }
+        symbols
     }
 
     pub(crate) fn late_init(
@@ -920,7 +946,7 @@ impl<'tcx> MiriMachine<'tcx> {
                         &ecx.machine.threads,
                         size,
                         kind,
-                        ecx.machine.current_span(),
+                        ecx.machine.current_user_relevant_span(),
                     ),
                     data_race.weak_memory.then(weak_memory::AllocState::new_allocation),
                 ),
@@ -944,7 +970,7 @@ impl<'tcx> MiriMachine<'tcx> {
             ecx.machine
                 .allocation_spans
                 .borrow_mut()
-                .insert(id, (ecx.machine.current_span(), None));
+                .insert(id, (ecx.machine.current_user_relevant_span(), None));
         }
 
         interp_ok(AllocExtra { borrow_tracker, data_race, backtrace, sync: FxHashMap::default() })
@@ -1004,10 +1030,7 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_mutex_sanity: _,
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
-            sb_extern_type_warned: _,
-            native_call_mem_warned: _,
-            reject_in_isolation_warned: _,
-            int2ptr_warned: _,
+            allocator_shim_symbols: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
@@ -1182,7 +1205,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -1201,6 +1224,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
         }
 
+        if ecx.machine.data_race.as_genmc_ref().is_some()
+            && ecx.genmc_intercept_function(instance, args, dest)?
+        {
+            ecx.return_to_block(ret)?;
+            return interp_ok(None);
+        }
+
         // Otherwise, load the MIR.
         let _trace = enter_trace_span!("load_mir");
         interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
@@ -1211,7 +1241,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
         abi: &FnAbi<'tcx, Ty<'tcx>>,
-        args: &[FnArg<'tcx, Provenance>],
+        args: &[FnArg<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -1567,7 +1597,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {
-            *deallocated_at = Some(machine.current_span());
+            *deallocated_at = Some(machine.current_user_relevant_span());
         }
         machine.free_alloc_id(alloc_id, size, align, kind);
         interp_ok(())

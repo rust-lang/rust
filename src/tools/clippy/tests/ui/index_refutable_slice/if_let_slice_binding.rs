@@ -1,5 +1,5 @@
 #![deny(clippy::index_refutable_slice)]
-#![allow(clippy::uninlined_format_args, clippy::needless_lifetimes, clippy::collapsible_if)]
+#![allow(clippy::needless_lifetimes, clippy::collapsible_if)]
 
 enum SomeEnum<T> {
     One(T),
@@ -60,7 +60,7 @@ fn lintable_examples() {
 
         println!("{:?}", slice[1]);
     }
-    println!("{:?}", slice);
+    println!("{slice:?}");
 
     // This should not suggest using the `ref` keyword as the scrutinee is already
     // a reference
@@ -70,7 +70,7 @@ fn lintable_examples() {
 
         println!("{:?}", slice[0]);
     }
-    println!("{:?}", slice);
+    println!("{slice:?}");
 }
 
 fn slice_index_above_limit() {
@@ -113,7 +113,7 @@ fn check_slice_as_arg() {
             println!("This is interesting {}", slice[0]);
         }
     }
-    println!("{:?}", slice_wrapped);
+    println!("{slice_wrapped:?}");
 }
 
 fn check_slice_in_struct() {
@@ -152,7 +152,7 @@ fn check_slice_in_struct() {
             println!("This is super awesome! {}", slice[0]);
         }
     }
-    println!("Complete wrap: {:?}", wrap);
+    println!("Complete wrap: {wrap:?}");
 }
 
 /// This would be a nice additional feature to have in the future, but adding it
@@ -164,14 +164,14 @@ fn mutable_slice_index() {
     if let Some(ref mut slice) = slice {
         slice[0] = String::from("Mr. Penguin");
     }
-    println!("Use after modification: {:?}", slice);
+    println!("Use after modification: {slice:?}");
 
     // Mut access on reference
     let mut slice: Option<[String; 1]> = Some([String::from("Cat")]);
     if let Some(slice) = &mut slice {
         slice[0] = String::from("Lord Meow Meow");
     }
-    println!("Use after modification: {:?}", slice);
+    println!("Use after modification: {slice:?}");
 }
 
 /// The lint will ignore bindings with sub patterns as it would be hard

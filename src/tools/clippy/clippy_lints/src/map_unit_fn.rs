@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{iter_input_pats, method_chain_args};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -205,9 +205,9 @@ fn lint_map_unit_fn(
 ) {
     let var_arg = &map_args.0;
 
-    let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Option) {
+    let (map_type, variant, lint) = if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Option) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Result) {
+    } else if cx.typeck_results().expr_ty(var_arg).is_diag_item(cx, sym::Result) {
         ("Result", "Ok", RESULT_MAP_UNIT_FN)
     } else {
         return;

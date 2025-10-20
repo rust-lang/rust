@@ -50,6 +50,7 @@ tracing-tree.workspace = true
 
 # local deps
 stdx.workspace = true
+macros.workspace = true
 intern.workspace = true
 hir-def.workspace = true
 hir-expand.workspace = true

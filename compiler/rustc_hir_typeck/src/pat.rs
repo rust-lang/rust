@@ -3115,20 +3115,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // binding mode. This keeps it from making those suggestions, as doing so could panic.
         let info = table.entry(pat_id).or_insert_with(|| ty::Rust2024IncompatiblePatInfo {
             primary_labels: Vec::new(),
-            bad_modifiers: false,
+            bad_ref_modifiers: false,
+            bad_mut_modifiers: false,
             bad_ref_pats: false,
             suggest_eliding_modes: !self.tcx.features().ref_pat_eat_one_layer_2024()
                 && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
         });
 
         let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
-            info.bad_modifiers = true;
             // If the user-provided binding modifier doesn't match the default binding mode, we'll
             // need to suggest reference patterns, which can affect other bindings.
             // For simplicity, we opt to suggest making the pattern fully explicit.
             info.suggest_eliding_modes &=
                 user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
-            "binding modifier"
+            if user_bind_annot == BindingMode(ByRef::No, Mutability::Mut) {
+                info.bad_mut_modifiers = true;
+                "`mut` binding modifier"
+            } else {
+                info.bad_ref_modifiers = true;
+                match user_bind_annot.1 {
+                    Mutability::Not => "explicit `ref` binding modifier",
+                    Mutability::Mut => "explicit `ref mut` binding modifier",
+                }
+            }
         } else {
             info.bad_ref_pats = true;
             // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
@@ -3147,11 +3156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // so, we may want to inspect the span's source callee or macro backtrace.
             "occurs within macro expansion".to_owned()
         } else {
-            let dbm_str = match def_br_mutbl {
-                Mutability::Not => "ref",
-                Mutability::Mut => "ref mut",
-            };
-            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
+            format!("{pat_kind} not allowed when implicitly borrowing")
         };
         info.primary_labels.push((trimmed_span, primary_label));
     }

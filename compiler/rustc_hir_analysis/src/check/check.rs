@@ -375,7 +375,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
@@ -806,10 +806,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
         DefKind::Impl { of_trait } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
-            tcx.ensure_ok().impl_trait_header(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
-            if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
+            if of_trait {
+                let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
                     tcx.ensure_ok()
                         .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),
@@ -1191,9 +1191,7 @@ fn check_impl_items_against_trait<'tcx>(
                         tcx,
                         ty_impl_item,
                         ty_trait_item,
-                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
-                            .unwrap()
-                            .instantiate_identity(),
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx)).instantiate_identity(),
                     );
                 }
                 ty::AssocKind::Const { .. } => {}
@@ -1510,11 +1508,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
     // For each field, figure out if it's known to have "trivial" layout (i.e., is a 1-ZST), with
     // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
-        let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
@@ -1526,11 +1524,16 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
         fn check_non_exhaustive<'tcx>(
             tcx: TyCtxt<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
             t: Ty<'tcx>,
         ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
+            // We can encounter projections during traversal, so ensure the type is normalized.
+            let t = tcx.try_normalize_erasing_regions(typing_env, t).unwrap_or(t);
             match t.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
-                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Tuple(list) => {
+                    list.iter().try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
+                }
+                ty::Array(ty, _) => check_non_exhaustive(tcx, typing_env, *ty),
                 ty::Adt(def, args) => {
                     if !def.did().is_local()
                         && !find_attr!(
@@ -1555,13 +1558,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     }
                     def.all_fields()
                         .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, t))
+                        .try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
                 }
                 _ => ControlFlow::Continue(()),
             }
         }
 
-        (span, trivial, check_non_exhaustive(tcx, ty).break_value())
+        (span, trivial, check_non_exhaustive(tcx, typing_env, ty).break_value())
     });
 
     let non_trivial_fields = field_infos
@@ -2028,7 +2031,7 @@ pub(super) fn check_coroutine_obligations(
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, *predicate));
     }
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
@@ -2072,7 +2075,7 @@ pub(super) fn check_potentially_region_dependent_goals<'tcx>(
         ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, predicate));
     }
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
     if errors.is_empty() { Ok(()) } else { Err(infcx.err_ctxt().report_fulfillment_errors(errors)) }
 }

@@ -246,6 +246,21 @@ such races.
 
 Note: `cargo-nextest` does not support doctests, see https://github.com/nextest-rs/nextest/issues/16
 
+### Directly invoking the `miri` driver
+
+The recommended way to invoke Miri is via `cargo miri`. Directly invoking the underlying `miri`
+driver is not supported, which is why that binary is not even installed into the PATH. However, if
+you need to run Miri on many small tests and want to invoke it directly like you would invoke
+`rustc`, that is still possible with a bit of extra effort:
+
+```sh
+# one-time setup
+cargo +nightly miri setup
+SYSROOT=$(cargo +nightly miri setup --print-sysroot)
+# per file
+~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/miri --sysroot "$SYSROOT" file.rs
+```
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler

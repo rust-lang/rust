@@ -971,3 +971,12 @@ pub(crate) struct LimitInvalid<'a> {
     pub value_span: Span,
     pub error_str: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_cfg_attr_bad_delim)]
+pub(crate) struct CfgAttrBadDelim {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: MetaBadDelimSugg,
+}

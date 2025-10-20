@@ -1,7 +1,9 @@
 //@ add-core-stubs
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
-#![feature(no_core, lang_items)]
+//@ ignore-backends: gcc
+//@ add-core-stubs
+#![feature(no_core)]
 #![no_core]
 
 extern crate minicore;

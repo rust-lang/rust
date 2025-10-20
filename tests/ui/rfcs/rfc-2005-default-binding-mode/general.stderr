@@ -1,0 +1,11 @@
+warning: value assigned to `b` is never read
+  --> $DIR/general.rs:60:25
+   |
+LL |         (Some(a), &Some(mut b)) => {
+   |                         ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

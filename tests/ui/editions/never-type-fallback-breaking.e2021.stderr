@@ -1,5 +1,5 @@
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:18:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:16:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -8,18 +8,18 @@ LL | fn m() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:22:17
+  --> $DIR/never-type-fallback-breaking.rs:20:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: () = match true {
    |          ++++
 
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:30:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:28:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | fn q() -> Option<()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:37:5
+  --> $DIR/never-type-fallback-breaking.rs:35:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -37,8 +37,8 @@ help: use `()` annotations to avoid fallback changes
 LL |     deserialize::<()>()?;
    |                ++++++
 
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:47:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:45:1
    |
 LL | fn meow() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | fn meow() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:50:5
+  --> $DIR/never-type-fallback-breaking.rs:48:5
    |
 LL |     help(1)?;
    |     ^^^^^^^
@@ -56,8 +56,8 @@ help: use `()` annotations to avoid fallback changes
 LL |     help::<(), _>(1)?;
    |         +++++++++
 
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:59:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:57:1
    |
 LL | pub fn fallback_return() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL | pub fn fallback_return() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:62:19
+  --> $DIR/never-type-fallback-breaking.rs:60:19
    |
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^
@@ -75,8 +75,8 @@ help: use `()` annotations to avoid fallback changes
 LL |     takes_apit::<()>(|| Default::default())?;
    |               ++++++
 
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:73:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:71:1
    |
 LL | fn fully_apit() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL | fn fully_apit() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:76:17
+  --> $DIR/never-type-fallback-breaking.rs:74:17
    |
 LL |     takes_apit2(mk()?);
    |                 ^^^^^
@@ -94,11 +94,11 @@ help: use `()` annotations to avoid fallback changes
 LL |     takes_apit2(mk::<()>()?);
    |                   ++++++
 
-warning: 5 warnings emitted
+error: aborting due to 5 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:18:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:16:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -107,19 +107,19 @@ LL | fn m() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:22:17
+  --> $DIR/never-type-fallback-breaking.rs:20:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: () = match true {
    |          ++++
 
 Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:30:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:28:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -128,19 +128,19 @@ LL | fn q() -> Option<()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:37:5
+  --> $DIR/never-type-fallback-breaking.rs:35:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     deserialize::<()>()?;
    |                ++++++
 
 Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:47:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:45:1
    |
 LL | fn meow() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,19 +149,19 @@ LL | fn meow() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:50:5
+  --> $DIR/never-type-fallback-breaking.rs:48:5
    |
 LL |     help(1)?;
    |     ^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     help::<(), _>(1)?;
    |         +++++++++
 
 Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:59:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:57:1
    |
 LL | pub fn fallback_return() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,19 +170,19 @@ LL | pub fn fallback_return() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:62:19
+  --> $DIR/never-type-fallback-breaking.rs:60:19
    |
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     takes_apit::<()>(|| Default::default())?;
    |               ++++++
 
 Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:73:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:71:1
    |
 LL | fn fully_apit() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,11 +191,11 @@ LL | fn fully_apit() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:76:17
+  --> $DIR/never-type-fallback-breaking.rs:74:17
    |
 LL |     takes_apit2(mk()?);
    |                 ^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     takes_apit2(mk::<()>()?);

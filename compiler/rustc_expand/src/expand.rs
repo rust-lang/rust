@@ -1050,7 +1050,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            fluent_generated::expand_non_inline_modules_in_proc_macro_input_are_unstable,
+                            fluent_generated::expand_file_modules_in_proc_macro_input_are_unstable,
                         )
                         .emit();
                     }
@@ -1152,12 +1152,12 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_guard(
+        AstFragmentKind::Pat => AstFragment::Pat(Box::new(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
-        )?),
+        )?)),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms
         | AstFragmentKind::ExprFields

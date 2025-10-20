@@ -1,3 +1,4 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
@@ -5,7 +6,6 @@ use rustc_middle::ty::{self, TypingMode, Upcast};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::clean;
@@ -34,7 +34,7 @@ pub(crate) fn synthesize_blanket_impls(
         'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
             trace!("considering impl `{impl_def_id:?}` for trait `{trait_def_id:?}`");
 
-            let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(impl_def_id);
             if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                 continue;
             }

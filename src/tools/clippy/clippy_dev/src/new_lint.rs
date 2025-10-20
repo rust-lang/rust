@@ -443,7 +443,6 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     Ok(())
 }
 
-#[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
     let lint_name_upper = lint.name.to_uppercase();
 

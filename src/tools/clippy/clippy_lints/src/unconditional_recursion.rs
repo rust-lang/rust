@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{expr_or_init, fn_def_id_with_node_args, path_def_id};
+use clippy_utils::res::MaybeQPath;
+use clippy_utils::{expr_or_init, fn_def_id_with_node_args};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -317,7 +318,7 @@ where
         if let ExprKind::Call(f, _) = expr.kind
             && let ExprKind::Path(qpath) = f.kind
             && is_default_method_on_current_ty(self.cx.tcx, qpath, self.implemented_ty_id)
-            && let Some(method_def_id) = path_def_id(self.cx, f)
+            && let Some(method_def_id) = f.res(self.cx).opt_def_id()
             && let Some(trait_def_id) = self.cx.tcx.trait_of_assoc(method_def_id)
             && self.cx.tcx.is_diagnostic_item(sym::Default, trait_def_id)
         {

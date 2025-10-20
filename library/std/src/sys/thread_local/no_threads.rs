@@ -13,15 +13,15 @@ use crate::ptr;
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, $(#[$align_attr:meta])*, const $init:expr) => {{
-        const __INIT: $t = $init;
+        const __RUST_STD_INTERNAL_INIT: $t = $init;
 
         // NOTE: Please update the shadowing test in `tests/thread.rs` if these types are renamed.
         unsafe {
             $crate::thread::LocalKey::new(|_| {
                 $(#[$align_attr])*
-                static VAL: $crate::thread::local_impl::EagerStorage<$t> =
-                    $crate::thread::local_impl::EagerStorage { value: __INIT };
-                &VAL.value
+                static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::EagerStorage<$t> =
+                    $crate::thread::local_impl::EagerStorage { value: __RUST_STD_INTERNAL_INIT };
+                &__RUST_STD_INTERNAL_VAL.value
             })
         }
     }},
@@ -29,13 +29,13 @@ pub macro thread_local_inner {
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $(#[$align_attr:meta])*, $init:expr) => {{
         #[inline]
-        fn __init() -> $t { $init }
+        fn __rust_std_internal_init_fn() -> $t { $init }
 
         unsafe {
-            $crate::thread::LocalKey::new(|init| {
+            $crate::thread::LocalKey::new(|__rust_std_internal_init| {
                 $(#[$align_attr])*
-                static VAL: $crate::thread::local_impl::LazyStorage<$t> = $crate::thread::local_impl::LazyStorage::new();
-                VAL.get(init, __init)
+                static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t> = $crate::thread::local_impl::LazyStorage::new();
+                __RUST_STD_INTERNAL_VAL.get(__rust_std_internal_init, __rust_std_internal_init_fn)
             })
         }
     }},

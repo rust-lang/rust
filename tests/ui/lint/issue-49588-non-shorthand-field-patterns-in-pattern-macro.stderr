@@ -1,0 +1,11 @@
+warning: value assigned to `value` is never read
+  --> $DIR/issue-49588-non-shorthand-field-patterns-in-pattern-macro.rs:15:14
+   |
+LL |     let pat!(value) = Value { value: () };
+   |              ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

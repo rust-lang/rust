@@ -50,11 +50,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {
                 self.codegen_place(bx, place.as_ref()).codegen_set_discr(bx, variant_index);
             }
-            mir::StatementKind::Deinit(..) => {
-                // For now, don't codegen this to anything. In the future it may be worth
-                // experimenting with what kind of information we can emit to LLVM without hurting
-                // perf here
-            }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(bx);

@@ -3,13 +3,15 @@
 
 use std::{
     ffi::OsString,
-    fmt, io,
+    fmt,
+    io::{self, BufWriter, Write},
     marker::PhantomData,
     path::PathBuf,
     process::{ChildStderr, ChildStdout, Command, Stdio},
 };
 
 use crossbeam_channel::Sender;
+use paths::Utf8PathBuf;
 use process_wrap::std::{StdChildWrapper, StdCommandWrap};
 use stdx::process::streaming_output;
 
@@ -40,7 +42,7 @@ impl<T: Sized + Send + 'static> CargoActor<T> {
 }
 
 impl<T: Sized + Send + 'static> CargoActor<T> {
-    fn run(self) -> io::Result<(bool, String)> {
+    fn run(self, outfile: Option<Utf8PathBuf>) -> io::Result<(bool, String)> {
         // We manually read a line at a time, instead of using serde's
         // stream deserializers, because the deserializer cannot recover
         // from an error, resulting in it getting stuck, because we try to
@@ -49,6 +51,15 @@ impl<T: Sized + Send + 'static> CargoActor<T> {
         // Because cargo only outputs one JSON object per line, we can
         // simply skip a line if it doesn't parse, which just ignores any
         // erroneous output.
+
+        let mut stdout = outfile.as_ref().and_then(|path| {
+            _ = std::fs::create_dir_all(path);
+            Some(BufWriter::new(std::fs::File::create(path.join("stdout")).ok()?))
+        });
+        let mut stderr = outfile.as_ref().and_then(|path| {
+            _ = std::fs::create_dir_all(path);
+            Some(BufWriter::new(std::fs::File::create(path.join("stderr")).ok()?))
+        });
 
         let mut stdout_errors = String::new();
         let mut stderr_errors = String::new();
@@ -67,11 +78,19 @@ impl<T: Sized + Send + 'static> CargoActor<T> {
             self.stdout,
             self.stderr,
             &mut |line| {
+                if let Some(stdout) = &mut stdout {
+                    _ = stdout.write_all(line.as_bytes());
+                    _ = stdout.write_all(b"\n");
+                }
                 if process_line(line, &mut stdout_errors) {
                     read_at_least_one_stdout_message = true;
                 }
             },
             &mut |line| {
+                if let Some(stderr) = &mut stderr {
+                    _ = stderr.write_all(line.as_bytes());
+                    _ = stderr.write_all(b"\n");
+                }
                 if process_line(line, &mut stderr_errors) {
                     read_at_least_one_stderr_message = true;
                 }
@@ -130,6 +149,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         mut command: Command,
         parser: impl CargoParser<T>,
         sender: Sender<T>,
+        out_file: Option<Utf8PathBuf>,
     ) -> std::io::Result<Self> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
 
@@ -150,7 +170,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         let actor = CargoActor::<T>::new(parser, sender, stdout, stderr);
         let thread =
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "CommandHandle")
-                .spawn(move || actor.run())
+                .spawn(move || actor.run(out_file))
                 .expect("failed to spawn thread");
         Ok(CommandHandle { program, arguments, current_dir, child, thread, _phantom: PhantomData })
     }

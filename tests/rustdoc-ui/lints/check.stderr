@@ -22,6 +22,15 @@ LL | pub fn foo() {}
    | ^^^^^^^^^^^^
 
 warning: no documentation found for this crate's top-level module
+  --> $DIR/check.rs:5:1
+   |
+LL | / #![feature(rustdoc_missing_doc_code_examples)]
+LL | |
+LL | |
+LL | | #![warn(missing_docs)]
+...  |
+LL | | pub fn foo() {}
+   | |_______________^
    |
    = help: The following guide may be of use:
            https://doc.rust-lang.org/$CHANNEL/rustdoc/how-to-write-documentation.html

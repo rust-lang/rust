@@ -24,8 +24,10 @@ auto MiriGenmcShim::schedule_next(
 
     if (const auto result = GenMCDriver::scheduleNext(threads_action_))
         return SchedulingResult { ExecutionState::Ok, static_cast<int32_t>(result.value()) };
-    if (GenMCDriver::isExecutionBlocked())
+    if (getExec().getGraph().isBlocked())
         return SchedulingResult { ExecutionState::Blocked, 0 };
+    if (getResult().status.has_value()) // the "value" here is a `VerificationError`
+        return SchedulingResult { ExecutionState::Error, 0 };
     return SchedulingResult { ExecutionState::Finished, 0 };
 }
 

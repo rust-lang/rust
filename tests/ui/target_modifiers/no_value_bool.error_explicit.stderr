@@ -1,5 +1,5 @@
 error: mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`
-  --> $DIR/no_value_bool.rs:16:1
+  --> $DIR/no_value_bool.rs:17:1
    |
 LL | #![feature(no_core)]
    | ^

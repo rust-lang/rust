@@ -21,14 +21,14 @@ pub macro thread_local_inner {
     // used to generate the `LocalKey` value for `thread_local!`.
     (@key $t:ty, $($(#[$($align_attr:tt)*])+)?, $init:expr) => {{
         #[inline]
-        fn __init() -> $t { $init }
+        fn __rust_std_internal_init_fn() -> $t { $init }
 
         // NOTE: this cannot import `LocalKey` or `Storage` with a `use` because that can shadow
         // user provided type or type alias with a matching name. Please update the shadowing test
         // in `tests/thread.rs` if these types are renamed.
         unsafe {
-            $crate::thread::LocalKey::new(|init| {
-                static VAL: $crate::thread::local_impl::Storage<$t, {
+            $crate::thread::LocalKey::new(|__rust_std_internal_init| {
+                static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::Storage<$t, {
                     $({
                         // Ensure that attributes have valid syntax
                         // and that the proper feature gate is enabled
@@ -43,7 +43,7 @@ pub macro thread_local_inner {
                     final_align
                 }>
                     = $crate::thread::local_impl::Storage::new();
-                VAL.get(init, __init)
+                __RUST_STD_INTERNAL_VAL.get(__rust_std_internal_init, __rust_std_internal_init_fn)
             })
         }
     }},

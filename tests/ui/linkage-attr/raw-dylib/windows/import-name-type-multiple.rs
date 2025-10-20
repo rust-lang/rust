@@ -2,6 +2,7 @@
 //@ add-core-stubs
 //@ compile-flags: --target i686-pc-windows-msvc
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 #![feature(no_core, rustc_attrs, lang_items)]
 #![no_core]
 #![crate_type = "lib"]

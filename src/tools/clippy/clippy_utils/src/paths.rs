@@ -4,7 +4,8 @@
 //! Whenever possible, please consider diagnostic items over hardcoded paths.
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
-use crate::{MaybePath, path_def_id, sym};
+use crate::res::MaybeQPath;
+use crate::sym;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::{MacroNS, TypeNS, ValueNS};
@@ -13,6 +14,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_span::{Ident, STDLIB_STABLE_CRATES, Symbol};
 use std::sync::OnceLock;
@@ -74,8 +76,8 @@ impl PathLookup {
     }
 
     /// Returns the list of [`DefId`]s that the path resolves to
-    pub fn get(&self, cx: &LateContext<'_>) -> &[DefId] {
-        self.once.get_or_init(|| lookup_path(cx.tcx, self.ns, self.path))
+    pub fn get<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>) -> &[DefId] {
+        self.once.get_or_init(|| lookup_path(tcx.tcx(), self.ns, self.path))
     }
 
     /// Returns the single [`DefId`] that the path resolves to, this can only be used for paths into
@@ -90,18 +92,21 @@ impl PathLookup {
     }
 
     /// Checks if the path resolves to the given `def_id`
-    pub fn matches(&self, cx: &LateContext<'_>, def_id: DefId) -> bool {
-        self.get(cx).contains(&def_id)
+    pub fn matches<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>, def_id: DefId) -> bool {
+        self.get(&tcx.tcx()).contains(&def_id)
     }
 
     /// Resolves `maybe_path` to a [`DefId`] and checks if the [`PathLookup`] matches it
-    pub fn matches_path<'tcx>(&self, cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> bool {
-        path_def_id(cx, maybe_path).is_some_and(|def_id| self.matches(cx, def_id))
+    pub fn matches_path<'tcx>(&self, cx: &LateContext<'_>, maybe_path: impl MaybeQPath<'tcx>) -> bool {
+        maybe_path
+            .res(cx)
+            .opt_def_id()
+            .is_some_and(|def_id| self.matches(cx, def_id))
     }
 
     /// Checks if the path resolves to `ty`'s definition, must be an `Adt`
-    pub fn matches_ty(&self, cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-        ty.ty_adt_def().is_some_and(|adt| self.matches(cx, adt.did()))
+    pub fn matches_ty<'tcx>(&self, tcx: &impl HasTyCtxt<'tcx>, ty: Ty<'_>) -> bool {
+        ty.ty_adt_def().is_some_and(|adt| self.matches(&tcx.tcx(), adt.did()))
     }
 }
 

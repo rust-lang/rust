@@ -1037,7 +1037,7 @@ fn mul_add() {
     assert_eq!(f.to_bits(), f32::to_bits(-0.0));
 }
 
-pub fn libm() {
+fn libm() {
     fn ldexp(a: f64, b: i32) -> f64 {
         extern "C" {
             fn ldexp(x: f64, n: i32) -> f64;
@@ -1300,7 +1300,7 @@ fn test_fast() {
     use std::intrinsics::{fadd_fast, fdiv_fast, fmul_fast, frem_fast, fsub_fast};
 
     #[inline(never)]
-    pub fn test_operations_f16(a: f16, b: f16) {
+    fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         unsafe {
             assert_approx_eq!(fadd_fast(a, b), a + b);
@@ -1312,7 +1312,7 @@ fn test_fast() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f32(a: f32, b: f32) {
+    fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
         unsafe {
             assert_approx_eq!(fadd_fast(a, b), a + b);
@@ -1324,7 +1324,7 @@ fn test_fast() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f64(a: f64, b: f64) {
+    fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
         unsafe {
             assert_approx_eq!(fadd_fast(a, b), a + b);
@@ -1336,7 +1336,7 @@ fn test_fast() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f128(a: f128, b: f128) {
+    fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
         unsafe {
             assert_approx_eq!(fadd_fast(a, b), a + b);
@@ -1363,7 +1363,7 @@ fn test_algebraic() {
     };
 
     #[inline(never)]
-    pub fn test_operations_f16(a: f16, b: f16) {
+    fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         assert_approx_eq!(fadd_algebraic(a, b), a + b);
         assert_approx_eq!(fsub_algebraic(a, b), a - b);
@@ -1373,7 +1373,7 @@ fn test_algebraic() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f32(a: f32, b: f32) {
+    fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
         assert_approx_eq!(fadd_algebraic(a, b), a + b);
         assert_approx_eq!(fsub_algebraic(a, b), a - b);
@@ -1383,7 +1383,7 @@ fn test_algebraic() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f64(a: f64, b: f64) {
+    fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
         assert_approx_eq!(fadd_algebraic(a, b), a + b);
         assert_approx_eq!(fsub_algebraic(a, b), a - b);
@@ -1393,7 +1393,7 @@ fn test_algebraic() {
     }
 
     #[inline(never)]
-    pub fn test_operations_f128(a: f128, b: f128) {
+    fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
         assert_approx_eq!(fadd_algebraic(a, b), a + b);
         assert_approx_eq!(fsub_algebraic(a, b), a - b);
@@ -1418,12 +1418,12 @@ fn test_fmuladd() {
     // FIXME(f16_f128): add when supported
 
     #[inline(never)]
-    pub fn test_operations_f32(a: f32, b: f32, c: f32) {
+    fn test_operations_f32(a: f32, b: f32, c: f32) {
         assert_approx_eq!(fmuladdf32(a, b, c), a * b + c);
     }
 
     #[inline(never)]
-    pub fn test_operations_f64(a: f64, b: f64, c: f64) {
+    fn test_operations_f64(a: f64, b: f64, c: f64) {
         assert_approx_eq!(fmuladdf64(a, b, c), a * b + c);
     }
 
@@ -1468,10 +1468,10 @@ fn test_non_determinism() {
         };
     }
 
-    pub fn test_operations_f16(a: f16, b: f16) {
+    fn test_operations_f16(a: f16, b: f16) {
         test_operations_f!(a, b);
     }
-    pub fn test_operations_f32(a: f32, b: f32) {
+    fn test_operations_f32(a: f32, b: f32) {
         test_operations_f!(a, b);
         check_nondet(|| a.powf(b));
         check_nondet(|| a.powi(2));
@@ -1507,7 +1507,7 @@ fn test_non_determinism() {
         check_nondet(|| 5.0f32.erf());
         check_nondet(|| 5.0f32.erfc());
     }
-    pub fn test_operations_f64(a: f64, b: f64) {
+    fn test_operations_f64(a: f64, b: f64) {
         test_operations_f!(a, b);
         check_nondet(|| a.powf(b));
         check_nondet(|| a.powi(2));
@@ -1538,7 +1538,7 @@ fn test_non_determinism() {
         check_nondet(|| 5.0f64.erf());
         check_nondet(|| 5.0f64.erfc());
     }
-    pub fn test_operations_f128(a: f128, b: f128) {
+    fn test_operations_f128(a: f128, b: f128) {
         test_operations_f!(a, b);
     }
 

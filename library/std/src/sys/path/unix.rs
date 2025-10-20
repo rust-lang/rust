@@ -62,7 +62,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 }
 
 pub(crate) fn is_absolute(path: &Path) -> bool {
-    if cfg!(any(unix, target_os = "hermit", target_os = "wasi")) {
+    if cfg!(any(unix, target_os = "hermit", target_os = "wasi", target_os = "motor")) {
         path.has_root()
     } else {
         path.has_root() && path.prefix().is_some()

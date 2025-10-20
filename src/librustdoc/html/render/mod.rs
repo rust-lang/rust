@@ -144,7 +144,7 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
@@ -301,7 +301,7 @@ impl RenderTypeId {
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
@@ -2403,7 +2403,7 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
             (ty, Some(ty::TraitRef::new(tcx, trait_, [ty])))
         }
         ItemId::Blanket { impl_id, .. } | ItemId::DefId(impl_id) => {
-            if let Some(trait_ref) = tcx.impl_trait_ref(impl_id) {
+            if let Some(trait_ref) = tcx.impl_opt_trait_ref(impl_id) {
                 let trait_ref = trait_ref.skip_binder();
                 (trait_ref.self_ty(), Some(trait_ref))
             } else {

@@ -696,6 +696,28 @@ impl<'tcx> TerminatorKind<'tcx> {
             _ => None,
         }
     }
+
+    /// Returns true if the terminator can write to memory.
+    pub fn can_write_to_memory(&self) -> bool {
+        match self {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate(_)
+            | TerminatorKind::Return
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::CoroutineDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::Unreachable => false,
+            TerminatorKind::Call { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::TailCall { .. }
+            // Yield writes to the resume_arg place.
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::InlineAsm { .. } => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

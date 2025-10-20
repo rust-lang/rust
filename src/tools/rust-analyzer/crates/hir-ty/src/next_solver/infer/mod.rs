@@ -10,6 +10,7 @@ pub use at::DefineOpaqueTypes;
 use ena::undo_log::UndoLogs;
 use ena::unify as ut;
 use hir_def::GenericParamId;
+use hir_def::lang_item::LangItem;
 use intern::Symbol;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{
@@ -18,6 +19,7 @@ use region_constraints::{
 pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 use rustc_pattern_analysis::Captures;
 use rustc_type_ir::error::{ExpectedFound, TypeError};
 use rustc_type_ir::inherent::{
@@ -38,7 +40,10 @@ use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
 use crate::next_solver::fold::BoundVarReplacerDelegate;
 use crate::next_solver::infer::opaque_types::table::OpaqueTypeStorageEntries;
-use crate::next_solver::{BoundConst, BoundRegion, BoundTy, BoundVarKind};
+use crate::next_solver::infer::select::EvaluationResult;
+use crate::next_solver::infer::traits::PredicateObligation;
+use crate::next_solver::obligation_ctxt::ObligationCtxt;
+use crate::next_solver::{BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, SolverContext};
 
 use super::generics::GenericParamDef;
 use super::{
@@ -62,7 +67,7 @@ pub(crate) mod traits;
 mod type_variable;
 mod unify_key;
 
-/// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
+/// `InferOk<'db, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations`, but it has one important property:
 /// because `InferOk` is marked with `#[must_use]`, if you have a method
 /// `InferCtxt::f` that returns `InferResult<()>` and you call it with
@@ -395,6 +400,102 @@ impl<'db> InferCtxt<'db> {
         self.typing_mode
     }
 
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    pub fn predicate_may_hold_opaque_types_jank(
+        &self,
+        obligation: &PredicateObligation<'db>,
+    ) -> bool {
+        <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(Goal::new(
+            self.interner,
+            obligation.param_env,
+            obligation.predicate,
+        ))
+    }
+
+    /// Evaluates whether the predicate can be satisfied in the given
+    /// `ParamEnv`, and returns `false` if not certain. However, this is
+    /// not entirely accurate if inference variables are involved.
+    ///
+    /// This version may conservatively fail when outlives obligations
+    /// are required. Therefore, this version should only be used for
+    /// optimizations or diagnostics and be treated as if it can always
+    /// return `false`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![allow(dead_code)]
+    /// trait Trait {}
+    ///
+    /// fn check<T: Trait>() {}
+    ///
+    /// fn foo<T: 'static>()
+    /// where
+    ///     &'static T: Trait,
+    /// {
+    ///     // Evaluating `&'?0 T: Trait` adds a `'?0: 'static` outlives obligation,
+    ///     // which means that `predicate_must_hold_considering_regions` will return
+    ///     // `false`.
+    ///     check::<&'_ T>();
+    /// }
+    /// ```
+    fn predicate_must_hold_considering_regions(
+        &self,
+        obligation: &PredicateObligation<'db>,
+    ) -> bool {
+        self.evaluate_obligation(obligation).must_apply_considering_regions()
+    }
+
+    /// Evaluates whether the predicate can be satisfied in the given
+    /// `ParamEnv`, and returns `false` if not certain. However, this is
+    /// not entirely accurate if inference variables are involved.
+    ///
+    /// This version ignores all outlives constraints.
+    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'db>) -> bool {
+        self.evaluate_obligation(obligation).must_apply_modulo_regions()
+    }
+
+    /// Evaluate a given predicate, capturing overflow and propagating it back.
+    fn evaluate_obligation(&self, obligation: &PredicateObligation<'db>) -> EvaluationResult {
+        let param_env = obligation.param_env;
+
+        self.probe(|snapshot| {
+            let mut ocx = ObligationCtxt::new(self);
+            ocx.register_obligation(obligation.clone());
+            let mut result = EvaluationResult::EvaluatedToOk;
+            for error in ocx.evaluate_obligations_error_on_ambiguity() {
+                if error.is_true_error() {
+                    return EvaluationResult::EvaluatedToErr;
+                } else {
+                    result = result.max(EvaluationResult::EvaluatedToAmbig);
+                }
+            }
+            if self.opaque_types_added_in_snapshot(snapshot) {
+                result = result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes);
+            } else if self.region_constraints_added_in_snapshot(snapshot) {
+                result = result.max(EvaluationResult::EvaluatedToOkModuloRegions);
+            }
+            result
+        })
+    }
+
+    pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+
+        let Some(copy_def_id) =
+            LangItem::Copy.resolve_trait(self.interner.db, self.interner.krate.unwrap())
+        else {
+            return false;
+        };
+
+        // This can get called from typeck (by euv), and `moves_by_default`
+        // rightly refuses to work with inference variables, but
+        // moves_by_default has a cache, which we want to use in other
+        // cases.
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
+    }
+
     pub fn unresolved_variables(&self) -> Vec<Ty<'db>> {
         let mut inner = self.inner.borrow_mut();
         let mut vars: Vec<Ty<'db>> = inner
@@ -678,6 +779,17 @@ impl<'db> InferCtxt<'db> {
     /// each type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, def_id: SolverDefId) -> GenericArgs<'db> {
         GenericArgs::for_item(self.interner, def_id, |name, index, kind, _| {
+            self.var_for_def(kind, name)
+        })
+    }
+
+    /// Like `fresh_args_for_item()`, but first uses the args from `first`.
+    pub fn fill_rest_fresh_args(
+        &self,
+        def_id: SolverDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+    ) -> GenericArgs<'db> {
+        GenericArgs::fill_rest(self.interner, def_id, first, |name, index, kind, _| {
             self.var_for_def(kind, name)
         })
     }

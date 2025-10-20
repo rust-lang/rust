@@ -1,10 +1,10 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::sym;
-use smallvec::SmallVec;
 
 use super::IP_CONSTANT;
 
@@ -17,10 +17,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
             cx.tcx.get_diagnostic_name(func_def_id),
             Some(sym::Ipv4Addr | sym::Ipv6Addr)
         )
+        && let ecx = ConstEvalCtxt::new(cx)
+        && let ctxt = expr.span.ctxt()
         && let Some(args) = args
             .iter()
             .map(|arg| {
-                if let Some(Constant::Int(constant @ (0 | 1 | 127 | 255))) = ConstEvalCtxt::new(cx).eval(arg) {
+                if let Some(Constant::Int(constant @ (0 | 1 | 127 | 255))) = ecx.eval_local(arg, ctxt) {
                     u8::try_from(constant).ok()
                 } else {
                     None

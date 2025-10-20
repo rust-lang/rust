@@ -1,4 +1,3 @@
-use base_db::salsa;
 use expect_test::{Expect, expect};
 use hir::HirDisplay;
 
@@ -11,12 +10,12 @@ fn check_expected_type_and_name(#[rust_analyzer::rust_fixture] ra_fixture: &str,
     let (db, pos) = position(ra_fixture);
     let config = TEST_CONFIG;
     let (completion_context, _analysis) =
-        salsa::attach(&db, || CompletionContext::new(&db, pos, &config).unwrap());
+        hir::attach_db(&db, || CompletionContext::new(&db, pos, &config).unwrap());
 
     let ty = completion_context
         .expected_type
         .map(|t| {
-            salsa::attach(&db, || {
+            hir::attach_db(&db, || {
                 t.display_test(&db, completion_context.krate.to_display_target(&db)).to_string()
             })
         })
@@ -374,12 +373,23 @@ fn foo() -> u32 {
 
 #[test]
 fn expected_type_closure_param_return() {
-    // FIXME: make this work with `|| $0`
     check_expected_type_and_name(
         r#"
 //- minicore: fn
 fn foo() {
     bar(|| a$0);
+}
+
+fn bar(f: impl FnOnce() -> u32) {}
+"#,
+        expect![[r#"ty: u32, name: ?"#]],
+    );
+
+    check_expected_type_and_name(
+        r#"
+//- minicore: fn
+fn foo() {
+    bar(|| $0);
 }
 
 fn bar(f: impl FnOnce() -> u32) {}

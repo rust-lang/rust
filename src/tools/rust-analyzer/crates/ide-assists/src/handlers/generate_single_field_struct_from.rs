@@ -169,7 +169,7 @@ fn make_constructors(
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
     let (db, sema) = (ctx.db(), &ctx.sema);
-    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
     types
         .iter()
         .map(|ty| {

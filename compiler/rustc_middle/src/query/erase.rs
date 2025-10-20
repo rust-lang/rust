@@ -3,8 +3,10 @@ use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
 use rustc_span::ErrorGuaranteed;
+use rustc_span::source_map::Spanned;
 
 use crate::mir::interpret::EvalToValTreeResult;
+use crate::mir::mono::{MonoItem, NormalizationErrorInMono};
 use crate::query::CyclePlaceholder;
 use crate::traits::solve;
 use crate::ty::adjustment::CoerceUnsizedInfo;
@@ -171,6 +173,17 @@ impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
 }
 
+impl EraseType
+    for Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>
+{
+    type Result = [u8; size_of::<
+        Result<
+            (&'static [Spanned<MonoItem<'static>>], &'static [Spanned<MonoItem<'static>>]),
+            NormalizationErrorInMono,
+        >,
+    >()];
+}
+
 impl<T> EraseType for Option<&'_ T> {
     type Result = [u8; size_of::<Option<&'static ()>>()];
 }
@@ -187,8 +200,8 @@ impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
-impl EraseType for Option<ty::ImplTraitHeader<'_>> {
-    type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
+impl EraseType for ty::ImplTraitHeader<'_> {
+    type Result = [u8; size_of::<ty::ImplTraitHeader<'static>>()];
 }
 
 impl EraseType for Option<ty::EarlyBinder<'_, Ty<'_>>> {
@@ -300,6 +313,7 @@ trivial! {
     rustc_hir::Stability,
     rustc_hir::Upvar,
     rustc_index::bit_set::FiniteBitSet<u32>,
+    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::middle::dependency_format::Linkage,
     rustc_middle::middle::exported_symbols::SymbolExportInfo,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
@@ -323,7 +337,6 @@ trivial! {
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::AnonConstKind,
-    rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,

@@ -24,6 +24,13 @@ pub struct InternalIndirection<T> {
 
 pub type Sized = i32;
 
+pub trait Trait {
+    type Assoc;
+}
+impl Trait for i32 {
+    type Assoc = NonExhaustive;
+}
+
 #[repr(transparent)]
 pub struct T1(Sized, InternalPrivate);
 #[repr(transparent)]
@@ -40,6 +47,11 @@ pub struct T5(Sized, Private);
 
 #[repr(transparent)]
 pub struct T6(Sized, NonExhaustive);
+//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T6a(Sized, <i32 as Trait>::Assoc); // normalizes to `NonExhaustive`
 //~^ ERROR zero-sized fields in `repr(transparent)` cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 

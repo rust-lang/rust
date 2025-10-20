@@ -14,6 +14,8 @@ use hir_def::{
 };
 use span::Edition;
 
+use crate::next_solver::DbInterner;
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::utils::TargetFeatureIsSafeInTarget;
 use crate::{
     InferenceResult, Interner, TargetFeatures, TyExt, TyKind,
@@ -96,9 +98,9 @@ enum UnsafeDiagnostic {
     DeprecatedSafe2024 { node: ExprId, inside_unsafe_block: InsideUnsafeBlock },
 }
 
-pub fn unsafe_operations_for_body(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult,
+pub fn unsafe_operations_for_body<'db>(
+    db: &'db dyn HirDatabase,
+    infer: &InferenceResult<'db>,
     def: DefWithBodyId,
     body: &Body,
     callback: &mut dyn FnMut(ExprOrPatId),
@@ -115,9 +117,9 @@ pub fn unsafe_operations_for_body(
     }
 }
 
-pub fn unsafe_operations(
-    db: &dyn HirDatabase,
-    infer: &InferenceResult,
+pub fn unsafe_operations<'db>(
+    db: &'db dyn HirDatabase,
+    infer: &InferenceResult<'db>,
     def: DefWithBodyId,
     body: &Body,
     current: ExprId,
@@ -135,7 +137,7 @@ pub fn unsafe_operations(
 
 struct UnsafeVisitor<'db> {
     db: &'db dyn HirDatabase,
-    infer: &'db InferenceResult,
+    infer: &'db InferenceResult<'db>,
     body: &'db Body,
     resolver: Resolver<'db>,
     def: DefWithBodyId,
@@ -149,12 +151,13 @@ struct UnsafeVisitor<'db> {
     /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
     /// the target feature is not enabled. This flag encodes that.
     target_feature_is_safe: TargetFeatureIsSafeInTarget,
+    interner: DbInterner<'db>,
 }
 
 impl<'db> UnsafeVisitor<'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        infer: &'db InferenceResult,
+        infer: &'db InferenceResult<'db>,
         body: &'db Body,
         def: DefWithBodyId,
         unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
@@ -183,6 +186,7 @@ impl<'db> UnsafeVisitor<'db> {
             def_target_features,
             edition,
             target_feature_is_safe,
+            interner: DbInterner::new_with(db, None, None),
         }
     }
 
@@ -285,7 +289,7 @@ impl<'db> UnsafeVisitor<'db> {
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
-                let callee = &self.infer[callee];
+                let callee = self.infer[callee].to_chalk(self.interner);
                 if let Some(func) = callee.as_fn_def(self.db) {
                     self.check_call(current, func);
                 }
@@ -338,7 +342,7 @@ impl<'db> UnsafeVisitor<'db> {
                 }
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let TyKind::Raw(..) = &self.infer[*expr].kind(Interner) {
+                if let TyKind::Raw(..) = &self.infer[*expr].to_chalk(self.interner).kind(Interner) {
                     self.on_unsafe_op(current.into(), UnsafetyReason::RawPtrDeref);
                 }
             }

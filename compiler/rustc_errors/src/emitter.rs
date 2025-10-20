@@ -2021,7 +2021,7 @@ impl HumanEmitter {
         if let Some(width) = self.diagnostic_width {
             width.saturating_sub(code_offset)
         } else if self.ui_testing || cfg!(miri) {
-            DEFAULT_COLUMN_WIDTH
+            DEFAULT_COLUMN_WIDTH.saturating_sub(code_offset)
         } else {
             termize::dimensions()
                 .map(|(w, _)| w.saturating_sub(code_offset))
@@ -2154,11 +2154,11 @@ impl HumanEmitter {
 
             assert!(!file_lines.lines.is_empty() || parts[0].span.is_dummy());
 
-            let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
+            let line_start = sm.lookup_char_pos(parts[0].original_span.lo()).line;
             let mut lines = complete.lines();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
-                let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
+                let line_end = sm.lookup_char_pos(parts[0].original_span.hi()).line;
                 for line in line_start..=line_end {
                     self.draw_line_num(
                         &mut buffer,
@@ -2412,7 +2412,7 @@ impl HumanEmitter {
                             // too bad to begin with, so we side-step that issue here.
                             for (i, line) in snippet.lines().enumerate() {
                                 let line = normalize_whitespace(line);
-                                let row = row_num - 2 - (newlines - i - 1);
+                                let row = (row_num - 2 - (newlines - i - 1)).max(2);
                                 // On the first line, we highlight between the start of the part
                                 // span, and the end of that line.
                                 // On the last line, we highlight between the start of the line, and

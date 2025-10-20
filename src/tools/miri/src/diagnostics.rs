@@ -1,9 +1,11 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
+use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
-use rustc_span::{DUMMY_SP, SpanData, Symbol};
+use rustc_hash::FxHashSet;
+use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -137,6 +139,7 @@ pub enum NonHaltingDiagnostic {
     NativeCallSharedMem {
         tracing: bool,
     },
+    NativeCallFnPtr,
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
@@ -642,6 +645,11 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
             NativeCallSharedMem { .. } =>
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
+            NativeCallFnPtr =>
+                (
+                    "sharing a function pointer with a native function".to_string(),
+                    DiagLevel::Warning,
+                ),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
             GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
@@ -680,6 +688,8 @@ impl<'tcx> MiriMachine<'tcx> {
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
             NativeCallSharedMem { .. } =>
                 format!("sharing memory with a native function called via FFI"),
+            NativeCallFnPtr =>
+                format!("sharing a function pointer with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
@@ -777,6 +787,11 @@ impl<'tcx> MiriMachine<'tcx> {
                         ),
                     ]
                 },
+            NativeCallFnPtr => {
+                vec![note!(
+                    "calling Rust functions from C is not supported and will, in the best case, crash the program"
+                )]
+            }
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(
@@ -834,5 +849,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(this.active_thread()),
             &this.machine,
         );
+    }
+
+    /// Call `f` only if this is the first time we are seeing this span.
+    /// The `first` parameter indicates whether this is the first time *ever* that this diagnostic
+    /// is emitted.
+    fn dedup_diagnostic(
+        &self,
+        dedup: &SpanDedupDiagnostic,
+        f: impl FnOnce(/*first*/ bool) -> NonHaltingDiagnostic,
+    ) {
+        let this = self.eval_context_ref();
+        // We want to deduplicate both based on where the error seems to be located "from the user
+        // perspective", and the location of the actual operation (to avoid warning about the same
+        // operation called from different places in the local code).
+        let span1 = this.machine.current_user_relevant_span();
+        // For the "location of the operation", we still skip `track_caller` frames, to match the
+        // span that the diagnostic will point at.
+        let span2 = this
+            .active_thread_stack()
+            .iter()
+            .rev()
+            .find(|frame| !frame.instance().def.requires_caller_location(*this.tcx))
+            .map(|frame| frame.current_span())
+            .unwrap_or(span1);
+
+        let mut lock = dedup.0.lock().unwrap();
+        let first = lock.is_empty();
+        // Avoid mutating the hashset unless both spans are new.
+        if !lock.contains(&span2) && lock.insert(span1) && (span1 == span2 || lock.insert(span2)) {
+            // Both of the two spans were newly inserted.
+            this.emit_diagnostic(f(first));
+        }
+    }
+}
+
+/// Helps deduplicate a diagnostic to ensure it is only shown once per span.
+pub struct SpanDedupDiagnostic(Mutex<FxHashSet<Span>>);
+
+impl SpanDedupDiagnostic {
+    pub const fn new() -> Self {
+        Self(Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher)))
     }
 }

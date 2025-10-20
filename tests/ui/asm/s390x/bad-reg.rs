@@ -7,6 +7,7 @@
 //@[s390x_vector] needs-llvm-components: systemz
 //@[s390x_vector_stable] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
 //@[s390x_vector_stable] needs-llvm-components: systemz
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(no_core, repr_simd)]

@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-pub fn main() {
+fn main() {
     thread_local! {
         static TLS: Cell<Option<&'static i32>> = Cell::new(None);
     }

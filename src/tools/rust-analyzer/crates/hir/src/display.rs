@@ -11,7 +11,7 @@ use hir_def::{
     type_ref::{TypeBound, TypeRef, TypeRefId},
 };
 use hir_ty::{
-    AliasEq, AliasTy, Interner, ProjectionTyExt, TraitRefExt, TyKind, WhereClause,
+    AliasEq, AliasTy, Interner, ProjectionTyExt, TraitRefExt, TyBuilder, TyKind, WhereClause,
     db::HirDatabase,
     display::{
         HirDisplay, HirDisplayError, HirDisplayWithExpressionStore, HirFormatter, SizedByDefault,
@@ -23,8 +23,8 @@ use itertools::Itertools;
 use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
-    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, TyBuilder,
-    Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
+    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, Type,
+    TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {

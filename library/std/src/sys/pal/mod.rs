@@ -41,6 +41,10 @@ cfg_select! {
         mod hermit;
         pub use self::hermit::*;
     }
+    target_os = "motor" => {
+        mod motor;
+        pub use self::motor::*;
+    }
     target_os = "trusty" => {
         mod trusty;
         pub use self::trusty::*;
@@ -49,7 +53,7 @@ cfg_select! {
         mod vexos;
         pub use self::vexos::*;
     }
-    all(target_os = "wasi", target_env = "p2") => {
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
         mod wasip2;
         pub use self::wasip2::*;
     }

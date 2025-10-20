@@ -16,6 +16,7 @@ params: [
                         var: LocalVarId(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).2))
                         ty: bool
                         is_primary: true
+                        is_shorthand: false
                         subpattern: None
                     }
                 }

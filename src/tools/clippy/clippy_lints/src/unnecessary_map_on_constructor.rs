@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
             return;
         }
         if let hir::ExprKind::MethodCall(path, recv, [map_arg], ..) = expr.kind
-            && let Some(sym::Option | sym::Result) = get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv))
+            && let Some(sym::Option | sym::Result) = cx.typeck_results().expr_ty(recv).opt_diag_name(cx)
         {
             let (constructor_path, constructor_item) = if let hir::ExprKind::Call(constructor, [arg, ..]) = recv.kind
                 && let hir::ExprKind::Path(constructor_path) = constructor.kind

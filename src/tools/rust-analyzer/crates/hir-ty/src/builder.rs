@@ -15,7 +15,10 @@ use crate::{
     error_lifetime,
     generics::generics,
     infer::unify::InferenceTable,
-    next_solver::{DbInterner, EarlyBinder, mapping::ChalkToNextSolver},
+    next_solver::{
+        DbInterner, EarlyBinder,
+        mapping::{ChalkToNextSolver, NextSolverToChalk},
+    },
     primitive, to_assoc_type_id, to_chalk_trait_id,
 };
 
@@ -127,11 +130,14 @@ impl<D> TyBuilder<D> {
     }
 
     pub fn fill_with_unknown(self) -> Self {
+        let interner = DbInterner::conjure();
         // self.fill is inlined to make borrow checker happy
         let mut this = self;
         let filler = this.param_kinds[this.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
-            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Const(ty) => {
+                unknown_const_as_generic(ty.to_nextsolver(interner)).to_chalk(interner)
+            }
             ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         this.vec.extend(filler.casted(Interner));
@@ -141,10 +147,13 @@ impl<D> TyBuilder<D> {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
-        self.fill(|x| match x {
-            ParamKind::Type => table.new_type_var().cast(Interner),
-            ParamKind::Const(ty) => table.new_const_var(ty.clone()).cast(Interner),
-            ParamKind::Lifetime => table.new_lifetime_var().cast(Interner),
+        self.fill(|x| {
+            match x {
+                ParamKind::Type => crate::next_solver::GenericArg::Ty(table.next_ty_var()),
+                ParamKind::Const(_) => table.next_const_var().into(),
+                ParamKind::Lifetime => table.next_region_var().into(),
+            }
+            .to_chalk(table.interner())
         })
     }
 
@@ -213,13 +222,16 @@ impl TyBuilder<()> {
     }
 
     pub fn unknown_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
+        let interner = DbInterner::conjure();
         let params = generics(db, def.into());
         Substitution::from_iter(
             Interner,
             params.iter_id().map(|id| match id {
                 GenericParamId::TypeParamId(_) => TyKind::Error.intern(Interner).cast(Interner),
                 GenericParamId::ConstParamId(id) => {
-                    unknown_const_as_generic(db.const_param_ty(id)).cast(Interner)
+                    unknown_const_as_generic(db.const_param_ty_ns(id))
+                        .to_chalk(interner)
+                        .cast(Interner)
                 }
                 GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
             }),
@@ -261,6 +273,7 @@ impl TyBuilder<hir_def::AdtId> {
         db: &dyn HirDatabase,
         mut fallback: impl FnMut() -> Ty,
     ) -> Self {
+        let interner = DbInterner::conjure();
         // Note that we're building ADT, so we never have parent generic parameters.
         let defaults = db.generic_defaults(self.data.into());
 
@@ -281,7 +294,9 @@ impl TyBuilder<hir_def::AdtId> {
         // The defaults may be missing if no param has default, so fill that.
         let filler = self.param_kinds[self.vec.len()..].iter().map(|x| match x {
             ParamKind::Type => fallback().cast(Interner),
-            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            ParamKind::Const(ty) => {
+                unknown_const_as_generic(ty.to_nextsolver(interner)).to_chalk(interner)
+            }
             ParamKind::Lifetime => error_lifetime().cast(Interner),
         });
         self.vec.extend(filler.casted(Interner));

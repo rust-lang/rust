@@ -52,7 +52,7 @@ use crate::{
     AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const, ConstScalar,
     ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
     LifetimeOutlives, MemoryMap, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause, consteval_nextsolver,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause, consteval,
     db::{HirDatabase, InternedClosure},
     from_assoc_type_id, from_placeholder_idx,
     generics::generics,
@@ -750,8 +750,8 @@ impl<'db> HirDisplay for crate::next_solver::Const<'db> {
             }
             rustc_type_ir::ConstKind::Value(const_bytes) => render_const_scalar_ns(
                 f,
-                &const_bytes.value.inner().0,
-                &const_bytes.value.inner().1,
+                &const_bytes.value.inner().memory,
+                &const_bytes.value.inner().memory_map,
                 const_bytes.ty,
             ),
             rustc_type_ir::ConstKind::Unevaluated(unev) => {
@@ -1025,7 +1025,7 @@ fn render_const_scalar_inner<'db>(
             ty.hir_fmt(f)
         }
         TyKind::Array(ty, len) => {
-            let Some(len) = consteval_nextsolver::try_const_usize(f.db, len) else {
+            let Some(len) = consteval::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
             let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
@@ -1545,14 +1545,17 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                         never!("Only `impl Fn` is valid for displaying closures in source code");
                     }
                 }
-                let chalk_id: chalk_ir::ClosureId<_> = id.into();
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", chalk_id.0.index());
+                        return write!(
+                            f,
+                            "{{closure#{:?}}}",
+                            salsa::plumbing::AsId::as_id(&id).index()
+                        );
                     }
                     ClosureStyle::ClosureWithSubst => {
-                        write!(f, "{{closure#{:?}}}", chalk_id.0.index())?;
+                        write!(f, "{{closure#{:?}}}", salsa::plumbing::AsId::as_id(&id).index())?;
                         return hir_fmt_generics(f, substs.as_slice(Interner), None, None);
                     }
                     _ => (),
@@ -1561,7 +1564,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 if let Some(sig) = sig {
                     let InternedClosure(def, _) = db.lookup_intern_closure(id);
                     let infer = db.infer(def);
-                    let (_, kind) = infer.closure_info(&chalk_id);
+                    let (_, kind) = infer.closure_info(id);
                     match f.closure_style {
                         ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
                         ClosureStyle::RANotation => write!(f, "|")?,

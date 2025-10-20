@@ -2,18 +2,7 @@
 
 use std::{collections::hash_map::Entry, fmt::Display, iter};
 
-use crate::{
-    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
-    consteval::usize_const,
-    db::HirDatabase,
-    display::{DisplayTarget, HirDisplay},
-    infer::{PointerCast, normalize},
-    lang_items::is_box,
-    mapping::ToChalk,
-};
 use base_db::Crate;
-use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
@@ -21,6 +10,25 @@ use hir_def::{
     hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
+use rustc_ast_ir::Mutability;
+use rustc_hash::FxHashMap;
+use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _};
+use smallvec::{SmallVec, smallvec};
+use stdx::{impl_from, never};
+
+use crate::{
+    CallableDefId, InferenceResult, MemoryMap,
+    consteval::usize_const,
+    db::{HirDatabase, InternedClosureId},
+    display::{DisplayTarget, HirDisplay},
+    infer::PointerCast,
+    lang_items::is_box,
+    next_solver::{
+        Const, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, Ty, TyKind,
+        infer::{InferCtxt, traits::ObligationCause},
+        obligation_ctxt::ObligationCtxt,
+    },
+};
 
 mod borrowck;
 mod eval;
@@ -36,25 +44,22 @@ pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_bod
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
-use rustc_hash::FxHashMap;
-use smallvec::{SmallVec, smallvec};
-use stdx::{impl_from, never};
 
 pub(crate) use lower::mir_body_cycle_result;
 pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
-use super::consteval::{intern_const_scalar, try_const_usize};
+use super::consteval::try_const_usize;
 
-pub type BasicBlockId = Idx<BasicBlock>;
-pub type LocalId = Idx<Local>;
+pub type BasicBlockId<'db> = Idx<BasicBlock<'db>>;
+pub type LocalId<'db> = Idx<Local<'db>>;
 
-fn return_slot() -> LocalId {
+fn return_slot<'db>() -> LocalId<'db> {
     LocalId::from_raw(RawIdx::from(0))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Local {
-    pub ty: Ty,
+pub struct Local<'db> {
+    pub ty: Ty<'db>,
 }
 
 /// An operand in MIR represents a "value" in Rust, the definition of which is undecided and part of
@@ -76,19 +81,19 @@ pub struct Local {
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Operand {
-    kind: OperandKind,
+pub struct Operand<'db> {
+    kind: OperandKind<'db>,
     // FIXME : This should actually just be of type `MirSpan`.
     span: Option<MirSpan>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum OperandKind {
+pub enum OperandKind<'db> {
     /// Creates a value by loading the given place.
     ///
     /// Before drop elaboration, the type of the place must be `Copy`. After drop elaboration there
     /// is no such requirement.
-    Copy(Place),
+    Copy(Place<'db>),
 
     /// Creates a value by performing loading the place, just like the `Copy` operand.
     ///
@@ -97,41 +102,41 @@ pub enum OperandKind {
     /// place without first re-initializing it.
     ///
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
-    Move(Place),
+    Move(Place<'db>),
     /// Constants are already semantically values, and remain unchanged.
-    Constant(Const),
+    Constant { konst: Const<'db>, ty: Ty<'db> },
     /// NON STANDARD: This kind of operand returns an immutable reference to that static memory. Rustc
     /// handles it with the `Constant` variant somehow.
     Static(StaticId),
 }
 
-impl Operand {
-    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'static>, ty: Ty) -> Self {
+impl<'db> Operand<'db> {
+    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'db>, ty: Ty<'db>) -> Self {
+        let interner = DbInterner::conjure();
         Operand {
-            kind: OperandKind::Constant(intern_const_scalar(
-                ConstScalar::Bytes(data, memory_map),
+            kind: OperandKind::Constant {
+                konst: Const::new_valtree(interner, ty, data, memory_map),
                 ty,
-            )),
+            },
             span: None,
         }
     }
 
-    fn from_bytes(data: Box<[u8]>, ty: Ty) -> Self {
+    fn from_bytes(data: Box<[u8]>, ty: Ty<'db>) -> Self {
         Operand::from_concrete_const(data, MemoryMap::default(), ty)
     }
 
-    fn const_zst(ty: Ty) -> Operand {
+    fn const_zst(ty: Ty<'db>) -> Operand<'db> {
         Self::from_bytes(Box::default(), ty)
     }
 
     fn from_fn(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         func_id: hir_def::FunctionId,
-        generic_args: Substitution,
-    ) -> Operand {
-        let ty =
-            chalk_ir::TyKind::FnDef(CallableDefId::FunctionId(func_id).to_chalk(db), generic_args)
-                .intern(Interner);
+        generic_args: GenericArgs<'db>,
+    ) -> Operand<'db> {
+        let interner = DbInterner::new_with(db, None, None);
+        let ty = Ty::new_fn_def(interner, CallableDefId::FunctionId(func_id).into(), generic_args);
         Operand::from_bytes(Box::default(), ty)
     }
 }
@@ -150,83 +155,81 @@ pub enum ProjectionElem<V, T> {
 }
 
 impl<V, T> ProjectionElem<V, T> {
-    pub fn projected_ty(
+    pub fn projected_ty<'db>(
         &self,
-        mut base: Ty,
-        db: &dyn HirDatabase,
-        closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
+        infcx: &InferCtxt<'db>,
+        mut base: Ty<'db>,
+        closure_field: impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db>,
         krate: Crate,
-    ) -> Ty {
+    ) -> Ty<'db> {
+        let interner = infcx.interner;
+        let db = interner.db;
+
         // we only bail on mir building when there are type mismatches
         // but error types may pop up resulting in us still attempting to build the mir
         // so just propagate the error type
-        if base.is_unknown() {
-            return TyKind::Error.intern(Interner);
+        if base.is_ty_error() {
+            return Ty::new_error(interner, ErrorGuaranteed);
         }
 
-        if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
-            base = normalize(
-                db,
-                // FIXME: we should get this from caller
-                TraitEnvironment::empty(krate),
-                base,
-            );
+        if matches!(base.kind(), TyKind::Alias(..)) {
+            let mut ocx = ObligationCtxt::new(infcx);
+            // FIXME: we should get this from caller
+            let env = ParamEnv::empty();
+            match ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, base) {
+                Ok(it) => base = it,
+                Err(_) => return Ty::new_error(interner, ErrorGuaranteed),
+            }
         }
+
         match self {
-            ProjectionElem::Deref => match &base.kind(Interner) {
-                TyKind::Raw(_, inner) | TyKind::Ref(_, _, inner) => inner.clone(),
-                TyKind::Adt(adt, subst) if is_box(db, adt.0) => {
-                    subst.at(Interner, 0).assert_ty_ref(Interner).clone()
-                }
+            ProjectionElem::Deref => match base.kind() {
+                TyKind::RawPtr(inner, _) | TyKind::Ref(_, inner, _) => inner,
+                TyKind::Adt(adt_def, subst) if is_box(db, adt_def.def_id().0) => subst.type_at(0),
                 _ => {
                     never!(
                         "Overloaded deref on type {} is not a projection",
                         base.display(db, DisplayTarget::from_crate(db, krate))
                     );
-                    TyKind::Error.intern(Interner)
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
             },
-            ProjectionElem::Field(Either::Left(f)) => match base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match base.kind() {
                 TyKind::Adt(_, subst) => {
-                    db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
+                    db.field_types_ns(f.parent)[f.local_id].instantiate(interner, subst)
                 }
                 ty => {
                     never!("Only adt has field, found {:?}", ty);
-                    TyKind::Error.intern(Interner)
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
             },
-            ProjectionElem::Field(Either::Right(f)) => match &base.kind(Interner) {
-                TyKind::Tuple(_, subst) => subst
-                    .as_slice(Interner)
-                    .get(f.index as usize)
-                    .map(|x| x.assert_ty_ref(Interner))
-                    .cloned()
-                    .unwrap_or_else(|| {
+            ProjectionElem::Field(Either::Right(f)) => match base.kind() {
+                TyKind::Tuple(subst) => {
+                    subst.as_slice().get(f.index as usize).copied().unwrap_or_else(|| {
                         never!("Out of bound tuple field");
-                        TyKind::Error.intern(Interner)
-                    }),
+                        Ty::new_error(interner, ErrorGuaranteed)
+                    })
+                }
                 ty => {
                     never!("Only tuple has tuple field: {:?}", ty);
-                    TyKind::Error.intern(Interner)
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
             },
-            ProjectionElem::ClosureField(f) => match &base.kind(Interner) {
-                TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
+            ProjectionElem::ClosureField(f) => match base.kind() {
+                TyKind::Closure(id, subst) => closure_field(id.0, subst, *f),
                 _ => {
                     never!("Only closure has closure field");
-                    TyKind::Error.intern(Interner)
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
             },
-            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
-                match &base.kind(Interner) {
-                    TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
-                    _ => {
-                        never!("Overloaded index is not a projection");
-                        TyKind::Error.intern(Interner)
-                    }
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => match base.kind() {
+                TyKind::Array(inner, _) | TyKind::Slice(inner) => inner,
+                _ => {
+                    never!("Overloaded index is not a projection");
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
-            }
-            &ProjectionElem::Subslice { from, to } => match &base.kind(Interner) {
+            },
+            &ProjectionElem::Subslice { from, to } => match base.kind() {
                 TyKind::Array(inner, c) => {
                     let next_c = usize_const(
                         db,
@@ -236,34 +239,34 @@ impl<V, T> ProjectionElem<V, T> {
                         },
                         krate,
                     );
-                    TyKind::Array(inner.clone(), next_c).intern(Interner)
+                    Ty::new_array_with_const_len(interner, inner, next_c)
                 }
-                TyKind::Slice(_) => base.clone(),
+                TyKind::Slice(_) => base,
                 _ => {
                     never!("Subslice projection should only happen on slice and array");
-                    TyKind::Error.intern(Interner)
+                    Ty::new_error(interner, ErrorGuaranteed)
                 }
             },
             ProjectionElem::OpaqueCast(_) => {
                 never!("We don't emit these yet");
-                TyKind::Error.intern(Interner)
+                Ty::new_error(interner, ErrorGuaranteed)
             }
         }
     }
 }
 
-type PlaceElem = ProjectionElem<LocalId, Ty>;
+type PlaceElem<'db> = ProjectionElem<LocalId<'db>, Ty<'db>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProjectionId(u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ProjectionStore {
-    id_to_proj: FxHashMap<ProjectionId, Box<[PlaceElem]>>,
-    proj_to_id: FxHashMap<Box<[PlaceElem]>, ProjectionId>,
+pub struct ProjectionStore<'db> {
+    id_to_proj: FxHashMap<ProjectionId, Box<[PlaceElem<'db>]>>,
+    proj_to_id: FxHashMap<Box<[PlaceElem<'db>]>, ProjectionId>,
 }
 
-impl Default for ProjectionStore {
+impl Default for ProjectionStore<'_> {
     fn default() -> Self {
         let mut this = Self { id_to_proj: Default::default(), proj_to_id: Default::default() };
         // Ensure that [] will get the id 0 which is used in `ProjectionId::Empty`
@@ -272,17 +275,17 @@ impl Default for ProjectionStore {
     }
 }
 
-impl ProjectionStore {
+impl<'db> ProjectionStore<'db> {
     pub fn shrink_to_fit(&mut self) {
         self.id_to_proj.shrink_to_fit();
         self.proj_to_id.shrink_to_fit();
     }
 
-    pub fn intern_if_exist(&self, projection: &[PlaceElem]) -> Option<ProjectionId> {
+    pub fn intern_if_exist(&self, projection: &[PlaceElem<'db>]) -> Option<ProjectionId> {
         self.proj_to_id.get(projection).copied()
     }
 
-    pub fn intern(&mut self, projection: Box<[PlaceElem]>) -> ProjectionId {
+    pub fn intern(&mut self, projection: Box<[PlaceElem<'db>]>) -> ProjectionId {
         let new_id = ProjectionId(self.proj_to_id.len() as u32);
         match self.proj_to_id.entry(projection) {
             Entry::Occupied(id) => *id.get(),
@@ -303,11 +306,15 @@ impl ProjectionId {
         self == ProjectionId::EMPTY
     }
 
-    pub fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
+    pub fn lookup<'a, 'db>(self, store: &'a ProjectionStore<'db>) -> &'a [PlaceElem<'db>] {
         store.id_to_proj.get(&self).unwrap()
     }
 
-    pub fn project(self, projection: PlaceElem, store: &mut ProjectionStore) -> ProjectionId {
+    pub fn project<'db>(
+        self,
+        projection: PlaceElem<'db>,
+        store: &mut ProjectionStore<'db>,
+    ) -> ProjectionId {
         let mut current = self.lookup(store).to_vec();
         current.push(projection);
         store.intern(current.into())
@@ -315,13 +322,13 @@ impl ProjectionId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Place {
-    pub local: LocalId,
+pub struct Place<'db> {
+    pub local: LocalId<'db>,
     pub projection: ProjectionId,
 }
 
-impl Place {
-    fn is_parent(&self, child: &Place, store: &ProjectionStore) -> bool {
+impl<'db> Place<'db> {
+    fn is_parent(&self, child: &Place<'db>, store: &ProjectionStore<'db>) -> bool {
         self.local == child.local
             && child.projection.lookup(store).starts_with(self.projection.lookup(store))
     }
@@ -329,39 +336,39 @@ impl Place {
     /// The place itself is not included
     fn iterate_over_parents<'a>(
         &'a self,
-        store: &'a ProjectionStore,
-    ) -> impl Iterator<Item = Place> + 'a {
+        store: &'a ProjectionStore<'db>,
+    ) -> impl Iterator<Item = Place<'db>> + 'a {
         let projection = self.projection.lookup(store);
         (0..projection.len()).map(|x| &projection[0..x]).filter_map(move |x| {
             Some(Place { local: self.local, projection: store.intern_if_exist(x)? })
         })
     }
 
-    fn project(&self, projection: PlaceElem, store: &mut ProjectionStore) -> Place {
+    fn project(&self, projection: PlaceElem<'db>, store: &mut ProjectionStore<'db>) -> Place<'db> {
         Place { local: self.local, projection: self.projection.project(projection, store) }
     }
 }
 
-impl From<LocalId> for Place {
-    fn from(local: LocalId) -> Self {
+impl<'db> From<LocalId<'db>> for Place<'db> {
+    fn from(local: LocalId<'db>) -> Self {
         Self { local, projection: ProjectionId::EMPTY }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum AggregateKind {
+pub enum AggregateKind<'db> {
     /// The type is of the element
-    Array(Ty),
+    Array(Ty<'db>),
     /// The type is of the tuple
-    Tuple(Ty),
-    Adt(VariantId, Substitution),
+    Tuple(Ty<'db>),
+    Adt(VariantId, GenericArgs<'db>),
     Union(UnionId, FieldId),
-    Closure(Ty),
+    Closure(Ty<'db>),
     //Coroutine(LocalDefId, SubstsRef, Movability),
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct SwitchTargets {
+pub struct SwitchTargets<'db> {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
     values: SmallVec<[u128; 1]>,
@@ -378,17 +385,17 @@ pub struct SwitchTargets {
     //
     // However we’ve decided to keep this as-is until we figure a case
     // where some other approach seems to be strictly better than other.
-    targets: SmallVec<[BasicBlockId; 2]>,
+    targets: SmallVec<[BasicBlockId<'db>; 2]>,
 }
 
-impl SwitchTargets {
+impl<'db> SwitchTargets<'db> {
     /// Creates switch targets from an iterator of values and target blocks.
     ///
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
     pub fn new(
-        targets: impl Iterator<Item = (u128, BasicBlockId)>,
-        otherwise: BasicBlockId,
+        targets: impl Iterator<Item = (u128, BasicBlockId<'db>)>,
+        otherwise: BasicBlockId<'db>,
     ) -> Self {
         let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
         targets.push(otherwise);
@@ -397,12 +404,12 @@ impl SwitchTargets {
 
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
-    pub fn static_if(value: u128, then: BasicBlockId, else_: BasicBlockId) -> Self {
+    pub fn static_if(value: u128, then: BasicBlockId<'db>, else_: BasicBlockId<'db>) -> Self {
         Self { values: smallvec![value], targets: smallvec![then, else_] }
     }
 
     /// Returns the fallback target that is jumped to when none of the values match the operand.
-    pub fn otherwise(&self) -> BasicBlockId {
+    pub fn otherwise(&self) -> BasicBlockId<'db> {
         *self.targets.last().unwrap()
     }
 
@@ -412,33 +419,33 @@ impl SwitchTargets {
     /// including the `otherwise` fallback target.
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
-    pub fn iter(&self) -> impl Iterator<Item = (u128, BasicBlockId)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (u128, BasicBlockId<'db>)> + '_ {
         iter::zip(&self.values, &self.targets).map(|(x, y)| (*x, *y))
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).
-    pub fn all_targets(&self) -> &[BasicBlockId] {
+    pub fn all_targets(&self) -> &[BasicBlockId<'db>] {
         &self.targets
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
     /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.
-    pub fn target_for_value(&self, value: u128) -> BasicBlockId {
+    pub fn target_for_value(&self, value: u128) -> BasicBlockId<'db> {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Terminator {
+pub struct Terminator<'db> {
     pub span: MirSpan,
-    pub kind: TerminatorKind,
+    pub kind: TerminatorKind<'db>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum TerminatorKind {
+pub enum TerminatorKind<'db> {
     /// Block has one successor; we continue execution there.
-    Goto { target: BasicBlockId },
+    Goto { target: BasicBlockId<'db> },
 
     /// Switches based on the computed value.
     ///
@@ -450,9 +457,9 @@ pub enum TerminatorKind {
     /// Target values may not appear more than once.
     SwitchInt {
         /// The discriminant value being tested.
-        discr: Operand,
+        discr: Operand<'db>,
 
-        targets: SwitchTargets,
+        targets: SwitchTargets<'db>,
     },
 
     /// Indicates that the landing pad is finished and that the process should continue unwinding.
@@ -503,7 +510,7 @@ pub enum TerminatorKind {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place, target: BasicBlockId, unwind: Option<BasicBlockId> },
+    Drop { place: Place<'db>, target: BasicBlockId<'db>, unwind: Option<BasicBlockId<'db>> },
 
     /// Drops the place and assigns a new value to it.
     ///
@@ -536,10 +543,10 @@ pub enum TerminatorKind {
     ///
     /// Disallowed after drop elaboration.
     DropAndReplace {
-        place: Place,
-        value: Operand,
-        target: BasicBlockId,
-        unwind: Option<BasicBlockId>,
+        place: Place<'db>,
+        value: Operand<'db>,
+        target: BasicBlockId<'db>,
+        unwind: Option<BasicBlockId<'db>>,
     },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
@@ -554,18 +561,18 @@ pub enum TerminatorKind {
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
         /// The function that’s being called.
-        func: Operand,
+        func: Operand<'db>,
         /// Arguments the function is called with.
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Box<[Operand]>,
+        args: Box<[Operand<'db>]>,
         /// Where the returned value will be written
-        destination: Place,
+        destination: Place<'db>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
-        target: Option<BasicBlockId>,
+        target: Option<BasicBlockId<'db>>,
         /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlockId>,
+        cleanup: Option<BasicBlockId<'db>>,
         /// `true` if this is from a call in HIR rather than from an overloaded
         /// operator. True for overloaded function call.
         from_hir_call: bool,
@@ -581,11 +588,11 @@ pub enum TerminatorKind {
     /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
     /// assertion does not fail, execution continues at the specified basic block.
     Assert {
-        cond: Operand,
+        cond: Operand<'db>,
         expected: bool,
         //msg: AssertMessage,
-        target: BasicBlockId,
-        cleanup: Option<BasicBlockId>,
+        target: BasicBlockId<'db>,
+        cleanup: Option<BasicBlockId<'db>>,
     },
 
     /// Marks a suspend point.
@@ -602,13 +609,13 @@ pub enum TerminatorKind {
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
     Yield {
         /// The value to return.
-        value: Operand,
+        value: Operand<'db>,
         /// Where to resume to.
-        resume: BasicBlockId,
+        resume: BasicBlockId<'db>,
         /// The place to store the resume argument in.
-        resume_arg: Place,
+        resume_arg: Place<'db>,
         /// Cleanup to be done if the coroutine is dropped at this suspend point.
-        drop: Option<BasicBlockId>,
+        drop: Option<BasicBlockId<'db>>,
     },
 
     /// Indicates the end of dropping a coroutine.
@@ -631,10 +638,10 @@ pub enum TerminatorKind {
     /// Disallowed after drop elaboration.
     FalseEdge {
         /// The target normal control flow will take.
-        real_target: BasicBlockId,
+        real_target: BasicBlockId<'db>,
         /// A block control flow could conceptually jump to, but won't in
         /// practice.
-        imaginary_target: BasicBlockId,
+        imaginary_target: BasicBlockId<'db>,
     },
 
     /// A terminator for blocks that only take one path in reality, but where we reserve the right
@@ -646,14 +653,14 @@ pub enum TerminatorKind {
     /// Disallowed after drop elaboration.
     FalseUnwind {
         /// The target normal control flow will take.
-        real_target: BasicBlockId,
+        real_target: BasicBlockId<'db>,
         /// The imaginary cleanup block link. This particular path will never be taken
         /// in practice, but in order to avoid fragility we want to always
         /// consider it in borrowck. We don't want to accept programs which
         /// pass borrowck only when `panic=abort` or some assertions are disabled
         /// due to release vs. debug mode builds. This needs to be an `Option` because
         /// of the `remove_noop_landing_pads` and `abort_unwinding_calls` passes.
-        unwind: Option<BasicBlockId>,
+        unwind: Option<BasicBlockId<'db>>,
     },
 }
 
@@ -708,10 +715,10 @@ impl BorrowKind {
         }
     }
 
-    fn from_chalk(m: Mutability) -> Self {
+    fn from_rustc(m: rustc_ast_ir::Mutability) -> Self {
         match m {
-            Mutability::Not => BorrowKind::Shared,
-            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+            rustc_ast_ir::Mutability::Not => BorrowKind::Shared,
+            rustc_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 }
@@ -840,8 +847,8 @@ impl From<hir_def::hir::CmpOp> for BinOp {
     }
 }
 
-impl From<Operand> for Rvalue {
-    fn from(x: Operand) -> Self {
+impl<'db> From<Operand<'db>> for Rvalue<'db> {
+    fn from(x: Operand<'db>) -> Self {
         Self::Use(x)
     }
 }
@@ -870,14 +877,14 @@ pub enum CastKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Rvalue {
+pub enum Rvalue<'db> {
     /// Yields the operand unchanged
-    Use(Operand),
+    Use(Operand<'db>),
 
     /// Creates an array where each element is the value of the operand.
     ///
     /// Corresponds to source code like `[x; 32]`.
-    Repeat(Operand, Const),
+    Repeat(Operand<'db>, Const<'db>),
 
     /// Creates a reference of the indicated kind to the place.
     ///
@@ -886,7 +893,7 @@ pub enum Rvalue {
     /// exactly what the behavior of this operation should be.
     ///
     /// `Shallow` borrows are disallowed after drop lowering.
-    Ref(BorrowKind, Place),
+    Ref(BorrowKind, Place<'db>),
 
     /// Creates a pointer/reference to the given thread local.
     ///
@@ -917,7 +924,7 @@ pub enum Rvalue {
     /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
     /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
     /// ill-formed for places of other types.
-    Len(Place),
+    Len(Place<'db>),
 
     /// Performs essentially all of the casts that can be performed via `as`.
     ///
@@ -925,7 +932,7 @@ pub enum Rvalue {
     ///
     /// **FIXME**: Document exactly which `CastKind`s allow which types of casts. Figure out why
     /// `ArrayToPointer` and `MutToConstPointer` are special.
-    Cast(CastKind, Operand, Ty),
+    Cast(CastKind, Operand<'db>, Ty<'db>),
 
     // FIXME link to `pointer::offset` when it hits stable.
     /// * `Offset` has the same semantics as `pointer::offset`, except that the second
@@ -957,7 +964,7 @@ pub enum Rvalue {
     /// when the value of right-hand side is negative.
     ///
     /// Other combinations of types and operators are unsupported.
-    CheckedBinaryOp(BinOp, Operand, Operand),
+    CheckedBinaryOp(BinOp, Operand<'db>, Operand<'db>),
 
     /// Computes a value as described by the operation.
     //NullaryOp(NullOp, Ty),
@@ -968,7 +975,7 @@ pub enum Rvalue {
     /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
     /// bitwise not requires a signed integer, unsigned integer, or bool. Both operation kinds
     /// return a value with the same type as their operand.
-    UnaryOp(UnOp, Operand),
+    UnaryOp(UnOp, Operand<'db>),
 
     /// Computes the discriminant of the place, returning it as an integer of type
     /// [`discriminant_ty`]. Returns zero for types without discriminant.
@@ -980,7 +987,7 @@ pub enum Rvalue {
     /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095
     /// [`discriminant_for_variant`]: crate::ty::Ty::discriminant_for_variant
-    Discriminant(Place),
+    Discriminant(Place<'db>),
 
     /// Creates an aggregate value, like a tuple or struct.
     ///
@@ -990,17 +997,17 @@ pub enum Rvalue {
     ///
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
     /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
-    Aggregate(AggregateKind, Box<[Operand]>),
+    Aggregate(AggregateKind<'db>, Box<[Operand<'db>]>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
     /// This is different from a normal transmute because dataflow analysis will treat the box as
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
-    ShallowInitBox(Operand, Ty),
+    ShallowInitBox(Operand<'db>, Ty<'db>),
 
     /// NON STANDARD: allocates memory with the type's layout, and shallow init the box with the resulting pointer.
-    ShallowInitBoxWithAlloc(Ty),
+    ShallowInitBoxWithAlloc(Ty<'db>),
 
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
@@ -1010,41 +1017,41 @@ pub enum Rvalue {
     /// read never happened and just projects further. This allows simplifying various MIR
     /// optimizations and codegen backends that previously had to handle deref operations anywhere
     /// in a place.
-    CopyForDeref(Place),
+    CopyForDeref(Place<'db>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum StatementKind {
-    Assign(Place, Rvalue),
-    FakeRead(Place),
+pub enum StatementKind<'db> {
+    Assign(Place<'db>, Rvalue<'db>),
+    FakeRead(Place<'db>),
     //SetDiscriminant {
     //    place: Box<Place>,
     //    variant_index: VariantIdx,
     //},
-    Deinit(Place),
-    StorageLive(LocalId),
-    StorageDead(LocalId),
+    Deinit(Place<'db>),
+    StorageLive(LocalId<'db>),
+    StorageDead(LocalId<'db>),
     //Retag(RetagKind, Box<Place>),
     //AscribeUserType(Place, UserTypeProjection, Variance),
     //Intrinsic(Box<NonDivergingIntrinsic>),
     Nop,
 }
-impl StatementKind {
-    fn with_span(self, span: MirSpan) -> Statement {
+impl<'db> StatementKind<'db> {
+    fn with_span(self, span: MirSpan) -> Statement<'db> {
         Statement { kind: self, span }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Statement {
-    pub kind: StatementKind,
+pub struct Statement<'db> {
+    pub kind: StatementKind<'db>,
     pub span: MirSpan,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct BasicBlock {
+pub struct BasicBlock<'db> {
     /// List of statements in this block.
-    pub statements: Vec<Statement>,
+    pub statements: Vec<Statement<'db>>,
 
     /// Terminator for this block.
     ///
@@ -1054,7 +1061,7 @@ pub struct BasicBlock {
     /// exception is that certain passes, such as `simplify_cfg`, swap
     /// out the terminator temporarily with `None` while they continue
     /// to recurse over the set of basic blocks.
-    pub terminator: Option<Terminator>,
+    pub terminator: Option<Terminator<'db>>,
 
     /// If true, this block lies on an unwind path. This is used
     /// during codegen where distinct kinds of basic blocks may be
@@ -1064,35 +1071,35 @@ pub struct BasicBlock {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MirBody {
-    pub projection_store: ProjectionStore,
-    pub basic_blocks: Arena<BasicBlock>,
-    pub locals: Arena<Local>,
-    pub start_block: BasicBlockId,
+pub struct MirBody<'db> {
+    pub projection_store: ProjectionStore<'db>,
+    pub basic_blocks: Arena<BasicBlock<'db>>,
+    pub locals: Arena<Local<'db>>,
+    pub start_block: BasicBlockId<'db>,
     pub owner: DefWithBodyId,
-    pub binding_locals: ArenaMap<BindingId, LocalId>,
-    pub param_locals: Vec<LocalId>,
+    pub binding_locals: ArenaMap<BindingId, LocalId<'db>>,
+    pub param_locals: Vec<LocalId<'db>>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.
-    pub closures: Vec<ClosureId>,
+    pub closures: Vec<InternedClosureId>,
 }
 
-impl MirBody {
-    pub fn local_to_binding_map(&self) -> ArenaMap<LocalId, BindingId> {
+impl<'db> MirBody<'db> {
+    pub fn local_to_binding_map(&self) -> ArenaMap<LocalId<'db>, BindingId> {
         self.binding_locals.iter().map(|(it, y)| (*y, it)).collect()
     }
 
-    fn walk_places(&mut self, mut f: impl FnMut(&mut Place, &mut ProjectionStore)) {
-        fn for_operand(
-            op: &mut Operand,
-            f: &mut impl FnMut(&mut Place, &mut ProjectionStore),
-            store: &mut ProjectionStore,
+    fn walk_places(&mut self, mut f: impl FnMut(&mut Place<'db>, &mut ProjectionStore<'db>)) {
+        fn for_operand<'db>(
+            op: &mut Operand<'db>,
+            f: &mut impl FnMut(&mut Place<'db>, &mut ProjectionStore<'db>),
+            store: &mut ProjectionStore<'db>,
         ) {
             match &mut op.kind {
                 OperandKind::Copy(p) | OperandKind::Move(p) => {
                     f(p, store);
                 }
-                OperandKind::Constant(_) | OperandKind::Static(_) => (),
+                OperandKind::Constant { .. } | OperandKind::Static(_) => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {
