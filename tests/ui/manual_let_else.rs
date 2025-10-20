@@ -546,3 +546,28 @@ mod issue14598 {
         todo!()
     }
 }
+
+mod issue15914 {
+    // https://github.com/rust-lang/rust-clippy/issues/15914
+    unsafe fn something_unsafe() -> Option<u32> {
+        None
+    }
+
+    fn foo() {
+        let value = if let Some(value) = unsafe { something_unsafe() } {
+            //~^ manual_let_else
+            value
+        } else {
+            return;
+        };
+
+        let some_flag = true;
+
+        let value = if let Some(value) = if some_flag { None } else { Some(3) } {
+            //~^ manual_let_else
+            value
+        } else {
+            return;
+        };
+    }
+}
