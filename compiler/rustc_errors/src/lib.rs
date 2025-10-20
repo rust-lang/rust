@@ -224,6 +224,13 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub struct TrimmedSubstitutionPart {
+    pub original_span: Span,
+    pub span: Span,
+    pub snippet: String,
+}
+
 /// Used to translate between `Span`s and byte positions within a single output line in highlighted
 /// code of structured suggestions.
 #[derive(Debug, Clone, Copy)]
@@ -233,6 +240,35 @@ pub(crate) struct SubstitutionHighlight {
 }
 
 impl SubstitutionPart {
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(self, sm: &SourceMap) -> TrimmedSubstitutionPart {
+        let mut trimmed_part = TrimmedSubstitutionPart {
+            original_span: self.span,
+            span: self.span,
+            snippet: self.snippet,
+        };
+        if trimmed_part.snippet.is_empty() {
+            return trimmed_part;
+        }
+        let Ok(snippet) = sm.span_to_snippet(trimmed_part.span) else {
+            return trimmed_part;
+        };
+
+        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &trimmed_part.snippet) {
+            trimmed_part.span = Span::new(
+                trimmed_part.span.lo() + BytePos(prefix as u32),
+                trimmed_part.span.hi() - BytePos(suffix as u32),
+                trimmed_part.span.ctxt(),
+                trimmed_part.span.parent(),
+            );
+            trimmed_part.snippet = substr.to_string();
+        }
+        trimmed_part
+    }
+}
+
+impl TrimmedSubstitutionPart {
     pub fn is_addition(&self, sm: &SourceMap) -> bool {
         !self.snippet.is_empty() && !self.replaces_meaningful_content(sm)
     }
@@ -259,27 +295,6 @@ impl SubstitutionPart {
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
-    }
-
-    /// Try to turn a replacement into an addition when the span that is being
-    /// overwritten matches either the prefix or suffix of the replacement.
-    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
-        if self.snippet.is_empty() {
-            return;
-        }
-        let Ok(snippet) = sm.span_to_snippet(self.span) else {
-            return;
-        };
-
-        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &self.snippet) {
-            self.span = Span::new(
-                self.span.lo() + BytePos(prefix as u32),
-                self.span.hi() - BytePos(suffix as u32),
-                self.span.ctxt(),
-                self.span.parent(),
-            );
-            self.snippet = substr.to_string();
-        }
     }
 }
 
@@ -310,7 +325,8 @@ impl CodeSuggestion {
     pub(crate) fn splice_lines(
         &self,
         sm: &SourceMap,
-    ) -> Vec<(String, Vec<SubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, ConfusionType)> {
+    ) -> Vec<(String, Vec<TrimmedSubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, ConfusionType)>
+    {
         // For the `Vec<Vec<SubstitutionHighlight>>` value, the first level of the vector
         // corresponds to the output snippet's lines, while the second level corresponds to the
         // substrings within that line that should be highlighted.
@@ -428,12 +444,17 @@ impl CodeSuggestion {
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
                 let mut confusion_type = ConfusionType::None;
-                for part in &mut substitution.parts {
+
+                let trimmed_parts = substitution
+                    .parts
+                    .into_iter()
                     // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
                     // suggestion and snippet to look as if we just suggested to add
                     // `"b"`, which is typically much easier for the user to understand.
-                    part.trim_trivial_replacements(sm);
+                    .map(|part| part.trim_trivial_replacements(sm))
+                    .collect::<Vec<_>>();
 
+                for part in &trimmed_parts {
                     let part_confusion = detect_confusion_type(sm, &part.snippet, part.span);
                     confusion_type = confusion_type.combine(part_confusion);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
@@ -521,7 +542,7 @@ impl CodeSuggestion {
                 if highlights.iter().all(|parts| parts.is_empty()) {
                     None
                 } else {
-                    Some((buf, substitution.parts, highlights, confusion_type))
+                    Some((buf, trimmed_parts, highlights, confusion_type))
                 }
             })
             .collect()
