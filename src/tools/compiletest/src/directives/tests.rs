@@ -962,6 +962,18 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
 }
 
 #[test]
+fn edition_order() {
+    let editions = &[
+        Edition::Year(2015),
+        Edition::Year(2018),
+        Edition::Year(2021),
+        Edition::Year(2024),
+        Edition::Future,
+    ];
+    assert!(editions.is_sorted(), "{editions:#?}");
+}
+
+#[test]
 fn test_parse_edition_range() {
     assert_eq!(None, parse_edition_range("hello-world"));
     assert_eq!(None, parse_edition_range("edition"));

@@ -81,11 +81,15 @@ impl EarlyProps {
 }
 
 #[derive(Clone, Debug)]
-pub struct TestProps {
+pub(crate) struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
     // Regexes that should be expected, in order, on standard out
     pub regex_error_patterns: Vec<String>,
+    /// Edition selected by an `//@ edition` directive, if any.
+    ///
+    /// Automatically added to `compile_flags` during directive processing.
+    pub edition: Option<Edition>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -267,6 +271,7 @@ impl TestProps {
         TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
+            edition: None,
             compile_flags: vec![],
             run_flags: vec![],
             doc_flags: vec![],
@@ -355,7 +360,6 @@ impl TestProps {
     /// `//@[foo]`), then the property is ignored unless `test_revision` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Utf8Path, test_revision: Option<&str>, config: &Config) {
-        let mut has_edition = false;
         if !testfile.is_dir() {
             let file_contents = fs::read_to_string(testfile).unwrap();
             let file_directives = FileDirectives::from_file_contents(testfile, &file_contents);
@@ -423,13 +427,7 @@ impl TestProps {
                     }
 
                     if let Some(range) = parse_edition_range(config, ln) {
-                        // The edition is added at the start, since flags from //@compile-flags must
-                        // be passed to rustc last.
-                        self.compile_flags.insert(
-                            0,
-                            format!("--edition={}", range.edition_to_test(config.edition)),
-                        );
-                        has_edition = true;
+                        self.edition = Some(range.edition_to_test(config.edition));
                     }
 
                     config.parse_and_update_revisions(ln, &mut self.revisions);
@@ -678,10 +676,10 @@ impl TestProps {
             }
         }
 
-        if let (Some(edition), false) = (&config.edition, has_edition) {
+        if let Some(edition) = self.edition.or(config.edition) {
             // The edition is added at the start, since flags from //@compile-flags must be passed
             // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={}", edition));
+            self.compile_flags.insert(0, format!("--edition={edition}"));
         }
     }
 
