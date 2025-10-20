@@ -37,7 +37,7 @@ use crate::{
         pat::contains_explicit_ref_binding,
     },
     lang_items::lang_items_for_bin_op,
-    lower_nextsolver::{
+    lower::{
         LifetimeElisionKind, lower_mutability,
         path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
     },
@@ -564,7 +564,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 match def_id {
                     _ if fields.is_empty() => {}
                     Some(def) => {
-                        let field_types = self.db.field_types_ns(def);
+                        let field_types = self.db.field_types(def);
                         let variant_data = def.fields(self.db);
                         let visibilities = self.db.field_visibilities(def);
                         for field in fields.iter() {
@@ -1622,7 +1622,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
                 return None;
             }
-            let ty = self.db.field_types_ns(field_id.parent)[field_id.local_id]
+            let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                 .instantiate(interner, parameters);
             Some((Either::Left(field_id), ty))
         });
@@ -1637,7 +1637,7 @@ impl<'db> InferenceContext<'_, 'db> {
             None => {
                 let (field_id, subst) = private_field?;
                 let adjustments = autoderef.adjust_steps();
-                let ty = self.db.field_types_ns(field_id.parent)[field_id.local_id]
+                let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                     .instantiate(self.interner(), subst);
                 let ty = self.process_remote_user_written_ty(ty);
 
@@ -2320,7 +2320,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let callable_ty = self.table.try_structurally_resolve_type(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind() {
             let generic_predicates =
-                self.db.generic_predicates_ns(GenericDefId::from_callable(self.db, fn_def.0));
+                self.db.generic_predicates(GenericDefId::from_callable(self.db, fn_def.0));
             if let Some(predicates) = generic_predicates.instantiate(self.interner(), parameters) {
                 let interner = self.interner();
                 let param_env = self.table.trait_env.env;

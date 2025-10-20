@@ -13,7 +13,7 @@ use rustc_type_ir::{
 };
 use smallvec::SmallVec;
 
-use crate::next_solver::TraitIdWrapper;
+use crate::next_solver::{InternedWrapperNoDebug, TraitIdWrapper};
 
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty, interned_vec_db};
 
@@ -170,9 +170,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
         })
     }
 }
-
-#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
-pub struct InternedWrapperNoDebug<T>(pub(crate) T);
 
 #[salsa::interned(constructor = new_)]
 pub struct Predicate<'db> {

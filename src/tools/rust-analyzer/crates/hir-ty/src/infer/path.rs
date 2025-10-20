@@ -13,7 +13,7 @@ use crate::{
     InferenceDiagnostic, ValueTyDefId,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower_nextsolver::LifetimeElisionKind,
+    lower::LifetimeElisionKind,
     method_resolution::{self, VisibleFromModule},
     next_solver::{
         GenericArg, GenericArgs, TraitRef, Ty,
@@ -221,7 +221,7 @@ impl<'db> InferenceContext<'_, 'db> {
         def: GenericDefId,
         subst: GenericArgs<'db>,
     ) {
-        let predicates = self.db.generic_predicates_ns(def);
+        let predicates = self.db.generic_predicates(def);
         let interner = self.interner();
         let param_env = self.table.trait_env.env;
         if let Some(predicates) = predicates.instantiate(self.interner(), subst) {

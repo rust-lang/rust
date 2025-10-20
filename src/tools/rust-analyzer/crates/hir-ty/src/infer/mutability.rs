@@ -18,7 +18,7 @@ use crate::next_solver::{GenericArgs, TraitRef};
 use crate::{
     Adjust, Adjustment, AutoBorrow, OverloadedDeref,
     infer::{Expectation, InferenceContext, expr::ExprIsRead},
-    lower_nextsolver::lower_mutability,
+    lower::lower_mutability,
     next_solver::TyKind,
 };
 

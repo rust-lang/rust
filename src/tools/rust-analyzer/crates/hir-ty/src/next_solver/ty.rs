@@ -26,11 +26,11 @@ use rustc_type_ir::{
 use crate::{
     ImplTraitId,
     db::HirDatabase,
-    interner::InternedWrapperNoDebug,
     next_solver::{
         AdtDef, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
         CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
+        interner::InternedWrapperNoDebug,
         mapping::ChalkToNextSolver,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
@@ -531,7 +531,7 @@ impl<'db> Ty<'db> {
             TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => {
                 match db.lookup_intern_impl_trait_id(opaque_ty.def_id.expect_opaque_ty()) {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        db.return_type_impl_traits_ns(func).map(|it| {
+                        db.return_type_impl_traits(func).map(|it| {
                             let data = (*it).as_ref().map_bound(|rpit| {
                                 &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
                             });
@@ -540,7 +540,7 @@ impl<'db> Ty<'db> {
                         })
                     }
                     ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        db.type_alias_impl_traits_ns(alias).map(|it| {
+                        db.type_alias_impl_traits(alias).map(|it| {
                             let data = (*it).as_ref().map_bound(|rpit| {
                                 &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
                             });
@@ -575,7 +575,7 @@ impl<'db> Ty<'db> {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::ArgumentImplTrait => {
                             let predicates = db
-                                .generic_predicates_ns(param.id.parent())
+                                .generic_predicates(param.id.parent())
                                 .instantiate_identity()
                                 .into_iter()
                                 .flatten()

@@ -32,8 +32,8 @@ use crate::{
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, InternedWrapperNoDebug,
-        RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, RegionAssumptions,
+        SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
         util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls},
     },
 };
@@ -52,6 +52,9 @@ use super::{
     },
     util::sizedness_constraint_for_ty,
 };
+
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
+pub struct InternedWrapperNoDebug<T>(pub(crate) T);
 
 #[macro_export]
 #[doc(hidden)]
@@ -611,7 +614,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
             return None;
         };
         let id: VariantId = struct_id.into();
-        let field_types = interner.db().field_types_ns(id);
+        let field_types = interner.db().field_types(id);
 
         field_types.iter().last().map(|f| *f.1)
     }
@@ -623,7 +626,7 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         let db = interner.db();
         // FIXME: this is disabled just to match the behavior with chalk right now
         let _field_tys = |id: VariantId| {
-            db.field_types_ns(id).iter().map(|(_, ty)| ty.skip_binder()).collect::<Vec<_>>()
+            db.field_types(id).iter().map(|(_, ty)| ty.skip_binder()).collect::<Vec<_>>()
         };
         let field_tys = |_id: VariantId| vec![];
         let tys: Vec<_> = match self.inner().id {
@@ -1284,7 +1287,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates_ns(def_id.try_into().unwrap());
+        let predicates = self.db().generic_predicates(def_id.try_into().unwrap());
         let predicates: Vec<_> = predicates.iter().cloned().collect();
         EarlyBinder::bind(predicates.into_iter())
     }
@@ -1311,7 +1314,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
-            .generic_predicates_ns(def_id.0.into())
+            .generic_predicates(def_id.0.into())
             .iter()
             .filter(|p| match p.kind().skip_binder() {
                 // rustc has the following assertion:
@@ -1345,7 +1348,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
-            .generic_predicates_ns(def_id.try_into().unwrap())
+            .generic_predicates(def_id.try_into().unwrap())
             .iter()
             .filter(|p| match p.kind().skip_binder() {
                 rustc_type_ir::ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
@@ -1765,7 +1768,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             return UnsizingParams(DenseBitSet::new_empty(num_params));
         };
 
-        let field_types = self.db().field_types_ns(variant.id());
+        let field_types = self.db().field_types(variant.id());
         let mut unsizing_params = DenseBitSet::new_empty(num_params);
         let ty = field_types[tail_field.0];
         for arg in ty.instantiate_identity().walk() {

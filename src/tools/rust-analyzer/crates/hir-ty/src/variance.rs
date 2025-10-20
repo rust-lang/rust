@@ -128,7 +128,7 @@ impl<'db> Context<'db> {
             GenericDefId::AdtId(adt) => {
                 let db = self.db;
                 let mut add_constraints_from_variant = |variant| {
-                    for (_, field) in db.field_types_ns(variant).iter() {
+                    for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
                             field.instantiate_identity(),
                             Variance::Covariant,

@@ -150,7 +150,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
     ) -> impl Iterator<Item = (LocalFieldId, Ty<'db>)> {
         let (_, substs) = ty.as_adt().unwrap();
 
-        let field_tys = self.db.field_types_ns(variant);
+        let field_tys = self.db.field_types(variant);
         let fields_len = variant.fields(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {

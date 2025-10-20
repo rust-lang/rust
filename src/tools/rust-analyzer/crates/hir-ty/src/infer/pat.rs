@@ -19,7 +19,7 @@ use crate::{
         AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch,
         coerce::CoerceNever, expr::ExprIsRead,
     },
-    lower_nextsolver::lower_mutability,
+    lower::lower_mutability,
     next_solver::{GenericArgs, Ty, TyKind},
 };
 
@@ -59,7 +59,7 @@ impl<'db> InferenceContext<'_, 'db> {
         match def {
             _ if subs.is_empty() => {}
             Some(def) => {
-                let field_types = self.db.field_types_ns(def);
+                let field_types = self.db.field_types(def);
                 let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
@@ -128,7 +128,7 @@ impl<'db> InferenceContext<'_, 'db> {
         match def {
             _ if subs.len() == 0 => {}
             Some(def) => {
-                let field_types = self.db.field_types_ns(def);
+                let field_types = self.db.field_types(def);
                 let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 

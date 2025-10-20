@@ -207,7 +207,7 @@ impl<'db> GenericArgs<'db> {
     where
         F: FnMut(u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
-        let defaults = interner.db.generic_defaults_ns(def_id);
+        let defaults = interner.db.generic_defaults(def_id);
         Self::for_item(interner, def_id.into(), |idx, id, prev| match defaults.get(idx as usize) {
             Some(default) => default.instantiate(interner, prev),
             None => fallback(idx, id, prev),
@@ -240,7 +240,7 @@ impl<'db> GenericArgs<'db> {
     where
         F: FnMut(u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
-        let defaults = interner.db.generic_defaults_ns(def_id);
+        let defaults = interner.db.generic_defaults(def_id);
         Self::fill_rest(interner, def_id.into(), first, |idx, id, prev| {
             defaults
                 .get(idx as usize)

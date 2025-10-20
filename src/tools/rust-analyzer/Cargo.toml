@@ -37,8 +37,6 @@ debug = 2
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
-# chalk-ir = { path = "../chalk/chalk-ir" }
-# chalk-derive = { path = "../chalk/chalk-derive" }
 # line-index = { path = "lib/line-index" }
 # la-arena = { path = "lib/la-arena" }
 # lsp-server = { path = "lib/lsp-server" }
@@ -110,8 +108,6 @@ arrayvec = "0.7.6"
 bitflags = "2.9.1"
 cargo_metadata = "0.21.0"
 camino = "1.1.10"
-chalk-ir = "0.104.0"
-chalk-derive = "0.104.0"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
 dot = "0.1.4"
