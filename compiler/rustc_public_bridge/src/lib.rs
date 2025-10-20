@@ -24,7 +24,6 @@
 #![feature(trait_alias)]
 // tidy-alphabetical-end
 
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Index;
@@ -48,12 +47,6 @@ pub mod rustc_internal {}
 
 /// Trait alias for types that can be cached in [`Tables`].
 pub trait Cacheable = Copy + Debug + PartialEq + IndexedVal;
-
-/// A container which is used for TLS.
-pub struct Container<'tcx, B: Bridge> {
-    pub tables: RefCell<Tables<'tcx, B>>,
-    pub cx: RefCell<CompilerCtxt<'tcx, B>>,
-}
 
 pub struct Tables<'tcx, B: Bridge> {
     pub def_ids: IndexMap<DefId, B::DefId>,
