@@ -52,8 +52,8 @@ pub struct CiInfo {
 }
 
 impl CiInfo {
-    pub fn new(diag_ctx: TidyCtx) -> Self {
-        let mut check = diag_ctx.start_check("CI history");
+    pub fn new(tidy_ctx: TidyCtx) -> Self {
+        let mut check = tidy_ctx.start_check("CI history");
 
         let stage0 = parse_stage0_file();
         let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
@@ -258,6 +258,7 @@ pub mod target_policy;
 pub mod target_specific_tests;
 pub mod tests_placement;
 pub mod tests_revision_unpaired_stdout_stderr;
+mod tidy_flags;
 pub mod triagebot;
 pub mod ui_tests;
 pub mod unit_tests;

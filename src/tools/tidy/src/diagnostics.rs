@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use build_helper::git::{get_git_untracked_files, output_result};
 use termcolor::{Color, WriteColor};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct TidyFlags {
     pub bless: bool,
     pub pre_push: bool,

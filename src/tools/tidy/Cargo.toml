@@ -19,6 +19,9 @@ fluent-syntax = "0.12"
 similar = "2.5.0"
 toml = "0.7.8"
 
+[dev-dependencies]
+tempfile = "3"
+
 [features]
 build-metrics = ["dep:serde"]
 
