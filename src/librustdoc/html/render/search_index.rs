@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 use std::path::Path;
 
 use ::serde::de::{self, Deserializer, Error as _};
-use ::serde::ser::{SerializeSeq, Serializer};
+use ::serde::ser::{Error as _, SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -1059,12 +1059,14 @@ impl Serialize for TypeData {
             let mut buf = Vec::new();
             encode::write_postings_to_string(&self.inverted_function_inputs_index, &mut buf);
             let mut serialized_result = Vec::new();
-            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result)
+                .map_err(S::Error::custom)?;
             seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
             buf.clear();
             serialized_result.clear();
             encode::write_postings_to_string(&self.inverted_function_output_index, &mut buf);
-            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result)
+                .map_err(S::Error::custom)?;
             seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
             if self.search_unbox {
                 seq.serialize_element(&1)?;
