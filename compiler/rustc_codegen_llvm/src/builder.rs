@@ -4,7 +4,9 @@ use std::ops::Deref;
 
 use rustc_ast::expand::typetree::FncTree;
 pub(crate) mod autodiff;
+pub(crate) mod gpu_device;
 pub(crate) mod gpu_offload;
+pub(crate) mod gpu_wrapper;
 
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
