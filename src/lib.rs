@@ -1,7 +1,5 @@
 /*
  * TODO(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
- * TODO(antoyo): support #[inline] attributes.
- * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
 // cspell:disable-next-line
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
