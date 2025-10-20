@@ -1,10 +1,12 @@
 //@ revisions: nofallback fallback
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
+#![cfg_attr(nofallback, expect(dependency_on_unit_never_type_fallback))]
+
 // Test various cases where we permit an unconstrained variable
 // to fallback based on control-flow. In all of these cases,
 // the type variable winds up being the target of both a `!` coercion
@@ -28,8 +30,6 @@ impl UnitDefault for () {
 }
 
 fn assignment() {
-    //[nofallback]~^ warn: this function depends on never type fallback being `()`
-    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     let x;
 
     if true {
@@ -40,8 +40,6 @@ fn assignment() {
 }
 
 fn assignment_rev() {
-    //[nofallback]~^ warn: this function depends on never type fallback being `()`
-    //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     let x;
 
     if true {

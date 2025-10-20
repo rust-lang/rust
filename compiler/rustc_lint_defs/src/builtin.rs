@@ -4065,7 +4065,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(never_type_fallback_flowing_into_unsafe)]
     /// fn main() {
     ///     if true {
     ///         // return has type `!` which, is some cases, causes never type fallback
@@ -4100,7 +4099,7 @@ declare_lint! {
     /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
     /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
-    Warn,
+    Deny,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
@@ -4122,7 +4121,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail,edition2021
-    /// #![deny(dependency_on_unit_never_type_fallback)]
+    /// # #![deny(dependency_on_unit_never_type_fallback)]
     /// fn main() {
     ///     if true {
     ///         // return has type `!` which, is some cases, causes never type fallback
@@ -4155,7 +4154,7 @@ declare_lint! {
     ///
     /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
     pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-    Warn,
+    Deny,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
