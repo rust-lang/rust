@@ -1,6 +1,7 @@
-use build_helper::git::{get_git_untracked_files, output_result};
 use std::collections::HashSet;
 use std::path::PathBuf;
+
+use build_helper::git::{get_git_untracked_files, output_result};
 use tempfile::{NamedTempFile, tempdir_in};
 
 use crate::diagnostics::TidyFlags;
