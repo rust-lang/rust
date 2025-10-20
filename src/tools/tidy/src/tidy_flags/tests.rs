@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+//use std::collections::HashSet;
 use std::path::PathBuf;
 
-use build_helper::git::{get_git_untracked_files, output_result};
-use tempfile::{NamedTempFile, tempdir_in};
+use build_helper::git::output_result;
 
+//use tempfile::{NamedTempFile, tempdir_in};
 use crate::diagnostics::TidyFlags;
 use crate::walk::walk;
 
@@ -16,15 +16,15 @@ fn get_test_dir() -> PathBuf {
     test_dir
 }
 
-fn get_untracked(root_path: &PathBuf) -> HashSet<PathBuf> {
-    let untracked_files = match get_git_untracked_files(Some(&root_path)) {
-        Ok(Some(untracked_paths)) => {
-            untracked_paths.into_iter().map(|s| root_path.join(s)).collect()
-        }
-        _ => HashSet::new(),
-    };
-    untracked_files
-}
+//fn get_untracked(root_path: &PathBuf) -> HashSet<PathBuf> {
+//let untracked_files = match get_git_untracked_files(Some(&root_path)) {
+//Ok(Some(untracked_paths)) => {
+//untracked_paths.into_iter().map(|s| root_path.join(s)).collect()
+//}
+//_ => HashSet::new(),
+//};
+//untracked_files
+//}
 
 //#[test]
 ////Creates a temp untracked file and checks that there are more untracked files than
