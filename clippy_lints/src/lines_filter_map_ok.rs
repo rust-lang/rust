@@ -87,11 +87,13 @@ impl LateLintPass<'_> for LinesFilterMapOk {
                 cx,
                 LINES_FILTER_MAP_OK,
                 fm_span,
-                format!("`{fm_method_name}()` will run forever if the iterator repeatedly produces an `Err`",),
+                format!("`{fm_method_name}()` will run forever if the iterator repeatedly produces an `Err`"),
                 |diag| {
                     diag.span_note(
                         fm_receiver.span,
-                        "this expression returning a `std::io::Lines` may produce an infinite number of `Err` in case of a read error");
+                        "this expression returning a `std::io::Lines` may produce \
+                            an infinite number of `Err` in case of a read error",
+                    );
                     diag.span_suggestion(
                         fm_span,
                         "replace with",
@@ -108,27 +110,21 @@ fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_name: Symbol) -> 
     match args {
         [] => method_name == sym::flatten,
         [fm_arg] => {
-            match &fm_arg.kind {
+            match fm_arg.kind {
                 // Detect `Result::ok`
-                ExprKind::Path(qpath) => cx
+                ExprKind::Path(ref qpath) => cx
                     .qpath_res(qpath, fm_arg.hir_id)
-                    .opt_def_id()
-                    .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::result_ok_method, did)),
+                    .is_diag_item(cx, sym::result_ok_method),
                 // Detect `|x| x.ok()`
-                ExprKind::Closure(Closure { body, .. }) => {
+                ExprKind::Closure(&Closure { body, .. }) => {
                     if let Body {
                         params: [param], value, ..
-                    } = cx.tcx.hir_body(*body)
+                    } = cx.tcx.hir_body(body)
                         && let ExprKind::MethodCall(method, receiver, [], _) = value.kind
                     {
                         method.ident.name == sym::ok
                             && receiver.res_local_id() == Some(param.pat.hir_id)
-                            && cx
-                                .typeck_results()
-                                .type_dependent_def_id(value.hir_id)
-                                .opt_parent(cx)
-                                .opt_impl_ty(cx)
-                                .is_diag_item(cx, sym::Result)
+                            && cx.ty_based_def(*value).is_diag_item(cx, sym::result_ok_method)
                     } else {
                         false
                     }
