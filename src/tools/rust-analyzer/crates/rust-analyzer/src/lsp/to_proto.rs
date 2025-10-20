@@ -493,8 +493,15 @@ pub(crate) fn signature_help(
                 .parameter_ranges()
                 .iter()
                 .map(|it| {
-                    let start = call_info.signature[..it.start().into()].chars().count() as u32;
-                    let end = call_info.signature[..it.end().into()].chars().count() as u32;
+                    let start = call_info.signature[..it.start().into()]
+                        .chars()
+                        .map(|c| c.len_utf16())
+                        .sum::<usize>() as u32;
+                    let end = start
+                        + call_info.signature[it.start().into()..it.end().into()]
+                            .chars()
+                            .map(|c| c.len_utf16())
+                            .sum::<usize>() as u32;
                     [start, end]
                 })
                 .map(|label_offsets| lsp_types::ParameterInformation {
@@ -513,9 +520,9 @@ pub(crate) fn signature_help(
                     label.push_str(", ");
                 }
                 first = false;
-                let start = label.chars().count() as u32;
+                let start = label.len() as u32;
                 label.push_str(param);
-                let end = label.chars().count() as u32;
+                let end = label.len() as u32;
                 params.push(lsp_types::ParameterInformation {
                     label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
                     documentation: None,
