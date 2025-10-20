@@ -4353,7 +4353,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// thanks to the happens-before relationship, any non-atomic access that happen-before the atomic
 /// operation or fence with (at least) [`Release`] ordering semantics are now also properly
 /// synchronized with any non-atomic accesses that happen-after the atomic operation or fence with
-/// (at least) [`Aquire`] ordering semantics.
+/// (at least) [`Acquire`] ordering semantics.
 ///
 /// ## Memory Ordering
 ///
