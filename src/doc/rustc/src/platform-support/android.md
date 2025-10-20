@@ -8,6 +8,7 @@
 
 ## Target maintainers
 
+[@chriswailes](https://github.com/chriswailes)
 [@jfgoog](https://github.com/jfgoog)
 [@maurer](https://github.com/maurer)
 [@pirama-arumuga-nainar](https://github.com/pirama-arumuga-nainar)
