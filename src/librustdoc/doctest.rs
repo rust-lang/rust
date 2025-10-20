@@ -500,10 +500,7 @@ fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     input + &exe_suffix
 }
 
-fn wrapped_rustc_command<'a>(
-    rustc_wrappers: &'a [PathBuf],
-    rustc_binary: &'a Path,
-) -> (Command, &'a Path) {
+fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
     let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary]);
 
     let exe = args.next().expect("unable to create rustc command");
@@ -512,7 +509,7 @@ fn wrapped_rustc_command<'a>(
         command.arg(arg);
     }
 
-    (command, rustc_wrappers.first().map(|p| &**p).unwrap_or(rustc_binary))
+    command
 }
 
 /// Information needed for running a bundle of doctests.
@@ -632,8 +629,7 @@ fn run_test(
         .test_builder
         .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path(sysroot).expect("found rustc"));
-    let (mut compiler, binary_path) =
-        wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+    let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.args(&compiler_args);
 
@@ -677,7 +673,7 @@ fn run_test(
     let mut child = match compiler.spawn() {
         Ok(child) => child,
         Err(error) => {
-            eprintln!("Failed to spawn {binary_path:?}: {error:?}");
+            eprintln!("Failed to spawn {:?}: {error:?}", compiler.get_program());
             return (Duration::default(), Err(TestFailure::CompileError));
         }
     };
@@ -689,7 +685,7 @@ fn run_test(
         // build it now
         let runner_input_file = doctest.path_for_merged_doctest_runner();
 
-        let (mut runner_compiler, binary_path) =
+        let mut runner_compiler =
             wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
         // the test runner does not contain any user-written code, so this doesn't allow
         // the user to exploit nightly-only features on stable
@@ -745,7 +741,7 @@ fn run_test(
             let mut child_runner = match runner_compiler.spawn() {
                 Ok(child) => child,
                 Err(error) => {
-                    eprintln!("Failed to spawn {binary_path:?}: {error:?}");
+                    eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
                     return (Duration::default(), Err(TestFailure::CompileError));
                 }
             };
