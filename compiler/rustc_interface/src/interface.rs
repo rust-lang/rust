@@ -97,12 +97,12 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                         }
                         Ok(..) => {}
                         Err(err) => {
-                            err.emit();
+                            err.cancel();
                         },
                     }
                 },
                 Err(errs) => errs.into_iter().for_each(|err| {
-                    err.emit();
+                    err.cancel();
                 }),
             };
 
@@ -184,21 +184,20 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
         let mut parser =
             match new_parser_from_source_str(&psess, filename, s.to_string(), StripTokens::Nothing)
             {
-                Ok(parser) => parser,
+                Ok(parser) => parser.recovery(Recovery::Forbidden),
                 Err(errs) => {
                     errs.into_iter().for_each(|err| {
-                        err.emit();
+                        err.cancel();
                     });
                     expected_error();
                 }
             };
-        parser = parser.recovery(Recovery::Forbidden);
 
         let meta_item = match parser.parse_meta_item(AllowLeadingUnsafe::No) {
             Ok(meta_item) if parser.token == token::Eof => meta_item,
             Ok(..) => expected_error(),
             Err(err) => {
-                err.emit();
+                err.cancel();
                 expected_error();
             }
         };

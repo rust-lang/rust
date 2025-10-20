@@ -1,8 +1,3 @@
-error: expected identifier, found `#`
-  |
-  = note: this error occurred on the command line: `--check-cfg=#!/usr/bin/shebang
-          cfg(key)`
-
 error: invalid `--check-cfg` argument: `#!/usr/bin/shebang
        cfg(key)`
   |

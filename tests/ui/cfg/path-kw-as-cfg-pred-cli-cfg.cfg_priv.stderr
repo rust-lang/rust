@@ -1,6 +1,2 @@
-error: expected identifier, found reserved keyword `priv`
-  |
-  = note: this error occurred on the command line: `--cfg=priv`
-
 error: invalid `--cfg` argument: `priv` (expected `key` or `key="value"`)
 

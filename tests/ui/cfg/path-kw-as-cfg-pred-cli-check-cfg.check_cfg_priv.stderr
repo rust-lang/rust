@@ -1,7 +1,3 @@
-error: expected unsuffixed literal, found reserved keyword `priv`
-  |
-  = note: this error occurred on the command line: `--check-cfg=cfg(priv)`
-
 error: invalid `--check-cfg` argument: `cfg(priv)`
    |
    = note: expected `cfg(name, values("value1", "value2", ... "valueN"))`
