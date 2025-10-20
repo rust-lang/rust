@@ -41,7 +41,7 @@ use crate::common::{
     CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
     expected_output_path, output_base_dir, output_relative_path,
 };
-use crate::directives::{DirectivesCache, FileDirectives};
+use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
 use crate::executor::{CollectedTest, ColorConfig};
 
@@ -891,6 +891,11 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
         // Create a test name and description to hand over to the executor.
         let (test_name, filterable_path) =
             make_test_name_and_filterable_path(&cx.config, testpaths, revision);
+
+        // While scanning for ignore/only/needs directives, also collect aux
+        // paths for up-to-date checking.
+        let mut aux_props = AuxProps::default();
+
         // Create a description struct for the test/revision.
         // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
         // because they historically needed to set the libtest ignored flag.
@@ -903,11 +908,15 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             &file_directives,
             revision,
             &mut collector.poisoned,
+            &mut aux_props,
         );
 
         // If a test's inputs haven't changed since the last time it ran,
         // mark it as ignored so that the executor will skip it.
-        if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
+        if !desc.ignore
+            && !cx.config.force_rerun
+            && is_up_to_date(cx, testpaths, &aux_props, revision)
+        {
             desc.ignore = true;
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
             // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
@@ -936,7 +945,7 @@ fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str
 fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
-    props: &EarlyProps,
+    aux_props: &AuxProps,
     revision: Option<&str>,
 ) -> Vec<Utf8PathBuf> {
     let mut related = vec![];
@@ -953,8 +962,11 @@ fn files_related_to_test(
         related.push(testpaths.file.clone());
     }
 
-    for aux in props.aux.all_aux_path_strings() {
+    for aux in aux_props.all_aux_path_strings() {
         // FIXME(Zalathar): Perform all `auxiliary` path resolution in one place.
+        // FIXME(Zalathar): This only finds auxiliary files used _directly_ by
+        // the test file; if a transitive auxiliary is modified, the test might
+        // be treated as "up-to-date" even though it should run.
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
         related.push(path);
     }
@@ -979,7 +991,7 @@ fn files_related_to_test(
 fn is_up_to_date(
     cx: &TestCollectorCx,
     testpaths: &TestPaths,
-    props: &EarlyProps,
+    aux_props: &AuxProps,
     revision: Option<&str>,
 ) -> bool {
     let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
@@ -1000,7 +1012,7 @@ fn is_up_to_date(
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
-    for path in files_related_to_test(&cx.config, testpaths, props, revision) {
+    for path in files_related_to_test(&cx.config, testpaths, aux_props, revision) {
         inputs_stamp.add_path(&path);
     }
 
