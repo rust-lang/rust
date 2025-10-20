@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::{is_res_lang_ctor, paths, peel_blocks, sym};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::{paths, peel_blocks, sym};
 use hir::{ExprKind, HirId, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -84,9 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     /// get desugared to match.
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) {
         let fn_def_id = block.hir_id.owner.to_def_id();
-        if let Some(impl_id) = cx.tcx.impl_of_assoc(fn_def_id)
-            && let Some(trait_id) = cx.tcx.trait_id_of_impl(impl_id)
-        {
+        if let Some(impl_id) = cx.tcx.trait_impl_of_assoc(fn_def_id) {
+            let trait_id = cx.tcx.impl_trait_id(impl_id);
             // We don't want to lint inside io::Read or io::Write implementations, as the author has more
             // information about their trait implementation than our lint, see https://github.com/rust-lang/rust-clippy/issues/4836
             if let Some(trait_name) = cx.tcx.get_diagnostic_name(trait_id)
@@ -136,7 +136,10 @@ fn non_consuming_err_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
     }
 
     if let PatKind::TupleStruct(ref path, [inner_pat], _) = arm.pat.kind {
-        return is_res_lang_ctor(cx, cx.qpath_res(path, inner_pat.hir_id), hir::LangItem::ResultErr);
+        return cx
+            .qpath_res(path, inner_pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, hir::LangItem::ResultErr);
     }
 
     false
@@ -203,7 +206,7 @@ fn is_ok_wild_or_dotdot_pattern<'a>(cx: &LateContext<'a>, pat: &hir::Pat<'a>) ->
 
     if let PatKind::TupleStruct(ref path, inner_pat, _) = pat.kind
         // we check against Result::Ok to avoid linting on Err(_) or something else.
-        && is_res_lang_ctor(cx, cx.qpath_res(path, pat.hir_id), hir::LangItem::ResultOk)
+        && cx.qpath_res(path, pat.hir_id).ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultOk)
     {
         if matches!(inner_pat, []) {
             return true;

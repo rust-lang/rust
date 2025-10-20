@@ -666,7 +666,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
-            NullFnPtr => const_eval_validation_null_fn_ptr,
+            NullFnPtr { .. } => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
@@ -820,12 +820,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("vtable_dyn_type", vtable_dyn_type.to_string());
                 err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
-            NullPtr { maybe, .. } => {
+            NullPtr { maybe, .. } | NullFnPtr { maybe } => {
                 err.arg("maybe", maybe);
             }
             MutableRefToImmutable
             | MutableRefInConst
-            | NullFnPtr
             | NonnullPtrMaybeNull
             | NeverVal
             | UnsafeCellInImmutable

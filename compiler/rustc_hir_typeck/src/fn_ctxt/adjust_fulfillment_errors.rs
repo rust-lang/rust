@@ -711,7 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         } else {
             self.tcx
-                .impl_trait_ref(obligation.impl_or_alias_def_id)
+                .impl_opt_trait_ref(obligation.impl_or_alias_def_id)
                 .map(|impl_def| impl_def.skip_binder())
                 // It is possible that this is absent. In this case, we make no progress.
                 .ok_or(expr)?

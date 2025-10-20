@@ -6,6 +6,7 @@ mod item;
 mod stack;
 
 use std::fmt::Write;
+use std::sync::atomic::AtomicBool;
 use std::{cmp, mem};
 
 use rustc_abi::{BackendRepr, Size};
@@ -822,7 +823,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         let size = match size {
             Some(size) => size,
             None => {
-                if !this.machine.sb_extern_type_warned.replace(true) {
+                static DEDUP: AtomicBool = AtomicBool::new(false);
+                if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
                     this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
                 }
                 return interp_ok(place.clone());

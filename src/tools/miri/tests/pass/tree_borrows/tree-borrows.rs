@@ -28,7 +28,7 @@ fn local_addr_of_mut() {
 // Tree Borrows has no issue with several mutable references existing
 // at the same time, as long as they are used only immutably.
 // I.e. multiple Reserved can coexist.
-pub fn aliasing_read_only_mutable_refs() {
+fn aliasing_read_only_mutable_refs() {
     unsafe {
         let base = &mut 42u64;
         let r1 = &mut *(base as *mut u64);
@@ -38,7 +38,7 @@ pub fn aliasing_read_only_mutable_refs() {
     }
 }
 
-pub fn string_as_mut_ptr() {
+fn string_as_mut_ptr() {
     // This errors in Stacked Borrows since as_mut_ptr restricts the provenance,
     // but with Tree Borrows it should work.
     unsafe {

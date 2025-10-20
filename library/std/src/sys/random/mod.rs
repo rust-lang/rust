@@ -62,6 +62,10 @@ cfg_select! {
         mod redox;
         pub use redox::fill_bytes;
     }
+    target_os = "motor" => {
+        mod motor;
+        pub use motor::fill_bytes;
+    }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         pub use sgx::fill_bytes;
@@ -90,7 +94,7 @@ cfg_select! {
         mod wasip1;
         pub use wasip1::fill_bytes;
     }
-    all(target_os = "wasi", target_env = "p2") => {
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
         mod wasip2;
         pub use wasip2::{fill_bytes, hashmap_random_keys};
     }
@@ -115,7 +119,7 @@ cfg_select! {
     target_os = "linux",
     target_os = "android",
     all(target_family = "wasm", target_os = "unknown"),
-    all(target_os = "wasi", target_env = "p2"),
+    all(target_os = "wasi", not(target_env = "p1")),
     target_os = "xous",
     target_os = "vexos",
 )))]

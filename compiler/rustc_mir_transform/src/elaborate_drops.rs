@@ -14,7 +14,6 @@ use rustc_mir_dataflow::{
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use crate::deref_separator::deref_finder;
 use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
 use crate::patch::MirPatch;
 
@@ -87,7 +86,6 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
             .elaborate()
         };
         elaborate_patch.apply(body);
-        deref_finder(tcx, body);
     }
 
     fn is_required(&self) -> bool {

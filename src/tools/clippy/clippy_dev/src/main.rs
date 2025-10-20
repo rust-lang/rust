@@ -192,7 +192,7 @@ enum DevCommand {
         /// Which lint's page to load initially (optional)
         lint: Option<String>,
     },
-    #[allow(clippy::doc_markdown)]
+    #[expect(clippy::doc_markdown)]
     /// Manually run clippy on a file or package
     ///
     /// ## Examples

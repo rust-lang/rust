@@ -20,6 +20,7 @@ So we test that they error in essentially all of the same places.
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,

@@ -2,6 +2,7 @@
 //@ compile-flags: -Zquery-dep-graph
 //@ [rpass1]compile-flags: -Zincremental-ignore-spans
 //@ [rpass2]compile-flags: -Zincremental-ignore-spans
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![rustc_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass2")]

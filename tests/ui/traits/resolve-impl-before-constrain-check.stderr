@@ -4,6 +4,13 @@ error[E0207]: the type parameter `V` is not constrained by the impl trait, self 
 LL |     impl<V: ?Sized> Callable for () {
    |          ^ unconstrained type parameter
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/resolve-impl-before-constrain-check.rs:17:6
+   |
+LL |     <() as Callable>::call()
+   |      ^^ cannot infer type for type parameter `V`
 
-For more information about this error, try `rustc --explain E0207`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0282.
+For more information about an error, try `rustc --explain E0207`.

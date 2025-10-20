@@ -70,7 +70,7 @@ pub(crate) fn complete_pattern(
             acc,
             ctx,
             e,
-            &pattern_ctx.impl_,
+            pattern_ctx.impl_or_trait.as_ref().and_then(|it| it.as_ref().left()),
             |acc, ctx, variant, path| {
                 acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
             },

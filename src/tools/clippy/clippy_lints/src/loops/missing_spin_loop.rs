@@ -1,7 +1,7 @@
 use super::MISSING_SPIN_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::std_or_core;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
         && let ExprKind::MethodCall(method, callee, ..) = unpack_cond(cond).kind
         && [sym::load, sym::compare_exchange, sym::compare_exchange_weak].contains(&method.ident.name)
         && let callee_ty = cx.typeck_results().expr_ty(callee)
-        && is_type_diagnostic_item(cx, callee_ty, sym::AtomicBool)
+        && callee_ty.is_diag_item(cx, sym::AtomicBool)
         && let Some(std_or_core) = std_or_core(cx)
     {
         span_lint_and_sugg(

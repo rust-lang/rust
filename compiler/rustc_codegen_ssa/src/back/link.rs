@@ -1490,7 +1490,7 @@ fn print_native_static_libs(
                 NativeLibKind::Static { bundle: None | Some(true), .. }
                 | NativeLibKind::LinkArg
                 | NativeLibKind::WasmImportModule
-                | NativeLibKind::RawDylib => None,
+                | NativeLibKind::RawDylib { .. } => None,
             }
         })
         // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
@@ -2364,13 +2364,13 @@ fn linker_with_args(
             cmd.add_object(&output_path);
         }
     } else {
-        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+        for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
             codegen_results.crate_info.used_libraries.iter(),
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
@@ -2411,13 +2411,13 @@ fn linker_with_args(
             cmd.add_object(&output_path);
         }
     } else {
-        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+        for (link_path, as_needed) in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
             sess,
             native_libraries_from_nonstatics,
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(&link_path, true, as_needed);
         }
     }
 
@@ -2726,7 +2726,7 @@ fn add_native_libs_from_crate(
                     cmd.link_framework_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
-            NativeLibKind::RawDylib => {
+            NativeLibKind::RawDylib { as_needed: _ } => {
                 // Handled separately in `linker_with_args`.
             }
             NativeLibKind::WasmImportModule => {}

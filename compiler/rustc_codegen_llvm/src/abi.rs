@@ -22,11 +22,9 @@ use smallvec::SmallVec;
 use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::llvm_util;
-use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);

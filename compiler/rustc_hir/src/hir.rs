@@ -1304,8 +1304,12 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn is_doc_comment(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::DocComment { .. }))
+    fn is_doc_comment(&self) -> Option<Span> {
+        if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = self {
+            Some(*span)
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -1315,8 +1319,6 @@ impl AttributeExt for Attribute {
             // FIXME: should not be needed anymore when all attrs are parsed
             Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span)) => *span,
-            Attribute::Parsed(AttributeKind::Linkage(_, span)) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1425,7 +1427,7 @@ impl Attribute {
     }
 
     #[inline]
-    pub fn is_doc_comment(&self) -> bool {
+    pub fn is_doc_comment(&self) -> Option<Span> {
         AttributeExt::is_doc_comment(self)
     }
 

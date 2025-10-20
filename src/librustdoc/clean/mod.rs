@@ -37,6 +37,7 @@ use std::mem;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
 use rustc_hir::attrs::AttributeKind;
@@ -53,7 +54,6 @@ use rustc_span::ExpnKind;
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 use utils::*;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -2719,7 +2719,7 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if attr.is_doc_comment() {
+        if attr.is_doc_comment().is_some() {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
@@ -2934,7 +2934,11 @@ fn clean_impl<'tcx>(
             trait_,
             for_,
             items,
-            polarity: tcx.impl_polarity(def_id),
+            polarity: if impl_.of_trait.is_some() {
+                tcx.impl_polarity(def_id)
+            } else {
+                ty::ImplPolarity::Positive
+            },
             kind: if utils::has_doc_flag(tcx, def_id.to_def_id(), sym::fake_variadic) {
                 ImplKind::FakeVariadic
             } else {

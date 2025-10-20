@@ -38,8 +38,7 @@ pub(super) fn compare_impl_item(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_item = tcx.associated_item(impl_item_def_id);
     let trait_item = tcx.associated_item(impl_item.expect_trait_impl()?);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_item.container_id(tcx)).unwrap().instantiate_identity();
+    let impl_trait_ref = tcx.impl_trait_ref(impl_item.container_id(tcx)).instantiate_identity();
     debug!(?impl_trait_ref);
 
     match impl_item.kind {
@@ -363,7 +362,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -443,7 +442,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
     let trait_m = tcx.associated_item(impl_m.expect_trait_impl()?);
     let impl_trait_ref =
-        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).unwrap().instantiate_identity();
+        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).instantiate_identity();
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
@@ -669,7 +668,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // RPITs.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
         {
@@ -1215,7 +1214,7 @@ fn check_region_late_boundedness<'tcx>(
         return None;
     };
 
-    let errors = ocx.select_where_possible();
+    let errors = ocx.try_evaluate_obligations();
     if !errors.is_empty() {
         return None;
     }
@@ -2106,7 +2105,7 @@ fn compare_const_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
@@ -2242,7 +2241,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // Check that all obligations are satisfied by the implementation's
     // version.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -2367,7 +2366,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     ocx.register_obligations(obligations);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);

@@ -65,7 +65,7 @@ fn filter_non_cfg_tokens_from_list(args_tokens: &TokenStream) -> Vec<TokenTree> 
 /// it and put them into `attrs`.
 fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
     for attr in new_attrs {
-        if attr.is_doc_comment() {
+        if attr.is_doc_comment().is_some() {
             continue;
         }
         let mut attr = attr.clone();

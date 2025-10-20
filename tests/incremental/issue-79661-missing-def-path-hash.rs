@@ -1,5 +1,6 @@
 //@ aux-build:issue-79661.rs
 //@ revisions: rpass1 rpass2 rpass3
+//@ ignore-backends: gcc
 
 // Regression test for issue #79661
 // We were failing to copy over a DefPathHash->DefId mapping

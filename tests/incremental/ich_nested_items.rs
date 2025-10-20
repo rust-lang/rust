@@ -4,6 +4,7 @@
 //@ revisions: cfail1 cfail2
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ compile-flags: -Z query-dep-graph
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]

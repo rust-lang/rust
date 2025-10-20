@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::path_res;
+use clippy_utils::res::MaybeQPath;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource, QPath};
@@ -94,7 +94,7 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
 
 fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Call(path, [arg]) = expr.kind
-        && let Res::Def(DefKind::Ctor(..), ctor_id) = path_res(cx, path)
+        && let Res::Def(DefKind::Ctor(..), ctor_id) = path.res(cx)
         && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
         && let variant = if cx.tcx.lang_items().option_some_variant() == Some(variant_id) {
             "Some"

@@ -2226,3 +2226,222 @@ fn test_open_options_invalid_combinations() {
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
 }
+
+#[test]
+fn test_fs_set_times() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let path = tmp.join("foo");
+    File::create(&path).unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    match fs::set_times(&path, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times: {e:?}"),
+        Ok(_) => {}
+    }
+
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+}
+
+#[test]
+fn test_fs_set_times_follows_symlink() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+
+    // Create a target file
+    let target = tmp.join("target");
+    File::create(&target).unwrap();
+
+    // Create a symlink to the target
+    #[cfg(unix)]
+    let link = tmp.join("link");
+    #[cfg(unix)]
+    crate::os::unix::fs::symlink(&target, &link).unwrap();
+
+    #[cfg(windows)]
+    let link = tmp.join("link.txt");
+    #[cfg(windows)]
+    crate::os::windows::fs::symlink_file(&target, &link).unwrap();
+
+    // Get the symlink's own modified time BEFORE calling set_times (to compare later)
+    // We don't check accessed time because reading metadata may update atime on some platforms.
+    let link_metadata_before = fs::symlink_metadata(&link).unwrap();
+    let link_modified_before = link_metadata_before.modified().unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    // Call fs::set_times on the symlink - it should follow the link and modify the target
+    match fs::set_times(&link, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times through symlink: {e:?}"),
+        Ok(_) => {}
+    }
+
+    // Verify that the TARGET file's times were changed (following the symlink)
+    let target_metadata = fs::metadata(&target).unwrap();
+    assert_eq!(
+        target_metadata.accessed().unwrap(),
+        accessed,
+        "target file accessed time should match"
+    );
+    assert_eq!(
+        target_metadata.modified().unwrap(),
+        modified,
+        "target file modified time should match"
+    );
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(
+            target_metadata.created().unwrap(),
+            created,
+            "target file created time should match"
+        );
+    }
+
+    // Also verify through the symlink (fs::metadata follows symlinks)
+    let link_followed_metadata = fs::metadata(&link).unwrap();
+    assert_eq!(link_followed_metadata.accessed().unwrap(), accessed);
+    assert_eq!(link_followed_metadata.modified().unwrap(), modified);
+
+    // Verify that the SYMLINK ITSELF was NOT modified
+    // Note: We only check modified time, not accessed time, because reading the symlink
+    // metadata may update its atime on some platforms (e.g., Linux).
+    let link_metadata_after = fs::symlink_metadata(&link).unwrap();
+    assert_eq!(
+        link_metadata_after.modified().unwrap(),
+        link_modified_before,
+        "symlink's own modified time should not change"
+    );
+}
+
+#[test]
+fn test_fs_set_times_nofollow() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+
+    // Create a target file and a symlink to it
+    let target = tmp.join("target");
+    File::create(&target).unwrap();
+
+    #[cfg(unix)]
+    let link = tmp.join("link");
+    #[cfg(unix)]
+    crate::os::unix::fs::symlink(&target, &link).unwrap();
+
+    #[cfg(windows)]
+    let link = tmp.join("link.txt");
+    #[cfg(windows)]
+    crate::os::windows::fs::symlink_file(&target, &link).unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(11111);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(22222);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(33333);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    // Set times on the symlink itself (not following it)
+    match fs::set_times_nofollow(&link, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting symlink times: {e:?}"),
+        Ok(_) => {}
+    }
+
+    // Read symlink metadata (without following)
+    let metadata = fs::symlink_metadata(&link).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+
+    // Verify that the target file's times were NOT changed
+    let target_metadata = fs::metadata(&target).unwrap();
+    assert_ne!(target_metadata.accessed().unwrap(), accessed);
+    assert_ne!(target_metadata.modified().unwrap(), modified);
+}

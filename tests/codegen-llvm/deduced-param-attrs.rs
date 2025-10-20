@@ -1,4 +1,4 @@
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 
 #![crate_type = "lib"]
 #![allow(internal_features)]
@@ -28,7 +28,9 @@ pub fn use_big_struct_immutably(big_struct: BigStruct) {
 
 // The by-value parameter for this big struct can't be marked readonly, because we mutate it.
 //
-// CHECK-NOT: @use_big_struct_mutably({{.*}} readonly {{.*}} %big_struct)
+// CHECK: @use_big_struct_mutably(
+// CHECK-NOT: readonly
+// CHECK-SAME: %big_struct)
 #[no_mangle]
 pub fn use_big_struct_mutably(mut big_struct: BigStruct) {
     big_struct.blah[987] = 654;
@@ -38,7 +40,9 @@ pub fn use_big_struct_mutably(mut big_struct: BigStruct) {
 // The by-value parameter for this big struct can't be marked readonly, because it contains
 // UnsafeCell.
 //
-// CHECK-NOT: @use_big_cell_container({{.*}} readonly {{.*}} %big_cell_container)
+// CHECK: @use_big_cell_container(
+// CHECK-NOT: readonly
+// CHECK-SAME: %big_cell_container)
 #[no_mangle]
 pub fn use_big_cell_container(big_cell_container: BigCellContainer) {
     hint::black_box(&big_cell_container);
@@ -47,14 +51,31 @@ pub fn use_big_cell_container(big_cell_container: BigCellContainer) {
 // Make sure that we don't mistakenly mark a big struct as `readonly` when passed through a generic
 // type parameter if it contains UnsafeCell.
 //
-// CHECK-NOT: @use_something({{.*}} readonly {{.*}} %something)
+// CHECK: @use_something(
+// CHECK-NOT: readonly
+// CHECK-SAME: %something)
 #[no_mangle]
 #[inline(never)]
 pub fn use_something<T>(something: T) {
     hint::black_box(&something);
 }
 
+// Make sure that we still mark a big `Freeze` struct as `readonly` when passed through a generic
+// type parameter.
+//
+// CHECK: @use_something_freeze(
+// CHECK-SAME: readonly
+// CHECK-SAME: %x)
+#[no_mangle]
+#[inline(never)]
+pub fn use_something_freeze<T>(x: T) {}
+
 #[no_mangle]
 pub fn forward_big_cell_container(big_cell_container: BigCellContainer) {
     use_something(big_cell_container)
+}
+
+#[no_mangle]
+pub fn forward_big_container(big_struct: BigStruct) {
+    use_something_freeze(big_struct)
 }

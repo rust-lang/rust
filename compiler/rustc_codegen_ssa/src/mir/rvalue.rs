@@ -504,9 +504,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::CopyForDeref(place) => {
-                self.codegen_operand(bx, &mir::Operand::Copy(place))
-            }
             mir::Rvalue::RawPtr(kind, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
@@ -742,6 +739,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout }
             }
+            mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
         }
     }
 
@@ -1010,14 +1008,14 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
         (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-        (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
+        (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
         (Pointer(..), Int(..)) => {
             // FIXME: this exposes the provenance, which shouldn't be necessary.
             bx.ptrtoint(imm, to_backend_ty)
         }
         (Float(_), Pointer(..)) => {
             let int_imm = bx.bitcast(imm, bx.cx().type_isize());
-            bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
+            bx.inttoptr(int_imm, to_backend_ty)
         }
         (Pointer(..), Float(_)) => {
             // FIXME: this exposes the provenance, which shouldn't be necessary.

@@ -14,6 +14,7 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
+#![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -29,7 +30,7 @@ use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -46,6 +47,8 @@ use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 use rustc_target::spec::{RelocModel, TlsModel};
+
+use crate::llvm::ToLlvmBool;
 
 mod abi;
 mod allocator;
@@ -65,6 +68,7 @@ mod errors;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
+mod macros;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -73,6 +77,8 @@ mod va_arg;
 mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub(crate) use macros::TryFromU32;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
@@ -103,14 +109,13 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         let cx =
             SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size());
         unsafe {
-            allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, cx, module_name, methods);
         }
         module_llvm
     }
@@ -380,7 +385,8 @@ unsafe impl Sync for ModuleLlvm {}
 impl ModuleLlvm {
     fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -392,7 +398,8 @@ impl ModuleLlvm {
 
     fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -423,7 +430,8 @@ impl ModuleLlvm {
         dcx: DiagCtxtHandle<'_>,
     ) -> Self {
         unsafe {
-            let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
+            let llcx = llvm::LLVMContextCreate();
+            llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
             let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx);
 

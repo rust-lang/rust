@@ -1,0 +1,11 @@
+warning: value assigned to `small` is never read
+  --> $DIR/std-panic-locations.rs:47:31
+   |
+LL |     assert_panicked(move || { small[1] += 1; });
+   |                               ^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

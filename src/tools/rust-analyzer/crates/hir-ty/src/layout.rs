@@ -19,15 +19,13 @@ use rustc_type_ir::{
 };
 use triomphe::Arc;
 
-use crate::utils::ClosureSubst;
 use crate::{
-    Interner, TraitEnvironment,
-    consteval_nextsolver::try_const_usize,
+    TraitEnvironment,
+    consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
-        mapping::{ChalkToNextSolver, convert_args_for_result},
     },
 };
 
@@ -325,19 +323,12 @@ pub fn layout_of_ty_query<'db>(
         TyKind::Closure(id, args) => {
             let def = db.lookup_intern_closure(id.0);
             let infer = db.infer(def.0);
-            let (captures, _) = infer.closure_info(&id.0.into());
+            let (captures, _) = infer.closure_info(id.0);
             let fields = captures
                 .iter()
                 .map(|it| {
-                    let ty = it
-                        .ty
-                        .clone()
-                        .substitute(
-                            Interner,
-                            &ClosureSubst(&convert_args_for_result(interner, args.inner()))
-                                .parent_subst(db),
-                        )
-                        .to_nextsolver(interner);
+                    let ty =
+                        it.ty.instantiate(interner, args.split_closure_args_untupled().parent_args);
                     db.layout_of_ty(ty, trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -394,7 +385,7 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
             }
         }
         TyKind::Tuple(tys) => {
-            if let Some(last_field_ty) = tys.iter().last() {
+            if let Some(last_field_ty) = tys.iter().next_back() {
                 struct_tail_erasing_lifetimes(db, last_field_ty)
             } else {
                 pointee

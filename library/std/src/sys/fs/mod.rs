@@ -27,6 +27,10 @@ cfg_select! {
         mod hermit;
         use hermit as imp;
     }
+    target_os = "motor" => {
+        mod motor;
+        use motor as imp;
+    }
     target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
@@ -160,4 +164,12 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     return imp::exists(path);
     #[cfg(windows)]
     with_native_path(path, &imp::exists)
+}
+
+pub fn set_times(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times(path, times.clone()))
+}
+
+pub fn set_times_nofollow(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times_nofollow(path, times.clone()))
 }

@@ -309,7 +309,10 @@ pub enum NativeLibKind {
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     /// On Linux, it refers to a generated shared library stub.
-    RawDylib,
+    RawDylib {
+        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
+        as_needed: Option<bool>,
+    },
     /// A macOS-specific kind of dynamic libraries.
     Framework {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
@@ -332,11 +335,10 @@ impl NativeLibKind {
             NativeLibKind::Static { bundle, whole_archive } => {
                 bundle.is_some() || whole_archive.is_some()
             }
-            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
-                as_needed.is_some()
-            }
-            NativeLibKind::RawDylib
-            | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { as_needed }
+            | NativeLibKind::Framework { as_needed }
+            | NativeLibKind::RawDylib { as_needed } => as_needed.is_some(),
+            NativeLibKind::Unspecified
             | NativeLibKind::LinkArg
             | NativeLibKind::WasmImportModule => false,
         }
@@ -349,7 +351,9 @@ impl NativeLibKind {
     pub fn is_dllimport(&self) -> bool {
         matches!(
             self,
-            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { .. }
+                | NativeLibKind::RawDylib { .. }
+                | NativeLibKind::Unspecified
         )
     }
 }
@@ -512,7 +516,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_do_not_implement_via_object]`.
     DoNotImplementViaObject(Span),
 
-    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// Represents [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
@@ -665,6 +669,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
+
+    /// Represents `#[rustc_main]`.
+    RustcMain,
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,

@@ -7,9 +7,8 @@ use rustc_attr_parsing::is_doc_alias_attrs_contain_symbol;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
+use rustc_hir::{self as hir, ExprKind, HirId, Node};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
@@ -486,13 +485,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     ty::Infer(ty::TyVar(_)) => {
+                        // We want to get the variable name that the method
+                        // is being called on. If it is a method call.
+                        let err_span = match (mode, self.tcx.hir_node(scope_expr_id)) {
+                            (
+                                Mode::MethodCall,
+                                Node::Expr(hir::Expr {
+                                    kind: ExprKind::MethodCall(_, recv, ..),
+                                    ..
+                                }),
+                            ) => recv.span,
+                            _ => span,
+                        };
+
                         let raw_ptr_call = bad_ty.reached_raw_pointer
                             && !self.tcx.features().arbitrary_self_types();
-                        // FIXME: Ideally we'd use the span of the self-expr here,
-                        // not of the method path.
+
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_id,
-                            span,
+                            err_span,
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
                             !raw_ptr_call,
@@ -1165,9 +1176,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
 
-        let span = self.span;
-        let tcx = self.tcx;
-
         self.assemble_extension_candidates_for_all_traits();
 
         let out_of_scope_traits = match self.pick_core(&mut Vec::new()) {
@@ -1176,10 +1184,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 .into_iter()
                 .map(|source| match source {
                     CandidateSource::Trait(id) => id,
-                    CandidateSource::Impl(impl_id) => match tcx.trait_id_of_impl(impl_id) {
-                        Some(id) => id,
-                        None => span_bug!(span, "found inherent method when looking at traits"),
-                    },
+                    CandidateSource::Impl(impl_id) => self.tcx.impl_trait_id(impl_id),
                 })
                 .collect(),
             Some(Err(MethodError::NoMatch(NoMatchData {
@@ -1906,7 +1911,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // them to deal with defining uses in `method_autoderef_steps`.
             if self.next_trait_solver() {
                 ocx.register_obligations(instantiate_self_ty_obligations.iter().cloned());
-                let errors = ocx.select_where_possible();
+                let errors = ocx.try_evaluate_obligations();
                 if !errors.is_empty() {
                     unreachable!("unexpected autoderef error {errors:?}");
                 }
@@ -2103,7 +2108,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for error in ocx.select_where_possible() {
+            for error in ocx.try_evaluate_obligations() {
                 result = ProbeResult::NoMatch;
                 let nested_predicate = self.resolve_vars_if_possible(error.obligation.predicate);
                 if let Some(trait_predicate) = trait_predicate
@@ -2143,7 +2148,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 // Evaluate those obligations to see if they might possibly hold.
-                for error in ocx.select_where_possible() {
+                for error in ocx.try_evaluate_obligations() {
                     result = ProbeResult::NoMatch;
                     possibly_unsatisfied_predicates.push((
                         error.obligation.predicate,
@@ -2230,7 +2235,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     };
                     let ocx = ObligationCtxt::new(self);
                     let self_ty = ocx.register_infer_ok_obligations(ok);
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         debug!("failed to prove instantiate self_ty obligations");
                         return false;
                     }

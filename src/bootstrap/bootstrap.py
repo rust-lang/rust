@@ -1379,11 +1379,26 @@ def main():
         sys.argv[1] = "-h"
 
     args = parse_args(sys.argv)
-    help_triggered = args.help or len(sys.argv) == 1
 
-    # If the user is asking for help, let them know that the whole download-and-build
+    # Root help (e.g., x.py --help) prints help from the saved file to save the time
+    if len(sys.argv) == 1 or sys.argv[1] in ["-h", "--help"]:
+        try:
+            with open(
+                os.path.join(os.path.dirname(__file__), "../etc/xhelp"), "r"
+            ) as f:
+                # The file from bootstrap func already has newline.
+                print(f.read(), end="")
+                sys.exit(0)
+        except Exception as error:
+            eprint(
+                f"ERROR: unable to run help: {error}\n",
+                "x.py run generate-help may solve the problem.",
+            )
+            sys.exit(1)
+
+    # If the user is asking for other helps, let them know that the whole download-and-build
     # process has to happen before anything is printed out.
-    if help_triggered:
+    if args.help:
         eprint(
             "INFO: Downloading and building bootstrap before processing --help command.\n"
             "      See src/bootstrap/README.md for help with common commands."
@@ -1401,13 +1416,14 @@ def main():
             eprint(error)
         success_word = "unsuccessfully"
 
-    if not help_triggered:
+    if not args.help:
         eprint(
             "Build completed",
             success_word,
             "in",
             format_build_time(time() - start_time),
         )
+
     sys.exit(exit_code)
 
 

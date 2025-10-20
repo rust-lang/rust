@@ -16,3 +16,18 @@ note: inside `main`
 LL |     test_access_pointer();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
+warning: sharing a function pointer with a native function called via FFI
+  --> tests/native-lib/pass/ptr_read_access.rs:LL:CC
+   |
+LL |         pass_fn_ptr(Some(nop)); // this one is not
+   |         ^^^^^^^^^^^^^^^^^^^^^^ sharing a function pointer with a native function
+   |
+   = help: calling Rust functions from C is not supported and will, in the best case, crash the program
+   = note: BACKTRACE:
+   = note: inside `pass_fn_ptr` at tests/native-lib/pass/ptr_read_access.rs:LL:CC
+note: inside `main`
+  --> tests/native-lib/pass/ptr_read_access.rs:LL:CC
+   |
+LL |     pass_fn_ptr();
+   |     ^^^^^^^^^^^^^
+

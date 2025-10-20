@@ -11,7 +11,7 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, ExternalConstraintsData, QueryResult, inspect};
+use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -333,6 +333,8 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
+    fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
+
     fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
@@ -550,6 +552,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
+    type AmbiguityInfo = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;
     type Tracked<T: Debug + Clone> = I::Tracked<T>;

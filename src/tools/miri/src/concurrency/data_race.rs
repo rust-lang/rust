@@ -48,6 +48,7 @@ use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
+use rustc_log::tracing;
 use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -1208,7 +1209,7 @@ impl VClockAlloc {
         ty: Option<Ty<'_>>,
         machine: &MiriMachine<'_>,
     ) -> InterpResult<'tcx> {
-        let current_span = machine.current_span();
+        let current_span = machine.current_user_relevant_span();
         let global = machine.data_race.as_vclocks_ref().unwrap();
         if !global.race_detecting() {
             return interp_ok(());
@@ -1250,7 +1251,7 @@ impl VClockAlloc {
         ty: Option<Ty<'_>>,
         machine: &mut MiriMachine<'_>,
     ) -> InterpResult<'tcx> {
-        let current_span = machine.current_span();
+        let current_span = machine.current_user_relevant_span();
         let global = machine.data_race.as_vclocks_mut().unwrap();
         if !global.race_detecting() {
             return interp_ok(());
@@ -1304,7 +1305,7 @@ impl Default for LocalClocks {
 
 impl FrameState {
     pub fn local_write(&self, local: mir::Local, storage_live: bool, machine: &MiriMachine<'_>) {
-        let current_span = machine.current_span();
+        let current_span = machine.current_user_relevant_span();
         let global = machine.data_race.as_vclocks_ref().unwrap();
         if !global.race_detecting() {
             return;
@@ -1334,7 +1335,7 @@ impl FrameState {
     }
 
     pub fn local_read(&self, local: mir::Local, machine: &MiriMachine<'_>) {
-        let current_span = machine.current_span();
+        let current_span = machine.current_user_relevant_span();
         let global = machine.data_race.as_vclocks_ref().unwrap();
         if !global.race_detecting() {
             return;
@@ -1573,7 +1574,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             size.bytes()
         );
 
-        let current_span = this.machine.current_span();
+        let current_span = this.machine.current_user_relevant_span();
         // Perform the atomic operation.
         data_race.maybe_perform_sync_operation(
             &this.machine.threads,
@@ -1827,7 +1828,7 @@ impl GlobalState {
         machine: &MiriMachine<'tcx>,
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
-        let current_span = machine.current_span();
+        let current_span = machine.current_user_relevant_span();
         self.maybe_perform_sync_operation(&machine.threads, current_span, |index, mut clocks| {
             trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
@@ -1915,7 +1916,7 @@ impl GlobalState {
         callback: impl FnOnce(&VClock) -> R,
     ) -> R {
         let thread = threads.active_thread();
-        let span = threads.active_thread_ref().current_span();
+        let span = threads.active_thread_ref().current_user_relevant_span();
         let (index, mut clocks) = self.thread_state_mut(thread);
         let r = callback(&clocks.clock);
         // Increment the clock, so that all following events cannot be confused with anything that

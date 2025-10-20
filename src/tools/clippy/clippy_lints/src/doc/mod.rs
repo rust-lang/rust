@@ -4,19 +4,21 @@ use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
-use pulldown_cmark::Event::{
-    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
-    TaskListMarker, Text,
-};
-use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
-use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_resolve::rustdoc::pulldown_cmark::Event::{
+    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
+    TaskListMarker, Text,
+};
+use rustc_resolve::rustdoc::pulldown_cmark::Tag::{
+    BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph,
+};
+use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_resolve::rustdoc::{
-    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
-    span_of_fragments,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, pulldown_cmark,
+    source_span_for_markdown_range, span_of_fragments,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -315,7 +317,7 @@ declare_clippy_lint! {
     /// /// [example of a good link](https://github.com/rust-lang/rust-clippy/)
     /// pub fn do_something() {}
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.90.0"]
     pub DOC_BROKEN_LINK,
     pedantic,
     "broken document link"
@@ -968,7 +970,7 @@ fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a
 /// This walks the "events" (think sections of markdown) produced by `pulldown_cmark`,
 /// so lints here will generally access that information.
 /// Returns documentation headers -- whether a "Safety", "Errors", "Panic" section was found
-#[allow(clippy::too_many_lines)] // Only a big match statement
+#[expect(clippy::too_many_lines, reason = "big match statement")]
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,

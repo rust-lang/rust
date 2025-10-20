@@ -19,8 +19,6 @@
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
 
-extern crate thin_vec;
-
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
 // The reason they're loaded from the sysroot is because
@@ -29,7 +27,6 @@ extern crate thin_vec;
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
-extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;

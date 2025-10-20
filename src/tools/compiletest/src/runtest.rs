@@ -878,6 +878,21 @@ impl<'test> TestCx<'test> {
                     prefix = self.error_prefix(),
                     n = not_found.len(),
                 );
+
+                // FIXME: Ideally, we should check this at the place where we actually parse error annotations.
+                // it's better to use (negated) heuristic inside normalize_output if possible
+                if let Some(human_format) = self.props.compile_flags.iter().find(|flag| {
+                    // `human`, `human-unicode`, `short` will not generate JSON output
+                    flag.contains("error-format")
+                        && (flag.contains("short") || flag.contains("human"))
+                }) {
+                    let msg = format!(
+                        "tests with compile flag `{}` should not have error annotations such as `//~ ERROR`",
+                        human_format
+                    ).color(Color::Red);
+                    writeln!(self.stdout, "{}", msg);
+                }
+
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
@@ -1823,8 +1838,9 @@ impl<'test> TestCx<'test> {
 
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
         // overwrite this.
+        // Don't allow `unused_attributes` since these are usually actual mistakes, rather than just unused code.
         if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
+            rustc.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
         // Allow tests to use internal features.

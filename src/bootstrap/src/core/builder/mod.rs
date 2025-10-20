@@ -1071,10 +1071,12 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::RustdocGuiTest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
                 check::Linkchecker,
                 check::BumpStage0,
+                check::Tidy,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1238,6 +1240,7 @@ impl<'a> Builder<'a> {
                 run::CyclicStep,
                 run::CoverageDump,
                 run::Rustfmt,
+                run::GenerateHelp,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1603,6 +1606,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
+    }
+
+    /// Gets a command to run the compiler specified, including the dynamic library
+    /// path in case the executable has not been build with `rpath` enabled.
+    pub fn rustc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = command(self.rustc(compiler));
+        self.add_rustc_lib_path(compiler, &mut cmd);
+        cmd
     }
 
     /// Gets the paths to all of the compiler's codegen backends.

@@ -383,13 +383,6 @@ pub fn sizedness_fast_path<'tcx>(
             _ => return false,
         };
 
-        // FIXME(sized_hierarchy): this temporarily reverts the `sized_hierarchy` feature
-        // while a proper fix for `tests/ui/sized-hierarchy/incomplete-inference-issue-143992.rs`
-        // is pending a proper fix
-        if !tcx.features().sized_hierarchy() && matches!(sizedness, SizedTraitKind::MetaSized) {
-            return true;
-        }
-
         if trait_pred.self_ty().has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");
             return true;

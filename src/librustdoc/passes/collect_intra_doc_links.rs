@@ -7,7 +7,6 @@ use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
-use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
@@ -18,6 +17,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
+use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
     MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
@@ -847,7 +847,7 @@ fn trait_impls_for<'a>(
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+            let trait_ref = tcx.impl_trait_ref(impl_);
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
             trace!(

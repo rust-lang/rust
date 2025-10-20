@@ -1,0 +1,12 @@
+error: using `.zip()` with a range and `.len()`
+  --> tests/ui/range_unfixable.rs:10:5
+   |
+LL |     v1.iter().zip(0..v1.len()).filter(|(_, i)| *i < 2).for_each(|(e, i)| {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `v1.iter().enumerate()`
+   |
+   = note: the order of the element and the index will be swapped
+   = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::range_zip_with_len)]`
+
+error: aborting due to 1 previous error
+

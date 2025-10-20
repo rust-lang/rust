@@ -145,12 +145,12 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
     );
 
     if let Some(train_crate) = opts.pgo {
+        let target = detect_target(sh);
         let build_cmd = cmd!(
             sh,
-            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --profile={profile} --locked --features force-always-assert {features...}"
+            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target} --profile={profile} --locked --features force-always-assert {features...}"
         );
 
-        let target = detect_target(sh);
         let profile = crate::pgo::gather_pgo_profile(sh, build_cmd, &target, train_crate)?;
         install_cmd = crate::pgo::apply_pgo_to_cmd(install_cmd, &profile);
     }

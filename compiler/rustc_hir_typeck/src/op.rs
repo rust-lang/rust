@@ -1030,7 +1030,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligation(obligation);
-                Err(ocx.select_all_or_error())
+                Err(ocx.evaluate_obligations_error_on_ambiguity())
             }
         }
     }

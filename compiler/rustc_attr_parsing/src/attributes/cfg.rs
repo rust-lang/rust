@@ -1,19 +1,28 @@
-use rustc_ast::{LitKind, NodeId};
+use rustc_ast::token::Delimiter;
+use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, Features, template};
-use rustc_hir::RustcVersion;
 use rustc_hir::attrs::CfgEntry;
+use rustc_hir::{AttrPath, RustcVersion};
+use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-use rustc_session::parse::feature_err;
+use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
+use crate::session_diagnostics::{
+    AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
+};
 use crate::{
-    CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics, try_gate_cfg,
+    AttributeParser, CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics,
+    try_gate_cfg,
 };
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
@@ -21,7 +30,12 @@ pub const CFG_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute"
 );
 
-pub fn parse_cfg_attr<'c, S: Stage>(
+const CFG_ATTR_TEMPLATE: AttributeTemplate = template!(
+    List: &["predicate, attr1, attr2, ..."],
+    "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute"
+);
+
+pub fn parse_cfg<'c, S: Stage>(
     cx: &'c mut AcceptContext<'_, '_, S>,
     args: &'c ArgParser<'_>,
 ) -> Option<CfgEntry> {
@@ -70,9 +84,7 @@ pub(crate) fn parse_cfg_entry<S: Stage>(
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
                 let Some(name) = meta.path().word_sym() else {
-                    cx.emit_err(session_diagnostics::CfgPredicateIdentifier {
-                        span: meta.path().span(),
-                    });
+                    cx.expected_identifier(meta.path().span());
                     return None;
                 };
                 parse_name_value(name, meta.path().span(), a.name_value(), meta.span(), cx)?
@@ -81,7 +93,7 @@ pub(crate) fn parse_cfg_entry<S: Stage>(
         MetaItemOrLitParser::Lit(lit) => match lit.kind {
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
             _ => {
-                cx.emit_err(session_diagnostics::CfgPredicateIdentifier { span: lit.span });
+                cx.expected_identifier(lit.span);
                 return None;
             }
         },
@@ -149,9 +161,7 @@ fn parse_cfg_entry_target<S: Stage>(
 
         // Then, parse it as a name-value item
         let Some(name) = sub_item.path().word_sym() else {
-            cx.emit_err(session_diagnostics::CfgPredicateIdentifier {
-                span: sub_item.path().span(),
-            });
+            cx.expected_identifier(sub_item.path().span());
             return None;
         };
         let name = Symbol::intern(&format!("target_{name}"));
@@ -299,4 +309,121 @@ impl EvalConfigResult {
             EvalConfigResult::False { .. } => false,
         }
     }
+}
+
+pub fn parse_cfg_attr(
+    cfg_attr: &Attribute,
+    sess: &Session,
+    features: Option<&Features>,
+) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
+    match cfg_attr.get_normal_item().args {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
+            if !tokens.is_empty() =>
+        {
+            check_cfg_attr_bad_delim(&sess.psess, dspan, delim);
+            match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
+                parse_cfg_attr_internal(p, sess, features, cfg_attr)
+            }) {
+                Ok(r) => return Some(r),
+                Err(e) => {
+                    let suggestions = CFG_ATTR_TEMPLATE.suggestions(cfg_attr.style, sym::cfg_attr);
+                    e.with_span_suggestions(
+                        cfg_attr.span,
+                        "must be of the form",
+                        suggestions,
+                        Applicability::HasPlaceholders,
+                    )
+                    .with_note(format!(
+                        "for more information, visit <{}>",
+                        CFG_ATTR_TEMPLATE.docs.expect("cfg_attr has docs")
+                    ))
+                    .emit();
+                }
+            }
+        }
+        _ => {
+            let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
+                cfg_attr.get_normal_item().args
+            {
+                (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
+            } else {
+                (cfg_attr.span, AttributeParseErrorReason::ExpectedList)
+            };
+
+            sess.dcx().emit_err(AttributeParseError {
+                span,
+                attr_span: cfg_attr.span,
+                template: CFG_ATTR_TEMPLATE,
+                attribute: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                reason,
+                attr_style: cfg_attr.style,
+            });
+        }
+    }
+    None
+}
+
+fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
+        return;
+    }
+    psess.dcx().emit_err(CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: MetaBadDelimSugg { open: span.open, close: span.close },
+    });
+}
+
+/// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
+fn parse_cfg_attr_internal<'a>(
+    parser: &mut Parser<'a>,
+    sess: &'a Session,
+    features: Option<&Features>,
+    attribute: &Attribute,
+) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
+    // Parse cfg predicate
+    let pred_start = parser.token.span;
+    let meta = MetaItemOrLitParser::parse_single(parser, ShouldEmit::ErrorsAndLints)?;
+    let pred_span = pred_start.with_hi(parser.token.span.hi());
+
+    let cfg_predicate = AttributeParser::parse_single_args(
+        sess,
+        attribute.span,
+        attribute.style,
+        AttrPath {
+            segments: attribute
+                .ident_path()
+                .expect("cfg_attr is not a doc comment")
+                .into_boxed_slice(),
+            span: attribute.span,
+        },
+        pred_span,
+        CRATE_NODE_ID,
+        features,
+        ShouldEmit::ErrorsAndLints,
+        &meta,
+        parse_cfg_entry,
+        &CFG_ATTR_TEMPLATE,
+    )
+    .ok_or_else(|| {
+        let mut diag = sess.dcx().struct_err(
+            "cfg_entry parsing failing with `ShouldEmit::ErrorsAndLints` should emit a error.",
+        );
+        diag.downgrade_to_delayed_bug();
+        diag
+    })?;
+
+    parser.expect(exp!(Comma))?;
+
+    // Presumably, the majority of the time there will only be one attr.
+    let mut expanded_attrs = Vec::with_capacity(1);
+    while parser.token != token::Eof {
+        let lo = parser.token.span;
+        let item = parser.parse_attr_item(ForceCollect::Yes)?;
+        expanded_attrs.push((item, lo.to(parser.prev_token.span)));
+        if !parser.eat(exp!(Comma)) {
+            break;
+        }
+    }
+
+    Ok((cfg_predicate, expanded_attrs))
 }

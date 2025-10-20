@@ -28,6 +28,9 @@ use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
+use self::create_scope_map::compute_mir_scopes;
+pub(crate) use self::di_builder::DIBuilderExt;
+pub(crate) use self::metadata::build_global_var_di_node;
 use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
@@ -35,22 +38,19 @@ use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
-use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
     DITemplateTypeParameter, DIType, DIVariable,
 };
-use crate::value::Value;
+use crate::llvm::{self, Value};
 
 mod create_scope_map;
+mod di_builder;
 mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
 mod namespace;
 mod utils;
-
-use self::create_scope_map::compute_mir_scopes;
-pub(crate) use self::metadata::build_global_var_di_node;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
@@ -183,9 +183,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         }
 
         let di_builder = DIB(self.cx());
-        let addr_expr = unsafe {
-            llvm::LLVMDIBuilderCreateExpression(di_builder, addr_ops.as_ptr(), addr_ops.len())
-        };
+        let addr_expr = di_builder.create_expression(&addr_ops);
         unsafe {
             llvm::LLVMDIBuilderInsertDeclareRecordAtEnd(
                 di_builder,

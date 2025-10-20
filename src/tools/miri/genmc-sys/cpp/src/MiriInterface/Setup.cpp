@@ -170,9 +170,8 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
         // From a Miri perspective, this API doesn't work very well: most memory starts out
         // "uninitialized";
         // only statics have an initial value. And their initial value is just a sequence of bytes,
-        // but GenMC
-        // expect this to be already split into separate atomic variables. So we return a dummy
-        // value.
+        // but GenMC expect this to be already split into separate atomic variables. So we return a
+        // dummy value.
         // This value should never be visible to the interpreted program.
         // GenMC does not understand uninitialized memory the same way Miri does, which may cause
         // this function to be called. The returned value can be visible to Miri or the user:
@@ -183,13 +182,14 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
         //   Currently, atomic loads can see this value, unless initialized by an *atomic* store.
         //   FIXME(genmc): update this comment once mixed atomic-non-atomic support is added.
         //
-        // FIXME(genmc): implement proper support for uninitialized memory in GenMC. Ideally, the
-        // initial value getter would return an `optional<SVal>`, since the memory location may be
-        // uninitialized.
+        // FIXME(genmc): implement proper support for uninitialized memory in GenMC.
+        // Ideally, the initial value getter would return an `optional<SVal>`, since the memory
+        // location may be uninitialized.
         .initValGetter = [](const AAccess& a) { return SVal(0xDEAD); },
-        // Miri serves non-atomic loads from its own memory and these GenMC checks are wrong in
-        // that case. This should no longer be required with proper mixed-size access support.
-        .skipUninitLoadChecks = [](MemOrdering ord) { return ord == MemOrdering::NotAtomic; },
+        // Miri serves non-atomic loads from its own memory and these GenMC checks are wrong in that
+        // case. This should no longer be required with proper mixed-size access support.
+        .skipUninitLoadChecks = [](const MemAccessLabel* access_label
+                                ) { return access_label->getOrdering() == MemOrdering::NotAtomic; },
     };
     driver->setInterpCallbacks(std::move(interpreter_callbacks));
 

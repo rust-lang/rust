@@ -458,9 +458,7 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             Err(_) => Err(EvaluationFailure::NoSolution),
             Ok(Some(source)) => match source {
                 ImplSource::UserDefined(impl_) => {
-                    if tcx.impl_trait_header(impl_.impl_def_id).unwrap().constness
-                        != hir::Constness::Const
-                    {
+                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Const {
                         return Err(EvaluationFailure::NoSolution);
                     }
 

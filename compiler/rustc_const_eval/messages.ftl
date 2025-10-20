@@ -481,7 +481,10 @@ const_eval_validation_null_box = {$front_matter}: encountered a {$maybe ->
     [true] maybe-null
     *[false] null
   } box
-const_eval_validation_null_fn_ptr = {$front_matter}: encountered a null function pointer
+const_eval_validation_null_fn_ptr = {$front_matter}: encountered a {$maybe ->
+    [true] maybe-null
+    *[false] null
+  } function pointer
 const_eval_validation_null_ref = {$front_matter}: encountered a {$maybe ->
     [true] maybe-null
     *[false] null

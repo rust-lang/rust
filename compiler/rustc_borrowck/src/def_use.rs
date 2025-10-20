@@ -80,7 +80,7 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         // Backwards incompatible drop hint is not a use, just a marker for linting.
         PlaceContext::NonUse(NonUseContext::BackwardIncompatibleDropHint) => None,
 
-        PlaceContext::MutatingUse(MutatingUseContext::Deinit | MutatingUseContext::SetDiscriminant) => {
+        PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant) => {
             bug!("These statements are not allowed in this MIR phase")
         }
     }

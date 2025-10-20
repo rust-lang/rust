@@ -152,7 +152,10 @@ declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
-        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
+        // The result shouldn't be tainted, otherwise it will cause ICE.
+        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind
+            && cx.typeck_results().tainted_by_errors.is_none()
+        {
             let variant = cx
                 .typeck_results()
                 .pat_ty(pat)
@@ -310,15 +313,17 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(attr) = AttributeParser::parse_limited(
-                    cx.builder.sess(),
-                    &it.attrs,
-                    sym::allow_internal_unsafe,
-                    it.span,
-                    DUMMY_NODE_ID,
-                    Some(cx.builder.features()),
-                ) {
-                    self.report_unsafe(cx, attr.span(), BuiltinUnsafe::AllowInternalUnsafe);
+                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
+                    AttributeParser::parse_limited(
+                        cx.builder.sess(),
+                        &it.attrs,
+                        sym::allow_internal_unsafe,
+                        it.span,
+                        DUMMY_NODE_ID,
+                        Some(cx.builder.features()),
+                    )
+                {
+                    self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 
@@ -391,7 +396,7 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment() {
+    if attr.is_doc_comment().is_some() {
         return true;
     }
 

@@ -11,7 +11,7 @@ unsafe fn access_after_sub_1(x: &mut u8, orig_ptr: *mut u8) {
     *(x as *mut u8).byte_sub(1) = 42; //~ ERROR: /write access through .* is forbidden/
 }
 
-pub fn main() {
+fn main() {
     unsafe {
         let mut alloc = [0u8, 0u8];
         let orig_ptr = addr_of_mut!(alloc) as *mut u8;

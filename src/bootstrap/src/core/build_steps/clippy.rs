@@ -195,11 +195,7 @@ impl Step for Std {
             Kind::Clippy,
         );
 
-        std_cargo(builder, target, &mut cargo);
-
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        std_cargo(builder, target, &mut cargo, &self.crates);
 
         let _guard = builder.msg(
             Kind::Clippy,

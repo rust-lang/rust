@@ -9,7 +9,7 @@ use syntax::ast;
 use crate::{
     CompletionContext, Completions,
     completions::record::add_default_update,
-    context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
+    context::{PathCompletionCtx, PathExprCtx, Qualified},
 };
 
 struct PathCallback<'a, F> {
@@ -57,7 +57,6 @@ pub(crate) fn complete_expr_path(
 
     let &PathExprCtx {
         in_block_expr,
-        in_breakable,
         after_if_expr,
         before_else_kw,
         in_condition,
@@ -68,6 +67,7 @@ pub(crate) fn complete_expr_path(
         after_amp,
         ref is_func_update,
         ref innermost_ret_ty,
+        ref innermost_breakable_ty,
         ref impl_,
         in_match_guard,
         ..
@@ -297,7 +297,7 @@ pub(crate) fn complete_expr_path(
                             acc,
                             ctx,
                             e,
-                            impl_,
+                            impl_.as_ref(),
                             |acc, ctx, variant, path| {
                                 acc.add_qualified_enum_variant(ctx, path_ctx, variant, path)
                             },
@@ -405,14 +405,21 @@ pub(crate) fn complete_expr_path(
                         add_keyword("mut", "mut ");
                     }
 
-                    if in_breakable != BreakableKind::None {
+                    if let Some(loop_ty) = innermost_breakable_ty {
                         if in_block_expr {
                             add_keyword("continue", "continue;");
-                            add_keyword("break", "break;");
                         } else {
                             add_keyword("continue", "continue");
-                            add_keyword("break", "break");
                         }
+                        add_keyword(
+                            "break",
+                            match (loop_ty.is_unit(), in_block_expr) {
+                                (true, true) => "break;",
+                                (true, false) => "break",
+                                (false, true) => "break $0;",
+                                (false, false) => "break $0",
+                            },
+                        );
                     }
 
                     if let Some(ret_ty) = innermost_ret_ty {

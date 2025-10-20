@@ -2,7 +2,7 @@
 //! about the code that Chalk needs.
 use hir_def::{CallableDefId, GenericDefId};
 
-use crate::{Interner, Substitution, db::HirDatabase, mapping::from_chalk};
+use crate::{Interner, db::HirDatabase, mapping::from_chalk};
 
 pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub(crate) type TraitId = chalk_ir::TraitId<Interner>;
@@ -52,17 +52,4 @@ pub(crate) fn adt_variance_query(db: &dyn HirDatabase, adt_id: hir_def::AdtId) -
             crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
         }),
     )
-}
-
-/// Returns instantiated predicates.
-pub(super) fn convert_where_clauses(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    substs: &Substitution,
-) -> Vec<chalk_ir::QuantifiedWhereClause<Interner>> {
-    db.generic_predicates(def)
-        .iter()
-        .cloned()
-        .map(|pred| pred.substitute(Interner, substs))
-        .collect()
 }

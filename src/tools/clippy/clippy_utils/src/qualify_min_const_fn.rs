@@ -232,9 +232,7 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
-            check_place(cx, **place, span, body, msrv)
-        },
+        StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
@@ -475,7 +473,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligations(impl_src.nested_obligations());
-        ocx.select_all_or_error().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 
     !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)

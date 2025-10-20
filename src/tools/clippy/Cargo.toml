@@ -38,12 +38,17 @@ ui_test = "0.30.2"
 regex = "1.5.5"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.122"
-toml = "0.7.3"
 walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
+
+[dev-dependencies.toml]
+version = "0.9.7"
+default-features = false
+# preserve_order keeps diagnostic output in file order
+features = ["parse", "preserve_order"]
 
 [build-dependencies]
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
