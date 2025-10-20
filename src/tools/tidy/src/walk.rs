@@ -122,9 +122,9 @@ pub(crate) fn walk_dir(
     skip: impl Send + Sync + 'static + Fn(&Path) -> bool,
     f: &mut dyn FnMut(&DirEntry),
 ) {
-    let untracked_files = match !tidy_flags.include_untracked {
-        true => tidy_flags.untracked_files.clone(),
-        false => HashSet::new(),
+    let untracked_files = match tidy_flags.include_untracked {
+        true => HashSet::new(),
+        false => tidy_flags.untracked_files.clone(),
     };
 
     let mut walker = ignore::WalkBuilder::new(path);

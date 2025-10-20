@@ -45,9 +45,20 @@ You can run tidy manually with:
 
 `./x test tidy`
 
+### Tidy Flags
+
 To first run the relevant formatter and then run tidy you can add `--bless`.
 
 `./x test tidy --bless`
+
+To include files untracked by git you can add `--include-untracked`. This does not currently change the behavior of `--extra-checks`. To include untracked `js`, `py`, or `cpp` files you'll need to manually add them with git.
+
+`./x test tidy --include-untracked`                                                                                                                                                                            \
+
+To run tidy on the `HEAD` commit (the most recent commit of your current working branch) you can add `--pre-push`. This flag is added automatically when used with the pre-push git hook.
+
+`./x test tidy --pre-push`
+
 ### Extra Checks
 [`extra_checks`](https://doc.rust-lang.org/nightly/nightly-rustc/tidy/extra_checks/index.html) are optional checks primarily focused on other file types and programming languages.
 
