@@ -500,7 +500,10 @@ fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     input + &exe_suffix
 }
 
-fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
+fn wrapped_rustc_command<'a>(
+    rustc_wrappers: &'a [PathBuf],
+    rustc_binary: &'a Path,
+) -> (Command, &'a Path) {
     let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary]);
 
     let exe = args.next().expect("unable to create rustc command");
@@ -509,7 +512,7 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
         command.arg(arg);
     }
 
-    command
+    (command, rustc_wrappers.first().map(|p| &**p).unwrap_or(rustc_binary))
 }
 
 /// Information needed for running a bundle of doctests.
@@ -629,7 +632,8 @@ fn run_test(
         .test_builder
         .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path(sysroot).expect("found rustc"));
-    let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+    let (mut compiler, binary_path) =
+        wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.args(&compiler_args);
 
@@ -670,7 +674,13 @@ fn run_test(
 
     debug!("compiler invocation for doctest: {compiler:?}");
 
-    let mut child = compiler.spawn().expect("Failed to spawn rustc process");
+    let mut child = match compiler.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            eprintln!("Failed to spawn {binary_path:?}: {error:?}");
+            return (Duration::default(), Err(TestFailure::CompileError));
+        }
+    };
     let output = if let Some(merged_test_code) = &doctest.merged_test_code {
         // compile-fail tests never get merged, so this should always pass
         let status = child.wait().expect("Failed to wait");
@@ -679,7 +689,7 @@ fn run_test(
         // build it now
         let runner_input_file = doctest.path_for_merged_doctest_runner();
 
-        let mut runner_compiler =
+        let (mut runner_compiler, binary_path) =
             wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
         // the test runner does not contain any user-written code, so this doesn't allow
         // the user to exploit nightly-only features on stable
@@ -732,7 +742,13 @@ fn run_test(
         let status = if !status.success() {
             status
         } else {
-            let mut child_runner = runner_compiler.spawn().expect("Failed to spawn rustc process");
+            let mut child_runner = match runner_compiler.spawn() {
+                Ok(child) => child,
+                Err(error) => {
+                    eprintln!("Failed to spawn {binary_path:?}: {error:?}");
+                    return (Duration::default(), Err(TestFailure::CompileError));
+                }
+            };
             child_runner.wait().expect("Failed to wait")
         };
 
