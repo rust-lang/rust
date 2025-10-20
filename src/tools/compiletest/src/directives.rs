@@ -14,6 +14,7 @@ use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
+use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
 use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
@@ -26,6 +27,7 @@ mod auxiliary;
 mod cfg;
 mod directive_names;
 mod file;
+mod handlers;
 mod line;
 mod needs;
 #[cfg(test)]
@@ -359,21 +361,14 @@ impl TestProps {
                         return;
                     }
 
+                    if let Some(handler) = DIRECTIVE_HANDLERS_MAP.get(ln.name) {
+                        handler.handle(config, ln, self);
+                        // This directive has been handled, so move on to the next one.
+                        return;
+                    }
+
                     use directives::*;
                     let props = &mut *self;
-
-                    config.push_name_value_directive(
-                        ln,
-                        ERROR_PATTERN,
-                        &mut props.error_patterns,
-                        |r| r,
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        REGEX_ERROR_PATTERN,
-                        &mut props.regex_error_patterns,
-                        |r| r,
-                    );
 
                     config.push_name_value_directive(ln, DOC_FLAGS, &mut props.doc_flags, |r| r);
 
