@@ -2,5 +2,5 @@ error: `crate` cannot be a raw identifier
   |
   = note: this occurred on the command line: `--cfg=r#crate`
 
-error: invalid `--cfg` argument: `r#crate` (argument key must be an identifier)
+error: invalid `--cfg` argument: `r#crate` (malformed `cfg` input, expected a valid identifier)
 

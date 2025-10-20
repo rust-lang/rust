@@ -2,5 +2,5 @@ error: `_` cannot be a raw identifier
   |
   = note: this occurred on the command line: `--cfg=r#_`
 
-error: invalid `--cfg` argument: `r#_` (argument key must be an identifier)
+error: invalid `--cfg` argument: `r#_` (malformed `cfg` input, expected a valid identifier)
 

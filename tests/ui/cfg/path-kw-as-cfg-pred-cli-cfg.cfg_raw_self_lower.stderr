@@ -2,5 +2,5 @@ error: `self` cannot be a raw identifier
   |
   = note: this occurred on the command line: `--cfg=r#self`
 
-error: invalid `--cfg` argument: `r#self` (argument key must be an identifier)
+error: invalid `--cfg` argument: `r#self` (malformed `cfg` input, expected a valid identifier)
 

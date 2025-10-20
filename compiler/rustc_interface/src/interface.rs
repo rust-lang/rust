@@ -85,7 +85,9 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                                     let ident = meta_item.ident().expect("multi-segment cfg key");
 
                                     if !ident.name.can_be_raw() {
-                                        error!("argument key must be an identifier");
+                                        error!(
+                                            "malformed `cfg` input, expected a valid identifier"
+                                        );
                                     }
 
                                     return (ident.name, meta_item.value_str());
@@ -223,7 +225,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                 }
 
                 if !ident.name.can_be_raw() {
-                    error!("`cfg()` names must be identifiers");
+                    error!("malformed `cfg` input, expected a valid identifier");
                 }
 
                 names.push(ident);

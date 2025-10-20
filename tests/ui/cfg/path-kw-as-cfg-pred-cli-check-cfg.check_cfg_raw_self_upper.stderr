@@ -4,6 +4,6 @@ error: `Self` cannot be a raw identifier
 
 error: invalid `--check-cfg` argument: `cfg(r#Self)`
    |
-   = note: `cfg()` names must be identifiers
+   = note: malformed `cfg` input, expected a valid identifier
    = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
 
