@@ -525,11 +525,6 @@ fn run_tests(config: Arc<Config>) {
     // SAFETY: at this point we're still single-threaded.
     unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
 
-    // Let tests know which target they're running as.
-    //
-    // SAFETY: at this point we're still single-threaded.
-    unsafe { env::set_var("TARGET", &config.target) };
-
     let mut configs = Vec::new();
     if let TestMode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
