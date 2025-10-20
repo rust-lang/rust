@@ -1,2 +1,2 @@
-error: invalid `--cfg` argument: `self` (argument key must be an identifier, but `self` cannot be a raw identifier)
+error: invalid `--cfg` argument: `self` (argument key must be an identifier)
 

@@ -1,2 +1,2 @@
-error: invalid `--cfg` argument: `crate` (argument key must be an identifier, but `crate` cannot be a raw identifier)
+error: invalid `--cfg` argument: `crate` (argument key must be an identifier)
 

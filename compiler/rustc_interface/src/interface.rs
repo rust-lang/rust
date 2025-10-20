@@ -53,9 +53,9 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let psess = ParseSess::with_error_emitter(
+            let psess = ParseSess::emitter_with_note(
                 vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-                format!("this error occurred on the command line: `--cfg={s}`"),
+                format!("this occurred on the command line: `--cfg={s}`"),
             );
             let filename = FileName::cfg_spec_source_code(&s);
 
@@ -63,10 +63,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                 ($reason: expr) => {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
-                    dcx.fatal(format!(
-                        "invalid `--cfg` argument: `{}` ({})",
-                        s, $reason,
-                    ));
+                    dcx.fatal(format!("invalid `--cfg` argument: `{}` ({})", s, $reason,));
                 };
             }
 
@@ -88,7 +85,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                                     let ident = meta_item.ident().expect("multi-segment cfg key");
 
                                     if !ident.name.can_be_raw() {
-                                        error!(format!("argument key must be an identifier, but `{}` cannot be a raw identifier", ident.name));
+                                        error!("argument key must be an identifier");
                                     }
 
                                     return (ident.name, meta_item.value_str());
@@ -98,9 +95,9 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                         Ok(..) => {}
                         Err(err) => {
                             err.cancel();
-                        },
+                        }
                     }
-                },
+                }
                 Err(errs) => errs.into_iter().for_each(|err| {
                     err.cancel();
                 }),
@@ -129,9 +126,9 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let psess = ParseSess::with_error_emitter(
+        let psess = ParseSess::emitter_with_note(
             vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
-            format!("this error occurred on the command line: `--check-cfg={s}`"),
+            format!("this occurred on the command line: `--check-cfg={s}`"),
         );
         let filename = FileName::cfg_spec_source_code(&s);
 
@@ -226,10 +223,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                 }
 
                 if !ident.name.can_be_raw() {
-                    error!(format!(
-                        "argument key must be an identifier, but `{}` cannot be a raw identifier",
-                        ident.name
-                    ));
+                    error!("`cfg()` names must be identifiers");
                 }
 
                 names.push(ident);
