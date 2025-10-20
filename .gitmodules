@@ -4,7 +4,7 @@
 	shallow = true
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
-	url = https://github.com/rust-lang/cargo.git
+	url = https://github.com/lqd/cargo.git
 	shallow = true
 [submodule "src/doc/reference"]
 	path = src/doc/reference
