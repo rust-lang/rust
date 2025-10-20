@@ -426,7 +426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Allowed,
+                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitAlias),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },

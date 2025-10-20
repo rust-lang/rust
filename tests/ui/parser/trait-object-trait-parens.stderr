@@ -3,18 +3,24 @@ error: relaxed bounds are not permitted in trait object types
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |                        ^^^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:13:16
    |
 LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |                ^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:18:44
    |
 LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    |                                            ^^^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:8:16
