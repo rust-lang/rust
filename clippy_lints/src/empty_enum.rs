@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::span_contains_cfg;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -24,10 +25,6 @@ declare_clippy_lint! {
     ///   the uninhabitedness is visible in documentation, and whether it can be pattern
     ///   matched to mark code unreachable. If the field is not visible, then the struct
     ///   acts like any other struct with private fields.
-    ///
-    /// * If the enum has no variants only because all variants happen to be
-    ///   [disabled by conditional compilation][cfg], then it would be appropriate
-    ///   to allow the lint, with `#[allow(empty_enum)]`.
     ///
     /// For further information, visit
     /// [the never type’s documentation][`!`].
@@ -62,11 +59,11 @@ declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
 impl LateLintPass<'_> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Enum(..) = item.kind
+        if let ItemKind::Enum(.., def) = item.kind
+            && def.variants.is_empty()
             // Only suggest the `never_type` if the feature is enabled
             && cx.tcx.features().never_type()
-            && let Some(adt) = cx.tcx.type_of(item.owner_id).instantiate_identity().ty_adt_def()
-            && adt.variants().is_empty()
+            && !span_contains_cfg(cx, item.span)
         {
             span_lint_and_help(
                 cx,
