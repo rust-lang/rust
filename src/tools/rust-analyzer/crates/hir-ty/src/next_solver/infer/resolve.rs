@@ -1,15 +1,14 @@
 //! Things for resolving vars in the infer context of the next-trait-solver.
 
 use rustc_type_ir::{
-    ConstKind, FallibleTypeFolder, InferConst, InferTy, RegionKind, TyKind, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt,
     data_structures::DelayedMap,
-    inherent::{Const as _, IntoKind, Ty as _},
+    inherent::{Const as _, Ty as _},
 };
 
 use crate::next_solver::{Const, DbInterner, ErrorGuaranteed, Region, Ty};
 
-use super::{FixupError, FixupResult, InferCtxt};
+use super::InferCtxt;
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER

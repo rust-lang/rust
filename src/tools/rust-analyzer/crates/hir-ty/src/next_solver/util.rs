@@ -5,20 +5,19 @@ use std::ops::{self, ControlFlow};
 
 use base_db::Crate;
 use hir_def::lang_item::LangItem;
-use hir_def::{BlockId, HasModule, ItemContainerId, Lookup};
+use hir_def::{BlockId, HasModule};
 use intern::sym;
 use la_arena::Idx;
 use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
 use rustc_type_ir::data_structures::IndexMap;
 use rustc_type_ir::inherent::{
-    AdtDef, Const as _, GenericArg as _, GenericArgs as _, ParamEnv as _, Region as _, SliceLike,
-    Ty as _,
+    AdtDef, GenericArg as _, GenericArgs as _, ParamEnv as _, SliceLike, Ty as _,
 };
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     BoundVar, Canonical, DebruijnIndex, GenericArgKind, INNERMOST, Interner, PredicatePolarity,
-    TypeFlags, TypeVisitable, TypeVisitableExt,
+    TypeVisitableExt,
 };
 use rustc_type_ir::{
     ConstKind, CoroutineArgs, FloatTy, IntTy, RegionKind, TypeFolder, TypeSuperFoldable,
@@ -29,17 +28,14 @@ use rustc_type_ir::{InferCtxtLike, TypeFoldable};
 use crate::lower_nextsolver::{LifetimeElisionKind, TyLoweringContext};
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
-    BoundConst, CanonicalVarKind, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst,
-    PlaceholderRegion, TypingMode,
+    BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
 };
 use crate::{
     db::HirDatabase,
-    from_foreign_def_id,
     method_resolution::{TraitImpls, TyFingerprint},
 };
 
 use super::fold::{BoundVarReplacer, FnMutDelegate};
-use super::generics::generics;
 use super::{
     AliasTerm, AliasTy, Binder, BoundRegion, BoundTy, BoundTyKind, BoundVarKind, BoundVarKinds,
     CanonicalVars, Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder, GenericArg,
@@ -530,7 +526,7 @@ pub(crate) fn mini_canonicalize<'db, T: TypeFoldable<DbInterner<'db>>>(
         max_universe: UniverseIndex::from_u32(1),
         variables: CanonicalVars::new_from_iter(
             context.cx(),
-            vars.iter().enumerate().map(|(idx, (k, v))| match (*k).kind() {
+            vars.iter().enumerate().map(|(idx, (k, _v))| match (*k).kind() {
                 GenericArgKind::Type(ty) => match ty.kind() {
                     TyKind::Int(..) | TyKind::Uint(..) => rustc_type_ir::CanonicalVarKind::Int,
                     TyKind::Float(..) => rustc_type_ir::CanonicalVarKind::Float,
@@ -617,7 +613,7 @@ impl<'db> TypeFolder<DbInterner<'db>> for MiniCanonicalizer<'_, 'db> {
                 }
                 r
             }
-            RegionKind::ReVar(vid) => {
+            RegionKind::ReVar(_vid) => {
                 let len = self.vars.len();
                 let var = *self.vars.entry(r.into()).or_insert(len);
                 Region::new(
@@ -646,7 +642,7 @@ impl<'db> TypeFolder<DbInterner<'db>> for MiniCanonicalizer<'_, 'db> {
                 }
                 c
             }
-            ConstKind::Infer(infer) => {
+            ConstKind::Infer(_infer) => {
                 let len = self.vars.len();
                 let var = *self.vars.entry(c.into()).or_insert(len);
                 Const::new(
@@ -666,14 +662,8 @@ pub fn explicit_item_bounds<'db>(
     let db = interner.db();
     match def_id {
         SolverDefId::TypeAliasId(type_alias) => {
-            let trait_ = match type_alias.lookup(db).container {
-                ItemContainerId::TraitId(t) => t,
-                _ => panic!("associated type not in trait"),
-            };
-
             // Lower bounds -- we could/should maybe move this to a separate query in `lower`
             let type_alias_data = db.type_alias_signature(type_alias);
-            let generic_params = generics(db, type_alias.into());
             let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
             let mut ctx = TyLoweringContext::new(
                 db,
@@ -805,7 +795,7 @@ pub fn explicit_item_bounds<'db>(
                                     GenericArgs::new_from_iter(interner, [item_ty.into()]),
                                 ),
                                 term: match out.kind() {
-                                    GenericArgKind::Lifetime(lt) => panic!(),
+                                    GenericArgKind::Lifetime(_lt) => panic!(),
                                     GenericArgKind::Type(ty) => Term::Ty(ty),
                                     GenericArgKind::Const(const_) => Term::Const(const_),
                                 },
@@ -991,26 +981,6 @@ impl<'db> TypeFolder<DbInterner<'db>> for PlaceholderReplacer<'_, 'db> {
             ct.super_fold_with(self)
         }
     }
-}
-
-pub(crate) fn needs_normalization<'db, T: TypeVisitable<DbInterner<'db>>>(
-    infcx: &InferCtxt<'db>,
-    value: &T,
-) -> bool {
-    let mut flags = TypeFlags::HAS_ALIAS;
-
-    // Opaques are treated as rigid outside of `TypingMode::PostAnalysis`,
-    // so we can ignore those.
-    match infcx.typing_mode() {
-        // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-        TypingMode::Coherence
-        | TypingMode::Analysis { .. }
-        | TypingMode::Borrowck { .. }
-        | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(TypeFlags::HAS_TY_OPAQUE),
-        TypingMode::PostAnalysis => {}
-    }
-
-    value.has_type_flags(flags)
 }
 
 pub fn sizedness_fast_path<'db>(

@@ -1,10 +1,10 @@
 //! `TyBuilder`, a helper for building instances of `Ty` and related types.
 
 use chalk_ir::{
-    DebruijnIndex, Scalar,
+    DebruijnIndex,
     cast::{Cast, Caster},
 };
-use hir_def::{GenericDefId, GenericParamId, TraitId, builtin_type::BuiltinType};
+use hir_def::{GenericDefId, GenericParamId, TraitId};
 use smallvec::SmallVec;
 
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
         DbInterner, EarlyBinder,
         mapping::{ChalkToNextSolver, NextSolverToChalk},
     },
-    primitive, to_chalk_trait_id,
+    to_chalk_trait_id,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,23 +135,6 @@ impl<D> TyBuilder<D> {
 impl TyBuilder<()> {
     pub(crate) fn usize() -> Ty {
         TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner)
-    }
-
-    pub(crate) fn builtin(builtin: BuiltinType) -> Ty {
-        match builtin {
-            BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(Interner),
-            BuiltinType::Bool => TyKind::Scalar(Scalar::Bool).intern(Interner),
-            BuiltinType::Str => TyKind::Str.intern(Interner),
-            BuiltinType::Int(t) => {
-                TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))).intern(Interner)
-            }
-            BuiltinType::Uint(t) => {
-                TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))).intern(Interner)
-            }
-            BuiltinType::Float(t) => {
-                TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))).intern(Interner)
-            }
-        }
     }
 
     pub(crate) fn unknown_subst(

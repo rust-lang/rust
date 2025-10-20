@@ -358,7 +358,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             self.interner(),
                             box_adt.into(),
                             std::iter::once(inner_ty.into()).chain(alloc_ty.map(Into::into)),
-                            |_, _, id, _| self.table.next_var_for_param(id),
+                            |_, id, _| self.table.next_var_for_param(id),
                         ),
                     )
                 }

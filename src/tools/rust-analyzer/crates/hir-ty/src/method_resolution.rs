@@ -37,7 +37,7 @@ use crate::{
         Canonical, DbInterner, ErrorGuaranteed, GenericArgs, Goal, Predicate, Region, SolverDefId,
         TraitRef, Ty, TyKind, TypingMode,
         infer::{
-            DbInternerInferExt, DefineOpaqueTypes,
+            DbInternerInferExt,
             traits::{Obligation, ObligationCause, PredicateObligation},
         },
         obligation_ctxt::ObligationCtxt,
@@ -1654,7 +1654,7 @@ fn is_valid_trait_method_candidate<'db>(
                     let res = table
                         .infer_ctxt
                         .at(&ObligationCause::dummy(), table.trait_env.env)
-                        .relate(DefineOpaqueTypes::No, expected_receiver, variance, receiver_ty);
+                        .relate(expected_receiver, variance, receiver_ty);
                     let Ok(infer_ok) = res else {
                         return IsValidCandidate::No;
                     };

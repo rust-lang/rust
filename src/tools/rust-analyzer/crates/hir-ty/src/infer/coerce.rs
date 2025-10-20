@@ -63,7 +63,7 @@ use crate::{
         GenericArgs, PolyFnSig, PredicateKind, Region, RegionKind, SolverDefId, TraitRef, Ty,
         TyKind,
         infer::{
-            DefineOpaqueTypes, InferCtxt, InferOk, InferResult,
+            InferCtxt, InferOk, InferResult,
             relate::RelateResult,
             select::{ImplSource, SelectionError},
             traits::{Obligation, ObligationCause, PredicateObligation, PredicateObligations},
@@ -149,7 +149,7 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
             let res = if this.use_lub {
                 at.lub(b, a)
             } else {
-                at.sup(DefineOpaqueTypes::Yes, b, a)
+                at.sup(b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
@@ -1460,19 +1460,12 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
             //
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
-            icx.table
-                .infer_ctxt
-                .at(cause, icx.table.trait_env.env)
-                .eq(
-                    // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                    DefineOpaqueTypes::Yes,
-                    expected,
-                    found,
-                )
-                .map(|infer_ok| {
+            icx.table.infer_ctxt.at(cause, icx.table.trait_env.env).eq(expected, found).map(
+                |infer_ok| {
                     icx.table.register_infer_ok(infer_ok);
                     expression_ty
-                })
+                },
+            )
         };
 
         debug!(?result);

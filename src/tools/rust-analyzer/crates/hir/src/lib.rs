@@ -36,6 +36,7 @@ pub mod term_search;
 mod display;
 
 use std::{
+    fmt,
     mem::discriminant,
     ops::{ControlFlow, Not},
 };
@@ -160,7 +161,7 @@ pub use {
     // FIXME: Properly encapsulate mir
     hir_ty::mir,
     hir_ty::{
-        CastError, FnAbi, PointerCast, Variance, attach_db, attach_db_allow_change,
+        CastError, FnAbi, PointerCast, attach_db, attach_db_allow_change,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
@@ -1802,7 +1803,7 @@ impl Adt {
         let env = db.trait_environment(self.into());
         let interner = DbInterner::new_with(db, Some(env.krate), env.block);
         let adt_id = AdtId::from(self);
-        let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, _, id, _| {
+        let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, id, _| {
             GenericArg::error_from_id(interner, id)
         });
         db.layout_of_adt(adt_id, args, env)
@@ -4110,7 +4111,39 @@ impl GenericParam {
             GenericParam::ConstParam(_) => return None,
             GenericParam::LifetimeParam(it) => generics.lifetime_idx(it.id)?,
         };
-        db.variances_of(parent)?.get(index).copied()
+        db.variances_of(parent).get(index).map(Into::into)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Variance {
+    Bivariant,
+    Covariant,
+    Contravariant,
+    Invariant,
+}
+
+impl From<rustc_type_ir::Variance> for Variance {
+    #[inline]
+    fn from(value: rustc_type_ir::Variance) -> Self {
+        match value {
+            rustc_type_ir::Variance::Covariant => Variance::Covariant,
+            rustc_type_ir::Variance::Invariant => Variance::Invariant,
+            rustc_type_ir::Variance::Contravariant => Variance::Contravariant,
+            rustc_type_ir::Variance::Bivariant => Variance::Bivariant,
+        }
+    }
+}
+
+impl fmt::Display for Variance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let description = match self {
+            Variance::Bivariant => "bivariant",
+            Variance::Covariant => "covariant",
+            Variance::Contravariant => "contravariant",
+            Variance::Invariant => "invariant",
+        };
+        f.pad(description)
     }
 }
 
@@ -4151,8 +4184,7 @@ impl TypeParam {
         let resolver = self.id.parent().resolver(db);
         let interner = DbInterner::new_with(db, None, None);
         let index = hir_ty::param_idx(db, self.id.into()).unwrap();
-        let name = self.name(db).symbol().clone();
-        let ty = Ty::new_param(interner, self.id, index as u32, name);
+        let ty = Ty::new_param(interner, self.id, index as u32);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
@@ -6405,7 +6437,7 @@ fn generic_args_from_tys<'db>(
     args: impl IntoIterator<Item = Ty<'db>>,
 ) -> GenericArgs<'db> {
     let mut args = args.into_iter();
-    GenericArgs::for_item(interner, def_id, |_, _, id, _| {
+    GenericArgs::for_item(interner, def_id, |_, id, _| {
         if matches!(id, GenericParamId::TypeParamId(_))
             && let Some(arg) = args.next()
         {

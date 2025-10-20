@@ -1,36 +1,25 @@
 //! Things related to generics in the next-trait-solver.
 
 use hir_def::{
-    ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId, Lookup,
-    TypeOrConstParamId, TypeParamId,
-    db::DefDatabase,
-    expr_store::ExpressionStore,
+    ConstParamId, GenericDefId, GenericParamId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
     hir::generics::{
-        GenericParamDataRef, GenericParams, LifetimeParamData, LocalLifetimeParamId,
-        LocalTypeOrConstParamId, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
-        WherePredicate,
+        GenericParams, LocalTypeOrConstParamId, TypeOrConstParamData, TypeParamData,
+        TypeParamProvenance,
     },
 };
-use hir_expand::name::Name;
-use intern::{Symbol, sym};
-use la_arena::Arena;
-use rustc_type_ir::inherent::Ty as _;
-use triomphe::Arc;
 
-use crate::{db::HirDatabase, generics::parent_generic_def, next_solver::Ty};
+use crate::{db::HirDatabase, generics::parent_generic_def};
 
-use super::{Const, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, SolverDefId};
+use super::SolverDefId;
 
-use super::{DbInterner, GenericArg};
+use super::DbInterner;
 
 pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
-    let mk_lt = |parent, index, local_id, lt: &LifetimeParamData| {
-        let name = lt.name.symbol().clone();
+    let mk_lt = |parent, index, local_id| {
         let id = GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id });
-        GenericParamDef { name, index, id }
+        GenericParamDef { index, id }
     };
     let mk_ty = |parent, index, local_id, p: &TypeOrConstParamData| {
-        let name = p.name().map(|n| n.symbol().clone()).unwrap_or_else(|| sym::MISSING_NAME);
         let id = TypeOrConstParamId { parent, local_id };
         let id = match p {
             TypeOrConstParamData::TypeParamData(_) => {
@@ -40,7 +29,7 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                 GenericParamId::ConstParamId(ConstParamId::from_unchecked(id))
             }
         };
-        GenericParamDef { name, index, id }
+        GenericParamDef { index, id }
     };
     let own_params_for_generic_params = |parent, params: &GenericParams| {
         let mut result = Vec::with_capacity(params.len());
@@ -51,8 +40,8 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
             type_and_consts.next();
             index += 1;
         }
-        result.extend(params.iter_lt().map(|(local_id, data)| {
-            let lt = mk_lt(parent, index, local_id, data);
+        result.extend(params.iter_lt().map(|(local_id, _data)| {
+            let lt = mk_lt(parent, index, local_id);
             index += 1;
             lt
         }));
@@ -78,7 +67,7 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                 crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => {
                     (Some(type_alias_id.into()), Vec::new())
                 }
-                crate::ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
+                crate::ImplTraitId::AsyncBlockTypeImplTrait(_def, _) => {
                     let param = TypeOrConstParamData::TypeParamData(TypeParamData {
                         name: None,
                         default: None,
@@ -121,8 +110,6 @@ pub struct Generics {
 
 #[derive(Debug)]
 pub struct GenericParamDef {
-    pub(crate) name: Symbol,
-    //def_id: GenericDefId,
     index: u32,
     pub(crate) id: GenericParamId,
 }

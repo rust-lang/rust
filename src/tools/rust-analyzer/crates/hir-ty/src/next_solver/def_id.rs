@@ -155,7 +155,7 @@ impl From<DefWithBodyId> for SolverDefId {
 }
 
 impl TryFrom<SolverDefId> for GenericDefId {
-    type Error = SolverDefId;
+    type Error = ();
 
     fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -170,7 +170,7 @@ impl TryFrom<SolverDefId> for GenericDefId {
             | SolverDefId::InternedCoroutineId(_)
             | SolverDefId::InternedOpaqueTyId(_)
             | SolverDefId::EnumVariantId(_)
-            | SolverDefId::Ctor(_) => return Err(value),
+            | SolverDefId::Ctor(_) => return Err(()),
         })
     }
 }

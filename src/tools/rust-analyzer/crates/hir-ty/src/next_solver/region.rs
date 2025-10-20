@@ -1,10 +1,9 @@
 //! Things related to regions.
 
 use hir_def::LifetimeParamId;
-use intern::{Interned, Symbol};
+use intern::Symbol;
 use rustc_type_ir::{
     BoundVar, DebruijnIndex, Flags, INNERMOST, RegionVid, TypeFlags, TypeFoldable, TypeVisitable,
-    VisitorResult,
     inherent::{IntoKind, PlaceholderLike, SliceLike},
     relate::Relate,
 };

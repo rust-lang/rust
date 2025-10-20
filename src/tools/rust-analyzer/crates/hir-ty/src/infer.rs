@@ -57,7 +57,6 @@ use triomphe::Arc;
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
     db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
-    generics::Generics,
     infer::{
         coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
@@ -72,10 +71,7 @@ use crate::{
         Tys,
         abi::Safety,
         fold::fold_tys,
-        infer::{
-            DefineOpaqueTypes,
-            traits::{Obligation, ObligationCause},
-        },
+        infer::traits::{Obligation, ObligationCause},
         mapping::ChalkToNextSolver,
     },
     traits::FnTrait,
@@ -763,8 +759,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
     target_features: OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
-    generic_def: GenericDefId,
-    generics: OnceCell<Generics>,
+    pub(crate) generic_def: GenericDefId,
     table: unify::InferenceTable<'db>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
@@ -873,7 +868,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             return_ty: types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
-            generics: OnceCell::new(),
             table,
             tuple_field_accesses_rev: Default::default(),
             resume_yield_tys: None,
@@ -900,10 +894,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             inside_assignment: false,
             diagnostics: Diagnostics::default(),
         }
-    }
-
-    pub(crate) fn generics(&self) -> &Generics {
-        self.generics.get_or_init(|| crate::generics::generics(self.db, self.generic_def))
     }
 
     #[inline]
@@ -1133,7 +1123,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     GenericArgs::for_item_with_defaults(
                         self.interner(),
                         va_list.into(),
-                        |_, _, id, _| self.table.next_var_for_param(id),
+                        |_, id, _| self.table.next_var_for_param(id),
                     ),
                 ),
                 None => self.err_ty(),
@@ -1676,7 +1666,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             .table
             .infer_ctxt
             .at(&ObligationCause::new(), self.table.trait_env.env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .eq(expected, actual)
             .map(|infer_ok| self.table.register_infer_ok(infer_ok));
         if let Err(_err) = result {
             // FIXME: Emit diagnostic.

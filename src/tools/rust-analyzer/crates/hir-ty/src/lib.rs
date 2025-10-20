@@ -82,7 +82,7 @@ use traits::FnTrait;
 use triomphe::Arc;
 
 use crate::{
-    builder::{ParamKind, TyBuilder},
+    builder::TyBuilder,
     chalk_ext::*,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
@@ -117,7 +117,6 @@ pub use utils::{
     TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
     is_fn_unsafe_to_call, target_feature_is_safe_in_target,
 };
-pub use variance::Variance;
 
 use chalk_ir::{BoundVar, DebruijnIndex, Safety, Scalar};
 

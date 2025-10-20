@@ -5,7 +5,6 @@ use rustc_type_ir::{
     inherent::{IntoKind, Term as _},
 };
 
-use crate::next_solver::SolverDefId;
 use crate::next_solver::{
     Binder, Const, ConstKind, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Term, Ty,
     TyKind,

@@ -2,10 +2,9 @@
 
 use std::hash::Hash;
 
-use hir_def::{ConstParamId, TypeOrConstParamId};
-use intern::{Interned, Symbol};
+use hir_def::ConstParamId;
 use macros::{TypeFoldable, TypeVisitable};
-use rustc_ast_ir::{try_visit, visit::VisitorResult};
+use rustc_ast_ir::visit::VisitorResult;
 use rustc_type_ir::{
     BoundVar, DebruijnIndex, FlagComputation, Flags, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
@@ -14,7 +13,7 @@ use rustc_type_ir::{
 };
 
 use crate::{
-    ConstScalar, MemoryMap,
+    MemoryMap,
     interner::InternedWrapperNoDebug,
     next_solver::{ClauseKind, ParamEnv},
 };
@@ -429,7 +428,7 @@ impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderConst {
 
 impl<'db> Relate<DbInterner<'db>> for ExprConst {
     fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: Self,
         b: Self,
     ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {

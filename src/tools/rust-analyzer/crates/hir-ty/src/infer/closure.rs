@@ -26,7 +26,7 @@ use crate::{
         PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, Ty, TyKind,
         abi::Safety,
         infer::{
-            BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult,
+            BoundRegionConversionTime, InferOk, InferResult,
             traits::{ObligationCause, PredicateObligations},
         },
         util::explicit_item_bounds,
@@ -307,7 +307,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         .table
                         .infer_ctxt
                         .at(&ObligationCause::new(), self.table.trait_env.env)
-                        .eq(DefineOpaqueTypes::Yes, inferred_fnptr_sig, generalized_fnptr_sig)
+                        .eq(inferred_fnptr_sig, generalized_fnptr_sig)
                         .map(|infer_ok| self.table.register_infer_ok(infer_ok));
 
                     let resolved_sig =
@@ -692,18 +692,16 @@ impl<'db> InferenceContext<'_, 'db> {
                 let InferOk { value: (), obligations } = table
                     .infer_ctxt
                     .at(&cause, table.trait_env.env)
-                    .eq(DefineOpaqueTypes::Yes, expected_ty, supplied_ty)?;
+                    .eq(expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
             }
 
             let supplied_output_ty = supplied_sig.output();
             let cause = ObligationCause::new();
-            let InferOk { value: (), obligations } =
-                table.infer_ctxt.at(&cause, table.trait_env.env).eq(
-                    DefineOpaqueTypes::Yes,
-                    expected_sigs.liberated_sig.output(),
-                    supplied_output_ty,
-                )?;
+            let InferOk { value: (), obligations } = table
+                .infer_ctxt
+                .at(&cause, table.trait_env.env)
+                .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
             all_obligations.extend(obligations);
 
             let inputs = supplied_sig
