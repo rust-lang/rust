@@ -4,6 +4,7 @@ use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
+use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 use crate::builder::SBuilder;
@@ -263,8 +264,7 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     kernel: &'ll llvm::Value,
     offload_entry_ty: &'ll llvm::Type,
-    // TODO(Sa4dUs): Define a typetree once i have a better idea of what do we exactly need
-    tt: Vec<Ty<'tcx>>,
+    metadata: Vec<OffloadMetadata>,
     symbol: &str,
 ) -> (&'ll llvm::Value, &'ll llvm::Value) {
     let types = cx.func_params_types(cx.get_type_of_global(kernel));
@@ -275,12 +275,11 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
         .filter(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer))
         .count();
 
-    // TODO(Sa4dUs): Add typetrees here
     let ptr_sizes = types
         .iter()
-        .zip(tt)
-        .filter_map(|(&x, ty)| match cx.type_kind(x) {
-            rustc_codegen_ssa::common::TypeKind::Pointer => Some(get_payload_size(tcx, ty)),
+        .zip(metadata)
+        .filter_map(|(&x, meta)| match cx.type_kind(x) {
+            rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta.payload_size),
             _ => None,
         })
         .collect::<Vec<u64>>();
@@ -335,56 +334,6 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     (memtransfer_types, region_id)
 }
 
-// TODO(Sa4dUs): move this to a proper place
-fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u64 {
-    match ty.kind() {
-        /*
-        rustc_middle::infer::canonical::ir::TyKind::Bool => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Char => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Int(int_ty) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Uint(uint_ty) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Float(float_ty) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Adt(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Foreign(_) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Str => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Array(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Pat(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Slice(_) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::RawPtr(_, mutability) => todo!(),
-        */
-        ty::Ref(_, inner, _) => get_payload_size(tcx, *inner),
-        /*
-        rustc_middle::infer::canonical::ir::TyKind::FnDef(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::FnPtr(binder, fn_header) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::UnsafeBinder(unsafe_binder_inner) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Dynamic(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Closure(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::CoroutineClosure(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Coroutine(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::CoroutineWitness(_, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Never => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Tuple(_) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Alias(alias_ty_kind, alias_ty) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Param(_) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Bound(bound_var_index_kind, _) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Placeholder(_) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Infer(infer_ty) => todo!(),
-        rustc_middle::infer::canonical::ir::TyKind::Error(_) => todo!(),
-        */
-        _ => {
-            tcx
-                // TODO(Sa4dUs): Maybe `.as_query_input()`?
-                .layout_of(PseudoCanonicalInput {
-                    typing_env: TypingEnv::fully_monomorphized(),
-                    value: ty,
-                })
-                .unwrap()
-                .size
-                .bytes()
-        }
-    }
-}
-
 fn declare_offload_fn<'ll>(
     cx: &'ll SimpleCx<'_>,
     name: &str,
@@ -423,7 +372,7 @@ fn declare_offload_fn<'ll>(
 pub(crate) fn gen_call_handling<'ll>(
     cx: &SimpleCx<'ll>,
     bb: &BasicBlock,
-    kernels: &[&'ll llvm::Value],
+    kernel: &'ll llvm::Value,
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
     llfn: &'ll Value,
@@ -441,7 +390,7 @@ pub(crate) fn gen_call_handling<'ll>(
 
     let mut builder = SBuilder::build(cx, bb);
 
-    let types = cx.func_params_types(cx.get_type_of_global(kernels[0]));
+    let types = cx.func_params_types(cx.get_type_of_global(kernel));
     let num_args = types.len() as u64;
 
     // Step 0)

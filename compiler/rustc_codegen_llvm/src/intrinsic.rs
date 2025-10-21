@@ -13,6 +13,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
+use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -1264,7 +1265,6 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    // TODO(Sa4dUs): Will need typetrees
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target.clone(), LOCAL_CRATE);
     let Some(kernel) = cx.get_function(&target_symbol) else {
         bug!("could not find target function")
@@ -1276,26 +1276,26 @@ fn codegen_offload<'ll, 'tcx>(
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
     let inputs = sig.inputs();
 
+    let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+
     // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
     let (memtransfer_type, region_id) = crate::builder::gpu_offload::gen_define_handling(
         cx,
         tcx,
         kernel,
         offload_entry_ty,
-        inputs.to_vec(),
+        metadata,
         &target_symbol,
     );
 
-    let kernels = &[kernel];
-
     let llfn = bx.llfn();
 
-    // TODO(Sa4dUs): this is a patch for delaying lifetime's issue fix
+    // TODO(Sa4dUs): this is just to a void lifetime's issues
     let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
     crate::builder::gpu_offload::gen_call_handling(
         cx,
         bb,
-        kernels,
+        kernel,
         &[memtransfer_type],
         &[region_id],
         llfn,
