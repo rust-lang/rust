@@ -89,10 +89,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                         && flags.get(i + 1).is_some_and(|v| v.starts_with("incremental=")))
                         || flag.starts_with("-Cincremental=")
                     {
-                        panic!(
-                            // (preserve line breaks)
-                            "you must use `//@ incremental` to enable incremental compilation"
-                        );
+                        panic!("you must use `//@ incremental` to enable incremental compilation");
                     }
                 }
                 props.compile_flags.extend(flags);
@@ -123,12 +120,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             config.set_name_directive(ln, BUILD_AUX_DOCS, &mut props.build_aux_docs);
         }),
         handler(UNIQUE_DOC_OUT_DIR, |config, ln, props| {
-            config.set_name_directive(
-                // (preserve line breaks)
-                ln,
-                UNIQUE_DOC_OUT_DIR,
-                &mut props.unique_doc_out_dir,
-            );
+            config.set_name_directive(ln, UNIQUE_DOC_OUT_DIR, &mut props.unique_doc_out_dir);
         }),
         handler(FORCE_HOST, |config, ln, props| {
             config.set_name_directive(ln, FORCE_HOST, &mut props.force_host);
@@ -162,12 +154,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             }
         }),
         handler(PRETTY_COMPARE_ONLY, |config, ln, props| {
-            config.set_name_directive(
-                // (preserve line breaks)
-                ln,
-                PRETTY_COMPARE_ONLY,
-                &mut props.pretty_compare_only,
-            );
+            config.set_name_directive(ln, PRETTY_COMPARE_ONLY, &mut props.pretty_compare_only);
         }),
         multi_handler(
             &[AUX_BUILD, AUX_BIN, AUX_CRATE, PROC_MACRO, AUX_CODEGEN_BACKEND],
@@ -177,22 +164,12 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             },
         ),
         handler(EXEC_ENV, |config, ln, props| {
-            config.push_name_value_directive(
-                // (preserve line breaks)
-                ln,
-                EXEC_ENV,
-                &mut props.exec_env,
-                Config::parse_env,
-            );
+            config.push_name_value_directive(ln, EXEC_ENV, &mut props.exec_env, Config::parse_env);
         }),
         handler(UNSET_EXEC_ENV, |config, ln, props| {
-            config.push_name_value_directive(
-                // (preserve line breaks)
-                ln,
-                UNSET_EXEC_ENV,
-                &mut props.unset_exec_env,
-                |r| r.trim().to_owned(),
-            );
+            config.push_name_value_directive(ln, UNSET_EXEC_ENV, &mut props.unset_exec_env, |r| {
+                r.trim().to_owned()
+            });
         }),
         handler(RUSTC_ENV, |config, ln, props| {
             config.push_name_value_directive(
@@ -211,13 +188,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             );
         }),
         handler(FORBID_OUTPUT, |config, ln, props| {
-            config.push_name_value_directive(
-                // (preserve line breaks)
-                ln,
-                FORBID_OUTPUT,
-                &mut props.forbid_output,
-                |r| r,
-            );
+            config.push_name_value_directive(ln, FORBID_OUTPUT, &mut props.forbid_output, |r| r);
         }),
         handler(CHECK_TEST_LINE_NUMBERS_MATCH, |config, ln, props| {
             config.set_name_directive(
@@ -293,21 +264,12 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             );
         }),
         handler(ASSEMBLY_OUTPUT, |config, ln, props| {
-            config.set_name_value_directive(
-                // (preserve line breaks)
-                ln,
-                ASSEMBLY_OUTPUT,
-                &mut props.assembly_output,
-                |r| r.trim().to_string(),
-            );
+            config.set_name_value_directive(ln, ASSEMBLY_OUTPUT, &mut props.assembly_output, |r| {
+                r.trim().to_string()
+            });
         }),
         handler(STDERR_PER_BITWIDTH, |config, ln, props| {
-            config.set_name_directive(
-                // (preserve line breaks)
-                ln,
-                STDERR_PER_BITWIDTH,
-                &mut props.stderr_per_bitwidth,
-            );
+            config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut props.stderr_per_bitwidth);
         }),
         handler(INCREMENTAL, |config, ln, props| {
             config.set_name_directive(ln, INCREMENTAL, &mut props.incremental);
@@ -322,10 +284,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                         issue_ref
                             .trim()
                             .split_once('#')
-                            .filter(|(_, number)| {
-                                // (preserve line breaks)
-                                number.chars().all(|digit| digit.is_numeric())
-                            })
+                            .filter(|(_, number)| number.chars().all(|digit| digit.is_numeric()))
                             .is_some()
                     })
                 {
@@ -342,13 +301,9 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             }
         }),
         handler(TEST_MIR_PASS, |config, ln, props| {
-            config.set_name_value_directive(
-                // (preserve line breaks)
-                ln,
-                TEST_MIR_PASS,
-                &mut props.mir_unit_test,
-                |s| s.trim().to_string(),
-            );
+            config.set_name_value_directive(ln, TEST_MIR_PASS, &mut props.mir_unit_test, |s| {
+                s.trim().to_string()
+            });
         }),
         handler(REMAP_SRC_BASE, |config, ln, props| {
             config.set_name_directive(ln, REMAP_SRC_BASE, &mut props.remap_src_base);
@@ -370,10 +325,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             props.update_add_minicore(ln, config);
         }),
         handler(MINICORE_COMPILE_FLAGS, |config, ln, props| {
-            if let Some(flags) =
-                // (preserve line breaks)
-                config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS)
-            {
+            if let Some(flags) = config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS) {
                 let flags = split_flags(&flags);
                 for flag in &flags {
                     if flag == "--edition" || flag.starts_with("--edition=") {
@@ -384,9 +336,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             }
         }),
         handler(DONT_REQUIRE_ANNOTATIONS, |config, ln, props| {
-            if let Some(err_kind) =
-                // (preserve line breaks)
-                config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
+            if let Some(err_kind) = config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
             {
                 props
                     .dont_require_annotations

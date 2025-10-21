@@ -1440,10 +1440,7 @@ fn split_flags(flags: &str) -> Vec<String> {
     flags
         .split('\'')
         .enumerate()
-        .flat_map(|(i, f)| {
-            // (preserve line breaks)
-            if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
-        })
+        .flat_map(|(i, f)| if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() })
         .map(move |s| s.to_owned())
         .collect::<Vec<_>>()
 }
