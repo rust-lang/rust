@@ -5050,7 +5050,11 @@ impl Methods {
                 (sym::bytes, []) => unbuffered_bytes::check(cx, expr, recv),
                 (sym::cloned, []) => {
                     cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
-                    option_as_ref_cloned::check(cx, recv, span);
+                    if let Some((method @ (sym::as_ref | sym::as_mut), as_ref_recv, [], as_ref_ident_span, _)) =
+                        method_call(recv)
+                    {
+                        option_as_ref_cloned::check(cx, span, method, as_ref_recv, as_ref_ident_span);
+                    }
                 },
                 (sym::collect, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
