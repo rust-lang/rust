@@ -256,8 +256,6 @@ mod directives {
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
     pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
-    // This isn't a real directive, just one that is probably mistyped often
-    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
@@ -418,9 +416,6 @@ impl TestProps {
                         }
                         self.compile_flags.extend(flags);
                     }
-                    if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
-                        panic!("`compiler-flags` directive should be spelled `compile-flags`");
-                    }
 
                     if let Some(range) = parse_edition_range(config, ln) {
                         self.edition = Some(range.edition_to_test(config.edition));
@@ -504,7 +499,7 @@ impl TestProps {
                         &mut self.check_test_line_numbers_match,
                     );
 
-                    self.update_pass_mode(ln, test_revision, config);
+                    self.update_pass_mode(ln, config);
                     self.update_fail_mode(ln, config);
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
@@ -686,9 +681,6 @@ impl TestProps {
                 panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
-        if config.mode == TestMode::Ui && config.parse_name_directive(ln, "compile-fail") {
-            panic!("`compile-fail` directive is useless in UI tests");
-        }
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
             check_ui("check");
             Some(FailMode::Check)
@@ -714,18 +706,15 @@ impl TestProps {
         }
     }
 
-    fn update_pass_mode(
-        &mut self,
-        ln: &DirectiveLine<'_>,
-        revision: Option<&str>,
-        config: &Config,
-    ) {
+    fn update_pass_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
             (TestMode::Crashes, _) => (),
             (TestMode::Codegen, "build-pass") => (),
             (TestMode::Incremental, _) => {
-                if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                // FIXME(Zalathar): This only detects forbidden directives that are
+                // declared _after_ the incompatible `//@ revisions:` directive(s).
+                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
                     panic!("`{s}` directive is only supported in `cfail` incremental tests")
                 }
             }
@@ -811,6 +800,11 @@ fn check_directive<'a>(
         .remark_after_space()
         .map(|remark| remark.trim_start().split(' ').next().unwrap())
         .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
+
+    // FIXME(Zalathar): Consider emitting specialized error/help messages for
+    // bogus directive names that are similar to real ones, e.g.:
+    // - *`compiler-flags` => `compile-flags`
+    // - *`compile-fail` => `check-fail` or `build-fail`
 
     CheckDirectiveResult { is_known_directive, trailing_directive }
 }
