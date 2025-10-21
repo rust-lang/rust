@@ -168,9 +168,9 @@ impl<'sess> AttributeParser<'sess, Early> {
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
         args: &I,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> Option<T>,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> T,
         template: &AttributeTemplate,
-    ) -> Option<T> {
+    ) -> T {
         let mut parser = Self {
             features,
             tools: Vec::new(),

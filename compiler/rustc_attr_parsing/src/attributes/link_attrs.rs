@@ -396,7 +396,7 @@ impl LinkParser {
             )
             .emit();
         }
-        *cfg = parse_cfg_entry(cx, link_cfg);
+        *cfg = parse_cfg_entry(cx, link_cfg).ok();
         true
     }
 
