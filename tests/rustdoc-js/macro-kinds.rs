@@ -3,10 +3,12 @@
 // `macro2` and `macro3` should only appear in `attr` or `macro` filters respectively.
 
 #![feature(macro_attr)]
+#![feature(macro_derive)]
 
 #[macro_export]
 macro_rules! macro1 {
     attr() () => {};
+    derive() () => {};
     () => {};
 }
 
@@ -18,4 +20,9 @@ macro_rules! macro2 {
 #[macro_export]
 macro_rules! macro3 {
     () => {};
+}
+
+#[macro_export]
+macro_rules! macro4 {
+    derive() () => {};
 }
