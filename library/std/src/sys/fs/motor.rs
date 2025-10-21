@@ -324,6 +324,14 @@ pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
     moto_rt::fs::set_perm(path, perm.rt_perm).map_err(map_motor_error)
 }
 
+pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
