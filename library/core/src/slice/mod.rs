@@ -2725,6 +2725,38 @@ impl<T> [T] {
         None
     }
 
+    /// Returns a subslice with the prefix and suffix removed.
+    ///
+    /// If the slice starts with `prefix` and ends with `suffix`, returns the subslice after the
+    /// prefix and before the suffix, wrapped in `Some`.
+    ///
+    /// If the slice does not start with `prefix` or does not end with `suffix`, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strip_circumfix)]
+    ///
+    /// let v = &[10, 50, 40, 30];
+    /// assert_eq!(v.strip_circumfix(&[10], &[30]), Some(&[50, 40][..]));
+    /// assert_eq!(v.strip_circumfix(&[10], &[40, 30]), Some(&[50][..]));
+    /// assert_eq!(v.strip_circumfix(&[10, 50], &[40, 30]), Some(&[][..]));
+    /// assert_eq!(v.strip_circumfix(&[50], &[30]), None);
+    /// assert_eq!(v.strip_circumfix(&[10], &[40]), None);
+    /// assert_eq!(v.strip_circumfix(&[], &[40, 30]), Some(&[10, 50][..]));
+    /// assert_eq!(v.strip_circumfix(&[10, 50], &[]), Some(&[40, 30][..]));
+    /// ```
+    #[must_use = "returns the subslice without modifying the original"]
+    #[unstable(feature = "strip_circumfix", issue = "147946")]
+    pub fn strip_circumfix<S, P>(&self, prefix: &P, suffix: &S) -> Option<&[T]>
+    where
+        T: PartialEq,
+        S: SlicePattern<Item = T> + ?Sized,
+        P: SlicePattern<Item = T> + ?Sized,
+    {
+        self.strip_prefix(prefix)?.strip_suffix(suffix)
+    }
+
     /// Returns a subslice with the optional prefix removed.
     ///
     /// If the slice starts with `prefix`, returns the subslice after the prefix.  If `prefix`
