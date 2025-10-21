@@ -129,7 +129,6 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let ssa = SsaLocals::new(tcx, body, typing_env);
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
-        let maybe_loop_headers = loops::maybe_loop_headers(body);
 
         let arena = DroplessArena::default();
         let mut state =
@@ -142,11 +141,6 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
         for bb in reverse_postorder {
-            // N.B. With loops, reverse postorder cannot produce a valid topological order.
-            // A statement or terminator from inside the loop, that is not processed yet, may have performed an indirect write.
-            if maybe_loop_headers.contains(bb) {
-                state.invalidate_derefs();
-            }
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             state.visit_basic_block_data(bb, data);
         }
@@ -350,12 +344,6 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
     fn ty(&self, index: VnIndex) -> Ty<'tcx> {
         self.types[index]
     }
-
-    /// Replace the value associated with `index` with an opaque value.
-    #[inline]
-    fn forget(&mut self, index: VnIndex) {
-        self.values[index] = Value::Opaque(VnOpaque);
-    }
 }
 
 struct VnState<'body, 'a, 'tcx> {
@@ -374,8 +362,6 @@ struct VnState<'body, 'a, 'tcx> {
     /// - `Some(None)` are values for which computation has failed;
     /// - `Some(Some(op))` are successful computations.
     evaluated: IndexVec<VnIndex, Option<Option<&'a OpTy<'tcx>>>>,
-    /// Cache the deref values.
-    derefs: Vec<VnIndex>,
     ssa: &'body SsaLocals,
     dominators: Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
@@ -408,7 +394,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             rev_locals: IndexVec::with_capacity(num_values),
             values: ValueSet::new(num_values),
             evaluated: IndexVec::with_capacity(num_values),
-            derefs: Vec::new(),
             ssa,
             dominators,
             reused_locals: DenseBitSet::new_empty(local_decls.len()),
@@ -542,15 +527,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 
     fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
-        let value = self.insert(ty, Value::Projection(value, ProjectionElem::Deref));
-        self.derefs.push(value);
-        value
-    }
-
-    fn invalidate_derefs(&mut self) {
-        for deref in std::mem::take(&mut self.derefs) {
-            self.values.forget(deref);
-        }
+        self.insert(ty, Value::Projection(value, ProjectionElem::Deref))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1873,10 +1850,6 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
-        if context.is_mutating_use() && place.is_indirect() {
-            // Non-local mutation maybe invalidate deref.
-            self.invalidate_derefs();
-        }
         self.super_place(place, context, location);
     }
 
@@ -1906,11 +1879,6 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
             }
         }
 
-        if lhs.is_indirect() {
-            // Non-local mutation maybe invalidate deref.
-            self.invalidate_derefs();
-        }
-
         if let Some(local) = lhs.as_local()
             && self.ssa.is_ssa(local)
             && let rvalue_ty = rvalue.ty(self.local_decls, self.tcx)
@@ -1932,10 +1900,6 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
                 let opaque = self.new_opaque(ty);
                 self.assign(local, opaque);
             }
-        }
-        // Terminators that can write to memory may invalidate (nested) derefs.
-        if terminator.kind.can_write_to_memory() {
-            self.invalidate_derefs();
         }
         self.super_terminator(terminator, location);
     }
