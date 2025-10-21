@@ -504,7 +504,7 @@ impl TestProps {
                         &mut self.check_test_line_numbers_match,
                     );
 
-                    self.update_pass_mode(ln, test_revision, config);
+                    self.update_pass_mode(ln, config);
                     self.update_fail_mode(ln, config);
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
@@ -714,18 +714,15 @@ impl TestProps {
         }
     }
 
-    fn update_pass_mode(
-        &mut self,
-        ln: &DirectiveLine<'_>,
-        revision: Option<&str>,
-        config: &Config,
-    ) {
+    fn update_pass_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
             (TestMode::Crashes, _) => (),
             (TestMode::Codegen, "build-pass") => (),
             (TestMode::Incremental, _) => {
-                if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                // FIXME(Zalathar): This only detects forbidden directives that are
+                // declared _after_ the incompatible `//@ revisions:` directive(s).
+                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
                     panic!("`{s}` directive is only supported in `cfail` incremental tests")
                 }
             }
