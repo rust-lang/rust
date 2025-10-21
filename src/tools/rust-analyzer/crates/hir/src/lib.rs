@@ -171,6 +171,7 @@ pub use {
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
         next_solver::abi::Safety,
+        next_solver::clear_tls_solver_cache,
     },
     intern::{Symbol, sym},
 };
