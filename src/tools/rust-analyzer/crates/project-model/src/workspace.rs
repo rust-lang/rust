@@ -387,36 +387,36 @@ impl ProjectWorkspace {
                     progress,
                 )
             });
-            let cargo_config_extra_env =
-                s.spawn(move || cargo_config_env(cargo_toml, &config_file));
+            let cargo_env =
+                s.spawn(move || cargo_config_env(cargo_toml, &config_file, &config.extra_env));
             thread::Result::Ok((
                 rustc_cfg.join()?,
                 target_data.join()?,
                 rustc_dir.join()?,
                 loaded_sysroot.join()?,
                 cargo_metadata.join()?,
-                cargo_config_extra_env.join()?,
+                cargo_env.join()?,
             ))
         });
 
-        let (
-            rustc_cfg,
-            data_layout,
-            mut rustc,
-            loaded_sysroot,
-            cargo_metadata,
-            cargo_config_extra_env,
-        ) = match join {
-            Ok(it) => it,
-            Err(e) => std::panic::resume_unwind(e),
-        };
+        let (rustc_cfg, data_layout, mut rustc, loaded_sysroot, cargo_metadata, mut cargo_env) =
+            match join {
+                Ok(it) => it,
+                Err(e) => std::panic::resume_unwind(e),
+            };
+
+        for (key, value) in config.extra_env.iter() {
+            if let Some(value) = value {
+                cargo_env.insert(key.clone(), value.clone());
+            }
+        }
 
         let (meta, error) = cargo_metadata.with_context(|| {
             format!(
                 "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
             )
         })?;
-        let cargo = CargoWorkspace::new(meta, cargo_toml.clone(), cargo_config_extra_env, false);
+        let cargo = CargoWorkspace::new(meta, cargo_toml.clone(), cargo_env, false);
         if let Some(loaded_sysroot) = loaded_sysroot {
             tracing::info!(src_root = ?sysroot.rust_lib_src_root(), root = %loaded_sysroot, "Loaded sysroot");
             sysroot.set_workspace(loaded_sysroot);
@@ -586,7 +586,8 @@ impl ProjectWorkspace {
             .unwrap_or_else(|| dir.join("target").into());
         let cargo_script =
             fetch_metadata.exec(&target_dir, false, &|_| ()).ok().map(|(ws, error)| {
-                let cargo_config_extra_env = cargo_config_env(detached_file, &config_file);
+                let cargo_config_extra_env =
+                    cargo_config_env(detached_file, &config_file, &config.extra_env);
                 (
                     CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
                     WorkspaceBuildScripts::default(),
@@ -1089,7 +1090,13 @@ fn project_json_to_crate_graph(
                 },
                 file_id,
             )| {
-                let env = env.clone().into_iter().collect();
+                let mut env = env.clone().into_iter().collect::<Env>();
+                // Override existing env vars with those from `extra_env`
+                env.extend(
+                    extra_env
+                        .iter()
+                        .filter_map(|(k, v)| v.as_ref().map(|v| (k.clone(), v.clone()))),
+                );
 
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
