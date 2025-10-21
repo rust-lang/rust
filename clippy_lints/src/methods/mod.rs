@@ -5162,13 +5162,13 @@ impl Methods {
                 },
                 (sym::filter_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, unnecessary_filter_map::Kind::FilterMap);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                 },
                 (sym::find_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, unnecessary_filter_map::Kind::FindMap);
                 },
                 (sym::flat_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
