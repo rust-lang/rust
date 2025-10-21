@@ -187,6 +187,7 @@ fn process_struct_name_reference(
         return None;
     }
 
+    // FIXME: Processing RecordPat and RecordExpr for unordered fields, and insert RestPat
     let parent = full_path.syntax().parent()?;
     match_ast! {
         match parent {
