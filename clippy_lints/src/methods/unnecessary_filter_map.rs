@@ -9,11 +9,18 @@ use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
+use rustc_span::Span;
 use std::fmt::Display;
 
 use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>, kind: Kind) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    arg: &'tcx hir::Expr<'tcx>,
+    call_span: Span,
+    kind: Kind,
+) {
     if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         return;
     }
@@ -47,7 +54,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 span_lint(
                     cx,
                     UNNECESSARY_FILTER_MAP,
-                    expr.span,
+                    call_span,
                     String::from("this call to `.filter_map(..)` is unnecessary"),
                 );
                 return;
@@ -75,7 +82,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 Kind::FilterMap => UNNECESSARY_FILTER_MAP,
                 Kind::FindMap => UNNECESSARY_FIND_MAP,
             },
-            expr.span,
+            call_span,
             format!("this `.{kind}(..)` can be written more simply using `.{sugg}`"),
         );
     }
