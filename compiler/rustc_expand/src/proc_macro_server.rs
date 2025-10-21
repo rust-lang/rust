@@ -563,6 +563,8 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 
     fn from_str(&mut self, src: &str) -> Result<Self::TokenStream, String> {
+        const ERROR_MSG: &str = "cannot parse string into token stream";
+
         source_str_to_stream(
             self.psess(),
             FileName::proc_macro_source_code(src),
@@ -570,8 +572,13 @@ impl server::TokenStream for Rustc<'_, '_> {
             Some(self.call_site),
         )
         .map_err(|diags| {
-            diags.into_iter().for_each(Diag::cancel);
-            "cannot parse string into token stream".to_string()
+            let mut messages = diags.into_iter().map(Diag::cancel_into_message).flatten();
+            if let Some(msg) = messages.next() {
+                messages.for_each(drop);
+                format!("{ERROR_MSG}: {msg}")
+            } else {
+                ERROR_MSG.to_string()
+            }
         })
     }
 

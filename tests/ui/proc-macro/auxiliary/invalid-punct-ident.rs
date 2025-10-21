@@ -20,6 +20,9 @@ pub fn invalid_raw_ident(_: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn lexer_failure(_: TokenStream) -> TokenStream {
-    assert!("a b ) c".parse::<TokenStream>().is_err());
+    assert_eq!(
+        "a b ) c".parse::<TokenStream>().unwrap_err().to_string(),
+        "cannot parse string into token stream: unexpected closing delimiter: `)`"
+    );
     TokenStream::new()
 }
