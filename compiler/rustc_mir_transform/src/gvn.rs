@@ -194,8 +194,8 @@ enum AddressKind {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressBase {
-    /// This address is based on this local.
-    Local(Local),
+    /// This address is based on the local.
+    Local(VnIndex),
     /// This address is based on the deref of this pointer.
     Deref(VnIndex),
 }
@@ -457,13 +457,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         };
 
         let mut projection = place.projection.iter();
+        let base = self.locals[place.local]?;
         let base = if place.is_indirect_first_projection() {
-            let base = self.locals[place.local]?;
             // Skip the initial `Deref`.
             projection.next();
             AddressBase::Deref(base)
         } else {
-            AddressBase::Local(place.local)
+            AddressBase::Local(base)
         };
         // Do not try evaluating inside `Index`, this has been done by `simplify_place_projection`.
         let projection =
@@ -788,7 +788,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let (mut place_ty, mut value) = match base {
             // The base is a local, so we take the local's value and project from it.
             AddressBase::Local(local) => {
-                let local = self.locals[local]?;
                 let place_ty = PlaceTy::from_ty(self.ty(local));
                 (place_ty, local)
             }
