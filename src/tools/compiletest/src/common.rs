@@ -701,10 +701,13 @@ impl Config {
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
-        self.target_cfg().arch == arch ||
-        // Matching all the thumb variants as one can be convenient.
-        // (thumbv6m, thumbv7em, thumbv7m, etc.)
-        (arch == "thumb" && self.target.starts_with("thumb"))
+        self.target_cfg().arch == arch
+            || {
+                // Matching all the thumb variants as one can be convenient.
+                // (thumbv6m, thumbv7em, thumbv7m, etc.)
+                arch == "thumb" && self.target.starts_with("thumb")
+            }
+            || (arch == "i586" && self.target.starts_with("i586-"))
     }
 
     pub fn matches_os(&self, os: &str) -> bool {

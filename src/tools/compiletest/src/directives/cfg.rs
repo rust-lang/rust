@@ -166,6 +166,14 @@ fn parse_cfg_name_directive<'a>(
         message: "when the architecture is part of the Thumb family"
     }
 
+    // The "arch" of `i586-` targets is "x86", so for more specific matching
+    // we have to resort to a string-prefix check.
+    condition! {
+        name: "i586",
+        condition: config.matches_arch("i586"),
+        message: "when the subarchitecture is i586",
+    }
+
     condition! {
         name: "apple",
         condition: config.target.contains("apple"),
