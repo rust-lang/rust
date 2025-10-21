@@ -350,6 +350,14 @@ fn layout_of_uncached<'tcx>(
                     ty::PatternKind::Or(..) => bug!("patterns cannot have nested or patterns"),
                 },
             }
+            // Pattern types contain their base as their sole field.
+            // This allows the rest of the compiler to process pattern types just like
+            // single field transparent Adts, and only the parts of the compiler that
+            // specifically care about pattern types will have to handle it.
+            layout.fields = FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into_iter().collect(),
+                memory_index: [0].into_iter().collect(),
+            };
             tcx.mk_layout(layout)
         }
 
