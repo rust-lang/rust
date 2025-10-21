@@ -1249,6 +1249,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        // Skip suggestion if LHS contains a let-chain at this would likely be spurious
+        // cc: https://github.com/rust-lang/rust/issues/147664
+        if crate::op::contains_let_in_chain(lhs) {
+            return;
+        }
+
         let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
         err.code(code);
         err.span_label(lhs.span, "cannot assign to this expression");

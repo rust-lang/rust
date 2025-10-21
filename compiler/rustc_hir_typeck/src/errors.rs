@@ -3,20 +3,21 @@
 use std::borrow::Cow;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::Label;
+use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
+use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::fluent_generated as fluent;
+use crate::{FnCtxt, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_base_expression_double_dot, code = E0797)]
@@ -1131,6 +1132,39 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
         }
         diag
     }
+}
+
+pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
+    fnctxt: &FnCtxt<'a, '_>,
+    assign_op: Spanned<AssignOpKind>,
+    lhs_expr: &hir::Expr<'_>,
+) -> Result<(), Diag<'a>> {
+    if assign_op.node == hir::AssignOpKind::AddAssign
+        && let hir::ExprKind::Binary(bin_op, left, right) = &lhs_expr.kind
+        && bin_op.node == hir::BinOpKind::And
+        && crate::op::contains_let_in_chain(left)
+        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &right.kind
+        && matches!(path.res, hir::def::Res::Local(_))
+    {
+        let mut err = struct_span_code_err!(
+            fnctxt.dcx(),
+            assign_op.span,
+            E0368,
+            "binary assignment operation `+=` cannot be used in a let chain",
+        );
+
+        err.span_label(assign_op.span, "cannot use `+=` in a let chain");
+
+        err.span_suggestion(
+            assign_op.span,
+            "you might have meant to compare with `==` instead of assigning with `+=`",
+            "==",
+            Applicability::MaybeIncorrect,
+        );
+
+        return Err(err);
+    }
+    Ok(())
 }
 
 #[derive(Diagnostic)]
