@@ -76,3 +76,20 @@ fn with_annotations() {
         println!("foo is false");
     }
 }
+
+fn issue15924() {
+    let x = 0;
+    if matches!(x, 0..10) {
+        println!(":(");
+    } else {
+        //~^ if_not_else
+        println!(":)");
+    }
+
+    if dbg!(x) == 1 {
+        println!(":(");
+    } else {
+        //~^ if_not_else
+        println!(":)");
+    }
+}
