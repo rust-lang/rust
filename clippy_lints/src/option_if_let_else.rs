@@ -10,7 +10,7 @@ use clippy_utils::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::LangItem::{OptionNone, ResultErr};
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
@@ -313,11 +313,14 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
 }
 
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
-    if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
-        let res = cx.qpath_res(qpath, pat.hir_id);
-        if res.ctor_parent(cx).is_lang_item(cx, OptionSome) {
+    if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind
+        && let res = cx.qpath_res(qpath, pat.hir_id)
+        && let Some(did) = res.ctor_parent(cx).opt_def_id()
+    {
+        let lang_items = cx.tcx.lang_items();
+        if Some(did) == lang_items.option_some_variant() {
             return Some((inner_pat, false));
-        } else if res.ctor_parent(cx).is_lang_item(cx, ResultOk) {
+        } else if Some(did) == lang_items.result_ok_variant() {
             return Some((inner_pat, true));
         }
     }

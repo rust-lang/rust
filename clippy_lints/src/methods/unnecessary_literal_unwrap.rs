@@ -23,6 +23,7 @@ fn get_ty_from_args<'a>(args: Option<&'a [hir::GenericArg<'a>]>, index: usize) -
     }
 }
 
+#[expect(clippy::too_many_lines)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
@@ -38,19 +39,20 @@ pub(super) fn check(
     }
 
     let (constructor, call_args, ty) = if let hir::ExprKind::Call(call, call_args) = init.kind {
-        let Some((qpath, hir_id)) = call.opt_qpath() else {
-            return;
-        };
-
-        let args = last_path_segment(qpath).args.map(|args| args.args);
-        let res = cx.qpath_res(qpath, hir_id);
-
-        if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::OptionSome) {
-            (sym::Some, call_args, get_ty_from_args(args, 0))
-        } else if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultOk) {
-            (sym::Ok, call_args, get_ty_from_args(args, 0))
-        } else if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultErr) {
-            (sym::Err, call_args, get_ty_from_args(args, 1))
+        if let Some((qpath, hir_id)) = call.opt_qpath()
+            && let args = last_path_segment(qpath).args.map(|args| args.args)
+            && let Some(did) = cx.qpath_res(qpath, hir_id).ctor_parent(cx).opt_def_id()
+        {
+            let lang_items = cx.tcx.lang_items();
+            if Some(did) == lang_items.option_some_variant() {
+                (sym::Some, call_args, get_ty_from_args(args, 0))
+            } else if Some(did) == lang_items.result_ok_variant() {
+                (sym::Ok, call_args, get_ty_from_args(args, 0))
+            } else if Some(did) == lang_items.result_err_variant() {
+                (sym::Err, call_args, get_ty_from_args(args, 1))
+            } else {
+                return;
+            }
         } else {
             return;
         }

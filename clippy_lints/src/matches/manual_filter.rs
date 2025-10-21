@@ -52,13 +52,13 @@ fn peels_blocks_incl_unsafe<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
     peels_blocks_incl_unsafe_opt(expr).unwrap_or(expr)
 }
 
-// function called for each <expr> expression:
+/// Checks whether <expr> resolves to `Some(target)`
+// NOTE: called for each <expr> expression:
 // Some(x) => if <cond> {
 //    <expr>
 // } else {
 //    <expr>
 // }
-// Returns true if <expr> resolves to `Some(x)`, `false` otherwise
 fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr)
         // there can be not statements in the block as they would be removed when switching to `.filter`

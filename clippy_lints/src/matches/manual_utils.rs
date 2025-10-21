@@ -281,7 +281,7 @@ pub(super) fn try_parse_pattern<'tcx>(
     f(cx, pat, 0, ctxt)
 }
 
-// Checks for the `None` value.
+/// Checks for the `None` value, possibly in a block.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     peel_blocks(expr).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
 }
