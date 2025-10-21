@@ -193,14 +193,6 @@ enum AddressKind {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-enum AddressBase {
-    /// This address is based on the local.
-    Local(VnIndex),
-    /// This address is based on the deref of this pointer.
-    Deref(VnIndex),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Value<'a, 'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
@@ -232,9 +224,8 @@ enum Value<'a, 'tcx> {
     Repeat(VnIndex, ty::Const<'tcx>),
     /// The address of a place.
     Address {
-        base: AddressBase,
+        base: VnIndex,
         // We do not use a plain `Place` as we want to be able to reason about indices.
-        // This does not contain any `Deref` projection.
         projection: &'a [ProjectionElem<VnIndex, Ty<'tcx>>],
         kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
@@ -456,18 +447,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, pty, mutbl.to_mutbl_lossy()),
         };
 
-        let mut projection = place.projection.iter();
         let base = self.locals[place.local]?;
-        let base = if place.is_indirect_first_projection() {
-            // Skip the initial `Deref`.
-            projection.next();
-            AddressBase::Deref(base)
-        } else {
-            AddressBase::Local(base)
-        };
         // Do not try evaluating inside `Index`, this has been done by `simplify_place_projection`.
-        let projection =
-            projection.map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
+        let projection = place
+            .projection
+            .iter()
+            .map(|proj| proj.try_map(|index| self.locals[index], |ty| ty).ok_or(()));
         let projection = self.arena.try_alloc_from_iter(projection).ok()?;
 
         let index = self.values.insert_unique(ty, |provenance| Value::Address {
@@ -644,12 +629,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 self.ecx.project(base, elem).discard_err()?
             }
             Address { base, projection, .. } => {
-                debug_assert!(!projection.contains(&ProjectionElem::Deref));
-                let pointer = match base {
-                    AddressBase::Deref(pointer) => self.eval_to_const(pointer)?,
+                let mut projection = projection.iter();
+                let Some(ProjectionElem::Deref) = projection.next() else {
                     // We have no stack to point to.
-                    AddressBase::Local(_) => return None,
+                    return None;
                 };
+                let pointer = self.eval_to_const(base)?;
                 let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
                 for elem in projection {
                     // `Index` by constants should have been replaced by `ConstantIndex` by
@@ -782,25 +767,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn dereference_address(
         &mut self,
-        base: AddressBase,
+        mut base: VnIndex,
         projection: &[ProjectionElem<VnIndex, Ty<'tcx>>],
     ) -> Option<VnIndex> {
-        let (mut place_ty, mut value) = match base {
-            // The base is a local, so we take the local's value and project from it.
-            AddressBase::Local(local) => {
-                let place_ty = PlaceTy::from_ty(self.ty(local));
-                (place_ty, local)
-            }
-            // The base is a pointer's deref, so we introduce the implicit deref.
-            AddressBase::Deref(reborrow) => {
-                let place_ty = PlaceTy::from_ty(self.ty(reborrow));
-                self.project(place_ty, reborrow, ProjectionElem::Deref)?
-            }
-        };
+        let mut place_ty = PlaceTy::from_ty(self.ty(base));
         for &proj in projection {
-            (place_ty, value) = self.project(place_ty, value, proj)?;
+            (place_ty, base) = self.project(place_ty, base, proj)?;
         }
-        Some(value)
+        Some(base)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1290,11 +1264,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     }
 
                     // `&mut *p`, `&raw *p`, etc don't change metadata.
-                    Value::Address { base: AddressBase::Deref(reborrowed), projection, .. }
-                        if projection.is_empty() =>
-                    {
-                        reborrowed
-                    }
+                    Value::Address { base, projection: [ProjectionElem::Deref], .. } => base,
 
                     _ => break,
                 };
