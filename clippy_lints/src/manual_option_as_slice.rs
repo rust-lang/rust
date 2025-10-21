@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -124,8 +123,7 @@ fn check_map(cx: &LateContext<'_>, map: &Expr<'_>, span: Span, msrv: Msrv) {
 fn check_as_ref(cx: &LateContext<'_>, expr: &Expr<'_>, span: Span, msrv: Msrv) {
     if let ExprKind::MethodCall(seg, callee, [], _) = expr.kind
         && seg.ident.name == sym::as_ref
-        && let ty::Adt(adtdef, ..) = cx.typeck_results().expr_ty(callee).kind()
-        && cx.tcx.is_diagnostic_item(sym::Option, adtdef.did())
+        && cx.typeck_results().expr_ty(callee).is_diag_item(cx, sym::Option)
         && msrv.meets(
             cx,
             if clippy_utils::is_in_const_context(cx) {
