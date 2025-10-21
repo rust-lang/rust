@@ -40,6 +40,11 @@ impl Once {
     }
 
     #[inline]
+    pub const fn new_complete() -> Once {
+        Once { state: Cell::new(State::Complete) }
+    }
+
+    #[inline]
     pub fn is_completed(&self) -> bool {
         self.state.get() == State::Complete
     }
