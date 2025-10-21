@@ -38,7 +38,7 @@ use rustc_apfloat::{
 use rustc_ast_ir::FloatTy;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, CoroutineArgsParts, RegionKind, Upcast,
+    AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, RegionKind, Upcast,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _, Tys as _},
 };
 use smallvec::SmallVec;
@@ -682,8 +682,11 @@ impl<'db> HirDisplay<'db> for Const<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result<(), HirDisplayError> {
         match self.kind() {
             ConstKind::Placeholder(_) => write!(f, "<placeholder>"),
-            ConstKind::Bound(db, bound_const) => {
+            ConstKind::Bound(BoundVarIndexKind::Bound(db), bound_const) => {
                 write!(f, "?{}.{}", db.as_u32(), bound_const.var.as_u32())
+            }
+            ConstKind::Bound(BoundVarIndexKind::Canonical, bound_const) => {
+                write!(f, "?c.{}", bound_const.var.as_u32())
             }
             ConstKind::Infer(..) => write!(f, "#c#"),
             ConstKind::Param(param) => {
@@ -1525,8 +1528,11 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     }
                 }
             }
-            TyKind::Bound(debruijn, ty) => {
+            TyKind::Bound(BoundVarIndexKind::Bound(debruijn), ty) => {
                 write!(f, "?{}.{}", debruijn.as_usize(), ty.var.as_usize())?
+            }
+            TyKind::Bound(BoundVarIndexKind::Canonical, ty) => {
+                write!(f, "?c.{}", ty.var.as_usize())?
             }
             TyKind::Dynamic(bounds, region) => {
                 // We want to put auto traits after principal traits, regardless of their written order.
@@ -1955,8 +1961,11 @@ impl<'db> HirDisplay<'db> for Region<'db> {
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
                 Ok(())
             }
-            RegionKind::ReBound(db, idx) => {
+            RegionKind::ReBound(BoundVarIndexKind::Bound(db), idx) => {
                 write!(f, "?{}.{}", db.as_u32(), idx.var.as_u32())
+            }
+            RegionKind::ReBound(BoundVarIndexKind::Canonical, idx) => {
+                write!(f, "?c.{}", idx.var.as_u32())
             }
             RegionKind::ReVar(_) => write!(f, "_"),
             RegionKind::ReStatic => write!(f, "'static"),

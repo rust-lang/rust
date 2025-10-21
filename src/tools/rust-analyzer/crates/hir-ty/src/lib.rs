@@ -61,7 +61,7 @@ use la_arena::Idx;
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
+    BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
     inherent::{IntoKind, SliceLike, Ty as _},
 };
 use syntax::ast::{ConstArg, make};
@@ -405,7 +405,7 @@ where
                     ))
                 }
                 TyKind::Infer(_) => error(),
-                TyKind::Bound(index, _) if index > self.binder => error(),
+                TyKind::Bound(BoundVarIndexKind::Bound(index), _) if index > self.binder => error(),
                 _ => t.try_super_fold_with(self),
             }
         }
@@ -432,7 +432,9 @@ where
                     Ok(Const::new_bound(self.interner, self.binder, BoundConst { var }))
                 }
                 ConstKind::Infer(_) => error(),
-                ConstKind::Bound(index, _) if index > self.binder => error(),
+                ConstKind::Bound(BoundVarIndexKind::Bound(index), _) if index > self.binder => {
+                    error()
+                }
                 _ => ct.try_super_fold_with(self),
             }
         }
@@ -454,7 +456,9 @@ where
                     ))
                 }
                 RegionKind::ReVar(_) => error(),
-                RegionKind::ReBound(index, _) if index > self.binder => error(),
+                RegionKind::ReBound(BoundVarIndexKind::Bound(index), _) if index > self.binder => {
+                    error()
+                }
                 _ => Ok(region),
             }
         }

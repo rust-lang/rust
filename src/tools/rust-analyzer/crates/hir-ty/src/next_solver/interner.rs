@@ -18,8 +18,8 @@ use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, DebruijnIndex, EarlyBinder,
-    FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, TraitRef, TypeVisitableExt,
-    UniverseIndex, Upcast, Variance,
+    FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
+    TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     inherent::{self, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
@@ -33,8 +33,8 @@ use crate::{
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, RegionAssumptions,
-        SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, OpaqueTypeKey,
+        RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
         util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls},
     },
 };
@@ -850,7 +850,7 @@ macro_rules! as_lang_item {
     }};
 }
 
-impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
+impl<'db> Interner for DbInterner<'db> {
     type DefId = SolverDefId;
     type LocalDefId = SolverDefId;
     type LocalDefIds = SolverDefIds<'db>;
@@ -877,9 +877,9 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn mk_predefined_opaques_in_body(
         self,
-        data: rustc_type_ir::solve::PredefinedOpaquesData<Self>,
+        data: &[(OpaqueTypeKey<'db>, Self::Ty)],
     ) -> Self::PredefinedOpaques {
-        PredefinedOpaques::new(self, data)
+        PredefinedOpaques::new_from_iter(self, data.iter().cloned())
     }
 
     type CanonicalVarKinds = CanonicalVars<'db>;
@@ -997,8 +997,8 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         from_entry(&f())
     }
 
-    fn evaluation_is_concurrent(&self) -> bool {
-        false
+    fn assert_evaluation_is_concurrent(&self) {
+        panic!("evaluation shouldn't be concurrent yet")
     }
 
     fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
@@ -1952,6 +1952,13 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
             SolverContext<'db>,
             Self,
         >(self, canonical_goal)
+    }
+
+    fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool {
+        matches!(
+            self.as_trait_lang_item(def_id),
+            Some(SolverTraitLangItem::Sized | SolverTraitLangItem::MetaSized)
+        )
     }
 }
 
