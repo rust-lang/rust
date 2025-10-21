@@ -605,6 +605,8 @@ fn ignore_arch() {
         ("i686-unknown-linux-gnu", "x86"),
         ("nvptx64-nvidia-cuda", "nvptx64"),
         ("thumbv7m-none-eabi", "thumb"),
+        ("i586-unknown-linux-gnu", "x86"),
+        ("i586-unknown-linux-gnu", "i586"),
     ];
     for (target, arch) in archs {
         let config: Config = cfg().target(target).build();
