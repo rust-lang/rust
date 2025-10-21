@@ -131,7 +131,7 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeResPath};
+use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -298,6 +298,22 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     };
 
     cx.tcx.lang_items().get(item) == Some(did)
+}
+
+/// Checks is `expr` is `None`
+pub fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+}
+
+/// If `expr` is `Some(inner)`, returns `inner`
+pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(e, [arg]) = expr.kind
+        && e.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+    {
+        Some(arg)
+    } else {
+        None
+    }
 }
 
 /// Checks if `expr` is an empty block or an empty tuple.

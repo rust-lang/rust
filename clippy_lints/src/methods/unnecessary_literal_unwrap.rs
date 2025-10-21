@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
-use clippy_utils::{last_path_segment, sym};
+use clippy_utils::{is_none_expr, last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::LateContext;
@@ -56,7 +56,7 @@ pub(super) fn check(
         } else {
             return;
         }
-    } else if init.res(cx).ctor_parent(cx).is_lang_item(cx, hir::LangItem::OptionNone) {
+    } else if is_none_expr(cx, init) {
         let call_args: &[hir::Expr<'_>] = &[];
         (sym::None, call_args, None)
     } else {

@@ -1,10 +1,10 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::sym;
 use clippy_utils::ty::{is_copy, option_arg_ty};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
+use clippy_utils::{as_some_expr, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -47,8 +47,7 @@ pub(super) fn check<'tcx>(
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
             if kind.is_filter_map()
-                && let hir::ExprKind::Call(expr, [arg]) = body.value.kind
-                && expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+                && let Some(arg) = as_some_expr(cx, body.value)
                 && let hir::ExprKind::Path(_) = arg.kind
             {
                 span_lint(

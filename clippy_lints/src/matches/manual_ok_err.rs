@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{option_arg_ty, peel_and_count_ty_refs};
-use clippy_utils::{get_parent_expr, peel_blocks, span_contains_comment};
+use clippy_utils::{as_some_expr, get_parent_expr, is_none_expr, peel_blocks, span_contains_comment};
 use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr};
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath};
 use rustc_lint::{LateContext, LintContext};
@@ -106,8 +106,7 @@ fn is_ok_or_err<'hir>(cx: &LateContext<'_>, pat: &Pat<'hir>) -> Option<(bool, &'
 
 /// Check if `expr` contains `Some(ident)`, possibly as a block
 fn is_some_ident<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, ident: &Ident, ty: Ty<'tcx>) -> bool {
-    if let ExprKind::Call(body_callee, [body_arg]) = peel_blocks(expr).kind
-        && body_callee.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+    if let Some(body_arg) = as_some_expr(cx, peel_blocks(expr))
         && cx.typeck_results().expr_ty(body_arg) == ty
         && let ExprKind::Path(QPath::Resolved(
             _,
@@ -124,7 +123,7 @@ fn is_some_ident<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, ident: &Ident, t
 
 /// Check if `expr` is `None`, possibly as a block
 fn is_none(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    peel_blocks(expr).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+    is_none_expr(cx, peel_blocks(expr))
 }
 
 /// Suggest replacing `expr` by `scrutinee.METHOD()`, where `METHOD` is either `ok` or

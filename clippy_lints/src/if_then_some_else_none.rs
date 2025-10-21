@@ -2,14 +2,13 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context, peel_blocks, sym,
+    as_some_expr, contains_return, expr_adjustment_requires_coercion, higher, is_else_clause, is_in_const_context,
+    is_none_expr, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -70,11 +69,10 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
         }) = higher::If::hir(expr)
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
-            && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
+            && let Some(then_arg) = as_some_expr(cx, then_expr)
             && !expr.span.from_expansion()
             && !then_expr.span.from_expansion()
-            && then_call.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
-            && peel_blocks(els).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+            && is_none_expr(cx, peel_blocks(els))
             && !is_else_clause(cx.tcx, expr)
             && !is_in_const_context(cx)
             && self.msrv.meets(cx, msrvs::BOOL_THEN)
