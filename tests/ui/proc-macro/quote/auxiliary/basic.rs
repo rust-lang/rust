@@ -11,6 +11,9 @@ use proc_macro::*;
 
 #[proc_macro]
 pub fn run_tests(_: TokenStream) -> TokenStream {
+    test_sep();
+    test_dollar_dollar();
+
     test_quote_impl();
     test_substitution();
     test_iter();
@@ -48,6 +51,23 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     test_quote_raw_id();
 
     TokenStream::new()
+}
+
+fn test_sep() {
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($iter) << *);
+
+    let expected = "\"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar() {
+    let iter = ["a", "b"].into_iter();
+    let x = "X";
+    let tokens = quote!($$ x $($$ x $iter)*);
+
+    let expected = "$x $x \"a\" $x \"b\"";
+    assert_eq!(expected, tokens.to_string());
 }
 
 // Based on https://github.com/dtolnay/quote/blob/0245506323a3616daa2ee41c6ad0b871e4d78ae4/tests/test.rs
