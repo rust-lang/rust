@@ -83,3 +83,20 @@ mod issue15691 {
         };
     }
 }
+
+fn recv_requiring_parens() {
+    struct S;
+
+    impl std::ops::Not for S {
+        type Output = Option<u64>;
+        fn not(self) -> Self::Output {
+            None
+        }
+    }
+
+    let _ = match !S {
+        //~^ match_as_ref
+        None => None,
+        Some(ref v) => Some(v),
+    };
+}

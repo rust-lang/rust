@@ -62,5 +62,26 @@ LL -             }
 LL +             self.source.as_ref().map(|x| x as _)
    |
 
-error: aborting due to 3 previous errors
+error: manual implementation of `Option::as_ref`
+  --> tests/ui/match_as_ref.rs:97:13
+   |
+LL |       let _ = match !S {
+   |  _____________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref v) => Some(v),
+LL | |     };
+   | |_____^
+   |
+help: use `Option::as_ref()` directly
+   |
+LL -     let _ = match !S {
+LL -
+LL -         None => None,
+LL -         Some(ref v) => Some(v),
+LL -     };
+LL +     let _ = (!S).as_ref();
+   |
+
+error: aborting due to 4 previous errors
 

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::option_arg_ty;
 use clippy_utils::{is_none_arm, peel_blocks};
 use rustc_errors::Applicability;
@@ -52,7 +52,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                     format!("use `Option::{method}()` directly"),
                     format!(
                         "{}.{method}(){cast}",
-                        snippet_with_applicability(cx, ex.span, "_", &mut applicability),
+                        Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
                     ),
                     applicability,
                 );
