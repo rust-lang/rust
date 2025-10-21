@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::option_arg_ty;
@@ -41,17 +41,22 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         };
 
         let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             MATCH_AS_REF,
             expr.span,
-            format!("use `{method}()` instead"),
-            "try",
-            format!(
-                "{}.{method}(){cast}",
-                snippet_with_applicability(cx, ex.span, "_", &mut applicability),
-            ),
-            applicability,
+            format!("manual implementation of `Option::{method}`"),
+            |diag| {
+                diag.span_suggestion_verbose(
+                    expr.span,
+                    format!("use `Option::{method}()` directly"),
+                    format!(
+                        "{}.{method}(){cast}",
+                        snippet_with_applicability(cx, ex.span, "_", &mut applicability),
+                    ),
+                    applicability,
+                );
+            },
         );
     }
 }
