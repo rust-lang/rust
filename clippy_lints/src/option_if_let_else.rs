@@ -6,16 +6,15 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, eager_or_lazy, expr_requires_coercion, higher, is_else_clause,
-    is_in_const_context, peel_blocks, peel_hir_expr_while,
+    is_in_const_context, is_none_pattern, peel_blocks, peel_hir_expr_while,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, ResultErr};
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
-    Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatExpr, PatExprKind, PatKind, Path,
-    QPath, UnOp,
+    Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -379,14 +378,7 @@ fn try_convert_match<'tcx>(
 
 fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
-        PatKind::Expr(PatExpr {
-            kind: PatExprKind::Path(qpath),
-            hir_id,
-            ..
-        }) => cx
-            .qpath_res(qpath, *hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionNone),
+        _ if is_none_pattern(cx, arm.pat) => true,
         PatKind::TupleStruct(ref qpath, [first_pat], _) => {
             cx.qpath_res(qpath, arm.pat.hir_id)
                 .ctor_parent(cx)

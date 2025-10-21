@@ -320,6 +320,25 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
+/// If `pat` is:
+/// - `Some(inner)`, returns `inner`
+///    - it will _usually_ contain just one element, but could have two, given patterns like
+///      `Some(inner, ..)` or `Some(.., inner)`
+/// - `Some`, returns `[]`
+/// - otherwise, returns `None`
+pub fn as_some_pattern<'a, 'hir>(cx: &LateContext<'_>, pat: &'a Pat<'hir>) -> Option<&'a [Pat<'hir>]> {
+    if let PatKind::TupleStruct(ref qpath, inner, _) = pat.kind
+        && cx
+            .qpath_res(qpath, pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, OptionSome)
+    {
+        Some(inner)
+    } else {
+        None
+    }
+}
+
 /// Checks if the `pat` is `None`.
 pub fn is_none_pattern(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     matches!(pat.kind,
@@ -2783,11 +2802,7 @@ pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     pat: &'a Pat<'hir>,
     else_body: &Expr<'_>,
 ) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind
-        && cx
-            .qpath_res(&pat_path, pat.hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionSome)
+    if let Some([inner_pat]) = as_some_pattern(cx, pat)
         && !is_refutable(cx, inner_pat)
         && let else_body = peel_blocks(else_body)
         && let ExprKind::Ret(Some(ret_val)) = else_body.kind

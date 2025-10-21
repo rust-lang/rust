@@ -5,11 +5,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::is_res_used;
-use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable};
+use clippy_utils::{as_some_pattern, get_enclosing_loop_or_multi_call_closure, higher, is_refutable};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, LetStmt, Mutability, PatKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, LetStmt, Mutability, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
@@ -19,8 +19,7 @@ use rustc_span::symbol::sym;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::WhileLet { if_then, let_pat, let_expr, label, .. }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
-        && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
-        && cx.qpath_res(pat_path, let_pat.hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+        && let Some(some_pat) = as_some_pattern(cx, let_pat)
         // check for call to `Iterator::next`
         && let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind
         && method_name.ident.name == sym::next

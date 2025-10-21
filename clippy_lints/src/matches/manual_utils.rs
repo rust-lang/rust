@@ -5,14 +5,14 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, peel_blocks,
-    peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, as_some_pattern, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed,
+    is_none_pattern, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::LangItem::OptionNone;
 use rustc_hir::def::Res;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatExpr, PatExprKind, PatKind, Path, QPath};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{SyntaxContext, sym};
 
@@ -255,23 +255,9 @@ pub(super) fn try_parse_pattern<'tcx>(
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
             PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
-            PatKind::Expr(PatExpr {
-                kind: PatExprKind::Path(qpath),
-                hir_id,
-                ..
-            }) if cx
-                .qpath_res(qpath, *hir_id)
-                .ctor_parent(cx)
-                .is_lang_item(cx, OptionNone) =>
-            {
-                Some(OptionPat::None)
-            },
-            PatKind::TupleStruct(ref qpath, [pattern], _)
-                if cx
-                    .qpath_res(qpath, pat.hir_id)
-                    .ctor_parent(cx)
-                    .is_lang_item(cx, OptionSome)
-                    && pat.span.ctxt() == ctxt =>
+            _ if is_none_pattern(cx, pat) => Some(OptionPat::None),
+            _ if let Some([pattern]) = as_some_pattern(cx, pat)
+                && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
