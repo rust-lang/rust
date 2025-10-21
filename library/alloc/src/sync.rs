@@ -2619,7 +2619,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
     ///     }
     /// }
     ///
-    /// let foo  = Arc::new(Foo);
+    /// let foo = Arc::new(Foo);
     /// let foo2 = Arc::clone(&foo);
     ///
     /// drop(foo);    // Doesn't print anything

@@ -2283,7 +2283,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
     ///     }
     /// }
     ///
-    /// let foo  = Rc::new(Foo);
+    /// let foo = Rc::new(Foo);
     /// let foo2 = Rc::clone(&foo);
     ///
     /// drop(foo);    // Doesn't print anything
