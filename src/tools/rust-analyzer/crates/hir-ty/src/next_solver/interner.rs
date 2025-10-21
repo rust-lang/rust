@@ -2,6 +2,7 @@
 
 use std::{fmt, ops::ControlFlow};
 
+pub use tls_cache::clear_tls_solver_cache;
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
@@ -2238,5 +2239,13 @@ mod tls_cache {
                 >(&mut handle.cache)
             })
         })
+    }
+
+    /// Clears the thread-local trait solver cache.
+    ///
+    /// Should be called before getting memory usage estimations, as the solver cache
+    /// is per-revision and usually should be excluded from estimations.
+    pub fn clear_tls_solver_cache() {
+        GLOBAL_CACHE.with_borrow_mut(|handle| *handle = None);
     }
 }

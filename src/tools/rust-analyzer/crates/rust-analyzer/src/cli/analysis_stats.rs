@@ -345,6 +345,8 @@ impl flags::AnalysisStats {
             self.run_term_search(&workspace, db, &vfs, &file_ids, verbosity);
         }
 
+        hir::clear_tls_solver_cache();
+
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
 
