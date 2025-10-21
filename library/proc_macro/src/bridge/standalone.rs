@@ -1,13 +1,16 @@
 #![warn(warnings)]
 use std::cell::{Cell, RefCell};
-use std::ops::{Bound, Range};
+use std::ops::{Bound, Range, RangeBounds};
 
 use crate::bridge::client::Symbol;
 use crate::bridge::fxhash::FxHashMap;
 use crate::bridge::{
-    DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Literal, Punct, TokenTree, server,
+    self, DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Punct, TokenTree, server,
 };
 use crate::{Delimiter, LEGAL_PUNCT_CHARS};
+
+type Result<T> = std::result::Result<T, ()>;
+type Literal = bridge::Literal<Span, Symbol>;
 
 pub struct NoRustc;
 
@@ -97,7 +100,7 @@ fn parse_maybe_raw_str(
     mut s: &str,
     raw_variant: fn(u8) -> LitKind,
     regular_variant: LitKind,
-) -> Result<Literal<Span, Symbol>, ()> {
+) -> Result<Literal> {
     /// Returns a string containing exactly `num` '#' characters.
     /// Uses a 256-character source string literal which is always safe to
     /// index with a `u8` index.
@@ -133,40 +136,86 @@ fn parse_maybe_raw_str(
     }
     let sym = parse_plain_str(s)?;
 
-    Ok(make_literal(
-        if let Some(h) = hash_count { raw_variant(h) } else { regular_variant },
-        sym,
-        None,
-    ))
+    Ok(make_literal(if let Some(h) = hash_count { raw_variant(h) } else { regular_variant }, sym))
 }
 
-fn parse_char(s: &str) -> Result<Literal<Span, Symbol>, ()> {
-    if s.chars().count() == 1 {
-        Ok(make_literal(LitKind::Char, Symbol::new(s), None))
-    } else {
-        Err(())
-    }
+fn parse_char(s: &str) -> Result<Literal> {
+    if s.chars().count() == 1 { Ok(make_literal(LitKind::Char, Symbol::new(s))) } else { Err(()) }
 }
 
-fn parse_plain_str(mut s: &str) -> Result<Symbol, ()> {
+fn parse_plain_str(mut s: &str) -> Result<Symbol> {
     s = s.strip_prefix("\"").ok_or(())?.strip_suffix('\"').ok_or(())?;
     Ok(Symbol::new(s))
 }
 
-fn parse_numeral(s: &str) -> Result<Literal<Span, Symbol>, ()> {
-    /*if s.ends_with("f16")
-        || s.ends_with("f32")
-        || s.ends_with("f64")
-        || s.ends_with("f128")
-    {
-        Literal { kind: todo!(), symbol: todo!(), suffix: todo!(), span: Span };
+const INT_SUFFIXES: &[&str] =
+    &["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "u128", "i128"];
+const FLOAT_SUFFIXES: &[&str] = &["f16", "f32", "f64", "f128"];
+
+fn parse_numeral(mut s: &str) -> Result<Literal> {
+    for suffix in INT_SUFFIXES {
+        if s.ends_with(suffix) {
+            return parse_integer(s);
+        }
     }
-    todo!()*/
-    todo!()
+    let is_negative = s.starts_with('-');
+    let non_negative = s.strip_prefix('-').unwrap();
+    if non_negative.starts_with("0b")
+        || non_negative.starts_with("0o")
+        || non_negative.starts_with("0x")
+    {
+        return parse_integer(s);
+    }
+    let (s, suffix) = strip_number_suffix(s, FLOAT_SUFFIXES);
+
+    Ok(Literal { kind: LitKind::Float, symbol: todo!(), suffix, span: Span })
 }
 
-fn make_literal(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal<Span, Symbol> {
-    Literal { kind, symbol, suffix, span: Span }
+fn parse_integer(mut s: &str) -> Result<Literal> {
+    let is_negative = s.starts_with('-');
+    s = s.strip_prefix('-').unwrap();
+
+    let (s, valid_chars) = if let Some(s) = s.strip_prefix("0b") {
+        (s, '0'..='1')
+    } else if let Some(s) = s.strip_prefix("0o") {
+        (s, '0'..='7')
+    } else if let Some(s) = s.strip_prefix("0x") {
+        (s, '0'..='F')
+    } else {
+        (s, '0'..='9')
+    };
+
+    let (s, suffix) = strip_number_suffix(s, INT_SUFFIXES);
+
+    let mut any_found = false;
+    for c in s.chars() {
+        if c == '_' {
+            continue;
+        }
+        if valid_chars.contains(&c) {
+            any_found = true;
+            continue;
+        }
+        return Err(());
+    }
+    if !any_found {
+        return Err(());
+    }
+
+    Ok(Literal { kind: LitKind::Integer, symbol: Symbol::new(s), suffix, span: Span })
+}
+
+fn strip_number_suffix<'a>(s: &'a str, suffixes: &[&str]) -> (&'a str, Option<Symbol>) {
+    for suf in suffixes {
+        if let Some(new_s) = s.strip_suffix(suf) {
+            return (new_s, Some(Symbol::new(suf)));
+        }
+    }
+    (s, None)
+}
+
+fn make_literal(kind: LitKind, symbol: Symbol) -> Literal {
+    Literal { kind, symbol, suffix: None, span: Span }
 }
 
 impl server::FreeFunctions for NoRustc {
@@ -181,7 +230,7 @@ impl server::FreeFunctions for NoRustc {
 
     fn track_path(&mut self, _path: &str) {}
 
-    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal> {
         let mut chars = s.chars();
         let Some(first) = chars.next() else {
             return Err(());
@@ -203,7 +252,7 @@ impl server::FreeFunctions for NoRustc {
             'r' => parse_maybe_raw_str(rest, LitKind::StrRaw, LitKind::Str),
             '0'..='9' | '-' => parse_numeral(s),
             '\'' => parse_char(s),
-            '"' => Ok(make_literal(LitKind::Str, parse_plain_str(s)?, None)),
+            '"' => Ok(make_literal(LitKind::Str, parse_plain_str(s)?)),
             _ => Err(()),
         }
     }
@@ -218,7 +267,7 @@ impl server::TokenStream for NoRustc {
         tokens.0.is_empty()
     }
 
-    fn expand_expr(&mut self, _tokens: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
+    fn expand_expr(&mut self, _tokens: &Self::TokenStream) -> Result<Self::TokenStream> {
         todo!("`expand_expr` is not yet supported in the standalone backend")
     }
 
@@ -318,7 +367,7 @@ impl server::TokenStream for NoRustc {
                     }
                 }
                 TokenTree::Literal(lit) => {
-                    let respanned = Literal {
+                    let respanned = bridge::Literal {
                         kind: lit.kind,
                         symbol: lit.symbol,
                         suffix: lit.suffix,
@@ -419,7 +468,7 @@ pub struct FreeFunctions;
 #[derive(Clone, Default)]
 pub struct TokenStream(Vec<TokenTree<TokenStream, Span, Symbol>>);
 impl TokenStream {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self(Vec::new())
     }
 }
@@ -449,7 +498,7 @@ impl server::Server for NoRustc {
 }
 
 impl server::Symbol for NoRustc {
-    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
+    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol> {
         todo!()
     }
 }
