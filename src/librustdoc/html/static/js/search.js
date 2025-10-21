@@ -1648,7 +1648,7 @@ class DocSearch {
          * ], [string]>}
          */
         const raw = JSON.parse(encoded);
-        return {
+        const item = {
             krate: raw[0],
             ty: raw[1],
             modulePath: raw[2] === 0 ? null : raw[2] - 1,
@@ -1658,7 +1658,15 @@ class DocSearch {
             deprecated: raw[6] === 1 ? true : false,
             unstable: raw[7] === 1 ? true : false,
             associatedItemDisambiguator: raw.length === 8 ? null : raw[8],
+            isBangMacro: false,
         };
+        if (item.ty === 28 || item.ty === 29) {
+            // "proc attribute" is 23, "proc derive" is 24 whereas "bang macro attribute" is 28 and
+            // "bang macro derive" is 29, so 5 of difference to go from the latter to the former.
+            item.ty -= 5;
+            item.isBangMacro = true;
+        }
+        return item;
     }
 
     /**
@@ -2156,7 +2164,7 @@ class DocSearch {
             let displayPath;
             let href;
             let traitPath = null;
-            const type = itemTypesName[item.ty];
+            const type = item.entry && item.entry.isBangMacro ? "macro" : itemTypesName[item.ty];
             const name = item.name;
             let path = item.modulePath;
             let exactPath = item.exactModulePath;
@@ -3952,7 +3960,7 @@ class DocSearch {
                  * @param {Promise<rustdoc.PlainResultObject|null>[]} data
                  * @returns {AsyncGenerator<rustdoc.ResultObject, boolean>}
                  */
-                const flush = async function* (data) {
+                const flush = async function*(data) {
                     const satr = sortAndTransformResults(
                         await Promise.all(data),
                         null,
