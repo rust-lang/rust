@@ -244,6 +244,27 @@ declare namespace rustdoc {
         traitParent: number?,
         deprecated: boolean,
         associatedItemDisambiguator: string?,
+        /**
+         * If `true`, this item is a `macro_rules!` macro that supports
+         * multiple usage syntaxes, as described in RFC 3697 and 3698.
+         * The syntax for such a macro looks like this:
+         *
+         * ```rust
+         * /// Doc Comment.
+         * macro_rules! NAME {
+         *     attr(key = $value:literal) ($attached:item) => { ... };
+         *     derive() ($attached:item) => { ... };
+         *     ($bang:tt) => { ... };
+         *  }
+         * ```
+         *
+         * Each usage syntax gets a separate EntryData---one for the attr,
+         * one for the derive, and one for the bang syntax---with a corresponding
+         * `ty` field that can be used for filtering and presenting results.
+         * But the documentation lives in a single `macro.NAME.html` page, and
+         * this boolean flag is used for generating that HREF.
+         */
+        isBangMacro: boolean,
     }
 
     /**
@@ -300,7 +321,7 @@ declare namespace rustdoc {
 
     type ItemType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
         11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
-        21 | 22 | 23 | 24 | 25 | 26;
+        21 | 22 | 23 | 24 | 25 | 26 | 28 | 29;
 
     /**
      * The viewmodel for the search engine results page.

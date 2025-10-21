@@ -523,10 +523,12 @@ impl AllTypes {
                 ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => {
+                ItemType::ProcAttribute | ItemType::BangMacroAttribute => {
                     self.attribute_macros.insert(ItemEntry::new(new_url, name))
                 }
-                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcDerive | ItemType::BangMacroDerive => {
+                    self.derive_macros.insert(ItemEntry::new(new_url, name))
+                }
                 ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
@@ -2610,8 +2612,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ForeignType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::Attribute => ItemSection::Attributes,
-        ItemType::ProcAttribute => ItemSection::AttributeMacros,
-        ItemType::ProcDerive => ItemSection::DeriveMacros,
+        ItemType::ProcAttribute | ItemType::BangMacroAttribute => ItemSection::AttributeMacros,
+        ItemType::ProcDerive | ItemType::BangMacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
     }
 }

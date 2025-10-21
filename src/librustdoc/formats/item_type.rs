@@ -99,6 +99,8 @@ item_type! {
     // This number is reserved for use in JavaScript
     // Generic = 26,
     Attribute = 27,
+    BangMacroAttribute = 28,
+    BangMacroDerive = 29,
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
@@ -128,10 +130,8 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
             clean::MacroItem(..) => ItemType::Macro,
-            // Is this a good idea?
-            clean::AttrMacroItem => ItemType::ProcAttribute,
-            // Is this a good idea?
-            clean::DeriveMacroItem => ItemType::ProcDerive,
+            clean::AttrMacroItem => ItemType::BangMacroAttribute,
+            clean::DeriveMacroItem => ItemType::BangMacroDerive,
             clean::PrimitiveItem(..) => ItemType::Primitive,
             clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
@@ -225,8 +225,8 @@ impl ItemType {
             ItemType::AssocConst => "associatedconstant",
             ItemType::ForeignType => "foreigntype",
             ItemType::Keyword => "keyword",
-            ItemType::ProcAttribute => "attr",
-            ItemType::ProcDerive => "derive",
+            ItemType::ProcAttribute | ItemType::BangMacroAttribute => "attr",
+            ItemType::ProcDerive | ItemType::BangMacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
         }

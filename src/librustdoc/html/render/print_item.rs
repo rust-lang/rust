@@ -314,7 +314,14 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             FxHashMap::default();
 
         for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
-            not_stripped_items.entry(item.type_()).or_default().push((index, item));
+            // To prevent having new "bang macro attribute/derive" sections in the module,
+            // we cheat by turning them into their "proc-macro equivalent".
+            let type_ = match item.type_() {
+                ItemType::BangMacroAttribute => ItemType::ProcAttribute,
+                ItemType::BangMacroDerive => ItemType::ProcDerive,
+                type_ => type_,
+            };
+            not_stripped_items.entry(type_).or_default().push((index, item));
         }
 
         // the order of item types in the listing

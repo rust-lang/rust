@@ -898,8 +898,8 @@ impl FromClean<ItemType> for ItemKind {
             Keyword => ItemKind::Keyword,
             Attribute => ItemKind::Attribute,
             TraitAlias => ItemKind::TraitAlias,
-            ProcAttribute => ItemKind::ProcAttribute,
-            ProcDerive => ItemKind::ProcDerive,
+            ProcAttribute | BangMacroAttribute => ItemKind::ProcAttribute,
+            ProcDerive | BangMacroDerive => ItemKind::ProcDerive,
         }
     }
 }
