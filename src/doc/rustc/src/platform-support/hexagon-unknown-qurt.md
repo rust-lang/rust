@@ -1,4 +1,4 @@
-# `hexagon-qurt`
+# `hexagon-unknown-qurt`
 
 **Tier: 3**
 
@@ -6,7 +6,7 @@ Rust for Hexagon QuRT (Qualcomm Real-Time OS).
 
 | Target               | Description |
 | -------------------- | ------------|
-| hexagon-qurt | Hexagon 32-bit QuRT |
+| hexagon-unknown-qurt | Hexagon 32-bit QuRT |
 
 ## Target maintainers
 
@@ -47,9 +47,9 @@ list in `bootstrap.toml`:
 [build]
 build-stage = 1
 host = ["<target for your host>"]
-target = ["<target for your host>", "hexagon-qurt"]
+target = ["<target for your host>", "hexagon-unknown-qurt"]
 
-[target.hexagon-qurt]
+[target.hexagon-unknown-qurt]
 cc = "hexagon-clang"
 cxx = "hexagon-clang++"
 ranlib = "llvm-ranlib"
@@ -74,7 +74,7 @@ configuration with additional linker flags:
 
 ```sh
 # Build a static executable for QuRT
-cargo rustc --target hexagon-qurt -- \
+cargo rustc --target hexagon-unknown-qurt -- \
     -C link-args="-static -nostdlib" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib" \
     -C link-args="-lqurt -lc"
@@ -92,7 +92,7 @@ For shared libraries that can be dynamically loaded by QuRT applications:
 
 ```sh
 # Build a shared object for QuRT
-cargo rustc --target hexagon-qurt \
+cargo rustc --target hexagon-unknown-qurt \
     --crate-type=cdylib -- \
     -C link-args="-shared -fPIC" \
     -C link-args="-L/opt/Hexagon_SDK/6.3.0.0/rtos/qurt/computev69/lib"
@@ -111,7 +111,7 @@ The target can be customized for different use cases:
 ### For Static Images
 ```toml
 # In .cargo/config.toml
-[target.hexagon-qurt]
+[target.hexagon-unknown-qurt]
 rustflags = [
     "-C", "link-args=-static",
     "-C", "link-args=-nostdlib",
@@ -122,7 +122,7 @@ rustflags = [
 ### For Shared Objects
 ```toml
 # In .cargo/config.toml
-[target.hexagon-qurt]
+[target.hexagon-unknown-qurt]
 rustflags = [
     "-C", "link-args=-shared",
     "-C", "link-args=-fPIC",
@@ -132,7 +132,7 @@ rustflags = [
 
 ## Testing
 
-Since `hexagon-qurt` requires the QuRT runtime environment, testing requires
+Since `hexagon-unknown-qurt` requires the QuRT runtime environment, testing requires
 either:
 - Hexagon hardware with QuRT
 - `hexagon-sim`
