@@ -11,5 +11,6 @@ use issue_114682_5_extern_1::Url;
 //~^ ERROR `issue_114682_5_extern_1` is ambiguous
 //~| ERROR `issue_114682_5_extern_1` is ambiguous
 //~| ERROR unresolved import `issue_114682_5_extern_1::Url`
+//~| WARN this was previously accepted
 
 fn main() {}

@@ -7,6 +7,7 @@ use issue_114682_4_extern::*;
 
 //~v ERROR type alias takes 1 generic argument but 2 generic arguments were supplied
 fn a() -> Result<i32, ()> { //~ ERROR `Result` is ambiguous
+                            //~| WARN this was previously accepted
     Ok(1)
 }
 

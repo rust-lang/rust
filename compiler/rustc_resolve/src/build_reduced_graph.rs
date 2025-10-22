@@ -83,12 +83,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         expansion: LocalExpnId,
         ambiguity: Option<(NameBinding<'ra>, AmbiguityKind)>,
-        warn_ambiguity: bool,
+        _warn_ambiguity: bool,
     ) {
         let binding = self.arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Res(res),
             ambiguity,
-            warn_ambiguity,
+            // FIXME: report everything as a lint for crater
+            warn_ambiguity: true,
             vis,
             span,
             expansion,

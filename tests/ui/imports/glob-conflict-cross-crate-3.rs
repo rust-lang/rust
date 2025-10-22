@@ -13,4 +13,6 @@ fn main() {
     let _a: C = 1;
     //~^ ERROR `C` is ambiguous
     //~| ERROR `C` is ambiguous
+    //~| WARN this was previously accepted
+    //~| WARN this was previously accepted
 }

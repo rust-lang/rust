@@ -7,5 +7,6 @@ use issue_114682_6_extern::*;
 
 fn main() {
     let log = 2; //~ ERROR `log` is ambiguous
+                 //~| WARN this was previously accepted
     let _ = log;
 }

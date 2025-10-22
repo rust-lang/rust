@@ -4,7 +4,9 @@
 extern crate issue_114682_2_extern;
 
 use issue_114682_2_extern::max; //~ ERROR `max` is ambiguous
+                                //~| WARN this was previously accepted
 
 type A = issue_114682_2_extern::max; //~ ERROR `max` is ambiguous
+                                     //~| WARN this was previously accepted
 
 fn main() {}
