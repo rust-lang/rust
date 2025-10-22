@@ -242,6 +242,16 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
     owner_def_id: LocalDefId,
     opaque_types_from: DefiningScopeKind,
 ) -> Ty<'tcx> {
+    // When an opaque type is stranded, its hidden type cannot be inferred
+    // so we should not continue.
+    if !tcx.opaque_types_defined_by(owner_def_id).contains(&def_id) {
+        let opaque_type_span = tcx.def_span(def_id);
+        let guar = tcx
+            .dcx()
+            .span_delayed_bug(opaque_type_span, "cannot infer type for stranded opaque type");
+        return Ty::new_error(tcx, guar);
+    }
+
     match opaque_types_from {
         DefiningScopeKind::HirTypeck => {
             let tables = tcx.typeck(owner_def_id);
