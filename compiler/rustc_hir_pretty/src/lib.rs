@@ -1888,6 +1888,10 @@ impl<'a> State<'a> {
                 self.word("..=");
                 self.print_const_arg(end);
             }
+            TyPatKind::NotNull => {
+                self.word_space("not");
+                self.word("null");
+            }
             TyPatKind::Or(patterns) => {
                 self.popen();
                 let mut first = true;

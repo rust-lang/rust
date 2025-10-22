@@ -695,6 +695,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, *f_ty);
                     }
+                    // Debug info is allowed to project into pattern types
+                    ty::Pat(base, _) => check_equal(self, location, *base),
                     ty::Adt(adt_def, args) => {
                         // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
                         if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
