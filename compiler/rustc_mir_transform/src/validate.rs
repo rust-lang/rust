@@ -656,7 +656,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     ) {
         match elem {
             ProjectionElem::Deref
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
             {
                 let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
@@ -1049,7 +1049,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert!(!adt_def.is_union());
                     let variant = &adt_def.variants()[idx];
                     if variant.fields.len() != fields.len() {
-                        self.fail(location, "adt has the wrong number of initialized fields");
+                        self.fail(location, format!(
+                            "adt {def_id:?} has the wrong number of initialized fields, expected {}, found {}",
+                            fields.len(),
+                            variant.fields.len(),
+                        ));
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
                         let dest_ty = self
@@ -1252,6 +1256,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::ShallowInitBox(operand, _) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
+                }
+
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }

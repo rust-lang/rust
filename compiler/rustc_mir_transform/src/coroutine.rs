@@ -67,7 +67,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::Discr;
@@ -289,7 +289,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
                 let args = self.tcx.mk_args(&[self.old_ret_ty.into()]);
                 let (variant_idx, operands) = if is_return {
-                    (ZERO, IndexVec::from_raw(vec![val])) // Poll::Ready(val)
+                    (ZERO, indexvec![val]) // Poll::Ready(val)
                 } else {
                     (ONE, IndexVec::new()) // Poll::Pending
                 };
@@ -301,7 +301,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 let (variant_idx, operands) = if is_return {
                     (ZERO, IndexVec::new()) // None
                 } else {
-                    (ONE, IndexVec::from_raw(vec![val])) // Some(val)
+                    (ONE, indexvec![val]) // Some(val)
                 };
                 make_aggregate_adt(option_def_id, variant_idx, args, operands)
             }
@@ -337,12 +337,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 } else {
                     ZERO // CoroutineState::Yielded(val)
                 };
-                make_aggregate_adt(
-                    coroutine_state_def_id,
-                    variant_idx,
-                    args,
-                    IndexVec::from_raw(vec![val]),
-                )
+                make_aggregate_adt(coroutine_state_def_id, variant_idx, args, indexvec![val])
             }
         };
 
@@ -1122,7 +1117,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
     }));
     let ready_val = Rvalue::Aggregate(
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
-        IndexVec::from_raw(vec![val]),
+        indexvec![val],
     );
     Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
 }
