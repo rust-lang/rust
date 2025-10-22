@@ -142,6 +142,7 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
+#![feature(string_replace_in_place)]
 #![feature(temporary_niche_types)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
