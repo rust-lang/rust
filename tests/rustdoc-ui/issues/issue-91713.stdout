@@ -17,11 +17,11 @@ Default passes for rustdoc:
 check_doc_test_visibility
        check-doc-cfg
 strip-aliased-non-local
+   propagate-doc-cfg
         strip-hidden  (when not --document-hidden-items)
        strip-private  (when not --document-private-items)
   strip-priv-imports  (when --document-private-items)
 collect-intra-doc-links
-   propagate-doc-cfg
  propagate-stability
            run-lints
 

@@ -95,11 +95,11 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
     ConditionalPass::always(CHECK_DOC_CFG),
     ConditionalPass::always(STRIP_ALIASED_NON_LOCAL),
+    ConditionalPass::always(PROPAGATE_DOC_CFG),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
-    ConditionalPass::always(PROPAGATE_DOC_CFG),
     ConditionalPass::always(PROPAGATE_STABILITY),
     ConditionalPass::always(RUN_LINTS),
 ];
