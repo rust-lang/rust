@@ -1,0 +1,257 @@
+error[E0109]: type arguments are not allowed on tuple variant `TSVariant`
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:15:34
+   |
+LL |     foo::Enum::<()>::TSVariant::<()>(());
+   |                      ---------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on tuple variant `TSVariant`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     foo::Enum::<()>::TSVariant::<()>(());
+LL +     foo::Enum::<()>::TSVariant(());
+   |
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:18:29
+   |
+LL |     foo::Alias::TSVariant::<()>(());
+   |                 ---------   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on this type
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:20:35
+   |
+LL |     foo::Alias::<()>::TSVariant::<()>(());
+   |                       ---------   ^^ type argument not allowed
+   |                       |
+   |                       not allowed on this type
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:23:34
+   |
+LL |     foo::AliasFixed::TSVariant::<()>(());
+   |                      ---------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on this type
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:25:10
+   |
+LL |     foo::AliasFixed::<()>::TSVariant(());
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:27:10
+   |
+LL |     foo::AliasFixed::<()>::TSVariant::<()>(());
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:27:40
+   |
+LL |     foo::AliasFixed::<()>::TSVariant::<()>(());
+   |                            ---------   ^^ type argument not allowed
+   |                            |
+   |                            not allowed on this type
+
+error[E0109]: type arguments are not allowed on variant `SVariant`
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:33:33
+   |
+LL |     foo::Enum::<()>::SVariant::<()> { v: () };
+   |                      --------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on variant `SVariant`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     foo::Enum::<()>::SVariant::<()> { v: () };
+LL +     foo::Enum::<()>::SVariant { v: () };
+   |
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:36:28
+   |
+LL |     foo::Alias::SVariant::<()> { v: () };
+   |                 --------   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on this type
+   |
+   = note: variants of type-aliased enum can't have type parameters
+help: you might have meant to specify type parameters on the enum
+   |
+LL -     foo::Alias::SVariant::<()> { v: () };
+LL +     foo::Alias::<()>::SVariant { v: () };
+   |
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:38:34
+   |
+LL |     foo::Alias::<()>::SVariant::<()> { v: () };
+   |                       --------   ^^ type argument not allowed
+   |                       |
+   |                       not allowed on this type
+   |
+   = note: variants of type-aliased enum can't have type parameters
+help: you might have meant to specify type parameters on the enum
+   |
+LL -     foo::Alias::<()>::SVariant::<()> { v: () };
+LL +     foo::Alias::<()>::SVariant { v: () };
+   |
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:41:33
+   |
+LL |     foo::AliasFixed::SVariant::<()> { v: () };
+   |                      --------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on this type
+   |
+   = note: variants of type-aliased enum can't have type parameters
+help: you might have meant to specify type parameters on the enum
+   |
+LL -     foo::AliasFixed::SVariant::<()> { v: () };
+LL +     foo::AliasFixed::<()>::SVariant { v: () };
+   |
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:43:10
+   |
+LL |     foo::AliasFixed::<()>::SVariant { v: () };
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:45:10
+   |
+LL |     foo::AliasFixed::<()>::SVariant::<()> { v: () };
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:45:39
+   |
+LL |     foo::AliasFixed::<()>::SVariant::<()> { v: () };
+   |                            --------   ^^ type argument not allowed
+   |                            |
+   |                            not allowed on this type
+   |
+   = note: variants of type-aliased enum can't have type parameters
+help: you might have meant to specify type parameters on the enum
+   |
+LL -     foo::AliasFixed::<()>::SVariant::<()> { v: () };
+LL +     foo::AliasFixed::<()>::SVariant { v: () };
+   |
+
+error[E0109]: type arguments are not allowed on unit variant `UVariant`
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:51:33
+   |
+LL |     foo::Enum::<()>::UVariant::<()>;
+   |                      --------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on unit variant `UVariant`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     foo::Enum::<()>::UVariant::<()>;
+LL +     foo::Enum::<()>::UVariant;
+   |
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:54:28
+   |
+LL |     foo::Alias::UVariant::<()>;
+   |                 --------   ^^ type argument not allowed
+   |                 |
+   |                 not allowed on this type
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:56:34
+   |
+LL |     foo::Alias::<()>::UVariant::<()>;
+   |                       --------   ^^ type argument not allowed
+   |                       |
+   |                       not allowed on this type
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:59:33
+   |
+LL |     foo::AliasFixed::UVariant::<()>;
+   |                      --------   ^^ type argument not allowed
+   |                      |
+   |                      not allowed on this type
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:61:10
+   |
+LL |     foo::AliasFixed::<()>::UVariant;
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0107]: type alias takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:63:10
+   |
+LL |     foo::AliasFixed::<()>::UVariant::<()>;
+   |          ^^^^^^^^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: type alias defined here, with 0 generic parameters
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:9:14
+   |
+LL |     pub type AliasFixed = Enum<()>;
+   |              ^^^^^^^^^^
+
+error[E0109]: type arguments are not allowed on this type
+  --> $DIR/enum-variant-generic-args-in-submodule.rs:63:39
+   |
+LL |     foo::AliasFixed::<()>::UVariant::<()>;
+   |                            --------   ^^ type argument not allowed
+   |                            |
+   |                            not allowed on this type
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0107, E0109.
+For more information about an error, try `rustc --explain E0107`.
