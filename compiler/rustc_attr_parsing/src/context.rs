@@ -337,8 +337,16 @@ pub struct Late;
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
 pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) shared: SharedContext<'f, 'sess, S>,
-    /// The span of the attribute currently being parsed
+
+    /// The outer span of the attribute currently being parsed
+    /// #[attribute(...)]
+    /// ^^^^^^^^^^^^^^^^^ outer span
+    /// For attributes in `cfg_attr`, the outer span and inner spans are equal.
     pub(crate) attr_span: Span,
+    /// The inner span of the attribute currently being parsed
+    /// #[attribute(...)]
+    ///   ^^^^^^^^^^^^^^  inner span
+    pub(crate) inner_span: Span,
 
     /// Whether it is an inner or outer attribute
     pub(crate) attr_style: AttrStyle,
@@ -607,7 +615,10 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn suggestions(&self) -> Vec<String> {
-        self.template.suggestions(Some(self.attr_style), &self.attr_path)
+        // If the outer and inner spans are equal, we are parsing an attribute from `cfg_attr`,
+        // So don't display an attribute style in the suggestions
+        let style = (self.attr_span != self.inner_span).then_some(self.attr_style);
+        self.template.suggestions(style, &self.attr_path)
     }
 }
 

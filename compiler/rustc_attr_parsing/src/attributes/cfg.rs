@@ -389,6 +389,7 @@ fn parse_cfg_attr_internal<'a>(
     let cfg_predicate = AttributeParser::parse_single_args(
         sess,
         attribute.span,
+        attribute.get_normal_item().span(),
         attribute.style,
         AttrPath {
             segments: attribute
