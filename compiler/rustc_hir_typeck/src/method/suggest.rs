@@ -557,10 +557,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // If the shadowed binding has an itializer expression,
+                // If the shadowed binding has an initializer expression,
                 // use the initializer expression's ty to try to find the method again.
                 // For example like:  `let mut x = Vec::new();`,
-                // `Vec::new()` is the itializer expression.
+                // `Vec::new()` is the initializer expression.
                 if let Some(self_ty) = self.fcx.node_ty_opt(binding.init_hir_id)
                     && self
                         .fcx

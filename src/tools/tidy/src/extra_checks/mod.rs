@@ -621,7 +621,7 @@ fn spellcheck_runner(
     args: &[&str],
 ) -> Result<(), Error> {
     let bin_path =
-        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
+        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.38.1")?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {

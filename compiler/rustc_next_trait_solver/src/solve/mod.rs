@@ -39,7 +39,7 @@ use crate::solve::assembly::Candidate;
 ///
 /// We previously used  `cx.recursion_limit().0.checked_ilog2().unwrap_or(0)` for this.
 /// However, it feels unlikely that uncreasing the recursion limit by a power of two
-/// to get one more itereation is every useful or desirable. We now instead used a constant
+/// to get one more iteration is every useful or desirable. We now instead used a constant
 /// here. If there ever ends up some use-cases where a bigger number of fixpoint iterations
 /// is required, we can add a new attribute for that or revert this to be dependant on the
 /// recursion limit again. However, this feels very unlikely.

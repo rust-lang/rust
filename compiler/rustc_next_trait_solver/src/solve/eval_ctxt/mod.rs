@@ -980,7 +980,7 @@ where
         }
     }
 
-    /// This sohuld only be used when we're either instantiating a previously
+    /// This should only be used when we're either instantiating a previously
     /// unconstrained "return value" or when we're sure that all aliases in
     /// the types are rigid.
     #[instrument(level = "trace", skip(self, param_env), ret)]

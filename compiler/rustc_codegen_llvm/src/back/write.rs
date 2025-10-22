@@ -342,7 +342,7 @@ fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
     }
 }
 
-/// In what context is a dignostic handler being attached to a codegen unit?
+/// In what context is a diagnostic handler being attached to a codegen unit?
 pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,

@@ -74,7 +74,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
     }
 }
 
-/// Shortand for calling [crate::interpret::Machine::enter_trace_span] on a [tracing::info_span!].
+/// Shorthand for calling [crate::interpret::Machine::enter_trace_span] on a [tracing::info_span!].
 /// This is supposed to be compiled out when [crate::interpret::Machine::enter_trace_span] has the
 /// default implementation (i.e. when it does not actually enter the span but instead returns `()`).
 /// This macro takes a type implementing the [crate::interpret::Machine] trait as its first argument
