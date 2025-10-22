@@ -1,3 +1,8 @@
+// Note: This file is publicly exported as various modules to reduce
+// duplication. Currently they are:
+// - `std::os::windows::ffi`
+// - `std::os::uefi::ffi`
+
 //! Windows-specific extensions to primitives in the [`std::ffi`] module.
 //!
 //! # Overview

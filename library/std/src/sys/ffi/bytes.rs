@@ -1,11 +1,26 @@
+// Note: This file is publicly exported as various modules to reduce
+// duplication. Currently they are:
+// - `std::os::unix::ffi`
+// - `std::os::hermit::ffi`
+// - `std::os::fortanix_sgx::ffi`
+// - `std::os::solid::ffi`
+// - `std::os::wasi::ffi`
+// - `std::os::xous::ffi`
+
+#![cfg_attr(
+    not(all(target_vendor = "fortanix", target_env = "sgx")),
+    stable(feature = "rust1", since = "1.0.0")
+)]
+#![cfg_attr(
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    unstable(feature = "sgx_platform", issue = "56975")
+)]
+
 use crate::ffi::{OsStr, OsString};
 use crate::mem;
 use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-
-// Note: this file is currently reused in other `std::os::{platform}::ffi` modules to reduce duplication.
-// Keep this in mind when applying changes to this file that only apply to `unix`.
 
 /// Platform-specific extensions to [`OsString`].
 ///
