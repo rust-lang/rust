@@ -4,15 +4,15 @@
 use std::num::NonZero;
 
 use rustc_ast_lowering::stability::extern_abi_stability;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{
-    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, Item, ItemKind,
+    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, HirId, Item, ItemKind,
     Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
     VERSION_PLACEHOLDER, Variant, find_attr,
 };
@@ -526,7 +526,10 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
 fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir_visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
+    tcx.hir_visit_item_likes_in_module(
+        module_def_id,
+        &mut Checker { tcx, already_linted_paths: FxHashSet::default() },
+    );
 
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
@@ -558,6 +561,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
+    already_linted_paths: FxHashSet<(HirId, DefId)>,
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
@@ -752,6 +756,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 } else {
                     AllowUnstable::No
                 },
+                Some(&mut self.already_linted_paths),
             );
 
             if item_is_allowed {
@@ -793,6 +798,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     } else {
                                         AllowUnstable::No
                                     },
+                                    Some(&mut self.already_linted_paths),
                                 );
                             }
                             Some(deprecation) => {
@@ -808,6 +814,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     } else {
                                         AllowUnstable::No
                                     },
+                                    Some(&mut self.already_linted_paths),
                                 );
                                 let is_allowed = matches!(eval_result, EvalResult::Allow);
                                 if !is_allowed {
