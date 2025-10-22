@@ -21,24 +21,30 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         } else {
             None
         }
+        && let output_ty = cx.typeck_results().expr_ty(expr)
+        && let input_ty = cx.typeck_results().expr_ty(ex)
+        && let Some(input_ty) = option_arg_ty(cx, input_ty)
+        && let Some(output_ty) = option_arg_ty(cx, output_ty)
+        && let ty::Ref(_, output_ty, output_mutbl) = *output_ty.kind()
     {
         let method = match arm_ref_mutbl {
             Mutability::Not => "as_ref",
             Mutability::Mut => "as_mut",
         };
 
-        let output_ty = cx.typeck_results().expr_ty(expr);
-        let input_ty = cx.typeck_results().expr_ty(ex);
+        // ```
+        // let _: Option<&T> = match opt {
+        //     Some(ref mut t) => Some(t),
+        //     None => None,
+        // };
+        // ```
+        // We need to suggest `t.as_ref()` in order downcast the reference from `&mut` to `&`.
+        // We may or may not need to cast the type as well, for which we'd need `.map()`, and that could
+        // theoretically take care of the reference downcasting as well, but we chose to keep these two
+        // operations separate
+        let need_as_ref = arm_ref_mutbl == Mutability::Mut && output_mutbl == Mutability::Not;
 
-        let cast = if let Some(input_ty) = option_arg_ty(cx, input_ty)
-            && let Some(output_ty) = option_arg_ty(cx, output_ty)
-            && let ty::Ref(_, output_ty, _) = *output_ty.kind()
-            && input_ty != output_ty
-        {
-            ".map(|x| x as _)"
-        } else {
-            ""
-        };
+        let cast = if input_ty == output_ty { "" } else { ".map(|x| x as _)" };
 
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_then(
@@ -47,15 +53,28 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             expr.span,
             format!("manual implementation of `Option::{method}`"),
             |diag| {
-                diag.span_suggestion_verbose(
-                    expr.span,
-                    format!("use `Option::{method}()` directly"),
-                    format!(
-                        "{}.{method}(){cast}",
-                        Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
-                    ),
-                    applicability,
-                );
+                if need_as_ref {
+                    diag.note("but the type is coerced to a non-mutable reference, and so `as_ref` can used instead");
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        "use `Option::as_ref()`",
+                        format!(
+                            "{}.as_ref(){cast}",
+                            Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
+                        ),
+                        applicability,
+                    );
+                } else {
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        format!("use `Option::{method}()` directly"),
+                        format!(
+                            "{}.{method}(){cast}",
+                            Sugg::hir_with_applicability(cx, ex, "_", &mut applicability).maybe_paren(),
+                        ),
+                        applicability,
+                    );
+                }
             },
         );
     }

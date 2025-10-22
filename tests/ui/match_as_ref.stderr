@@ -83,5 +83,49 @@ LL -     };
 LL +     let _ = (!S).as_ref();
    |
 
-error: aborting due to 4 previous errors
+error: manual implementation of `Option::as_mut`
+  --> tests/ui/match_as_ref.rs:105:27
+   |
+LL |       let _: Option<&u32> = match Some(0) {
+   |  ___________________________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref mut v) => Some(v),
+LL | |     };
+   | |_____^
+   |
+   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
+help: use `Option::as_ref()`
+   |
+LL -     let _: Option<&u32> = match Some(0) {
+LL -
+LL -         None => None,
+LL -         Some(ref mut v) => Some(v),
+LL -     };
+LL +     let _: Option<&u32> = Some(0).as_ref();
+   |
+
+error: manual implementation of `Option::as_mut`
+  --> tests/ui/match_as_ref.rs:111:43
+   |
+LL |       let _: Option<&dyn std::fmt::Debug> = match Some(0) {
+   |  ___________________________________________^
+LL | |
+LL | |         None => None,
+LL | |         Some(ref mut v) => Some(v),
+LL | |     };
+   | |_____^
+   |
+   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
+help: use `Option::as_ref()`
+   |
+LL -     let _: Option<&dyn std::fmt::Debug> = match Some(0) {
+LL -
+LL -         None => None,
+LL -         Some(ref mut v) => Some(v),
+LL -     };
+LL +     let _: Option<&dyn std::fmt::Debug> = Some(0).as_ref().map(|x| x as _);
+   |
+
+error: aborting due to 6 previous errors
 

@@ -100,3 +100,17 @@ fn recv_requiring_parens() {
         Some(ref v) => Some(v),
     };
 }
+
+fn issue15932() {
+    let _: Option<&u32> = match Some(0) {
+        //~^ match_as_ref
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+
+    let _: Option<&dyn std::fmt::Debug> = match Some(0) {
+        //~^ match_as_ref
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+}
