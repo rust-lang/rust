@@ -1890,9 +1890,35 @@ fn is_in_breakable(node: &SyntaxNode) -> Option<(BreakableKind, SyntaxNode)> {
 }
 
 fn is_in_block(node: &SyntaxNode) -> bool {
+    if has_in_newline_expr_first(node) {
+        return true;
+    };
     node.parent()
         .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
         .unwrap_or(false)
+}
+
+/// Similar to `has_parens`, heuristic sensing incomplete statement before ambigiguous `Expr`
+///
+/// Heuristic:
+///
+/// If the `PathExpr` is left part of the `Expr` and there is a newline after the `PathExpr`,
+/// it is considered that the `PathExpr` is not part of the `Expr`.
+fn has_in_newline_expr_first(node: &SyntaxNode) -> bool {
+    if ast::PathExpr::can_cast(node.kind())
+        && let Some(NodeOrToken::Token(next)) = node.next_sibling_or_token()
+        && next.kind() == SyntaxKind::WHITESPACE
+        && next.text().contains('\n')
+        && let Some(stmt_like) = node
+            .ancestors()
+            .take_while(|it| it.text_range().start() == node.text_range().start())
+            .filter_map(Either::<ast::ExprStmt, ast::Expr>::cast)
+            .last()
+    {
+        stmt_like.syntax().parent().and_then(ast::StmtList::cast).is_some()
+    } else {
+        false
+    }
 }
 
 fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {

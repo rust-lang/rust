@@ -2947,6 +2947,173 @@ fn let_in_let_chain() {
 }
 
 #[test]
+fn let_in_previous_line_of_ambiguous_expr() {
+    check_edit(
+        "let",
+        r#"
+        fn f() {
+            $0
+            (1, 2).foo();
+        }"#,
+        r#"
+        fn f() {
+            let $1 = $0;
+            (1, 2).foo();
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() {
+            $0
+            (1, 2)
+        }"#,
+        r#"
+        fn f() {
+            let $1 = $0;
+            (1, 2)
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> i32 {
+            $0
+            -2
+        }"#,
+        r#"
+        fn f() -> i32 {
+            let $1 = $0;
+            -2
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> [i32; 2] {
+            $0
+            [1, 2]
+        }"#,
+        r#"
+        fn f() -> [i32; 2] {
+            let $1 = $0;
+            [1, 2]
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> [u8; 2] {
+            $0
+            *b"01"
+        }"#,
+        r#"
+        fn f() -> [u8; 2] {
+            let $1 = $0;
+            *b"01"
+        }"#,
+    );
+
+    check(
+        r#"
+        fn foo() {
+            $0
+            *b"01"
+        }"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+
+    check(
+        r#"
+        fn foo() {
+            match $0 {}
+        }"#,
+        expect![[r#"
+            fn foo() fn()
+            bt u32    u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+
+    check(
+        r#"
+        fn foo() {
+            $0 *b"01"
+        }"#,
+        expect![[r#"
+            fn foo() fn()
+            bt u32    u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
 fn private_inherent_and_public_trait() {
     check(
         r#"
