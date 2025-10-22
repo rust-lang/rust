@@ -7,7 +7,6 @@ use clippy_dev::{
     ClippyInfo, UpdateMode, deprecate_lint, dogfood, fmt, lint, new_lint, release, rename_lint, serve, setup, sync,
     update_lints,
 };
-use std::convert::Infallible;
 use std::env;
 
 fn main() {
@@ -95,6 +94,20 @@ fn main() {
     }
 }
 
+fn lint_name(name: &str) -> Result<String, String> {
+    let name = name.replace('-', "_");
+    if let Some((pre, _)) = name.split_once("::") {
+        Err(format!("lint name should not contain the `{pre}` prefix"))
+    } else if name
+        .bytes()
+        .any(|x| !matches!(x, b'_' | b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z'))
+    {
+        Err("lint name contains invalid characters".to_owned())
+    } else {
+        Ok(name)
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "dev", about)]
 struct Dev {
@@ -150,7 +163,7 @@ enum DevCommand {
         #[arg(
             short,
             long,
-            value_parser = |name: &str| Ok::<_, Infallible>(name.replace('-', "_")),
+            value_parser = lint_name,
         )]
         /// Name of the new lint in snake case, ex: `fn_too_long`
         name: String,
@@ -223,8 +236,12 @@ enum DevCommand {
     /// Rename a lint
     RenameLint {
         /// The name of the lint to rename
+        #[arg(value_parser = lint_name)]
         old_name: String,
-        #[arg(required_unless_present = "uplift")]
+        #[arg(
+            required_unless_present = "uplift",
+            value_parser = lint_name,
+        )]
         /// The new name of the lint
         new_name: Option<String>,
         #[arg(long)]
@@ -234,6 +251,7 @@ enum DevCommand {
     /// Deprecate the given lint
     Deprecate {
         /// The name of the lint to deprecate
+        #[arg(value_parser = lint_name)]
         name: String,
         #[arg(long, short)]
         /// The reason for deprecation

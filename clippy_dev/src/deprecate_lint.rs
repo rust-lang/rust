@@ -1,4 +1,5 @@
-use crate::update_lints::{DeprecatedLint, Lint, find_lint_decls, generate_lint_files, read_deprecated_lints};
+use crate::parse::{DeprecatedLint, Lint, find_lint_decls, read_deprecated_lints};
+use crate::update_lints::generate_lint_files;
 use crate::utils::{UpdateMode, Version};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -14,10 +15,6 @@ use std::{fs, io};
 ///
 /// If a file path could not read from or written to
 pub fn deprecate(clippy_version: Version, name: &str, reason: &str) {
-    if let Some((prefix, _)) = name.split_once("::") {
-        panic!("`{name}` should not contain the `{prefix}` prefix");
-    }
-
     let mut lints = find_lint_decls();
     let (mut deprecated_lints, renamed_lints) = read_deprecated_lints();
 
@@ -135,14 +132,14 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             );
 
             assert!(
-                content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
+                content[lint.declaration_range].contains(&name.to_uppercase()),
                 "error: `{}` does not contain lint `{}`'s declaration",
                 path.display(),
                 lint.name
             );
 
             // Remove lint declaration (declare_clippy_lint!)
-            content.replace_range(lint.declaration_range.clone(), "");
+            content.replace_range(lint.declaration_range, "");
 
             // Remove the module declaration (mod xyz;)
             let mod_decl = format!("\nmod {name};");

@@ -1,9 +1,11 @@
 #![feature(
-    rustc_private,
     exit_status_error,
     if_let_guard,
+    new_range,
+    new_range_api,
     os_str_slice,
     os_string_truncate,
+    rustc_private,
     slice_split_once
 )]
 #![warn(
@@ -34,3 +36,5 @@ pub mod update_lints;
 
 mod utils;
 pub use utils::{ClippyInfo, UpdateMode};
+
+mod parse;

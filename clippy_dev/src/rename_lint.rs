@@ -1,7 +1,9 @@
-use crate::update_lints::{RenamedLint, find_lint_decls, generate_lint_files, read_deprecated_lints};
+use crate::parse::cursor::{self, Capture, Cursor};
+use crate::parse::{RenamedLint, find_lint_decls, read_deprecated_lints};
+use crate::update_lints::generate_lint_files;
 use crate::utils::{
-    ErrAction, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, Version, delete_dir_if_exists,
-    delete_file_if_exists, expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
+    expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
 use rustc_lexer::TokenKind;
 use std::ffi::OsString;
@@ -25,13 +27,6 @@ use std::path::Path;
 /// * If `old_name` names a deprecated or renamed lint.
 #[expect(clippy::too_many_lines)]
 pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: bool) {
-    if let Some((prefix, _)) = old_name.split_once("::") {
-        panic!("`{old_name}` should not contain the `{prefix}` prefix");
-    }
-    if let Some((prefix, _)) = new_name.split_once("::") {
-        panic!("`{new_name}` should not contain the `{prefix}` prefix");
-    }
-
     let mut updater = FileUpdater::default();
     let mut lints = find_lint_decls();
     let (deprecated_lints, mut renamed_lints) = read_deprecated_lints();
@@ -285,47 +280,46 @@ fn file_update_fn<'a, 'b>(
     move |_, src, dst| {
         let mut copy_pos = 0u32;
         let mut changed = false;
-        let mut searcher = RustSearcher::new(src);
-        let mut capture = "";
+        let mut cursor = Cursor::new(src);
+        let mut captures = [Capture::EMPTY];
         loop {
-            match searcher.peek() {
+            match cursor.peek() {
                 TokenKind::Eof => break,
                 TokenKind::Ident => {
-                    let match_start = searcher.pos();
-                    let text = searcher.peek_text();
-                    searcher.step();
+                    let match_start = cursor.pos();
+                    let text = cursor.peek_text();
+                    cursor.step();
                     match text {
                         // clippy::line_name or clippy::lint-name
                         "clippy" => {
-                            if searcher.match_tokens(&[Token::DoubleColon, Token::CaptureIdent], &mut [&mut capture])
-                                && capture == old_name
+                            if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                                && cursor.get_text(captures[0]) == old_name
                             {
-                                dst.push_str(&src[copy_pos as usize..searcher.pos() as usize - capture.len()]);
+                                dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
                                 dst.push_str(new_name);
-                                copy_pos = searcher.pos();
+                                copy_pos = cursor.pos();
                                 changed = true;
                             }
                         },
                         // mod lint_name
                         "mod" => {
                             if !matches!(mod_edit, ModEdit::None)
-                                && searcher.match_tokens(&[Token::CaptureIdent], &mut [&mut capture])
-                                && capture == old_name
+                                && let Some(pos) = cursor.find_ident(old_name)
                             {
                                 match mod_edit {
                                     ModEdit::Rename => {
-                                        dst.push_str(&src[copy_pos as usize..searcher.pos() as usize - capture.len()]);
+                                        dst.push_str(&src[copy_pos as usize..pos as usize]);
                                         dst.push_str(new_name);
-                                        copy_pos = searcher.pos();
+                                        copy_pos = cursor.pos();
                                         changed = true;
                                     },
-                                    ModEdit::Delete if searcher.match_tokens(&[Token::Semi], &mut []) => {
+                                    ModEdit::Delete if cursor.match_pat(cursor::Pat::Semi) => {
                                         let mut start = &src[copy_pos as usize..match_start as usize];
                                         if start.ends_with("\n\n") {
                                             start = &start[..start.len() - 1];
                                         }
                                         dst.push_str(start);
-                                        copy_pos = searcher.pos();
+                                        copy_pos = cursor.pos();
                                         if src[copy_pos as usize..].starts_with("\n\n") {
                                             copy_pos += 1;
                                         }
@@ -337,8 +331,8 @@ fn file_update_fn<'a, 'b>(
                         },
                         // lint_name::
                         name if matches!(mod_edit, ModEdit::Rename) && name == old_name => {
-                            let name_end = searcher.pos();
-                            if searcher.match_tokens(&[Token::DoubleColon], &mut []) {
+                            let name_end = cursor.pos();
+                            if cursor.match_pat(cursor::Pat::DoubleColon) {
                                 dst.push_str(&src[copy_pos as usize..match_start as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = name_end;
@@ -356,36 +350,36 @@ fn file_update_fn<'a, 'b>(
                             };
                             dst.push_str(&src[copy_pos as usize..match_start as usize]);
                             dst.push_str(replacement);
-                            copy_pos = searcher.pos();
+                            copy_pos = cursor.pos();
                             changed = true;
                         },
                     }
                 },
                 // //~ lint_name
                 TokenKind::LineComment { doc_style: None } => {
-                    let text = searcher.peek_text();
+                    let text = cursor.peek_text();
                     if text.starts_with("//~")
                         && let Some(text) = text.strip_suffix(old_name)
                         && !text.ends_with(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
                     {
-                        dst.push_str(&src[copy_pos as usize..searcher.pos() as usize + text.len()]);
+                        dst.push_str(&src[copy_pos as usize..cursor.pos() as usize + text.len()]);
                         dst.push_str(new_name);
-                        copy_pos = searcher.pos() + searcher.peek_len();
+                        copy_pos = cursor.pos() + cursor.peek_len();
                         changed = true;
                     }
-                    searcher.step();
+                    cursor.step();
                 },
                 // ::lint_name
                 TokenKind::Colon
-                    if searcher.match_tokens(&[Token::DoubleColon, Token::CaptureIdent], &mut [&mut capture])
-                        && capture == old_name =>
+                    if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                        && cursor.get_text(captures[0]) == old_name =>
                 {
-                    dst.push_str(&src[copy_pos as usize..searcher.pos() as usize - capture.len()]);
+                    dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
                     dst.push_str(new_name);
-                    copy_pos = searcher.pos();
+                    copy_pos = cursor.pos();
                     changed = true;
                 },
-                _ => searcher.step(),
+                _ => cursor.step(),
             }
         }
 
