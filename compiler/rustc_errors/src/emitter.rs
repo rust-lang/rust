@@ -2698,8 +2698,7 @@ impl HumanEmitter {
                 [SubstitutionHighlight { start: 0, end }] if *end == line_to_add.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
-                [] => {
-                    // FIXME: needed? Doesn't get exercised in any test.
+                [] | [SubstitutionHighlight { start: 0, end: 0 }] => {
                     self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
