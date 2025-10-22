@@ -111,6 +111,13 @@ impl Completions {
         }
     }
 
+    pub(crate) fn add_type_keywords(&mut self, ctx: &CompletionContext<'_>) {
+        self.add_keyword_snippet(ctx, "fn", "fn($1)");
+        self.add_keyword_snippet(ctx, "dyn", "dyn $0");
+        self.add_keyword_snippet(ctx, "impl", "impl $0");
+        self.add_keyword_snippet(ctx, "for", "for<$1>");
+    }
+
     pub(crate) fn add_super_keyword(
         &mut self,
         ctx: &CompletionContext<'_>,

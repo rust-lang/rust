@@ -205,6 +205,7 @@ pub(crate) fn complete_type_path(
             };
 
             acc.add_nameref_keywords_with_colon(ctx);
+            acc.add_type_keywords(ctx);
             ctx.process_all_names(&mut |name, def, doc_aliases| {
                 if scope_def_applicable(def) {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases);
