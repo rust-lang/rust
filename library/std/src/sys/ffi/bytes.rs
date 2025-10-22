@@ -7,6 +7,64 @@
 // - `std::os::wasi::ffi`
 // - `std::os::xous::ffi`
 
+#![doc = cfg_select! {
+    target_family = "unix" => "Unix-specific",
+    target_os = "hermit" => "HermitCore-specific",
+    all(target_vendor = "fortanix", target_env = "sgx") => "SGX-specific",
+    target_os = "solid_asp3" => "SOLID-specific",
+    target_os = "wasi" => "WASI-specific",
+    target_os = "xous" => "Xous-specific",
+}]
+//! extensions to primitives in the [`std::ffi`] module.
+//!
+//! # Examples
+//!
+//! ```
+//! use std::ffi::OsString;
+#![doc = cfg_select! {
+    target_family = "unix" => "use std::os::unix::ffi::OsStringExt;",
+    target_os = "hermit" => "use std::os::hermit::ffi::OsStringExt;",
+    all(target_vendor = "fortanix", target_env = "sgx") => "use std::os::fortanix_sgx::ffi::OsStringExt;",
+    target_os = "solid_asp3" => "use std::os::solid::ffi::OsStringExt;",
+    target_os = "wasi" => "use std::os::wasi::ffi::OsStringExt;",
+    target_os = "xous" => "use std::os::xous::ffi::OsStringExt;",
+}]
+//!
+//! let bytes = b"foo".to_vec();
+//!
+//! // OsStringExt::from_vec
+//! let os_string = OsString::from_vec(bytes);
+//! assert_eq!(os_string.to_str(), Some("foo"));
+//!
+//! // OsStringExt::into_vec
+//! let bytes = os_string.into_vec();
+//! assert_eq!(bytes, b"foo");
+//! ```
+//!
+//! ```
+//! use std::ffi::OsStr;
+#![doc = cfg_select! {
+    target_family = "unix" => "use std::os::unix::ffi::OsStrExt;",
+    target_os = "hermit" => "use std::os::hermit::ffi::OsStrExt;",
+    all(target_vendor = "fortanix", target_env = "sgx") => "use std::os::fortanix_sgx::ffi::OsStrExt;",
+    target_os = "solid_asp3" => "use std::os::solid::ffi::OsStrExt;",
+    target_os = "wasi" => "use std::os::wasi::ffi::OsStrExt;",
+    target_os = "xous" => "use std::os::xous::ffi::OsStrExt;",
+}]
+//!
+//! let bytes = b"foo";
+//!
+//! // OsStrExt::from_bytes
+//! let os_str = OsStr::from_bytes(bytes);
+//! assert_eq!(os_str.to_str(), Some("foo"));
+//!
+//! // OsStrExt::as_bytes
+//! let bytes = os_str.as_bytes();
+//! assert_eq!(bytes, b"foo");
+//! ```
+//!
+//! [`std::ffi`]: crate::ffi
+
 #![cfg_attr(
     not(all(target_vendor = "fortanix", target_env = "sgx")),
     stable(feature = "rust1", since = "1.0.0")
