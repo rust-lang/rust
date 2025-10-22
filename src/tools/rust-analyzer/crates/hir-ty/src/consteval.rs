@@ -6,7 +6,6 @@ mod tests;
 use base_db::Crate;
 use hir_def::{
     EnumVariantId, GeneralConstId, HasModule, StaticId,
-    attrs::AttrFlags,
     expr_store::Body,
     hir::{Expr, ExprId},
     type_ref::LiteralConstRef,
@@ -199,7 +198,7 @@ pub(crate) fn const_eval_discriminant_variant<'db>(
         return Ok(value);
     }
 
-    let repr = AttrFlags::repr(db, loc.parent.into());
+    let repr = db.enum_signature(loc.parent).repr;
     let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(

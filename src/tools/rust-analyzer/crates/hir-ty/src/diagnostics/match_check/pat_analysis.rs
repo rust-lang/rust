@@ -2,9 +2,7 @@
 
 use std::{cell::LazyCell, fmt};
 
-use hir_def::{
-    EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId, attrs::AttrFlags,
-};
+use hir_def::{EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
 use rustc_pattern_analysis::{
     IndexVec, PatCx, PrivateUninhabitedField,
@@ -120,7 +118,7 @@ impl<'a, 'db> MatchCheckCtx<'a, 'db> {
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
         let is_local = adt.krate(self.db) == self.module.krate();
-        !is_local && AttrFlags::query(self.db, adt.into()).contains(AttrFlags::NON_EXHAUSTIVE)
+        !is_local && self.db.attrs(adt.into()).by_key(sym::non_exhaustive).exists()
     }
 
     fn variant_id_for_adt(

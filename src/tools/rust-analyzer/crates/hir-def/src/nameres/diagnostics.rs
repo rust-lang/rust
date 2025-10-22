@@ -17,8 +17,8 @@ pub enum DefDiagnosticKind {
     UnconfiguredCode { ast_id: ErasedAstId, cfg: CfgExpr, opts: CfgOptions },
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
-    InvalidDeriveTarget { ast: AstId<ast::Item>, id: AttrId },
-    MalformedDerive { ast: AstId<ast::Adt>, id: AttrId },
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
+    MalformedDerive { ast: AstId<ast::Adt>, id: usize },
     MacroDefError { ast: AstId<ast::Macro>, message: String },
     MacroError { ast: AstId<ast::Item>, path: ModPath, err: ExpandErrorKind },
 }
@@ -119,7 +119,10 @@ impl DefDiagnostic {
         ast: AstId<ast::Item>,
         id: AttrId,
     ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id } }
+        Self {
+            in_module: container,
+            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index() },
+        }
     }
 
     pub(super) fn malformed_derive(
@@ -127,6 +130,9 @@ impl DefDiagnostic {
         ast: AstId<ast::Adt>,
         id: AttrId,
     ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::MalformedDerive { ast, id } }
+        Self {
+            in_module: container,
+            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index() },
+        }
     }
 }

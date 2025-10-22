@@ -37,11 +37,11 @@
 
 use hir_def::{
     CallableDefId,
-    attrs::AttrFlags,
     hir::{ExprId, ExprOrPatId},
     lang_item::LangItem,
     signatures::FunctionSignature,
 };
+use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     BoundVar, TypeAndMut,
@@ -76,7 +76,7 @@ use crate::{
 struct Coerce<'a, 'b, 'db> {
     table: &'a mut InferenceTable<'db>,
     has_errors: &'a mut bool,
-    target_features: &'a mut dyn FnMut() -> (&'b TargetFeatures<'db>, TargetFeatureIsSafeInTarget),
+    target_features: &'a mut dyn FnMut() -> (&'b TargetFeatures, TargetFeatureIsSafeInTarget),
     use_lub: bool,
     /// Determines whether or not allow_two_phase_borrow is set on any
     /// autoref adjustments we create while coercing. We don't want to
@@ -864,14 +864,14 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
                             return Err(TypeError::IntrinsicCast);
                         }
 
-                        let attrs = AttrFlags::query(self.table.db, def_id.into());
-                        if attrs.contains(AttrFlags::RUSTC_FORCE_INLINE) {
+                        let attrs = self.table.db.attrs(def_id.into());
+                        if attrs.by_key(sym::rustc_force_inline).exists() {
                             return Err(TypeError::ForceInlineCast);
                         }
 
-                        if b_hdr.safety.is_safe() && attrs.contains(AttrFlags::HAS_TARGET_FEATURE) {
+                        if b_hdr.safety.is_safe() && attrs.by_key(sym::target_feature).exists() {
                             let fn_target_features =
-                                TargetFeatures::from_fn_no_implications(self.table.db, def_id);
+                                TargetFeatures::from_attrs_no_implications(&attrs);
                             // Allow the coercion if the current function has all the features that would be
                             // needed to call the coercee safely.
                             let (target_features, target_feature_is_safe) =
@@ -1056,7 +1056,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let is_force_inline = |ty: Ty<'db>| {
             if let TyKind::FnDef(CallableIdWrapper(CallableDefId::FunctionId(did)), _) = ty.kind() {
-                AttrFlags::query(self.db, did.into()).contains(AttrFlags::RUSTC_FORCE_INLINE)
+                self.db.attrs(did.into()).by_key(sym::rustc_force_inline).exists()
             } else {
                 false
             }

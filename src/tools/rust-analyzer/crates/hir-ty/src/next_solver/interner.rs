@@ -9,7 +9,6 @@ use base_db::Crate;
 use hir_def::{
     AdtId, AttrDefId, BlockId, CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId,
     VariantId,
-    attrs::AttrFlags,
     lang_item::LangItem,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
@@ -468,28 +467,28 @@ impl AdtDef {
 
                 let variants = vec![(VariantIdx(0), VariantDef::Struct(struct_id))];
 
-                let data_repr = data.repr(db, struct_id);
+                let mut repr = ReprOptions::default();
+                repr.align = data.repr.and_then(|r| r.align);
+                repr.pack = data.repr.and_then(|r| r.pack);
+                repr.int = data.repr.and_then(|r| r.int);
+
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data_repr.is_some_and(|r| r.c()) {
+                if data.repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data_repr.is_some_and(|r| r.simd()) {
+                if data.repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-                let repr = ReprOptions {
-                    align: data_repr.and_then(|r| r.align),
-                    pack: data_repr.and_then(|r| r.pack),
-                    int: data_repr.and_then(|r| r.int),
-                    flags: repr_flags,
-                    ..ReprOptions::default()
-                };
+                repr.flags = repr_flags;
 
                 (flags, variants, repr)
             }
             AdtId::UnionId(union_id) => {
+                let data = db.union_signature(union_id);
+
                 let flags = AdtFlags {
                     is_enum: false,
                     is_union: true,
@@ -502,24 +501,22 @@ impl AdtDef {
 
                 let variants = vec![(VariantIdx(0), VariantDef::Union(union_id))];
 
-                let data_repr = AttrFlags::repr(db, union_id.into());
+                let mut repr = ReprOptions::default();
+                repr.align = data.repr.and_then(|r| r.align);
+                repr.pack = data.repr.and_then(|r| r.pack);
+                repr.int = data.repr.and_then(|r| r.int);
+
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data_repr.is_some_and(|r| r.c()) {
+                if data.repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data_repr.is_some_and(|r| r.simd()) {
+                if data.repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-                let repr = ReprOptions {
-                    align: data_repr.and_then(|r| r.align),
-                    pack: data_repr.and_then(|r| r.pack),
-                    int: data_repr.and_then(|r| r.int),
-                    flags: repr_flags,
-                    ..ReprOptions::default()
-                };
+                repr.flags = repr_flags;
 
                 (flags, variants, repr)
             }
@@ -543,26 +540,24 @@ impl AdtDef {
                     .map(|(idx, v)| (idx, VariantDef::Enum(v.0)))
                     .collect();
 
-                let data_repr = AttrFlags::repr(db, enum_id.into());
+                let data = db.enum_signature(enum_id);
+
+                let mut repr = ReprOptions::default();
+                repr.align = data.repr.and_then(|r| r.align);
+                repr.pack = data.repr.and_then(|r| r.pack);
+                repr.int = data.repr.and_then(|r| r.int);
 
                 let mut repr_flags = ReprFlags::empty();
                 if flags.is_box {
                     repr_flags.insert(ReprFlags::IS_LINEAR);
                 }
-                if data_repr.is_some_and(|r| r.c()) {
+                if data.repr.is_some_and(|r| r.c()) {
                     repr_flags.insert(ReprFlags::IS_C);
                 }
-                if data_repr.is_some_and(|r| r.simd()) {
+                if data.repr.is_some_and(|r| r.simd()) {
                     repr_flags.insert(ReprFlags::IS_SIMD);
                 }
-
-                let repr = ReprOptions {
-                    align: data_repr.and_then(|r| r.align),
-                    pack: data_repr.and_then(|r| r.pack),
-                    int: data_repr.and_then(|r| r.int),
-                    flags: repr_flags,
-                    ..ReprOptions::default()
-                };
+                repr.flags = repr_flags;
 
                 (flags, variants, repr)
             }

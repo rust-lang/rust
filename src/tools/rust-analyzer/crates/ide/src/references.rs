@@ -1124,10 +1124,7 @@ pub(super) struct Foo$0 {
         check_with_scope(
             code,
             Some(&mut |db| {
-                SearchScope::single_file(EditionedFileId::current_edition_guess_origin(
-                    db,
-                    FileId::from_raw(2),
-                ))
+                SearchScope::single_file(EditionedFileId::current_edition(db, FileId::from_raw(2)))
             }),
             expect![[r#"
                 quux Function FileId(0) 19..35 26..30

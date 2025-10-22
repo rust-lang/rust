@@ -62,7 +62,7 @@ pub(crate) fn highlight_related(
     let _p = tracing::info_span!("highlight_related").entered();
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(sema.db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {

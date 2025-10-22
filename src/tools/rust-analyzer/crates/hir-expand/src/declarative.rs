@@ -1,20 +1,16 @@
 //! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
-use std::{cell::OnceCell, ops::ControlFlow};
-
 use base_db::Crate;
+use intern::sym;
 use span::{Edition, Span, SyntaxContext};
 use stdx::TupleExt;
-use syntax::{
-    AstNode, AstToken,
-    ast::{self, HasAttrs},
-};
+use syntax::{AstNode, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
     AstId, ExpandError, ExpandErrorKind, ExpandResult, HirFileId, Lookup, MacroCallId,
-    attrs::{Meta, expand_cfg_attr},
+    attrs::RawAttrs,
     db::ExpandDatabase,
     hygiene::{Transparency, apply_mark},
     tt,
@@ -84,28 +80,29 @@ impl DeclarativeMacroExpander {
         let (root, map) = crate::db::parse_with_map(db, id.file_id);
         let root = root.syntax_node();
 
-        let transparency = |node: ast::AnyHasAttrs| {
-            let cfg_options = OnceCell::new();
-            expand_cfg_attr(
-                node.attrs(),
-                || cfg_options.get_or_init(|| def_crate.cfg_options(db)),
-                |attr, _, _, _| {
-                    if let Meta::NamedKeyValue { name: Some(name), value, .. } = attr
-                        && name.text() == "rustc_macro_transparency"
-                        && let Some(value) = value.and_then(ast::String::cast)
-                        && let Ok(value) = value.value()
-                    {
-                        match &*value {
-                            "transparent" => ControlFlow::Break(Transparency::Transparent),
-                            "semitransparent" => ControlFlow::Break(Transparency::SemiTransparent),
-                            "opaque" => ControlFlow::Break(Transparency::Opaque),
-                            _ => ControlFlow::Continue(()),
-                        }
-                    } else {
-                        ControlFlow::Continue(())
-                    }
+        let transparency = |node| {
+            // ... would be nice to have the item tree here
+            let attrs = RawAttrs::new_expanded(db, node, map.as_ref(), def_crate.cfg_options(db));
+            match attrs
+                .iter()
+                .find(|it| {
+                    it.path
+                        .as_ident()
+                        .map(|it| *it == sym::rustc_macro_transparency)
+                        .unwrap_or(false)
+                })?
+                .token_tree_value()?
+                .token_trees()
+                .flat_tokens()
+            {
+                [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &i.sym {
+                    s if *s == sym::transparent => Some(Transparency::Transparent),
+                    s if *s == sym::semitransparent => Some(Transparency::SemiTransparent),
+                    s if *s == sym::opaque => Some(Transparency::Opaque),
+                    _ => None,
                 },
-            )
+                _ => None,
+            }
         };
         let ctx_edition = |ctx: SyntaxContext| {
             if ctx.is_root() {
@@ -136,8 +133,7 @@ impl DeclarativeMacroExpander {
                         "expected a token tree".into(),
                     )),
                 },
-                transparency(ast::AnyHasAttrs::from(macro_rules))
-                    .unwrap_or(Transparency::SemiTransparent),
+                transparency(&macro_rules).unwrap_or(Transparency::SemiTransparent),
             ),
             ast::Macro::MacroDef(macro_def) => (
                 match macro_def.body() {
@@ -165,7 +161,7 @@ impl DeclarativeMacroExpander {
                         "expected a token tree".into(),
                     )),
                 },
-                transparency(macro_def.into()).unwrap_or(Transparency::Opaque),
+                transparency(&macro_def).unwrap_or(Transparency::Opaque),
             ),
         };
         let edition = ctx_edition(match id.file_id {

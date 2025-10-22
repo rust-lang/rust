@@ -45,8 +45,7 @@ mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 span.workspace = true
-thin-vec.workspace = true
-syntax-bridge.workspace = true
+thin-vec = "0.2.14"
 
 [dev-dependencies]
 expect-test.workspace = true
@@ -54,6 +53,7 @@ expect-test.workspace = true
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
+syntax-bridge.workspace = true
 
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]

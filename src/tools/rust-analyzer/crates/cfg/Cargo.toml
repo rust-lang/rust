@@ -18,7 +18,6 @@ tracing.workspace = true
 
 # locals deps
 tt = { workspace = true, optional = true }
-syntax = { workspace = true, optional = true }
 intern.workspace = true
 
 [dev-dependencies]

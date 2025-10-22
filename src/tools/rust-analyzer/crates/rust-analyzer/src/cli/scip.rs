@@ -514,12 +514,12 @@ mod test {
 
     fn position(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(ra_fixture);
+        let change_fixture = ChangeFixture::parse(host.raw_database(), ra_fixture);
         host.raw_database_mut().apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
-        let position = FilePosition { file_id: file_id.file_id(), offset };
+        let position = FilePosition { file_id: file_id.file_id(host.raw_database()), offset };
         (host, position)
     }
 
@@ -870,7 +870,7 @@ pub mod example_mod {
         let s = "/// foo\nfn bar() {}";
 
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(s);
+        let change_fixture = ChangeFixture::parse(host.raw_database(), s);
         host.raw_database_mut().apply_change(change_fixture.change);
 
         let analysis = host.analysis();

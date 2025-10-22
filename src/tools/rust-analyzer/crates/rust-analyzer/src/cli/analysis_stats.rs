@@ -145,9 +145,7 @@ impl flags::AnalysisStats {
                     if !source_root.is_library || self.with_deps {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
-                            .file_item_tree(
-                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
-                            )
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
                             .item_tree_stats()
                             .into();
 
@@ -157,9 +155,7 @@ impl flags::AnalysisStats {
                     } else {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
-                            .file_item_tree(
-                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
-                            )
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
                             .item_tree_stats()
                             .into();
 

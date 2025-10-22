@@ -38,7 +38,7 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget, lang_item},
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    signatures::{ConstSignature, EnumSignature, StaticSignature},
+    signatures::{ConstSignature, StaticSignature},
     type_ref::{ConstRef, LifetimeRefId, TypeRefId},
 };
 use hir_expand::{mod_path::ModPath, name::Name};
@@ -104,7 +104,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
         DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = match EnumSignature::variant_body_type(db, v.lookup(db).parent) {
+            ctx.return_ty = match db.enum_signature(v.lookup(db).parent).variant_body_type() {
                 hir_def::layout::IntegerType::Pointer(signed) => match signed {
                     true => ctx.types.isize,
                     false => ctx.types.usize,
@@ -759,7 +759,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
-    target_features: OnceCell<(TargetFeatures<'db>, TargetFeatureIsSafeInTarget)>,
+    target_features: OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
     pub(crate) generic_def: GenericDefId,
     table: unify::InferenceTable<'db>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
@@ -903,14 +903,14 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     }
 
     fn target_features<'a>(
-        db: &'db dyn HirDatabase,
-        target_features: &'a OnceCell<(TargetFeatures<'db>, TargetFeatureIsSafeInTarget)>,
+        db: &dyn HirDatabase,
+        target_features: &'a OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
         owner: DefWithBodyId,
         krate: Crate,
-    ) -> (&'a TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
+    ) -> (&'a TargetFeatures, TargetFeatureIsSafeInTarget) {
         let (target_features, target_feature_is_safe) = target_features.get_or_init(|| {
             let target_features = match owner {
-                DefWithBodyId::FunctionId(id) => TargetFeatures::from_fn(db, id),
+                DefWithBodyId::FunctionId(id) => TargetFeatures::from_attrs(&db.attrs(id.into())),
                 _ => TargetFeatures::default(),
             };
             let target_feature_is_safe = match &krate.workspace_data(db).target {

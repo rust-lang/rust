@@ -13,8 +13,7 @@ use stdx::format_to;
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, Complete, FxIndexMap, InternedModuleId, ModuleDefId, ModuleId, TraitId,
-    attrs::AttrFlags,
+    AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::{DefMap, assoc::TraitItems, crate_def_map},
@@ -166,34 +165,17 @@ impl ImportMap {
                         }
                     } else {
                         match item {
-                            ItemInNs::Types(id) | ItemInNs::Values(id) => match id {
-                                ModuleDefId::ModuleId(it) => {
-                                    Some(AttrDefId::ModuleId(InternedModuleId::new(db, it)))
-                                }
-                                ModuleDefId::FunctionId(it) => Some(it.into()),
-                                ModuleDefId::AdtId(it) => Some(it.into()),
-                                ModuleDefId::EnumVariantId(it) => Some(it.into()),
-                                ModuleDefId::ConstId(it) => Some(it.into()),
-                                ModuleDefId::StaticId(it) => Some(it.into()),
-                                ModuleDefId::TraitId(it) => Some(it.into()),
-                                ModuleDefId::TypeAliasId(it) => Some(it.into()),
-                                ModuleDefId::MacroId(it) => Some(it.into()),
-                                ModuleDefId::BuiltinType(_) => None,
-                            },
+                            ItemInNs::Types(id) | ItemInNs::Values(id) => id.try_into().ok(),
                             ItemInNs::Macros(id) => Some(id.into()),
                         }
                     };
                     let (is_doc_hidden, is_unstable, do_not_complete) = match attr_id {
                         None => (false, false, Complete::Yes),
                         Some(attr_id) => {
-                            let attrs = AttrFlags::query(db, attr_id);
+                            let attrs = db.attrs(attr_id);
                             let do_not_complete =
-                                Complete::extract(matches!(attr_id, AttrDefId::TraitId(_)), attrs);
-                            (
-                                attrs.contains(AttrFlags::IS_DOC_HIDDEN),
-                                attrs.contains(AttrFlags::IS_UNSTABLE),
-                                do_not_complete,
-                            )
+                                Complete::extract(matches!(attr_id, AttrDefId::TraitId(_)), &attrs);
+                            (attrs.has_doc_hidden(), attrs.is_unstable(), do_not_complete)
                         }
                     };
 
@@ -257,15 +239,15 @@ impl ImportMap {
             };
 
             let attr_id = item.into();
-            let attrs = AttrFlags::query(db, attr_id);
+            let attrs = &db.attrs(attr_id);
             let item_do_not_complete = Complete::extract(false, attrs);
             let do_not_complete =
                 Complete::for_trait_item(trait_import_info.complete, item_do_not_complete);
             let assoc_item_info = ImportInfo {
                 container: trait_import_info.container,
                 name: assoc_item_name.clone(),
-                is_doc_hidden: attrs.contains(AttrFlags::IS_DOC_HIDDEN),
-                is_unstable: attrs.contains(AttrFlags::IS_UNSTABLE),
+                is_doc_hidden: attrs.has_doc_hidden(),
+                is_unstable: attrs.is_unstable(),
                 complete: do_not_complete,
             };
 
