@@ -21,24 +21,18 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         } else {
             None
         }
+        && let output_ty = cx.typeck_results().expr_ty(expr)
+        && let input_ty = cx.typeck_results().expr_ty(ex)
+        && let Some(input_ty) = option_arg_ty(cx, input_ty)
+        && let Some(output_ty) = option_arg_ty(cx, output_ty)
+        && let ty::Ref(_, output_ty, _) = *output_ty.kind()
     {
         let method = match arm_ref_mutbl {
             Mutability::Not => "as_ref",
             Mutability::Mut => "as_mut",
         };
 
-        let output_ty = cx.typeck_results().expr_ty(expr);
-        let input_ty = cx.typeck_results().expr_ty(ex);
-
-        let cast = if let Some(input_ty) = option_arg_ty(cx, input_ty)
-            && let Some(output_ty) = option_arg_ty(cx, output_ty)
-            && let ty::Ref(_, output_ty, _) = *output_ty.kind()
-            && input_ty != output_ty
-        {
-            ".map(|x| x as _)"
-        } else {
-            ""
-        };
+        let cast = if input_ty == output_ty { "" } else { ".map(|x| x as _)" };
 
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_then(
