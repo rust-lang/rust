@@ -4,45 +4,34 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     debug x => _1;
     let mut _0: std::result::Result<T, E>;
     let mut _2: isize;
-    let _3: T;
-    let mut _4: std::ops::ControlFlow<E, T>;
-    let _5: T;
-    let _6: E;
-    let _7: E;
+    let mut _3: std::ops::ControlFlow<E, T>;
     scope 1 {
-        debug v => _3;
+        debug v => ((_1 as Ok).0: T);
     }
     scope 2 {
-        debug e => _6;
+        debug e => ((_1 as Err).0: E);
     }
     scope 3 {
-        debug v => _5;
+        debug v => ((_3 as Continue).0: T);
     }
     scope 4 {
-        debug e => _7;
+        debug e => ((_3 as Break).0: E);
     }
 
     bb0: {
-        StorageLive(_4);
         _2 = discriminant(_1);
         switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
     }
 
     bb1: {
-        _3 = move ((_1 as Ok).0: T);
-        _4 = ControlFlow::<E, T>::Continue(copy _3);
-        _5 = move ((_4 as Continue).0: T);
-        _0 = Result::<T, E>::Ok(copy _5);
-        StorageDead(_4);
+        _3 = ControlFlow::<E, T>::Continue(copy ((_1 as Ok).0: T));
+        _0 = Result::<T, E>::Ok(copy ((_3 as Continue).0: T));
         goto -> bb3;
     }
 
     bb2: {
-        _6 = move ((_1 as Err).0: E);
-        _4 = ControlFlow::<E, T>::Break(copy _6);
-        _7 = move ((_4 as Break).0: E);
-        _0 = Result::<T, E>::Err(copy _7);
-        StorageDead(_4);
+        _3 = ControlFlow::<E, T>::Break(copy ((_1 as Err).0: E));
+        _0 = Result::<T, E>::Err(copy ((_3 as Break).0: E));
         goto -> bb3;
     }
 

@@ -149,6 +149,8 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, Results};
 use tracing::{debug, trace};
 
+use crate::util::is_within_packed;
+
 pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
@@ -163,7 +165,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let candidates = Candidates::find(body, &borrowed);
+        let candidates = Candidates::find(tcx, body, &borrowed);
         trace!(?candidates);
         if candidates.c.is_empty() {
             return;
@@ -177,14 +179,52 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
 
-        let mut merged_locals = DenseBitSet::new_empty(body.local_decls.len());
+        let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
-        for (src, dst) in candidates.c.into_iter() {
-            trace!(?src, ?dst);
+        // Maps locals to the place with which they are unified. When a local maps to another
+        // local, this behaves as a union-find set, to be queried by `find_targets`.
+        let mut merged_targets: IndexVec<Local, Place<'_>> =
+            body.local_decls.indices().map(|l| l.into()).collect();
+        let find_targets = |merged_targets: &mut IndexVec<_, _>, local| {
+            let mut place: Place<'tcx> = merged_targets[local];
+            while let Some(head) = place.as_local() {
+                if place == merged_targets[head] {
+                    break;
+                }
+                place = merged_targets[head];
+            }
+            merged_targets[local] = place;
+            trace!("find_targets({local:?}) = {place:?}");
+            place
+        };
 
-            let Some(mut src) = relevant.find(src) else { continue };
-            let Some(mut dst) = relevant.find(dst) else { continue };
+        for (orig_src, orig_dst) in candidates.c.into_iter() {
+            // We want to replace `src` by `dst`.
+            trace!(?orig_src, ?orig_dst);
+
+            let mut src_place = find_targets(&mut merged_targets, orig_src);
+            let mut dst_place = find_targets(&mut merged_targets, orig_dst.local)
+                .project_deeper(orig_dst.projection, tcx);
+            trace!(?src_place, ?dst_place);
+            if src_place == dst_place {
+                continue;
+            }
+
+            let Some(mut src) = relevant.find(orig_src) else { continue };
+            let Some(mut dst) = relevant.find(orig_dst.local) else { continue };
             if src == dst {
+                continue;
+            }
+
+            // We cannot unify a local that appears in an index with a place that has projections.
+            let src_in_index = relevant.appears_in_index.contains(src);
+            let dst_in_index = relevant.appears_in_index.contains(dst);
+            trace!(?src_in_index, ?dst_in_index);
+
+            if (src_in_index || dst_in_index)
+                && (!src_place.projection.is_empty() || !dst_place.projection.is_empty())
+            {
+                debug!("projection in index");
                 continue;
             }
 
@@ -194,43 +234,60 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             trace!(?dst, ?dst_live_ranges);
 
             if src_live_ranges.disjoint(dst_live_ranges) {
-                // We want to replace `src` by `dst`.
-                let mut orig_src = relevant.original[src];
-                let mut orig_dst = relevant.original[dst];
+                let is_required = |place: Place<'_>| {
+                    is_local_required(place.local, body) || !place.projection.is_empty()
+                };
 
                 // The return place and function arguments are required and cannot be renamed.
                 // This check cannot be made during candidate collection, as we may want to
                 // unify the same non-required local with several required locals.
-                match (is_local_required(orig_src, body), is_local_required(orig_dst, body)) {
+                match (is_required(src_place), is_required(dst_place)) {
                     // Renaming `src` is ok.
                     (false, _) => {}
                     // Renaming `src` is wrong, but renaming `dst` is ok.
                     (true, false) => {
                         std::mem::swap(&mut src, &mut dst);
-                        std::mem::swap(&mut orig_src, &mut orig_dst);
+                        std::mem::swap(&mut src_place, &mut dst_place);
                     }
                     // Neither local can be renamed, so skip this case.
-                    (true, true) => continue,
+                    (true, true) => {
+                        debug!(?src_place, ?dst_place, "both required");
+                        continue;
+                    }
                 }
+                trace!(?src_place, ?dst_place);
 
-                trace!(?src, ?dst, "merge");
-                merged_locals.insert(orig_src);
-                merged_locals.insert(orig_dst);
+                debug_assert!(src_place.projection.is_empty());
+                let src_place = src_place.as_local().unwrap();
+
+                trace!(?src, ?dst, ?src_place, ?dst_place, "merge");
+                storage_to_remove.insert(src_place);
+                storage_to_remove.insert(dst_place.local);
 
                 // Replace `src` by `dst`.
-                let head = relevant.union(src, dst);
+                merged_targets[src_place] = dst_place;
+                let head = relevant.renames.unify(src, dst);
                 live.union_rows(/* read */ src, /* write */ head);
                 live.union_rows(/* read */ dst, /* write */ head);
+                if src_in_index || dst_in_index {
+                    relevant.appears_in_index.insert(head);
+                }
             }
         }
-        trace!(?merged_locals);
+        trace!(?storage_to_remove);
         trace!(?relevant.renames);
+        trace!(?merged_targets);
 
-        if merged_locals.is_empty() {
+        for local in merged_targets.indices() {
+            let _ = find_targets(&mut merged_targets, local);
+        }
+
+        trace!(?merged_targets);
+        if storage_to_remove.is_empty() {
             return;
         }
 
-        apply_merges(body, tcx, relevant, merged_locals);
+        apply_merges(body, tcx, storage_to_remove, merged_targets);
     }
 
     fn is_required(&self) -> bool {
@@ -246,17 +303,17 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    relevant: RelevantLocals,
-    merged_locals: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    merged_targets: IndexVec<Local, Place<'tcx>>,
 ) {
-    let mut merger = Merger { tcx, relevant, merged_locals };
+    let mut merger = Merger { tcx, storage_to_remove, merged_targets };
     merger.visit_body_preserves_cfg(body);
 }
 
 struct Merger<'tcx> {
     tcx: TyCtxt<'tcx>,
-    relevant: RelevantLocals,
-    merged_locals: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    merged_targets: IndexVec<Local, Place<'tcx>>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
@@ -265,16 +322,26 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
-        if let Some(relevant) = self.relevant.find(*local) {
-            *local = self.relevant.original[relevant];
+        let dest = self.merged_targets[*local];
+        let Some(dest) = dest.as_local() else {
+            panic!("{local:?} merged with {dest:?} but used in indexing")
+        };
+        *local = dest;
+    }
+
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
+        if let Some(new_projection) = self.process_projection(&place.projection, location) {
+            place.projection = self.tcx.mk_place_elems(&new_projection);
         }
+        let dest = self.merged_targets[place.local];
+        *place = dest.project_deeper(place.projection, self.tcx);
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match &statement.kind {
             // FIXME: Don't delete storage statements, but "merge" the storage ranges instead.
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
-                if self.merged_locals.contains(*local) =>
+                if self.storage_to_remove.contains(*local) =>
             {
                 statement.make_nop(true);
             }
@@ -317,11 +384,12 @@ struct RelevantLocals {
     original: IndexVec<RelevantLocal, Local>,
     shrink: IndexVec<Local, Option<RelevantLocal>>,
     renames: UnionFind<RelevantLocal>,
+    appears_in_index: DenseBitSet<RelevantLocal>,
 }
 
 impl RelevantLocals {
     #[tracing::instrument(level = "trace", skip(candidates, num_locals), ret)]
-    fn compute(candidates: &Candidates, num_locals: usize) -> RelevantLocals {
+    fn compute(candidates: &Candidates<'_>, num_locals: usize) -> RelevantLocals {
         let mut original = IndexVec::with_capacity(candidates.c.len());
         let mut shrink = IndexVec::from_elem_n(None, num_locals);
 
@@ -332,11 +400,18 @@ impl RelevantLocals {
 
         for &(src, dest) in candidates.c.iter() {
             declare(src);
-            declare(dest)
+            declare(dest.local)
+        }
+
+        let mut appears_in_index = DenseBitSet::new_empty(original.len());
+        for local in candidates.appears_in_index.iter() {
+            if let Some(relevant) = shrink[local] {
+                appears_in_index.insert(relevant);
+            }
         }
 
         let renames = UnionFind::new(original.len());
-        RelevantLocals { original, shrink, renames }
+        RelevantLocals { original, shrink, renames, appears_in_index }
     }
 
     fn find(&mut self, src: Local) -> Option<RelevantLocal> {
@@ -344,20 +419,13 @@ impl RelevantLocals {
         let src = self.renames.find(src);
         Some(src)
     }
-
-    fn union(&mut self, lhs: RelevantLocal, rhs: RelevantLocal) -> RelevantLocal {
-        let head = self.renames.unify(lhs, rhs);
-        // We need to ensure we keep the original local of the RHS, as it may be a required local.
-        self.original[head] = self.original[rhs];
-        head
-    }
 }
 
 /////////////////////////////////////////////////////
 // Candidate accumulation
 
-#[derive(Debug, Default)]
-struct Candidates {
+#[derive(Debug)]
+struct Candidates<'tcx> {
     /// The set of candidates we are considering in this optimization.
     ///
     /// Whether a place ends up in the key or the value does not correspond to whether it appears as
@@ -370,49 +438,121 @@ struct Candidates {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: Vec<(Local, Local)>,
+    c: Vec<(Local, Place<'tcx>)>,
+    /// Whether this local appears in `PlaceElem::Index`. If that happens, we cannot unify it with
+    /// a place that has projections.
+    appears_in_index: DenseBitSet<Local>,
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
 // different needs. Throughout the liveness filtering, the `candidates` are only ever accessed
 // through these methods, and not directly.
-impl Candidates {
+impl<'tcx> Candidates<'tcx> {
     /// Collects the candidates for merging.
     ///
     /// This is responsible for enforcing the first and third bullet point.
-    fn find(body: &Body<'_>, borrowed: &DenseBitSet<Local>) -> Candidates {
-        let mut visitor = FindAssignments { body, candidates: Default::default(), borrowed };
+    fn find(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        borrowed: &DenseBitSet<Local>,
+    ) -> Candidates<'tcx> {
+        let mut visitor = FindAssignments {
+            tcx,
+            body,
+            candidates: Default::default(),
+            borrowed,
+            appears_in_index: DenseBitSet::new_empty(body.local_decls.len()),
+        };
         visitor.visit_body(body);
+        let FindAssignments { mut candidates, appears_in_index, .. } = visitor;
 
-        Candidates { c: visitor.candidates }
+        // Allowing to merge with an arbitrary place creates a lot of candidates.
+        // Trim the set a little before trying to apply them.
+        candidates.retain(|&(s, d)| {
+            let s_required = is_local_required(s, body);
+            let d_required = is_local_required(d.local, body);
+            if s_required && d_required {
+                // We cannot merge locals if both are required.
+                return false;
+            }
+            if !d.projection.is_empty() && (s_required || appears_in_index.contains(s)) {
+                // We cannot merge a projection with a local that needs to remain bare.
+                return false;
+            }
+            true
+        });
+
+        candidates.sort_by_key(|&(s, d)| (s, d.local, d.projection.len()));
+
+        Candidates { c: candidates, appears_in_index }
     }
 }
 
 struct FindAssignments<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    candidates: Vec<(Local, Local)>,
+    candidates: Vec<(Local, Place<'tcx>)>,
     borrowed: &'a DenseBitSet<Local>,
+    /// Whether this local appears in `PlaceElem::Index`. If that happens, we cannot unify it with
+    /// a place that has projections.
+    appears_in_index: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
-        if let StatementKind::Assign(box (
-            lhs,
-            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
-        )) = &statement.kind
-            && let Some(src) = lhs.as_local()
-            && let Some(dest) = rhs.as_local()
-        {
+    fn visit_projection_elem(
+        &mut self,
+        place_ref: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        match elem {
+            PlaceElem::Deref => {
+                self.appears_in_index.insert(place_ref.local);
+            }
+            PlaceElem::Index(local) => {
+                self.appears_in_index.insert(local);
+            }
+            _ => {}
+        }
+        self.super_projection_elem(place_ref, elem, context, location);
+    }
+
+    fn visit_assign(&mut self, lhs: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_assign(lhs, rvalue, location);
+
+        if let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) = rvalue {
+            let (src, dest) =
+                if lhs.is_indirect_first_projection() || rhs.is_indirect_first_projection() {
+                    return;
+                } else if lhs.projection == rhs.projection {
+                    (lhs.local, Place::from(rhs.local))
+                } else if let Some(lhs) = lhs.as_local() {
+                    (lhs, *rhs)
+                } else if let Some(rhs) = rhs.as_local() {
+                    (rhs, *lhs)
+                } else {
+                    return;
+                };
+
+            if !dest.projection.iter().all(|p| p.is_stable_offset() && p.can_use_in_debuginfo()) {
+                return;
+            }
+
             // As described at the top of the file, we do not go near things that have
             // their address taken.
-            if self.borrowed.contains(src) || self.borrowed.contains(dest) {
+            if self.borrowed.contains(src) || self.borrowed.contains(dest.local) {
+                return;
+            }
+
+            if is_within_packed(self.tcx, &self.body.local_decls, dest).is_some() {
                 return;
             }
 
             // As described at the top of this file, we do not touch locals which have
             // different types.
             let src_ty = self.body.local_decls()[src].ty;
-            let dest_ty = self.body.local_decls()[dest].ty;
+            let dest_ty = dest.ty(self.body, self.tcx).ty;
             if src_ty != dest_ty {
                 // FIXME(#112651): This can be removed afterwards. Also update the module description.
                 trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
@@ -572,10 +712,9 @@ fn save_as_intervals<'tcx>(
             // as marking `_b` live here would prevent unification.
             let is_simple_assignment = match stmt.kind {
                 StatementKind::Assign(box (
-                    lhs,
-                    Rvalue::CopyForDeref(rhs)
-                    | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
-                )) => lhs.projection == rhs.projection,
+                    _,
+                    Rvalue::CopyForDeref(_) | Rvalue::Use(Operand::Copy(_) | Operand::Move(_)),
+                )) => true,
                 _ => false,
             };
             VisitPlacesWith(|place: Place<'tcx>, ctxt| {
