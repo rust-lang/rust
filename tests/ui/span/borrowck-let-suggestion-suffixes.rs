@@ -3,6 +3,7 @@ fn id<T>(x: T) -> T { x }
 fn f() {
     let old = ['o'];         // statement 0
     let mut v1 = Vec::new(); // statement 1
+    //~^ NOTE variable `v1` declared here
 
     let mut v2 = Vec::new(); // statement 2
 
@@ -13,6 +14,8 @@ fn f() {
         v2.push(&young[0]);      // statement 4
         //~^ ERROR `young[_]` does not live long enough
         //~| NOTE borrowed value does not live long enough
+        //~| NOTE `v1` is a collection that stores borrowed references, but `young[_]` does not live long enough to be stored in it
+        //~| HELP buffer reuse with borrowed references requires unsafe code or restructuring
     } //~ NOTE `young[_]` dropped here while still borrowed
 
     let mut v3 = Vec::new(); // statement 5
