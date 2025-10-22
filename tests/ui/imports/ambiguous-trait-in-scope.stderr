@@ -1,0 +1,83 @@
+error[E0599]: no method named `method1` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:18:9
+   |
+LL |         fn method1(&self) {}
+   |            ------- the method is available for `u8` here
+...
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method1` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m1::Trait;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL -     0u8.method1();
+LL +     0u8.method2();
+   |
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:19:9
+   |
+LL |         fn method2(&self) {}
+   |            ------- the method is available for `u8` here
+...
+LL |     0u8.method2();
+   |         ^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method2` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m2::Trait;
+   |
+help: there is a method `method1` with a similar name
+   |
+LL -     0u8.method2();
+LL +     0u8.method1();
+   |
+
+error[E0599]: no method named `method1` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:26:9
+   |
+LL |         fn method1(&self) {}
+   |            ------- the method is available for `u8` here
+...
+LL |     0u8.method1();
+   |         ^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method1` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m1::Trait;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL -     0u8.method1();
+LL +     0u8.method2();
+   |
+
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:27:9
+   |
+LL |         fn method2(&self) {}
+   |            ------- the method is available for `u8` here
+...
+LL |     0u8.method2();
+   |         ^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method2` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m2::Trait;
+   |
+help: there is a method `method1` with a similar name
+   |
+LL -     0u8.method2();
+LL +     0u8.method1();
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

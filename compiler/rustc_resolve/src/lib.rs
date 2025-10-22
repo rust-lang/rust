@@ -703,7 +703,7 @@ impl<'ra> Module<'ra> {
         if traits.is_none() {
             let mut collected_traits = Vec::new();
             self.for_each_child(resolver, |r, name, ns, binding| {
-                if ns != TypeNS {
+                if ns != TypeNS || binding.is_ambiguity_recursive() {
                     return;
                 }
                 if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
