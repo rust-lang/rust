@@ -106,7 +106,7 @@ fn intern_shallow<'tcx, M: CompileTimeMachine<'tcx>>(
     alloc_id: AllocId,
     mutability: Mutability,
     disambiguator: Option<&mut DisambiguatorState>,
-) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, InternError> {
+) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx + use<'tcx, M>, InternError> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     // FIXME(#120456) - is `swap_remove` correct?
