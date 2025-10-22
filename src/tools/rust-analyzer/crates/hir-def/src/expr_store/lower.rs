@@ -12,6 +12,7 @@ use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
     HirFileId, InFile, MacroDefId,
+    mod_path::tool_path,
     name::{AsName, Name},
     span_map::SpanMapRef,
 };
@@ -33,7 +34,6 @@ use tt::TextRange;
 use crate::{
     AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, MacroId,
     ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
-    attrs::AttrFlags,
     builtin_type::BuiltinUint,
     db::DefDatabase,
     expr_store::{
@@ -87,16 +87,14 @@ pub(super) fn lower_body(
     let mut params = vec![];
     let mut collector = ExprCollector::new(db, module, current_file_id);
 
-    let skip_body = AttrFlags::query(
-        db,
-        match owner {
-            DefWithBodyId::FunctionId(it) => it.into(),
-            DefWithBodyId::StaticId(it) => it.into(),
-            DefWithBodyId::ConstId(it) => it.into(),
-            DefWithBodyId::VariantId(it) => it.into(),
-        },
-    )
-    .contains(AttrFlags::RUST_ANALYZER_SKIP);
+    let skip_body = match owner {
+        DefWithBodyId::FunctionId(it) => db.attrs(it.into()),
+        DefWithBodyId::StaticId(it) => db.attrs(it.into()),
+        DefWithBodyId::ConstId(it) => db.attrs(it.into()),
+        DefWithBodyId::VariantId(it) => db.attrs(it.into()),
+    }
+    .rust_analyzer_tool()
+    .any(|attr| *attr.path() == tool_path![skip]);
     // If #[rust_analyzer::skip] annotated, only construct enough information for the signature
     // and skip the body.
     if skip_body {
@@ -2487,7 +2485,7 @@ impl ExprCollector<'_> {
     /// Returns `None` (and emits diagnostics) when `owner` if `#[cfg]`d out, and `Some(())` when
     /// not.
     fn check_cfg(&mut self, owner: &dyn ast::HasAttrs) -> bool {
-        let enabled = self.expander.is_cfg_enabled(owner, self.cfg_options);
+        let enabled = self.expander.is_cfg_enabled(self.db, owner, self.cfg_options);
         match enabled {
             Ok(()) => true,
             Err(cfg) => {

@@ -21,6 +21,7 @@ use hir_def::{
 };
 use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
+    attrs::collect_attrs,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
@@ -35,7 +36,7 @@ use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
-use span::{FileId, SyntaxContext};
+use span::{Edition, FileId, SyntaxContext};
 use stdx::{TupleExt, always};
 use syntax::{
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
@@ -385,14 +386,17 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
-        let krate = self.file_to_module_defs(file).next()?.krate();
-        Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
+        Some(EditionedFileId::new(
+            self.db,
+            file,
+            self.file_to_module_defs(file).next()?.krate().edition(self.db),
+        ))
     }
 
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
         let file_id = self
             .attach_first_edition(file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(self.db, file_id));
+            .unwrap_or_else(|| EditionedFileId::new(self.db, file_id, Edition::CURRENT));
 
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
@@ -1193,34 +1197,33 @@ impl<'db> SemanticsImpl<'db> {
                                     .zip(Some(item))
                             })
                             .map(|(call_id, item)| {
-                                let item_range = item.syntax().text_range();
-                                let loc = db.lookup_intern_macro_call(call_id);
-                                let text_range = match loc.kind {
+                                let attr_id = match db.lookup_intern_macro_call(call_id).kind {
                                     hir_expand::MacroCallKind::Attr {
-                                        censored_attr_ids: attr_ids,
-                                        ..
-                                    } => {
-                                        // FIXME: here, the attribute's text range is used to strip away all
-                                        // entries from the start of the attribute "list" up the invoking
-                                        // attribute. But in
-                                        // ```
-                                        // mod foo {
-                                        //     #![inner]
-                                        // }
-                                        // ```
-                                        // we don't wanna strip away stuff in the `mod foo {` range, that is
-                                        // here if the id corresponds to an inner attribute we got strip all
-                                        // text ranges of the outer ones, and then all of the inner ones up
-                                        // to the invoking attribute so that the inbetween is ignored.
-                                        // FIXME: Should cfg_attr be handled differently?
-                                        let (attr, _, _, _) = attr_ids
-                                            .invoc_attr()
-                                            .find_attr_range_with_source(db, loc.krate, &item);
-                                        let start = attr.syntax().text_range().start();
-                                        TextRange::new(start, item_range.end())
-                                    }
-                                    _ => item_range,
+                                        invoc_attr_index, ..
+                                    } => invoc_attr_index.ast_index(),
+                                    _ => 0,
                                 };
+                                // FIXME: here, the attribute's text range is used to strip away all
+                                // entries from the start of the attribute "list" up the invoking
+                                // attribute. But in
+                                // ```
+                                // mod foo {
+                                //     #![inner]
+                                // }
+                                // ```
+                                // we don't wanna strip away stuff in the `mod foo {` range, that is
+                                // here if the id corresponds to an inner attribute we got strip all
+                                // text ranges of the outer ones, and then all of the inner ones up
+                                // to the invoking attribute so that the inbetween is ignored.
+                                let text_range = item.syntax().text_range();
+                                let start = collect_attrs(&item)
+                                    .nth(attr_id)
+                                    .map(|attr| match attr.1 {
+                                        Either::Left(it) => it.syntax().text_range().start(),
+                                        Either::Right(it) => it.syntax().text_range().start(),
+                                    })
+                                    .unwrap_or_else(|| text_range.start());
+                                let text_range = TextRange::new(start, text_range.end());
                                 filter_duplicates(tokens, text_range);
                                 process_expansion_for_token(ctx, &mut stack, call_id)
                             })
@@ -1467,14 +1470,6 @@ impl<'db> SemanticsImpl<'db> {
         let root = self.parse_or_expand(src.file_id);
         let node = src.map(|it| it.to_node(&root));
         let FileRange { file_id, range } = node.as_ref().original_file_range_rooted(self.db);
-        FileRangeWrapper { file_id: file_id.file_id(self.db), range }
-    }
-
-    pub fn diagnostics_display_range_for_range(
-        &self,
-        src: InFile<TextRange>,
-    ) -> FileRangeWrapper<FileId> {
-        let FileRange { file_id, range } = src.original_node_file_range_rooted(self.db);
         FileRangeWrapper { file_id: file_id.file_id(self.db), range }
     }
 

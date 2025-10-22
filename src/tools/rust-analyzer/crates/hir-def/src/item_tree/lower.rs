@@ -1,9 +1,8 @@
 //! AST -> `ItemTree` lowering code.
 
-use std::cell::OnceCell;
+use std::{cell::OnceCell, collections::hash_map::Entry};
 
 use base_db::FxIndexSet;
-use cfg::CfgOptions;
 use hir_expand::{
     HirFileId,
     mod_path::PathKind,
@@ -23,19 +22,18 @@ use crate::{
     item_tree::{
         BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
         ImportAlias, Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod,
-        ModItemId, ModKind, ModPath, RawVisibility, RawVisibilityId, SmallModItem, Static, Struct,
-        StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
-        attrs::AttrsOrCfg,
+        ModItemId, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, SmallModItem,
+        Static, Struct, StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        VisibilityExplicitness,
     },
 };
 
 pub(super) struct Ctx<'a> {
-    pub(super) db: &'a dyn DefDatabase,
+    db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
-    cfg_options: OnceCell<&'a CfgOptions>,
     top_level: Vec<ModItemId>,
     visibilities: FxIndexSet<RawVisibility>,
 }
@@ -47,16 +45,10 @@ impl<'a> Ctx<'a> {
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
             file,
-            cfg_options: OnceCell::new(),
             span_map: OnceCell::new(),
             visibilities: FxIndexSet::default(),
             top_level: Vec::new(),
         }
-    }
-
-    #[inline]
-    pub(super) fn cfg_options(&self) -> &'a CfgOptions {
-        self.cfg_options.get_or_init(|| self.file.krate(self.db).cfg_options(self.db))
     }
 
     pub(super) fn span_map(&self) -> SpanMapRef<'_> {
@@ -106,7 +98,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree.top_attrs = self.lower_attrs(block);
+        self.tree.top_attrs = RawAttrs::new(self.db, block, self.span_map());
         self.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -152,15 +144,22 @@ impl<'a> Ctx<'a> {
             // FIXME: Handle `global_asm!()`.
             ast::Item::AsmExpr(_) => return None,
         };
-        let attrs = self.lower_attrs(item);
+        let attrs = RawAttrs::new(self.db, item, self.span_map());
         self.add_attrs(mod_item.ast_id(), attrs);
 
         Some(mod_item)
     }
 
-    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: AttrsOrCfg) {
+    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: RawAttrs) {
         if !attrs.is_empty() {
-            self.tree.attrs.insert(item, attrs);
+            match self.tree.attrs.entry(item) {
+                Entry::Occupied(mut entry) => {
+                    *entry.get_mut() = entry.get().merge(attrs);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(attrs);
+                }
+            }
         }
     }
 
@@ -353,7 +352,7 @@ impl<'a> Ctx<'a> {
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
                         ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
-                    let attrs = self.lower_attrs(&item);
+                    let attrs = RawAttrs::new(self.db, &item, self.span_map());
                     self.add_attrs(mod_item.ast_id(), attrs);
                     Some(mod_item)
                 })

@@ -772,7 +772,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(err_span, format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition, lookup.krate))
+        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition))
     }
 }
 

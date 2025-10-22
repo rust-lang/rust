@@ -102,7 +102,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, T, TextRange,
-    ast::{self, AstNode},
+    ast::{self, AstNode, HasAttrs},
 };
 
 // FIXME: Make this an enum
@@ -277,6 +277,31 @@ struct DiagnosticsContext<'a> {
     is_nightly: bool,
 }
 
+impl DiagnosticsContext<'_> {
+    fn resolve_precise_location(
+        &self,
+        node: &InFile<SyntaxNodePtr>,
+        precise_location: Option<TextRange>,
+    ) -> FileRange {
+        let sema = &self.sema;
+        (|| {
+            let precise_location = precise_location?;
+            let root = sema.parse_or_expand(node.file_id);
+            match root.covering_element(precise_location) {
+                syntax::NodeOrToken::Node(it) => Some(sema.original_range(&it)),
+                syntax::NodeOrToken::Token(it) => {
+                    node.with_value(it).original_file_range_opt(sema.db)
+                }
+            }
+        })()
+        .map(|frange| ide_db::FileRange {
+            file_id: frange.file_id.file_id(self.sema.db),
+            range: frange.range,
+        })
+        .unwrap_or_else(|| sema.diagnostics_display_range(*node))
+    }
+}
+
 /// Request parser level diagnostics for the given [`FileId`].
 pub fn syntax_diagnostics(
     db: &RootDatabase,
@@ -292,7 +317,7 @@ pub fn syntax_diagnostics(
     let sema = Semantics::new(db);
     let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
     let (file_id, _) = editioned_file_id.unpack(db);
 
@@ -323,7 +348,7 @@ pub fn semantic_diagnostics(
     let sema = Semantics::new(db);
     let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
     let (file_id, edition) = editioned_file_id.unpack(db);
     let mut res = Vec::new();
@@ -401,7 +426,7 @@ pub fn semantic_diagnostics(
                         Diagnostic::new(
                             DiagnosticCode::SyntaxError,
                             format!("Syntax Error in Expansion: {err}"),
-                            ctx.sema.diagnostics_display_range_for_range(d.range),
+                            ctx.resolve_precise_location(&d.node.clone(), d.precise_location),
                         )
                 }));
                 continue;
@@ -652,7 +677,7 @@ fn find_outline_mod_lint_severity(
     let lint_groups = lint_groups(&diag.code, edition);
     lint_attrs(
         sema,
-        &ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
+        ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
         edition,
     )
     .for_each(|(lint, severity)| {
@@ -673,7 +698,7 @@ fn lint_severity_at(
         .ancestors()
         .filter_map(ast::AnyHasAttrs::cast)
         .find_map(|ancestor| {
-            lint_attrs(sema, &ancestor, edition)
+            lint_attrs(sema, ancestor, edition)
                 .find_map(|(lint, severity)| lint_groups.contains(&lint).then_some(severity))
         })
         .or_else(|| {
@@ -681,13 +706,13 @@ fn lint_severity_at(
         })
 }
 
-// FIXME: Switch this to analysis' `expand_cfg_attr`.
 fn lint_attrs<'a>(
     sema: &'a Semantics<'a, RootDatabase>,
-    ancestor: &'a ast::AnyHasAttrs,
+    ancestor: ast::AnyHasAttrs,
     edition: Edition,
 ) -> impl Iterator<Item = (SmolStr, Severity)> + 'a {
-    ast::attrs_including_inner(ancestor)
+    ancestor
+        .attrs_including_inner()
         .filter_map(|attr| {
             attr.as_simple_call().and_then(|(name, value)| match &*name {
                 "allow" | "expect" => Some(Either::Left(iter::once((Severity::Allow, value)))),

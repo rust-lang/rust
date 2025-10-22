@@ -523,7 +523,6 @@ mod tests {
             fixups.remove,
             span_map.span_for_range(TextRange::empty(0.into())),
             DocCommentDesugarMode::Mbe,
-            |_, _| (true, Vec::new()),
         );
 
         let actual = format!("{tt}\n");
@@ -699,7 +698,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ;}
+fn foo () {a . __ra_fixup ;}
 "#]],
         )
     }
@@ -714,7 +713,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ; bar () ;}
+fn foo () {a . __ra_fixup ; bar () ;}
 "#]],
         )
     }

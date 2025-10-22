@@ -2,7 +2,7 @@
 
 use base_db::Crate;
 use hir_expand::{
-    AttrMacroAttrIds, MacroCallId, MacroCallKind, MacroDefId,
+    MacroCallId, MacroCallKind, MacroDefId,
     attrs::{Attr, AttrId, AttrInput},
     inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
@@ -28,7 +28,6 @@ pub enum ResolvedAttr {
 }
 
 impl DefMap {
-    /// This cannot be used to resolve items that allow derives.
     pub(crate) fn resolve_attr_macro(
         &self,
         local_def_map: &LocalDefMap,
@@ -36,7 +35,6 @@ impl DefMap {
         original_module: LocalModuleId,
         ast_id: AstIdWithPath<ast::Item>,
         attr: &Attr,
-        attr_id: AttrId,
     ) -> Result<ResolvedAttr, UnresolvedMacro> {
         // NB: does not currently work for derive helpers as they aren't recorded in the `DefMap`
 
@@ -70,9 +68,6 @@ impl DefMap {
             db,
             &ast_id,
             attr,
-            // There aren't any active attributes before this one, because attribute macros
-            // replace their input, and derive macros are not allowed in this function.
-            AttrMacroAttrIds::from_one(attr_id),
             self.krate,
             db.macro_def(def),
         )))
@@ -107,7 +102,6 @@ pub(super) fn attr_macro_as_call_id(
     db: &dyn DefDatabase,
     item_attr: &AstIdWithPath<ast::Item>,
     macro_attr: &Attr,
-    censored_attr_ids: AttrMacroAttrIds,
     krate: Crate,
     def: MacroDefId,
 ) -> MacroCallId {
@@ -127,7 +121,7 @@ pub(super) fn attr_macro_as_call_id(
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
             attr_args: arg.map(Arc::new),
-            censored_attr_ids,
+            invoc_attr_index: macro_attr.id,
         },
         macro_attr.ctxt,
     )

@@ -57,8 +57,7 @@ pub struct CompletionItem {
 
     /// Additional info to show in the UI pop up.
     pub detail: Option<String>,
-    // FIXME: Make this with `'db` lifetime.
-    pub documentation: Option<Documentation<'static>>,
+    pub documentation: Option<Documentation>,
 
     /// Whether this item is marked as deprecated
     pub deprecated: bool,
@@ -489,8 +488,7 @@ pub(crate) struct Builder {
     insert_text: Option<String>,
     is_snippet: bool,
     detail: Option<String>,
-    // FIXME: Make this with `'db` lifetime.
-    documentation: Option<Documentation<'static>>,
+    documentation: Option<Documentation>,
     lookup: Option<SmolStr>,
     kind: CompletionItemKind,
     text_edit: Option<TextEdit>,
@@ -646,11 +644,11 @@ impl Builder {
         self
     }
     #[allow(unused)]
-    pub(crate) fn documentation(&mut self, docs: Documentation<'_>) -> &mut Builder {
+    pub(crate) fn documentation(&mut self, docs: Documentation) -> &mut Builder {
         self.set_documentation(Some(docs))
     }
-    pub(crate) fn set_documentation(&mut self, docs: Option<Documentation<'_>>) -> &mut Builder {
-        self.documentation = docs.map(Documentation::into_owned);
+    pub(crate) fn set_documentation(&mut self, docs: Option<Documentation>) -> &mut Builder {
+        self.documentation = docs;
         self
     }
     pub(crate) fn set_deprecated(&mut self, deprecated: bool) -> &mut Builder {

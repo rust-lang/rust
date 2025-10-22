@@ -55,6 +55,30 @@ impl From<FilePosition> for HirFilePosition {
     }
 }
 
+impl FilePositionWrapper<span::FileId> {
+    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> FilePosition {
+        FilePositionWrapper {
+            file_id: EditionedFileId::new(db, self.file_id, edition),
+            offset: self.offset,
+        }
+    }
+}
+
+impl FileRangeWrapper<span::FileId> {
+    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> FileRange {
+        FileRangeWrapper {
+            file_id: EditionedFileId::new(db, self.file_id, edition),
+            range: self.range,
+        }
+    }
+}
+
+impl<T> InFileWrapper<span::FileId, T> {
+    pub fn with_edition(self, db: &dyn ExpandDatabase, edition: span::Edition) -> InRealFile<T> {
+        InRealFile { file_id: EditionedFileId::new(db, self.file_id, edition), value: self.value }
+    }
+}
+
 impl HirFileRange {
     pub fn file_range(self) -> Option<FileRange> {
         Some(FileRange { file_id: self.file_id.file_id()?, range: self.range })
@@ -383,7 +407,7 @@ impl InFile<SyntaxToken> {
 
                 // Fall back to whole macro call.
                 let loc = db.lookup_intern_macro_call(mac_file);
-                loc.kind.original_call_range(db, loc.krate)
+                loc.kind.original_call_range(db)
             }
         }
     }
@@ -429,10 +453,7 @@ impl InFile<TextRange> {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file);
-                        (
-                            loc.kind.original_call_range(db, loc.krate),
-                            SyntaxContext::root(loc.def.edition),
-                        )
+                        (loc.kind.original_call_range(db), SyntaxContext::root(loc.def.edition))
                     }
                 }
             }
@@ -447,7 +468,7 @@ impl InFile<TextRange> {
                     Some(it) => it,
                     _ => {
                         let loc = db.lookup_intern_macro_call(mac_file);
-                        loc.kind.original_call_range(db, loc.krate)
+                        loc.kind.original_call_range(db)
                     }
                 }
             }

@@ -17,8 +17,8 @@ use std::fmt;
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, attrs::AttrFlags,
-    db::DefDatabase, hir::Pat, item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, db::DefDatabase, hir::Pat,
+    item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
 };
 use hir_expand::{
     HirFileId,
@@ -201,7 +201,7 @@ impl<'a> DeclValidator<'a> {
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
-            let no_mangle = AttrFlags::query(self.db, func.into()).contains(AttrFlags::NO_MANGLE);
+            let no_mangle = self.db.attrs(func.into()).by_key(sym::no_mangle).exists();
             if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {

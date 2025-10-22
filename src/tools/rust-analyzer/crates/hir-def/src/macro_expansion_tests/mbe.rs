@@ -300,21 +300,21 @@ fn match_by_first_token_literally() {
     check(
         r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     (= $i:ident) => ( fn $i() {} );
     (+ $i:ident) => ( struct $i; )
 }
-m! { Foo }
+m! { foo }
 m! { = bar }
 m! { + Baz }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     (= $i:ident) => ( fn $i() {} );
     (+ $i:ident) => ( struct $i; )
 }
-enum Foo {}
+mod foo {}
 fn bar() {}
 struct Baz;
 "#]],
@@ -326,21 +326,21 @@ fn match_by_last_token_literally() {
     check(
         r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     ($i:ident =) => ( fn $i() {} );
     ($i:ident +) => ( struct $i; )
 }
-m! { Foo }
+m! { foo }
 m! { bar = }
 m! { Baz + }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     ($i:ident =) => ( fn $i() {} );
     ($i:ident +) => ( struct $i; )
 }
-enum Foo {}
+mod foo {}
 fn bar() {}
 struct Baz;
 "#]],
@@ -352,21 +352,21 @@ fn match_by_ident() {
     check(
         r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     (spam $i:ident) => ( fn $i() {} );
     (eggs $i:ident) => ( struct $i; )
 }
-m! { Foo }
+m! { foo }
 m! { spam bar }
 m! { eggs Baz }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($i:ident) => ( enum $i {} );
+    ($i:ident) => ( mod $i {} );
     (spam $i:ident) => ( fn $i() {} );
     (eggs $i:ident) => ( struct $i; )
 }
-enum Foo {}
+mod foo {}
 fn bar() {}
 struct Baz;
 "#]],
@@ -378,12 +378,12 @@ fn match_by_separator_token() {
     check(
         r#"
 macro_rules! m {
-    ($($i:ident),*) => ($(enum $i {} )*);
+    ($($i:ident),*) => ($(mod $i {} )*);
     ($($i:ident)#*) => ($(fn $i() {} )*);
     ($i:ident ,# $ j:ident) => ( struct $i; struct $ j; )
 }
 
-m! { Baz, Qux }
+m! { foo, bar }
 
 m! { foo# bar }
 
@@ -391,13 +391,13 @@ m! { Foo,# Bar }
 "#,
         expect![[r#"
 macro_rules! m {
-    ($($i:ident),*) => ($(enum $i {} )*);
+    ($($i:ident),*) => ($(mod $i {} )*);
     ($($i:ident)#*) => ($(fn $i() {} )*);
     ($i:ident ,# $ j:ident) => ( struct $i; struct $ j; )
 }
 
-enum Baz {}
-enum Qux {}
+mod foo {}
+mod bar {}
 
 fn foo() {}
 fn bar() {}
@@ -1114,11 +1114,11 @@ fn test_single_item() {
     check(
         r#"
 macro_rules! m { ($i:item) => ( $i ) }
-m! { struct C {} }
+m! { mod c {} }
 "#,
         expect![[r#"
 macro_rules! m { ($i:item) => ( $i ) }
-struct C {}
+mod c {}
 "#]],
     )
 }
@@ -1144,7 +1144,6 @@ m! {
     type T = u8;
 }
 "#,
-        // The modules are counted twice, once because of the module and once because of the macro call.
         expect![[r#"
 macro_rules! m { ($($i:item)*) => ($($i )*) }
 extern crate a;
@@ -1162,9 +1161,7 @@ trait J {}
 fn h() {}
 extern {}
 type T = u8;
-
-mod b;
-mod c {}"#]],
+"#]],
     );
 }
 

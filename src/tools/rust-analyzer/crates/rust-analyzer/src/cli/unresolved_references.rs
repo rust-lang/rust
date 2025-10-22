@@ -141,7 +141,7 @@ fn all_unresolved_references(
 ) -> Vec<TextRange> {
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(sema.db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
     let file = sema.parse(file_id);
     let root = file.syntax();
 

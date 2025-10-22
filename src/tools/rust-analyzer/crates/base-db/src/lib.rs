@@ -5,7 +5,6 @@ pub use salsa_macros;
 
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
-mod editioned_file_id;
 mod input;
 pub mod target;
 
@@ -18,7 +17,6 @@ use std::{
 
 pub use crate::{
     change::FileChange,
-    editioned_file_id::EditionedFileId,
     input::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
@@ -31,6 +29,7 @@ pub use query_group::{self};
 use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
+use span::Edition;
 use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
@@ -173,6 +172,42 @@ impl Files {
                 vacant.insert(file_source_root);
             }
         };
+    }
+}
+
+#[salsa_macros::interned(no_lifetime, debug, constructor=from_span, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct EditionedFileId {
+    pub editioned_file_id: span::EditionedFileId,
+}
+
+impl EditionedFileId {
+    // Salsa already uses the name `new`...
+    #[inline]
+    pub fn new(db: &dyn salsa::Database, file_id: FileId, edition: Edition) -> Self {
+        EditionedFileId::from_span(db, span::EditionedFileId::new(file_id, edition))
+    }
+
+    #[inline]
+    pub fn current_edition(db: &dyn salsa::Database, file_id: FileId) -> Self {
+        EditionedFileId::new(db, file_id, Edition::CURRENT)
+    }
+
+    #[inline]
+    pub fn file_id(self, db: &dyn salsa::Database) -> vfs::FileId {
+        let id = self.editioned_file_id(db);
+        id.file_id()
+    }
+
+    #[inline]
+    pub fn unpack(self, db: &dyn salsa::Database) -> (vfs::FileId, span::Edition) {
+        let id = self.editioned_file_id(db);
+        (id.file_id(), id.edition())
+    }
+
+    #[inline]
+    pub fn edition(self, db: &dyn SourceDatabase) -> Edition {
+        self.editioned_file_id(db).edition()
     }
 }
 

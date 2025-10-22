@@ -17,10 +17,11 @@ use syntax::{AstNode, Parse, ast};
 use triomphe::Arc;
 use tt::TextRange;
 
-use crate::{
-    MacroId, UnresolvedMacro, attrs::AttrFlags, db::DefDatabase, expr_store::HygieneId,
-    macro_call_as_call_id, nameres::DefMap,
-};
+use crate::attr::Attrs;
+use crate::expr_store::HygieneId;
+use crate::macro_call_as_call_id;
+use crate::nameres::DefMap;
+use crate::{MacroId, UnresolvedMacro, db::DefDatabase};
 
 #[derive(Debug)]
 pub(super) struct Expander {
@@ -69,10 +70,11 @@ impl Expander {
 
     pub(super) fn is_cfg_enabled(
         &self,
-        owner: &dyn HasAttrs,
+        db: &dyn DefDatabase,
+        has_attrs: &dyn HasAttrs,
         cfg_options: &CfgOptions,
     ) -> Result<(), cfg::CfgExpr> {
-        AttrFlags::is_cfg_enabled_for(owner, cfg_options)
+        Attrs::is_cfg_enabled_for(db, has_attrs, self.span_map.as_ref(), cfg_options)
     }
 
     pub(super) fn call_syntax_ctx(&self) -> SyntaxContext {

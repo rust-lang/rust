@@ -93,7 +93,16 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
 }
 
 pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
-    attrs.is_test()
+    attrs.iter().any(|attr| {
+        let path = attr.path();
+        (|| {
+            Some(
+                path.segments().first()?.as_str().starts_with("test")
+                    || path.segments().last()?.as_str().ends_with("test"),
+            )
+        })()
+        .unwrap_or_default()
+    })
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -119,7 +128,7 @@ pub fn filter_assoc_items(
         .copied()
         .filter(|assoc_item| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
-                && assoc_item.attrs(sema.db).is_doc_hidden()
+                && assoc_item.attrs(sema.db).has_doc_hidden()
             {
                 if let hir::AssocItem::Function(f) = assoc_item
                     && !f.has_body(sema.db)

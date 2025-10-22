@@ -1,6 +1,6 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use std::{collections::VecDeque, fmt, hash::Hash};
+use std::{fmt, hash::Hash};
 
 use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -102,34 +102,26 @@ where
     SpanData<Ctx>: Copy + fmt::Debug,
     SpanMap: SpanMapper<SpanData<Ctx>>,
 {
-    let mut c =
-        Converter::new(node, map, Default::default(), Default::default(), span, mode, |_, _| {
-            (true, Vec::new())
-        });
+    let mut c = Converter::new(node, map, Default::default(), Default::default(), span, mode);
     convert_tokens(&mut c)
 }
 
 /// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
 /// subtree's spans. Additionally using the append and remove parameters, the additional tokens can
 /// be injected or hidden from the output.
-pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap, OnEvent>(
+pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
     remove: FxHashSet<SyntaxElement>,
     call_site: SpanData<Ctx>,
     mode: DocCommentDesugarMode,
-    on_enter: OnEvent,
 ) -> tt::TopSubtree<SpanData<Ctx>>
 where
     SpanMap: SpanMapper<SpanData<Ctx>>,
     SpanData<Ctx>: Copy + fmt::Debug,
-    OnEvent: FnMut(
-        &mut PreorderWithTokens,
-        &WalkEvent<SyntaxElement>,
-    ) -> (bool, Vec<tt::Leaf<SpanData<Ctx>>>),
 {
-    let mut c = Converter::new(node, map, append, remove, call_site, mode, on_enter);
+    let mut c = Converter::new(node, map, append, remove, call_site, mode);
     convert_tokens(&mut c)
 }
 
@@ -632,9 +624,9 @@ where
     }
 }
 
-struct Converter<SpanMap, S, OnEvent> {
+struct Converter<SpanMap, S> {
     current: Option<SyntaxToken>,
-    current_leaves: VecDeque<tt::Leaf<S>>,
+    current_leaves: Vec<tt::Leaf<S>>,
     preorder: PreorderWithTokens,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
@@ -644,13 +636,9 @@ struct Converter<SpanMap, S, OnEvent> {
     remove: FxHashSet<SyntaxElement>,
     call_site: S,
     mode: DocCommentDesugarMode,
-    on_event: OnEvent,
 }
 
-impl<SpanMap, S, OnEvent> Converter<SpanMap, S, OnEvent>
-where
-    OnEvent: FnMut(&mut PreorderWithTokens, &WalkEvent<SyntaxElement>) -> (bool, Vec<tt::Leaf<S>>),
-{
+impl<SpanMap, S> Converter<SpanMap, S> {
     fn new(
         node: &SyntaxNode,
         map: SpanMap,
@@ -658,9 +646,8 @@ where
         remove: FxHashSet<SyntaxElement>,
         call_site: S,
         mode: DocCommentDesugarMode,
-        on_enter: OnEvent,
     ) -> Self {
-        let mut converter = Converter {
+        let mut this = Converter {
             current: None,
             preorder: node.preorder_with_tokens(),
             range: node.text_range(),
@@ -669,21 +656,16 @@ where
             append,
             remove,
             call_site,
-            current_leaves: VecDeque::new(),
+            current_leaves: vec![],
             mode,
-            on_event: on_enter,
         };
-        converter.current = converter.next_token();
-        converter
+        let first = this.next_token();
+        this.current = first;
+        this
     }
 
     fn next_token(&mut self) -> Option<SyntaxToken> {
         while let Some(ev) = self.preorder.next() {
-            let (keep_event, insert_leaves) = (self.on_event)(&mut self.preorder, &ev);
-            self.current_leaves.extend(insert_leaves);
-            if !keep_event {
-                continue;
-            }
             match ev {
                 WalkEvent::Enter(token) => {
                     if self.remove.contains(&token) {
@@ -693,9 +675,10 @@ where
                             }
                             node => {
                                 self.preorder.skip_subtree();
-                                if let Some(v) = self.append.remove(&node) {
+                                if let Some(mut v) = self.append.remove(&node) {
+                                    v.reverse();
                                     self.current_leaves.extend(v);
-                                    continue;
+                                    return None;
                                 }
                             }
                         }
@@ -704,9 +687,10 @@ where
                     }
                 }
                 WalkEvent::Leave(ele) => {
-                    if let Some(v) = self.append.remove(&ele) {
+                    if let Some(mut v) = self.append.remove(&ele) {
+                        v.reverse();
                         self.current_leaves.extend(v);
-                        continue;
+                        return None;
                     }
                 }
             }
@@ -731,8 +715,8 @@ impl<S> SynToken<S> {
     }
 }
 
-impl<SpanMap, S, OnEvent> SrcToken<Converter<SpanMap, S, OnEvent>, S> for SynToken<S> {
-    fn kind(&self, _ctx: &Converter<SpanMap, S, OnEvent>) -> SyntaxKind {
+impl<SpanMap, S> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
+    fn kind(&self, _ctx: &Converter<SpanMap, S>) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
             SynToken::Punct { token, offset: i } => {
@@ -744,14 +728,14 @@ impl<SpanMap, S, OnEvent> SrcToken<Converter<SpanMap, S, OnEvent>, S> for SynTok
             }
         }
     }
-    fn to_char(&self, _ctx: &Converter<SpanMap, S, OnEvent>) -> Option<char> {
+    fn to_char(&self, _ctx: &Converter<SpanMap, S>) -> Option<char> {
         match self {
             SynToken::Ordinary(_) => None,
             SynToken::Punct { token: it, offset: i } => it.text().chars().nth(*i),
             SynToken::Leaf(_) => None,
         }
     }
-    fn to_text(&self, _ctx: &Converter<SpanMap, S, OnEvent>) -> SmolStr {
+    fn to_text(&self, _ctx: &Converter<SpanMap, S>) -> SmolStr {
         match self {
             SynToken::Ordinary(token) | SynToken::Punct { token, offset: _ } => token.text().into(),
             SynToken::Leaf(_) => {
@@ -768,11 +752,10 @@ impl<SpanMap, S, OnEvent> SrcToken<Converter<SpanMap, S, OnEvent>, S> for SynTok
     }
 }
 
-impl<S, SpanMap, OnEvent> TokenConverter<S> for Converter<SpanMap, S, OnEvent>
+impl<S, SpanMap> TokenConverter<S> for Converter<SpanMap, S>
 where
     S: Copy,
     SpanMap: SpanMapper<S>,
-    OnEvent: FnMut(&mut PreorderWithTokens, &WalkEvent<SyntaxElement>) -> (bool, Vec<tt::Leaf<S>>),
 {
     type Token = SynToken<S>;
     fn convert_doc_comment(
@@ -798,7 +781,10 @@ where
             ));
         }
 
-        if let Some(leaf) = self.current_leaves.pop_front() {
+        if let Some(leaf) = self.current_leaves.pop() {
+            if self.current_leaves.is_empty() {
+                self.current = self.next_token();
+            }
             return Some((SynToken::Leaf(leaf), TextRange::empty(TextSize::new(0))));
         }
 
