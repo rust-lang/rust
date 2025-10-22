@@ -23,10 +23,6 @@
           _3 = copy _4;
 -         _2 = copy (*_3);
 +         _2 = copy ((*_1).0: i32);
-          goto -> bb1;
-      }
-  
-      bb1: {
           StorageDead(_3);
           StorageLive(_5);
           StorageLive(_6);
@@ -36,10 +32,6 @@
           _6 = copy _7;
 -         _5 = copy (*_6);
 +         _5 = copy ((*_1).1: u64);
-          goto -> bb2;
-      }
-  
-      bb2: {
           StorageDead(_6);
           StorageLive(_8);
           StorageLive(_9);
@@ -49,10 +41,6 @@
           _9 = copy _10;
 -         _8 = copy (*_9);
 +         _8 = copy ((*_1).2: [i8; 3]);
-          goto -> bb3;
-      }
-  
-      bb3: {
           StorageDead(_9);
 -         _0 = AllCopy { a: move _2, b: move _5, c: move _8 };
 -         StorageDead(_10);

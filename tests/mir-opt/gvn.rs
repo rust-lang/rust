@@ -99,12 +99,14 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     opaque((x * y) - y);
     opaque((x * y) - y);
 
-    // We cannot substitute through an immutable reference.
+    // We can substitute through an immutable reference.
+    // But we prefer using a SSA local rather than a borrowed one.
     // CHECK: [[ref:_.*]] = &_3;
-    // CHECK: [[deref:_.*]] = copy (*[[ref]]);
+    // CHECK: [[deref:_.*]] = copy _3;
     // CHECK: [[addref:_.*]] = Add(move [[deref]], copy _1);
     // CHECK: opaque::<u64>(move [[addref]])
-    // CHECK: [[deref2:_.*]] = copy (*[[ref]]);
+    // But `_3` is not SSA so we cannot merge the values in two different blocks.
+    // CHECK: [[deref2:_.*]] = copy _3;
     // CHECK: [[addref2:_.*]] = Add(move [[deref2]], copy _1);
     // CHECK: opaque::<u64>(move [[addref2]])
     let a = &z;
@@ -141,13 +143,14 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
 
     // We still cannot substitute again, and never with the earlier computations.
     // Important: `e` is not `a`!
-    // CHECK: [[ref2:_.*]] = &_3;
-    // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(move [[deref2]], copy _1);
-    // CHECK: opaque::<u64>(move [[addref2]])
-    // CHECK: [[deref3:_.*]] = copy (*[[ref2]]);
+    // CHECK: [[ref3:_.*]] = &_3;
+    // CHECK: [[deref3:_.*]] = copy _3;
     // CHECK: [[addref3:_.*]] = Add(move [[deref3]], copy _1);
     // CHECK: opaque::<u64>(move [[addref3]])
+    // And `_3` is not SSA so we cannot merge the values in two different blocks.
+    // CHECK: [[deref4:_.*]] = copy _3;
+    // CHECK: [[addref4:_.*]] = Add(move [[deref4]], copy _1);
+    // CHECK: opaque::<u64>(move [[addref4]])
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
