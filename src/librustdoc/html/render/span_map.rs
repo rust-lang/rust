@@ -7,7 +7,6 @@ use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind};
 
 use crate::clean::{self, PrimitiveType, rustc_span};
@@ -194,7 +193,7 @@ impl SpanMapVisitor<'_> {
         }
 
         let macro_name = match data.kind {
-            ExpnKind::Macro(MacroKind::Bang, macro_name) => macro_name,
+            ExpnKind::Macro(_, macro_name) => macro_name,
             // Even though we don't handle this kind of macro, this `data` still comes from
             // expansion so we return `true` so we don't go any deeper in this code.
             _ => return true,
