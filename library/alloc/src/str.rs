@@ -342,19 +342,6 @@ impl str {
         from: P,
         mut f: impl FnMut(&str) -> S,
     ) -> String {
-        // Fast path for replacing a single ASCII character with another.
-        if let Some(from_byte) = match from.as_utf8_pattern() {
-            Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
-            Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
-            _ => None,
-        } {
-            if let Some(sref) = from_byte.as_ascii().map(|ascii_char| f(ascii_char.as_str())) {
-                if let [to_byte] = sref.as_ref().as_bytes() {
-                    return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
-                }
-            }
-        }
-
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
