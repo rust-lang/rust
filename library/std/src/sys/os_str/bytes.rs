@@ -176,17 +176,17 @@ impl Buf {
 
     #[inline]
     pub fn as_slice(&self) -> &Slice {
-        // SAFETY: Slice just wraps [u8],
-        // and &*self.inner is &[u8], therefore
-        // transmuting &[u8] to &Slice is safe.
+        // SAFETY: Slice is just a wrapper for [u8],
+        // and self.inner.as_slice() returns &[u8].
+        // Therefore, transmuting &[u8] to &Slice is safe.
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Slice {
-        // SAFETY: Slice just wraps [u8],
-        // and &mut *self.inner is &mut [u8], therefore
-        // transmuting &mut [u8] to &mut Slice is safe.
+        // SAFETY: Slice is just a wrapper for [u8],
+        // and self.inner.as_mut_slice() returns &mut [u8].
+        // Therefore, transmuting &mut [u8] to &mut Slice is safe.
         unsafe { mem::transmute(self.inner.as_mut_slice()) }
     }
 
@@ -233,7 +233,9 @@ impl Buf {
     ///
     /// # Safety
     ///
-    /// This encoding has no safety requirements.
+    /// The slice must be valid for the platform encoding (as described in
+    /// `OsStr::from_encoded_bytes_unchecked`). This encoding has no safety
+    /// requirements.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         self.inner.extend_from_slice(other);

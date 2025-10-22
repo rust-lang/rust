@@ -2379,6 +2379,28 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl FromIterator<core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<&'a core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = &'a core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().copied().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
@@ -3180,6 +3202,14 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
     fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<core::ascii::Char> for Cow<'a, str> {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(it: T) -> Self {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }

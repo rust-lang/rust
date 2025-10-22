@@ -143,7 +143,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     // return inner to be processed in next loop
                     PatKind::Paren(inner) => pattern = inner,
-                    PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
+                    PatKind::MacCall(_) => {
+                        panic!("{pattern:#?} shouldn't exist here")
+                    }
                     PatKind::Err(guar) => break hir::PatKind::Err(*guar),
                 }
             };
@@ -460,6 +462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }),
             ),
+            TyPatKind::NotNull => hir::TyPatKind::NotNull,
             TyPatKind::Or(variants) => {
                 hir::TyPatKind::Or(self.arena.alloc_from_iter(
                     variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),

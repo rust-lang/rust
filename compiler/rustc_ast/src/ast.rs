@@ -2579,6 +2579,9 @@ pub enum TyPatKind {
     /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<Box<AnonConst>>, Option<Box<AnonConst>>, Spanned<RangeEnd>),
 
+    /// A `!null` pattern for raw pointers.
+    NotNull,
+
     Or(ThinVec<TyPat>),
 
     /// Placeholder for a pattern that wasn't syntactically well formed in some way.

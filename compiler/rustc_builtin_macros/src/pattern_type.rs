@@ -30,15 +30,21 @@ fn parse_pat_ty<'a>(
     let ty = parser.parse_ty()?;
     parser.expect_keyword(exp!(Is))?;
 
-    let pat = pat_to_ty_pat(
-        cx,
-        parser.parse_pat_no_top_guard(
-            None,
-            RecoverComma::No,
-            RecoverColon::No,
-            CommaRecoveryMode::EitherTupleOrPipe,
-        )?,
-    );
+    let start = parser.token.span;
+    let pat = if parser.eat(exp!(Bang)) {
+        parser.expect_keyword(exp!(Null))?;
+        ty_pat(TyPatKind::NotNull, start.to(parser.token.span))
+    } else {
+        pat_to_ty_pat(
+            cx,
+            parser.parse_pat_no_top_guard(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?,
+        )
+    };
 
     if parser.token != token::Eof {
         parser.unexpected()?;

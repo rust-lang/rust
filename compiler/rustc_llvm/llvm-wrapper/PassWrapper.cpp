@@ -1134,8 +1134,8 @@ struct LLVMRustThinLTOModule {
 
 // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`, not sure what it
 // does.
-static const GlobalValueSummary *
-getFirstDefinitionForLinker(const GlobalValueSummaryList &GVSummaryList) {
+static const GlobalValueSummary *getFirstDefinitionForLinker(
+    ArrayRef<std::unique_ptr<GlobalValueSummary>> GVSummaryList) {
   auto StrongDefForLinker = llvm::find_if(
       GVSummaryList, [](const std::unique_ptr<GlobalValueSummary> &Summary) {
         auto Linkage = Summary->linkage();
@@ -1213,9 +1213,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // being lifted from `lib/LTO/LTO.cpp` as well
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-    if (I.second.SummaryList.size() > 1)
-      PrevailingCopy[I.first] =
-          getFirstDefinitionForLinker(I.second.SummaryList);
+#if LLVM_VERSION_GE(22, 0)
+    const auto &SummaryList = I.second.getSummaryList();
+#else
+    const auto &SummaryList = I.second.SummaryList;
+#endif
+    if (SummaryList.size() > 1)
+      PrevailingCopy[I.first] = getFirstDefinitionForLinker(SummaryList);
   }
   auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
     const auto &Prevailing = PrevailingCopy.find(GUID);
@@ -1246,7 +1250,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-    for (auto &GVS : List.second.SummaryList) {
+#if LLVM_VERSION_GE(22, 0)
+    const auto &SummaryList = List.second.getSummaryList();
+#else
+    const auto &SummaryList = List.second.SummaryList;
+#endif
+    for (auto &GVS : SummaryList) {
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();
