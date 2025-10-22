@@ -92,7 +92,7 @@ LL |         ..=1 + 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 2;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -109,7 +109,7 @@ LL |         (-4 + 0).. => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -4 + 0;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -126,7 +126,7 @@ LL |         (1 + 4)...1 * 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 4;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -143,7 +143,7 @@ LL |         (1 + 4)...1 * 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 * 2;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -160,7 +160,7 @@ LL |         0.x()..="y".z() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.x();
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -177,7 +177,7 @@ LL |         0.x()..="y".z() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "y".z();
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
