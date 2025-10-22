@@ -38,13 +38,14 @@ use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplem
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, supertraits,
+    FulfillmentError, Obligation, ObligationCauseCode, supertraits,
 };
 use tracing::{debug, info, instrument};
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
+use crate::method::probe::UnsatisfiedPredicates;
 use crate::{Expectation, FnCtxt};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -58,11 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         span: Span,
-        unsatisfied_predicates: &Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) -> bool {
         fn predicate_bounds_generic_param<'tcx>(
             predicate: ty::Predicate<'_>,
@@ -410,11 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         is_method: bool,
         sugg_span: Span,
-        unsatisfied_predicates: &Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) -> Diag<'_> {
         // Don't show expanded generic arguments when the method can't be found in any
         // implementation (#81576).
@@ -1096,11 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mode: Mode,
         source: SelfSource<'tcx>,
         span: Span,
-        unsatisfied_predicates: &Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
         find_candidate_for_method: &mut bool,
     ) {
         let ty_str = self.tcx.short_string(rcvr_ty, err.long_ty_path());
@@ -1198,11 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_ident: Ident,
         span: Span,
         source: SelfSource<'tcx>,
-        unsatisfied_predicates: &Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) {
         // Don't emit a suggestion if we found an actual method that had unsatisfied trait bounds
         if !unsatisfied_predicates.is_empty() || !rcvr_ty.is_enum() {
@@ -1338,11 +1323,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_ident: Ident,
         item_kind: &str,
         span: Span,
-        unsatisfied_predicates: &Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
         restrict_type_params: &mut bool,
         suggested_derive: &mut bool,
         unsatisfied_bounds: &mut bool,
@@ -3122,13 +3103,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn note_predicate_source_and_get_derives(
         &self,
         err: &mut Diag<'_>,
-        unsatisfied_predicates: &[(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )],
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) -> Vec<(String, Span, Symbol)> {
-        let mut derives = Vec::<(String, Span, Symbol)>::new();
+        let mut derives = Vec::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
             let Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred))) =
@@ -3204,11 +3181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_derive(
         &self,
         err: &mut Diag<'_>,
-        unsatisfied_predicates: &[(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )],
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
     ) -> bool {
         let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
         derives.sort();
