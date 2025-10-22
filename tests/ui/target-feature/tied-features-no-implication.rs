@@ -4,18 +4,15 @@
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 //@ ignore-backends: gcc
+//@ add-core-stubs
+// FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
+//@ core-stubs-compile-flags: -C target-feature=-pacg,-paca
 
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
+extern crate minicore;
+use minicore::*;
 
 // Can't use `compile_error!` here without `core`/`std` but requiring these makes this test only
 // work if you have libcore built in the sysroot for `aarch64-unknown-linux-gnu`. Can't run this

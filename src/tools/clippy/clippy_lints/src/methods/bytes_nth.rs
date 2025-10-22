@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
-use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, LangItem};
 use rustc_lint::LateContext;
@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
     let caller_type = if ty.is_str() {
         "str"
-    } else if is_type_lang_item(cx, ty, LangItem::String) {
+    } else if ty.is_lang_item(cx, LangItem::String) {
         "String"
     } else {
         return;

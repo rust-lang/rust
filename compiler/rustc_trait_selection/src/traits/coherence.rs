@@ -137,8 +137,8 @@ pub fn overlapping_trait_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let impl1_args = tcx.impl_trait_ref(impl1_def_id).unwrap().skip_binder().args;
-    let impl2_args = tcx.impl_trait_ref(impl2_def_id).unwrap().skip_binder().args;
+    let impl1_args = tcx.impl_trait_ref(impl1_def_id).skip_binder().args;
+    let impl2_args = tcx.impl_trait_ref(impl2_def_id).skip_binder().args;
     let may_overlap =
         DeepRejectCtxt::relate_infer_infer(tcx).args_may_unify(impl1_args, impl2_args);
 
@@ -209,8 +209,7 @@ fn fresh_impl_header<'tcx>(
         impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
-        trait_ref: is_of_trait
-            .then(|| tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args)),
+        trait_ref: is_of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args)),
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)

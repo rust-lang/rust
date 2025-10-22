@@ -17,18 +17,13 @@
 // Remove some LLVM warnings that only show up sometimes.
 //@ normalize-stderr: "\n[^\n]*(target-abi|lp64f)[^\n]*" -> ""
 //@ ignore-backends: gcc
+//@ add-core-stubs
 
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 //~? WARN must be enabled to ensure that the ABI of the current target can be implemented correctly
 //[x86,riscv]~? WARN unstable feature specified for `-Ctarget-feature`

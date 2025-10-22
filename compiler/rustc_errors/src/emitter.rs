@@ -2154,11 +2154,11 @@ impl HumanEmitter {
 
             assert!(!file_lines.lines.is_empty() || parts[0].span.is_dummy());
 
-            let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
+            let line_start = sm.lookup_char_pos(parts[0].original_span.lo()).line;
             let mut lines = complete.lines();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
-                let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
+                let line_end = sm.lookup_char_pos(parts[0].original_span.hi()).line;
                 for line in line_start..=line_end {
                     self.draw_line_num(
                         &mut buffer,

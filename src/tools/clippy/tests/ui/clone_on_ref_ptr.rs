@@ -49,3 +49,33 @@ mod issue2076 {
         //~^ clone_on_ref_ptr
     }
 }
+
+#[allow(
+    clippy::needless_borrow,
+    reason = "the suggestion creates `Weak::clone(&rec)`, but `rec` is already a reference"
+)]
+mod issue15009 {
+    use std::rc::{Rc, Weak};
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    fn main() {
+        let counter = AtomicU32::new(0);
+        let counter_ref = &counter;
+        let factorial = Rc::new_cyclic(move |rec| {
+            let rec = rec.clone() as Weak<dyn Fn(u32) -> u32>;
+            //~^ clone_on_ref_ptr
+            move |x| {
+                // can capture env
+                counter_ref.fetch_add(1, Ordering::Relaxed);
+                match x {
+                    0 => 1,
+                    x => x * rec.upgrade().unwrap()(x - 1),
+                }
+            }
+        });
+        println!("{}", factorial(5)); // 120
+        println!("{}", counter.load(Ordering::Relaxed)); // 6
+        println!("{}", factorial(7)); // 5040
+        println!("{}", counter.load(Ordering::Relaxed)); // 14
+    }
+}

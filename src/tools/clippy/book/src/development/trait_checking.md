@@ -17,10 +17,10 @@ providing the `LateContext` (`cx`), our expression at hand, and
 the symbol of the trait in question:
 
 ```rust
+use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -53,7 +53,7 @@ For instance, if we want to examine whether an expression `expr` implements
 we can check that the `Ty` of the `expr` implements the trait:
 
 ```rust
-use clippy_utils::implements_trait;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 
@@ -79,7 +79,8 @@ If neither diagnostic item nor a language item is available, we can use
 Below, we check if the given `expr` implements [`core::iter::Step`](https://doc.rust-lang.org/std/iter/trait.Step.html):
 
 ```rust
-use clippy_utils::{implements_trait, paths};
+use clippy_utils::paths;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 
@@ -124,8 +125,8 @@ The following code demonstrates how to do this:
 ```rust
 
 use rustc_middle::ty::Ty;
+use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
-use rustc_span::symbol::sym;
 
 let ty = todo!("Get the `Foo` type to check for a trait implementation");
 let borrow_id = cx.tcx.get_diagnostic_item(sym::Borrow).unwrap(); // avoid unwrap in real code

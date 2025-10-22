@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
                 return;
             }
 
-            let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+            let trait_ref = cx.tcx.impl_trait_ref(impl_id);
 
             // Only care about `impl PartialOrd<Foo> for Foo`
             // For `impl PartialOrd<B> for A, input_types is [A, B]

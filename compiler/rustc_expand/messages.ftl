@@ -49,6 +49,9 @@ expand_feature_removed =
     .note = removed in {$removed_rustc_version}{$pull_note}
     .reason = {$reason}
 
+expand_file_modules_in_proc_macro_input_are_unstable =
+    file modules in proc macro input are unstable
+
 expand_glob_delegation_outside_impls =
     glob delegation is only supported in impls
 
@@ -157,9 +160,6 @@ expand_mve_unrecognized_expr =
 
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
-
-expand_non_inline_modules_in_proc_macro_input_are_unstable =
-    non-inline modules in proc macro input are unstable
 
 expand_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics

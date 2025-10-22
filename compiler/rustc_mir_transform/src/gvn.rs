@@ -1926,13 +1926,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
                 self.assign(local, opaque);
             }
         }
-        // Function calls and ASM may invalidate (nested) derefs. We must handle them carefully.
-        // Currently, only preserving derefs for trivial terminators like SwitchInt and Goto.
-        let safe_to_preserve_derefs = matches!(
-            terminator.kind,
-            TerminatorKind::SwitchInt { .. } | TerminatorKind::Goto { .. }
-        );
-        if !safe_to_preserve_derefs {
+        // Terminators that can write to memory may invalidate (nested) derefs.
+        if terminator.kind.can_write_to_memory() {
             self.invalidate_derefs();
         }
         self.super_terminator(terminator, location);

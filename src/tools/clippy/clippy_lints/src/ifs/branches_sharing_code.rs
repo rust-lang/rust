@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
     ContainsName, HirEqInterExpr, SpanlessEq, capture_local_usage, get_enclosing_block, hash_expr, hash_stmt,
-    path_to_local,
 };
 use core::iter;
 use core::ops::ControlFlow;
@@ -149,7 +149,7 @@ fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
 /// Checks if the statement modifies or moves any of the given locals.
 fn modifies_any_local<'tcx>(cx: &LateContext<'tcx>, s: &'tcx Stmt<'_>, locals: &HirIdSet) -> bool {
     for_each_expr_without_closures(s, |e| {
-        if let Some(id) = path_to_local(e)
+        if let Some(id) = e.res_local_id()
             && locals.contains(&id)
             && !capture_local_usage(cx, e).is_imm_ref()
         {
@@ -198,7 +198,7 @@ fn scan_block_for_eq<'tcx>(
     let mut cond_locals = HirIdSet::default();
     for &cond in conds {
         let _: Option<!> = for_each_expr_without_closures(cond, |e| {
-            if let Some(id) = path_to_local(e) {
+            if let Some(id) = e.res_local_id() {
                 cond_locals.insert(id);
             }
             ControlFlow::Continue(())

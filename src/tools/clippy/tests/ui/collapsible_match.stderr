@@ -230,7 +230,7 @@ help: the outer pattern can be modified to include the inner pattern
 LL |     if let Issue9647::A { a, .. } = x {
    |                           ^ replace this binding
 LL |         if let Some(u) = a {
-   |                ^^^^^^^ with this pattern, prefixed by `a`:
+   |                ^^^^^^^ with this pattern, prefixed by `a: `
 
 error: this `if let` can be collapsed into the outer `if let`
   --> tests/ui/collapsible_match.rs:299:9
@@ -250,8 +250,25 @@ LL |     if let Issue9647::A { a: Some(a), .. } = x {
 LL |         if let Some(u) = a {
    |                ^^^^^^^ with this pattern
 
+error: this `if let` can be collapsed into the outer `if let`
+  --> tests/ui/collapsible_match.rs:320:13
+   |
+LL | /             if let Some(Token::Name) = token {
+LL | |
+LL | |                 println!("token used as a ref");
+LL | |             }
+   | |_____________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> tests/ui/collapsible_match.rs:319:29
+   |
+LL |         if let Some(Error { ref token, .. }) = err {
+   |                             ^^^^^^^^^ replace this binding
+LL |             if let Some(Token::Name) = token {
+   |                    ^^^^^^^^^^^^^^^^^ with this pattern, prefixed by `token: `
+
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:322:9
+  --> tests/ui/collapsible_match.rs:331:9
    |
 LL | /         match *last {
 LL | |
@@ -263,7 +280,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:321:17
+  --> tests/ui/collapsible_match.rs:330:17
    |
 LL |     if let Some(last) = arr.last() {
    |                 ^^^^    ---------- use: `arr.last().copied()`
@@ -274,7 +291,7 @@ LL |             "a" | "b" => {
    |             ^^^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:332:9
+  --> tests/ui/collapsible_match.rs:341:9
    |
 LL | /         match &last {
 LL | |
@@ -286,7 +303,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:331:17
+  --> tests/ui/collapsible_match.rs:340:17
    |
 LL |     if let Some(last) = arr.last() {
    |                 ^^^^    ---------- use: `arr.last().as_ref()`
@@ -297,7 +314,7 @@ LL |             &&"a" | &&"b" => {
    |             ^^^^^^^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:342:9
+  --> tests/ui/collapsible_match.rs:351:9
    |
 LL | /         match &mut last {
 LL | |
@@ -309,7 +326,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:341:17
+  --> tests/ui/collapsible_match.rs:350:17
    |
 LL |     if let Some(mut last) = arr.last_mut() {
    |                 ^^^^^^^^    -------------- use: `arr.last_mut().as_mut()`
@@ -319,5 +336,5 @@ LL |     if let Some(mut last) = arr.last_mut() {
 LL |             &mut &mut "a" | &mut &mut "b" => {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ with this pattern
 
-error: aborting due to 16 previous errors
+error: aborting due to 17 previous errors
 

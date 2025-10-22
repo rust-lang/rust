@@ -396,39 +396,4 @@ Now, tests should just run, you don't have to set up anything else.
 [wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
 
 
-## Running rustc_codegen_gcc tests
-
-First thing to know is that it only supports linux x86_64 at the moment. We will
-extend its support later on.
-
-You need to update `codegen-backends` value in your `bootstrap.toml` file in the
-`[rust]` section and add "gcc" in the array:
-
-```toml
-codegen-backends = ["llvm", "gcc"]
-```
-
-Then you need to install libgccjit 12. For example with `apt`:
-
-```text
-apt install libgccjit-12-dev
-```
-
-Now you can run the following command:
-
-```text
-./x test compiler/rustc_codegen_gcc/
-```
-
-If it cannot find the `.so` library (if you installed it with `apt` for example), you
-need to pass the library file path with `LIBRARY_PATH`:
-
-```text
-LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
-```
-
-If you encounter bugs or problems, don't hesitate to open issues on the
-[`rustc_codegen_gcc`
-repository](https://github.com/rust-lang/rustc_codegen_gcc/).
-
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui

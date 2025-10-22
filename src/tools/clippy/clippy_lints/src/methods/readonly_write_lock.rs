@@ -1,8 +1,8 @@
 use super::READONLY_WRITE_LOCK;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::mir::{enclosing_mir, visit_local_usage};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, PatKind};
 use rustc_lint::LateContext;
@@ -13,14 +13,17 @@ fn is_unwrap_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::MethodCall(path, receiver, [], _) = expr.kind
         && path.ident.name == sym::unwrap
     {
-        is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver).peel_refs(), sym::Result)
+        cx.typeck_results()
+            .expr_ty(receiver)
+            .peel_refs()
+            .is_diag_item(cx, sym::Result)
     } else {
         false
     }
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, receiver: &Expr<'_>) {
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver).peel_refs(), sym::RwLock)
+    if cx.typeck_results().expr_ty(receiver).peel_refs().is_diag_item(cx, sym::RwLock)
         && let Node::Expr(unwrap_call_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_unwrap_call(cx, unwrap_call_expr)
         && let parent = cx.tcx.parent_hir_node(unwrap_call_expr.hir_id)

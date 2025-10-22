@@ -224,7 +224,7 @@ enum PatState<'a> {
     /// A std enum we know won't be extended. Tracks the states of each variant separately.
     ///
     /// This is not used for `Option` since it uses the current pattern to track its state.
-    StdEnum(&'a mut [PatState<'a>]),
+    StdEnum(&'a mut [Self]),
     /// Either the initial state for a pattern or a non-std enum. There is currently no need to
     /// distinguish these cases.
     ///

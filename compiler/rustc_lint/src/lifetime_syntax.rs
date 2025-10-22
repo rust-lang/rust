@@ -3,6 +3,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
@@ -78,11 +79,11 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: hir::intravisit::FnKind<'tcx>,
+        _: intravisit::FnKind<'tcx>,
         fd: &'tcx hir::FnDecl<'tcx>,
         _: &'tcx hir::Body<'tcx>,
-        _: rustc_span::Span,
-        _: rustc_span::def_id::LocalDefId,
+        _: Span,
+        _: LocalDefId,
     ) {
         check_fn_like(cx, fd);
     }
@@ -97,11 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
     }
 
     #[instrument(skip_all)]
-    fn check_foreign_item(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        fi: &'tcx rustc_hir::ForeignItem<'tcx>,
-    ) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, fi: &'tcx hir::ForeignItem<'tcx>) {
         match fi.kind {
             hir::ForeignItemKind::Fn(fn_sig, _idents, _generics) => check_fn_like(cx, fn_sig.decl),
             hir::ForeignItemKind::Static(..) => {}
@@ -111,33 +108,45 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeSyntax {
 }
 
 fn check_fn_like<'tcx>(cx: &LateContext<'tcx>, fd: &'tcx hir::FnDecl<'tcx>) {
-    let mut input_map = Default::default();
-    let mut output_map = Default::default();
+    if fd.inputs.is_empty() {
+        return;
+    }
+    let hir::FnRetTy::Return(output) = fd.output else {
+        return;
+    };
+
+    let mut map: FxIndexMap<hir::LifetimeKind, LifetimeGroup<'_>> = FxIndexMap::default();
+
+    LifetimeInfoCollector::collect(output, |info| {
+        let group = map.entry(info.lifetime.kind).or_default();
+        group.outputs.push(info);
+    });
+    if map.is_empty() {
+        return;
+    }
 
     for input in fd.inputs {
-        LifetimeInfoCollector::collect(input, &mut input_map);
-    }
-
-    if let hir::FnRetTy::Return(output) = fd.output {
-        LifetimeInfoCollector::collect(output, &mut output_map);
-    }
-
-    report_mismatches(cx, &input_map, &output_map);
-}
-
-#[instrument(skip_all)]
-fn report_mismatches<'tcx>(
-    cx: &LateContext<'tcx>,
-    inputs: &LifetimeInfoMap<'tcx>,
-    outputs: &LifetimeInfoMap<'tcx>,
-) {
-    for (resolved_lifetime, output_info) in outputs {
-        if let Some(input_info) = inputs.get(resolved_lifetime) {
-            if !lifetimes_use_matched_syntax(input_info, output_info) {
-                emit_mismatch_diagnostic(cx, input_info, output_info);
+        LifetimeInfoCollector::collect(input, |info| {
+            if let Some(group) = map.get_mut(&info.lifetime.kind) {
+                group.inputs.push(info);
             }
+        });
+    }
+
+    for LifetimeGroup { ref inputs, ref outputs } in map.into_values() {
+        if inputs.is_empty() {
+            continue;
+        }
+        if !lifetimes_use_matched_syntax(inputs, outputs) {
+            emit_mismatch_diagnostic(cx, inputs, outputs);
         }
     }
+}
+
+#[derive(Default)]
+struct LifetimeGroup<'tcx> {
+    inputs: Vec<Info<'tcx>>,
+    outputs: Vec<Info<'tcx>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -148,11 +157,11 @@ enum LifetimeSyntaxCategory {
 }
 
 impl LifetimeSyntaxCategory {
-    fn new(syntax_source: (hir::LifetimeSyntax, LifetimeSource)) -> Option<Self> {
+    fn new(lifetime: &hir::Lifetime) -> Option<Self> {
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        match syntax_source {
+        match (lifetime.syntax, lifetime.source) {
             // E.g. `&T`.
             (Implicit, Reference) |
             // E.g. `&'_ T`.
@@ -216,7 +225,7 @@ impl<T> LifetimeSyntaxCategories<Vec<T>> {
 
     pub fn iter_unnamed(&self) -> impl Iterator<Item = &T> {
         let Self { hidden, elided, named: _ } = self;
-        [hidden.iter(), elided.iter()].into_iter().flatten()
+        std::iter::chain(hidden, elided)
     }
 }
 
@@ -233,22 +242,8 @@ impl std::ops::Add for LifetimeSyntaxCategories<usize> {
 }
 
 fn lifetimes_use_matched_syntax(input_info: &[Info<'_>], output_info: &[Info<'_>]) -> bool {
-    let mut syntax_counts = LifetimeSyntaxCategories::<usize>::default();
-
-    for info in input_info.iter().chain(output_info) {
-        if let Some(category) = info.lifetime_syntax_category() {
-            *syntax_counts.select(category) += 1;
-        }
-    }
-
-    tracing::debug!(?syntax_counts);
-
-    matches!(
-        syntax_counts,
-        LifetimeSyntaxCategories { hidden: _, elided: 0, named: 0 }
-            | LifetimeSyntaxCategories { hidden: 0, elided: _, named: 0 }
-            | LifetimeSyntaxCategories { hidden: 0, elided: 0, named: _ }
-    )
+    let (first, inputs) = input_info.split_first().unwrap();
+    std::iter::chain(inputs, output_info).all(|info| info.syntax_category == first.syntax_category)
 }
 
 fn emit_mismatch_diagnostic<'tcx>(
@@ -310,18 +305,13 @@ fn emit_mismatch_diagnostic<'tcx>(
         use LifetimeSource::*;
         use hir::LifetimeSyntax::*;
 
-        let syntax_source = info.syntax_source();
+        let lifetime = info.lifetime;
 
-        if let (_, Other) = syntax_source {
-            // Ignore any other kind of lifetime.
-            continue;
-        }
-
-        if let (ExplicitBound, _) = syntax_source {
+        if lifetime.syntax == ExplicitBound {
             bound_lifetime = Some(info);
         }
 
-        match syntax_source {
+        match (lifetime.syntax, lifetime.source) {
             // E.g. `&T`.
             (Implicit, Reference) => {
                 suggest_change_to_explicit_anonymous.push(info);
@@ -341,8 +331,8 @@ fn emit_mismatch_diagnostic<'tcx>(
                 suggest_change_to_explicit_bound.push(info);
             }
 
-            // E.g. `ContainsLifetime<'_>`.
-            (ExplicitAnonymous, Path { .. }) => {
+            // E.g. `ContainsLifetime<'_>`, `+ '_`, `+ use<'_>`.
+            (ExplicitAnonymous, Path { .. } | OutlivesBound | PreciseCapturing) => {
                 suggest_change_to_explicit_bound.push(info);
             }
 
@@ -353,8 +343,8 @@ fn emit_mismatch_diagnostic<'tcx>(
                 suggest_change_to_explicit_anonymous.push(info);
             }
 
-            // E.g. `ContainsLifetime<'a>`.
-            (ExplicitBound, Path { .. }) => {
+            // E.g. `ContainsLifetime<'a>`, `+ 'a`, `+ use<'a>`.
+            (ExplicitBound, Path { .. } | OutlivesBound | PreciseCapturing) => {
                 suggest_change_to_mixed_explicit_anonymous.push(info);
                 suggest_change_to_explicit_anonymous.push(info);
             }
@@ -363,29 +353,18 @@ fn emit_mismatch_diagnostic<'tcx>(
                 panic!("This syntax / source combination is not possible");
             }
 
-            // E.g. `+ '_`, `+ use<'_>`.
-            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
-                suggest_change_to_explicit_bound.push(info);
-            }
-
-            // E.g. `+ 'a`, `+ use<'a>`.
-            (ExplicitBound, OutlivesBound | PreciseCapturing) => {
-                suggest_change_to_mixed_explicit_anonymous.push(info);
-                suggest_change_to_explicit_anonymous.push(info);
-            }
-
             (_, Other) => {
                 panic!("This syntax / source combination has already been skipped");
             }
         }
 
-        if matches!(syntax_source, (_, Path { .. } | OutlivesBound | PreciseCapturing)) {
+        if matches!(lifetime.source, Path { .. } | OutlivesBound | PreciseCapturing) {
             allow_suggesting_implicit = false;
         }
 
-        match syntax_source {
-            (_, Reference) => saw_a_reference = true,
-            (_, Path { .. }) => saw_a_path = true,
+        match lifetime.source {
+            Reference => saw_a_reference = true,
+            Path { .. } => saw_a_path = true,
             _ => {}
         }
     }
@@ -393,9 +372,7 @@ fn emit_mismatch_diagnostic<'tcx>(
     let categorize = |infos: &[Info<'_>]| {
         let mut categories = LifetimeSyntaxCategories::<Vec<_>>::default();
         for info in infos {
-            if let Some(category) = info.lifetime_syntax_category() {
-                categories.select(category).push(info.reporting_span());
-            }
+            categories.select(info.syntax_category).push(info.reporting_span());
         }
         categories
     };
@@ -407,10 +384,10 @@ fn emit_mismatch_diagnostic<'tcx>(
         |infos: &[&Info<'_>]| infos.iter().map(|i| i.removing_span()).collect::<Vec<_>>();
 
     let explicit_bound_suggestion = bound_lifetime.map(|info| {
-        build_mismatch_suggestion(info.lifetime_name(), &suggest_change_to_explicit_bound)
+        build_mismatch_suggestion(info.lifetime.ident.as_str(), &suggest_change_to_explicit_bound)
     });
 
-    let is_bound_static = bound_lifetime.is_some_and(|info| info.is_static());
+    let is_bound_static = bound_lifetime.is_some_and(|info| info.lifetime.is_static());
 
     tracing::debug!(?bound_lifetime, ?explicit_bound_suggestion, ?is_bound_static);
 
@@ -517,33 +494,17 @@ fn build_mismatch_suggestion(
 
 #[derive(Debug)]
 struct Info<'tcx> {
-    type_span: Span,
-    referenced_type_span: Option<Span>,
     lifetime: &'tcx hir::Lifetime,
+    syntax_category: LifetimeSyntaxCategory,
+    ty: &'tcx hir::Ty<'tcx>,
 }
 
 impl<'tcx> Info<'tcx> {
-    fn syntax_source(&self) -> (hir::LifetimeSyntax, LifetimeSource) {
-        (self.lifetime.syntax, self.lifetime.source)
-    }
-
-    fn lifetime_syntax_category(&self) -> Option<LifetimeSyntaxCategory> {
-        LifetimeSyntaxCategory::new(self.syntax_source())
-    }
-
-    fn lifetime_name(&self) -> &str {
-        self.lifetime.ident.as_str()
-    }
-
-    fn is_static(&self) -> bool {
-        self.lifetime.is_static()
-    }
-
     /// When reporting a lifetime that is implicit, we expand the span
     /// to include the type. Otherwise we end up pointing at nothing,
     /// which is a bit confusing.
     fn reporting_span(&self) -> Span {
-        if self.lifetime.is_implicit() { self.type_span } else { self.lifetime.ident.span }
+        if self.lifetime.is_implicit() { self.ty.span } else { self.lifetime.ident.span }
     }
 
     /// When removing an explicit lifetime from a reference,
@@ -560,12 +521,10 @@ impl<'tcx> Info<'tcx> {
     /// ```
     // FIXME: Ideally, we'd also remove the lifetime declaration.
     fn removing_span(&self) -> Span {
-        let mut span = self.suggestion("'dummy").0;
-
-        if let Some(referenced_type_span) = self.referenced_type_span {
-            span = span.until(referenced_type_span);
+        let mut span = self.lifetime.ident.span;
+        if let hir::TyKind::Ref(_, mut_ty) = self.ty.kind {
+            span = span.until(mut_ty.ty.span);
         }
-
         span
     }
 
@@ -574,46 +533,38 @@ impl<'tcx> Info<'tcx> {
     }
 }
 
-type LifetimeInfoMap<'tcx> = FxIndexMap<&'tcx hir::LifetimeKind, Vec<Info<'tcx>>>;
-
-struct LifetimeInfoCollector<'a, 'tcx> {
-    type_span: Span,
-    referenced_type_span: Option<Span>,
-    map: &'a mut LifetimeInfoMap<'tcx>,
+struct LifetimeInfoCollector<'tcx, F> {
+    info_func: F,
+    ty: &'tcx hir::Ty<'tcx>,
 }
 
-impl<'a, 'tcx> LifetimeInfoCollector<'a, 'tcx> {
-    fn collect(ty: &'tcx hir::Ty<'tcx>, map: &'a mut LifetimeInfoMap<'tcx>) {
-        let mut this = Self { type_span: ty.span, referenced_type_span: None, map };
+impl<'tcx, F> LifetimeInfoCollector<'tcx, F>
+where
+    F: FnMut(Info<'tcx>),
+{
+    fn collect(ty: &'tcx hir::Ty<'tcx>, info_func: F) {
+        let mut this = Self { info_func, ty };
 
         intravisit::walk_unambig_ty(&mut this, ty);
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
+impl<'tcx, F> Visitor<'tcx> for LifetimeInfoCollector<'tcx, F>
+where
+    F: FnMut(Info<'tcx>),
+{
     #[instrument(skip(self))]
     fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
-        let type_span = self.type_span;
-        let referenced_type_span = self.referenced_type_span;
-
-        let info = Info { type_span, referenced_type_span, lifetime };
-
-        self.map.entry(&lifetime.kind).or_default().push(info);
+        if let Some(syntax_category) = LifetimeSyntaxCategory::new(lifetime) {
+            let info = Info { lifetime, syntax_category, ty: self.ty };
+            (self.info_func)(info);
+        }
     }
 
     #[instrument(skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) -> Self::Result {
-        let old_type_span = self.type_span;
-        let old_referenced_type_span = self.referenced_type_span;
-
-        self.type_span = ty.span;
-        if let hir::TyKind::Ref(_, ty) = ty.kind {
-            self.referenced_type_span = Some(ty.ty.span);
-        }
-
+        let old_ty = std::mem::replace(&mut self.ty, ty.as_unambig_ty());
         intravisit::walk_ty(self, ty);
-
-        self.type_span = old_type_span;
-        self.referenced_type_span = old_referenced_type_span;
+        self.ty = old_ty;
     }
 }

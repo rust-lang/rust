@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::implements_trait;
 use clippy_utils::{higher, sym};
 use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -235,7 +236,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
             } else if method.ident.name == sym::collect {
                 let ty = cx.typeck_results().expr_ty(expr);
                 if matches!(
-                    get_type_diagnostic_name(cx, ty),
+                    ty.opt_diag_name(cx),
                     Some(
                         sym::BinaryHeap
                             | sym::BTreeMap

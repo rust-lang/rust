@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{eq_expr_value, higher, path_to_local_id, sym};
+use clippy_utils::{eq_expr_value, higher, sym};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{Expr, ExprKind, LangItem, Node, Pat, PatKind};
 use rustc_lint::LateContext;
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
         {
             // Destructured iterator element `(idx, _)`, look for uses of the binding
             for_each_expr(cx, body, |expr| {
-                if path_to_local_id(expr, binding_id) {
+                if expr.res_local_id() == Some(binding_id) {
                     check_index_usage(cx, expr, pat, enumerate_span, chars_span, chars_recv);
                 }
                 CONTINUE
@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
             // Bound as a tuple, look for `tup.0`
             for_each_expr(cx, body, |expr| {
                 if let ExprKind::Field(e, field) = expr.kind
-                    && path_to_local_id(e, binding_id)
+                    && e.res_local_id() == Some(binding_id)
                     && field.name == sym::integer(0)
                 {
                     check_index_usage(cx, expr, pat, enumerate_span, chars_span, chars_recv);
@@ -81,7 +81,7 @@ fn check_index_usage<'tcx>(
         return;
     };
 
-    let is_string_like = |ty: Ty<'_>| ty.is_str() || is_type_lang_item(cx, ty, LangItem::String);
+    let is_string_like = |ty: Ty<'_>| ty.is_str() || ty.is_lang_item(cx, LangItem::String);
     let message = match parent_expr.kind {
         ExprKind::MethodCall(segment, recv, ..)
             // We currently only lint `str` methods (which `String` can deref to), so a `.is_str()` check is sufficient here

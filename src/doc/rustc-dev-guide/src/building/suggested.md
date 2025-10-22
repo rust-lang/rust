@@ -306,6 +306,40 @@ steps, meaning it will have two precompiled compilers: stage0 compiler and `down
 for `stage > 0` steps. This way, it will never need to build the in-tree compiler. As a result, your
 build time will be significantly reduced by not building the in-tree compiler.
 
+## Faster rebuilds with `--keep-stage-std`
+
+Sometimes just checking whether the compiler builds is not enough. A common
+example is that you need to add a `debug!` statement to inspect the value of
+some state or better understand the problem. In that case, you don't really need
+a full build. By bypassing bootstrap's cache invalidation, you can often get
+these builds to complete very fast (e.g., around 30 seconds). The only catch is
+this requires a bit of fudging and may produce compilers that don't work (but
+that is easily detected and fixed).
+
+The sequence of commands you want is as follows:
+
+- Initial build: `./x build library`
+- Subsequent builds: `./x build library --keep-stage-std=1`
+  - Note that we added the `--keep-stage-std=1` flag here
+
+As mentioned, the effect of `--keep-stage-std=1` is that we just _assume_ that the
+old standard library can be re-used. If you are editing the compiler, this is
+often true: you haven't changed the standard library, after all. But
+sometimes, it's not true: for example, if you are editing the "metadata" part of
+the compiler, which controls how the compiler encodes types and other states
+into the `rlib` files, or if you are editing things that wind up in the metadata
+(such as the definition of the MIR).
+
+**The TL;DR is that you might get weird behavior from a compile when using
+`--keep-stage-std=1`** -- for example, strange [ICEs](../appendix/glossary.html#ice)
+or other panics. In that case, you should simply remove the `--keep-stage-std=1`
+from the command and rebuild. That ought to fix the problem.
+
+You can also use `--keep-stage-std=1` when running tests. Something like this:
+
+- Initial test run: `./x test tests/ui`
+- Subsequent test run: `./x test tests/ui --keep-stage-std=1`
+
 ## Using incremental compilation
 
 You can further enable the `--incremental` flag to save additional time in

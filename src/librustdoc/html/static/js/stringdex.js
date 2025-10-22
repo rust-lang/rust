@@ -1447,7 +1447,7 @@ function loadDatabase(hooks) {
         makeSearchTreeBranchesAlphaBitmapClass(LONG_ALPHABITMAP_CHARS, 4);
 
     /**
-     * @typedef {PrefixSearchTree|SuffixSearchTree} SearchTree
+     * @typedef {PrefixSearchTree|SuffixSearchTree|InlineNeighborsTree} SearchTree
      * @typedef {PrefixTrie|SuffixTrie} Trie
      */
 
@@ -1675,9 +1675,12 @@ function loadDatabase(hooks) {
                         yield leaves;
                     }
                 }
-                /** @type {HashTable<[number, SearchTree][]>} */
+                /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
                 const subnodes = new HashTable();
-                for await (const node of current_layer) {
+                for await (const nodeEncoded of current_layer) {
+                    const node = nodeEncoded instanceof InlineNeighborsTree ?
+                        nodeEncoded.decode() :
+                        nodeEncoded;
                     const branches = node.branches;
                     const l = branches.subtrees.length;
                     for (let i = 0; i < l; ++i) {
@@ -1741,7 +1744,10 @@ function loadDatabase(hooks) {
                 // we then yield the smallest ones (can't yield bigger ones
                 // if we want to do them in order)
                 for (const {node, len} of current_layer) {
-                    const tree = await node;
+                    const treeEncoded = await node;
+                    const tree = treeEncoded instanceof InlineNeighborsTree ?
+                        treeEncoded.decode() :
+                        treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
@@ -1804,7 +1810,10 @@ function loadDatabase(hooks) {
                 /** @type {HashTable<{byte: number, tree: PrefixSearchTree, len: number}[]>} */
                 const subnodes = new HashTable();
                 for await (const {node, len} of current_layer) {
-                    const tree = await node;
+                    const treeEncoded = await node;
+                    const tree = treeEncoded instanceof InlineNeighborsTree ?
+                        treeEncoded.decode() :
+                        treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
@@ -2166,9 +2175,12 @@ function loadDatabase(hooks) {
                         yield leaves;
                     }
                 }
-                /** @type {HashTable<[number, SearchTree][]>} */
+                /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
                 const subnodes = new HashTable();
-                for await (const node of current_layer) {
+                for await (const nodeEncoded of current_layer) {
+                    const node = nodeEncoded instanceof InlineNeighborsTree ?
+                        nodeEncoded.decode() :
+                        nodeEncoded;
                     const branches = node.branches;
                     const l = branches.subtrees.length;
                     for (let i = 0; i < l; ++i) {
@@ -2261,6 +2273,174 @@ function loadDatabase(hooks) {
                 ));
             }
             return null;
+        }
+    }
+
+    /**
+     * Represents a subtree where all transitive leaves
+     * have a shared 16bit prefix and there are no sub-branches.
+     */
+    class InlineNeighborsTree {
+        /**
+         * @param {Uint8Array} encoded
+         * @param {number} start
+         */
+        constructor(
+            encoded,
+            start,
+        ) {
+            this.encoded = encoded;
+            this.start = start;
+        }
+        /**
+         * @return {PrefixSearchTree|SuffixSearchTree}
+         */
+        decode() {
+            let i = this.start;
+            const encoded = this.encoded;
+            const has_branches = (encoded[i] & 0x04) !== 0;
+            /** @type {boolean} */
+            const is_suffixes_only = (encoded[i] & 0x01) !== 0;
+            let leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
+            i += 1;
+            let branch_count = 0;
+            if (has_branches) {
+                branch_count = encoded[i] + 1;
+                i += 1;
+            }
+            const dlen = encoded[i] & 0x3f;
+            if ((encoded[i] & 0x80) !== 0) {
+                leaves_count = 0;
+            }
+            i += 1;
+            let data = EMPTY_UINT8;
+            if (!is_suffixes_only && dlen !== 0) {
+                data = encoded.subarray(i, i + dlen);
+                i += dlen;
+            }
+            const leaf_value_upper = encoded[i] | (encoded[i + 1] << 8);
+            i += 2;
+            /** @type {Promise<SearchTree>[]} */
+            const branch_nodes = [];
+            for (let j = 0; j < branch_count; j += 1) {
+                const branch_dlen = encoded[i] & 0x0f;
+                const branch_leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
+                i += 1;
+                let branch_data = EMPTY_UINT8;
+                if (!is_suffixes_only && branch_dlen !== 0) {
+                    branch_data = encoded.subarray(i, i + branch_dlen);
+                    i += branch_dlen;
+                }
+                const branch_leaves = new RoaringBitmap(null);
+                branch_leaves.keysAndCardinalities = Uint8Array.of(
+                    leaf_value_upper & 0xff,
+                    (leaf_value_upper >> 8) & 0xff,
+                    (branch_leaves_count - 1) & 0xff,
+                    ((branch_leaves_count - 1) >> 8) & 0xff,
+                );
+                branch_leaves.containers = [
+                    new RoaringBitmapArray(
+                        branch_leaves_count,
+                        encoded.subarray(i, i + (branch_leaves_count * 2)),
+                    ),
+                ];
+                i += branch_leaves_count * 2;
+                branch_nodes.push(Promise.resolve(
+                    is_suffixes_only ?
+                        new SuffixSearchTree(
+                            EMPTY_SEARCH_TREE_BRANCHES,
+                            branch_dlen,
+                            branch_leaves,
+                        ) :
+                        new PrefixSearchTree(
+                            EMPTY_SEARCH_TREE_BRANCHES,
+                            EMPTY_SEARCH_TREE_BRANCHES,
+                            branch_data,
+                            branch_leaves,
+                            EMPTY_BITMAP,
+                        ),
+                ));
+            }
+            /** @type {SearchTreeBranchesArray<SearchTree>} */
+            const branches = branch_count === 0 ?
+                EMPTY_SEARCH_TREE_BRANCHES :
+                new SearchTreeBranchesArray(
+                    encoded.subarray(i, i + branch_count),
+                    EMPTY_UINT8,
+                );
+            i += branch_count;
+            branches.subtrees = branch_nodes;
+            let leaves = EMPTY_BITMAP;
+            if (leaves_count !== 0) {
+                leaves = new RoaringBitmap(null);
+                leaves.keysAndCardinalities = Uint8Array.of(
+                    leaf_value_upper & 0xff,
+                    (leaf_value_upper >> 8) & 0xff,
+                    (leaves_count - 1) & 0xff,
+                    ((leaves_count - 1) >> 8) & 0xff,
+                );
+                leaves.containers = [
+                    new RoaringBitmapArray(
+                        leaves_count,
+                        encoded.subarray(i, i + (leaves_count * 2)),
+                    ),
+                ];
+                i += leaves_count * 2;
+            }
+            return is_suffixes_only ?
+                new SuffixSearchTree(
+                    branches,
+                    dlen,
+                    leaves,
+                ) :
+                new PrefixSearchTree(
+                    branches,
+                    branches,
+                    data,
+                    leaves,
+                    EMPTY_BITMAP,
+                );
+        }
+
+        /**
+         * Returns the Trie for the root node.
+         *
+         * A Trie pointer refers to a single node in a logical decompressed search tree
+         * (the real search tree is compressed).
+         *
+         * @param {DataColumn} dataColumn
+         * @param {Uint8ArraySearchPattern} searchPattern
+         * @return {Trie}
+         */
+        trie(dataColumn, searchPattern) {
+            const tree = this.decode();
+            return tree instanceof SuffixSearchTree ?
+                new SuffixTrie(tree, 0, dataColumn, searchPattern) :
+                new PrefixTrie(tree, 0, dataColumn, searchPattern);
+        }
+
+        /**
+         * Return the trie representing `name`
+         * @param {Uint8Array|string} name
+         * @param {DataColumn} dataColumn
+         * @returns {Promise<Trie?>}
+         */
+        search(name, dataColumn) {
+            return this.decode().search(name, dataColumn);
+        }
+
+        /**
+         * @param {Uint8Array|string} name
+         * @param {DataColumn} dataColumn
+         * @returns {AsyncGenerator<Trie>}
+         */
+        searchLev(name, dataColumn) {
+            return this.decode().searchLev(name, dataColumn);
+        }
+
+        /** @returns {RoaringBitmap} */
+        getCurrentLeaves() {
+            return this.decode().getCurrentLeaves();
         }
     }
 
@@ -2765,26 +2945,108 @@ function loadDatabase(hooks) {
             // because that's the canonical, hashed version of the data
             let compression_tag = input[i];
             const is_pure_suffixes_only_node = (compression_tag & 0x01) !== 0;
+            const is_long_compressed = (compression_tag & 0x04) !== 0;
+            const is_data_compressed = (compression_tag & 0x08) !== 0;
+            i += 1;
+            if (is_long_compressed) {
+                compression_tag |= input[i] << 8;
+                i += 1;
+            }
+            /** @type {number} */
+            let dlen;
+            /** @type {number} */
             let no_leaves_flag;
-            if (compression_tag > 1) {
-                // compressed node
-                const is_long_compressed = (compression_tag & 0x04) !== 0;
-                const is_data_compressed = (compression_tag & 0x08) !== 0;
-                i += 1;
-                if (is_long_compressed) {
-                    compression_tag |= input[i] << 8;
-                    i += 1;
-                    compression_tag |= input[i] << 16;
-                    i += 1;
-                }
-                let dlen = input[i] & 0x7F;
+            /** @type {number} */
+            let inline_neighbors_flag;
+            if (is_data_compressed && is_pure_suffixes_only_node) {
+                dlen = 0;
+                no_leaves_flag = 0x80;
+                inline_neighbors_flag = 0;
+            } else {
+                dlen = input[i] & 0x3F;
                 no_leaves_flag = input[i] & 0x80;
+                inline_neighbors_flag = input[i] & 0x40;
                 i += 1;
+            }
+            if (inline_neighbors_flag !== 0) {
+                // node with packed leaves and common 16bit prefix
+                const leaves_count = no_leaves_flag !== 0 ?
+                    0 :
+                    ((compression_tag >> 4) & 0x0f) + 1;
+                const branch_count = is_long_compressed ?
+                    ((compression_tag >> 8) & 0xff) + 1 :
+                    0;
                 if (is_data_compressed) {
                     data = data_history[data_history.length - dlen - 1];
                     dlen = data.length;
                 } else if (is_pure_suffixes_only_node) {
                     data = EMPTY_UINT8;
+                } else {
+                    data = dlen === 0 ?
+                        EMPTY_UINT8 :
+                        new Uint8Array(input.buffer, i + input.byteOffset, dlen);
+                    i += dlen;
+                }
+                const branches_start = i;
+                // leaf_value_upper
+                i += 2;
+                // branch_nodes
+                for (let j = 0; j < branch_count; j += 1) {
+                    const branch_dlen = input[i] & 0x0f;
+                    const branch_leaves_count = ((input[i] >> 4) & 0x0f) + 1;
+                    i += 1;
+                    if (!is_pure_suffixes_only_node) {
+                        i += branch_dlen;
+                    }
+                    i += branch_leaves_count * 2;
+                }
+                // branch keys
+                i += branch_count;
+                // leaves
+                i += leaves_count * 2;
+                if (is_data_compressed) {
+                    const clen = (
+                        1 + // first compression header byte
+                        (is_long_compressed ? 1 : 0) + // branch count
+                        1 + // data length and other flags
+                        dlen + // data
+                        (i - branches_start) // branches and leaves
+                    );
+                    const canonical = new Uint8Array(clen);
+                    let ci = 0;
+                    canonical[ci] = input[start] ^ 0x08;
+                    ci += 1;
+                    if (is_long_compressed) {
+                        canonical[ci] = input[start + ci];
+                        ci += 1;
+                    }
+                    canonical[ci] = dlen | no_leaves_flag | 0x40;
+                    ci += 1;
+                    for (let j = 0; j < dlen; j += 1) {
+                        canonical[ci] = data[j];
+                        ci += 1;
+                    }
+                    for (let j = branches_start; j < i; j += 1) {
+                        canonical[ci] = input[j];
+                        ci += 1;
+                    }
+                    tree = new InlineNeighborsTree(canonical, 0);
+                    siphashOfBytes(canonical, 0, 0, 0, 0, hash);
+                } else {
+                    tree = new InlineNeighborsTree(input, start);
+                    siphashOfBytes(new Uint8Array(
+                        input.buffer,
+                        start + input.byteOffset,
+                        i - start,
+                    ), 0, 0, 0, 0, hash);
+                }
+            } else if (compression_tag > 1) {
+                // compressed node
+                if (is_pure_suffixes_only_node) {
+                    data = EMPTY_UINT8;
+                } else if (is_data_compressed) {
+                    data = data_history[data_history.length - dlen - 1];
+                    dlen = data.length;
                 } else {
                     data = dlen === 0 ?
                         EMPTY_UINT8 :
@@ -2820,19 +3082,27 @@ function loadDatabase(hooks) {
                         suffix,
                     );
                     const clen = (
-                        3 + // lengths of children and data
+                        // lengths of children and data
+                        (is_data_compressed ? 2 : 3) +
+                        // branches
                         csnodes.length +
                         csbranches.length +
+                        // leaves
                         suffix.consumed_len_bytes
                     );
                     if (canonical.length < clen) {
                         canonical = new Uint8Array(clen);
                     }
                     let ci = 0;
-                    canonical[ci] = 1;
-                    ci += 1;
-                    canonical[ci] = dlen | no_leaves_flag;
-                    ci += 1;
+                    if (is_data_compressed) {
+                        canonical[ci] = 0x09;
+                        ci += 1;
+                    } else {
+                        canonical[ci] = 1;
+                        ci += 1;
+                        canonical[ci] = dlen | no_leaves_flag;
+                        ci += 1;
+                    }
                     canonical[ci] = input[coffset]; // suffix child count
                     ci += 1;
                     canonical.set(csnodes, ci);
@@ -2901,13 +3171,8 @@ function loadDatabase(hooks) {
                     }
                     siphashOfBytes(canonical.subarray(0, clen), 0, 0, 0, 0, hash);
                 }
-                hash[2] &= 0x7f;
             } else {
-                i += 1;
                 // uncompressed node
-                const dlen = input[i] & 0x7F;
-                no_leaves_flag = input[i] & 0x80;
-                i += 1;
                 if (dlen === 0 || is_pure_suffixes_only_node) {
                     data = EMPTY_UINT8;
                 } else {
@@ -2946,7 +3211,6 @@ function loadDatabase(hooks) {
                     start + input.byteOffset,
                     i - start,
                 ), 0, 0, 0, 0, hash);
-                hash[2] &= 0x7f;
                 tree = is_pure_suffixes_only_node ?
                     new SuffixSearchTree(
                         branches,
@@ -2961,30 +3225,33 @@ function loadDatabase(hooks) {
                         suffix,
                     );
             }
+            hash[2] &= 0x7f;
             hash_history.push({hash: truncatedHash.slice(), used: false});
             if (data.length !== 0) {
                 data_history.push(data);
             }
-            const tree_branch_nodeids = tree.branches.nodeids;
-            const tree_branch_subtrees = tree.branches.subtrees;
-            let j = 0;
-            let lb = tree.branches.subtrees.length;
-            while (j < lb) {
-                // node id with a 1 in its most significant bit is inlined, and, so
-                // it won't be in the stash
-                if ((tree_branch_nodeids[j * 6] & 0x80) === 0) {
-                    const subtree = stash.getWithOffsetKey(tree_branch_nodeids, j * 6);
-                    if (subtree !== undefined) {
-                        tree_branch_subtrees[j] = Promise.resolve(subtree);
+            if (!(tree instanceof InlineNeighborsTree)) {
+                const tree_branch_nodeids = tree.branches.nodeids;
+                const tree_branch_subtrees = tree.branches.subtrees;
+                let j = 0;
+                const lb = tree.branches.subtrees.length;
+                while (j < lb) {
+                    // node id with a 1 in its most significant bit is inlined, and, so
+                    // it won't be in the stash
+                    if ((tree_branch_nodeids[j * 6] & 0x80) === 0) {
+                        const subtree = stash.getWithOffsetKey(tree_branch_nodeids, j * 6);
+                        if (subtree !== undefined) {
+                            tree_branch_subtrees[j] = Promise.resolve(subtree);
+                        }
                     }
+                    j += 1;
                 }
-                j += 1;
             }
             if (tree instanceof PrefixSearchTree) {
                 const tree_mhp_branch_nodeids = tree.might_have_prefix_branches.nodeids;
                 const tree_mhp_branch_subtrees = tree.might_have_prefix_branches.subtrees;
-                j = 0;
-                lb = tree.might_have_prefix_branches.subtrees.length;
+                let j = 0;
+                const lb = tree.might_have_prefix_branches.subtrees.length;
                 while (j < lb) {
                     // node id with a 1 in its most significant bit is inlined, and, so
                     // it won't be in the stash

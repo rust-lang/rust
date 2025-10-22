@@ -1604,24 +1604,6 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        #[cfg(not(any(
-            target_os = "redox",
-            target_os = "espidf",
-            target_os = "horizon",
-            target_os = "nuttx",
-        )))]
-        let to_timespec = |time: Option<SystemTime>| match time {
-            Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time",
-            )),
-            Some(_) => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too small to set as a file time",
-            )),
-            None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
-        };
         cfg_select! {
             any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
@@ -1634,36 +1616,18 @@ impl File {
                 ))
             }
             target_vendor = "apple" => {
-                let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
-                let mut num_times = 0;
-                let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
-                attrlist.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
-                if times.created.is_some() {
-                    buf[num_times].write(to_timespec(times.created)?);
-                    num_times += 1;
-                    attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
-                }
-                if times.modified.is_some() {
-                    buf[num_times].write(to_timespec(times.modified)?);
-                    num_times += 1;
-                    attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
-                }
-                if times.accessed.is_some() {
-                    buf[num_times].write(to_timespec(times.accessed)?);
-                    num_times += 1;
-                    attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
-                }
+                let ta = TimesAttrlist::from_times(&times)?;
                 cvt(unsafe { libc::fsetattrlist(
                     self.as_raw_fd(),
-                    (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
-                    buf.as_ptr().cast::<libc::c_void>().cast_mut(),
-                    num_times * size_of::<libc::timespec>(),
+                    ta.attrlist(),
+                    ta.times_buf(),
+                    ta.times_buf_size(),
                     0
                 ) })?;
                 Ok(())
             }
             target_os = "android" => {
-                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
                 // futimens requires Android API level 19
                 cvt(unsafe {
                     weak!(
@@ -1697,11 +1661,79 @@ impl File {
                         return Ok(());
                     }
                 }
-                let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
+                let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
         }
+    }
+}
+
+#[cfg(not(any(
+    target_os = "redox",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "nuttx",
+)))]
+fn file_time_to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
+    match time {
+        Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
+        Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too large to set as a file time",
+        )),
+        Some(_) => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too small to set as a file time",
+        )),
+        None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+struct TimesAttrlist {
+    buf: [mem::MaybeUninit<libc::timespec>; 3],
+    attrlist: libc::attrlist,
+    num_times: usize,
+}
+
+#[cfg(target_vendor = "apple")]
+impl TimesAttrlist {
+    fn from_times(times: &FileTimes) -> io::Result<Self> {
+        let mut this = Self {
+            buf: [mem::MaybeUninit::<libc::timespec>::uninit(); 3],
+            attrlist: unsafe { mem::zeroed() },
+            num_times: 0,
+        };
+        this.attrlist.bitmapcount = libc::ATTR_BIT_MAP_COUNT;
+        if times.created.is_some() {
+            this.buf[this.num_times].write(file_time_to_timespec(times.created)?);
+            this.num_times += 1;
+            this.attrlist.commonattr |= libc::ATTR_CMN_CRTIME;
+        }
+        if times.modified.is_some() {
+            this.buf[this.num_times].write(file_time_to_timespec(times.modified)?);
+            this.num_times += 1;
+            this.attrlist.commonattr |= libc::ATTR_CMN_MODTIME;
+        }
+        if times.accessed.is_some() {
+            this.buf[this.num_times].write(file_time_to_timespec(times.accessed)?);
+            this.num_times += 1;
+            this.attrlist.commonattr |= libc::ATTR_CMN_ACCTIME;
+        }
+        Ok(this)
+    }
+
+    fn attrlist(&self) -> *mut libc::c_void {
+        (&raw const self.attrlist).cast::<libc::c_void>().cast_mut()
+    }
+
+    fn times_buf(&self) -> *mut libc::c_void {
+        self.buf.as_ptr().cast::<libc::c_void>().cast_mut()
+    }
+
+    fn times_buf_size(&self) -> usize {
+        self.num_times * size_of::<libc::timespec>()
     }
 }
 
@@ -2079,6 +2111,87 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
         return Err(NOT_FILE_ERROR);
     }
     Ok((reader, metadata))
+}
+
+fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
+    cfg_select! {
+       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
+            let _ = (p, times, follow_symlinks);
+            Err(io::const_error!(
+                io::ErrorKind::Unsupported,
+                "setting file times not supported",
+            ))
+       }
+       target_vendor = "apple" => {
+            // Apple platforms use setattrlist which supports setting times on symlinks
+            let ta = TimesAttrlist::from_times(&times)?;
+            let options = if follow_symlinks {
+                0
+            } else {
+                libc::FSOPT_NOFOLLOW
+            };
+
+            cvt(unsafe { libc::setattrlist(
+                p.as_ptr(),
+                ta.attrlist(),
+                ta.times_buf(),
+                ta.times_buf_size(),
+                options as u32
+            ) })?;
+            Ok(())
+       }
+       target_os = "android" => {
+            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+            let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
+            // utimensat requires Android API level 19
+            cvt(unsafe {
+                weak!(
+                    fn utimensat(dirfd: c_int, path: *const libc::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
+                );
+                match utimensat.get() {
+                    Some(utimensat) => utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags),
+                    None => return Err(io::const_error!(
+                        io::ErrorKind::Unsupported,
+                        "setting file times requires Android API level >= 19",
+                    )),
+                }
+            })?;
+            Ok(())
+       }
+       _ => {
+            let flags = if follow_symlinks { 0 } else { libc::AT_SYMLINK_NOFOLLOW };
+            #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
+            {
+                use crate::sys::{time::__timespec64, weak::weak};
+
+                // Added in glibc 2.34
+                weak!(
+                    fn __utimensat64(dirfd: c_int, path: *const c_char, times: *const __timespec64, flags: c_int) -> c_int;
+                );
+
+                if let Some(utimensat64) = __utimensat64.get() {
+                    let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())
+                        .unwrap_or(__timespec64::new(0, libc::UTIME_OMIT as _));
+                    let times = [to_timespec(times.accessed), to_timespec(times.modified)];
+                    cvt(unsafe { utimensat64(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
+                    return Ok(());
+                }
+            }
+            let times = [file_time_to_timespec(times.accessed)?, file_time_to_timespec(times.modified)?];
+            cvt(unsafe { libc::utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags) })?;
+            Ok(())
+         }
+    }
+}
+
+#[inline(always)]
+pub fn set_times(p: &CStr, times: FileTimes) -> io::Result<()> {
+    set_times_impl(p, times, true)
+}
+
+#[inline(always)]
+pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
+    set_times_impl(p, times, false)
 }
 
 #[cfg(target_os = "espidf")]

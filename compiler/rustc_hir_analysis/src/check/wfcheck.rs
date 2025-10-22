@@ -245,10 +245,10 @@ pub(super) fn check_item<'tcx>(
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(ref impl_) => {
-            crate::impl_wf_check::check_impl_wf(tcx, def_id)?;
+            crate::impl_wf_check::check_impl_wf(tcx, def_id, impl_.of_trait.is_some())?;
             let mut res = Ok(());
             if let Some(of_trait) = impl_.of_trait {
-                let header = tcx.impl_trait_header(def_id).unwrap();
+                let header = tcx.impl_trait_header(def_id);
                 let is_auto = tcx.trait_is_auto(header.trait_ref.skip_binder().def_id);
                 if let (hir::Defaultness::Default { .. }, true) = (of_trait.defaultness, is_auto) {
                     let sp = of_trait.trait_ref.path.span;
@@ -1258,7 +1258,7 @@ fn check_impl<'tcx>(
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
-                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
+                let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;

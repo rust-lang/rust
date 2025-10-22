@@ -448,7 +448,7 @@ pub(crate) fn build_impl(
     let tcx = cx.tcx;
     let _prof_timer = tcx.sess.prof.generic_activity("build_impl");
 
-    let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
+    let associated_trait = tcx.impl_opt_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
     // Do not inline compiler-internal items unless we're a compiler-internal crate.
     let is_compiler_internal = |did| {
@@ -566,7 +566,11 @@ pub(crate) fn build_impl(
             clean::enter_impl_trait(cx, |cx| clean_ty_generics(cx, did)),
         ),
     };
-    let polarity = tcx.impl_polarity(did);
+    let polarity = if associated_trait.is_some() {
+        tcx.impl_polarity(did)
+    } else {
+        ty::ImplPolarity::Positive
+    };
     let trait_ = associated_trait
         .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {

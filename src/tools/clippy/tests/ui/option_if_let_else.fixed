@@ -6,7 +6,8 @@
     clippy::redundant_locals,
     clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
-    clippy::manual_unwrap_or
+    clippy::manual_unwrap_or,
+    clippy::unnecessary_option_map_or_else
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
