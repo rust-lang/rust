@@ -13,7 +13,7 @@ pub struct Config {
     pub target_triple: String,
     pub target_arch: String,
     pub target_env: String,
-    pub target_family: Option<String>,
+    pub target_families: Vec<String>,
     pub target_os: String,
     pub target_string: String,
     pub target_vendor: String,
@@ -25,6 +25,9 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Self {
         let target_triple = env::var("TARGET").unwrap();
+        let target_families = env::var("CARGO_CFG_TARGET_FAMILY")
+            .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
+            .unwrap_or_default();
         let target_features = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
             .unwrap_or_default();
@@ -41,7 +44,7 @@ impl Config {
             cargo_features,
             target_arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
             target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
-            target_family: env::var("CARGO_CFG_TARGET_FAMILY").ok(),
+            target_families,
             target_os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
             target_string: env::var("TARGET").unwrap(),
             target_vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
