@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `[RangeTo<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944.rs:3:15
+   |
+LL |     vec.drain([..3]);
+   |         ----- ^^^^^ the trait `RangeBounds<usize>` is not implemented for `[RangeTo<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([..3]);
+LL +     vec.drain(..3);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -5178,6 +5178,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => {}
         }
     }
+
+    pub fn suggest_remove_brackets_from_range(
+        &self,
+        main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        span: Span,
+        err: &mut Diag<'_>,
+    ) {
+        if let ty::Array(inner_type, size_value) =
+            main_trait_predicate.self_ty().skip_binder().kind()
+        {
+            let is_inner_type_range = if let ty::Adt(adt_def, _) = inner_type.kind()
+                && self.tcx.is_range(adt_def.did())
+            {
+                true
+            } else {
+                false
+            };
+            let is_array_size_one = size_value.try_to_target_usize(self.tcx) == Some(1);
+
+            if is_inner_type_range && is_array_size_one {
+                if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    err.span_suggestion_verbose(
+                        span,
+                        "consider removing `[]`",
+                        &snip[1..snip.len() - 1],
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        };
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.

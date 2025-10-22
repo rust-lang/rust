@@ -472,6 +472,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
+                        self.suggest_remove_brackets_from_range(main_trait_predicate, span, &mut err);
+
                         if tcx.is_lang_item(leaf_trait_predicate.def_id(), LangItem::Try) {
                             self.suggest_await_before_try(
                                 &mut err,
