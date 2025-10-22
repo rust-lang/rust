@@ -252,7 +252,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_edition = meta.edition;
-                default_cfg.extend(meta.cfg.into_iter());
+                default_cfg.append(meta.cfg);
                 default_env.extend_from_other(&meta.env);
             }
 
