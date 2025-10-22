@@ -1,200 +1,397 @@
-//! A higher level attributes based on TokenTree, with also some shortcuts.
-use std::iter;
-use std::{borrow::Cow, fmt, ops};
+//! Defines the basics of attributes lowering.
+//!
+//! The heart and soul of this module is [`expand_cfg_attr()`], alongside its sibling
+//! [`expand_cfg_attr_with_doc_comments()`]. It is used to implement all attribute lowering
+//! in r-a. Its basic job is to list attributes; however, attributes do not necessarily map
+//! into [`ast::Attr`], because `cfg_attr` can map to zero, one, or more attributes
+//! (`#[cfg_attr(predicate, attr1, attr2, ...)]`). To bridge this gap, this module defines
+//! [`Meta`], which represents a desugared attribute. Various bits of r-a need different
+//! things from [`Meta`], therefore it contains many parts. The basic idea is:
+//!
+//!  - There are three kinds of attributes, `path = value`, `path`, and `path(token_tree)`.
+//!  - Most bits of rust-analyzer only need to deal with some paths. Therefore, we keep
+//!    the path only if it has up to 2 segments, or one segment for `path = value`.
+//!    We also only keep the value in `path = value` if it is a literal. However, we always
+//!    save the all relevant ranges of attributes (the path range, and the full attribute range)
+//!    for parts of r-a (e.g. name resolution) that need a faithful representation of the
+//!    attribute.
+//!
+//! [`expand_cfg_attr()`] expands `cfg_attr`s as it goes (as its name implies), to list
+//! all attributes.
+//!
+//! Another thing to note is that we need to be able to map an attribute back to a range
+//! (for diagnostic purposes etc.). This is only ever needed for attributes that participate
+//! in name resolution. An attribute is mapped back by its [`AttrId`], which is just an
+//! index into the item tree attributes list. To minimize the risk of bugs, we have one
+//! place (here) and one function ([`is_item_tree_filtered_attr()`]) that decides whether
+//! an attribute participate in name resolution.
 
+use std::{
+    borrow::Cow, cell::OnceCell, convert::Infallible, fmt, iter::Peekable, ops::ControlFlow,
+};
+
+use ::tt::{TextRange, TextSize};
+use arrayvec::ArrayVec;
 use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use intern::{Interned, Symbol, sym};
-
+use intern::{Interned, Symbol};
 use mbe::{DelimiterKind, Punct};
-use smallvec::{SmallVec, smallvec};
-use span::{Span, SyntaxContext};
-use syntax::unescape;
-use syntax::{AstNode, AstToken, SyntaxNode, ast, match_ast};
-use syntax_bridge::{DocCommentDesugarMode, desugar_doc_comment_text, syntax_node_to_token_tree};
-use triomphe::ThinArc;
+use parser::T;
+use smallvec::SmallVec;
+use span::{RealSpanMap, Span, SyntaxContext};
+use syntax::{
+    AstNode, NodeOrToken, SyntaxNode, SyntaxToken,
+    ast::{self, TokenTreeChildren},
+    unescape,
+};
+use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
+    AstId,
     db::ExpandDatabase,
     mod_path::ModPath,
-    name::Name,
     span_map::SpanMapRef,
-    tt::{self, TopSubtree, token_to_literal},
+    tt::{self, TopSubtree},
 };
 
-/// Syntactical attributes, without filtering of `cfg_attr`s.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct RawAttrs {
-    // FIXME: This can become `Box<[Attr]>` if https://internals.rust-lang.org/t/layout-of-dst-box/21728?u=chrefr is accepted.
-    entries: Option<ThinArc<(), Attr>>,
+#[derive(Debug)]
+pub struct AttrPath {
+    /// This can be empty if the path is not of 1 or 2 segments exactly.
+    pub segments: ArrayVec<SyntaxToken, 2>,
+    pub range: TextRange,
+    // FIXME: This shouldn't be textual, `#[test]` needs name resolution.
+    // And if textual, it shouldn't be here, it should be in hir-def/src/attrs.rs. But some macros
+    // fully qualify `test` as `core::prelude::vX::test`, and this is more than 2 segments, so hir-def
+    // attrs can't find it. But this will mean we have to push every up-to-4-segments path, which
+    // may impact perf. So it was easier to just hack it here.
+    pub is_test: bool,
 }
 
-impl ops::Deref for RawAttrs {
-    type Target = [Attr];
-
-    fn deref(&self) -> &[Attr] {
-        match &self.entries {
-            Some(it) => &it.slice,
-            None => &[],
-        }
-    }
-}
-
-impl RawAttrs {
-    pub const EMPTY: Self = Self { entries: None };
-
-    pub fn new(
-        db: &dyn ExpandDatabase,
-        owner: &dyn ast::HasAttrs,
-        span_map: SpanMapRef<'_>,
-    ) -> Self {
-        let entries: Vec<_> = Self::attrs_iter::<true>(db, owner, span_map).collect();
-
-        let entries = if entries.is_empty() {
-            None
-        } else {
-            Some(ThinArc::from_header_and_iter((), entries.into_iter()))
-        };
-
-        RawAttrs { entries }
-    }
-
-    /// A [`RawAttrs`] that has its `#[cfg_attr(...)]` attributes expanded.
-    pub fn new_expanded(
-        db: &dyn ExpandDatabase,
-        owner: &dyn ast::HasAttrs,
-        span_map: SpanMapRef<'_>,
-        cfg_options: &CfgOptions,
-    ) -> Self {
-        let entries: Vec<_> =
-            Self::attrs_iter_expanded::<true>(db, owner, span_map, cfg_options).collect();
-
-        let entries = if entries.is_empty() {
-            None
-        } else {
-            Some(ThinArc::from_header_and_iter((), entries.into_iter()))
-        };
-
-        RawAttrs { entries }
-    }
-
-    pub fn attrs_iter<const DESUGAR_COMMENTS: bool>(
-        db: &dyn ExpandDatabase,
-        owner: &dyn ast::HasAttrs,
-        span_map: SpanMapRef<'_>,
-    ) -> impl Iterator<Item = Attr> {
-        collect_attrs(owner).filter_map(move |(id, attr)| match attr {
-            Either::Left(attr) => {
-                attr.meta().and_then(|meta| Attr::from_src(db, meta, span_map, id))
+impl AttrPath {
+    #[inline]
+    fn extract(path: &ast::Path) -> Self {
+        let mut is_test = false;
+        let segments = (|| {
+            let mut segments = ArrayVec::new();
+            let segment2 = path.segment()?.name_ref()?.syntax().first_token()?;
+            if segment2.text() == "test" {
+                // `#[test]` or `#[core::prelude::vX::test]`.
+                is_test = true;
             }
-            Either::Right(comment) if DESUGAR_COMMENTS => comment.doc_comment().map(|doc| {
-                let span = span_map.span_for_range(comment.syntax().text_range());
-                let (text, kind) = desugar_doc_comment_text(doc, DocCommentDesugarMode::ProcMacro);
-                Attr {
-                    id,
-                    input: Some(Box::new(AttrInput::Literal(tt::Literal {
-                        symbol: text,
-                        span,
-                        kind,
-                        suffix: None,
-                    }))),
-                    path: Interned::new(ModPath::from(Name::new_symbol(sym::doc, span.ctx))),
-                    ctxt: span.ctx,
+            let segment1 = path.qualifier();
+            if let Some(segment1) = segment1 {
+                if segment1.qualifier().is_some() {
+                    None
+                } else {
+                    let segment1 = segment1.segment()?.name_ref()?.syntax().first_token()?;
+                    segments.push(segment1);
+                    segments.push(segment2);
+                    Some(segments)
                 }
-            }),
-            Either::Right(_) => None,
-        })
-    }
-
-    pub fn attrs_iter_expanded<const DESUGAR_COMMENTS: bool>(
-        db: &dyn ExpandDatabase,
-        owner: &dyn ast::HasAttrs,
-        span_map: SpanMapRef<'_>,
-        cfg_options: &CfgOptions,
-    ) -> impl Iterator<Item = Attr> {
-        Self::attrs_iter::<DESUGAR_COMMENTS>(db, owner, span_map)
-            .flat_map(|attr| attr.expand_cfg_attr(db, cfg_options))
-    }
-
-    pub fn merge(&self, other: Self) -> Self {
-        match (&self.entries, other.entries) {
-            (None, None) => Self::EMPTY,
-            (None, entries @ Some(_)) => Self { entries },
-            (Some(entries), None) => Self { entries: Some(entries.clone()) },
-            (Some(a), Some(b)) => {
-                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1);
-                let items = a
-                    .slice
-                    .iter()
-                    .cloned()
-                    .chain(b.slice.iter().map(|it| {
-                        let mut it = it.clone();
-                        let id = it.id.ast_index() + last_ast_index;
-                        it.id = AttrId::new(id, it.id.is_inner_attr());
-                        it
-                    }))
-                    .collect::<Vec<_>>();
-                Self { entries: Some(ThinArc::from_header_and_iter((), items.into_iter())) }
+            } else {
+                segments.push(segment2);
+                Some(segments)
             }
+        })();
+        AttrPath {
+            segments: segments.unwrap_or(ArrayVec::new()),
+            range: path.syntax().text_range(),
+            is_test,
         }
     }
 
-    /// Processes `cfg_attr`s
-    pub fn expand_cfg_attr(self, db: &dyn ExpandDatabase, krate: Crate) -> RawAttrs {
-        let has_cfg_attrs =
-            self.iter().any(|attr| attr.path.as_ident().is_some_and(|name| *name == sym::cfg_attr));
-        if !has_cfg_attrs {
-            return self;
+    #[inline]
+    pub fn is1(&self, segment: &str) -> bool {
+        self.segments.len() == 1 && self.segments[0].text() == segment
+    }
+}
+
+#[derive(Debug)]
+pub enum Meta {
+    /// `name` is `None` if not a single token. `value` is a literal or `None`.
+    NamedKeyValue {
+        path_range: TextRange,
+        name: Option<SyntaxToken>,
+        value: Option<SyntaxToken>,
+    },
+    TokenTree {
+        path: AttrPath,
+        tt: ast::TokenTree,
+    },
+    Path {
+        path: AttrPath,
+    },
+}
+
+impl Meta {
+    #[inline]
+    pub fn path_range(&self) -> TextRange {
+        match self {
+            Meta::NamedKeyValue { path_range, .. } => *path_range,
+            Meta::TokenTree { path, .. } | Meta::Path { path } => path.range,
+        }
+    }
+
+    fn extract(iter: &mut Peekable<TokenTreeChildren>) -> Option<(Self, TextSize)> {
+        let mut start_offset = None;
+        if let Some(NodeOrToken::Token(colon1)) = iter.peek()
+            && colon1.kind() == T![:]
+        {
+            start_offset = Some(colon1.text_range().start());
+            iter.next();
+            iter.next_if(|it| it.as_token().is_some_and(|it| it.kind() == T![:]));
+        }
+        let first_segment = iter
+            .next_if(|it| it.as_token().is_some_and(|it| it.kind().is_any_identifier()))?
+            .into_token()?;
+        let mut is_test = first_segment.text() == "test";
+        let start_offset = start_offset.unwrap_or_else(|| first_segment.text_range().start());
+
+        let mut segments_len = 1;
+        let mut second_segment = None;
+        let mut path_range = first_segment.text_range();
+        while iter.peek().and_then(NodeOrToken::as_token).is_some_and(|it| it.kind() == T![:])
+            && let _ = iter.next()
+            && iter.peek().and_then(NodeOrToken::as_token).is_some_and(|it| it.kind() == T![:])
+            && let _ = iter.next()
+            && let Some(NodeOrToken::Token(segment)) = iter.peek()
+            && segment.kind().is_any_identifier()
+        {
+            segments_len += 1;
+            is_test = segment.text() == "test";
+            second_segment = Some(segment.clone());
+            path_range = TextRange::new(path_range.start(), segment.text_range().end());
+            iter.next();
         }
 
-        let cfg_options = krate.cfg_options(db);
-        let new_attrs = self
-            .iter()
-            .cloned()
-            .flat_map(|attr| attr.expand_cfg_attr(db, cfg_options))
-            .collect::<Vec<_>>();
-        let entries = if new_attrs.is_empty() {
-            None
-        } else {
-            Some(ThinArc::from_header_and_iter((), new_attrs.into_iter()))
+        let segments = |first, second| {
+            let mut segments = ArrayVec::new();
+            if segments_len <= 2 {
+                segments.push(first);
+                if let Some(second) = second {
+                    segments.push(second);
+                }
+            }
+            segments
         };
-        RawAttrs { entries }
+        let meta = match iter.peek() {
+            Some(NodeOrToken::Token(eq)) if eq.kind() == T![=] => {
+                iter.next();
+                let value = match iter.peek() {
+                    Some(NodeOrToken::Token(token)) if token.kind().is_literal() => {
+                        // No need to consume it, it will be consumed by `extract_and_eat_comma()`.
+                        Some(token.clone())
+                    }
+                    _ => None,
+                };
+                let name = if second_segment.is_none() { Some(first_segment) } else { None };
+                Meta::NamedKeyValue { path_range, name, value }
+            }
+            Some(NodeOrToken::Node(tt)) => Meta::TokenTree {
+                path: AttrPath {
+                    segments: segments(first_segment, second_segment),
+                    range: path_range,
+                    is_test,
+                },
+                tt: tt.clone(),
+            },
+            _ => Meta::Path {
+                path: AttrPath {
+                    segments: segments(first_segment, second_segment),
+                    range: path_range,
+                    is_test,
+                },
+            },
+        };
+        Some((meta, start_offset))
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_none()
+    fn extract_possibly_unsafe(
+        iter: &mut Peekable<TokenTreeChildren>,
+        container: &ast::TokenTree,
+    ) -> Option<(Self, TextRange)> {
+        if iter.peek().is_some_and(|it| it.as_token().is_some_and(|it| it.kind() == T![unsafe])) {
+            iter.next();
+            let tt = iter.next()?.into_node()?;
+            let result = Self::extract(&mut TokenTreeChildren::new(&tt).peekable()).map(
+                |(meta, start_offset)| (meta, TextRange::new(start_offset, tt_end_offset(&tt))),
+            );
+            while iter.next().is_some_and(|it| it.as_token().is_none_or(|it| it.kind() != T![,])) {}
+            result
+        } else {
+            Self::extract(iter).map(|(meta, start_offset)| {
+                let end_offset = 'find_end_offset: {
+                    for it in iter {
+                        if let NodeOrToken::Token(it) = it
+                            && it.kind() == T![,]
+                        {
+                            break 'find_end_offset it.text_range().start();
+                        }
+                    }
+                    tt_end_offset(container)
+                };
+                (meta, TextRange::new(start_offset, end_offset))
+            })
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AttrId {
-    id: u32,
+fn tt_end_offset(tt: &ast::TokenTree) -> TextSize {
+    tt.syntax().last_token().unwrap().text_range().start()
 }
 
-// FIXME: This only handles a single level of cfg_attr nesting
-// that is `#[cfg_attr(all(), cfg_attr(all(), cfg(any())))]` breaks again
-impl AttrId {
-    const INNER_ATTR_SET_BIT: u32 = 1 << 31;
+/// The callback is passed a desugared form of the attribute ([`Meta`]), a [`SyntaxNode`] fully containing it
+/// (note: it may not be the direct parent), the range within the [`SyntaxNode`] bounding the attribute,
+/// and the outermost `ast::Attr`. Note that one node may map to multiple [`Meta`]s due to `cfg_attr`.
+#[inline]
+pub fn expand_cfg_attr<'a, BreakValue>(
+    attrs: impl Iterator<Item = ast::Attr>,
+    cfg_options: impl FnMut() -> &'a CfgOptions,
+    mut callback: impl FnMut(Meta, &SyntaxNode, TextRange, &ast::Attr) -> ControlFlow<BreakValue>,
+) -> Option<BreakValue> {
+    expand_cfg_attr_with_doc_comments::<Infallible, _>(
+        attrs.map(Either::Left),
+        cfg_options,
+        move |Either::Left((meta, container, range, top_attr))| {
+            callback(meta, container, range, top_attr)
+        },
+    )
+}
 
-    pub fn new(id: usize, is_inner: bool) -> Self {
-        assert!(id <= !Self::INNER_ATTR_SET_BIT as usize);
-        let id = id as u32;
-        Self { id: if is_inner { id | Self::INNER_ATTR_SET_BIT } else { id } }
-    }
+#[inline]
+pub fn expand_cfg_attr_with_doc_comments<'a, DocComment, BreakValue>(
+    mut attrs: impl Iterator<Item = Either<ast::Attr, DocComment>>,
+    mut cfg_options: impl FnMut() -> &'a CfgOptions,
+    mut callback: impl FnMut(
+        Either<(Meta, &SyntaxNode, TextRange, &ast::Attr), DocComment>,
+    ) -> ControlFlow<BreakValue>,
+) -> Option<BreakValue> {
+    let mut stack = SmallVec::<[_; 1]>::new();
+    let result = attrs.try_for_each(|top_attr| {
+        let top_attr = match top_attr {
+            Either::Left(it) => it,
+            Either::Right(comment) => return callback(Either::Right(comment)),
+        };
+        if let Some((attr_name, tt)) = top_attr.as_simple_call()
+            && attr_name == "cfg_attr"
+        {
+            let mut tt_iter = TokenTreeChildren::new(&tt).peekable();
+            let cfg = cfg::CfgExpr::parse_from_ast(&mut tt_iter);
+            if cfg_options().check(&cfg) != Some(false) {
+                stack.push((tt_iter, tt));
+                while let Some((tt_iter, tt)) = stack.last_mut() {
+                    let Some((attr, range)) = Meta::extract_possibly_unsafe(tt_iter, tt) else {
+                        stack.pop();
+                        continue;
+                    };
+                    if let Meta::TokenTree { path, tt: nested_tt } = &attr
+                        && path.is1("cfg_attr")
+                    {
+                        let mut nested_tt_iter = TokenTreeChildren::new(nested_tt).peekable();
+                        let cfg = cfg::CfgExpr::parse_from_ast(&mut nested_tt_iter);
+                        if cfg_options().check(&cfg) != Some(false) {
+                            stack.push((nested_tt_iter, nested_tt.clone()));
+                        }
+                    } else {
+                        callback(Either::Left((attr, tt.syntax(), range, &top_attr)))?;
+                    }
+                }
+            }
+        } else if let Some(ast_meta) = top_attr.meta()
+            && let Some(path) = ast_meta.path()
+        {
+            let path = AttrPath::extract(&path);
+            let meta = if let Some(tt) = ast_meta.token_tree() {
+                Meta::TokenTree { path, tt }
+            } else if let Some(value) = ast_meta.expr() {
+                let value =
+                    if let ast::Expr::Literal(value) = value { Some(value.token()) } else { None };
+                let name =
+                    if path.segments.len() == 1 { Some(path.segments[0].clone()) } else { None };
+                Meta::NamedKeyValue { name, value, path_range: path.range }
+            } else {
+                Meta::Path { path }
+            };
+            callback(Either::Left((
+                meta,
+                ast_meta.syntax(),
+                ast_meta.syntax().text_range(),
+                &top_attr,
+            )))?;
+        }
+        ControlFlow::Continue(())
+    });
+    result.break_value()
+}
 
-    pub fn ast_index(&self) -> usize {
-        (self.id & !Self::INNER_ATTR_SET_BIT) as usize
-    }
+#[inline]
+pub(crate) fn is_item_tree_filtered_attr(name: &str) -> bool {
+    matches!(
+        name,
+        "doc"
+            | "stable"
+            | "unstable"
+            | "target_feature"
+            | "allow"
+            | "expect"
+            | "warn"
+            | "deny"
+            | "forbid"
+            | "repr"
+            | "inline"
+            | "track_caller"
+            | "must_use"
+    )
+}
 
-    pub fn is_inner_attr(&self) -> bool {
-        self.id & Self::INNER_ATTR_SET_BIT != 0
-    }
+/// This collects attributes exactly as the item tree needs them. This is used for the item tree,
+/// as well as for resolving [`AttrId`]s.
+pub fn collect_item_tree_attrs<'a, BreakValue>(
+    owner: &dyn ast::HasAttrs,
+    cfg_options: impl Fn() -> &'a CfgOptions,
+    mut on_attr: impl FnMut(Meta, &SyntaxNode, &ast::Attr, TextRange) -> ControlFlow<BreakValue>,
+) -> Option<Either<BreakValue, CfgExpr>> {
+    let attrs = ast::attrs_including_inner(owner);
+    expand_cfg_attr(
+        attrs,
+        || cfg_options(),
+        |attr, container, range, top_attr| {
+            // We filter builtin attributes that we don't need for nameres, because this saves memory.
+            // I only put the most common attributes, but if some attribute becomes common feel free to add it.
+            // Notice, however: for an attribute to be filtered out, it *must* not be shadowable with a macro!
+            let filter = match &attr {
+                Meta::NamedKeyValue { name: Some(name), .. } => {
+                    is_item_tree_filtered_attr(name.text())
+                }
+                Meta::TokenTree { path, tt } if path.segments.len() == 1 => {
+                    let name = path.segments[0].text();
+                    if name == "cfg" {
+                        let cfg =
+                            CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(tt).peekable());
+                        if cfg_options().check(&cfg) == Some(false) {
+                            return ControlFlow::Break(Either::Right(cfg));
+                        }
+                        true
+                    } else {
+                        is_item_tree_filtered_attr(name)
+                    }
+                }
+                Meta::Path { path } => {
+                    path.segments.len() == 1 && is_item_tree_filtered_attr(path.segments[0].text())
+                }
+                _ => false,
+            };
+            if !filter && let ControlFlow::Break(v) = on_attr(attr, container, top_attr, range) {
+                return ControlFlow::Break(Either::Left(v));
+            }
+            ControlFlow::Continue(())
+        },
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
-    pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Box<AttrInput>>,
     pub ctxt: SyntaxContext,
@@ -213,131 +410,6 @@ impl fmt::Display for AttrInput {
         match self {
             AttrInput::Literal(lit) => write!(f, " = {lit}"),
             AttrInput::TokenTree(tt) => tt.fmt(f),
-        }
-    }
-}
-
-impl Attr {
-    fn from_src(
-        db: &dyn ExpandDatabase,
-        ast: ast::Meta,
-        span_map: SpanMapRef<'_>,
-        id: AttrId,
-    ) -> Option<Attr> {
-        let path = ast.path()?;
-        let range = path.syntax().text_range();
-        let path = Interned::new(ModPath::from_src(db, path, &mut |range| {
-            span_map.span_for_range(range).ctx
-        })?);
-        let span = span_map.span_for_range(range);
-        let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
-            let token = lit.token();
-            Some(Box::new(AttrInput::Literal(token_to_literal(token.text(), span))))
-        } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(
-                tt.syntax(),
-                span_map,
-                span,
-                DocCommentDesugarMode::ProcMacro,
-            );
-            Some(Box::new(AttrInput::TokenTree(tree)))
-        } else {
-            None
-        };
-        Some(Attr { id, path, input, ctxt: span.ctx })
-    }
-
-    fn from_tt(
-        db: &dyn ExpandDatabase,
-        mut tt: tt::TokenTreesView<'_>,
-        id: AttrId,
-    ) -> Option<Attr> {
-        if matches!(tt.flat_tokens(),
-            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, .. })), ..]
-            if *sym == sym::unsafe_
-        ) {
-            match tt.iter().nth(1) {
-                Some(tt::TtElement::Subtree(_, iter)) => tt = iter.remaining(),
-                _ => return None,
-            }
-        }
-        let first = tt.flat_tokens().first()?;
-        let ctxt = first.first_span().ctx;
-        let (path, input) = {
-            let mut iter = tt.iter();
-            let start = iter.savepoint();
-            let mut input = tt::TokenTreesView::new(&[]);
-            let mut path = iter.from_savepoint(start);
-            let mut path_split_savepoint = iter.savepoint();
-            while let Some(tt) = iter.next() {
-                path = iter.from_savepoint(start);
-                if !matches!(
-                    tt,
-                    tt::TtElement::Leaf(
-                        tt::Leaf::Punct(tt::Punct { char: ':' | '$', .. }) | tt::Leaf::Ident(_),
-                    )
-                ) {
-                    input = path_split_savepoint.remaining();
-                    break;
-                }
-                path_split_savepoint = iter.savepoint();
-            }
-            (path, input)
-        };
-
-        let path = Interned::new(ModPath::from_tt(db, path)?);
-
-        let input = match (input.flat_tokens().first(), input.try_into_subtree()) {
-            (_, Some(tree)) => {
-                Some(Box::new(AttrInput::TokenTree(tt::TopSubtree::from_subtree(tree))))
-            }
-            (Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))), _) => {
-                match input.flat_tokens().get(1) {
-                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) => {
-                        Some(Box::new(AttrInput::Literal(lit.clone())))
-                    }
-                    _ => None,
-                }
-            }
-            _ => None,
-        };
-        Some(Attr { id, path, input, ctxt })
-    }
-
-    pub fn path(&self) -> &ModPath {
-        &self.path
-    }
-
-    pub fn expand_cfg_attr(
-        self,
-        db: &dyn ExpandDatabase,
-        cfg_options: &CfgOptions,
-    ) -> impl IntoIterator<Item = Self> {
-        let is_cfg_attr = self.path.as_ident().is_some_and(|name| *name == sym::cfg_attr);
-        if !is_cfg_attr {
-            return smallvec![self];
-        }
-
-        let subtree = match self.token_tree_value() {
-            Some(it) => it,
-            _ => return smallvec![self.clone()],
-        };
-
-        let (cfg, parts) = match parse_cfg_attr_input(subtree) {
-            Some(it) => it,
-            None => return smallvec![self.clone()],
-        };
-        let index = self.id;
-        let attrs = parts.filter_map(|attr| Attr::from_tt(db, attr, index));
-
-        let cfg = TopSubtree::from_token_trees(subtree.top_subtree().delimiter, cfg);
-        let cfg = CfgExpr::parse(&cfg);
-        if cfg_options.check(&cfg) == Some(false) {
-            smallvec![]
-        } else {
-            cov_mark::hit!(cfg_attr_active);
-
-            attrs.collect::<SmallVec<[_; 1]>>()
         }
     }
 }
@@ -403,30 +475,26 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-    ) -> Option<impl Iterator<Item = (ModPath, Span)> + 'a> {
+    ) -> Option<impl Iterator<Item = (ModPath, Span, tt::TokenTreesView<'a>)> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.top_subtree().delimiter.kind != DelimiterKind::Parenthesis {
             return None;
         }
-        let paths = args
-            .token_trees()
-            .split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
-            .filter_map(move |tts| {
-                let span = tts.flat_tokens().first()?.first_span();
-                Some((ModPath::from_tt(db, tts)?, span))
-            });
-
-        Some(paths)
+        Some(parse_path_comma_token_tree(db, args))
     }
+}
 
-    pub fn cfg(&self) -> Option<CfgExpr> {
-        if *self.path.as_ident()? == sym::cfg {
-            self.token_tree_value().map(CfgExpr::parse)
-        } else {
-            None
-        }
-    }
+fn parse_path_comma_token_tree<'a>(
+    db: &'a dyn ExpandDatabase,
+    args: &'a tt::TopSubtree,
+) -> impl Iterator<Item = (ModPath, Span, tt::TokenTreesView<'a>)> {
+    args.token_trees()
+        .split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
+        .filter_map(move |tts| {
+            let span = tts.flat_tokens().first()?.first_span();
+            Some((ModPath::from_tt(db, tts)?, span, tts))
+        })
 }
 
 fn unescape(s: &str) -> Option<Cow<'_, str>> {
@@ -455,58 +523,104 @@ fn unescape(s: &str) -> Option<Cow<'_, str>> {
     }
 }
 
-pub fn collect_attrs(
-    owner: &dyn ast::HasAttrs,
-) -> impl Iterator<Item = (AttrId, Either<ast::Attr, ast::Comment>)> {
-    let inner_attrs =
-        inner_attributes(owner.syntax()).into_iter().flatten().zip(iter::repeat(true));
-    let outer_attrs = ast::AttrDocCommentIter::from_syntax_node(owner.syntax())
-        .filter(|el| match el {
-            Either::Left(attr) => attr.kind().is_outer(),
-            Either::Right(comment) => comment.is_outer(),
-        })
-        .zip(iter::repeat(false));
-    outer_attrs
-        .chain(inner_attrs)
-        .enumerate()
-        .map(|(id, (attr, is_inner))| (AttrId::new(id, is_inner), attr))
+/// This is an index of an attribute *that always points to the item tree attributes*.
+///
+/// Outer attributes are counted first, then inner attributes. This does not support
+/// out-of-line modules, which may have attributes spread across 2 files!
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AttrId {
+    id: u32,
 }
 
-fn inner_attributes(
-    syntax: &SyntaxNode,
-) -> Option<impl Iterator<Item = Either<ast::Attr, ast::Comment>>> {
-    let node = match_ast! {
-        match syntax {
-            ast::SourceFile(_) => syntax.clone(),
-            ast::ExternBlock(it) => it.extern_item_list()?.syntax().clone(),
-            ast::Fn(it) => it.body()?.stmt_list()?.syntax().clone(),
-            ast::Impl(it) => it.assoc_item_list()?.syntax().clone(),
-            ast::Module(it) => it.item_list()?.syntax().clone(),
-            ast::BlockExpr(it) => {
-                if !it.may_carry_attributes() {
-                    return None
+impl AttrId {
+    #[inline]
+    pub fn from_item_tree_index(id: u32) -> Self {
+        Self { id }
+    }
+
+    #[inline]
+    pub fn item_tree_index(self) -> u32 {
+        self.id
+    }
+
+    /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
+    /// to `cfg_attr`), a `SyntaxNode` guaranteed to contain the attribute, the full range of the
+    /// attribute, and its desugared [`Meta`].
+    pub fn find_attr_range<N: ast::HasAttrs>(
+        self,
+        db: &dyn ExpandDatabase,
+        krate: Crate,
+        owner: AstId<N>,
+    ) -> (ast::Attr, SyntaxNode, TextRange, Meta) {
+        self.find_attr_range_with_source(db, krate, &owner.to_node(db))
+    }
+
+    /// Returns the containing `ast::Attr` (note that it may contain other attributes as well due
+    /// to `cfg_attr`), a `SyntaxNode` guaranteed to contain the attribute, the full range of the
+    /// attribute, and its desugared [`Meta`].
+    pub fn find_attr_range_with_source(
+        self,
+        db: &dyn ExpandDatabase,
+        krate: Crate,
+        owner: &dyn ast::HasAttrs,
+    ) -> (ast::Attr, SyntaxNode, TextRange, Meta) {
+        let cfg_options = OnceCell::new();
+        let mut index = 0;
+        let result = collect_item_tree_attrs(
+            owner,
+            || cfg_options.get_or_init(|| krate.cfg_options(db)),
+            |meta, container, top_attr, range| {
+                if index == self.id {
+                    return ControlFlow::Break((top_attr.clone(), container.clone(), range, meta));
                 }
-                syntax.clone()
+                index += 1;
+                ControlFlow::Continue(())
             },
-            _ => return None,
+        );
+        match result {
+            Some(Either::Left(it)) => it,
+            _ => {
+                panic!("used an incorrect `AttrId`; crate={krate:?}, attr_id={self:?}");
+            }
         }
-    };
+    }
 
-    let attrs = ast::AttrDocCommentIter::from_syntax_node(&node).filter(|el| match el {
-        Either::Left(attr) => attr.kind().is_inner(),
-        Either::Right(comment) => comment.is_inner(),
-    });
-    Some(attrs)
-}
-
-// Input subtree is: `(cfg, $(attr),+)`
-// Split it up into a `cfg` subtree and the `attr` subtrees.
-fn parse_cfg_attr_input(
-    subtree: &TopSubtree,
-) -> Option<(tt::TokenTreesView<'_>, impl Iterator<Item = tt::TokenTreesView<'_>>)> {
-    let mut parts = subtree
-        .token_trees()
-        .split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))));
-    let cfg = parts.next()?;
-    Some((cfg, parts.filter(|it| !it.is_empty())))
+    pub fn find_derive_range(
+        self,
+        db: &dyn ExpandDatabase,
+        krate: Crate,
+        owner: AstId<ast::Adt>,
+        derive_index: u32,
+    ) -> TextRange {
+        let (_, _, derive_attr_range, derive_attr) = self.find_attr_range(db, krate, owner);
+        let Meta::TokenTree { tt, .. } = derive_attr else {
+            return derive_attr_range;
+        };
+        // Fake the span map, as we don't really need spans here, just the offsets of the node in the file.
+        let span_map = RealSpanMap::absolute(span::EditionedFileId::current_edition(
+            span::FileId::from_raw(0),
+        ));
+        let tt = syntax_bridge::syntax_node_to_token_tree(
+            tt.syntax(),
+            SpanMapRef::RealSpanMap(&span_map),
+            span_map.span_for_range(tt.syntax().text_range()),
+            DocCommentDesugarMode::ProcMacro,
+        );
+        let Some((_, _, derive_tts)) =
+            parse_path_comma_token_tree(db, &tt).nth(derive_index as usize)
+        else {
+            return derive_attr_range;
+        };
+        let (Some(first_tt), Some(last_tt)) =
+            (derive_tts.flat_tokens().first(), derive_tts.flat_tokens().last())
+        else {
+            return derive_attr_range;
+        };
+        let start = first_tt.first_span().range.start();
+        let end = match last_tt {
+            tt::TokenTree::Leaf(it) => it.span().range.end(),
+            tt::TokenTree::Subtree(it) => it.delimiter.close.range.end(),
+        };
+        TextRange::new(start, end)
+    }
 }

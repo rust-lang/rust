@@ -30,10 +30,8 @@ use crate::{A, B};
 
 use a::{c, d::{e}};
         "#,
-        expect![[r##"
-            #![doc = " file comment"]
+        expect![[r#"
             #![no_std]
-            #![doc = " another file comment"]
 
             // AstId: ExternCrate[070B, 0]
             pub(self) extern crate self as renamed;
@@ -47,13 +45,12 @@ use a::{c, d::{e}};
             // AstId: Use[0000, 1]
             pub(self) use globs::*;
 
-            #[doc = " docs on import"]
             // AstId: Use[0000, 2]
             pub(self) use crate::{A, B};
 
             // AstId: Use[0000, 3]
             pub(self) use a::{c, d::{e}};
-        "##]],
+        "#]],
     );
 }
 
@@ -195,8 +192,6 @@ mod inline {
 mod outline;
         "#,
         expect![[r##"
-            #[doc = " outer"]
-            #[doc = " inner"]
             // AstId: Module[03AE, 0]
             pub(self) mod inline {
                 // AstId: Use[0000, 0]

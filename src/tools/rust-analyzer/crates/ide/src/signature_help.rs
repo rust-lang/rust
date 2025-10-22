@@ -31,7 +31,7 @@ use crate::RootDatabase;
 /// edited.
 #[derive(Debug)]
 pub struct SignatureHelp {
-    pub doc: Option<Documentation>,
+    pub doc: Option<Documentation<'static>>,
     pub signature: String,
     pub active_parameter: Option<usize>,
     parameters: Vec<TextRange>,
@@ -174,7 +174,7 @@ fn signature_help_for_call(
     let mut fn_params = None;
     match callable.kind() {
         hir::CallableKind::Function(func) => {
-            res.doc = func.docs(db);
+            res.doc = func.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "fn {}", func.name(db).display(db, edition));
 
             let generic_params = GenericDef::Function(func)
@@ -196,7 +196,7 @@ fn signature_help_for_call(
             });
         }
         hir::CallableKind::TupleStruct(strukt) => {
-            res.doc = strukt.docs(db);
+            res.doc = strukt.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "struct {}", strukt.name(db).display(db, edition));
 
             let generic_params = GenericDef::Adt(strukt.into())
@@ -209,7 +209,7 @@ fn signature_help_for_call(
             }
         }
         hir::CallableKind::TupleEnumVariant(variant) => {
-            res.doc = variant.docs(db);
+            res.doc = variant.docs(db).map(Documentation::into_owned);
             format_to!(
                 res.signature,
                 "enum {}",
@@ -314,33 +314,33 @@ fn signature_help_for_generics(
     let db = sema.db;
     match generics_def {
         hir::GenericDef::Function(it) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "fn {}", it.name(db).display(db, edition));
         }
         hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "enum {}", it.name(db).display(db, edition));
             if let Some(variant) = variant {
                 // In paths, generics of an enum can be specified *after* one of its variants.
                 // eg. `None::<u8>`
                 // We'll use the signature of the enum, but include the docs of the variant.
-                res.doc = variant.docs(db);
+                res.doc = variant.docs(db).map(Documentation::into_owned);
             }
         }
         hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "struct {}", it.name(db).display(db, edition));
         }
         hir::GenericDef::Adt(hir::Adt::Union(it)) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "union {}", it.name(db).display(db, edition));
         }
         hir::GenericDef::Trait(it) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
         }
         hir::GenericDef::TypeAlias(it) => {
-            res.doc = it.docs(db);
+            res.doc = it.docs(db).map(Documentation::into_owned);
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));
         }
         // These don't have generic args that can be specified
@@ -495,7 +495,7 @@ fn signature_help_for_tuple_struct_pat(
     let fields: Vec<_> = if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
         let en = variant.parent_enum(db);
 
-        res.doc = en.docs(db);
+        res.doc = en.docs(db).map(Documentation::into_owned);
         format_to!(
             res.signature,
             "enum {}::{} (",
@@ -512,7 +512,7 @@ fn signature_help_for_tuple_struct_pat(
 
         match adt {
             hir::Adt::Struct(it) => {
-                res.doc = it.docs(db);
+                res.doc = it.docs(db).map(Documentation::into_owned);
                 format_to!(res.signature, "struct {} (", it.name(db).display(db, edition));
                 it.fields(db)
             }
@@ -622,7 +622,7 @@ fn signature_help_for_record_<'db>(
         fields = variant.fields(db);
         let en = variant.parent_enum(db);
 
-        res.doc = en.docs(db);
+        res.doc = en.docs(db).map(Documentation::into_owned);
         format_to!(
             res.signature,
             "enum {}::{} {{ ",
@@ -639,12 +639,12 @@ fn signature_help_for_record_<'db>(
         match adt {
             hir::Adt::Struct(it) => {
                 fields = it.fields(db);
-                res.doc = it.docs(db);
+                res.doc = it.docs(db).map(Documentation::into_owned);
                 format_to!(res.signature, "struct {} {{ ", it.name(db).display(db, edition));
             }
             hir::Adt::Union(it) => {
                 fields = it.fields(db);
-                res.doc = it.docs(db);
+                res.doc = it.docs(db).map(Documentation::into_owned);
                 format_to!(res.signature, "union {} {{ ", it.name(db).display(db, edition));
             }
             _ => return None,
@@ -740,12 +740,12 @@ mod tests {
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (RootDatabase, FilePosition) {
         let mut database = RootDatabase::default();
-        let change_fixture = ChangeFixture::parse(&database, ra_fixture);
+        let change_fixture = ChangeFixture::parse(ra_fixture);
         database.apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
         let offset = range_or_offset.expect_offset();
-        let position = FilePosition { file_id: file_id.file_id(&database), offset };
+        let position = FilePosition { file_id: file_id.file_id(), offset };
         (database, position)
     }
 

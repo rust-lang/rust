@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics, sym};
+use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
@@ -401,7 +401,7 @@ impl ExtendedVariant {
     fn should_be_hidden(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedVariant::Variant { variant: var, .. } => {
-                var.attrs(db).has_doc_hidden() && var.module(db).krate() != krate
+                var.attrs(db).is_doc_hidden() && var.module(db).krate() != krate
             }
             _ => false,
         }
@@ -424,7 +424,7 @@ impl ExtendedEnum {
     fn is_non_exhaustive(&self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedEnum::Enum { enum_: e, .. } => {
-                e.attrs(db).by_key(sym::non_exhaustive).exists() && e.module(db).krate() != krate
+                e.attrs(db).is_non_exhaustive() && e.module(db).krate() != krate
             }
             _ => false,
         }

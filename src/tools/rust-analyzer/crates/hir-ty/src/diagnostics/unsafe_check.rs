@@ -144,7 +144,7 @@ struct UnsafeVisitor<'db> {
     inside_assignment: bool,
     inside_union_destructure: bool,
     callback: &'db mut dyn FnMut(UnsafeDiagnostic),
-    def_target_features: TargetFeatures,
+    def_target_features: TargetFeatures<'db>,
     // FIXME: This needs to be the edition of the span of each call.
     edition: Edition,
     /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
@@ -162,7 +162,7 @@ impl<'db> UnsafeVisitor<'db> {
     ) -> Self {
         let resolver = def.resolver(db);
         let def_target_features = match def {
-            DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
+            DefWithBodyId::FunctionId(func) => TargetFeatures::from_fn(db, func),
             _ => TargetFeatures::default(),
         };
         let krate = resolver.module().krate();

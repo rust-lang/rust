@@ -90,7 +90,7 @@ pub(crate) fn inlay_hints(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -143,7 +143,7 @@ pub(crate) fn inlay_hints_resolve(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 

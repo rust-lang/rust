@@ -1,11 +1,11 @@
-use std::iter;
+use std::{borrow::Cow, iter};
 
 use expect_test::{Expect, expect};
 use hir::Semantics;
 use ide_db::{
     FilePosition, FileRange, RootDatabase,
     defs::Definition,
-    documentation::{DocsRangeMap, Documentation, HasDocs},
+    documentation::{Documentation, HasDocs},
 };
 use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, ast, match_ast};
@@ -45,9 +45,9 @@ fn check_external_docs(
 fn check_rewrite(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let sema = &Semantics::new(&analysis.db);
-    let (cursor_def, docs, range) = def_under_cursor(sema, &position);
+    let (cursor_def, docs) = def_under_cursor(sema, &position);
     let res =
-        hir::attach_db(sema.db, || rewrite_links(sema.db, docs.as_str(), cursor_def, Some(range)));
+        hir::attach_db(sema.db, || rewrite_links(sema.db, docs.docs(), cursor_def, Some(&docs)));
     expect.assert_eq(&res)
 }
 
@@ -57,33 +57,36 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, position, mut expected) = fixture::annotations(ra_fixture);
     expected.sort_by_key(key_fn);
     let sema = &Semantics::new(&analysis.db);
-    let (cursor_def, docs, range) = def_under_cursor(sema, &position);
-    let defs = extract_definitions_from_docs(&docs);
-    let actual: Vec<_> = defs
-        .into_iter()
-        .flat_map(|(text_range, link, ns)| {
-            let attr = range.map(text_range);
-            let is_inner_attr = attr.map(|(_file, attr)| attr.is_inner_attr()).unwrap_or(false);
-            let def = hir::attach_db(sema.db, || {
-                resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
-                    .unwrap_or_else(|| panic!("Failed to resolve {link}"))
-            });
-            def.try_to_nav(sema).unwrap().into_iter().zip(iter::repeat(link))
-        })
-        .map(|(nav_target, link)| {
-            let range =
-                FileRange { file_id: nav_target.file_id, range: nav_target.focus_or_full_range() };
-            (range, link)
-        })
-        .sorted_by_key(key_fn)
-        .collect();
-    assert_eq!(expected, actual);
+    hir::attach_db(sema.db, || {
+        let (cursor_def, docs) = def_under_cursor(sema, &position);
+        let defs = extract_definitions_from_docs(&Documentation::new_borrowed(docs.docs()));
+        let actual: Vec<_> = defs
+            .into_iter()
+            .flat_map(|(text_range, link, ns)| {
+                let attr = docs.find_ast_range(text_range);
+                let is_inner_attr =
+                    attr.map(|(_file, is_inner)| is_inner).unwrap_or(hir::IsInnerDoc::No);
+                let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns, is_inner_attr)
+                    .unwrap_or_else(|| panic!("Failed to resolve {link}"));
+                def.try_to_nav(sema).unwrap().into_iter().zip(iter::repeat(link))
+            })
+            .map(|(nav_target, link)| {
+                let range = FileRange {
+                    file_id: nav_target.file_id,
+                    range: nav_target.focus_or_full_range(),
+                };
+                (range, link)
+            })
+            .sorted_by_key(key_fn)
+            .collect();
+        assert_eq!(expected, actual);
+    });
 }
 
-fn def_under_cursor(
-    sema: &Semantics<'_, RootDatabase>,
+fn def_under_cursor<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     position: &FilePosition,
-) -> (Definition, Documentation, DocsRangeMap) {
+) -> (Definition, Cow<'db, hir::Docs>) {
     let (docs, def) = sema
         .parse_guess_edition(position.file_id)
         .syntax()
@@ -94,14 +97,14 @@ fn def_under_cursor(
         .find_map(|it| node_to_def(sema, &it))
         .expect("no def found")
         .unwrap();
-    let (docs, range) = docs.expect("no docs found for cursor def");
-    (def, docs, range)
+    let docs = docs.expect("no docs found for cursor def");
+    (def, docs)
 }
 
-fn node_to_def(
-    sema: &Semantics<'_, RootDatabase>,
+fn node_to_def<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     node: &SyntaxNode,
-) -> Option<Option<(Option<(Documentation, DocsRangeMap)>, Definition)>> {
+) -> Option<Option<(Option<Cow<'db, hir::Docs>>, Definition)>> {
     Some(match_ast! {
         match node {
             ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.docs_with_rangemap(sema.db), Definition::Module(def))),

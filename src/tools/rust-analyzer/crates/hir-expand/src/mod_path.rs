@@ -2,7 +2,7 @@
 
 use std::{
     fmt::{self, Display as _},
-    iter,
+    iter::{self, Peekable},
 };
 
 use crate::{
@@ -12,10 +12,11 @@ use crate::{
     tt,
 };
 use base_db::Crate;
-use intern::sym;
+use intern::{Symbol, sym};
+use parser::T;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
-use syntax::{AstNode, ast};
+use syntax::{AstNode, SyntaxToken, ast};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
@@ -62,6 +63,58 @@ impl ModPath {
     /// Creates a `ModPath` from a `PathKind`, with no extra path segments.
     pub const fn from_kind(kind: PathKind) -> ModPath {
         ModPath { kind, segments: SmallVec::new_const() }
+    }
+
+    pub fn from_tokens(
+        db: &dyn ExpandDatabase,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
+        is_abs: bool,
+        segments: impl Iterator<Item = SyntaxToken>,
+    ) -> Option<ModPath> {
+        let mut segments = segments.peekable();
+        let mut result = SmallVec::new_const();
+        let path_kind = if is_abs {
+            PathKind::Abs
+        } else {
+            let first = segments.next()?;
+            match first.kind() {
+                T![crate] => PathKind::Crate,
+                T![self] => PathKind::Super(handle_super(&mut segments)),
+                T![super] => PathKind::Super(1 + handle_super(&mut segments)),
+                T![ident] => {
+                    let first_text = first.text();
+                    if first_text == "$crate" {
+                        let ctxt = span_for_range(first.text_range());
+                        resolve_crate_root(db, ctxt)
+                            .map(PathKind::DollarCrate)
+                            .unwrap_or(PathKind::Crate)
+                    } else {
+                        result.push(Name::new_symbol_root(Symbol::intern(first_text)));
+                        PathKind::Plain
+                    }
+                }
+                _ => return None,
+            }
+        };
+        for segment in segments {
+            if segment.kind() != T![ident] {
+                return None;
+            }
+            result.push(Name::new_symbol_root(Symbol::intern(segment.text())));
+        }
+        if result.is_empty() {
+            return None;
+        }
+        result.shrink_to_fit();
+        return Some(ModPath { kind: path_kind, segments: result });
+
+        fn handle_super(segments: &mut Peekable<impl Iterator<Item = SyntaxToken>>) -> u8 {
+            let mut result = 0;
+            while segments.next_if(|it| it.kind() == T![super]).is_some() {
+                result += 1;
+            }
+            result
+        }
     }
 
     pub fn segments(&self) -> &[Name] {

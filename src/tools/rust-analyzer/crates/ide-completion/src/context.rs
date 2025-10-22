@@ -558,7 +558,7 @@ impl CompletionContext<'_> {
         I: hir::HasAttrs + Copy,
     {
         let attrs = item.attrs(self.db);
-        attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+        attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
     }
 
     /// Check if an item is `#[doc(hidden)]`.
@@ -572,7 +572,7 @@ impl CompletionContext<'_> {
     }
 
     /// Checks whether this item should be listed in regards to stability. Returns `true` if we should.
-    pub(crate) fn check_stability(&self, attrs: Option<&hir::Attrs>) -> bool {
+    pub(crate) fn check_stability(&self, attrs: Option<&hir::AttrsWithOwner>) -> bool {
         let Some(attrs) = attrs else {
             return true;
         };
@@ -590,15 +590,15 @@ impl CompletionContext<'_> {
 
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
-        match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+        match trait_.attrs(self.db).lang(self.db) {
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang),
             None => false,
         }
     }
 
     /// Whether the given trait has `#[doc(notable_trait)]`
     pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
-        trait_.attrs(self.db).has_doc_notable_trait()
+        trait_.attrs(self.db).is_doc_notable_trait()
     }
 
     /// Returns the traits in scope, with the [`Drop`] trait removed.
@@ -662,7 +662,7 @@ impl CompletionContext<'_> {
     fn is_visible_impl(
         &self,
         vis: &hir::Visibility,
-        attrs: &hir::Attrs,
+        attrs: &hir::AttrsWithOwner,
         defining_crate: hir::Crate,
     ) -> Visible {
         if !self.check_stability(Some(attrs)) {
@@ -684,14 +684,18 @@ impl CompletionContext<'_> {
         if self.is_doc_hidden(attrs, defining_crate) { Visible::No } else { Visible::Yes }
     }
 
-    pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+    pub(crate) fn is_doc_hidden(
+        &self,
+        attrs: &hir::AttrsWithOwner,
+        defining_crate: hir::Crate,
+    ) -> bool {
         // `doc(hidden)` items are only completed within the defining crate.
-        self.krate != defining_crate && attrs.has_doc_hidden()
+        self.krate != defining_crate && attrs.is_doc_hidden()
     }
 
     pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
-            attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+            attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
         } else {
             vec![]
         }

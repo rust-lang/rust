@@ -10,6 +10,7 @@ use triomphe::Arc;
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
     StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    attrs::AttrFlags,
     db::DefDatabase,
     expr_store::path::Path,
     nameres::{assoc::TraitItems, crate_def_map, crate_local_def_map},
@@ -213,14 +214,14 @@ impl LangItems {
         T: Into<AttrDefId> + Copy,
     {
         let _p = tracing::info_span!("collect_lang_item").entered();
-        if let Some(lang_item) = lang_attr(db, item.into()) {
+        if let Some(lang_item) = AttrFlags::lang_item(db, item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
     }
 }
 
 pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
-    db.attrs(item).lang_item()
+    AttrFlags::lang_item(db, item)
 }
 
 pub(crate) fn notable_traits_in_deps(db: &dyn DefDatabase, krate: Crate) -> Arc<[Arc<[TraitId]>]> {
@@ -240,7 +241,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
     for (_, module_data) in crate_def_map.modules() {
         for def in module_data.scope.declarations() {
             if let ModuleDefId::TraitId(trait_) = def
-                && db.attrs(trait_.into()).has_doc_notable_trait()
+                && AttrFlags::query(db, trait_.into()).contains(AttrFlags::IS_DOC_NOTABLE_TRAIT)
             {
                 traits.push(trait_);
             }

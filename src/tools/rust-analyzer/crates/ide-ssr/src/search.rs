@@ -135,11 +135,9 @@ impl<'db> MatchFinder<'db> {
         // seems to get put into a single source root.
         let mut files = Vec::new();
         self.search_files_do(|file_id| {
-            files.push(
-                self.sema
-                    .attach_first_edition(file_id)
-                    .unwrap_or_else(|| EditionedFileId::current_edition(self.sema.db, file_id)),
-            );
+            files.push(self.sema.attach_first_edition(file_id).unwrap_or_else(|| {
+                EditionedFileId::current_edition_guess_origin(self.sema.db, file_id)
+            }));
         });
         SearchScope::files(&files)
     }

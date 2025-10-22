@@ -56,7 +56,7 @@ pub(super) fn complete_lint(
         };
         let mut item =
             CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label, ctx.edition);
-        item.documentation(Documentation::new(description.to_owned()));
+        item.documentation(Documentation::new_owned(description.to_owned()));
         item.add_to(acc, ctx.db)
     }
 }

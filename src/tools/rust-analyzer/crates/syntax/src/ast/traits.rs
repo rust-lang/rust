@@ -4,8 +4,9 @@
 use either::Either;
 
 use crate::{
-    SyntaxElement, SyntaxToken, T,
+    SyntaxElement, SyntaxNode, SyntaxToken, T,
     ast::{self, AstChildren, AstNode, AstToken, support},
+    match_ast,
     syntax_node::SyntaxElementChildren,
 };
 
@@ -76,32 +77,42 @@ pub trait HasAttrs: AstNode {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
     }
 
-    /// Returns all attributes of this node, including inner attributes that may not be directly under this node
-    /// but under a child.
-    fn attrs_including_inner(self) -> impl Iterator<Item = ast::Attr>
-    where
-        Self: Sized,
-    {
-        let inner_attrs_node = if let Some(it) =
-            support::child::<ast::BlockExpr>(self.syntax()).and_then(|it| it.stmt_list())
-        {
-            Some(it.syntax)
-        } else if let Some(it) = support::child::<ast::MatchArmList>(self.syntax()) {
-            Some(it.syntax)
-        } else if let Some(it) = support::child::<ast::AssocItemList>(self.syntax()) {
-            Some(it.syntax)
-        } else if let Some(it) = support::child::<ast::ItemList>(self.syntax()) {
-            Some(it.syntax)
-        } else if let Some(it) = support::child::<ast::ExternItemList>(self.syntax()) {
-            Some(it.syntax)
-        } else if let Some(it) = support::child::<ast::MacroItems>(self.syntax()) {
-            Some(it.syntax)
-        } else {
-            None
-        };
-
-        self.attrs().chain(inner_attrs_node.into_iter().flat_map(|it| support::children(&it)))
+    /// This may return the same node as called with (with `SourceFile`). The caller has the responsibility
+    /// to avoid duplicate attributes.
+    fn inner_attributes_node(&self) -> Option<SyntaxNode> {
+        let syntax = self.syntax();
+        Some(match_ast! {
+            match syntax {
+                // A `SourceFile` contains the inner attributes of itself.
+                ast::SourceFile(_) => syntax.clone(),
+                ast::ExternBlock(it) => it.extern_item_list()?.syntax().clone(),
+                ast::Fn(it) => it.body()?.stmt_list()?.syntax().clone(),
+                ast::MatchExpr(it) => it.match_arm_list()?.syntax().clone(),
+                ast::Impl(it) => it.assoc_item_list()?.syntax().clone(),
+                ast::Trait(it) => it.assoc_item_list()?.syntax().clone(),
+                ast::Module(it) => it.item_list()?.syntax().clone(),
+                ast::BlockExpr(it) => {
+                    if !it.may_carry_attributes() {
+                        return None;
+                    }
+                    syntax.clone()
+                },
+                _ => return None,
+            }
+        })
     }
+}
+
+/// Returns all attributes of this node, including inner attributes that may not be directly under this node
+/// but under a child.
+pub fn attrs_including_inner(owner: &dyn HasAttrs) -> impl Iterator<Item = ast::Attr> + Clone {
+    owner.attrs().filter(|attr| attr.kind().is_outer()).chain(
+        owner
+            .inner_attributes_node()
+            .into_iter()
+            .flat_map(|node| support::children::<ast::Attr>(&node))
+            .filter(|attr| attr.kind().is_inner()),
+    )
 }
 
 pub trait HasDocComments: HasAttrs {
@@ -118,7 +129,7 @@ impl DocCommentIter {
     #[cfg(test)]
     pub fn doc_comment_text(self) -> Option<String> {
         let docs = itertools::Itertools::join(
-            &mut self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)),
+            &mut self.filter_map(|comment| comment.doc_comment().map(|it| it.0.to_owned())),
             "\n",
         );
         if docs.is_empty() { None } else { Some(docs) }
@@ -151,7 +162,7 @@ impl AttrDocCommentIter {
 impl Iterator for AttrDocCommentIter {
     type Item = Either<ast::Attr, ast::Comment>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.by_ref().find_map(|el| match el {
+        self.iter.find_map(|el| match el {
             SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Left),
             SyntaxElement::Token(tok) => {
                 ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right)

@@ -3,9 +3,11 @@
 //!
 use std::cmp::{self, Ordering};
 
-use hir_def::{CrateRootModuleId, resolver::HasResolver, signatures::FunctionSignature};
+use hir_def::{
+    CrateRootModuleId, attrs::AttrFlags, resolver::HasResolver, signatures::FunctionSignature,
+};
 use hir_expand::name::Name;
-use intern::{Symbol, sym};
+use intern::sym;
 use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
 use stdx::never;
 
@@ -53,7 +55,7 @@ impl<'db> Evaluator<'db> {
         }
 
         let function_data = self.db.function_signature(def);
-        let attrs = self.db.attrs(def.into());
+        let attrs = AttrFlags::query(self.db, def.into());
         let is_intrinsic = FunctionSignature::is_intrinsic(self.db, def);
 
         if is_intrinsic {
@@ -65,7 +67,7 @@ impl<'db> Evaluator<'db> {
                 locals,
                 span,
                 !function_data.has_body()
-                    || attrs.by_key(sym::rustc_intrinsic_must_be_overridden).exists(),
+                    || attrs.contains(AttrFlags::RUSTC_INTRINSIC_MUST_BE_OVERRIDDEN),
             );
         }
         let is_extern_c = match def.lookup(self.db).container {
@@ -85,18 +87,13 @@ impl<'db> Evaluator<'db> {
                 .map(|()| true);
         }
 
-        let alloc_fn =
-            attrs.iter().filter_map(|it| it.path().as_ident()).map(|it| it.symbol()).find(|it| {
-                [
-                    &sym::rustc_allocator,
-                    &sym::rustc_deallocator,
-                    &sym::rustc_reallocator,
-                    &sym::rustc_allocator_zeroed,
-                ]
-                .contains(it)
-            });
-        if let Some(alloc_fn) = alloc_fn {
-            self.exec_alloc_fn(alloc_fn, args, destination)?;
+        if attrs.intersects(
+            AttrFlags::RUSTC_ALLOCATOR
+                | AttrFlags::RUSTC_DEALLOCATOR
+                | AttrFlags::RUSTC_REALLOCATOR
+                | AttrFlags::RUSTC_ALLOCATOR_ZEROED,
+        ) {
+            self.exec_alloc_fn(attrs, args, destination)?;
             return Ok(true);
         }
         if let Some(it) = self.detect_lang_function(def) {
@@ -245,12 +242,14 @@ impl<'db> Evaluator<'db> {
 
     fn exec_alloc_fn(
         &mut self,
-        alloc_fn: &Symbol,
+        alloc_fn: AttrFlags,
         args: &[IntervalAndTy<'db>],
         destination: Interval,
     ) -> Result<'db, ()> {
         match alloc_fn {
-            _ if *alloc_fn == sym::rustc_allocator_zeroed || *alloc_fn == sym::rustc_allocator => {
+            _ if alloc_fn
+                .intersects(AttrFlags::RUSTC_ALLOCATOR_ZEROED | AttrFlags::RUSTC_ALLOCATOR) =>
+            {
                 let [size, align] = args else {
                     return Err(MirEvalError::InternalError(
                         "rustc_allocator args are not provided".into(),
@@ -261,8 +260,8 @@ impl<'db> Evaluator<'db> {
                 let result = self.heap_allocate(size, align)?;
                 destination.write_from_bytes(self, &result.to_bytes())?;
             }
-            _ if *alloc_fn == sym::rustc_deallocator => { /* no-op for now */ }
-            _ if *alloc_fn == sym::rustc_reallocator => {
+            _ if alloc_fn.contains(AttrFlags::RUSTC_DEALLOCATOR) => { /* no-op for now */ }
+            _ if alloc_fn.contains(AttrFlags::RUSTC_REALLOCATOR) => {
                 let [ptr, old_size, align, new_size] = args else {
                     return Err(MirEvalError::InternalError(
                         "rustc_allocator args are not provided".into(),
@@ -288,14 +287,14 @@ impl<'db> Evaluator<'db> {
 
     fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
         use LangItem::*;
-        let attrs = self.db.attrs(def.into());
+        let attrs = AttrFlags::query(self.db, def.into());
 
-        if attrs.by_key(sym::rustc_const_panic_str).exists() {
+        if attrs.contains(AttrFlags::RUSTC_CONST_PANIC_STR) {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }
 
-        let candidate = attrs.lang_item()?;
+        let candidate = attrs.lang_item_with_attrs(self.db, def.into())?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
         if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
