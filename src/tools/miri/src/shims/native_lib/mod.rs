@@ -7,7 +7,7 @@ use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::either;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
 use serde::{Deserialize, Serialize};
@@ -144,7 +144,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     unsafe { ffi::call::<()>(fun, libffi_args) };
                     return interp_ok(ImmTy::uninit(dest.layout));
                 }
-                ty::RawPtr(..) => {
+                ty::RawPtr(ty, ..) if ty.is_sized(*this.tcx, this.typing_env()) => {
                     let x = unsafe { ffi::call::<*const ()>(fun, libffi_args) };
                     let ptr = StrictPointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
                     Scalar::from_pointer(ptr, this)
