@@ -71,8 +71,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             // Specifically `#[link = "dl"]` is accepted with a FCW
             // For more information, see https://github.com/rust-lang/rust/pull/143193
             ArgParser::NameValue(nv) if nv.value_as_str().is_some_and(|v| v == sym::dl) => {
-                let suggestions = <Self as CombineAttributeParser<S>>::TEMPLATE
-                    .suggestions(cx.attr_style, "link");
+                let suggestions = cx.suggestions();
                 let span = cx.attr_span;
                 cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                 return None;

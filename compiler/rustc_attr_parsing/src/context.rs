@@ -427,7 +427,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                     i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
                 }),
             },
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -438,7 +438,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIntegerLiteral,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -449,7 +449,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedList,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -460,7 +460,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNoArgs,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -472,7 +472,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIdentifier,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -485,7 +485,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNameValue(name),
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -497,7 +497,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::DuplicateKey(key),
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -510,7 +510,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::UnexpectedLiteral,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -521,7 +521,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedSingleArgument,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -532,7 +532,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedAtLeastOneArgument,
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -552,7 +552,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: false,
             },
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -573,7 +573,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: true,
             },
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -593,7 +593,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: true,
                 list: false,
             },
-            attr_style: self.attr_style,
+            suggestions: self.suggestions(),
         })
     }
 
@@ -604,6 +604,10 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
             span,
         );
+    }
+
+    pub(crate) fn suggestions(&self) -> Vec<String> {
+        self.template.suggestions(Some(self.attr_style), &self.attr_path)
     }
 }
 

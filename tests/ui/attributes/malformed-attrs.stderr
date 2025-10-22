@@ -701,7 +701,7 @@ error: valid forms for the attribute are `#[macro_use(name1, name2, ...)]` and `
 LL | #[macro_use = 1]
    | ^^^^^^^^^^^^^^^^
 
-error: valid forms for the attribute are `#![macro_export(local_inner_macros)]` and `#![macro_export]`
+error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
   --> $DIR/malformed-attrs.rs:221:1
    |
 LL | #[macro_export = 18]
