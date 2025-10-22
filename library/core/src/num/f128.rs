@@ -1289,7 +1289,7 @@ impl f128 {
     /// assert_eq!((3.0f128).clamp_max(1.0), 1.0);
     /// assert_eq!((0.0f128).clamp_max(1.0), 0.0);
     /// assert_eq!((f128::NAN).clamp_max(1.0), 1.0);
-    /// assert_eq!((0.0f128).clamp_min(f128::NAN), 0.0);
+    /// assert_eq!((0.0f128).clamp_max(f128::NAN), 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]

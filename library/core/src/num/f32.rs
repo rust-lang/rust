@@ -1441,10 +1441,10 @@ impl f32 {
     ///
     /// ```
     /// #![feature(clamp_min_max)]
-    /// assert_eq!((-3.0f32).clamp_min(-2.0), -2.0);
-    /// assert_eq!((0.0f32).clamp_min(-2.0), 0.0);
-    /// assert_eq!((f32::NAN).clamp_min(-2.0), -2.0);
-    /// assert_eq!((0.0f32).clamp_min(f32::NAN), 0.0);
+    /// assert_eq!((3.0f32).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f32).clamp_max(1.0), 0.0);
+    /// assert_eq!((f32::NAN).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f32).clamp_max(f32::NAN), 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp_min_max", issue = "147781")]

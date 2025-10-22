@@ -1267,7 +1267,7 @@ impl f16 {
     /// assert_eq!((3.0f16).clamp_max(1.0), 1.0);
     /// assert_eq!((0.0f16).clamp_max(1.0), 0.0);
     /// assert_eq!((f16::NAN).clamp_max(1.0), 1.0);
-    /// assert_eq!((0.0f16).clamp_min(f16::NAN), 0.0);
+    /// assert_eq!((0.0f16).clamp_max(f16::NAN), 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]

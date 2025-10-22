@@ -1442,7 +1442,7 @@ impl f64 {
     /// assert_eq!((3.0f64).clamp_max(1.0), 1.0);
     /// assert_eq!((0.0f64).clamp_max(1.0), 0.0);
     /// assert_eq!((f64::NAN).clamp_max(1.0), 1.0);
-    /// assert_eq!((0.0f64).clamp_min(f64::NAN), 0.0);
+    /// assert_eq!((0.0f64).clamp_max(f64::NAN), 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp_min_max", issue = "147781")]
