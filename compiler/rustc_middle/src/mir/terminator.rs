@@ -501,6 +501,8 @@ pub use helper::*;
 
 mod helper {
     use super::*;
+    // Note: the methods below use a `slice.chain(Option).chain(Option)` pattern so that all paths
+    // produce an iterator with the same concrete type.
     pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
 
     impl SwitchTargets {
@@ -510,7 +512,7 @@ mod helper {
         #[define_opaque(Successors)]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            (&[]).into_iter().copied().chain(Some(target).into_iter().chain(None))
+            (&[]).into_iter().copied().chain(Some(target)).chain(None)
         }
     }
 
@@ -522,10 +524,7 @@ mod helper {
             match *self {
                 // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
                 Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
-                    slice::from_ref(t)
-                        .into_iter()
-                        .copied()
-                        .chain(Some(u).into_iter().chain(Some(d)))
+                    slice::from_ref(t).into_iter().copied().chain(Some(u)).chain(Some(d))
                 }
                 // 2-successors
                 Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
@@ -534,7 +533,7 @@ mod helper {
                 | Drop { target: ref t, unwind: _, drop: Some(u), .. }
                 | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
                 | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    slice::from_ref(t).into_iter().copied().chain(Some(u).into_iter().chain(None))
+                    slice::from_ref(t).into_iter().copied().chain(Some(u)).chain(None)
                 }
                 // single successor
                 Goto { target: ref t }
@@ -544,7 +543,7 @@ mod helper {
                 | Drop { target: ref t, unwind: _, .. }
                 | Assert { target: ref t, unwind: _, .. }
                 | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    slice::from_ref(t).into_iter().copied().chain(None.into_iter().chain(None))
+                    slice::from_ref(t).into_iter().copied().chain(None).chain(None)
                 }
                 // No successors
                 UnwindResume
@@ -554,23 +553,24 @@ mod helper {
                 | Unreachable
                 | TailCall { .. }
                 | Call { target: None, unwind: _, .. } => {
-                    (&[]).into_iter().copied().chain(None.into_iter().chain(None))
+                    (&[]).into_iter().copied().chain(None).chain(None)
                 }
                 // Multiple successors
                 InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    targets.iter().copied().chain(Some(u).into_iter().chain(None))
+                    targets.iter().copied().chain(Some(u)).chain(None)
                 }
                 InlineAsm { ref targets, unwind: _, .. } => {
-                    targets.iter().copied().chain(None.into_iter().chain(None))
+                    targets.iter().copied().chain(None).chain(None)
                 }
                 SwitchInt { ref targets, .. } => {
-                    targets.targets.iter().copied().chain(None.into_iter().chain(None))
+                    targets.targets.iter().copied().chain(None).chain(None)
                 }
                 // FalseEdge
                 FalseEdge { ref real_target, imaginary_target } => slice::from_ref(real_target)
                     .into_iter()
                     .copied()
-                    .chain(Some(imaginary_target).into_iter().chain(None)),
+                    .chain(Some(imaginary_target))
+                    .chain(None),
             }
         }
 
