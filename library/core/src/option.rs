@@ -1842,6 +1842,20 @@ impl<T> Option<T> {
         mem::replace(self, None)
     }
 
+    /// Clear the value of the option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = Some(2);
+    /// x.clear();
+    /// assert_eq!(x, None);
+    /// ```
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        *self = None;
+    }
+
     /// Takes the value out of the option, but only if the predicate evaluates to
     /// `true` on a mutable reference to the value.
     ///
