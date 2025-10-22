@@ -4,12 +4,6 @@ set -ex
 
 : "${TARGET?The TARGET environment variable must be set.}"
 
-# Tests are all super fast anyway, and they fault often enough on travis that
-# having only one thread increases debuggability to be worth it.
-#export RUST_BACKTRACE=full
-#export RUST_TEST_NOCAPTURE=1
-#export RUST_TEST_THREADS=1
-
 export RUSTFLAGS="${RUSTFLAGS} -D warnings -Z merge-functions=disabled -Z verify-llvm-ir"
 export HOST_RUSTFLAGS="${RUSTFLAGS}"
 export PROFILE="${PROFILE:="--profile=release"}"
@@ -44,21 +38,12 @@ esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "OBJDUMP=${OBJDUMP}"
-echo "STDARCH_DISABLE_ASSERT_INSTR=${STDARCH_DISABLE_ASSERT_INSTR}"
-echo "STDARCH_TEST_EVERYTHING=${STDARCH_TEST_EVERYTHING}"
-echo "STDARCH_TEST_SKIP_FEATURE=${STDARCH_TEST_SKIP_FEATURE}"
-echo "STDARCH_TEST_SKIP_FUNCTION=${STDARCH_TEST_SKIP_FUNCTION}"
 echo "PROFILE=${PROFILE}"
 
 INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
 
 # Test targets compiled with extra features.
 case ${TARGET} in
-
-    x86_64* | i686*)
-        export STDARCH_DISABLE_ASSERT_INSTR=1
-        ;;
-
     # Setup aarch64 & armv7 specific variables, the runner, along with some
     # tests to skip
     aarch64-unknown-linux-gnu*)
