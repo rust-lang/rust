@@ -39,6 +39,12 @@ use std::path::{Path, PathBuf};
 use std::{fmt, panic};
 
 use Level::*;
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use anstream::{AutoStream, ColorChoice};
+pub use anstyle::{
+    Ansi256Color, AnsiColor, Color, EffectIter, Effects, Reset, RgbColor, Style as Anstyle,
+};
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
@@ -69,9 +75,6 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
-// Used by external projects such as `rust-gpu`.
-// See https://github.com/rust-lang/rust/pull/115393.
-pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
@@ -1982,25 +1985,21 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> ColorSpec {
-        let mut spec = ColorSpec::new();
+    fn color(self) -> anstyle::Style {
         match self {
-            Bug | Fatal | Error | DelayedBug => {
-                spec.set_fg(Some(Color::Red)).set_intense(true);
-            }
+            Bug | Fatal | Error | DelayedBug => AnsiColor::BrightRed.on_default(),
             ForceWarning | Warning => {
-                spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
+                if cfg!(windows) {
+                    AnsiColor::BrightYellow.on_default()
+                } else {
+                    AnsiColor::Yellow.on_default()
+                }
             }
-            Note | OnceNote => {
-                spec.set_fg(Some(Color::Green)).set_intense(true);
-            }
-            Help | OnceHelp => {
-                spec.set_fg(Some(Color::Cyan)).set_intense(true);
-            }
-            FailureNote => {}
+            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
+            Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
+            FailureNote => anstyle::Style::new(),
             Allow | Expect => unreachable!(),
         }
-        spec
     }
 
     pub fn to_str(self) -> &'static str {
