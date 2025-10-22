@@ -5182,9 +5182,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn suggest_remove_brackets_from_range(
         &self,
         main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        leaf_trait_predicate: ty::PolyTraitPredicate<'tcx>,
         span: Span,
         err: &mut Diag<'_>,
     ) {
+        let is_trait_range_bounds =
+            match self.tcx.get_diagnostic_name(leaf_trait_predicate.def_id()) {
+                Some(trait_name) if trait_name == sym::RangeBounds => true,
+                _ => false,
+            };
+        if !is_trait_range_bounds {
+            return;
+        }
         if let ty::Array(inner_type, size_value) =
             main_trait_predicate.self_ty().skip_binder().kind()
         {
