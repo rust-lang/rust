@@ -531,13 +531,15 @@ pub enum ItemKind {
     /// Corresponds to either `ItemEnum::Macro(_)`
     /// or `ItemEnum::ProcMacro(ProcMacro { kind: MacroKind::Bang })`
     Macro,
-    /// A procedural macro attribute.
+    /// A macro attribute.
     ///
     /// Corresponds to `ItemEnum::ProcMacro(ProcMacro { kind: MacroKind::Attr })`
+    /// and `ItemEnum::Macro(_)`; this should probably be renamed.
     ProcAttribute,
     /// A procedural macro usable in the `#[derive()]` attribute.
     ///
     /// Corresponds to `ItemEnum::ProcMacro(ProcMacro { kind: MacroKind::Derive })`
+    /// and `ItemEnum::Macro(_)`; this should probably be renamed.
     ProcDerive,
     /// An associated constant of a trait or a type.
     AssocConst,
