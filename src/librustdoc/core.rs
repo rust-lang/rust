@@ -19,7 +19,7 @@ use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{
-    self, CrateType, ErrorOutputType, Input, OutFileName, OutputType, OutputTypes, ResolveDocLinks,
+    self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
@@ -271,10 +271,7 @@ pub(crate) fn create_config(
         test,
         remap_path_prefix,
         output_types: if let Some(file) = render_options.dep_info() {
-            OutputTypes::new(&[(
-                OutputType::DepInfo,
-                file.map(|f| OutFileName::Real(f.to_path_buf())),
-            )])
+            OutputTypes::new(&[(OutputType::DepInfo, file.cloned())])
         } else {
             OutputTypes::new(&[])
         },
