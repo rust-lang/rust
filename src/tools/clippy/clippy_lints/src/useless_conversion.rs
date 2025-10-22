@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_modulo_regions};
-use clippy_utils::{
-    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
-};
+use clippy_utils::ty::{is_copy, same_type_modulo_regions};
+use clippy_utils::{get_parent_expr, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -133,7 +132,7 @@ fn into_iter_bound<'tcx>(
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
-        && is_trait_method(cx, expr, sym::IntoIterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && name.ident.name == sym::into_iter
     {
         Some(recv)
@@ -181,7 +180,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     path.ident.name,
                     sym::map | sym::map_err | sym::map_break | sym::map_continue
                 ) && has_eligible_receiver(cx, recv, e)
-                    && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
+                    && matches!(
+                        arg.res(cx).assoc_parent(cx).opt_diag_name(cx),
+                        Some(sym::Into | sym::From)
+                    )
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
                     && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
                     && same_type_modulo_regions(from_ty, to_ty)
@@ -204,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_modulo_regions(a, b) {
@@ -308,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
                     }
 
-                    if let Some(id) = path_to_local(recv)
+                    if let Some(id) = recv.res_local_id()
                         && let Node::Pat(pat) = cx.tcx.hir_node(id)
                         && let PatKind::Binding(ann, ..) = pat.kind
                         && ann != BindingMode::MUT
@@ -364,11 +366,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if is_trait_method(cx, e, sym::TryInto)
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
                     && name.ident.name == sym::try_into
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
-                    && is_type_diagnostic_item(cx, a, sym::Result)
+                    && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
                     && same_type_modulo_regions(a_type, b)
@@ -393,7 +395,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(arg);
                     if name == sym::try_from_fn
-                        && is_type_diagnostic_item(cx, a, sym::Result)
+                        && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
                         && same_type_modulo_regions(a_type, b)
@@ -439,13 +441,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 }
 
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    if is_inherent_method_call(cx, expr) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
         matches!(
-            get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv)),
+            cx.typeck_results().expr_ty(recv).opt_diag_name(cx),
             Some(sym::Option | sym::Result | sym::ControlFlow)
         )
     } else {
-        is_trait_method(cx, expr, sym::Iterator)
+        cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
     }
 }
 

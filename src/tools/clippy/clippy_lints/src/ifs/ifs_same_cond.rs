@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::InteriorMut;
-use clippy_utils::{SpanlessEq, eq_expr_value, find_binding_init, hash_expr, path_to_local, search_same};
+use clippy_utils::{SpanlessEq, eq_expr_value, find_binding_init, hash_expr, search_same};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 
@@ -16,7 +17,7 @@ fn method_caller_is_mutable<'tcx>(
     interior_mut.is_interior_mut_ty(cx, caller_ty)
         || caller_ty.is_mutable_ptr()
         // `find_binding_init` will return the binding iff its not mutable
-        || path_to_local(caller_expr)
+        || caller_expr.res_local_id()
             .and_then(|hid| find_binding_init(cx, hid))
             .is_none()
 }

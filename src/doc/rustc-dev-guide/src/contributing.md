@@ -461,7 +461,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
 [the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
-### Rfcbot labels
+### rfcbot labels
 
 [rfcbot] uses its own labels for tracking the process of coordinating
 asynchronous decisions, such as approving or rejecting a change.

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast as ast;
-use rustc_ast::NodeId;
+use rustc_ast::{AttrStyle, NodeId};
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -62,7 +62,8 @@ impl<'sess> AttributeParser<'sess, Early> {
         )
     }
 
-    /// Usually you want `parse_limited`, which defaults to no errors.
+    /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
+    /// Usually you want `parse_limited`, which emits no errors.
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -86,6 +87,13 @@ impl<'sess> AttributeParser<'sess, Early> {
         parsed.pop()
     }
 
+    /// This method allows you to parse a list of attributes *before* `rustc_ast_lowering`.
+    /// This can be used for attributes that would be removed before `rustc_ast_lowering`, such as attributes on macro calls.
+    ///
+    /// Try to use this as little as possible. Attributes *should* be lowered during
+    /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
+    /// crash if you tried to do so through [`parse_limited_all`](Self::parse_limited_all).
+    /// Therefore, if `parse_only` is None, then features *must* be provided.
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -111,6 +119,8 @@ impl<'sess> AttributeParser<'sess, Early> {
         )
     }
 
+    /// This method parses a single attribute, using `parse_fn`.
+    /// This is useful if you already know what exact attribute this is, and want to parse it.
     pub fn parse_single<T>(
         sess: &'sess Session,
         attr: &ast::Attribute,
@@ -121,13 +131,6 @@ impl<'sess> AttributeParser<'sess, Early> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser<'_>) -> Option<T>,
         template: &AttributeTemplate,
     ) -> Option<T> {
-        let mut parser = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: None,
-            sess,
-            stage: Early { emit_errors },
-        };
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
@@ -136,6 +139,43 @@ impl<'sess> AttributeParser<'sess, Early> {
         let meta_parser = MetaItemParser::from_attr(normal_attr, &parts, &sess.psess, emit_errors)?;
         let path = meta_parser.path();
         let args = meta_parser.args();
+        Self::parse_single_args(
+            sess,
+            attr.span,
+            attr.style,
+            path.get_attribute_path(),
+            target_span,
+            target_node_id,
+            features,
+            emit_errors,
+            args,
+            parse_fn,
+            template,
+        )
+    }
+
+    /// This method is equivalent to `parse_single`, but parses arguments using `parse_fn` using manually created `args`.
+    /// This is useful when you want to parse other things than attributes using attribute parsers.
+    pub fn parse_single_args<T, I>(
+        sess: &'sess Session,
+        attr_span: Span,
+        attr_style: AttrStyle,
+        attr_path: AttrPath,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        emit_errors: ShouldEmit,
+        args: &I,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> Option<T>,
+        template: &AttributeTemplate,
+    ) -> Option<T> {
+        let mut parser = Self {
+            features,
+            tools: Vec::new(),
+            parse_only: None,
+            sess,
+            stage: Early { emit_errors },
+        };
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
@@ -145,10 +185,10 @@ impl<'sess> AttributeParser<'sess, Early> {
                     crate::lints::emit_attribute_lint(&lint, sess);
                 },
             },
-            attr_span: attr.span,
-            attr_style: attr.style,
+            attr_span,
+            attr_style,
             template,
-            attr_path: path.get_attribute_path(),
+            attr_path,
         };
         parse_fn(&mut cx, args)
     }

@@ -5,7 +5,9 @@ use std::cmp::Ordering;
 use cranelift_module::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
+use rustc_middle::mir::interpret::{
+    AllocId, GlobalAlloc, PointerArithmetic, Scalar, read_target_uint,
+};
 use rustc_middle::ty::{ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
@@ -138,8 +140,11 @@ pub(crate) fn codegen_const_value<'tcx>(
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset, Size::ZERO);
-                            fx.bcx.ins().iconst(fx.pointer_type, alloc.inner().align.bytes() as i64)
+                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
+                            fx.bcx.ins().iconst(
+                                fx.pointer_type,
+                                fx.tcx.truncate_to_target_usize(val) as i64,
+                            )
                         } else {
                             let data_id = data_id_for_alloc_id(
                                 &mut fx.constants_cx,

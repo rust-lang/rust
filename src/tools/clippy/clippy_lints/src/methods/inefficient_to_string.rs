@@ -1,27 +1,18 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_lang_item, peel_and_count_ty_refs};
+use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::sym;
 
 use super::INEFFICIENT_TO_STRING;
 
-/// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn check(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    method_name: Symbol,
-    receiver: &hir::Expr<'_>,
-    args: &[hir::Expr<'_>],
-    msrv: Msrv,
-) {
-    if args.is_empty()
-        && method_name == sym::to_string
-        && let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, msrv: Msrv) {
+    if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && cx.tcx.is_diagnostic_item(sym::to_string_method, to_string_meth_did)
         && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
         && let arg_ty = cx.typeck_results().expr_ty_adjusted(receiver)
@@ -61,7 +52,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if is_type_lang_item(cx, ty, hir::LangItem::String) {
+    if ty.is_lang_item(cx, hir::LangItem::String) {
         return true;
     }
 

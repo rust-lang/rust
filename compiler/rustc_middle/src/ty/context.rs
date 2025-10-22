@@ -41,7 +41,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
@@ -102,6 +101,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CoroutineId = DefId;
     type AdtId = DefId;
     type ImplId = DefId;
+    type UnevaluatedConstId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -679,7 +679,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn impl_trait_ref(self, impl_def_id: DefId) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
-        self.impl_trait_ref(impl_def_id).unwrap()
+        self.impl_trait_ref(impl_def_id)
     }
 
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {
@@ -1786,9 +1786,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_default_trait(self, def_id: DefId) -> bool {
-        self.default_traits()
-            .iter()
-            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+        self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
@@ -3472,7 +3470,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
-            && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
+            && self.impl_trait_header(def_id).constness == hir::Constness::Const
     }
 
     pub fn is_sdylib_interface_build(self) -> bool {
@@ -3530,19 +3528,6 @@ impl<'tcx> TyCtxt<'tcx> {
         crate::dep_graph::make_metadata(self)
     }
 
-    /// Given an `impl_id`, return the trait it implements.
-    /// Return `None` if this is an inherent impl.
-    pub fn impl_trait_ref(
-        self,
-        def_id: impl IntoQueryParam<DefId>,
-    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.trait_ref)
-    }
-
-    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
-    }
-
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
@@ -3573,21 +3558,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         false
     }
-}
-
-/// Parameter attributes that can only be determined by examining the body of a function instead
-/// of just its signature.
-///
-/// These can be useful for optimization purposes when a function is directly called. We compute
-/// them and store them into the crate metadata so that downstream crates can make use of them.
-///
-/// Right now, we only have `read_only`, but `no_capture` and `no_alias` might be useful in the
-/// future.
-#[derive(Clone, Copy, PartialEq, Debug, Default, TyDecodable, TyEncodable, HashStable)]
-pub struct DeducedParamAttrs {
-    /// The parameter is marked immutable in the function and contains no `UnsafeCell` (i.e. its
-    /// type is freeze).
-    pub read_only: bool,
 }
 
 pub fn provide(providers: &mut Providers) {

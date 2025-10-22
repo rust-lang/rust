@@ -4,6 +4,8 @@ attr_parsing_as_needed_compatibility =
 attr_parsing_bundle_needs_static =
     linking modifier `bundle` is only compatible with `static` linking kind
 
+attr_parsing_cfg_attr_bad_delim = wrong `cfg_attr` delimiters
+
 attr_parsing_cfg_predicate_identifier =
     `cfg` predicate key must be an identifier
 

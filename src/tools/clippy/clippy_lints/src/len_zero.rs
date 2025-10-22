@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    fulfill_or_allowed, get_parent_as_impl, is_trait_method, parent_item_name, peel_ref_operators, sym,
-};
+use clippy_utils::{fulfill_or_allowed, get_parent_as_impl, parent_item_name, peel_ref_operators, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -204,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         }
 
         if let ExprKind::MethodCall(method, lhs_expr, [rhs_expr], _) = expr.kind
-            && is_trait_method(cx, expr, sym::PartialEq)
+            && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::PartialEq)
             && !expr.span.from_expansion()
         {
             check_empty_expr(

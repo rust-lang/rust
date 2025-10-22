@@ -2487,7 +2487,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
-        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
             Err(()) => {

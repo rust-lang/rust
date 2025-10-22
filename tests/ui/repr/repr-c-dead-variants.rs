@@ -1,4 +1,4 @@
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core, rustc_attrs)]
 #![allow(dead_code)]
 #![crate_type = "lib"]
 #![no_std]

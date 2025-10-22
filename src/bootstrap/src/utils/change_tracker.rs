@@ -571,4 +571,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`rust.lld = true` no longer automatically causes the `x86_64-unknown-linux-gnu` target to default into using the self-contained LLD linker. This target now uses the LLD linker by default. To opt out, set `target.x86_64-unknown-linux-gnu.default-linker-linux-override = 'off'`.",
     },
+    ChangeInfo {
+        change_id: 147888,
+        severity: ChangeSeverity::Info,
+        summary: "`llvm.enzyme` now works with `download-ci-llvm=true`.",
+    },
 ];

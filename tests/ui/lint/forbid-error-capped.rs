@@ -6,6 +6,8 @@
 
 #![forbid(warnings)]
 #![allow(unused)]
+//~^ WARN allow(unused) incompatible with previous forbid
+//~| WARN previously accepted
 
 #[allow(unused)]
 mod bar {

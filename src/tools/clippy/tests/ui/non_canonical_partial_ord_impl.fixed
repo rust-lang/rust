@@ -1,4 +1,8 @@
+//@aux-build:proc_macro_derive.rs
 #![no_main]
+
+extern crate proc_macros;
+use proc_macros::inline_macros;
 
 use std::cmp::Ordering;
 
@@ -161,6 +165,73 @@ impl PartialOrd for I {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         return Some(self.cmp(other));
     }
+}
+
+#[inline_macros]
+mod issue12788 {
+    use std::cmp::Ordering;
+
+    use proc_macros::{external, with_span};
+
+    // lint -- not an external macro
+    inline!(
+        #[derive(PartialEq, Eq)]
+        pub struct A;
+
+        impl Ord for A {
+            fn cmp(&self, other: &Self) -> Ordering {
+                todo!();
+            }
+        }
+
+        impl PartialOrd for A {
+            //~^ non_canonical_partial_ord_impl
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+        }
+    );
+
+    // do not lint -- should skip external macros
+    external!(
+        #[derive(PartialEq, Eq)]
+        pub struct B;
+
+        impl Ord for B {
+            fn cmp(&self, other: &Self) -> Ordering {
+                todo!();
+            }
+        }
+
+        impl PartialOrd for B {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                todo!();
+            }
+        }
+
+    );
+
+    // do not lint -- should skip proc macros
+    #[derive(proc_macro_derive::NonCanonicalClone)]
+    pub struct C;
+
+    with_span!(
+        span
+
+        #[derive(PartialEq, Eq)]
+        pub struct D;
+
+        impl Ord for D {
+            fn cmp(&self, other: &Self) -> Ordering {
+                todo!();
+            }
+        }
+
+        impl PartialOrd for D {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                todo!();
+            }
+        }
+
+    );
 }
 
 // #13640, do not lint

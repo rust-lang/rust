@@ -285,17 +285,31 @@ nonpoison_and_poison_unwrap_test!(
 
         thread::scope(|s| {
             s.spawn(|| {
+                // Sleep so that the other thread has a chance to encounter the
+                // timeout.
                 thread::sleep(Duration::from_secs(2));
                 maybe_unwrap(sent.set(true));
                 cond.notify_all();
             });
 
-            let guard = maybe_unwrap(sent.lock());
-            // If there is internal overflow, this call will return almost
-            // immediately, before the other thread has reached the `notify_all`
-            let (guard, res) = maybe_unwrap(cond.wait_timeout(guard, Duration::from_secs(u64::MAX.div_ceil(1_000_000_000))));
-            assert!(!res.timed_out());
-            assert!(*guard);
+            let mut guard = maybe_unwrap(sent.lock());
+            // Loop until `sent` is set by the thread to guard against spurious
+            // wakeups. If the `wait_timeout` happens just before the signal by
+            // the other thread, such a spurious wakeup might prevent the
+            // miscalculated timeout from occurring, but this is basically just
+            // a smoke test anyway.
+            loop {
+                if *guard {
+                    break;
+                }
+
+                // If there is internal overflow, this call will return almost
+                // immediately, before the other thread has reached the `notify_all`,
+                // and indicate a timeout.
+                let (g, res) = maybe_unwrap(cond.wait_timeout(guard, Duration::from_secs(u64::MAX.div_ceil(1_000_000_000))));
+                assert!(!res.timed_out());
+                guard = g;
+            }
         })
     }
 );

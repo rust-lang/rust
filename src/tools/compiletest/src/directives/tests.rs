@@ -3,8 +3,9 @@ use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
-    DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives, extract_llvm_version,
-    extract_version_range, iter_directives, line_directive, parse_edition, parse_normalize_rule,
+    AuxProps, DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives,
+    extract_llvm_version, extract_version_range, iter_directives, line_directive, parse_edition,
+    parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldPanic};
 
@@ -20,6 +21,7 @@ fn make_test_description(
     let mut poisoned = false;
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
 
+    let mut aux_props = AuxProps::default();
     let test = crate::directives::make_test_description(
         config,
         &cache,
@@ -29,6 +31,7 @@ fn make_test_description(
         &file_directives,
         revision,
         &mut poisoned,
+        &mut aux_props,
     );
     if poisoned {
         panic!("poisoned!");
@@ -225,7 +228,7 @@ fn cfg() -> ConfigBuilder {
     ConfigBuilder::default()
 }
 
-fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
+fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
     let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
     EarlyProps::from_file_directives(config, &file_directives)
 }
@@ -253,25 +256,7 @@ fn should_fail() {
 fn revisions() {
     let config: Config = cfg().build();
 
-    assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-}
-
-#[test]
-fn aux_build() {
-    let config: Config = cfg().build();
-
-    assert_eq!(
-        parse_rs(
-            &config,
-            r"
-        //@ aux-build: a.rs
-        //@ aux-build: b.rs
-        "
-        )
-        .aux
-        .builds,
-        vec!["a.rs", "b.rs"],
-    );
+    assert_eq!(parse_early_props(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
 }
 
 #[test]
@@ -550,7 +535,7 @@ fn test_extract_version_range() {
 #[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
-    parse_rs(&config, "//@ revisions: rpass1 rpass1");
+    parse_early_props(&config, "//@ revisions: rpass1 rpass1");
 }
 
 #[test]
@@ -559,14 +544,14 @@ fn test_duplicate_revisions() {
 )]
 fn test_assembly_mode_forbidden_revisions() {
     let config = cfg().mode("assembly").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
 #[should_panic(expected = "revision name `true` is not permitted")]
 fn test_forbidden_revisions() {
     let config = cfg().mode("ui").build();
-    parse_rs(&config, "//@ revisions: true");
+    parse_early_props(&config, "//@ revisions: true");
 }
 
 #[test]
@@ -575,7 +560,7 @@ fn test_forbidden_revisions() {
 )]
 fn test_codegen_mode_forbidden_revisions() {
     let config = cfg().mode("codegen").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
@@ -584,7 +569,7 @@ fn test_codegen_mode_forbidden_revisions() {
 )]
 fn test_miropt_mode_forbidden_revisions() {
     let config = cfg().mode("mir-opt").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
@@ -608,7 +593,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
         let content = format!("//@ revisions: {rev}");
         for mode in modes {
             let config = cfg().mode(mode).build();
-            parse_rs(&config, &content);
+            parse_early_props(&config, &content);
         }
     }
 }
@@ -956,9 +941,21 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line = line_directive(0, &line_with_comment).unwrap();
+    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
 
-    super::parse_edition_range(&config, &line, "tmp.rs".into())
+    super::parse_edition_range(&config, &line)
+}
+
+#[test]
+fn edition_order() {
+    let editions = &[
+        Edition::Year(2015),
+        Edition::Year(2018),
+        Edition::Year(2021),
+        Edition::Year(2024),
+        Edition::Future,
+    ];
+    assert!(editions.is_sorted(), "{editions:#?}");
 }
 
 #[test]

@@ -16,7 +16,7 @@
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
-#![feature(cfg_sanitize, no_core, lang_items)]
+#![feature(cfg_sanitize, no_core)]
 #![no_core]
 
 extern crate minicore;

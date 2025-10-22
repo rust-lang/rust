@@ -645,6 +645,7 @@ version = "0.0.1"
 dependencies = [
  "clippy_config",
  "clippy_utils",
+ "itertools",
  "regex",
  "rustc-semver",
 ]
@@ -5262,9 +5263,9 @@ dependencies = [
 
 [[package]]
 name = "stringdex"
-version = "0.0.1-alpha10"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fa846a7d509d1828a4f90962dc09810e161abcada7fc6a921e92c168d0811d7"
+checksum = "18b3bd4f10d15ef859c40291769f0d85209de6b0f1c30713ff9cdf45ac43ea36"
 dependencies = [
  "stacker",
 ]

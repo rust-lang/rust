@@ -77,6 +77,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent: Module<'ra>,
         ident: Ident,
         ns: Namespace,
+        child_index: usize,
         res: Res,
         vis: Visibility<DefId>,
         span: Span,
@@ -86,10 +87,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Even if underscore names cannot be looked up, we still need to add them to modules,
         // because they can be fetched by glob imports from those modules, and bring traits
         // into scope both directly and through glob imports.
-        let key = BindingKey::new_disambiguated(ident, ns, || {
-            parent.underscore_disambiguator.update_unchecked(|d| d + 1);
-            parent.underscore_disambiguator.get()
-        });
+        let key =
+            BindingKey::new_disambiguated(ident, ns, || (child_index + 1).try_into().unwrap()); // 0 indicates no underscore
         if self
             .resolution_or_default(parent, key)
             .borrow_mut_unchecked()
@@ -233,9 +232,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&self, module: Module<'ra>) {
-        for child in self.tcx.module_children(module.def_id()) {
+        for (i, child) in self.tcx.module_children(module.def_id()).into_iter().enumerate() {
             let parent_scope = ParentScope::module(module, self.arenas);
-            self.build_reduced_graph_for_external_crate_res(child, parent_scope)
+            self.build_reduced_graph_for_external_crate_res(child, parent_scope, i)
         }
     }
 
@@ -244,6 +243,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         child: &ModChild,
         parent_scope: ParentScope<'ra>,
+        child_index: usize,
     ) {
         let parent = parent_scope.module;
         let ModChild { ident, res, vis, ref reexport_chain } = *child;
@@ -272,7 +272,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::ToolMod => self.define_extern(parent, ident, TypeNS, res, vis, span, expansion),
+            | Res::ToolMod => {
+                self.define_extern(parent, ident, TypeNS, child_index, res, vis, span, expansion)
+            }
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
@@ -281,9 +283,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
-            ) => self.define_extern(parent, ident, ValueNS, res, vis, span, expansion),
+            ) => self.define_extern(parent, ident, ValueNS, child_index, res, vis, span, expansion),
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.define_extern(parent, ident, MacroNS, res, vis, span, expansion)
+                self.define_extern(parent, ident, MacroNS, child_index, res, vis, span, expansion)
             }
             Res::Def(
                 DefKind::TyParam

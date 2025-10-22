@@ -2,7 +2,7 @@ use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{LateContext, LateLintPass};
@@ -108,9 +108,7 @@ impl ArithmeticSideEffects {
         rhs_ty: Ty<'tcx>,
     ) -> bool {
         let is_div_or_rem = matches!(op, hir::BinOpKind::Div | hir::BinOpKind::Rem);
-        let is_sat_or_wrap = |ty: Ty<'_>| {
-            is_type_diagnostic_item(cx, ty, sym::Saturating) || is_type_diagnostic_item(cx, ty, sym::Wrapping)
-        };
+        let is_sat_or_wrap = |ty: Ty<'_>| ty.is_diag_item(cx, sym::Saturating) || ty.is_diag_item(cx, sym::Wrapping);
 
         // If the RHS is `NonZero<u*>`, then division or module by zero will never occur.
         if Self::is_non_zero_u(cx, rhs_ty) && is_div_or_rem {

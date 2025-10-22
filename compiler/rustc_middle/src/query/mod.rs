@@ -107,6 +107,7 @@ use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -1104,8 +1105,7 @@ rustc_queries! {
     }
 
     /// Given an `impl_id`, return the trait it implements along with some header information.
-    /// Return `None` if this is an inherent impl.
-    query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
+    query impl_trait_header(impl_id: DefId) -> ty::ImplTraitHeader<'tcx> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
@@ -1202,10 +1202,10 @@ rustc_queries! {
     /// Return the live symbols in the crate for dead code check.
     ///
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
-    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
+    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<(
         LocalDefIdSet,
         LocalDefIdMap<FxIndexSet<DefId>>,
-    ) {
+    ), ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
@@ -2657,7 +2657,7 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
+    query deduced_param_attrs(def_id: DefId) -> &'tcx [DeducedParamAttrs] {
         desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

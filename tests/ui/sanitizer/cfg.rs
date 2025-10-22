@@ -21,7 +21,7 @@
 //@[thread]compile-flags:  -Zsanitizer=thread
 //@ ignore-backends: gcc
 
-#![feature(cfg_sanitize, no_core, lang_items)]
+#![feature(cfg_sanitize, no_core)]
 #![crate_type="lib"]
 #![no_core]
 

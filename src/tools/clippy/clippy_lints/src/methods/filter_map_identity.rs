@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function, is_trait_method};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::{is_expr_identity_function, is_expr_untyped_identity_function};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -19,7 +20,7 @@ fn is_identity(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Applicabili
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_map_arg: &hir::Expr<'_>, filter_map_span: Span) {
-    if is_trait_method(cx, expr, sym::Iterator)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let Some(applicability) = is_identity(cx, filter_map_arg)
     {
         // check if the iterator is from an empty array, see issue #12653

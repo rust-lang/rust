@@ -3352,34 +3352,6 @@ pub(crate) struct KwBadCase<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_cfg_attr_bad_delim)]
-pub(crate) struct CfgAttrBadDelim {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MetaBadDelimSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_meta_bad_delim_suggestion, applicability = "machine-applicable")]
-pub(crate) struct MetaBadDelimSugg {
-    #[suggestion_part(code = "(")]
-    pub open: Span,
-    #[suggestion_part(code = ")")]
-    pub close: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_malformed_cfg_attr)]
-#[note]
-pub(crate) struct MalformedCfgAttr {
-    #[primary_span]
-    #[suggestion(style = "verbose", code = "{sugg}")]
-    pub span: Span,
-    pub sugg: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_unknown_builtin_construct)]
 pub(crate) struct UnknownBuiltinConstruct {
     #[primary_span]

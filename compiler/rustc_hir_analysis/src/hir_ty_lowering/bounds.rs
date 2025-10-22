@@ -202,11 +202,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             //        where we are guaranteed to catch *all* bounds like in
             //        `Self::lower_poly_trait_ref`. List of concrete issues:
             //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
-            //                                  bounds or associated type bounds (ATB)!
-            //        FIXME(trait_alias, #143122): We don't call it for the RHS. Arguably however,
-            //                                     AST lowering should reject them outright.
+            //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
             let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
-            self.check_and_report_invalid_relaxed_bounds(bounds);
+            self.reject_duplicate_relaxed_bounds(bounds);
         }
 
         let collected = collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);
@@ -308,6 +306,53 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> bool {
         let collected = collect_bounds(hir_bounds, self_ty_where_predicates, trait_def_id);
         !self.tcx().has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) && !collected.any()
+    }
+
+    fn reject_duplicate_relaxed_bounds(&self, relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>) {
+        let tcx = self.tcx();
+
+        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
+
+        for bound in &relaxed_bounds {
+            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
+                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
+            }
+        }
+
+        for (trait_def_id, spans) in grouped_bounds {
+            if spans.len() > 1 {
+                let name = tcx.item_name(trait_def_id);
+                self.dcx()
+                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
+                    .with_code(E0203)
+                    .emit();
+            }
+        }
+    }
+
+    pub(crate) fn require_bound_to_relax_default_trait(
+        &self,
+        trait_ref: hir::TraitRef<'_>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+
+        if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
+            && (tcx.is_lang_item(def_id, hir::LangItem::Sized) || tcx.is_default_trait(def_id))
+        {
+            return;
+        }
+
+        self.dcx().span_err(
+            span,
+            if tcx.sess.opts.unstable_opts.experimental_default_bounds
+                || tcx.features().more_maybe_bounds()
+            {
+                "bound modifier `?` can only be applied to default traits"
+            } else {
+                "bound modifier `?` can only be applied to `Sized`"
+            },
+        );
     }
 
     /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.
