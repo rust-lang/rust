@@ -464,7 +464,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for statements of the form `(a - b) < f32::EPSILON` or
-    /// `(a - b) < f64::EPSILON`. Notes the missing `.abs()`.
+    /// `(a - b) < f64::EPSILON`. Note the missing `.abs()`.
     ///
     /// ### Why is this bad?
     /// The code without `.abs()` is more likely to have a bug.
@@ -617,7 +617,7 @@ declare_clippy_lint! {
     /// println!("{within_tolerance}"); // true
     /// ```
     ///
-    /// NB! Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
+    /// NOTE: Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
     /// a different use of the term that is not suitable for floating point equality comparison.
     /// Indeed, for the example above using `f64::EPSILON` as the allowed error would return `false`.
     ///
@@ -680,7 +680,7 @@ declare_clippy_lint! {
     /// println!("{within_tolerance}"); // true
     /// ```
     ///
-    /// NB! Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
+    /// NOTE: Do not use `f64::EPSILON` - while the error margin is often called "epsilon", this is
     /// a different use of the term that is not suitable for floating point equality comparison.
     /// Indeed, for the example above using `f64::EPSILON` as the allowed error would return `false`.
     ///
