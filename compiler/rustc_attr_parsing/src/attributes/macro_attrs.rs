@@ -1,4 +1,3 @@
-use rustc_ast::AttrStyle;
 use rustc_errors::DiagArgValue;
 use rustc_hir::attrs::MacroUseArgs;
 
@@ -149,10 +148,9 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
-        let suggestions = || {
-            <Self as SingleAttributeParser<S>>::TEMPLATE
-                .suggestions(AttrStyle::Inner, "macro_export")
-        };
+        let attr_style = cx.attr_style;
+        let suggestions =
+            || <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(attr_style, "macro_export");
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
