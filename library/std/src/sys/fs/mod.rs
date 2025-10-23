@@ -66,6 +66,9 @@ pub use imp::{
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
+    #[cfg(not(windows))]
+    return imp::remove_dir_all(path);
+    #[cfg(windows)]
     with_native_path(path, &imp::readdir)
 }
 
