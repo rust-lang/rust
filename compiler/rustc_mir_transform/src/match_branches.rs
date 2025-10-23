@@ -43,7 +43,9 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
             let source_info = body.basic_blocks[bb].terminator().source_info;
             let discr_local = patch.new_temp(discr_ty, source_info.span);
 
-            let new_stmts = if let Some(else_case) = as_else_case
+            let new_stmts = if body.basic_blocks[first_case].statements.is_empty() {
+                Vec::new()
+            } else if let Some(else_case) = as_else_case
                 && let Some(new_stmts) = simplify_if(
                     tcx,
                     first_case,
@@ -53,15 +55,18 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
                     &body.basic_blocks,
                     discr_local,
                     discr_ty,
-                ) {
+                )
+            {
                 new_stmts
             } else if otherwise_is_unreachable
                 && let Some(new_stmts) = simplify_switch(
                     tcx,
+                    body,
+                    bb,
                     first_case,
                     targets,
                     typing_env,
-                    &body.basic_blocks,
+                    discr,
                     discr_local,
                     discr_ty,
                 )
@@ -293,10 +298,12 @@ fn can_cast(
 /// ```
 fn simplify_switch<'tcx>(
     tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    switch_bb: BasicBlock,
     first_case: BasicBlock,
     targets: &SwitchTargets,
     typing_env: ty::TypingEnv<'tcx>,
-    bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+    discr: &Operand<'tcx>,
     discr_local: Local,
     discr_ty: Ty<'tcx>,
 ) -> Option<Vec<StatementKind<'tcx>>> {
@@ -307,13 +314,13 @@ fn simplify_switch<'tcx>(
     if !targets.is_distinct() {
         return None;
     }
-    if !bbs[targets.otherwise()].is_empty_unreachable() {
+    if !body.basic_blocks[targets.otherwise()].is_empty_unreachable() {
         return None;
     }
-    let first_bb: &BasicBlockData<'tcx> = &bbs[first_case];
+    let first_bb: &BasicBlockData<'tcx> = &body.basic_blocks[first_case];
 
     let mut stmts_iter: Vec<_> =
-        targets.iter().map(|(case, bb)| (case, bbs[bb].statements.iter())).collect();
+        targets.iter().map(|(case, bb)| (case, body.basic_blocks[bb].statements.iter())).collect();
     let mut current_line_stmts: Vec<(u128, &StatementKind<'tcx>)> =
         stmts_iter.iter_mut().map(|(case, bb)| (*case, &bb.next().unwrap().kind)).collect();
     let discr_layout = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap();
@@ -321,8 +328,11 @@ fn simplify_switch<'tcx>(
     'finish: loop {
         let new_stmt = simplify_stmt(
             tcx,
+            body,
+            switch_bb,
             current_line_stmts.as_slice(),
             typing_env,
+            discr,
             discr_local,
             discr_ty,
             discr_layout,
@@ -342,8 +352,11 @@ fn simplify_switch<'tcx>(
 
 fn simplify_stmt<'tcx>(
     tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    switch_bb: BasicBlock,
     stmts: &[(u128, &StatementKind<'tcx>)],
     typing_env: ty::TypingEnv<'tcx>,
+    discr: &Operand<'tcx>,
     discr_local: Local,
     discr_ty: Ty<'tcx>,
     discr_layout: TyAndLayout<'_>,
@@ -353,21 +366,28 @@ fn simplify_stmt<'tcx>(
     if stmts.into_iter().skip(1).all(|&(_, stmt)| first_stmt == stmt) {
         return Some(first_stmt.clone());
     }
-    if let StatementKind::Assign(box (first_lhs, Rvalue::Use(Operand::Constant(box first_const)))) =
-        first_stmt
+    let StatementKind::Assign(box (first_lhs, first_rval)) = first_stmt else {
+        return None;
+    };
+    if !stmts.into_iter().skip(1).all(|&(_, stmt)| {
+        let StatementKind::Assign(box (other_lhs, _)) = stmt else {
+            return false;
+        };
+        first_lhs == other_lhs
+    }) {
+        return None;
+    }
+    if let Rvalue::Use(Operand::Constant(box first_const)) = first_rval
         && first_const.ty().is_integral()
         && let Some(first_scalar_int) = first_const.const_.try_eval_scalar_int(tcx, typing_env)
     {
         if stmts.into_iter().skip(1).all(|&(_, stmt)| {
-            let StatementKind::Assign(box (
-                other_lhs,
-                Rvalue::Use(Operand::Constant(box other_const)),
-            )) = stmt
+            let StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(box other_const)))) =
+                stmt
             else {
                 return false;
             };
-            first_lhs == other_lhs
-                && first_const.ty() == other_const.ty()
+            first_const.ty() == other_const.ty()
                 && other_const.const_.try_eval_scalar_int(tcx, typing_env) == Some(first_scalar_int)
         }) {
             return Some(first_stmt.clone());
@@ -378,7 +398,7 @@ fn simplify_stmt<'tcx>(
         if can_cast(tcx, first_case, discr_layout, first_const.ty(), first_scalar_int) {
             if stmts.into_iter().skip(1).all(|&(other_case, stmt)| {
                 let StatementKind::Assign(box (
-                    other_lhs,
+                    _,
                     Rvalue::Use(Operand::Constant(box other_const)),
                 )) = stmt
                 else {
@@ -389,8 +409,7 @@ fn simplify_stmt<'tcx>(
                 else {
                     return false;
                 };
-                first_lhs == other_lhs
-                    && first_const.ty() == other_const.ty()
+                first_const.ty() == other_const.ty()
                     && can_cast(tcx, other_case, discr_layout, other_const.ty(), other_scalar_int)
             }) {
                 let operand = Operand::Copy(Place::from(discr_local));
@@ -403,5 +422,99 @@ fn simplify_stmt<'tcx>(
             }
         }
     }
+
+    if let Some(new_stmt) =
+        simplify_to_copy(tcx, body, switch_bb, discr, typing_env, first_lhs, stmts)
+    {
+        return Some(new_stmt);
+    }
+
     None
+}
+
+/// This is primarily used to merge these copy statements that simplified the canonical enum clone method by GVN.
+/// The GVN simplified
+/// ```ignore (syntax-highlighting-only)
+/// match a {
+///     Foo::A(x) => Foo::A(*x),
+///     Foo::B => Foo::B
+/// }
+/// ```
+/// to
+/// ```ignore (syntax-highlighting-only)
+/// match a {
+///     Foo::A(_x) => a, // copy a
+///     Foo::B => Foo::B
+/// }
+/// ```
+/// This function will simplify into a copy statement.
+fn simplify_to_copy<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    switch_bb: BasicBlock,
+    discr: &Operand<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    first_case_lhs: &Place<'tcx>,
+    stmts: &[(u128, &StatementKind<'tcx>)],
+) -> Option<StatementKind<'tcx>> {
+    let bbs = &body.basic_blocks;
+    // Check if the copy source matches the following pattern.
+    // _2 = discriminant(*_1); // "*_1" is the expected the copy source.
+    // switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+    let &Statement {
+        kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(copy_src_place))),
+        ..
+    } = bbs[switch_bb].statements.last()?
+    else {
+        return None;
+    };
+    if discr.place() != Some(discr_place) {
+        return None;
+    }
+    let src_ty = copy_src_place.ty(body.local_decls(), tcx);
+    if !src_ty.ty.is_enum() || src_ty.variant_index.is_some() {
+        return None;
+    }
+    let dest_ty = first_case_lhs.ty(body.local_decls(), tcx);
+    if dest_ty.ty != src_ty.ty || dest_ty.variant_index.is_some() {
+        return None;
+    }
+    let ty::Adt(def, _) = dest_ty.ty.kind() else {
+        return None;
+    };
+
+    for &(case, stmt) in stmts.iter() {
+        let StatementKind::Assign(box (_, rvalue)) = stmt else {
+            return None;
+        };
+        match rvalue {
+            // Check if `_3 = const Foo::B` can be transformed to `_3 = copy *_1`.
+            Rvalue::Use(Operand::Constant(box constant))
+                if let Const::Val(const_, ty) = constant.const_ =>
+            {
+                let (ecx, op) =
+                    mk_eval_cx_for_const_val(tcx.at(constant.span), typing_env, const_, ty)?;
+                let variant = ecx.read_discriminant(&op).discard_err()?;
+                if !def.variants()[variant].fields.is_empty() {
+                    return None;
+                }
+                let Discr { val, .. } = ty.discriminant_for_variant(tcx, variant)?;
+                if val != case {
+                    return None;
+                }
+            }
+            Rvalue::Use(Operand::Copy(src_place)) if *src_place == copy_src_place => {}
+            // Check if `_3 = Foo::B` can be transformed to `_3 = copy *_1`.
+            Rvalue::Aggregate(box AggregateKind::Adt(_, variant_index, _, _, None), fields)
+                if fields.is_empty()
+                    && let Some(Discr { val, .. }) =
+                        src_ty.ty.discriminant_for_variant(tcx, *variant_index)
+                    && val == case => {}
+            _ => return None,
+        }
+    }
+    Some(StatementKind::Assign(Box::new((
+        *first_case_lhs,
+        Rvalue::Use(Operand::Copy(copy_src_place)),
+    ))))
 }
