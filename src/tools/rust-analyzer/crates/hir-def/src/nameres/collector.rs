@@ -1238,7 +1238,17 @@ impl<'db> DefCollector<'db> {
         let mut macros = mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
         let mut push_resolved = |directive: &MacroDirective<'_>, call_id| {
-            resolved.push((directive.module_id, directive.depth, directive.container, call_id));
+            let attr_macro_item = match &directive.kind {
+                MacroDirectiveKind::Attr { ast_id, .. } => Some(ast_id.ast_id),
+                MacroDirectiveKind::FnLike { .. } | MacroDirectiveKind::Derive { .. } => None,
+            };
+            resolved.push((
+                directive.module_id,
+                directive.depth,
+                directive.container,
+                call_id,
+                attr_macro_item,
+            ));
         };
 
         #[derive(PartialEq, Eq)]
@@ -1530,8 +1540,14 @@ impl<'db> DefCollector<'db> {
             self.def_map.modules[module_id].scope.add_macro_invoc(ptr.map(|(_, it)| it), call_id);
         }
 
-        for (module_id, depth, container, macro_call_id) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id, depth, container);
+        for (module_id, depth, container, macro_call_id, attr_macro_item) in resolved {
+            self.collect_macro_expansion(
+                module_id,
+                macro_call_id,
+                depth,
+                container,
+                attr_macro_item,
+            );
         }
 
         res
@@ -1543,6 +1559,7 @@ impl<'db> DefCollector<'db> {
         macro_call_id: MacroCallId,
         depth: usize,
         container: ItemContainerId,
+        attr_macro_item: Option<AstId<ast::Item>>,
     ) {
         if depth > self.def_map.recursion_limit() as usize {
             cov_mark::hit!(macro_expansion_overflow);
@@ -1552,6 +1569,34 @@ impl<'db> DefCollector<'db> {
         let file_id = macro_call_id.into();
 
         let item_tree = self.db.file_item_tree(file_id);
+
+        // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
+        // of that item (but not derive or fn like macros).
+        // FIXME: This is a hack. The proper way to do this is by having a chain of derive helpers scope,
+        // where the next scope in the chain is the parent hygiene context of the span. Unfortunately
+        // it's difficult to implement with our current name resolution and hygiene system.
+        // This hack is also incorrect since it ignores item in blocks. But the main reason to bring derive
+        // helpers into scope in this case is to help with:
+        // ```
+        // #[derive(DeriveWithHelper)]
+        // #[helper]
+        // #[attr_macro]
+        // struct Foo;
+        // ```
+        // Where `attr_macro`'s input will include `#[helper]` but not the derive, and it will likely therefore
+        // also include it in its output. Therefore I hope not supporting blocks is fine at least for now.
+        if let Some(attr_macro_item) = attr_macro_item
+            && let Some(derive_helpers) = self.def_map.derive_helpers_in_scope.get(&attr_macro_item)
+        {
+            let derive_helpers = derive_helpers.clone();
+            for item in item_tree.top_level_items() {
+                self.def_map
+                    .derive_helpers_in_scope
+                    .entry(InFile::new(file_id, item.ast_id()))
+                    .or_default()
+                    .extend(derive_helpers.iter().cloned());
+            }
+        }
 
         let mod_dir = if macro_call_id.is_include_macro(self.db) {
             ModDir::root()
@@ -2454,6 +2499,7 @@ impl ModCollector<'_, '_> {
                         call_id,
                         self.macro_depth + 1,
                         container,
+                        None,
                     );
                 }
 

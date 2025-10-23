@@ -316,3 +316,28 @@ use proc_macros::disallow_cfg;
         expect![[r#""#]],
     );
 }
+
+#[test]
+fn derive_helpers_are_ignored() {
+    check(
+        r#"
+//- proc_macros: identity, helper_should_be_ignored, helper_should_be_ignored_derive
+//- minicore: derive
+use proc_macros::{identity, helper_should_be_ignored, HelperShouldBeIgnoredDerive};
+
+#[derive(HelperShouldBeIgnoredDerive)]
+#[helper_should_be_ignored]
+#[identity]
+struct Foo;
+"#,
+        expect![[r#"
+use proc_macros::{identity, helper_should_be_ignored, HelperShouldBeIgnoredDerive};
+
+#[derive(HelperShouldBeIgnoredDerive)]
+#[helper_should_be_ignored]
+#[identity]
+struct Foo;
+
+#[helper_should_be_ignored] struct Foo;"#]],
+    );
+}
