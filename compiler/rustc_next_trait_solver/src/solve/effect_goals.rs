@@ -143,7 +143,8 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => return Err(NoSolution),
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => return Err(NoSolution),
             },
             ty::ImplPolarity::Positive => Certainty::Yes,
         };

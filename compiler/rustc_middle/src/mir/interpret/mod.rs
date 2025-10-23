@@ -384,18 +384,20 @@ impl<'tcx> GlobalAlloc<'tcx> {
                         .type_of(def_id)
                         .no_bound_vars()
                         .expect("statics should not have generic parameters");
-                    let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
-                    assert!(layout.is_sized());
-
-                    // Take over-alignment from attributes into account.
-                    let align = match tcx.codegen_fn_attrs(def_id).alignment {
-                        Some(align_from_attribute) => {
-                            Ord::max(align_from_attribute, layout.align.abi)
-                        }
-                        None => layout.align.abi,
+                    let layout = tcx.layout_of(typing_env.as_query_input(ty));
+                    let (size, mut align) = if let Ok(layout) = layout {
+                        assert!(layout.is_sized());
+                        (layout.size, layout.align.abi)
+                    } else {
+                        (Size::ZERO, Align::ONE)
                     };
 
-                    (layout.size, align)
+                    // Take over-alignment from attributes into account.
+                    if let Some(align_from_attribute) = tcx.codegen_fn_attrs(def_id).alignment {
+                        align = Ord::max(align_from_attribute, align);
+                    }
+
+                    (size, align)
                 }
             }
             GlobalAlloc::Memory(alloc) => {

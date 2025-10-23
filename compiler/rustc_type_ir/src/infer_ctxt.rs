@@ -79,15 +79,17 @@ pub enum TypingMode<I: Interner> {
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
     PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
-    /// After analysis, mostly during codegen and MIR optimizations, we're able to
+    /// After analysis, mostly during MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
     /// such details to the user.
     ///
-    /// There are some exceptions to this as for example `layout_of` and const-evaluation
-    /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
-    /// some information about the underlying type to users, but not the type itself.
+    /// However, we restrict `layout_of` and const-evaluation from exposing some information like
+    /// coroutine layout which requires optimized MIR.
     PostAnalysis,
+    /// During codegen and MIR optimizations, we're able to reveal all opaque types and compute all
+    /// layouts.
+    Codegen,
 }
 
 impl<I: Interner> Eq for TypingMode<I> {}
@@ -322,6 +324,8 @@ where
     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
 
-    (infcx.typing_mode() == TypingMode::PostAnalysis)
-        || infcx.cx().features().feature_bound_holds_in_crate(symbol)
+    match infcx.typing_mode() {
+        TypingMode::Codegen => true,
+        _ => infcx.cx().features().feature_bound_holds_in_crate(symbol),
+    }
 }

@@ -1,3 +1,5 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
@@ -232,9 +234,12 @@ pub(crate) fn eval_to_valtree<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
-    // Const eval always happens in PostAnalysis mode . See the comment in
+    // Const eval always happens in PostAnalysis or Codegen mode . See the comment in
     // `InterpCx::new` for more details.
-    debug_assert_eq!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+    debug_assert_matches!(
+        typing_env.typing_mode,
+        ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen
+    );
     let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`

@@ -226,11 +226,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         typing_env: ty::TypingEnv<'tcx>,
         machine: M,
     ) -> Self {
-        // Const eval always happens in post analysis mode in order to be able to use the hidden types of
-        // opaque types. This is needed for trivial things like `size_of`, but also for using associated
-        // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
-        // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
-        debug_assert_matches!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+        // Const eval always happens in post analysis or codegen mode in order to be able to use
+        // the hidden types of opaque types. This is needed for trivial things like `size_of`, but
+        // also for using associated types that are not specified in the opaque type. We also use
+        // MIR bodies whose opaque types have already been revealed, so we'd be able to at least
+        // partially observe the hidden types anyways.
+        debug_assert_matches!(
+            typing_env.typing_mode,
+            ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen
+        );
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
