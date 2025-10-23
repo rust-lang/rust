@@ -43,7 +43,7 @@ pub(crate) fn complete_postfix(
                 DotAccessKind::Field { receiver_is_ambiguous_float_literal } => {
                     receiver_is_ambiguous_float_literal
                 }
-                DotAccessKind::Method { .. } => false,
+                DotAccessKind::Method => false,
             },
         ),
         _ => return,
