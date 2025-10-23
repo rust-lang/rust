@@ -80,6 +80,7 @@
 #![feature(decl_macro)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
+#![feature(if_let_guard)]
 
 #[macro_use]
 /// All the individual attribute parsers for each of rustc's built-in attributes.
@@ -107,7 +108,7 @@ pub use attributes::cfg::{
 };
 pub use attributes::cfg_old::*;
 pub use attributes::cfg_select::*;
-pub use attributes::util::{is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version};
+pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::{Early, Late, OmitDoc, ShouldEmit};
 pub use interface::AttributeParser;
 pub use session_diagnostics::ParsedDescription;

@@ -5,7 +5,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::RustcVersion;
 use rustc_hir::limit::Limit;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 
 use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, NameValueParser};
@@ -31,7 +31,6 @@ pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
     attr.is_doc_comment().is_some()
         || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
-
 
 /// Parse a single integer.
 ///
@@ -91,8 +90,4 @@ impl<S: Stage> AcceptContext<'_, '_, S> {
 
         None
     }
-}
-
-pub fn find_crate_name(attrs: &[impl AttributeExt]) -> Option<Symbol> {
-    first_attr_value_str_by_name(attrs, sym::crate_name)
 }

@@ -1,20 +1,99 @@
-use rustc_attr_data_structures::lints::AttributeLintKind;
-use rustc_attr_data_structures::{AttributeKind, DocAttribute, DocInline};
+// FIXME: to be removed
+#![allow(unused_imports)]
+
+use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
+use rustc_ast::token::CommentKind;
 use rustc_errors::MultiSpan;
 use rustc_feature::template;
+use rustc_hir::attrs::{
+    AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
+};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, edition, sym};
+use thin_vec::ThinVec;
 
+use super::prelude::{Allow, AllowedTargets, MethodKind, Target};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::fluent_generated as fluent;
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{
-    DocAliasBadChar, DocAliasEmpty, DocAliasStartEnd, DocKeywordConflict, DocKeywordNotKeyword,
+    DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttributeNotAttribute,
+    DocKeywordConflict, DocKeywordNotKeyword,
 };
 
-#[derive(Default)]
+fn check_keyword<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, keyword: Symbol, span: Span) -> bool {
+    // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
+    // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
+    // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
+    if keyword.is_reserved(|| edition::LATEST_STABLE_EDITION)
+        || keyword.is_weak()
+        || keyword == sym::SelfTy
+    {
+        return true;
+    }
+    cx.emit_err(DocKeywordNotKeyword { span, keyword });
+    false
+}
+
+fn check_attribute<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    attribute: Symbol,
+    span: Span,
+) -> bool {
+    // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
+    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
+        return true;
+    }
+    cx.emit_err(DocAttributeNotAttribute { span, attribute });
+    false
+}
+
+fn parse_keyword_and_attribute<'c, S, F>(
+    cx: &'c mut AcceptContext<'_, '_, S>,
+    path: &PathParser<'_>,
+    args: &ArgParser<'_>,
+    attr_value: &mut Option<(Symbol, Span)>,
+    callback: F,
+) where
+    S: Stage,
+    F: FnOnce(&mut AcceptContext<'_, '_, S>, Symbol, Span) -> bool,
+{
+    let Some(nv) = args.name_value() else {
+        cx.expected_name_value(args.span().unwrap_or(path.span()), path.word_sym());
+        return;
+    };
+
+    let Some(value) = nv.value_as_str() else {
+        cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+        return;
+    };
+
+    if !callback(cx, value, nv.value_span) {
+        return;
+    }
+
+    if attr_value.is_some() {
+        cx.duplicate_key(path.span(), path.word_sym().unwrap());
+        return;
+    }
+
+    *attr_value = Some((value, path.span()));
+}
+
+#[derive(Debug)]
+struct DocComment {
+    style: AttrStyle,
+    kind: CommentKind,
+    span: Span,
+    comment: Symbol,
+}
+
+#[derive(Default, Debug)]
 pub(crate) struct DocParser {
     attribute: DocAttribute,
+    nb_doc_attrs: usize,
+    doc_comment: Option<DocComment>,
 }
 
 impl DocParser {
@@ -28,8 +107,8 @@ impl DocParser {
 
         match path.word_sym() {
             Some(sym::no_crate_inject) => {
-                if !args.no_args() {
-                    cx.expected_no_args(args.span().unwrap());
+                if let Err(span) = args.no_args() {
+                    cx.expected_no_args(span);
                     return;
                 }
 
@@ -42,17 +121,20 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.list() else {
-                    cx.expected_list(args.span().unwrap_or(path.span()));
+                    cx.expected_list(cx.attr_span);
                     return;
                 };
 
-                self.attribute.test_attrs.push(todo!());
+                // FIXME: convert list into a Vec of `AttributeKind`.
+                for _ in list.mixed() {
+                    // self.attribute.test_attrs.push(AttributeKind::parse());
+                }
             }
-            _ => {
-                cx.expected_specific_argument(
-                    mip.span(),
-                    [sym::no_crate_inject.as_str(), sym::attr.as_str()].to_vec(),
-                );
+            Some(name) => {
+                cx.emit_lint(AttributeLintKind::DocTestUnknown { name }, path.span());
+            }
+            None => {
+                cx.emit_lint(AttributeLintKind::DocTestLiteral, path.span());
             }
         }
     }
@@ -98,7 +180,7 @@ impl DocParser {
     ) {
         match args {
             ArgParser::NoArgs => {
-                cx.expected_name_value(args.span().unwrap_or(path.span()), path.word_sym());
+                cx.emit_err(DocAliasMalformed { span: args.span().unwrap_or(path.span()) });
             }
             ArgParser::List(list) => {
                 for i in list.mixed() {
@@ -120,41 +202,6 @@ impl DocParser {
         }
     }
 
-    fn parse_keyword<'c, S: Stage>(
-        &mut self,
-        cx: &'c mut AcceptContext<'_, '_, S>,
-        path: &PathParser<'_>,
-        args: &ArgParser<'_>,
-    ) {
-        let Some(nv) = args.name_value() else {
-            cx.expected_name_value(args.span().unwrap_or(path.span()), path.word_sym());
-            return;
-        };
-
-        let Some(keyword) = nv.value_as_str() else {
-            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return;
-        };
-
-        fn is_doc_keyword(s: Symbol) -> bool {
-            // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
-            // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
-            // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
-        }
-
-        if !is_doc_keyword(keyword) {
-            cx.emit_err(DocKeywordNotKeyword { span: nv.value_span, keyword });
-        }
-
-        if self.attribute.keyword.is_some() {
-            cx.duplicate_key(path.span(), path.word_sym().unwrap());
-            return;
-        }
-
-        self.attribute.keyword = Some((keyword, path.span()));
-    }
-
     fn parse_inline<'c, S: Stage>(
         &mut self,
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -162,8 +209,8 @@ impl DocParser {
         args: &ArgParser<'_>,
         inline: DocInline,
     ) {
-        if !args.no_args() {
-            cx.expected_no_args(args.span().unwrap());
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
             return;
         }
 
@@ -182,6 +229,103 @@ impl DocParser {
         self.attribute.inline = Some((inline, span));
     }
 
+    fn parse_cfg<'c, S: Stage>(
+        &mut self,
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &ArgParser<'_>,
+    ) {
+        if let Some(cfg_entry) = super::cfg::parse_cfg(cx, args) {
+            self.attribute.cfg = Some(cfg_entry);
+        }
+    }
+
+    fn parse_auto_cfg<'c, S: Stage>(
+        &mut self,
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        path: &PathParser<'_>,
+        args: &ArgParser<'_>,
+    ) {
+        match args {
+            ArgParser::NoArgs => {
+                cx.expected_list(args.span().unwrap_or(path.span()));
+            }
+            ArgParser::List(list) => {
+                for meta in list.mixed() {
+                    let MetaItemOrLitParser::MetaItemParser(item) = meta else {
+                        cx.emit_lint(AttributeLintKind::DocAutoCfgExpectsHideOrShow, meta.span());
+                        continue;
+                    };
+                    let (kind, attr_name) = match item.path().word_sym() {
+                        Some(sym::hide) => (HideOrShow::Hide, sym::hide),
+                        Some(sym::show) => (HideOrShow::Show, sym::show),
+                        _ => {
+                            cx.emit_lint(
+                                AttributeLintKind::DocAutoCfgExpectsHideOrShow,
+                                item.span(),
+                            );
+                            continue;
+                        }
+                    };
+                    let ArgParser::List(list) = item.args() else {
+                        cx.emit_lint(
+                            AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name },
+                            item.span(),
+                        );
+                        continue;
+                    };
+
+                    let mut cfg_hide_show = CfgHideShow { kind, values: ThinVec::new() };
+
+                    for item in list.mixed() {
+                        let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
+                            cx.emit_lint(
+                                AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name },
+                                item.span(),
+                            );
+                            continue;
+                        };
+                        match sub_item.args() {
+                            a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
+                                let Some(name) = sub_item.path().word_sym() else {
+                                    cx.expected_identifier(sub_item.path().span());
+                                    continue;
+                                };
+                                if let Ok(CfgEntry::NameValue { name, name_span, value, .. }) =
+                                    super::cfg::parse_name_value(
+                                        name,
+                                        sub_item.path().span(),
+                                        a.name_value(),
+                                        sub_item.span(),
+                                        cx,
+                                    )
+                                {
+                                    cfg_hide_show.values.push(CfgInfo { name, name_span, value })
+                                }
+                            }
+                            _ => {
+                                cx.emit_lint(
+                                    AttributeLintKind::DocAutoCfgHideShowUnexpectedItem {
+                                        attr_name,
+                                    },
+                                    sub_item.span(),
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            ArgParser::NameValue(nv) => {
+                let MetaItemLit { kind: LitKind::Bool(bool_value), span, .. } = nv.value_as_lit()
+                else {
+                    cx.emit_lint(AttributeLintKind::DocAutoCfgWrongLiteral, nv.value_span);
+                    return;
+                };
+                self.attribute.auto_cfg_change = Some((*bool_value, *span));
+            }
+        }
+    }
+
     fn parse_single_doc_attr_item<'c, S: Stage>(
         &mut self,
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -192,8 +336,8 @@ impl DocParser {
 
         macro_rules! no_args {
             ($ident: ident) => {{
-                if !args.no_args() {
-                    cx.expected_no_args(args.span().unwrap());
+                if let Err(span) = args.no_args() {
+                    cx.expected_no_args(span);
                     return;
                 }
 
@@ -217,10 +361,12 @@ impl DocParser {
                     return;
                 };
 
-                if self.attribute.$ident.is_some() {
-                    cx.duplicate_key(path.span(), path.word_sym().unwrap());
-                    return;
-                }
+                // FIXME: It's errorring when the attribute is passed multiple times on the command
+                // line.
+                // if self.attribute.$ident.is_some() {
+                //     cx.duplicate_key(path.span(), path.word_sym().unwrap());
+                //     return;
+                // }
 
                 self.attribute.$ident = Some((s, path.span()));
             }};
@@ -238,16 +384,32 @@ impl DocParser {
             Some(sym::inline) => self.parse_inline(cx, path, args, DocInline::Inline),
             Some(sym::no_inline) => self.parse_inline(cx, path, args, DocInline::NoInline),
             Some(sym::masked) => no_args!(masked),
-            Some(sym::cfg) => no_args!(cfg),
-            Some(sym::cfg_hide) => no_args!(cfg_hide),
+            Some(sym::cfg) => self.parse_cfg(cx, args),
             Some(sym::notable_trait) => no_args!(notable_trait),
-            Some(sym::keyword) => self.parse_keyword(cx, path, args),
+            Some(sym::keyword) => parse_keyword_and_attribute(
+                cx,
+                path,
+                args,
+                &mut self.attribute.keyword,
+                check_keyword,
+            ),
+            Some(sym::attribute) => parse_keyword_and_attribute(
+                cx,
+                path,
+                args,
+                &mut self.attribute.attribute,
+                check_attribute,
+            ),
             Some(sym::fake_variadic) => no_args!(fake_variadic),
             Some(sym::search_unbox) => no_args!(search_unbox),
             Some(sym::rust_logo) => no_args!(rust_logo),
+            Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
             Some(sym::test) => {
                 let Some(list) = args.list() else {
-                    cx.expected_list(args.span().unwrap_or(path.span()));
+                    cx.emit_lint(
+                        AttributeLintKind::DocTestTakesList,
+                        args.span().unwrap_or(path.span()),
+                    );
                     return;
                 };
 
@@ -264,79 +426,31 @@ impl DocParser {
                         }
                     }
                 }
-
-                // let path = rustc_ast_pretty::pprust::path_to_string(&i_meta.path);
-                // if i_meta.has_name(sym::spotlight) {
-                //     self.tcx.emit_node_span_lint(
-                //         INVALID_DOC_ATTRIBUTES,
-                //         hir_id,
-                //         i_meta.span,
-                //         errors::DocTestUnknownSpotlight { path, span: i_meta.span },
-                //     );
-                // } else if i_meta.has_name(sym::include)
-                //     && let Some(value) = i_meta.value_str()
-                // {
-                //     let applicability = if list.len() == 1 {
-                //         Applicability::MachineApplicable
-                //     } else {
-                //         Applicability::MaybeIncorrect
-                //     };
-                //     // If there are multiple attributes, the suggestion would suggest
-                //     // deleting all of them, which is incorrect.
-                //     self.tcx.emit_node_span_lint(
-                //         INVALID_DOC_ATTRIBUTES,
-                //         hir_id,
-                //         i_meta.span,
-                //         errors::DocTestUnknownInclude {
-                //             path,
-                //             value: value.to_string(),
-                //             inner: match attr.style() {
-                //                 AttrStyle::Inner => "!",
-                //                 AttrStyle::Outer => "",
-                //             },
-                //             sugg: (attr.span(), applicability),
-                //         },
-                //     );
-                // } else if i_meta.has_name(sym::passes) || i_meta.has_name(sym::no_default_passes) {
-                //     self.tcx.emit_node_span_lint(
-                //         INVALID_DOC_ATTRIBUTES,
-                //         hir_id,
-                //         i_meta.span,
-                //         errors::DocTestUnknownPasses { path, span: i_meta.span },
-                //     );
-                // } else if i_meta.has_name(sym::plugins) {
-                //     self.tcx.emit_node_span_lint(
-                //         INVALID_DOC_ATTRIBUTES,
-                //         hir_id,
-                //         i_meta.span,
-                //         errors::DocTestUnknownPlugins { path, span: i_meta.span },
-                //     );
-                // } else {
-                //     self.tcx.emit_node_span_lint(
-                //         INVALID_DOC_ATTRIBUTES,
-                //         hir_id,
-                //         i_meta.span,
-                //         errors::DocTestUnknownAny { path },
-                //     );
-                // }
             }
-            _ => {
-                cx.expected_specific_argument(
-                    mip.span(),
-                    [
-                        sym::alias.as_str(),
-                        sym::hidden.as_str(),
-                        sym::html_favicon_url.as_str(),
-                        sym::html_logo_url.as_str(),
-                        sym::html_no_source.as_str(),
-                        sym::html_playground_url.as_str(),
-                        sym::html_root_url.as_str(),
-                        sym::inline.as_str(),
-                        sym::no_inline.as_str(),
-                        sym::test.as_str(),
-                    ]
-                    .to_vec(),
+            Some(sym::spotlight) => {
+                cx.emit_lint(AttributeLintKind::DocUnknownSpotlight, path.span());
+            }
+            Some(sym::include) if let Some(nv) = args.name_value() => {
+                let inner = match cx.attr_style {
+                    AttrStyle::Outer => "",
+                    AttrStyle::Inner => "!",
+                };
+                cx.emit_lint(
+                    AttributeLintKind::DocUnknownInclude { inner, value: nv.value_as_lit().symbol },
+                    path.span(),
                 );
+            }
+            Some(name @ (sym::passes | sym::no_default_passes)) => {
+                cx.emit_lint(AttributeLintKind::DocUnknownPasses { name }, path.span());
+            }
+            Some(sym::plugins) => {
+                cx.emit_lint(AttributeLintKind::DocUnknownPlugins, path.span());
+            }
+            Some(name) => {
+                cx.emit_lint(AttributeLintKind::DocUnknownAny { name }, path.span());
+            }
+            None => {
+                // FIXME: is there anything to do in this case?
             }
         }
     }
@@ -354,17 +468,30 @@ impl DocParser {
                 for i in items.mixed() {
                     match i {
                         MetaItemOrLitParser::MetaItemParser(mip) => {
+                            self.nb_doc_attrs += 1;
                             self.parse_single_doc_attr_item(cx, mip);
                         }
-                        MetaItemOrLitParser::Lit(lit) => todo!("error should've used equals"),
+                        MetaItemOrLitParser::Lit(lit) => {
+                            cx.expected_name_value(lit.span, None);
+                        }
                         MetaItemOrLitParser::Err(..) => {
                             // already had an error here, move on.
                         }
                     }
                 }
             }
-            ArgParser::NameValue(v) => {
-                panic!("this should be rare if at all possible");
+            ArgParser::NameValue(nv) => {
+                let Some(comment) = nv.value_as_str() else {
+                    cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    return;
+                };
+
+                self.doc_comment = Some(DocComment {
+                    style: cx.attr_style,
+                    kind: CommentKind::Block,
+                    span: nv.value_span,
+                    comment,
+                });
             }
         }
     }
@@ -373,13 +500,49 @@ impl DocParser {
 impl<S: Stage> AttributeParser<S> for DocParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::doc],
-        template!(List: "hidden|inline|...", NameValueStr: "string"),
+        template!(List: &["hidden", "inline", "test"], NameValueStr: "string"),
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::ExternCrate),
+        Allow(Target::Use),
+        Allow(Target::Static),
+        Allow(Target::Const),
+        Allow(Target::Fn),
+        Allow(Target::Mod),
+        Allow(Target::ForeignMod),
+        Allow(Target::TyAlias),
+        Allow(Target::Enum),
+        Allow(Target::Variant),
+        Allow(Target::Struct),
+        Allow(Target::Field),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::AssocConst),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::AssocTy),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
+        Allow(Target::MacroDef),
+        Allow(Target::Crate),
+    ]);
 
-    fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        todo!()
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        if let Some(DocComment { style, kind, span, comment }) = self.doc_comment {
+            Some(AttributeKind::DocComment { style, kind, span, comment })
+        } else if self.nb_doc_attrs != 0 {
+            Some(AttributeKind::Doc(Box::new(self.attribute)))
+        } else {
+            None
+        }
     }
 }

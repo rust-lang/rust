@@ -2,7 +2,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 pub use rustc_lint_defs::AttributeLintKind;
 use rustc_lint_defs::LintId;
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::HirId;
 
@@ -72,4 +72,30 @@ pub enum AttributeLintKind {
     DuplicateDocAlias {
         first_definition: Span,
     },
+    DocAutoCfgExpectsHideOrShow,
+    DocAutoCfgHideShowUnexpectedItem {
+        attr_name: Symbol,
+    },
+    DocAutoCfgHideShowExpectsList {
+        attr_name: Symbol,
+    },
+    DocInvalid,
+    DocUnknownInclude {
+        inner: &'static str,
+        value: Symbol,
+    },
+    DocUnknownSpotlight,
+    DocUnknownPasses {
+        name: Symbol,
+    },
+    DocUnknownPlugins,
+    DocUnknownAny {
+        name: Symbol,
+    },
+    DocAutoCfgWrongLiteral,
+    DocTestTakesList,
+    DocTestUnknown {
+        name: Symbol,
+    },
+    DocTestLiteral,
 }

@@ -428,6 +428,26 @@ pub enum DocInline {
     NoInline,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum HideOrShow {
+    Hide,
+    Show,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct CfgInfo {
+    pub name: Symbol,
+    pub name_span: Span,
+    pub value: Option<(Symbol, Span)>,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct CfgHideShow {
+    pub kind: HideOrShow,
+    pub values: ThinVec<CfgInfo>,
+}
+
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
@@ -435,12 +455,15 @@ pub struct DocAttribute {
     pub inline: Option<(DocInline, Span)>,
 
     // unstable
-    pub cfg: Option<Span>,
-    pub cfg_hide: Option<Span>,
+    pub cfg: Option<CfgEntry>,
+    pub auto_cfg: ThinVec<CfgHideShow>,
+    /// This is for `#[doc(auto_cfg = false|true)]`.
+    pub auto_cfg_change: Option<(bool, Span)>,
 
     // builtin
     pub fake_variadic: Option<Span>,
     pub keyword: Option<(Symbol, Span)>,
+    pub attribute: Option<(Symbol, Span)>,
     pub masked: Option<Span>,
     pub notable_trait: Option<Span>,
     pub search_unbox: Option<Span>,
@@ -455,7 +478,7 @@ pub struct DocAttribute {
     pub rust_logo: Option<Span>,
 
     // #[doc(test(...))]
-    pub test_attrs: ThinVec<()>,
+    pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
 }
 
@@ -466,9 +489,11 @@ impl Default for DocAttribute {
             hidden: None,
             inline: None,
             cfg: None,
-            cfg_hide: None,
+            auto_cfg: ThinVec::new(),
+            auto_cfg_change: None,
             fake_variadic: None,
             keyword: None,
+            attribute: None,
             masked: None,
             notable_trait: None,
             search_unbox: None,
