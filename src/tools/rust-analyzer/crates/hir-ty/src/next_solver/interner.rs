@@ -17,8 +17,8 @@ use rustc_abi::{ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
-    AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, DebruijnIndex, EarlyBinder,
-    FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
+    AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
+    EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
     TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
@@ -29,7 +29,7 @@ use rustc_type_ir::{
 
 use crate::{
     FnAbi,
-    db::HirDatabase,
+    db::{HirDatabase, InternedCoroutine},
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
@@ -1205,12 +1205,28 @@ impl<'db> Interner for DbInterner<'db> {
         self.db().callable_item_signature(def_id.0)
     }
 
-    fn coroutine_movability(self, _def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
-        unimplemented!()
+    fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
+        // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
+        // the current infer query, except with revealed opaques - is it rare enough to not matter?
+        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let body = self.db.body(owner);
+        let expr = &body[expr_id];
+        match *expr {
+            hir_def::hir::Expr::Closure { closure_kind, .. } => match closure_kind {
+                hir_def::hir::ClosureKind::Coroutine(movability) => match movability {
+                    hir_def::hir::Movability::Static => rustc_ast_ir::Movability::Static,
+                    hir_def::hir::Movability::Movable => rustc_ast_ir::Movability::Movable,
+                },
+                hir_def::hir::ClosureKind::Async => rustc_ast_ir::Movability::Static,
+                _ => panic!("unexpected expression for a coroutine: {expr:?}"),
+            },
+            hir_def::hir::Expr::Async { .. } => rustc_ast_ir::Movability::Static,
+            _ => panic!("unexpected expression for a coroutine: {expr:?}"),
+        }
     }
 
-    fn coroutine_for_closure(self, _def_id: Self::CoroutineId) -> Self::CoroutineId {
-        unimplemented!()
+    fn coroutine_for_closure(self, def_id: Self::CoroutineClosureId) -> Self::CoroutineId {
+        def_id
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
@@ -1725,23 +1741,39 @@ impl<'db> Interner for DbInterner<'db> {
         panic!("Bug encountered in next-trait-solver: {}", msg.to_string())
     }
 
-    fn is_general_coroutine(self, _coroutine_def_id: Self::CoroutineId) -> bool {
-        // FIXME(next-solver)
-        true
+    fn is_general_coroutine(self, def_id: Self::CoroutineId) -> bool {
+        // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
+        // the current infer query, except with revealed opaques - is it rare enough to not matter?
+        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let body = self.db.body(owner);
+        matches!(
+            body[expr_id],
+            hir_def::hir::Expr::Closure {
+                closure_kind: hir_def::hir::ClosureKind::Coroutine(_),
+                ..
+            }
+        )
     }
 
-    fn coroutine_is_async(self, _coroutine_def_id: Self::CoroutineId) -> bool {
-        // FIXME(next-solver)
-        true
+    fn coroutine_is_async(self, def_id: Self::CoroutineId) -> bool {
+        // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
+        // the current infer query, except with revealed opaques - is it rare enough to not matter?
+        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let body = self.db.body(owner);
+        matches!(
+            body[expr_id],
+            hir_def::hir::Expr::Closure { closure_kind: hir_def::hir::ClosureKind::Async, .. }
+                | hir_def::hir::Expr::Async { .. }
+        )
     }
 
     fn coroutine_is_gen(self, _coroutine_def_id: Self::CoroutineId) -> bool {
-        // FIXME(next-solver)
+        // We don't handle gen coroutines yet.
         false
     }
 
     fn coroutine_is_async_gen(self, _coroutine_def_id: Self::CoroutineId) -> bool {
-        // FIXME(next-solver)
+        // We don't handle gen coroutines yet.
         false
     }
 
@@ -1897,10 +1929,12 @@ impl<'db> Interner for DbInterner<'db> {
     fn coroutine_hidden_types(
         self,
         _def_id: Self::CoroutineId,
-    ) -> EarlyBinder<Self, rustc_type_ir::Binder<Self, rustc_type_ir::CoroutineWitnessTypes<Self>>>
-    {
-        // FIXME(next-solver)
-        unimplemented!()
+    ) -> EarlyBinder<Self, Binder<'db, CoroutineWitnessTypes<Self>>> {
+        // FIXME: Actually implement this.
+        EarlyBinder::bind(Binder::dummy(CoroutineWitnessTypes {
+            types: Tys::default(),
+            assumptions: RegionAssumptions::default(),
+        }))
     }
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool {
