@@ -1884,8 +1884,7 @@ impl<'db> Interner for DbInterner<'db> {
                         let infer = self.db().infer(func.into());
                         EarlyBinder::bind(infer.type_of_rpit[idx])
                     }
-                    crate::ImplTraitId::TypeAliasImplTrait(..)
-                    | crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
+                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
                         // FIXME(next-solver)
                         EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed))
                     }

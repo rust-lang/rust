@@ -7,11 +7,10 @@ use std::{
 
 use base_db::Crate;
 use hir_def::{BlockId, HasModule, lang_item::LangItem};
-use intern::sym;
 use la_arena::Idx;
 use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
 use rustc_type_ir::{
-    ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, GenericArgKind, INNERMOST, IntTy, Interner,
+    ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, INNERMOST, IntTy, Interner,
     PredicatePolarity, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex,
     inherent::{
@@ -32,9 +31,8 @@ use crate::{
 };
 
 use super::{
-    AliasTerm, AliasTy, Binder, BoundRegion, BoundTy, BoundTyKind, BoundVarKind, BoundVarKinds,
-    Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder, GenericArgs, Predicate,
-    PredicateKind, ProjectionPredicate, Region, SolverDefId, Term, TraitPredicate, TraitRef, Ty,
+    Binder, BoundRegion, BoundTy, Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder,
+    GenericArgs, Predicate, PredicateKind, Region, SolverDefId, TraitPredicate, TraitRef, Ty,
     TyKind,
     fold::{BoundVarReplacer, FnMutDelegate},
 };
@@ -578,98 +576,9 @@ pub fn explicit_item_bounds<'db>(
                     let data = &datas.impl_traits[Idx::from_raw(idx.into_raw())];
                     EarlyBinder::bind(Clauses::new_from_iter(interner, data.predicates.clone()))
                 }
-                crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                    if let Some((future_trait, future_output)) = LangItem::Future
-                        .resolve_trait(db, interner.krate.expect("Must have interner.krate"))
-                        .and_then(|trait_| {
-                            let alias = trait_.trait_items(db).associated_type_by_name(
-                                &hir_expand::name::Name::new_symbol_root(sym::Output.clone()),
-                            )?;
-                            Some((trait_, alias))
-                        })
-                    {
-                        let args = GenericArgs::identity_for_item(interner, def_id);
-                        let out = args.as_slice()[0];
-                        let mut predicates = vec![];
-
-                        let item_ty = Ty::new_alias(
-                            interner,
-                            rustc_type_ir::AliasTyKind::Opaque,
-                            AliasTy::new_from_args(interner, def_id, args),
-                        );
-
-                        let kind = PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
-                            polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            trait_ref: TraitRef::new_from_args(
-                                interner,
-                                future_trait.into(),
-                                GenericArgs::new_from_iter(interner, [item_ty.into()]),
-                            ),
-                        }));
-                        predicates.push(Clause(Predicate::new(
-                            interner,
-                            Binder::bind_with_vars(
-                                kind,
-                                BoundVarKinds::new_from_iter(
-                                    interner,
-                                    [BoundVarKind::Ty(BoundTyKind::Anon)],
-                                ),
-                            ),
-                        )));
-                        let sized_trait = LangItem::Sized
-                            .resolve_trait(db, interner.krate.expect("Must have interner.krate"));
-                        if let Some(sized_trait_) = sized_trait {
-                            let kind = PredicateKind::Clause(ClauseKind::Trait(TraitPredicate {
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                                trait_ref: TraitRef::new_from_args(
-                                    interner,
-                                    sized_trait_.into(),
-                                    GenericArgs::new_from_iter(interner, [item_ty.into()]),
-                                ),
-                            }));
-                            predicates.push(Clause(Predicate::new(
-                                interner,
-                                Binder::bind_with_vars(
-                                    kind,
-                                    BoundVarKinds::new_from_iter(
-                                        interner,
-                                        [BoundVarKind::Ty(BoundTyKind::Anon)],
-                                    ),
-                                ),
-                            )));
-                        }
-                        let kind =
-                            PredicateKind::Clause(ClauseKind::Projection(ProjectionPredicate {
-                                projection_term: AliasTerm::new_from_args(
-                                    interner,
-                                    future_output.into(),
-                                    GenericArgs::new_from_iter(interner, [item_ty.into()]),
-                                ),
-                                term: match out.kind() {
-                                    GenericArgKind::Lifetime(_lt) => panic!(),
-                                    GenericArgKind::Type(ty) => Term::Ty(ty),
-                                    GenericArgKind::Const(const_) => Term::Const(const_),
-                                },
-                            }));
-                        predicates.push(Clause(Predicate::new(
-                            interner,
-                            Binder::bind_with_vars(
-                                kind,
-                                BoundVarKinds::new_from_iter(
-                                    interner,
-                                    [BoundVarKind::Ty(BoundTyKind::Anon)],
-                                ),
-                            ),
-                        )));
-                        EarlyBinder::bind(Clauses::new_from_iter(interner, predicates))
-                    } else {
-                        // If failed to find Symbol’s value as variable is void: Future::Output, return empty bounds as fallback.
-                        EarlyBinder::bind(Clauses::new_from_iter(interner, []))
-                    }
-                }
             }
         }
-        _ => panic!("Unexpected GeneridDefId"),
+        _ => panic!("Unexpected GenericDefId"),
     }
 }
 

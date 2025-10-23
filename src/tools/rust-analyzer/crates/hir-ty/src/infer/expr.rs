@@ -18,7 +18,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
-    AliasTyKind, InferTy, Interner,
+    CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _},
 };
 use syntax::ast::RangeOp;
@@ -29,6 +29,7 @@ use crate::{
     IncorrectGenericsLenKind, Rawness, TraitEnvironment,
     autoderef::overloaded_deref_ty,
     consteval,
+    db::InternedCoroutine,
     generics::generics,
     infer::{
         AllowTwoPhase, BreakableKind,
@@ -43,7 +44,7 @@ use crate::{
     },
     method_resolution::{self, VisibleFromModule},
     next_solver::{
-        AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
+        Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
         TypeError,
         infer::{
             InferOk,
@@ -1132,18 +1133,26 @@ impl<'db> InferenceContext<'_, 'db> {
         inner_ty: Ty<'db>,
         tgt_expr: ExprId,
     ) -> Ty<'db> {
-        // Use the first type parameter as the output type of future.
-        // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
-        let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, tgt_expr);
-        let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-        Ty::new_alias(
+        let coroutine_id = InternedCoroutine(self.owner, tgt_expr);
+        let coroutine_id = self.db.intern_coroutine(coroutine_id).into();
+        let parent_args = GenericArgs::identity_for_item(self.interner(), self.generic_def.into());
+        Ty::new_coroutine(
             self.interner(),
-            AliasTyKind::Opaque,
-            AliasTy::new(
+            coroutine_id,
+            CoroutineArgs::new(
                 self.interner(),
-                opaque_ty_id,
-                GenericArgs::new_from_iter(self.interner(), [inner_ty.into()]),
-            ),
+                CoroutineArgsParts {
+                    parent_args,
+                    kind_ty: self.types.unit,
+                    // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
+                    resume_ty: self.types.unit,
+                    yield_ty: self.types.unit,
+                    return_ty: inner_ty,
+                    // FIXME: Infer upvars.
+                    tupled_upvars_ty: self.types.unit,
+                },
+            )
+            .args,
         )
     }
 

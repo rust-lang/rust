@@ -1243,7 +1243,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     }
                     (self.db.type_alias_impl_traits(def), idx)
                 }
-                _ => unreachable!(),
             };
             let Some(impl_traits) = impl_traits else {
                 return ty;

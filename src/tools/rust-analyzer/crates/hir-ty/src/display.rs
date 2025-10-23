@@ -48,7 +48,7 @@ use triomphe::Arc;
 
 use crate::{
     CallableDefId, FnAbi, ImplTraitId, MemoryMap, TraitEnvironment, consteval,
-    db::{HirDatabase, InternedClosure},
+    db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
     mir::pad16,
@@ -1389,33 +1389,6 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             SizedByDefault::Sized { anchor: krate },
                         )?;
                     }
-                    ImplTraitId::AsyncBlockTypeImplTrait(body, ..) => {
-                        let future_trait =
-                            LangItem::Future.resolve_trait(db, body.module(db).krate());
-                        let output = future_trait.and_then(|t| {
-                            t.trait_items(db)
-                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
-                        });
-                        write!(f, "impl ")?;
-                        if let Some(t) = future_trait {
-                            f.start_location_link(t.into());
-                        }
-                        write!(f, "Future")?;
-                        if future_trait.is_some() {
-                            f.end_location_link();
-                        }
-                        write!(f, "<")?;
-                        if let Some(t) = output {
-                            f.start_location_link(t.into());
-                        }
-                        write!(f, "Output")?;
-                        if output.is_some() {
-                            f.end_location_link();
-                        }
-                        write!(f, " = ")?;
-                        alias_ty.args.type_at(0).hir_fmt(f)?;
-                        write!(f, ">")?;
-                    }
                 }
             }
             TyKind::Closure(id, substs) => {
@@ -1567,23 +1540,56 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
             }
             TyKind::Infer(..) => write!(f, "_")?,
-            TyKind::Coroutine(_, subst) => {
-                if f.display_kind.is_source_code() {
-                    return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::Coroutine,
-                    ));
-                }
+            TyKind::Coroutine(coroutine_id, subst) => {
+                let InternedCoroutine(owner, expr_id) = coroutine_id.0.loc(db);
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
-                write!(f, "|")?;
-                resume_ty.hir_fmt(f)?;
-                write!(f, "|")?;
+                let body = db.body(owner);
+                match &body[expr_id] {
+                    hir_def::hir::Expr::Async { .. } => {
+                        let future_trait =
+                            LangItem::Future.resolve_trait(db, owner.module(db).krate());
+                        let output = future_trait.and_then(|t| {
+                            t.trait_items(db)
+                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
+                        });
+                        write!(f, "impl ")?;
+                        if let Some(t) = future_trait {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Future")?;
+                        if future_trait.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, "<")?;
+                        if let Some(t) = output {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Output")?;
+                        if output.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, " = ")?;
+                        return_ty.hir_fmt(f)?;
+                        write!(f, ">")?;
+                    }
+                    _ => {
+                        if f.display_kind.is_source_code() {
+                            return Err(HirDisplayError::DisplaySourceCodeError(
+                                DisplaySourceCodeError::Coroutine,
+                            ));
+                        }
+                        write!(f, "|")?;
+                        resume_ty.hir_fmt(f)?;
+                        write!(f, "|")?;
 
-                write!(f, " yields ")?;
-                yield_ty.hir_fmt(f)?;
+                        write!(f, " yields ")?;
+                        yield_ty.hir_fmt(f)?;
 
-                write!(f, " -> ")?;
-                return_ty.hir_fmt(f)?;
+                        write!(f, " -> ")?;
+                        return_ty.hir_fmt(f)?;
+                    }
+                }
             }
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
             TyKind::Pat(_, _) => write!(f, "{{pat}}")?,

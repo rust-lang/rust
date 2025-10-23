@@ -2,10 +2,7 @@
 
 use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
-    hir::generics::{
-        GenericParams, LocalTypeOrConstParamId, TypeOrConstParamData, TypeParamData,
-        TypeParamProvenance,
-    },
+    hir::generics::{GenericParams, TypeOrConstParamData},
 };
 
 use crate::{db::HirDatabase, generics::parent_generic_def};
@@ -66,27 +63,6 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                 }
                 crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => {
                     (Some(type_alias_id.into()), Vec::new())
-                }
-                crate::ImplTraitId::AsyncBlockTypeImplTrait(_def, _) => {
-                    let param = TypeOrConstParamData::TypeParamData(TypeParamData {
-                        name: None,
-                        default: None,
-                        provenance: TypeParamProvenance::TypeParamList,
-                    });
-                    // Yes, there is a parent but we don't include it in the generics
-                    // FIXME: It seems utterly sensitive to fake a generic param here.
-                    // Also, what a horrible mess!
-                    (
-                        None,
-                        vec![mk_ty(
-                            GenericDefId::FunctionId(salsa::plumbing::FromId::from_id(unsafe {
-                                salsa::Id::from_index(salsa::Id::MAX_U32 - 1)
-                            })),
-                            0,
-                            LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
-                            &param,
-                        )],
-                    )
                 }
             }
         }

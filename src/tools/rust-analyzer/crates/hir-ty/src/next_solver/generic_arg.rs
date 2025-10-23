@@ -446,7 +446,6 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                 signature_parts_ty,
                 tupled_upvars_ty,
                 coroutine_captures_by_ref_ty,
-                _coroutine_witness_ty,
             ] => rustc_type_ir::CoroutineClosureArgsParts {
                 parent_args: GenericArgs::new_from_iter(
                     DbInterner::conjure(),

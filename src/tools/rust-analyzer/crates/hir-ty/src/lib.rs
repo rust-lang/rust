@@ -53,7 +53,7 @@ mod variance;
 
 use std::hash::Hash;
 
-use hir_def::{CallableDefId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness};
+use hir_def::{CallableDefId, TypeOrConstParamId, type_ref::Rawness};
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
@@ -334,7 +334,6 @@ impl FnAbi {
 pub enum ImplTraitId<'db> {
     ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx<'db>),
     TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx<'db>),
-    AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
