@@ -5,7 +5,7 @@ use std::iter;
 use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -307,8 +307,8 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
     fmt::from_fn(|w| {
         write!(w, "{}", document(cx, item, None, HeadingOffset::H2))?;
 
-        let mut not_stripped_items: FxHashMap<ItemType, Vec<(usize, &clean::Item)>> =
-            FxHashMap::default();
+        let mut not_stripped_items: FxIndexMap<ItemType, Vec<(usize, &clean::Item)>> =
+            FxIndexMap::default();
 
         for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
             not_stripped_items.entry(item.type_()).or_default().push((index, item));
@@ -355,9 +355,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let tcx = cx.tcx();
 
         match cx.shared.module_sorting {
-            ModuleSorting::Alphabetical =>
-            {
-                #[allow(rustc::potential_query_instability)]
+            ModuleSorting::Alphabetical => {
                 for items in not_stripped_items.values_mut() {
                     items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
                 }
@@ -383,7 +381,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         // can be identical even if the elements are different (mostly in imports).
         // So in case this is an import, we keep everything by adding a "unique id"
         // (which is the position in the vector).
-        #[allow(rustc::potential_query_instability)]
         for items in not_stripped_items.values_mut() {
             items.dedup_by_key(|(idx, i)| {
                 (
@@ -397,7 +394,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
         debug!("{not_stripped_items:?}");
 
-        #[allow(rustc::potential_query_instability)]
         let mut types = not_stripped_items.keys().copied().collect::<Vec<_>>();
         types.sort_unstable_by(|a, b| reorder(*a).cmp(&reorder(*b)));
 
