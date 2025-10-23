@@ -891,8 +891,8 @@ fn classify_name_ref<'db>(
         return Some(make_res(kind));
     }
 
-    let field_expr_handle = |recviver, node| {
-        let receiver = find_opt_node_in_file(original_file, recviver);
+    let field_expr_handle = |receiver, node| {
+        let receiver = find_opt_node_in_file(original_file, receiver);
         let receiver_is_ambiguous_float_literal = match &receiver {
             Some(ast::Expr::Literal(l)) => matches! {
                 l.kind(),
