@@ -38,8 +38,6 @@ impl OwnedTargetMachine {
         output_obj_file: &CStr,
         debug_info_compression: &CStr,
         use_emulated_tls: bool,
-        argv0: &str,
-        command_line_args: &str,
         use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
@@ -66,10 +64,6 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
-                argv0.as_ptr(),
-                argv0.len(),
-                command_line_args.as_ptr(),
-                command_line_args.len(),
                 use_wasm_eh,
             )
         };

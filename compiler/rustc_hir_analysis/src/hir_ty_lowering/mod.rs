@@ -2611,6 +2611,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .span_delayed_bug(ty_span, "invalid base type for range pattern")),
                 }
             }
+            hir::TyPatKind::NotNull => Ok(ty::PatternKind::NotNull),
             hir::TyPatKind::Or(patterns) => {
                 self.tcx()
                     .mk_patterns_from_iter(patterns.iter().map(|pat| {

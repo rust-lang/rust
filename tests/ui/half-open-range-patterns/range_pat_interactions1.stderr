@@ -8,7 +8,7 @@ LL |             0..5+1 => errors_only.push(x),
 help: consider extracting the expression into a `const`
    |
 LL +         const VAL: /* Type */ = 5+1;
-LL ~         match x as i32 {
+LL |         match x as i32 {
 LL ~             0..VAL => errors_only.push(x),
    |
 

@@ -165,12 +165,11 @@ struct PickDiagHints<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: &'a mut Vec<(
-        ty::Predicate<'tcx>,
-        Option<ty::Predicate<'tcx>>,
-        Option<ObligationCause<'tcx>>,
-    )>,
+    unsatisfied_predicates: &'a mut UnsatisfiedPredicates<'tcx>,
 }
+
+pub(crate) type UnsatisfiedPredicates<'tcx> =
+    Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>;
 
 /// Criteria to apply when searching for a given Pick. This is used during
 /// the search for potentially shadowed methods to ensure we don't search
@@ -1212,11 +1211,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn pick_core(
         &self,
-        unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> Option<PickResult<'tcx>> {
         // Pick stable methods only first, and consider unstable candidates if not found.
         self.pick_all_method(&mut PickDiagHints {
@@ -1889,11 +1884,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         instantiate_self_ty_obligations: &[PredicateObligation<'tcx>],
         probe: &Candidate<'tcx>,
-        possibly_unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        possibly_unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> ProbeResult {
         self.probe(|snapshot| {
             let outer_universe = self.universe();
