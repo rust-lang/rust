@@ -1,12 +1,12 @@
 use std::path::Path;
 
 use crate::alphabetical::check_lines;
-use crate::diagnostics::DiagCtx;
+use crate::diagnostics::{TidyCtx, TidyFlags};
 
 #[track_caller]
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
-    let diag_ctx = DiagCtx::new(Path::new("/"), false);
-    let mut check = diag_ctx.start_check("alphabetical-test");
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
+    let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(&name, lines.lines().enumerate(), &mut check);
 
     assert_eq!(expected_bad, check.is_bad());
