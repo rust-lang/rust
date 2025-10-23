@@ -42,8 +42,8 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::Captures;
 use rustc_type_ir::{
-    AliasTyKind, ConstKind, DebruijnIndex, ExistentialPredicate, ExistentialProjection,
-    ExistentialTraitRef, FnSig, OutlivesPredicate,
+    AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, OutlivesPredicate,
     TyKind::{self},
     TypeVisitableExt,
     inherent::{GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike, Ty as _},
@@ -858,11 +858,13 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         if let Some(bounds) = bounds {
             let region = match lifetime {
                 Some(it) => match it.kind() {
-                    rustc_type_ir::RegionKind::ReBound(db, var) => Region::new_bound(
-                        self.interner,
-                        db.shifted_out_to_binder(DebruijnIndex::from_u32(2)),
-                        var,
-                    ),
+                    rustc_type_ir::RegionKind::ReBound(BoundVarIndexKind::Bound(db), var) => {
+                        Region::new_bound(
+                            self.interner,
+                            db.shifted_out_to_binder(DebruijnIndex::from_u32(2)),
+                            var,
+                        )
+                    }
                     _ => it,
                 },
                 None => Region::new_static(self.interner),

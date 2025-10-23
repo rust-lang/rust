@@ -6,8 +6,9 @@ use hir_def::ConstParamId;
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_type_ir::{
-    BoundVar, DebruijnIndex, FlagComputation, Flags, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
+    BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags, InferConst,
+    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    WithCachedTypeInfo,
     inherent::{IntoKind, ParamEnv as _, PlaceholderLike, SliceLike},
     relate::Relate,
 };
@@ -49,11 +50,11 @@ impl<'db> Const<'db> {
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
-        Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
+        Const::new(interner, ConstKind::Error(ErrorGuaranteed))
     }
 
     pub fn new_param(interner: DbInterner<'db>, param: ParamConst) -> Self {
-        Const::new(interner, rustc_type_ir::ConstKind::Param(param))
+        Const::new(interner, ConstKind::Param(param))
     }
 
     pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderConst) -> Self {
@@ -61,7 +62,7 @@ impl<'db> Const<'db> {
     }
 
     pub fn new_bound(interner: DbInterner<'db>, index: DebruijnIndex, bound: BoundConst) -> Self {
-        Const::new(interner, ConstKind::Bound(index, bound))
+        Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(index), bound))
     }
 
     pub fn new_valtree(
@@ -340,28 +341,34 @@ impl<'db> Flags for Const<'db> {
 }
 
 impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
-    fn new_infer(interner: DbInterner<'db>, var: rustc_type_ir::InferConst) -> Self {
+    fn new_infer(interner: DbInterner<'db>, var: InferConst) -> Self {
         Const::new(interner, ConstKind::Infer(var))
     }
 
-    fn new_var(interner: DbInterner<'db>, var: rustc_type_ir::ConstVid) -> Self {
-        Const::new(interner, ConstKind::Infer(rustc_type_ir::InferConst::Var(var)))
+    fn new_var(interner: DbInterner<'db>, var: ConstVid) -> Self {
+        Const::new(interner, ConstKind::Infer(InferConst::Var(var)))
     }
 
-    fn new_bound(
-        interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: BoundConst,
-    ) -> Self {
-        Const::new(interner, ConstKind::Bound(debruijn, var))
+    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundConst) -> Self {
+        Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
-    fn new_anon_bound(
+    fn new_anon_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundVar) -> Self {
+        Const::new(
+            interner,
+            ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), BoundConst { var }),
+        )
+    }
+
+    fn new_canonical_bound(interner: DbInterner<'db>, var: BoundVar) -> Self {
+        Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Canonical, BoundConst { var }))
+    }
+
+    fn new_placeholder(
         interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: rustc_type_ir::BoundVar,
+        param: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderConst,
     ) -> Self {
-        Const::new(interner, ConstKind::Bound(debruijn, BoundConst { var }))
+        Const::new(interner, ConstKind::Placeholder(param))
     }
 
     fn new_unevaluated(
@@ -377,13 +384,6 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
 
     fn new_error(interner: DbInterner<'db>, guar: ErrorGuaranteed) -> Self {
         Const::new(interner, ConstKind::Error(guar))
-    }
-
-    fn new_placeholder(
-        interner: DbInterner<'db>,
-        param: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderConst,
-    ) -> Self {
-        Const::new(interner, ConstKind::Placeholder(param))
     }
 }
 
