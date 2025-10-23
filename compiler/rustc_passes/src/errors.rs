@@ -24,12 +24,6 @@ pub(crate) struct IncorrectDoNotRecommendLocation;
 #[diag(passes_incorrect_do_not_recommend_args)]
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_attr_expects_string)]
-pub(crate) struct DocAttrExpectsString {
-    pub(crate) attr_name: Symbol,
-}
-
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {
@@ -130,42 +124,19 @@ pub(crate) struct AttrShouldBeAppliedToStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_doc_expect_str)]
-pub(crate) struct DocExpectStr<'a> {
-    #[primary_span]
-    pub attr_span: Span,
-    pub attr_name: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_location)]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]
     pub span: Span,
-    pub attr_str: &'a str,
     pub location: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(passes_doc_alias_not_an_alias)]
-pub(crate) struct DocAliasNotAnAlias<'a> {
+pub(crate) struct DocAliasNotAnAlias {
     #[primary_span]
     pub span: Span,
-    pub attr_str: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_alias_not_string_literal)]
-pub(crate) struct DocAliasNotStringLiteral {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_alias_malformed)]
-pub(crate) struct DocAliasMalformed {
-    #[primary_span]
-    pub span: Span,
+    pub attr_str: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -174,24 +145,6 @@ pub(crate) struct DocKeywordAttributeEmptyMod {
     #[primary_span]
     pub span: Span,
     pub attr_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_keyword_not_keyword)]
-#[help]
-pub(crate) struct DocKeywordNotKeyword {
-    #[primary_span]
-    pub span: Span,
-    pub keyword: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_attribute_not_attribute)]
-#[help]
-pub(crate) struct DocAttributeNotAttribute {
-    #[primary_span]
-    pub span: Span,
-    pub attribute: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -259,90 +212,6 @@ pub(crate) struct DocAttrNotCrateLevel<'a> {
     pub span: Span,
     pub attr_name: &'a str,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown)]
-pub(crate) struct DocTestUnknown {
-    pub path: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_literal)]
-pub(crate) struct DocTestLiteral;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_takes_list)]
-pub(crate) struct DocTestTakesList;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_auto_cfg_wrong_literal)]
-pub(crate) struct DocAutoCfgWrongLiteral;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_auto_cfg_expects_hide_or_show)]
-pub(crate) struct DocAutoCfgExpectsHideOrShow;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_auto_cfg_hide_show_expects_list)]
-pub(crate) struct DocAutoCfgHideShowExpectsList {
-    pub attr_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_auto_cfg_hide_show_unexpected_item)]
-pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
-    pub attr_name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown_any)]
-pub(crate) struct DocTestUnknownAny {
-    pub path: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown_spotlight)]
-#[note]
-#[note(passes_no_op_note)]
-pub(crate) struct DocTestUnknownSpotlight {
-    pub path: String,
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown_passes)]
-#[note]
-#[note(passes_no_op_note)]
-pub(crate) struct DocTestUnknownPasses {
-    pub path: String,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown_plugins)]
-#[note]
-#[note(passes_no_op_note)]
-pub(crate) struct DocTestUnknownPlugins {
-    pub path: String,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_test_unknown_include)]
-pub(crate) struct DocTestUnknownInclude {
-    pub path: String,
-    pub value: String,
-    pub inner: &'static str,
-    #[suggestion(code = "#{inner}[doc = include_str!(\"{value}\")]")]
-    pub sugg: (Span, Applicability),
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_invalid)]
-pub(crate) struct DocInvalid;
 
 #[derive(Diagnostic)]
 #[diag(passes_has_incoherent_inherent_impl)]

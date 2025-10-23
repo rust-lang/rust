@@ -3,12 +3,12 @@ use std::cell::{Cell, RefCell};
 use std::cmp::max;
 use std::ops::Deref;
 
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, ExprKind, HirId, Node};
+use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};

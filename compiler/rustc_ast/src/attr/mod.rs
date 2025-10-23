@@ -220,6 +220,11 @@ impl AttributeExt for Attribute {
     fn is_automatically_derived_attr(&self) -> bool {
         self.has_name(sym::automatically_derived)
     }
+
+    fn is_doc_hidden(&self) -> bool {
+        self.has_name(sym::doc)
+            && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
+    }
 }
 
 impl Attribute {
@@ -830,6 +835,9 @@ pub trait AttributeExt: Debug {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
+
+    /// Returns `true` if this attribute contains `doc(hidden)`.
+    fn is_doc_hidden(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding

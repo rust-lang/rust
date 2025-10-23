@@ -4,12 +4,14 @@ use std::{fmt, iter};
 
 use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::limit::Limit;
@@ -1664,16 +1666,14 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
 
 /// Determines whether an item is directly annotated with `doc(hidden)`.
 fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    tcx.get_attrs(def_id, sym::doc)
-        .filter_map(|attr| attr.meta_item_list())
-        .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    attrs.iter().any(|attr| attr.is_doc_hidden())
 }
 
 /// Determines whether an item is annotated with `doc(notable_trait)`.
 pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.get_attrs(def_id, sym::doc)
-        .filter_map(|attr| attr.meta_item_list())
-        .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
+    let attrs = tcx.get_all_attrs(def_id);
+    attrs.iter().any(|attr| matches!(attr, hir::Attribute::Parsed(AttributeKind::Doc(doc)) if doc.notable_trait.is_some()))
 }
 
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).

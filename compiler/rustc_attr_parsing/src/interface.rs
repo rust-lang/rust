@@ -298,17 +298,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         comment: *symbol,
                     }))
                 }
-                // // FIXME: make doc attributes go through a proper attribute parser
-                // ast::AttrKind::Normal(n) if n.has_name(sym::doc) => {
-                //     let p = GenericMetaItemParser::from_attr(&n, self.dcx());
-                //
-                //     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
-                //         style: attr.style,
-                //         kind: CommentKind::Line,
-                //         span: attr.span,
-                //         comment: p.args().name_value(),
-                //     }))
-                // }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);

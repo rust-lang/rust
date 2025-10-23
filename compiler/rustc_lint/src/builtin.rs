@@ -825,7 +825,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if is_doc_comment || attr.has_name(sym::doc) {
+        if is_doc_comment {
             let sub = match attr.kind {
                 AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
                     BuiltinUnusedDocCommentSub::PlainHelp
