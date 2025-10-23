@@ -79,7 +79,7 @@ where
             // the layout of generators.
             Rvalue::RawPtr(_, borrowed_place)
             | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place)
-            | Rvalue::Reborrow(borrowed_place) => {
+            | Rvalue::Reborrow(_, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen_(borrowed_place.local);
                 }

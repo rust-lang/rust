@@ -1031,7 +1031,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let value = match *rvalue {
             // Forward values.
             Rvalue::Use(ref mut operand) => return self.simplify_operand(operand, location),
-            Rvalue::Reborrow(place) => {
+            Rvalue::Reborrow(_, place) => {
                 let mut operand = Operand::Copy(place);
                 let val = self.simplify_operand(&mut operand, location);
                 *rvalue = Rvalue::Use(operand);

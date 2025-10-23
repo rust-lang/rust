@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Index;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hir::Mutability;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
@@ -301,7 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             };
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
-        } else if let &mir::Rvalue::Reborrow(borrowed_place) = rvalue {
+        } else if let &mir::Rvalue::Reborrow(mutability, borrowed_place) = rvalue {
             let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
             let ty::Adt(_, args) = borrowed_place_ty.kind() else { unreachable!() };
             for arg in args.iter() {
@@ -312,7 +313,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 eprintln!(
                     "Lifetime borrow: {arg:?} {region:?} {location:?} {borrowed_place:?} {assigned_place:?}"
                 );
-                let kind = mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default };
+                let kind = if mutability == Mutability::Mut {
+                    mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
+                } else {
+                    mir::BorrowKind::Shared
+                };
                 let borrow = BorrowData {
                     kind,
                     region,

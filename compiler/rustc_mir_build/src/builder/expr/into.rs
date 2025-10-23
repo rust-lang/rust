@@ -802,7 +802,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
-            ExprKind::Reborrow { source, mutability: _, ty: _ } => {
+            ExprKind::Reborrow { source, mutability, ty: _ } => {
                 // if !this.tcx.type_is_copy_modulo_regions(this.typing_env(), ty) {
                 //     panic!("Reborrow currently requires self to be Copy");
                 // }
@@ -818,7 +818,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     destination,
-                    Rvalue::Reborrow(place.into()),
+                    Rvalue::Reborrow(mutability, place.into()),
                 );
                 block.unit()
             }

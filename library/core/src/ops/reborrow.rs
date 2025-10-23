@@ -11,6 +11,7 @@ pub trait Reborrow {
 #[lang = "coerce_shared"]
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait CoerceShared: Reborrow {
+    #[lang = "coerce_shared_target"]
     /// The type of this value when reborrowed as shared.
     type Target: Copy;
 }

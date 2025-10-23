@@ -1481,7 +1481,7 @@ pub enum Rvalue<'tcx> {
     WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
 
     /// A reborrowable type being reborrowed
-    Reborrow(Place<'tcx>),
+    Reborrow(Mutability, Place<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

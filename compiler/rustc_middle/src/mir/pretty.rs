@@ -1245,7 +1245,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
             }
 
-            Reborrow(ref place) => write!(fmt, "reborrow {place:?}"),
+            Reborrow(_mutability, ref place) => write!(fmt, "reborrow {place:?}"),
         }
     }
 }

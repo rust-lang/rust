@@ -700,7 +700,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Unsafe binders are always trivial to create.
             }
 
-            Rvalue::Reborrow(_) => {}
+            Rvalue::Reborrow(..) => {}
         }
     }
 
