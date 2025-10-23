@@ -384,15 +384,18 @@ impl<'db> SemanticsImpl<'db> {
         }
     }
 
-    pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
+    pub fn attach_first_edition_opt(&self, file: FileId) -> Option<EditionedFileId> {
         let krate = self.file_to_module_defs(file).next()?.krate();
         Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
     }
 
+    pub fn attach_first_edition(&self, file: FileId) -> EditionedFileId {
+        self.attach_first_edition_opt(file)
+            .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(self.db, file))
+    }
+
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
-        let file_id = self
-            .attach_first_edition(file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(self.db, file_id));
+        let file_id = self.attach_first_edition(file_id);
 
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
@@ -401,7 +404,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn adjust_edition(&self, file_id: HirFileId) -> HirFileId {
         if let Some(editioned_file_id) = file_id.file_id() {
-            self.attach_first_edition(editioned_file_id.file_id(self.db))
+            self.attach_first_edition_opt(editioned_file_id.file_id(self.db))
                 .map_or(file_id, Into::into)
         } else {
             file_id

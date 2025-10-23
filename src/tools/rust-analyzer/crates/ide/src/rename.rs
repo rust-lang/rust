@@ -121,7 +121,7 @@ pub(crate) fn rename(
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
     let file_id = sema
-        .attach_first_edition(position.file_id)
+        .attach_first_edition_opt(position.file_id)
         .ok_or_else(|| format_err!("No references found at position"))?;
     let source_file = sema.parse(file_id);
     let syntax = source_file.syntax();

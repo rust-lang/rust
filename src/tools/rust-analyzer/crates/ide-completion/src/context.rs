@@ -707,7 +707,7 @@ impl<'db> CompletionContext<'db> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
-        let editioned_file_id = sema.attach_first_edition(file_id)?;
+        let editioned_file_id = sema.attach_first_edition(file_id);
         let original_file = sema.parse(editioned_file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file

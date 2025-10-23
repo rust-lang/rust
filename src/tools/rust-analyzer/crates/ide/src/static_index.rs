@@ -10,7 +10,6 @@ use ide_db::{
     documentation::Documentation,
     famous_defs::FamousDefs,
 };
-use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T, TextRange};
 
 use crate::navigation_target::UpmappingResult;
@@ -204,10 +203,7 @@ impl StaticIndex<'_> {
         // hovers
         let sema = hir::Semantics::new(self.db);
         let root = sema.parse_guess_edition(file_id).syntax().clone();
-        let edition = sema
-            .attach_first_edition(file_id)
-            .map(|it| it.edition(self.db))
-            .unwrap_or(Edition::CURRENT);
+        let edition = sema.attach_first_edition(file_id).edition(sema.db);
         let display_target = match sema.first_crate(file_id) {
             Some(krate) => krate.to_display_target(sema.db),
             None => return,

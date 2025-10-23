@@ -90,7 +90,7 @@ use hir::{
     Crate, DisplayTarget, InFile, Semantics, db::ExpandDatabase, diagnostics::AnyDiagnostic,
 };
 use ide_db::{
-    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
+    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
     base_db::{ReleaseChannel, RootQueryDb as _},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
@@ -290,9 +290,7 @@ pub fn syntax_diagnostics(
     }
 
     let sema = Semantics::new(db);
-    let editioned_file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let (file_id, _) = editioned_file_id.unpack(db);
 
@@ -321,9 +319,7 @@ pub fn semantic_diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::info_span!("semantic_diagnostics").entered();
     let sema = Semantics::new(db);
-    let editioned_file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(db, file_id));
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let (file_id, edition) = editioned_file_id.unpack(db);
     let mut res = Vec::new();

@@ -28,7 +28,6 @@ use ide_db::{
 use itertools::Itertools;
 use macros::UpmapFromRaFixture;
 use nohash_hasher::IntMap;
-use span::Edition;
 use syntax::AstToken;
 use syntax::{
     AstNode,
@@ -419,10 +418,7 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let edition = sema
-        .attach_first_edition(file_id)
-        .map(|it| it.edition(sema.db))
-        .unwrap_or(Edition::CURRENT);
+    let edition = sema.attach_first_edition(file_id).edition(sema.db);
     let token = pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
         _ if kind.is_keyword(edition) => 4,
         T![=>] => 3,
