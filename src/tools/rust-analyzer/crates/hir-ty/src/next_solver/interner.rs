@@ -1922,10 +1922,14 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn impl_specializes(
         self,
-        _specializing_impl_def_id: Self::ImplId,
-        _parent_impl_def_id: Self::ImplId,
+        specializing_impl_def_id: Self::ImplId,
+        parent_impl_def_id: Self::ImplId,
     ) -> bool {
-        false
+        crate::specialization::specializes(
+            self.db,
+            specializing_impl_def_id.0,
+            parent_impl_def_id.0,
+        )
     }
 
     fn next_trait_solver_globally(self) -> bool {

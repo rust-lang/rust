@@ -27,6 +27,7 @@ mod infer;
 mod inhabitedness;
 mod lower;
 pub mod next_solver;
+mod specialization;
 mod target_feature;
 mod utils;
 

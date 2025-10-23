@@ -517,4 +517,6 @@ define_symbols! {
     precision,
     width,
     never_type_fallback,
+    specialization,
+    min_specialization,
 }
