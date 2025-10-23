@@ -81,7 +81,7 @@ LL |         4..=(2 + _) => ()
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 2 + _;
-LL ~     match 9 {
+LL |     match 9 {
 LL ~         4..=(VAL) => ()
    |
 
