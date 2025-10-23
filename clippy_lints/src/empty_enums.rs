@@ -50,14 +50,14 @@ declare_clippy_lint! {
     /// [newtype]: https://doc.rust-lang.org/book/ch19-04-advanced-types.html#using-the-newtype-pattern-for-type-safety-and-abstraction
     /// [visibility]: https://doc.rust-lang.org/reference/visibility-and-privacy.html
     #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_ENUM,
+    pub EMPTY_ENUMS,
     pedantic,
     "enum with no variants"
 }
 
-declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
+declare_lint_pass!(EmptyEnums => [EMPTY_ENUMS]);
 
-impl LateLintPass<'_> for EmptyEnum {
+impl LateLintPass<'_> for EmptyEnums {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Enum(.., def) = item.kind
             && def.variants.is_empty()
@@ -67,7 +67,7 @@ impl LateLintPass<'_> for EmptyEnum {
         {
             span_lint_and_help(
                 cx,
-                EMPTY_ENUM,
+                EMPTY_ENUMS,
                 item.span,
                 "enum with no variants",
                 None,

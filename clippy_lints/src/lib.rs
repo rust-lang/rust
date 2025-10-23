@@ -117,7 +117,7 @@ mod drop_forget_ref;
 mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
-mod empty_enum;
+mod empty_enums;
 mod empty_line_after;
 mod empty_with_brackets;
 mod endian_bytes;
@@ -541,7 +541,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(derive::Derive));
     store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(conf)));
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
-    store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
+    store.register_late_pass(|_| Box::new(empty_enums::EmptyEnums));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|_| Box::<regex::Regex>::default());
     store.register_late_pass(move |tcx| Box::new(ifs::CopyAndPaste::new(tcx, conf)));

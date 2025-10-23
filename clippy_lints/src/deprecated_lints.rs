@@ -85,6 +85,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::drop_copy", "dropping_copy_types"),
     #[clippy::version = ""]
     ("clippy::drop_ref", "dropping_references"),
+    #[clippy::version = "1.92.0"]
+    ("clippy::empty_enum", "clippy::empty_enums"),
     #[clippy::version = ""]
     ("clippy::eval_order_dependence", "clippy::mixed_read_write_in_expression"),
     #[clippy::version = "1.53.0"]

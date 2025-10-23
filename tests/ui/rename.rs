@@ -19,6 +19,7 @@
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
+#![allow(clippy::empty_enums)]
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_filter_map)]
 #![allow(clippy::manual_find_map)]
@@ -83,6 +84,7 @@
 #![warn(clippy::drop_bounds)] //~ ERROR: lint `clippy::drop_bounds`
 #![warn(clippy::drop_copy)] //~ ERROR: lint `clippy::drop_copy`
 #![warn(clippy::drop_ref)] //~ ERROR: lint `clippy::drop_ref`
+#![warn(clippy::empty_enum)] //~ ERROR: lint `clippy::empty_enum`
 #![warn(clippy::eval_order_dependence)] //~ ERROR: lint `clippy::eval_order_dependence`
 #![warn(clippy::filter_map)] //~ ERROR: lint `clippy::filter_map`
 #![warn(clippy::find_map)] //~ ERROR: lint `clippy::find_map`
