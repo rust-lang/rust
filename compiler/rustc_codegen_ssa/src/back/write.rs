@@ -326,10 +326,12 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub prof: SelfProfilerRef,
     pub lto: Lto,
+    pub use_linker_plugin_lto: bool,
+    pub dylib_lto: bool,
+    pub prefer_dynamic: bool,
     pub save_temps: bool,
     pub fewer_names: bool,
     pub time_trace: bool,
-    pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
     pub output_filenames: Arc<OutputFilenames>,
     pub invocation_temp: Option<String>,
@@ -796,13 +798,12 @@ pub(crate) enum ComputedLtoType {
 
 pub(crate) fn compute_per_cgu_lto_type(
     sess_lto: &Lto,
-    opts: &config::Options,
+    linker_does_lto: bool,
     sess_crate_types: &[CrateType],
 ) -> ComputedLtoType {
     // If the linker does LTO, we don't have to do it. Note that we
     // keep doing full LTO, if it is requested, as not to break the
     // assumption that the output will be a single module.
-    let linker_does_lto = opts.cg.linker_plugin_lto.enabled();
 
     // We ignore a request for full crate graph LTO if the crate type
     // is only an rlib, as there is no full crate graph to process,
@@ -838,7 +839,8 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // back to the coordinator thread for further LTO processing (which
     // has to wait for all the initial modules to be optimized).
 
-    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types);
+    let lto_type =
+        compute_per_cgu_lto_type(&cgcx.lto, cgcx.use_linker_plugin_lto, &cgcx.crate_types);
 
     // If we're doing some form of incremental LTO then we need to be sure to
     // save our module to disk first.
@@ -1279,10 +1281,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let cgcx = CodegenContext::<B> {
         crate_types: tcx.crate_types().to_vec(),
         lto: sess.lto(),
+        use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
+        dylib_lto: sess.opts.unstable_opts.dylib_lto,
+        prefer_dynamic: sess.opts.cg.prefer_dynamic,
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         time_trace: sess.opts.unstable_opts.llvm_time_trace,
-        opts: Arc::new(sess.opts.clone()),
         prof: sess.prof.clone(),
         remark: sess.opts.cg.remark.clone(),
         remark_dir,

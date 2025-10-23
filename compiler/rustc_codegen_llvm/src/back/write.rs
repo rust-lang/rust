@@ -398,7 +398,7 @@ impl<'a> DiagnosticHandlers<'a> {
             })
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
-        let pgo_available = cgcx.opts.cg.profile_use.is_some();
+        let pgo_available = cgcx.module_config.pgo_use.is_some();
         let data = Box::into_raw(Box::new((cgcx, dcx)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
@@ -738,7 +738,7 @@ pub(crate) unsafe fn llvm_optimize(
             &*module.module_llvm.tm.raw(),
             to_pass_builder_opt_level(opt_level),
             opt_stage,
-            cgcx.opts.cg.linker_plugin_lto.enabled(),
+            cgcx.use_linker_plugin_lto,
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
             config.lint_llvm_ir,
@@ -801,7 +801,7 @@ pub(crate) fn optimize(
         let opt_stage = match cgcx.lto {
             Lto::Fat => llvm::OptStage::PreLinkFatLTO,
             Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
-            _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
+            _ if cgcx.use_linker_plugin_lto => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
 
