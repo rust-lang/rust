@@ -9,7 +9,7 @@ use build_helper::ci::CiEnv;
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
@@ -615,8 +615,9 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, bless: bool, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check("deps");
+pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("deps");
+    let bless = tidy_ctx.is_bless_enabled();
 
     let mut checked_runtime_licenses = false;
 

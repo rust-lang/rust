@@ -9,7 +9,7 @@ use fluent_syntax::ast::Entry;
 use fluent_syntax::parser;
 use regex::Regex;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 fn message() -> &'static Regex {
@@ -87,8 +87,9 @@ fn sort_messages(
     out
 }
 
-pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("fluent_alphabetical").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("fluent_alphabetical").path(path));
+    let bless = tidy_ctx.is_bless_enabled();
 
     let mut all_defined_msgs = HashMap::new();
     walk(
@@ -120,5 +121,5 @@ pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
 
     assert!(!all_defined_msgs.is_empty());
 
-    crate::fluent_used::check(path, all_defined_msgs, diag_ctx);
+    crate::fluent_used::check(path, all_defined_msgs, tidy_ctx);
 }
