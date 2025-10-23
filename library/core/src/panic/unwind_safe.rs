@@ -101,9 +101,9 @@ pub auto trait UnwindSafe {}
 #[rustc_diagnostic_item = "ref_unwind_safe_trait"]
 #[diagnostic::on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
-               transferrable across a catch_unwind boundary",
+               transferable across a catch_unwind boundary",
     label = "`{Self}` may contain interior mutability and a reference may not be safely \
-             transferrable across a catch_unwind boundary"
+             transferable across a catch_unwind boundary"
 )]
 pub auto trait RefUnwindSafe {}
 

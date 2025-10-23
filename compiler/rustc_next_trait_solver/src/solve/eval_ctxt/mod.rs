@@ -297,9 +297,6 @@ where
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.
             GoalSource::TypeRelating => PathKind::Inductive,
-            // Instantiating a higher ranked goal can never cause the recursion to be
-            // guarded and is therefore unproductive.
-            GoalSource::InstantiateHigherRanked => PathKind::Inductive,
             // These goal sources are likely unproductive and can be changed to
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
@@ -567,66 +564,56 @@ where
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        if let Some(kind) = kind.no_bound_vars() {
-            match kind {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                    self.compute_host_effect_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
-                    self.compute_projection_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
-                    self.compute_type_outlives_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(predicate)) => {
-                    self.compute_region_outlives_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    self.compute_unstable_feature_goal(param_env, symbol)
-                }
-                ty::PredicateKind::Subtype(predicate) => {
-                    self.compute_subtype_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Coerce(predicate) => {
-                    self.compute_coerce_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::DynCompatible(trait_def_id) => {
-                    self.compute_dyn_compatible_goal(trait_def_id)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
-                    self.compute_well_formed_goal(Goal { param_env, predicate: term })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
-                    self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
-                }
-                ty::PredicateKind::ConstEquate(_, _) => {
-                    panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
-                }
-                ty::PredicateKind::NormalizesTo(predicate) => {
-                    self.compute_normalizes_to_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
-                    .compute_alias_relate_goal(Goal {
-                        param_env,
-                        predicate: (lhs, rhs, direction),
-                    }),
-                ty::PredicateKind::Ambiguous => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
+        self.enter_forall(kind, |ecx, kind| match kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
+                ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
             }
-        } else {
-            self.enter_forall(kind, |ecx, kind| {
-                let goal = goal.with(ecx.cx(), ty::Binder::dummy(kind));
-                ecx.add_goal(GoalSource::InstantiateHigherRanked, goal);
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
-        }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                ecx.compute_host_effect_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
+                ecx.compute_projection_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
+                ecx.compute_type_outlives_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(predicate)) => {
+                ecx.compute_region_outlives_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                ecx.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                ecx.compute_unstable_feature_goal(param_env, symbol)
+            }
+            ty::PredicateKind::Subtype(predicate) => {
+                ecx.compute_subtype_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Coerce(predicate) => {
+                ecx.compute_coerce_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::DynCompatible(trait_def_id) => {
+                ecx.compute_dyn_compatible_goal(trait_def_id)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                ecx.compute_well_formed_goal(Goal { param_env, predicate: term })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
+                ecx.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
+            }
+            ty::PredicateKind::ConstEquate(_, _) => {
+                panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
+            }
+            ty::PredicateKind::NormalizesTo(predicate) => {
+                ecx.compute_normalizes_to_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::AliasRelate(lhs, rhs, direction) => {
+                ecx.compute_alias_relate_goal(Goal { param_env, predicate: (lhs, rhs, direction) })
+            }
+            ty::PredicateKind::Ambiguous => {
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+        })
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
@@ -993,7 +980,7 @@ where
         }
     }
 
-    /// This sohuld only be used when we're either instantiating a previously
+    /// This should only be used when we're either instantiating a previously
     /// unconstrained "return value" or when we're sure that all aliases in
     /// the types are rigid.
     #[instrument(level = "trace", skip(self, param_env), ret)]

@@ -20,12 +20,7 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
             return None;
         };
 
-        Some(AttributeKind::CrateName {
-            name,
-            name_span: n.value_span,
-            attr_span: cx.attr_span,
-            style: cx.attr_style,
-        })
+        Some(AttributeKind::CrateName { name, name_span: n.value_span, attr_span: cx.attr_span })
     }
 }
 

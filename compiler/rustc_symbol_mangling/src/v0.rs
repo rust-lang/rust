@@ -266,6 +266,9 @@ impl<'tcx> V0SymbolMangler<'tcx> {
                 self.print_const(start)?;
                 self.print_const(end)?;
             }
+            ty::PatternKind::NotNull => {
+                self.tcx.types.unit.print(self)?;
+            }
             ty::PatternKind::Or(patterns) => {
                 self.push("O");
                 for pat in patterns {

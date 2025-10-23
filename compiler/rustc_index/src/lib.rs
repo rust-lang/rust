@@ -50,3 +50,13 @@ macro_rules! static_assert_size {
         const _: (usize, usize) = ($size, ::std::mem::size_of::<$ty>());
     };
 }
+
+#[macro_export]
+macro_rules! indexvec {
+    ($expr:expr; $n:expr) => {
+        IndexVec::from_raw(vec![$expr; $n])
+    };
+    ($($expr:expr),* $(,)?) => {
+        IndexVec::from_raw(vec![$($expr),*])
+    };
+}
