@@ -777,19 +777,19 @@ where
     /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
     ///
     /// // Each entry is available at some index in the bucket range.
-    /// let count = (0..table.buckets())
+    /// let count = (0..table.num_buckets())
     ///     .filter_map(|i| table.get_bucket(i))
     ///     .count();
     /// assert_eq!(count, 3);
     ///
-    /// assert_eq!(table.get_bucket(table.buckets()), None);
+    /// assert_eq!(table.get_bucket(table.num_buckets()), None);
     /// # }
     /// # fn main() {
     /// #     #[cfg(feature = "nightly")]
     /// #     test()
     /// # }
     /// ```
-    pub fn buckets(&self) -> usize {
+    pub fn num_buckets(&self) -> usize {
         self.raw.buckets()
     }
 
