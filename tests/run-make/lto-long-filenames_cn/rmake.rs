@@ -1,0 +1,19 @@
+//@ ignore-cross-compile
+
+use run_make_support::{rfs, rustc};
+
+// This test make sure we don't crash when lto creates output files with long names.
+// cn characters can be multi-byte and thus trigger the long filename reduction code more easily.
+// we need to make sure that the code is properly generating names at char boundaries.
+// as reported in issue #147975
+fn main() {
+    let lto_flags = ["-Clto", "-Clto=yes", "-Clto=off", "-Clto=thin", "-Clto=fat"];
+    for prefix_len in 0..4 {
+        let prefix: String = std::iter::repeat("_").take(prefix_len).collect();
+        let main_file = format!("{}28_找出字符串中第一个匹配项的下标.rs", prefix);
+        rfs::write(&main_file, "fn main() {}\n");
+        for flag in lto_flags {
+            rustc().input(&main_file).arg(flag).run();
+        }
+    }
+}
