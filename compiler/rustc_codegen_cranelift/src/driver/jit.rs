@@ -33,9 +33,7 @@ fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, CodegenCx) {
 }
 
 pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
-    if !tcx.sess.opts.output_types.should_codegen() {
-        tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
-    }
+    // FIXME error on check mode or crate types other than bin in CodegenBackend::init()
 
     if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
         tcx.dcx().fatal("can't jit non-executable crate");
