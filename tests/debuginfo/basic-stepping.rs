@@ -20,8 +20,25 @@
 // FIXME(#33013): gdb-command: next
 // FIXME(#33013): gdb-check:   let g = b'9';
 // FIXME(#33013): gdb-command: next
-// FIXME(#33013): gdb-check:   let h = ["whatever"; 8];
-// FIXME(#33013): gdb-command: next
+// FIXME(#33013): Don't step 8 times. Tricky, because all emitted LLVM instructions are looped over.
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
+// gdb-check:   let h = ["whatever"; 8];
+// gdb-command: next
 // gdb-check:   let i = [1,2,3,4];
 // gdb-command: next
 // gdb-check:   let j = (23, "hi");
