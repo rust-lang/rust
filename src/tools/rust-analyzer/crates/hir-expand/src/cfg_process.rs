@@ -95,7 +95,10 @@ fn macro_input_callback(
                     {
                         attrs_idx += 1;
                     }
-                } else if let Some(has_attrs) = ast::AnyHasAttrs::cast(node.clone()) {
+                } else if !in_attr && let Some(has_attrs) = ast::AnyHasAttrs::cast(node.clone()) {
+                    // Attributes of the form `key = value` have `ast::Expr` in them, which returns `Some` for
+                    // `AnyHasAttrs::cast()`, so we also need to check `in_attr`.
+
                     if has_inner_attrs_owner {
                         has_inner_attrs_owner = false;
                         return (true, Vec::new());
