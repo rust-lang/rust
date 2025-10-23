@@ -847,6 +847,7 @@ fn semantic_token_type_and_modifiers(
             HlOperator::Bitwise => types::BITWISE,
             HlOperator::Arithmetic => types::ARITHMETIC,
             HlOperator::Logical => types::LOGICAL,
+            HlOperator::Negation => types::NEGATION,
             HlOperator::Comparison => types::COMPARISON,
             HlOperator::Other => types::OPERATOR,
         },
