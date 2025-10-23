@@ -2350,6 +2350,7 @@ impl HumanEmitter {
                         .sum();
                     let underline_start = (span_start_pos + start) as isize + offset;
                     let underline_end = (span_start_pos + start + sub_len) as isize + offset;
+                    assert!(underline_start >= 0 && underline_end >= 0);
                     let padding: usize = max_line_num_len + 3;
                     for p in underline_start..underline_end {
                         if let DisplaySuggestion::Underline = show_code_change
