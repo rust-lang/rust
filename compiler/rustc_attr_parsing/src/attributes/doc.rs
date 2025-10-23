@@ -1,10 +1,14 @@
-use rustc_attr_data_structures::lints::AttributeLintKind;
-use rustc_attr_data_structures::{AttributeKind, DocAttribute, DocInline};
+// FIXME: to be removed
+#![allow(unused_imports)]
+
 use rustc_errors::MultiSpan;
 use rustc_feature::template;
+use rustc_hir::attrs::{AttributeKind, DocAttribute, DocInline};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::{AcceptMapping, AttributeParser};
+use super::prelude::{Allow, AllowedTargets, MethodKind, Target};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::fluent_generated as fluent;
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
@@ -28,8 +32,8 @@ impl DocParser {
 
         match path.word_sym() {
             Some(sym::no_crate_inject) => {
-                if !args.no_args() {
-                    cx.expected_no_args(args.span().unwrap());
+                if let Err(span) = args.no_args() {
+                    cx.expected_no_args(span);
                     return;
                 }
 
@@ -42,16 +46,19 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.list() else {
-                    cx.expected_list(args.span().unwrap_or(path.span()));
+                    cx.expected_list(cx.attr_span);
                     return;
                 };
 
-                self.attribute.test_attrs.push(todo!());
+                // FIXME: convert list into a Vec of `AttributeKind`.
+                for _ in list {
+                    // self.attribute.test_attrs.push(AttributeKind::parse());
+                }
             }
             _ => {
                 cx.expected_specific_argument(
                     mip.span(),
-                    [sym::no_crate_inject.as_str(), sym::attr.as_str()].to_vec(),
+                    &[sym::no_crate_inject, sym::attr],
                 );
             }
         }
@@ -162,8 +169,8 @@ impl DocParser {
         args: &ArgParser<'_>,
         inline: DocInline,
     ) {
-        if !args.no_args() {
-            cx.expected_no_args(args.span().unwrap());
+        if let Err(span) = args.no_args() {
+            cx.expected_no_args(span);
             return;
         }
 
@@ -192,8 +199,8 @@ impl DocParser {
 
         macro_rules! no_args {
             ($ident: ident) => {{
-                if !args.no_args() {
-                    cx.expected_no_args(args.span().unwrap());
+                if let Err(span) = args.no_args() {
+                    cx.expected_no_args(span);
                     return;
                 }
 
@@ -239,7 +246,6 @@ impl DocParser {
             Some(sym::no_inline) => self.parse_inline(cx, path, args, DocInline::NoInline),
             Some(sym::masked) => no_args!(masked),
             Some(sym::cfg) => no_args!(cfg),
-            Some(sym::cfg_hide) => no_args!(cfg_hide),
             Some(sym::notable_trait) => no_args!(notable_trait),
             Some(sym::keyword) => self.parse_keyword(cx, path, args),
             Some(sym::fake_variadic) => no_args!(fake_variadic),
@@ -323,19 +329,18 @@ impl DocParser {
             _ => {
                 cx.expected_specific_argument(
                     mip.span(),
-                    [
-                        sym::alias.as_str(),
-                        sym::hidden.as_str(),
-                        sym::html_favicon_url.as_str(),
-                        sym::html_logo_url.as_str(),
-                        sym::html_no_source.as_str(),
-                        sym::html_playground_url.as_str(),
-                        sym::html_root_url.as_str(),
-                        sym::inline.as_str(),
-                        sym::no_inline.as_str(),
-                        sym::test.as_str(),
-                    ]
-                    .to_vec(),
+                    &[
+                        sym::alias,
+                        sym::hidden,
+                        sym::html_favicon_url,
+                        sym::html_logo_url,
+                        sym::html_no_source,
+                        sym::html_playground_url,
+                        sym::html_root_url,
+                        sym::inline,
+                        sym::no_inline,
+                        sym::test,
+                    ],
                 );
             }
         }
@@ -356,7 +361,9 @@ impl DocParser {
                         MetaItemOrLitParser::MetaItemParser(mip) => {
                             self.parse_single_doc_attr_item(cx, mip);
                         }
-                        MetaItemOrLitParser::Lit(lit) => todo!("error should've used equals"),
+                        MetaItemOrLitParser::Lit(lit) => {
+                            cx.expected_name_value(i.span(), None);
+                        }
                         MetaItemOrLitParser::Err(..) => {
                             // already had an error here, move on.
                         }
@@ -364,7 +371,7 @@ impl DocParser {
                 }
             }
             ArgParser::NameValue(v) => {
-                panic!("this should be rare if at all possible");
+                self.attribute.value.push((v, args.span()));
             }
         }
     }
@@ -373,11 +380,41 @@ impl DocParser {
 impl<S: Stage> AttributeParser<S> for DocParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::doc],
-        template!(List: "hidden|inline|...", NameValueStr: "string"),
+        template!(List: &["hidden", "inline", "test"], NameValueStr: "string"),
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::ExternCrate),
+        Allow(Target::Use),
+        Allow(Target::Static),
+        Allow(Target::Const),
+        Allow(Target::Fn),
+        Allow(Target::Mod),
+        Allow(Target::ForeignMod),
+        Allow(Target::TyAlias),
+        Allow(Target::Enum),
+        Allow(Target::Variant),
+        Allow(Target::Struct),
+        Allow(Target::Field),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Field { of_trait: true }),
+        Allow(Target::AssocConst),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::AssocTy),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
+        Allow(Target::MacroDef),
+        Allow(Target::Crate),
+    ]);
+
 
     fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         todo!()

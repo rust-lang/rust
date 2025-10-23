@@ -630,23 +630,6 @@ pub(crate) struct DocKeywordConflict {
     pub spans: MultiSpan,
 }
 
- #[derive(Subdiagnostic)]
- pub(crate) enum UnusedNote {
-     #[note(attr_parsing_unused_empty_lints_note)]
-     EmptyList { name: Symbol },
-     #[note(attr_parsing_unused_no_lints_note)]
-     NoLints { name: Symbol },
- }
-
- #[derive(LintDiagnostic)]
- #[diag(attr_parsing_unused)]
- pub(crate) struct Unused {
-     #[suggestion(code = "", applicability = "machine-applicable")]
-     pub attr_span: Span,
-     #[subdiagnostic]
-     pub note: UnusedNote,
- }
-
 #[derive(Diagnostic)]
 #[diag(attr_parsing_link_ordinal_out_of_range)]
 #[note]
