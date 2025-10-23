@@ -627,6 +627,17 @@ fn match_i128_u128(i: EnumAi128) -> u128 {
     }
 }
 
+// EMIT_MIR matches_reduce_branches.match_option.MatchBranchSimplification.diff
+fn match_option(i: &Option<i32>) -> Option<i32> {
+    // CHECK-LABEL: fn match_option(
+    // CHECK-NOT: switchInt
+    // CHECK: _0 = copy (*_1);
+    match i {
+        Some(_) => *i,
+        None => None,
+    }
+}
+
 // EMIT_MIR matches_reduce_branches.match_non_int_failed.MatchBranchSimplification.diff
 #[custom_mir(dialect = "runtime")]
 fn match_non_int_failed(i: char) -> u8 {
@@ -696,4 +707,5 @@ fn main() {
 
     let _ = my_is_some(None);
     let _ = match_non_int_failed('a');
+    let _ = match_option(&None);
 }
