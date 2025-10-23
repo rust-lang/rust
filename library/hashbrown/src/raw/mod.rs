@@ -1233,6 +1233,43 @@ impl<T, A: Allocator> RawTable<T, A> {
         }
     }
 
+    /// Gets a reference to an element in the table at the given bucket index.
+    #[inline]
+    pub fn get_bucket(&self, index: usize) -> Option<&T> {
+        unsafe {
+            if index < self.buckets() && self.is_bucket_full(index) {
+                Some(self.bucket(index).as_ref())
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Gets a mutable reference to an element in the table at the given bucket index.
+    #[inline]
+    pub fn get_bucket_mut(&mut self, index: usize) -> Option<&mut T> {
+        unsafe {
+            if index < self.buckets() && self.is_bucket_full(index) {
+                Some(self.bucket(index).as_mut())
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Returns a pointer to an element in the table, but only after verifying that
+    /// the index is in-bounds and that its control byte matches the given hash.
+    #[inline]
+    pub fn checked_bucket(&self, hash: u64, index: usize) -> Option<Bucket<T>> {
+        unsafe {
+            if index < self.buckets() && *self.table.ctrl(index) == Tag::full(hash) {
+                Some(self.bucket(index))
+            } else {
+                None
+            }
+        }
+    }
+
     /// Attempts to get mutable references to `N` entries in the table at once.
     ///
     /// Returns an array of length `N` with the results of each query.
