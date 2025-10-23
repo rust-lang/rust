@@ -2582,6 +2582,14 @@ impl Step for RustDev {
                 }
             }
         }
+        // The Enzyme(autodiff) cmake requires the LLVMConfig.cmake file to find tablegen
+        // and other utilities. We therefore also add all cmake files
+        // so that you can use the downloadable LLVM as if you’ve just run a full source build.
+        let cmake_dir = PathBuf::new().join("lib").join("cmake").join("llvm");
+        let cmake_src_dir = builder.llvm_out(target).join(&cmake_dir);
+        if cmake_src_dir.exists() {
+            tarball.add_dir(cmake_src_dir, cmake_dir);
+        }
 
         if builder.config.lld_enabled {
             // We want to package `lld` to use it with `download-ci-llvm`.
