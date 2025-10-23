@@ -6,14 +6,14 @@ use std::path::Path;
 
 use ignore::DirEntry;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::walk;
 
 // Array containing `("beginning of tag", "end of tag")`.
 const TAGS: &[(&str, &str)] = &[("{#", "#}"), ("{%", "%}"), ("{{", "}}")];
 
-pub fn check(librustdoc_path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("rustdoc_templates").path(librustdoc_path));
+pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_templates").path(librustdoc_path));
 
     walk(
         &librustdoc_path.join("html/templates"),

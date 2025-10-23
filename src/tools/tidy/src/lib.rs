@@ -12,7 +12,7 @@ use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
 use build_helper::stage0_parser::{Stage0Config, parse_stage0_file};
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 
 macro_rules! static_regex {
     ($re:literal) => {{
@@ -52,8 +52,8 @@ pub struct CiInfo {
 }
 
 impl CiInfo {
-    pub fn new(diag_ctx: DiagCtx) -> Self {
-        let mut check = diag_ctx.start_check("CI history");
+    pub fn new(tidy_ctx: TidyCtx) -> Self {
+        let mut check = tidy_ctx.start_check("CI history");
 
         let stage0 = parse_stage0_file();
         let Stage0Config { nightly_branch, git_merge_commit_email, .. } = stage0.config;
