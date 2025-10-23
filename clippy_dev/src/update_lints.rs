@@ -1,5 +1,5 @@
 use crate::parse::cursor::Cursor;
-use crate::parse::{DeprecatedLint, Lint, RenamedLint, find_lint_decls, read_deprecated_lints};
+use crate::parse::{DeprecatedLint, Lint, ParseCx, RenamedLint};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -21,18 +21,18 @@ const DOCS_LINK: &str = "https://rust-lang.github.io/rust-clippy/master/index.ht
 /// # Panics
 ///
 /// Panics if a file path could not read from or then written to
-pub fn update(update_mode: UpdateMode) {
-    let lints = find_lint_decls();
-    let (deprecated, renamed) = read_deprecated_lints();
+pub fn update(cx: ParseCx<'_>, update_mode: UpdateMode) {
+    let lints = cx.find_lint_decls();
+    let (deprecated, renamed) = cx.read_deprecated_lints();
     generate_lint_files(update_mode, &lints, &deprecated, &renamed);
 }
 
 #[expect(clippy::too_many_lines)]
 pub fn generate_lint_files(
     update_mode: UpdateMode,
-    lints: &[Lint],
-    deprecated: &[DeprecatedLint],
-    renamed: &[RenamedLint],
+    lints: &[Lint<'_>],
+    deprecated: &[DeprecatedLint<'_>],
+    renamed: &[RenamedLint<'_>],
 ) {
     let mut updater = FileUpdater::default();
     updater.update_file_checked(
@@ -61,7 +61,7 @@ pub fn generate_lint_files(
             |dst| {
                 for lint in lints
                     .iter()
-                    .map(|l| &*l.name)
+                    .map(|l| l.name)
                     .chain(deprecated.iter().filter_map(|l| l.name.strip_prefix("clippy::")))
                     .chain(renamed.iter().filter_map(|l| l.old_name.strip_prefix("clippy::")))
                     .sorted()
@@ -132,13 +132,13 @@ pub fn generate_lint_files(
             dst.push_str(GENERATED_FILE_COMMENT);
             dst.push_str("#![allow(clippy::duplicated_attributes)]\n");
             for lint in renamed {
-                if seen_lints.insert(&lint.new_name) {
+                if seen_lints.insert(lint.new_name) {
                     writeln!(dst, "#![allow({})]", lint.new_name).unwrap();
                 }
             }
             seen_lints.clear();
             for lint in renamed {
-                if seen_lints.insert(&lint.old_name) {
+                if seen_lints.insert(lint.old_name) {
                     writeln!(dst, "#![warn({})] //~ ERROR: lint `{}`", lint.old_name, lint.old_name).unwrap();
                 }
             }
@@ -164,7 +164,7 @@ pub fn generate_lint_files(
                     for lint_mod in lints
                         .iter()
                         .filter(|l| !l.module.is_empty())
-                        .map(|l| l.module.split_once("::").map_or(&*l.module, |x| x.0))
+                        .map(|l| l.module.split_once("::").map_or(l.module, |x| x.0))
                         .sorted()
                         .dedup()
                     {

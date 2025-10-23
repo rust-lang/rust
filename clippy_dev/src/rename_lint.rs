@@ -1,5 +1,5 @@
 use crate::parse::cursor::{self, Capture, Cursor};
-use crate::parse::{RenamedLint, find_lint_decls, read_deprecated_lints};
+use crate::parse::{ParseCx, RenamedLint};
 use crate::update_lints::generate_lint_files;
 use crate::utils::{
     ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
@@ -26,29 +26,35 @@ use std::path::Path;
 /// * If `old_name` doesn't name an existing lint.
 /// * If `old_name` names a deprecated or renamed lint.
 #[expect(clippy::too_many_lines)]
-pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: bool) {
+pub fn rename<'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'cx str, new_name: &'cx str, uplift: bool) {
     let mut updater = FileUpdater::default();
-    let mut lints = find_lint_decls();
-    let (deprecated_lints, mut renamed_lints) = read_deprecated_lints();
+    let mut lints = cx.find_lint_decls();
+    let (deprecated_lints, mut renamed_lints) = cx.read_deprecated_lints();
 
-    let Ok(lint_idx) = lints.binary_search_by(|x| x.name.as_str().cmp(old_name)) else {
+    let Ok(lint_idx) = lints.binary_search_by(|x| x.name.cmp(old_name)) else {
         panic!("could not find lint `{old_name}`");
     };
     let lint = &lints[lint_idx];
 
-    let old_name_prefixed = String::from_iter(["clippy::", old_name]);
+    let old_name_prefixed = cx.str_buf.with(|buf| {
+        buf.extend(["clippy::", old_name]);
+        cx.arena.alloc_str(buf)
+    });
     let new_name_prefixed = if uplift {
-        new_name.to_owned()
+        new_name
     } else {
-        String::from_iter(["clippy::", new_name])
+        cx.str_buf.with(|buf| {
+            buf.extend(["clippy::", new_name]);
+            cx.arena.alloc_str(buf)
+        })
     };
 
     for lint in &mut renamed_lints {
         if lint.new_name == old_name_prefixed {
-            lint.new_name.clone_from(&new_name_prefixed);
+            lint.new_name = new_name_prefixed;
         }
     }
-    match renamed_lints.binary_search_by(|x| x.old_name.cmp(&old_name_prefixed)) {
+    match renamed_lints.binary_search_by(|x| x.old_name.cmp(old_name_prefixed)) {
         Ok(_) => {
             println!("`{old_name}` already has a rename registered");
             return;
@@ -58,12 +64,8 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
                 idx,
                 RenamedLint {
                     old_name: old_name_prefixed,
-                    new_name: if uplift {
-                        new_name.to_owned()
-                    } else {
-                        String::from_iter(["clippy::", new_name])
-                    },
-                    version: clippy_version.rust_display().to_string(),
+                    new_name: new_name_prefixed,
+                    version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
                 },
             );
         },
@@ -99,7 +101,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
         }
         delete_test_files(old_name, change_prefixed_tests);
         lints.remove(lint_idx);
-    } else if lints.binary_search_by(|x| x.name.as_str().cmp(new_name)).is_err() {
+    } else if lints.binary_search_by(|x| x.name.cmp(new_name)).is_err() {
         let lint = &mut lints[lint_idx];
         if lint.module.ends_with(old_name)
             && lint
@@ -113,13 +115,15 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
                 mod_edit = ModEdit::Rename;
             }
 
-            let mod_len = lint.module.len();
-            lint.module.truncate(mod_len - old_name.len());
-            lint.module.push_str(new_name);
+            lint.module = cx.str_buf.with(|buf| {
+                buf.push_str(&lint.module[..lint.module.len() - old_name.len()]);
+                buf.push_str(new_name);
+                cx.arena.alloc_str(buf)
+            });
         }
         rename_test_files(old_name, new_name, change_prefixed_tests);
-        new_name.clone_into(&mut lints[lint_idx].name);
-        lints.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
+        lints[lint_idx].name = new_name;
+        lints.sort_by(|lhs, rhs| lhs.name.cmp(rhs.name));
     } else {
         println!("Renamed `clippy::{old_name}` to `clippy::{new_name}`");
         println!("Since `{new_name}` already exists the existing code has not been changed");
@@ -127,7 +131,7 @@ pub fn rename(clippy_version: Version, old_name: &str, new_name: &str, uplift: b
     }
 
     let mut update_fn = file_update_fn(old_name, new_name, mod_edit);
-    for e in walk_dir_no_dot_or_target() {
+    for e in walk_dir_no_dot_or_target(".") {
         let e = expect_action(e, ErrAction::Read, ".");
         if e.path().as_os_str().as_encoded_bytes().ends_with(b".rs") {
             updater.update_file(e.path(), &mut update_fn);

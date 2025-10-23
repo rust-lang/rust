@@ -1,5 +1,7 @@
 use core::fmt::{self, Display};
+use core::marker::PhantomData;
 use core::num::NonZero;
+use core::ops::{Deref, DerefMut};
 use core::range::Range;
 use core::str::FromStr;
 use std::ffi::OsStr;
@@ -9,6 +11,24 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
+
+pub struct Scoped<'inner, 'outer: 'inner, T>(T, PhantomData<&'inner mut T>, PhantomData<&'outer mut ()>);
+impl<T> Scoped<'_, '_, T> {
+    pub fn new(value: T) -> Self {
+        Self(value, PhantomData, PhantomData)
+    }
+}
+impl<T> Deref for Scoped<'_, '_, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T> DerefMut for Scoped<'_, '_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum ErrAction {
@@ -573,8 +593,8 @@ pub fn delete_dir_if_exists(path: &Path) {
 }
 
 /// Walks all items excluding top-level dot files/directories and any target directories.
-pub fn walk_dir_no_dot_or_target() -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
-    WalkDir::new(".").into_iter().filter_entry(|e| {
+pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
+    WalkDir::new(p).into_iter().filter_entry(|e| {
         e.path()
             .file_name()
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
