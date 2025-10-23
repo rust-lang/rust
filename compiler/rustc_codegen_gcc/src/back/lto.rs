@@ -290,7 +290,7 @@ pub(crate) fn run_thin(
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
     let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
-    if cgcx.opts.cg.linker_plugin_lto.enabled() {
+    if cgcx.use_linker_plugin_lto {
         unreachable!(
             "We should never reach this case if the LTO step \
                       is deferred to the linker"

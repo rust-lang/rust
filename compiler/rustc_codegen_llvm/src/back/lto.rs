@@ -179,7 +179,7 @@ pub(crate) fn run_thin(
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    if cgcx.opts.cg.linker_plugin_lto.enabled() {
+    if cgcx.use_linker_plugin_lto {
         unreachable!(
             "We should never reach this case if the LTO step \
                       is deferred to the linker"

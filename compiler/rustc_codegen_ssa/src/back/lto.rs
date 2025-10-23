@@ -137,15 +137,15 @@ pub(super) fn check_lto_allowed<B: WriteBackendMethods>(cgcx: &CodegenContext<B>
         if !crate_type_allows_lto(*crate_type) {
             dcx.handle().emit_fatal(LtoDisallowed);
         } else if *crate_type == CrateType::Dylib {
-            if !cgcx.opts.unstable_opts.dylib_lto {
+            if !cgcx.dylib_lto {
                 dcx.handle().emit_fatal(LtoDylib);
             }
-        } else if *crate_type == CrateType::ProcMacro && !cgcx.opts.unstable_opts.dylib_lto {
+        } else if *crate_type == CrateType::ProcMacro && !cgcx.dylib_lto {
             dcx.handle().emit_fatal(LtoProcMacro);
         }
     }
 
-    if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
+    if cgcx.prefer_dynamic && !cgcx.dylib_lto {
         dcx.handle().emit_fatal(DynamicLinkingWithLTO);
     }
 }
