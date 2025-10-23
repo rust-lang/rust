@@ -57,7 +57,6 @@ use hir_def::{CallableDefId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness}
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
 use intern::{Symbol, sym};
-use la_arena::Idx;
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
@@ -332,16 +331,11 @@ impl FnAbi {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx), // FIXME(next-solver): Should be crate::nextsolver::ImplTraitIdx.
-    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+pub enum ImplTraitId<'db> {
+    ReturnTypeImplTrait(hir_def::FunctionId, next_solver::ImplTraitIdx<'db>),
+    TypeAliasImplTrait(hir_def::TypeAliasId, next_solver::ImplTraitIdx<'db>),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
-
-#[derive(PartialEq, Eq, Debug, Hash)]
-pub struct ImplTrait {}
-
-pub type ImplTraitIdx = Idx<ImplTrait>;
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
 /// ensures there are no unbound variables or inference variables anywhere in

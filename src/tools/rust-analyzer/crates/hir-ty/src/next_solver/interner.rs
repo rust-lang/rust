@@ -47,7 +47,6 @@ use super::{
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
     generics::{Generics, generics},
-    mapping::ChalkToNextSolver,
     region::{
         BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, PlaceholderRegion, Region,
     },
@@ -1883,7 +1882,7 @@ impl<'db> Interner for DbInterner<'db> {
                 match impl_trait_id {
                     crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let infer = self.db().infer(func.into());
-                        EarlyBinder::bind(infer.type_of_rpit[idx.to_nextsolver(self)])
+                        EarlyBinder::bind(infer.type_of_rpit[idx])
                     }
                     crate::ImplTraitId::TypeAliasImplTrait(..)
                     | crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {

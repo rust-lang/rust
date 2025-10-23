@@ -277,7 +277,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // Interned IDs for solver integration
     #[salsa::interned]
-    fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
+    fn intern_impl_trait_id(&self, id: ImplTraitId<'_>) -> InternedOpaqueTyId;
 
     #[salsa::interned]
     fn intern_closure(&self, id: InternedClosure) -> InternedClosureId;
@@ -322,7 +322,7 @@ pub struct InternedConstParamId {
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedOpaqueTyId {
-    pub loc: ImplTraitId,
+    pub loc: ImplTraitId<'db>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

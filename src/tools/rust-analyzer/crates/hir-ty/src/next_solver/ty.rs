@@ -32,7 +32,6 @@ use crate::{
         CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
         interner::InternedWrapperNoDebug,
-        mapping::ChalkToNextSolver,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
@@ -533,18 +532,16 @@ impl<'db> Ty<'db> {
                 match db.lookup_intern_impl_trait_id(opaque_ty.def_id.expect_opaque_ty()) {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
-                            let data = (*it).as_ref().map_bound(|rpit| {
-                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                            });
+                            let data =
+                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                             data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
                                 .collect()
                         })
                     }
                     ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         db.type_alias_impl_traits(alias).map(|it| {
-                            let data = (*it).as_ref().map_bound(|rpit| {
-                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                            });
+                            let data =
+                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                             data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
                                 .collect()
                         })
