@@ -838,6 +838,19 @@ impl<T, A: Allocator> RawTable<T, A> {
         (item.read(), self.bucket_index(&item))
     }
 
+    /// Removes an element from the table, returning it.
+    ///
+    /// This also returns an index to the newly free bucket
+    /// and the former `Tag` for that bucket.
+    #[cfg_attr(feature = "inline-more", inline)]
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) unsafe fn remove_tagged(&mut self, item: Bucket<T>) -> (T, usize, Tag) {
+        let index = self.bucket_index(&item);
+        let tag = *self.table.ctrl(index);
+        self.table.erase(index);
+        (item.read(), index, tag)
+    }
+
     /// Finds and removes an element from the table, returning it.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<T> {
@@ -1172,8 +1185,8 @@ impl<T, A: Allocator> RawTable<T, A> {
         }
     }
 
-    /// Inserts a new element into the table at the given index, and returns its
-    /// raw bucket.
+    /// Inserts a new element into the table at the given index with the given hash,
+    /// and returns its raw bucket.
     ///
     /// # Safety
     ///
@@ -1182,8 +1195,26 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// occurred since that call.
     #[inline]
     pub unsafe fn insert_at_index(&mut self, hash: u64, index: usize, value: T) -> Bucket<T> {
+        self.insert_tagged_at_index(Tag::full(hash), index, value)
+    }
+
+    /// Inserts a new element into the table at the given index with the given tag,
+    /// and returns its raw bucket.
+    ///
+    /// # Safety
+    ///
+    /// `index` must point to a slot previously returned by
+    /// `find_or_find_insert_index`, and no mutation of the table must have
+    /// occurred since that call.
+    #[inline]
+    pub(crate) unsafe fn insert_tagged_at_index(
+        &mut self,
+        tag: Tag,
+        index: usize,
+        value: T,
+    ) -> Bucket<T> {
         let old_ctrl = *self.table.ctrl(index);
-        self.table.record_item_insert_at(index, old_ctrl, hash);
+        self.table.record_item_insert_at(index, old_ctrl, tag);
 
         let bucket = self.bucket(index);
         bucket.write(value);
@@ -1258,11 +1289,11 @@ impl<T, A: Allocator> RawTable<T, A> {
     }
 
     /// Returns a pointer to an element in the table, but only after verifying that
-    /// the index is in-bounds and that its control byte matches the given hash.
+    /// the index is in-bounds and the bucket is occupied.
     #[inline]
-    pub fn checked_bucket(&self, hash: u64, index: usize) -> Option<Bucket<T>> {
+    pub fn checked_bucket(&self, index: usize) -> Option<Bucket<T>> {
         unsafe {
-            if index < self.buckets() && *self.table.ctrl(index) == Tag::full(hash) {
+            if index < self.buckets() && self.is_bucket_full(index) {
                 Some(self.bucket(index))
             } else {
                 None
@@ -2442,9 +2473,9 @@ impl RawTableInner {
     }
 
     #[inline]
-    unsafe fn record_item_insert_at(&mut self, index: usize, old_ctrl: Tag, hash: u64) {
+    unsafe fn record_item_insert_at(&mut self, index: usize, old_ctrl: Tag, new_ctrl: Tag) {
         self.growth_left -= usize::from(old_ctrl.special_is_empty());
-        self.set_ctrl_hash(index, hash);
+        self.set_ctrl(index, new_ctrl);
         self.items += 1;
     }
 

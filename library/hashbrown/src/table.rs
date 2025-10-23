@@ -1,6 +1,7 @@
 use core::{fmt, iter::FusedIterator, marker::PhantomData};
 
 use crate::{
+    control::Tag,
     raw::{
         Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
         RawTable,
@@ -303,7 +304,6 @@ where
     ) -> Result<OccupiedEntry<'_, T, A>, AbsentEntry<'_, T, A>> {
         match self.raw.find(hash, eq) {
             Some(bucket) => Ok(OccupiedEntry {
-                hash,
                 bucket,
                 table: self,
             }),
@@ -413,24 +413,19 @@ where
     ) -> Entry<'_, T, A> {
         match self.raw.find_or_find_insert_index(hash, eq, hasher) {
             Ok(bucket) => Entry::Occupied(OccupiedEntry {
-                hash,
                 bucket,
                 table: self,
             }),
             Err(insert_index) => Entry::Vacant(VacantEntry {
-                hash,
+                tag: Tag::full(hash),
                 index: insert_index,
                 table: self,
             }),
         }
     }
 
-    /// Returns an `OccupiedEntry` for a bucket index in the table with the given hash,
-    /// or `None` if the index is out of bounds or if its hash doesn't match.
-    ///
-    /// However, note that the hash is only compared for the few bits that are directly stored in
-    /// the table, and even in full this could not guarantee equality. Use [`OccupiedEntry::get`]
-    /// if you need to further validate a match.
+    /// Returns an `OccupiedEntry` for the given bucket index in the table,
+    /// or `None` if it is unoccupied or out of bounds.
     ///
     /// # Examples
     ///
@@ -447,18 +442,15 @@ where
     /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
     /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
     ///
-    /// let hash = hasher(&2);
-    /// let index = table.find_bucket_index(hash, |val| val.0 == 2).unwrap();
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
     ///
-    /// let bad_hash = !hash;
-    /// assert!(table.get_bucket_entry(bad_hash, index).is_none());
-    /// assert!(table.get_bucket_entry(hash, usize::MAX).is_none());
+    /// assert!(table.get_bucket_entry(usize::MAX).is_none());
     ///
-    /// let occupied_entry = table.get_bucket_entry(hash, index).unwrap();
+    /// let occupied_entry = table.get_bucket_entry(index).unwrap();
     /// assert_eq!(occupied_entry.get(), &(2, 'b'));
     /// assert_eq!(occupied_entry.remove().0, (2, 'b'));
     ///
-    /// assert!(table.find(hash, |val| val.0 == 2).is_none());
+    /// assert!(table.find(hasher(&2), |val| val.0 == 2).is_none());
     /// # }
     /// # fn main() {
     /// #     #[cfg(feature = "nightly")]
@@ -466,10 +458,9 @@ where
     /// # }
     /// ```
     #[inline]
-    pub fn get_bucket_entry(&mut self, hash: u64, index: usize) -> Option<OccupiedEntry<'_, T, A>> {
+    pub fn get_bucket_entry(&mut self, index: usize) -> Option<OccupiedEntry<'_, T, A>> {
         Some(OccupiedEntry {
-            hash,
-            bucket: self.raw.checked_bucket(hash, index)?,
+            bucket: self.raw.checked_bucket(index)?,
             table: self,
         })
     }
@@ -573,7 +564,6 @@ where
     ) -> OccupiedEntry<'_, T, A> {
         let bucket = self.raw.insert(hash, value, hasher);
         OccupiedEntry {
-            hash,
             bucket,
             table: self,
         }
@@ -1771,7 +1761,6 @@ pub struct OccupiedEntry<'a, T, A = Global>
 where
     A: Allocator,
 {
-    hash: u64,
     bucket: Bucket<T>,
     table: &'a mut HashTable<T, A>,
 }
@@ -1840,11 +1829,11 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> (T, VacantEntry<'a, T, A>) {
-        let (val, index) = unsafe { self.table.raw.remove(self.bucket) };
+        let (val, index, tag) = unsafe { self.table.raw.remove_tagged(self.bucket) };
         (
             val,
             VacantEntry {
-                hash: self.hash,
+                tag,
                 index,
                 table: self.table,
             },
@@ -2083,7 +2072,7 @@ pub struct VacantEntry<'a, T, A = Global>
 where
     A: Allocator,
 {
-    hash: u64,
+    tag: Tag,
     index: usize,
     table: &'a mut HashTable<T, A>,
 }
@@ -2131,9 +2120,12 @@ where
     /// ```
     #[inline]
     pub fn insert(self, value: T) -> OccupiedEntry<'a, T, A> {
-        let bucket = unsafe { self.table.raw.insert_at_index(self.hash, self.index, value) };
+        let bucket = unsafe {
+            self.table
+                .raw
+                .insert_tagged_at_index(self.tag, self.index, value)
+        };
         OccupiedEntry {
-            hash: self.hash,
             bucket,
             table: self.table,
         }
