@@ -138,31 +138,29 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
 #[derive(Debug)]
 struct ClassInfo {
     class: Class,
-    /// Set to true only when an item was written inside this tag.
-    open: bool,
-    /// Set to true when leaving the current item. The closing tag will be
-    /// written if:
+    /// If `Some`, then it means the tag was opened and needs to be closed.
+    closing_tag: Option<&'static str>,
+    /// Set to `true` by `exit_elem` to signal that all the elements of this class have been pushed.
     ///
-    /// 1. `self.open` is true
-    /// 2. Only when the first non-mergeable item is pushed.
+    /// The class will be closed and removed from the stack when the next non-mergeable item is
+    /// pushed. When it is removed, the closing tag will be written if (and only if)
+    /// `self.closing_tag` is `Some`.
     pending_exit: bool,
-    /// If `true`, it means it's `</a>`, otherwise it's `</span>`.
-    link_closing_tag: bool,
 }
 
 impl ClassInfo {
-    fn new(class: Class, pending_exit: bool) -> Self {
-        Self { class, open: pending_exit, pending_exit, link_closing_tag: false }
+    fn new(class: Class, closing_tag: Option<&'static str>) -> Self {
+        Self { class, closing_tag, pending_exit: closing_tag.is_some() }
     }
 
     fn close_tag<W: Write>(&self, out: &mut W) {
-        if self.open {
-            if self.link_closing_tag {
-                out.write_str("</a>").unwrap();
-            } else {
-                out.write_str("</span>").unwrap();
-            }
+        if let Some(closing_tag) = self.closing_tag {
+            out.write_str(closing_tag).unwrap();
         }
+    }
+
+    fn is_open(&self) -> bool {
+        self.closing_tag.is_some()
     }
 }
 
@@ -187,7 +185,7 @@ impl ClassStack {
         out: &mut W,
         href_context: &Option<HrefContext<'_, '_>>,
         new_class: Class,
-        pending_exit: bool,
+        closing_tag: Option<&'static str>,
     ) {
         if let Some(current_class) = self.open_classes.last_mut() {
             if can_merge(Some(current_class.class), Some(new_class), "") {
@@ -198,22 +196,22 @@ impl ClassStack {
                 self.open_classes.pop();
             }
         }
-        let mut class_info = ClassInfo::new(new_class, pending_exit);
-        if pending_exit {
-            class_info.open = true;
-        } else if matches!(new_class, Class::Decoration(_) | Class::Original) {
-            // We open it right away to ensure it always come at the expected location.
-            // FIXME: Should we instead add a new boolean field to `ClassInfo` to force a non-open
-            // tags to be added if another one comes before it's open?
-            write!(out, "<span class=\"{}\">", new_class.as_html()).unwrap();
-            class_info.open = true;
-        } else if new_class.get_span().is_some()
-            && let Some(closing_tag) =
-                string_without_closing_tag(out, "", Some(class_info.class), href_context, false)
-            && !closing_tag.is_empty()
-        {
-            class_info.open = true;
-            class_info.link_closing_tag = closing_tag == "</a>";
+        let mut class_info = ClassInfo::new(new_class, closing_tag);
+        if closing_tag.is_none() {
+            if matches!(new_class, Class::Decoration(_) | Class::Original) {
+                // Even if a whitespace characters follows, we need to open the class right away
+                // as these characters are part of the element.
+                // FIXME: Should we instead add a new boolean field to `ClassInfo` to force a
+                // non-open tag to be added if another one comes before it's open?
+                write!(out, "<span class=\"{}\">", new_class.as_html()).unwrap();
+                class_info.closing_tag = Some("</span>");
+            } else if new_class.get_span().is_some()
+                && let Some(closing_tag) =
+                    string_without_closing_tag(out, "", Some(class_info.class), href_context, false)
+                && !closing_tag.is_empty()
+            {
+                class_info.closing_tag = Some(closing_tag);
+            }
         }
 
         self.open_classes.push(class_info);
@@ -242,7 +240,7 @@ impl ClassStack {
 
     fn last_class_is_open(&self) -> bool {
         if let Some(last) = self.open_classes.last() {
-            last.open
+            last.is_open()
         } else {
             // If there is no class, then it's already open.
             true
@@ -250,12 +248,9 @@ impl ClassStack {
     }
 
     fn close_last_if_needed<W: Write>(&mut self, out: &mut W) {
-        if let Some(last) = self.open_classes.last()
-            && last.pending_exit
-            && last.open
+        if let Some(last) = self.open_classes.pop_if(|class| class.pending_exit && class.is_open())
         {
             last.close_tag(out);
-            self.open_classes.pop();
         }
     }
 
@@ -284,11 +279,11 @@ impl ClassStack {
                 if !class_s.is_empty() {
                     write!(out, "<span class=\"{class_s}\">").unwrap();
                 }
-                current_class_info.open = true;
+                current_class_info.closing_tag = Some("</span>");
             }
         }
 
-        let current_class_is_open = self.open_classes.last().is_some_and(|c| c.open);
+        let current_class_is_open = self.open_classes.last().is_some_and(|c| c.is_open());
         let can_merge = can_merge(class, current_class, &text);
         let should_open_tag = !current_class_is_open || !can_merge;
 
@@ -312,14 +307,20 @@ impl ClassStack {
             } else if let Some(class) = class
                 && !can_merge
             {
-                self.enter_elem(out, href_context, class, true);
+                self.enter_elem(out, href_context, class, Some("</span>"));
             // Otherwise, we consider the actual `Class` to have been open.
             } else if let Some(current_class_info) = self.open_classes.last_mut() {
-                current_class_info.open = true;
+                current_class_info.closing_tag = Some("</span>");
             }
         }
     }
 
+    /// This method closes all open tags and returns the list of `Class` which were not already
+    /// closed (ie `pending_exit` set to `true`).
+    ///
+    /// It is used when starting a macro expansion: we need to close all HTML tags and then to
+    /// reopen them inside the newly created expansion HTML tag. Same goes when we close the
+    /// expansion.
     fn empty_stack<W: Write>(&mut self, out: &mut W) -> Vec<Class> {
         let mut classes = Vec::with_capacity(self.open_classes.len());
 
@@ -387,7 +388,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
         let classes = self.class_stack.empty_stack(self.out);
 
         // We start the expansion tag.
-        self.class_stack.enter_elem(self.out, &self.href_context, Class::Expansion, false);
+        self.class_stack.enter_elem(self.out, &self.href_context, Class::Expansion, None);
         self.push_token_without_backline_check(
             Some(Class::Expansion),
             Cow::Owned(format!(
@@ -401,9 +402,9 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
             false,
         );
 
-        // We re-open all tags.
+        // We re-open all tags that didn't have `pending_exit` set to `true`.
         for class in classes.into_iter().rev() {
-            self.class_stack.enter_elem(self.out, &self.href_context, class, false);
+            self.class_stack.enter_elem(self.out, &self.href_context, class, None);
         }
     }
 
@@ -413,7 +414,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
             Cow::Owned(format!("<span class=expanded>{}</span>", expanded_code.code)),
             false,
         );
-        self.class_stack.enter_elem(self.out, &self.href_context, Class::Original, false);
+        self.class_stack.enter_elem(self.out, &self.href_context, Class::Original, None);
     }
 
     fn close_expansion(&mut self) {
@@ -423,7 +424,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
         // We re-open all tags without expansion-related ones.
         for class in classes.into_iter().rev() {
             if !matches!(class, Class::Expansion | Class::Original) {
-                self.class_stack.enter_elem(self.out, &self.href_context, class, false);
+                self.class_stack.enter_elem(self.out, &self.href_context, class, None);
             }
         }
     }
@@ -604,7 +605,7 @@ pub(super) fn write_code(
                 token_handler.out,
                 &token_handler.href_context,
                 class,
-                false,
+                None,
             );
         }
         Highlight::ExitSpan => {
@@ -706,7 +707,6 @@ impl Class {
             | Self::Lifetime
             | Self::QuestionMark
             | Self::Decoration(_)
-            // | Self::Backline(_)
             | Self::Original
             | Self::Expansion => None,
         }
