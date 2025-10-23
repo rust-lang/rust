@@ -480,7 +480,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(mut_mut::MutMut::default()));
     store.register_late_pass(|_| Box::new(unnecessary_mut_passed::UnnecessaryMutPassed));
     store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
-    store.register_late_pass(|_| Box::new(len_zero::LenZero));
+    store.register_late_pass(move |_| Box::new(len_zero::LenZero::new(conf)));
     store.register_late_pass(move |_| Box::new(attrs::Attributes::new(conf)));
     store.register_late_pass(|_| Box::new(blocks_in_conditions::BlocksInConditions));
     store.register_late_pass(|_| Box::new(unicode::Unicode));
