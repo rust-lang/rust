@@ -31,7 +31,6 @@ run() {
       --env CARGO_TARGET_DIR=/checkout/target \
       --env TARGET="${1}" \
       --env "${HOST_LINKER}"="cc" \
-      --env STDARCH_TEST_EVERYTHING \
       --env STDARCH_DISABLE_ASSERT_INSTR \
       --env NOSTD \
       --env NORUN \

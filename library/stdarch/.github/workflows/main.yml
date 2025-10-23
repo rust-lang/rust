@@ -258,33 +258,24 @@ jobs:
         profile:
         - dev
         - release
-        target:
-        # Dockers that are run through docker on linux
-        - tuple: arm-unknown-linux-gnueabihf
-          os: ubuntu-latest
-        - tuple: armv7-unknown-linux-gnueabihf
-          os: ubuntu-latest
-        - tuple: aarch64-unknown-linux-gnu
-          os: ubuntu-latest
-        - tuple: aarch64_be-unknown-linux-gnu
-          os: ubuntu-latest
 
-        # Add additional variables to the matrix variations generated above using `include`:
         include:
-        # `TEST_EVERYTHING` setups - there should be at least 1 for each architecture
         - target:
             tuple: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-          test_everything: true
+
         - target:
             tuple: aarch64_be-unknown-linux-gnu
             os: ubuntu-latest
-          test_everything: true
           build_std: true
+
         - target:
             tuple: armv7-unknown-linux-gnueabihf
             os: ubuntu-latest
-          test_everything: true
+
+        - target:
+            tuple: arm-unknown-linux-gnueabihf
+            os: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -295,12 +286,12 @@ jobs:
       shell: bash
     - run: rustup target add ${{ matrix.target.tuple }}
       shell: bash
-      if: matrix.build_std == ''
+      if: ${{ (matrix.build_std || false) == false }}
     - run: |
         rustup component add rust-src
         echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
       shell: bash
-      if: matrix.build_std != ''
+      if: ${{ (matrix.build_std || false) == true }}
 
     # Configure some env vars based on matrix configuration
     - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
