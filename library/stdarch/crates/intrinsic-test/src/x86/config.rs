@@ -235,6 +235,9 @@ macro_rules! impl_debug_as {
 impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m256i, "__m256i", 256, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m512i, "__m512i", 512, [u8, i8, u16, i16, u32, i32, u64, i64]);
+impl_debug_as!(__m128h, "__m128h", 128, [f32]);
+impl_debug_as!(__m256h, "__m256h", 256, [f32]);
+impl_debug_as!(__m512h, "__m512h", 512, [f32]);
 
 fn debug_as<V, T>(x: V) -> impl core::fmt::Debug 
 where V: DebugAs<T>
