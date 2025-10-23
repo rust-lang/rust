@@ -69,7 +69,6 @@ mod imp {
     use super::Handler;
     use super::thread_info::{delete_current_info, set_current_info, with_current_info};
     use crate::ops::Range;
-    use crate::sync::OnceLock;
     use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
     use crate::{io, mem, ptr};
@@ -406,6 +405,10 @@ mod imp {
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 install_main_guard_linux_musl(page_size)
             } else if cfg!(target_os = "freebsd") {
+                #[cfg(not(target_os = "freebsd"))]
+                return None;
+                // The FreeBSD code cannot be checked on non-BSDs.
+                #[cfg(target_os = "freebsd")]
                 install_main_guard_freebsd(page_size)
             } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
                 install_main_guard_bsds(page_size)
@@ -442,6 +445,7 @@ mod imp {
     }
 
     #[forbid(unsafe_op_in_unsafe_fn)]
+    #[cfg(target_os = "freebsd")]
     unsafe fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
         // FreeBSD's stack autogrows, and optionally includes a guard page
         // at the bottom. If we try to remap the bottom of the stack
@@ -453,38 +457,23 @@ mod imp {
         // by the security.bsd.stack_guard_page sysctl.
         // By default it is 1, checking once is enough since it is
         // a boot time config value.
-        static PAGES: OnceLock<usize> = OnceLock::new();
+        static PAGES: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 
         let pages = PAGES.get_or_init(|| {
-            use crate::sys::weak::dlsym;
-            dlsym!(
-                fn sysctlbyname(
-                    name: *const libc::c_char,
-                    oldp: *mut libc::c_void,
-                    oldlenp: *mut libc::size_t,
-                    newp: *const libc::c_void,
-                    newlen: libc::size_t,
-                ) -> libc::c_int;
-            );
             let mut guard: usize = 0;
             let mut size = size_of_val(&guard);
             let oid = c"security.bsd.stack_guard_page";
-            match sysctlbyname.get() {
-                Some(fcn)
-                    if unsafe {
-                        fcn(
-                            oid.as_ptr(),
-                            (&raw mut guard).cast(),
-                            &raw mut size,
-                            ptr::null_mut(),
-                            0,
-                        ) == 0
-                    } =>
-                {
-                    guard
-                }
-                _ => 1,
-            }
+
+            let r = unsafe {
+                libc::sysctlbyname(
+                    oid.as_ptr(),
+                    (&raw mut guard).cast(),
+                    &raw mut size,
+                    ptr::null_mut(),
+                    0,
+                )
+            };
+            if r == 0 { guard } else { 1 }
         });
         Some(guardaddr..guardaddr + pages * page_size)
     }
