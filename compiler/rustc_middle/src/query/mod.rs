@@ -2719,6 +2719,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query trivial_const(def_id: DefId) -> Option<(mir::ConstValue, Ty<'tcx>)> {
+        desc { |tcx| "checking if `{}` is a trivial const", tcx.def_path_str(def_id) }
+        cache_on_disk_if { def_id.is_local() }
+        separate_provide_extern
+    }
+
     /// Checks for the nearest `#[sanitize(xyz = "off")]` or
     /// `#[sanitize(xyz = "on")]` on this def and any enclosing defs, up to the
     /// crate root.
