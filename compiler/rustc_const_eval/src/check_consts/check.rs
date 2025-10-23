@@ -653,7 +653,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 | NullOp::ContractChecks,
                 _,
             ) => {}
-            Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
@@ -853,7 +852,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // This can be called on stable via the `vec!` macro.
-                if tcx.is_lang_item(callee, LangItem::ExchangeMalloc) {
+                if tcx.is_diagnostic_item(sym::box_new, callee) {
                     self.check_op(ops::HeapAllocation);
                     // Allow this call, skip all the checks below.
                     return;

@@ -1,0 +1,109 @@
+- // MIR for `move_from_inner` before ElaborateDrops
++ // MIR for `move_from_inner` after ElaborateDrops
+  
+  fn move_from_inner() -> () {
+      let mut _0: ();
+      let _1: std::boxed::Box<S>;
+      let mut _2: S;
+      let _3: ();
+      let mut _4: S;
++     let mut _5: &mut std::boxed::Box<S>;
++     let mut _6: ();
++     let mut _7: &mut std::boxed::Box<S>;
++     let mut _8: ();
++     let mut _9: *const S;
++     let mut _10: &mut std::boxed::Box<S>;
++     let mut _11: ();
++     let mut _12: *const S;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = S::new() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _1 = Box::<S>::new(move _2) -> [return: bb2, unwind: bb7];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = move (*_1);
+          _3 = std::mem::drop::<S>(move _4) -> [return: bb3, unwind: bb5];
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageDead(_3);
+          _0 = const ();
+-         drop(_1) -> [return: bb4, unwind continue];
++         goto -> bb13;
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb5 (cleanup): {
+-         drop(_4) -> [return: bb6, unwind terminate(cleanup)];
++         goto -> bb6;
+      }
+  
+      bb6 (cleanup): {
+-         drop(_1) -> [return: bb8, unwind terminate(cleanup)];
++         goto -> bb16;
+      }
+  
+      bb7 (cleanup): {
+-         drop(_2) -> [return: bb8, unwind terminate(cleanup)];
++         goto -> bb8;
+      }
+  
+      bb8 (cleanup): {
+          resume;
++     }
++ 
++     bb9: {
++         goto -> bb4;
++     }
++ 
++     bb10: {
++         _5 = &mut _1;
++         _6 = <Box<S> as Drop>::drop(move _5) -> [return: bb9, unwind: bb8];
++     }
++ 
++     bb11 (cleanup): {
++         _7 = &mut _1;
++         _8 = <Box<S> as Drop>::drop(move _7) -> [return: bb8, unwind terminate(cleanup)];
++     }
++ 
++     bb12: {
++         goto -> bb10;
++     }
++ 
++     bb13: {
++         _9 = copy ((_1.0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
++         goto -> bb12;
++     }
++ 
++     bb14 (cleanup): {
++         _10 = &mut _1;
++         _11 = <Box<S> as Drop>::drop(move _10) -> [return: bb8, unwind terminate(cleanup)];
++     }
++ 
++     bb15 (cleanup): {
++         goto -> bb14;
++     }
++ 
++     bb16 (cleanup): {
++         _12 = copy ((_1.0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
++         goto -> bb15;
+      }
+  }
+  

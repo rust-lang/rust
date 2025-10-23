@@ -233,15 +233,6 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
-/// Constructs a `Box<T>` by calling the `exchange_malloc` lang item and moving the argument into
-/// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
-///
-/// This is the surface syntax for `box <expr>` expressions.
-#[doc(hidden)]
-#[rustc_intrinsic]
-#[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(x: T) -> Box<T>;
-
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
     ///
@@ -253,13 +244,13 @@ impl<T> Box<T> {
     /// let five = Box::new(5);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "box_new"]
+    #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        return box_new(x);
+        return Self::new_in(x, Global);
     }
 
     /// Constructs a new box with uninitialized contents.
@@ -405,14 +396,23 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub fn new_in(x: T, alloc: A) -> Self
     where
         A: Allocator,
     {
         let mut boxed = Self::new_uninit_in(alloc);
-        boxed.write(x);
-        unsafe { boxed.assume_init() }
+        unsafe {
+            // SAFETY: `x` is valid for writing and has the same layout as `T`.
+            //
+            // We use `ptr::write` as `MaybeUninit::write` creates
+            // extra stack copies of `T` in debug mode.
+            //
+            // See https://github.com/rust-lang/rust/issues/136043 for more context.
+            ptr::write(&raw mut *boxed as *mut T, x);
+            // SAFETY: `x` was just initialized above.
+            boxed.assume_init()
+        }
     }
 
     /// Allocates memory in the given allocator then places `x` into it,

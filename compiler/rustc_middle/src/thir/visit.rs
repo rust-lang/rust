@@ -50,7 +50,6 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         Scope { value, region_scope: _, lint_level: _ } => {
             visitor.visit_expr(&visitor.thir()[value])
         }
-        Box { value } => visitor.visit_expr(&visitor.thir()[value]),
         If { cond, then, else_opt, if_then_scope: _ } => {
             visitor.visit_expr(&visitor.thir()[cond]);
             visitor.visit_expr(&visitor.thir()[then]);
