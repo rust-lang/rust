@@ -248,34 +248,22 @@ jobs:
       if: matrix.target.os == 'ubuntu-latest' && !startsWith(matrix.target.tuple, 'thumb')
       env:
         TARGET: ${{ matrix.target.tuple }}
-        
+
   intrinsic-test:
     needs: [style]
     name: Intrinsic Test
-    runs-on: ${{ matrix.target.os }}
+    runs-on: ubuntu-latest 
     strategy:
       matrix:
-        profile:
-        - dev
-        - release
-
+        target:
+          - aarch64-unknown-linux-gnu
+          - aarch64_be-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - arm-unknown-linux-gnueabihf
+        profile: [dev, release]
         include:
-        - target:
-            tuple: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-
-        - target:
-            tuple: aarch64_be-unknown-linux-gnu
-            os: ubuntu-latest
-          build_std: true
-
-        - target:
-            tuple: armv7-unknown-linux-gnueabihf
-            os: ubuntu-latest
-
-        - target:
-            tuple: arm-unknown-linux-gnueabihf
-            os: ubuntu-latest
+          - target: aarch64_be-unknown-linux-gnu
+            build_std: true
 
     steps:
     - uses: actions/checkout@v4
@@ -283,30 +271,19 @@ jobs:
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
-      shell: bash
-    - run: rustup target add ${{ matrix.target.tuple }}
-      shell: bash
+    - run: rustup target add ${{ matrix.target }}
       if: ${{ (matrix.build_std || false) == false }}
     - run: |
         rustup component add rust-src
         echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
-      shell: bash
-      if: ${{ (matrix.build_std || false) == true }}
+      if: ${{ matrix.build_std }}
 
     # Configure some env vars based on matrix configuration
-    - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
-      shell: bash
-    - run: echo "STDARCH_TEST_EVERYTHING=1" >> $GITHUB_ENV
-      shell: bash
-      if: matrix.test_everything != ''
-    - run: echo "STDARCH_DISABLE_ASSERT_INSTR=1" >> $GITHUB_ENV
-      shell: bash
-      if: matrix.disable_assert_instr != ''
-    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target.tuple }}
-      shell: bash
-      if: matrix.target.os == 'ubuntu-latest' && !startsWith(matrix.target.tuple, 'thumb')
+    - run: echo "PROFILE=--profile=${{ matrix.profile }}" >> $GITHUB_ENV
+    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }}
+      if: ${{ !startsWith(matrix.target, 'thumb') }}
       env:
-        TARGET: ${{ matrix.target.tuple }}
+        TARGET: ${{ matrix.target }}
 
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
