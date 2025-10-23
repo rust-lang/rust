@@ -634,7 +634,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             ty::Adt(id, _) => {
                 has_is_empty_impl(cx, id.did())
                     || (cx.tcx.recursion_limit().value_within_limit(depth)
-                        && cx.tcx.get_diagnostic_item(sym::Deref).is_some_and(|deref_id| {
+                        && cx.tcx.lang_items().deref_trait().is_some_and(|deref_id| {
                             implements_trait(cx, ty, deref_id, &[])
                                 && cx
                                     .get_associated_type(ty, deref_id, sym::Target)
