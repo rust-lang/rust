@@ -42,8 +42,8 @@ use crate::back::lto::check_lto_allowed;
 use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenResults, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen,
-    ModuleKind, errors,
+    CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, ModuleKind,
+    errors,
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
@@ -435,14 +435,12 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
-    target_cpu: String,
+    crate_info: &CrateInfo,
     allocator_module: Option<ModuleCodegen<B::Module>>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
     let no_builtins = find_attr!(tcx, crate, NoBuiltins);
-
-    let crate_info = CrateInfo::new(tcx, target_cpu);
 
     let regular_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
     let allocator_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
@@ -453,7 +451,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     let coordinator_thread = start_executing_work(
         backend.clone(),
         tcx,
-        &crate_info,
+        crate_info,
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
@@ -465,7 +463,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
 
     OngoingCodegen {
         backend,
-        crate_info,
 
         codegen_worker_receive,
         shared_emitter_main,
@@ -2131,7 +2128,6 @@ impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
 
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
-    pub crate_info: CrateInfo,
     pub output_filenames: Arc<OutputFilenames>,
     // Field order below is intended to terminate the coordinator thread before two fields below
     // drop and prematurely close channels used by coordinator thread. See `Coordinator`'s
@@ -2142,7 +2138,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 }
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
-    pub fn join(self, sess: &Session) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    pub fn join(self, sess: &Session) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2248,7 +2244,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             self.backend.print_statistics()
         }
 
-        (CodegenResults { compiled_modules, crate_info: self.crate_info }, work_products)
+        (compiled_modules, work_products)
     }
 
     pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {

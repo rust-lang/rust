@@ -11,7 +11,7 @@ use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBu
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CompiledModules, CrateInfo, TargetConfig};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
@@ -401,11 +401,12 @@ impl CodegenBackend for DummyCodegenBackend {
         vec![CrateType::Rlib, CrateType::Executable]
     }
 
-    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
-        Box::new(CodegenResults {
-            compiled_modules: CompiledModules { modules: vec![], allocator_module: None },
-            crate_info: CrateInfo::new(tcx, String::new()),
-        })
+    fn target_cpu(&self, _sess: &Session) -> String {
+        String::new()
+    }
+
+    fn codegen_crate<'tcx>(&self, _tcx: TyCtxt<'tcx>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+        Box::new(CompiledModules { modules: vec![], allocator_module: None })
     }
 
     fn join_codegen(
@@ -413,7 +414,7 @@ impl CodegenBackend for DummyCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
     }
 
