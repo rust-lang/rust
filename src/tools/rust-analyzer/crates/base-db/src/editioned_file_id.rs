@@ -222,7 +222,18 @@ const _: () = {
                         .relevant_crates(editioned_file_id.file_id())
                         .first()
                         .copied()
-                        .unwrap_or_else(|| db.all_crates()[0]);
+                        .or_else(|| db.all_crates().first().copied())
+                        .unwrap_or_else(|| {
+                            // What we're doing here is a bit fishy. We rely on the fact that we only need
+                            // the crate in the item tree, and we should not create an `EditionedFileId`
+                            // without a crate except in cases where it does not matter. The chances that
+                            // `all_crates()` will be empty are also very slim, but it can occur during startup.
+                            // In the very unlikely case that there is a bug and we'll use this crate, Salsa
+                            // will panic.
+
+                            // SAFETY: 0 is less than `Id::MAX_U32`.
+                            salsa::plumbing::FromId::from_id(unsafe { salsa::Id::from_index(0) })
+                        });
                     EditionedFileIdData { editioned_file_id, krate }
                 },
             )
