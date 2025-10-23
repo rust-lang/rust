@@ -1211,13 +1211,22 @@ fn maybe_strip_file_name(mut path: PathBuf) -> PathBuf {
     if path.file_name().map_or(0, |name| name.len()) > MAX_FILENAME_LENGTH {
         let filename = path.file_name().unwrap().to_string_lossy();
         let hash_len = 64 / 4; // Hash64 is 64 bits encoded in hex
-        let stripped_len = filename.len() - MAX_FILENAME_LENGTH + hash_len;
+        let hyphen_len = 1; // the '-' we insert between hash and suffix
+
+        // number of bytes of suffix we can keep so that "hash-<suffix>" fits
+        let allowed_suffix = MAX_FILENAME_LENGTH.saturating_sub(hash_len + hyphen_len);
+
+        // number of bytes to remove from the start
+        let stripped_bytes = filename.len().saturating_sub(allowed_suffix);
+
+        // ensure we don't cut in a middle of a char
+        let split_at = filename.ceil_char_boundary(stripped_bytes);
 
         let mut hasher = StableHasher::new();
-        filename[..stripped_len].hash(&mut hasher);
+        filename[..split_at].hash(&mut hasher);
         let hash = hasher.finish::<Hash64>();
 
-        path.set_file_name(format!("{:x}-{}", hash, &filename[stripped_len..]));
+        path.set_file_name(format!("{:x}-{}", hash, &filename[split_at..]));
     }
     path
 }
