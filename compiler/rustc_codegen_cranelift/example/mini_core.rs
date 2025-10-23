@@ -6,6 +6,7 @@
     extern_types,
     decl_macro,
     rustc_attrs,
+    rustc_private,
     transparent_unions,
     auto_traits,
     freeze_impls,
@@ -594,7 +595,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 impl<T> Box<T> {
     pub fn new(val: T) -> Box<T> {
         unsafe {
-            let size = intrinsics::size_of::<T>();
+            let size = size_of::<T>();
             let ptr = libc::malloc(size);
             intrinsics::copy(&val as *const T as *const u8, ptr, size);
             Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, Global)
@@ -646,11 +647,11 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub fn abort() -> !;
     #[rustc_intrinsic]
-    pub fn size_of<T>() -> usize;
+    pub const fn size_of<T>() -> usize;
     #[rustc_intrinsic]
     pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub fn align_of<T>() -> usize;
+    pub const fn align_of<T>() -> usize;
     #[rustc_intrinsic]
     pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
@@ -714,6 +715,23 @@ impl<T> Index<usize> for [T] {
         &self[index]
     }
 }
+
+pub const fn size_of<T>() -> usize {
+    <T as SizedTypeProperties>::SIZE
+}
+
+pub const fn align_of<T>() -> usize {
+    <T as SizedTypeProperties>::ALIGN
+}
+
+trait SizedTypeProperties: Sized {
+    #[lang = "mem_size_const"]
+    const SIZE: usize = intrinsics::size_of::<Self>();
+
+    #[lang = "mem_align_const"]
+    const ALIGN: usize = intrinsics::align_of::<Self>();
+}
+impl<T> SizedTypeProperties for T {}
 
 extern "C" {
     type VaListImpl;
