@@ -66,8 +66,7 @@ pub use imp::{
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
-    // FIXME: use with_native_path on all platforms
-    imp::readdir(path)
+    with_native_path(path, &imp::readdir)
 }
 
 pub fn remove_file(path: &Path) -> io::Result<()> {
