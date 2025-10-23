@@ -1,11 +1,13 @@
 use std::iter;
 
 use rustc_abi::Integer;
+use rustc_const_eval::const_eval::mk_eval_cx_for_const_val;
+use rustc_data_structures::packed::Pu128;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
-use tracing::instrument;
 
 use super::simplify::simplify_cfg;
 use crate::patch::MirPatch;
@@ -22,25 +24,68 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
         let mut apply_patch = false;
         let mut patch = MirPatch::new(body);
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
-            match &bb_data.terminator().kind {
-                TerminatorKind::SwitchInt {
-                    discr: Operand::Copy(_) | Operand::Move(_),
-                    targets,
-                    ..
-                    // We require that the possible target blocks don't contain this block.
-                } if !targets.all_targets().contains(&bb) => {}
-                // Only optimize switch int statements
-                _ => continue,
+            let Some((discr, targets)) = bb_data.terminator().kind.as_switch() else {
+                continue;
+            };
+            if let Operand::Constant(_) = discr {
+                continue;
+            }
+            let otherwise_is_unreachable =
+                body.basic_blocks[targets.otherwise()].is_empty_unreachable();
+            let Some((first_case, as_else_case)) =
+                candidate_switch(body, bb, targets, otherwise_is_unreachable)
+            else {
+                continue;
             };
 
-            if SimplifyToIf.simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
-                apply_patch = true;
+            let discr_ty = discr.ty(body.local_decls(), tcx);
+            // Introduce a temporary for the discriminant value.
+            let source_info = body.basic_blocks[bb].terminator().source_info;
+            let discr_local = patch.new_temp(discr_ty, source_info.span);
+
+            let new_stmts = if let Some(else_case) = as_else_case
+                && let Some(new_stmts) = simplify_if(
+                    tcx,
+                    first_case,
+                    targets.all_values()[0],
+                    else_case,
+                    typing_env,
+                    &body.basic_blocks,
+                    discr_local,
+                    discr_ty,
+                ) {
+                new_stmts
+            } else if otherwise_is_unreachable
+                && let Some(new_stmts) = simplify_switch(
+                    tcx,
+                    first_case,
+                    targets,
+                    typing_env,
+                    &body.basic_blocks,
+                    discr_local,
+                    discr_ty,
+                )
+            {
+                new_stmts
+            } else {
+                patch.revert_last_new_temp();
                 continue;
+            };
+
+            apply_patch = true;
+            // Take ownership of items now that we know we can optimize.
+            let discr = discr.clone();
+
+            let (_, first) = targets.iter().next().unwrap();
+            let statement_index = body.basic_blocks[bb].statements.len();
+            let parent_end = Location { block: bb, statement_index };
+            patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
+            patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
+            for new_stmt in new_stmts {
+                patch.add_statement(parent_end, new_stmt);
             }
-            if SimplifyToExp::default().simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
-                apply_patch = true;
-                continue;
-            }
+            patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
+            patch.patch_terminator(bb, body.basic_blocks[first].terminator().kind.clone());
         }
 
         if apply_patch {
@@ -54,72 +99,46 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
     }
 }
 
-trait SimplifyMatch<'tcx> {
-    /// Simplifies a match statement, returning `Some` if the simplification succeeds, `None`
-    /// otherwise. Generic code is written here, and we generally don't need a custom
-    /// implementation.
-    fn simplify(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        patch: &mut MirPatch<'tcx>,
-        switch_bb_idx: BasicBlock,
-        typing_env: ty::TypingEnv<'tcx>,
-    ) -> Option<()> {
-        let bbs = &body.basic_blocks;
-        let TerminatorKind::SwitchInt { discr, targets, .. } =
-            &bbs[switch_bb_idx].terminator().kind
-        else {
-            unreachable!();
-        };
-
-        let discr_ty = discr.ty(body.local_decls(), tcx);
-        self.can_simplify(tcx, targets, typing_env, bbs, discr_ty)?;
-
-        // Take ownership of items now that we know we can optimize.
-        let discr = discr.clone();
-
-        // Introduce a temporary for the discriminant value.
-        let source_info = bbs[switch_bb_idx].terminator().source_info;
-        let discr_local = patch.new_temp(discr_ty, source_info.span);
-
-        let (_, first) = targets.iter().next().unwrap();
-        let statement_index = bbs[switch_bb_idx].statements.len();
-        let parent_end = Location { block: switch_bb_idx, statement_index };
-        patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
-        patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
-        self.new_stmts(tcx, targets, typing_env, patch, parent_end, bbs, discr_local, discr_ty);
-        patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
-        patch.patch_terminator(switch_bb_idx, bbs[first].terminator().kind.clone());
-        Some(())
+fn candidate_switch<'tcx, 'a>(
+    body: &Body<'tcx>,
+    switch_bb: BasicBlock,
+    targets: &'a SwitchTargets,
+    otherwise_is_unreachable: bool,
+) -> Option<(BasicBlock, Option<BasicBlock>)> {
+    // We require that the possible target blocks don't contain this block.
+    if targets.all_targets().contains(&switch_bb) {
+        return None;
     }
-
-    /// Check that the BBs to be simplified satisfies all distinct and
-    /// that the terminator are the same.
-    /// There are also conditions for different ways of simplification.
-    fn can_simplify(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        discr_ty: Ty<'tcx>,
-    ) -> Option<()>;
-
-    fn new_stmts(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        typing_env: ty::TypingEnv<'tcx>,
-        patch: &mut MirPatch<'tcx>,
-        parent_end: Location,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        discr_local: Local,
-        discr_ty: Ty<'tcx>,
-    );
+    // We require that the possible target blocks all be distinct.
+    if !targets.is_distinct() {
+        return None;
+    }
+    let (first_case, other_cases) = match targets.all_targets() {
+        &[first, otherwise] => (first, &[otherwise] as &[BasicBlock]),
+        &[first, second, _] if otherwise_is_unreachable => (first, &[second] as &[BasicBlock]),
+        targets
+            if otherwise_is_unreachable
+                && let Some((_, cases)) = targets.split_last()
+                && let Some((first, others)) = cases.split_first() =>
+        {
+            (*first, others)
+        }
+        _ => return None,
+    };
+    let first_case_bb = &body.basic_blocks[first_case];
+    let first_case_terminator_kind = &first_case_bb.terminator().kind;
+    let first_case_stmts_len = first_case_bb.statements.len();
+    // Check that destinations are identical, and if not, then don't optimize this block
+    if !other_cases.iter().all(|&other_case| {
+        let other_case_bb = &body.basic_blocks[other_case];
+        first_case_stmts_len == other_case_bb.statements.len()
+            && first_case_terminator_kind == &other_case_bb.terminator().kind
+    }) {
+        return None;
+    }
+    let other_case = if let &[other_case] = other_cases { Some(other_case) } else { None };
+    Some((first_case, other_case))
 }
-
-struct SimplifyToIf;
 
 /// If a source block is found that switches between two blocks that are exactly
 /// the same modulo const bool assignments (e.g., one assigns true another false
@@ -152,124 +171,59 @@ struct SimplifyToIf;
 ///    goto -> bb3;
 /// }
 /// ```
-impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
-    #[instrument(level = "debug", skip(self, tcx), ret)]
-    fn can_simplify(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        _discr_ty: Ty<'tcx>,
-    ) -> Option<()> {
-        let (first, second) = match targets.all_targets() {
-            &[first, otherwise] => (first, otherwise),
-            &[first, second, otherwise] if bbs[otherwise].is_empty_unreachable() => (first, second),
-            _ => {
-                return None;
+fn simplify_if<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    first_case: BasicBlock,
+    first_case_val: Pu128,
+    other_case: BasicBlock,
+    typing_env: ty::TypingEnv<'tcx>,
+    bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+    discr_local: Local,
+    discr_ty: Ty<'tcx>,
+) -> Option<Vec<StatementKind<'tcx>>> {
+    let mut new_stmts = Vec::with_capacity(bbs[first_case].statements.len());
+    for (f, s) in iter::zip(&bbs[first_case].statements, &bbs[other_case].statements) {
+        match (&f.kind, &s.kind) {
+            // If two statements are exactly the same, we can optimize.
+            (f_s, s_s) if f_s == s_s => {
+                new_stmts.push(f_s.clone());
             }
-        };
-
-        // We require that the possible target blocks all be distinct.
-        if first == second {
-            return None;
-        }
-        // Check that destinations are identical, and if not, then don't optimize this block
-        if bbs[first].terminator().kind != bbs[second].terminator().kind {
-            return None;
-        }
-
-        // Check that blocks are assignments of consts to the same place or same statement,
-        // and match up 1-1, if not don't optimize this block.
-        let first_stmts = &bbs[first].statements;
-        let second_stmts = &bbs[second].statements;
-        if first_stmts.len() != second_stmts.len() {
-            return None;
-        }
-        for (f, s) in iter::zip(first_stmts, second_stmts) {
-            match (&f.kind, &s.kind) {
-                // If two statements are exactly the same, we can optimize.
-                (f_s, s_s) if f_s == s_s => {}
-
-                // If two statements are const bool assignments to the same place, we can optimize.
-                (
-                    StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
-                    StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                ) if lhs_f == lhs_s
-                    && f_c.const_.ty().is_bool()
-                    && s_c.const_.ty().is_bool()
-                    && f_c.const_.try_eval_bool(tcx, typing_env).is_some()
-                    && s_c.const_.try_eval_bool(tcx, typing_env).is_some() => {}
-
-                // Otherwise we cannot optimize. Try another block.
-                _ => return None,
-            }
-        }
-        Some(())
-    }
-
-    fn new_stmts(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        typing_env: ty::TypingEnv<'tcx>,
-        patch: &mut MirPatch<'tcx>,
-        parent_end: Location,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        discr_local: Local,
-        discr_ty: Ty<'tcx>,
-    ) {
-        let ((val, first), second) = match (targets.all_targets(), targets.all_values()) {
-            (&[first, otherwise], &[val]) => ((val, first), otherwise),
-            (&[first, second, otherwise], &[val, _]) if bbs[otherwise].is_empty_unreachable() => {
-                ((val, first), second)
-            }
-            _ => unreachable!(),
-        };
-
-        // We already checked that first and second are different blocks,
-        // and bb_idx has a different terminator from both of them.
-        let first = &bbs[first];
-        let second = &bbs[second];
-        for (f, s) in iter::zip(&first.statements, &second.statements) {
-            match (&f.kind, &s.kind) {
-                (f_s, s_s) if f_s == s_s => {
-                    patch.add_statement(parent_end, f.kind.clone());
+            // If two statements are const bool assignments to the same place, we can optimize.
+            (
+                StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
+                StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
+            ) if lhs_f == lhs_s
+                && f_c.const_.ty().is_bool()
+                && s_c.const_.ty().is_bool()
+                && let Some(first_bool) = f_c.const_.try_eval_bool(tcx, typing_env)
+                && let Some(second_bool) = s_c.const_.try_eval_bool(tcx, typing_env) =>
+            {
+                if first_bool == second_bool {
+                    // Same value in both blocks. Use statement as is.
+                    new_stmts.push(f.kind.clone());
+                } else {
+                    // Different value between blocks. Make value conditional on switch
+                    // condition.
+                    let size = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap().size;
+                    let const_cmp = Operand::const_from_scalar(
+                        tcx,
+                        discr_ty,
+                        rustc_const_eval::interpret::Scalar::from_uint(first_case_val, size),
+                        rustc_span::DUMMY_SP,
+                    );
+                    let op = if first_bool { BinOp::Eq } else { BinOp::Ne };
+                    let rval = Rvalue::BinaryOp(
+                        op,
+                        Box::new((Operand::Copy(Place::from(discr_local)), const_cmp)),
+                    );
+                    new_stmts.push(StatementKind::Assign(Box::new((*lhs_f, rval))));
                 }
-
-                (
-                    StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
-                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
-                ) => {
-                    // From earlier loop we know that we are dealing with bool constants only:
-                    let f_b = f_c.const_.try_eval_bool(tcx, typing_env).unwrap();
-                    let s_b = s_c.const_.try_eval_bool(tcx, typing_env).unwrap();
-                    if f_b == s_b {
-                        // Same value in both blocks. Use statement as is.
-                        patch.add_statement(parent_end, f.kind.clone());
-                    } else {
-                        // Different value between blocks. Make value conditional on switch
-                        // condition.
-                        let size = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap().size;
-                        let const_cmp = Operand::const_from_scalar(
-                            tcx,
-                            discr_ty,
-                            rustc_const_eval::interpret::Scalar::from_uint(val, size),
-                            rustc_span::DUMMY_SP,
-                        );
-                        let op = if f_b { BinOp::Eq } else { BinOp::Ne };
-                        let rhs = Rvalue::BinaryOp(
-                            op,
-                            Box::new((Operand::Copy(Place::from(discr_local)), const_cmp)),
-                        );
-                        patch.add_assign(parent_end, *lhs, rhs);
-                    }
-                }
-
-                _ => unreachable!(),
             }
+            // Otherwise we cannot optimize. Try another block.
+            _ => return None,
         }
     }
+    Some(new_stmts)
 }
 
 /// Check if the cast constant using `IntToInt` is equal to the target constant.
@@ -296,36 +250,6 @@ fn can_cast(
     let v = size.truncate(v);
     let cast_scalar = ScalarInt::try_from_uint(v, size).unwrap();
     cast_scalar == target_scalar
-}
-
-#[derive(Default)]
-struct SimplifyToExp {
-    transform_kinds: Vec<TransformKind>,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum ExpectedTransformKind<'a, 'tcx> {
-    /// Identical statements.
-    Same(&'a StatementKind<'tcx>),
-    /// Assignment statements have the same value.
-    SameByEq { place: &'a Place<'tcx>, ty: Ty<'tcx>, scalar: ScalarInt },
-    /// Enum variant comparison type.
-    Cast { place: &'a Place<'tcx>, ty: Ty<'tcx> },
-}
-
-enum TransformKind {
-    Same,
-    Cast,
-}
-
-impl From<ExpectedTransformKind<'_, '_>> for TransformKind {
-    fn from(compare_type: ExpectedTransformKind<'_, '_>) -> Self {
-        match compare_type {
-            ExpectedTransformKind::Same(_) => TransformKind::Same,
-            ExpectedTransformKind::SameByEq { .. } => TransformKind::Same,
-            ExpectedTransformKind::Cast { .. } => TransformKind::Cast,
-        }
-    }
 }
 
 /// If we find that the value of match is the same as the assignment,
@@ -367,165 +291,117 @@ impl From<ExpectedTransformKind<'_, '_>> for TransformKind {
 ///    goto -> bb5;
 /// }
 /// ```
-impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
-    #[instrument(level = "debug", skip(self, tcx), ret)]
-    fn can_simplify(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        discr_ty: Ty<'tcx>,
-    ) -> Option<()> {
-        if targets.iter().len() < 2 || targets.iter().len() > 64 {
-            return None;
-        }
-        // We require that the possible target blocks all be distinct.
-        if !targets.is_distinct() {
-            return None;
-        }
-        if !bbs[targets.otherwise()].is_empty_unreachable() {
-            return None;
-        }
-        let mut target_iter = targets.iter();
-        let (first_case_val, first_target) = target_iter.next().unwrap();
-        let first_terminator_kind = &bbs[first_target].terminator().kind;
-        // Check that destinations are identical, and if not, then don't optimize this block
-        if !targets
-            .iter()
-            .all(|(_, other_target)| first_terminator_kind == &bbs[other_target].terminator().kind)
+fn simplify_switch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    first_case: BasicBlock,
+    targets: &SwitchTargets,
+    typing_env: ty::TypingEnv<'tcx>,
+    bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+    discr_local: Local,
+    discr_ty: Ty<'tcx>,
+) -> Option<Vec<StatementKind<'tcx>>> {
+    if targets.all_values().len() < 2 || targets.all_values().len() > 64 {
+        return None;
+    }
+    // We require that the possible target blocks all be distinct.
+    if !targets.is_distinct() {
+        return None;
+    }
+    if !bbs[targets.otherwise()].is_empty_unreachable() {
+        return None;
+    }
+    let first_bb: &BasicBlockData<'tcx> = &bbs[first_case];
+
+    let mut stmts_iter: Vec<_> =
+        targets.iter().map(|(case, bb)| (case, bbs[bb].statements.iter())).collect();
+    let mut current_line_stmts: Vec<(u128, &StatementKind<'tcx>)> =
+        stmts_iter.iter_mut().map(|(case, bb)| (*case, &bb.next().unwrap().kind)).collect();
+    let discr_layout = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap();
+    let mut new_stmts: Vec<StatementKind<'tcx>> = Vec::with_capacity(first_bb.statements.len());
+    'finish: loop {
+        let new_stmt = simplify_stmt(
+            tcx,
+            current_line_stmts.as_slice(),
+            typing_env,
+            discr_local,
+            discr_ty,
+            discr_layout,
+        )?;
+        new_stmts.push(new_stmt);
+        for (current_line_stmt, stmt_iter) in
+            iter::zip(current_line_stmts.iter_mut(), stmts_iter.iter_mut())
         {
-            return None;
-        }
-
-        let discr_layout = tcx.layout_of(typing_env.as_query_input(discr_ty)).unwrap();
-        let first_stmts = &bbs[first_target].statements;
-        let (second_case_val, second_target) = target_iter.next().unwrap();
-        let second_stmts = &bbs[second_target].statements;
-        if first_stmts.len() != second_stmts.len() {
-            return None;
-        }
-
-        // We first compare the two branches, and then the other branches need to fulfill the same
-        // conditions.
-        let mut expected_transform_kinds = Vec::new();
-        for (f, s) in iter::zip(first_stmts, second_stmts) {
-            let compare_type = match (&f.kind, &s.kind) {
-                // If two statements are exactly the same, we can optimize.
-                (f_s, s_s) if f_s == s_s => ExpectedTransformKind::Same(f_s),
-
-                // If two statements are assignments with the match values to the same place, we
-                // can optimize.
-                (
-                    StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
-                    StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                ) if lhs_f == lhs_s
-                    && f_c.const_.ty() == s_c.const_.ty()
-                    && f_c.const_.ty().is_integral() =>
-                {
-                    match (
-                        f_c.const_.try_eval_scalar_int(tcx, typing_env),
-                        s_c.const_.try_eval_scalar_int(tcx, typing_env),
-                    ) {
-                        (Some(f), Some(s)) if f == s => ExpectedTransformKind::SameByEq {
-                            place: lhs_f,
-                            ty: f_c.const_.ty(),
-                            scalar: f,
-                        },
-                        // Enum variants can also be simplified to an assignment statement,
-                        // if we can use `IntToInt` cast to get an equal value.
-                        (Some(f), Some(s))
-                            if (can_cast(
-                                tcx,
-                                first_case_val,
-                                discr_layout,
-                                f_c.const_.ty(),
-                                f,
-                            ) && can_cast(
-                                tcx,
-                                second_case_val,
-                                discr_layout,
-                                f_c.const_.ty(),
-                                s,
-                            )) =>
-                        {
-                            ExpectedTransformKind::Cast { place: lhs_f, ty: f_c.const_.ty() }
-                        }
-                        _ => {
-                            return None;
-                        }
-                    }
-                }
-
-                // Otherwise we cannot optimize. Try another block.
-                _ => return None,
+            let Some(stmt) = stmt_iter.1.next() else {
+                break 'finish;
             };
-            expected_transform_kinds.push(compare_type);
-        }
-
-        // All remaining BBs need to fulfill the same pattern as the two BBs from the previous step.
-        for (other_val, other_target) in target_iter {
-            let other_stmts = &bbs[other_target].statements;
-            if expected_transform_kinds.len() != other_stmts.len() {
-                return None;
-            }
-            for (f, s) in iter::zip(&expected_transform_kinds, other_stmts) {
-                match (*f, &s.kind) {
-                    (ExpectedTransformKind::Same(f_s), s_s) if f_s == s_s => {}
-                    (
-                        ExpectedTransformKind::SameByEq { place: lhs_f, ty: f_ty, scalar },
-                        StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                    ) if lhs_f == lhs_s
-                        && s_c.const_.ty() == f_ty
-                        && s_c.const_.try_eval_scalar_int(tcx, typing_env) == Some(scalar) => {}
-                    (
-                        ExpectedTransformKind::Cast { place: lhs_f, ty: f_ty },
-                        StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
-                    ) if let Some(f) = s_c.const_.try_eval_scalar_int(tcx, typing_env)
-                        && lhs_f == lhs_s
-                        && s_c.const_.ty() == f_ty
-                        && can_cast(tcx, other_val, discr_layout, f_ty, f) => {}
-                    _ => return None,
-                }
-            }
-        }
-        self.transform_kinds = expected_transform_kinds.into_iter().map(|c| c.into()).collect();
-        Some(())
-    }
-
-    fn new_stmts(
-        &self,
-        _tcx: TyCtxt<'tcx>,
-        targets: &SwitchTargets,
-        _typing_env: ty::TypingEnv<'tcx>,
-        patch: &mut MirPatch<'tcx>,
-        parent_end: Location,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        discr_local: Local,
-        discr_ty: Ty<'tcx>,
-    ) {
-        let (_, first) = targets.iter().next().unwrap();
-        let first = &bbs[first];
-
-        for (t, s) in iter::zip(&self.transform_kinds, &first.statements) {
-            match (t, &s.kind) {
-                (TransformKind::Same, _) => {
-                    patch.add_statement(parent_end, s.kind.clone());
-                }
-                (
-                    TransformKind::Cast,
-                    StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
-                ) => {
-                    let operand = Operand::Copy(Place::from(discr_local));
-                    let r_val = if f_c.const_.ty() == discr_ty {
-                        Rvalue::Use(operand)
-                    } else {
-                        Rvalue::Cast(CastKind::IntToInt, operand, f_c.const_.ty())
-                    };
-                    patch.add_assign(parent_end, *lhs, r_val);
-                }
-                _ => unreachable!(),
-            }
+            current_line_stmt.1 = &stmt.kind;
         }
     }
+    Some(new_stmts)
+}
+
+fn simplify_stmt<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    stmts: &[(u128, &StatementKind<'tcx>)],
+    typing_env: ty::TypingEnv<'tcx>,
+    discr_local: Local,
+    discr_ty: Ty<'tcx>,
+    discr_layout: TyAndLayout<'_>,
+) -> Option<StatementKind<'tcx>> {
+    let (first_case, first_stmt) = stmts[0];
+    // If all statements are exactly the same, we can optimize.
+    if stmts.into_iter().skip(1).all(|&(_, stmt)| first_stmt == stmt) {
+        return Some(first_stmt.clone());
+    }
+    if let StatementKind::Assign(box (first_lhs, Rvalue::Use(Operand::Constant(box first_const)))) =
+        first_stmt
+        && first_const.ty().is_integral()
+        && let Some(first_scalar_int) = first_const.const_.try_eval_scalar_int(tcx, typing_env)
+    {
+        if stmts.into_iter().skip(1).all(|&(_, stmt)| {
+            let StatementKind::Assign(box (
+                other_lhs,
+                Rvalue::Use(Operand::Constant(box other_const)),
+            )) = stmt
+            else {
+                return false;
+            };
+            first_lhs == other_lhs
+                && first_const.ty() == other_const.ty()
+                && other_const.const_.try_eval_scalar_int(tcx, typing_env) == Some(first_scalar_int)
+        }) {
+            return Some(first_stmt.clone());
+        }
+
+        // Enum variants can also be simplified to an assignment statement,
+        // if we can use `IntToInt` cast to get an equal value.
+        if can_cast(tcx, first_case, discr_layout, first_const.ty(), first_scalar_int) {
+            if stmts.into_iter().skip(1).all(|&(other_case, stmt)| {
+                let StatementKind::Assign(box (
+                    other_lhs,
+                    Rvalue::Use(Operand::Constant(box other_const)),
+                )) = stmt
+                else {
+                    return false;
+                };
+                let Some(other_scalar_int) =
+                    other_const.const_.try_eval_scalar_int(tcx, typing_env)
+                else {
+                    return false;
+                };
+                first_lhs == other_lhs
+                    && first_const.ty() == other_const.ty()
+                    && can_cast(tcx, other_case, discr_layout, other_const.ty(), other_scalar_int)
+            }) {
+                let operand = Operand::Copy(Place::from(discr_local));
+                let rval = if first_const.ty() == discr_ty {
+                    Rvalue::Use(operand)
+                } else {
+                    Rvalue::Cast(CastKind::IntToInt, operand, first_const.ty())
+                };
+                return Some(StatementKind::Assign(Box::new((*first_lhs, rval))));
+            }
+        }
+    }
+    None
 }
