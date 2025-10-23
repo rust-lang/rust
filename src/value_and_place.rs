@@ -342,6 +342,14 @@ impl<'tcx> CValue<'tcx> {
         assert_eq!(self.layout().backend_repr, layout.backend_repr);
         CValue(self.0, layout)
     }
+
+    pub(crate) fn cast_pat_ty_to_base(self, layout: TyAndLayout<'tcx>) -> Self {
+        let ty::Pat(base, _) = *self.layout().ty.kind() else {
+            panic!("not a pattern type: {:#?}", self.layout())
+        };
+        assert_eq!(layout.ty, base);
+        CValue(self.0, layout)
+    }
 }
 
 /// A place where you can write a value to or read a value from
