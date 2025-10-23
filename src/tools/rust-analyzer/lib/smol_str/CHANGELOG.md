@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.3.4 - 2025-10-23
+
+- Added `rust-version` field to `Cargo.toml`
+
 ## 0.3.3 - 2025-10-23
 
 - Optimise `StrExt::to_ascii_lowercase_smolstr`, `StrExt::to_ascii_uppercase_smolstr`
