@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
 
                 // if the inner_ty is an ADT, make sure that it can be structurally pinned
-                // (i.e., it is `#[pin_project]`).
+                // (i.e., it is `#[pin_v2]`).
                 if let Some(adt) = inner_ty.ty_adt_def()
                     && !adt.is_pin_project()
                     && !adt.is_pin()

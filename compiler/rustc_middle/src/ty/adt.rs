@@ -288,7 +288,7 @@ impl AdtDefData {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
-        if find_attr!(tcx.get_all_attrs(did), AttributeKind::PinProject(..)) {
+        if find_attr!(tcx.get_all_attrs(did), AttributeKind::PinV2(..)) {
             debug!("found pin-project type {:?}", did);
             flags |= AdtFlags::IS_PIN_PROJECT;
         }
@@ -445,7 +445,7 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_PIN)
     }
 
-    /// Returns `true` is this is `#[pin_project]` for the purposes
+    /// Returns `true` is this is `#[pin_v2]` for the purposes
     /// of structural pinning.
     #[inline]
     pub fn is_pin_project(self) -> bool {

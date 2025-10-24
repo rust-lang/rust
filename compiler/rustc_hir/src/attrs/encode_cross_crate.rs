@@ -77,7 +77,7 @@ impl AttributeKind {
             PassByValue(..) => Yes,
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
-            PinProject(..) => Yes,
+            PinV2(..) => Yes,
             Pointee(..) => No,
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
