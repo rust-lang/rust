@@ -203,11 +203,6 @@ pub trait Emitter {
         true
     }
 
-    /// Checks if we can use colors in the current output stream.
-    fn supports_color(&self) -> bool {
-        false
-    }
-
     fn source_map(&self) -> Option<&SourceMap>;
 
     fn translator(&self) -> &Translator;

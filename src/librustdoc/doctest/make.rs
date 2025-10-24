@@ -2,19 +2,18 @@
 //! runnable, e.g. by adding a `main` function if it doesn't already exist.
 
 use std::fmt::{self, Write as _};
-use std::io;
 use std::sync::Arc;
 
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::emitter::get_stderr_color_choice;
-use rustc_errors::{AutoStream, ColorChoice, ColorConfig, DiagCtxtHandle};
+use rustc_errors::emitter::SilentEmitter;
+use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, FileName, Span, kw};
 use tracing::debug;
@@ -455,43 +454,33 @@ fn parse_source(
     parent_dcx: Option<DiagCtxtHandle<'_>>,
     span: Span,
 ) -> Result<ParseSourceInfo, ()> {
-    use rustc_errors::DiagCtxt;
-    use rustc_errors::emitter::HumanEmitter;
-    use rustc_span::source_map::FilePathMapping;
-
     let mut info =
         ParseSourceInfo { already_has_extern_crate: crate_name.is_none(), ..Default::default() };
 
     let wrapped_source = format!("{DOCTEST_CODE_WRAPPER}{source}\n}}");
 
-    let filename = FileName::anon_source_code(&wrapped_source);
-
-    let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let translator = rustc_driver::default_translator();
-    let supports_color = match get_stderr_color_choice(ColorConfig::Auto, &std::io::stderr()) {
-        ColorChoice::Auto => unreachable!(),
-        ColorChoice::AlwaysAnsi | ColorChoice::Always => true,
-        ColorChoice::Never => false,
-    };
-    info.supports_color = supports_color;
-    // Any errors in parsing should also appear when the doctest is compiled for real, so just
-    // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
+    // Any parse errors should also appear when the doctest is compiled for real,
+    // so just suppress them here.
+    let emitter = SilentEmitter { translator: rustc_driver::default_translator() };
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-    let psess = ParseSess::with_dcx(dcx, sm);
+    let psess = ParseSess::with_dcx(dcx, Arc::new(SourceMap::new(FilePathMapping::empty())));
 
     // Don't strip any tokens; it wouldn't matter anyway because the source is wrapped in a function.
-    let mut parser =
-        match new_parser_from_source_str(&psess, filename, wrapped_source, StripTokens::Nothing) {
-            Ok(p) => p,
-            Err(errs) => {
-                errs.into_iter().for_each(|err| err.cancel());
-                reset_error_count(&psess);
-                return Err(());
-            }
-        };
+    let mut parser = match new_parser_from_source_str(
+        &psess,
+        FileName::anon_source_code(&wrapped_source),
+        wrapped_source,
+        StripTokens::Nothing,
+    ) {
+        Ok(p) => p,
+        Err(errs) => {
+            errs.into_iter().for_each(|err| err.cancel());
+            reset_error_count(&psess);
+            return Err(());
+        }
+    };
 
     fn push_to_s(s: &mut String, source: &str, span: rustc_span::Span, prev_span_hi: &mut usize) {
         let extra_len = DOCTEST_CODE_WRAPPER.len();
@@ -544,7 +533,12 @@ fn parse_source(
     let result = match parsed {
         Ok(Some(ref item))
             if let ast::ItemKind::Fn(ref fn_item) = item.kind
-                && let Some(ref body) = fn_item.body =>
+                && let Some(ref body) = fn_item.body
+                // The parser might've recovered from some syntax errors and thus returned `Ok(_)`.
+                // However, since we've suppressed diagnostic emission above, we must ensure that
+                // we mark the doctest as syntactically invalid. Otherwise, we can end up generating
+                // a runnable doctest that's free of any errors even though the source was malformed.
+                && psess.dcx().has_errors().is_none() =>
         {
             for attr in &item.attrs {
                 if attr.style == AttrStyle::Outer || attr.has_any_name(not_crate_attrs) {
@@ -600,14 +594,9 @@ fn parse_source(
                             }
                         }
                     }
-                    StmtKind::Expr(ref expr) => {
-                        if matches!(expr.kind, ast::ExprKind::Err(_)) {
-                            reset_error_count(&psess);
-                            return Err(());
-                        }
-                        has_non_items = true;
+                    StmtKind::Let(_) | StmtKind::Expr(_) | StmtKind::Semi(_) | StmtKind::Empty => {
+                        has_non_items = true
                     }
-                    StmtKind::Let(_) | StmtKind::Semi(_) | StmtKind::Empty => has_non_items = true,
                 }
 
                 // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to

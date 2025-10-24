@@ -241,7 +241,7 @@ pub(crate) enum AttributeOrder {
     ///
     /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
     /// further above the lowest one:
-    /// ```
+    /// ```ignore (illustrative)
     /// #[stable(since="1.0")] //~ WARNING duplicated attribute
     /// #[stable(since="2.0")]
     /// ```
@@ -252,7 +252,7 @@ pub(crate) enum AttributeOrder {
     ///
     /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
     /// below the highest one:
-    /// ```
+    /// ```ignore (illustrative)
     /// #[path="foo.rs"]
     /// #[path="bar.rs"] //~ WARNING duplicated attribute
     /// ```

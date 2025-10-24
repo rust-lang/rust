@@ -13,7 +13,15 @@ LL |     let x = 234 // no semicolon here! oh no!
 LL | }
    | - unexpected token
 
-error: aborting due to 1 previous error
+warning: unused variable: `x`
+  --> $DIR/doctest-output-include-fail.md:5:9
+   |
+LL |     let x = 234 // no semicolon here! oh no!
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
 
 Couldn't compile the test.
 
@@ -22,4 +30,3 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
-all doctests ran in $TIME; merged doctests compilation took $TIME

@@ -112,10 +112,6 @@ impl Emitter for AnnotateSnippetEmitter {
     fn translator(&self) -> &Translator {
         &self.translator
     }
-
-    fn supports_color(&self) -> bool {
-        false
-    }
 }
 
 fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'static> {
