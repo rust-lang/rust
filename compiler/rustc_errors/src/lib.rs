@@ -303,20 +303,53 @@ impl TrimmedSubstitutionPart {
 /// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
 /// of the suffix.
 fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
-    let common_prefix = original
-        .chars()
-        .zip(suggestion.chars())
-        .take_while(|(c1, c2)| c1 == c2)
-        .map(|(c, _)| c.len_utf8())
-        .sum();
-    let original = &original[common_prefix..];
-    let suggestion = &suggestion[common_prefix..];
-    if suggestion.ends_with(original) {
-        let common_suffix = original.len();
-        Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
-    } else {
-        None
+    // When the original string appears multiple times in the suggestion (e.g., "sync" in "std::sync"),
+    // the previous algorithm would incorrectly split it. We need to find the split that results in
+    // the shortest insertion, which is the most useful for diagnostics.
+
+    let mut best: Option<(usize, &'a str, usize)> = None;
+    let mut min_insertion_len = usize::MAX;
+
+    // Try all possible prefix lengths
+    let mut prefix_len = 0;
+    for prefix_chars in 0..=original.chars().count() {
+        if prefix_chars > 0 {
+            prefix_len += original.chars().nth(prefix_chars - 1).unwrap().len_utf8();
+        }
+
+        // Check if this prefix matches in the suggestion
+        if !suggestion.is_char_boundary(prefix_len)
+            || !suggestion[..prefix_len].ends_with(&original[..prefix_len])
+        {
+            continue;
+        }
+
+        let original_suffix = &original[prefix_len..];
+        let suggestion_after_prefix = &suggestion[prefix_len..];
+
+        // Check if the remaining original appears as a suffix in the remaining suggestion
+        if !suggestion_after_prefix.ends_with(original_suffix) {
+            continue;
+        }
+
+        // This is a valid split - calculate the insertion length
+        let suffix_len = original_suffix.len();
+        let insertion_len = suggestion_after_prefix.len() - suffix_len;
+
+        // Keep track of the split with the smallest insertion
+        // If there's a tie, prefer the one with a longer suffix (more context)
+        let is_better = insertion_len < min_insertion_len
+            || (insertion_len == min_insertion_len
+                && best.map_or(true, |(_, _, old_suffix)| suffix_len > old_suffix));
+
+        if is_better {
+            min_insertion_len = insertion_len;
+            let insertion = &suggestion_after_prefix[..insertion_len];
+            best = Some((prefix_len, insertion, suffix_len));
+        }
     }
+
+    best
 }
 
 impl CodeSuggestion {
