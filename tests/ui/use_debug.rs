@@ -29,3 +29,22 @@ fn main() {
 
     vec![1, 2];
 }
+
+// don't get confused by nested impls
+fn issue15942() {
+    struct Bar;
+    impl Debug for Bar {
+        fn fmt(&self, f: &mut Formatter) -> Result {
+            struct Baz;
+            impl Debug for Baz {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    // ok, we can use `Debug` formatting in `Debug` implementations
+                    write!(f, "{:?}", 42.718)
+                }
+            }
+
+            // ok, we can use `Debug` formatting in `Debug` implementations
+            write!(f, "{:?}", 42.718)
+        }
+    }
+}
