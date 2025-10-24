@@ -7,8 +7,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AttrDefId, BlockId, CallableDefId, EnumVariantId, ItemContainerId, StructId, UnionId,
-    VariantId,
+    AdtId, AttrDefId, BlockId, CallableDefId, DefWithBodyId, EnumVariantId, ItemContainerId,
+    StructId, UnionId, VariantId,
     lang_item::LangItem,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
@@ -29,7 +29,7 @@ use rustc_type_ir::{
 
 use crate::{
     FnAbi,
-    db::{HirDatabase, InternedCoroutine},
+    db::{HirDatabase, InternedCoroutine, InternedCoroutineId},
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
@@ -96,7 +96,7 @@ macro_rules! _interned_vec_nolifetime_salsa {
         }
     };
     ($name:ident, $ty:ty, nofold) => {
-        #[salsa::interned(constructor = new_, debug)]
+        #[salsa::interned(constructor = new_)]
         pub struct $name {
             #[returns(ref)]
             inner_: smallvec::SmallVec<[$ty; 2]>,
@@ -116,6 +116,12 @@ macro_rules! _interned_vec_nolifetime_salsa {
                     let inner = self.inner_(db);
                     unsafe { std::mem::transmute(inner) }
                 })
+            }
+        }
+
+        impl<'db> std::fmt::Debug for $name<'db> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.as_slice().fmt(fmt)
             }
         }
 
@@ -1866,9 +1872,42 @@ impl<'db> Interner for DbInterner<'db> {
         Binder::bind_with_vars(inner, bound_vars)
     }
 
-    fn opaque_types_defined_by(self, _defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
-        // FIXME(next-solver)
-        SolverDefIds::new_from_iter(self, [])
+    fn opaque_types_defined_by(self, def_id: Self::LocalDefId) -> Self::LocalDefIds {
+        let Ok(def_id) = DefWithBodyId::try_from(def_id) else {
+            return SolverDefIds::default();
+        };
+        let mut result = Vec::new();
+        crate::opaques::opaque_types_defined_by(self.db, def_id, &mut result);
+        SolverDefIds::new_from_iter(self, result)
+    }
+
+    fn opaque_types_and_coroutines_defined_by(self, def_id: Self::LocalDefId) -> Self::LocalDefIds {
+        let Ok(def_id) = DefWithBodyId::try_from(def_id) else {
+            return SolverDefIds::default();
+        };
+        let mut result = Vec::new();
+
+        crate::opaques::opaque_types_defined_by(self.db, def_id, &mut result);
+
+        // Collect coroutines.
+        let body = self.db.body(def_id);
+        body.exprs().for_each(|(expr_id, expr)| {
+            if matches!(
+                expr,
+                hir_def::hir::Expr::Async { .. }
+                    | hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::Async
+                            | hir_def::hir::ClosureKind::Coroutine(_),
+                        ..
+                    }
+            ) {
+                let coroutine =
+                    InternedCoroutineId::new(self.db, InternedCoroutine(def_id, expr_id));
+                result.push(coroutine.into());
+            }
+        });
+
+        SolverDefIds::new_from_iter(self, result)
     }
 
     fn alias_has_const_conditions(self, _def_id: Self::DefId) -> bool {
@@ -1913,12 +1952,10 @@ impl<'db> Interner for DbInterner<'db> {
                 let impl_trait_id = self.db().lookup_intern_impl_trait_id(opaque);
                 match impl_trait_id {
                     crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let infer = self.db().infer(func.into());
-                        EarlyBinder::bind(infer.type_of_rpit[idx])
+                        crate::opaques::rpit_hidden_types(self.db, func)[idx]
                     }
-                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
-                        // FIXME(next-solver)
-                        EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed))
+                    crate::ImplTraitId::TypeAliasImplTrait(type_alias, idx) => {
+                        crate::opaques::tait_hidden_types(self.db, type_alias)[idx]
                     }
                 }
             }
@@ -1967,13 +2004,6 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn next_trait_solver_globally(self) -> bool {
         true
-    }
-
-    fn opaque_types_and_coroutines_defined_by(
-        self,
-        _defining_anchor: Self::LocalDefId,
-    ) -> Self::LocalDefIds {
-        Default::default()
     }
 
     type Probe = rustc_type_ir::solve::inspect::Probe<DbInterner<'db>>;

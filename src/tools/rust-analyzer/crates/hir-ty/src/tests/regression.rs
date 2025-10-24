@@ -725,7 +725,7 @@ fn issue_4885() {
             138..146 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
             142..145 'key': &'? K
             162..165 'key': &'? K
-            224..227 '{ }': ()
+            224..227 '{ }': impl Future<Output = <K as Foo<R>>::Bar>
         "#]],
     );
 }
