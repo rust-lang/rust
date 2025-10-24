@@ -19,7 +19,8 @@ use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{
-    HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
+    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
+    RegionInferReason,
 };
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
@@ -189,19 +190,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             PredicateFilter::All,
             OverlappingAsssocItemConstraints::Allowed,
         );
-        icx.lowerer().add_sizedness_bounds(
+        icx.lowerer().add_implicit_sizedness_bounds(
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
-            None,
-            Some(def_id),
+            ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
-        icx.lowerer().add_default_super_traits(
-            def_id,
+        icx.lowerer().add_default_traits(
             &mut bounds,
+            tcx.types.self_param,
             self_bounds,
-            hir_generics,
+            ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
         predicates.extend(bounds);
@@ -229,19 +229,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_sizedness_bounds(
+                icx.lowerer().add_implicit_sizedness_bounds(
                     &mut bounds,
                     param_ty,
                     &[],
-                    Some((param.def_id, hir_generics.predicates)),
-                    None,
+                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
                     &[],
-                    Some((param.def_id, hir_generics.predicates)),
+                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
                 );
                 trace!(?bounds);
@@ -676,11 +675,18 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_default_super_traits(
-                trait_def_id,
+            icx.lowerer().add_implicit_sizedness_bounds(
                 &mut bounds,
+                self_param_ty,
                 superbounds,
-                generics,
+                ImpliedBoundsContext::TraitDef(trait_def_id),
+                item.span,
+            );
+            icx.lowerer().add_default_traits(
+                &mut bounds,
+                self_param_ty,
+                superbounds,
+                ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
         }
