@@ -90,7 +90,7 @@ impl<'db> TypeVisitor<DbInterner<'db>> for UninhabitedFrom<'_, 'db> {
             TyKind::Tuple(..) => ty.super_visit_with(self),
             TyKind::Array(item_ty, len) => match try_const_usize(self.infcx.interner.db, len) {
                 Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
-                Some(1..) => item_ty.super_visit_with(self),
+                Some(1..) => item_ty.visit_with(self),
             },
             _ => CONTINUE_OPAQUELY_INHABITED,
         };
