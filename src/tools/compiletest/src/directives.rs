@@ -1,8 +1,10 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::{env, fs};
 
 use camino::{Utf8Path, Utf8PathBuf};
+use regex::Regex;
 use semver::Version;
 use tracing::*;
 
@@ -46,6 +48,7 @@ impl DirectivesCache {
 #[derive(Default)]
 pub(crate) struct EarlyProps {
     pub(crate) revisions: Vec<String>,
+    pub(crate) unused_revision_names: Vec<String>,
 }
 
 impl EarlyProps {
@@ -64,6 +67,7 @@ impl EarlyProps {
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
                 config.parse_and_update_revisions(ln, &mut props.revisions);
+                config.parse_and_update_unused_revisions(ln, &mut props.unused_revision_names);
             },
         );
 
@@ -73,6 +77,75 @@ impl EarlyProps {
         }
 
         props
+    }
+
+    pub fn check_unknown_revisions(
+        &self,
+        file_directives: &FileDirectives<'_>,
+        contents: &str,
+        path: &Utf8Path,
+    ) {
+        // If a wildcard appears in `unused-revision-names`, skip all revision name
+        // checking for this file.
+        if self.unused_revision_names.contains(&"*".to_string()) {
+            return;
+        }
+
+        let mut poisoned = false;
+
+        // Fail if any revision names appear in both places, since that's probably a mistake.
+        for rev in &self.revisions {
+            if self.unused_revision_names.contains(&rev) {
+                eprintln!(
+                    "revision name [{rev}] appears in both `revisions` and `unused-revision-names` in {path}"
+                );
+                poisoned = true;
+            }
+        }
+
+        // Maps each mentioned revision to the first line it was mentioned on.
+        let mut mentioned_revisions = HashMap::<&str, usize>::new();
+        let mut add_mentioned_revision = |line_number: usize, revision| {
+            let first_line = mentioned_revisions.entry(revision).or_insert(line_number);
+            *first_line = (*first_line).min(line_number);
+        };
+
+        // Scan all `//@` headers to find mentioned revisions.
+        for ln in &file_directives.lines {
+            if let Some(rev) = ln.revision {
+                add_mentioned_revision(ln.line_number, rev);
+            }
+        }
+
+        // Scan all `//[rev]~` error annotations to find mentioned revisions.
+        for_each_error_annotation_revision(
+            contents,
+            &mut |ErrorAnnRev { line_number, revision }| {
+                add_mentioned_revision(line_number, revision);
+            },
+        );
+
+        // Compute the set of revisions that were mentioned but not declared,
+        // sorted by the first line number they appear on.
+        let mut bad_revisions = mentioned_revisions
+            .into_iter()
+            .filter(|(rev, _)| {
+                !self.revisions.iter().any(|r| r == rev)
+                    && !self.unused_revision_names.iter().any(|r| r == rev)
+            })
+            .map(|(rev, line_number)| (line_number, rev))
+            .collect::<Vec<_>>();
+        bad_revisions.sort();
+
+        for (line_number, rev) in bad_revisions {
+            eprintln!("unknown revision [{rev}] at {path}:{line_number}");
+            poisoned = true;
+        }
+
+        if poisoned {
+            eprintln!("errors encountered during revision checking: {}", path);
+            panic!("errors encountered during revision checking");
+        }
     }
 }
 
@@ -775,6 +848,31 @@ impl TestProps {
     }
 }
 
+struct ErrorAnnRev<'a> {
+    line_number: usize,
+    revision: &'a str,
+}
+
+fn for_each_error_annotation_revision<'a>(
+    contents: &'a str,
+    callback: &mut dyn FnMut(ErrorAnnRev<'a>),
+) {
+    let error_regex = {
+        // Simplified from the regex used by `parse_expected` in `src/tools/compiletest/src/errors.rs`,
+        // because we only care about extracting revision names.
+        static RE: OnceLock<Regex> = OnceLock::new();
+        RE.get_or_init(|| Regex::new(r"//\[(?<revs>[^]]*)\]~").unwrap())
+    };
+
+    for (line_number, line) in (1..).zip(contents.lines()) {
+        let Some(captures) = error_regex.captures(line) else { continue };
+
+        for revision in captures.name("revs").unwrap().as_str().split(',') {
+            callback(ErrorAnnRev { line_number, revision });
+        }
+    }
+}
+
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
     trailing_directive: Option<&'ln str>,
@@ -912,6 +1010,25 @@ impl Config {
                         prefix: `{revision}` in line `{}`: {}",
                         raw, testfile
                     );
+                }
+
+                existing.push(revision.to_string());
+            }
+        }
+    }
+
+    fn parse_and_update_unused_revisions(
+        &self,
+        line: &DirectiveLine<'_>,
+        existing: &mut Vec<String>,
+    ) {
+        if let Some(raw) = self.parse_name_value_directive(line, "unused-revision-names") {
+            let &DirectiveLine { file_path: testfile, .. } = line;
+            let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
+
+            for revision in raw.split_whitespace() {
+                if !duplicates.insert(revision.to_string()) {
+                    panic!("duplicate revision: `{}` in line `{}`: {}", revision, raw, testfile);
                 }
 
                 existing.push(revision.to_string());

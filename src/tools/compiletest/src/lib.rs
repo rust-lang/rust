@@ -868,6 +868,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
     let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
 
+    early_props.check_unknown_revisions(&file_directives, &file_contents, &test_path);
+
     // Normally we create one structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that
     //   the test can still run.

@@ -111,7 +111,7 @@ fn main() {
         check!(rustdoc_templates, &librustdoc_path);
         check!(rustdoc_json, &src_path, &ci_info);
         check!(known_bug, &crashes_path);
-        check!(unknown_revision, &tests_path);
+        // check!(unknown_revision, &tests_path); // migrated to compiletest
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], &ci_info);
