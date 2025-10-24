@@ -5,7 +5,8 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::{bug, span_bug};
+use rustc_hir::def_id::DefId;
+use rustc_middle::{bug, span_bug, ty};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -465,13 +466,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Ok((binding, flags))
                         if sub_namespace_match(binding.macro_kinds(), macro_kind) =>
                     {
+                        if !matches!(scope, Scope::MacroUsePrelude) {
+                            let adjusted_module = if let Scope::Module(module, _) = scope
+                                && !matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..))
+                            {
+                                module
+                            } else {
+                                parent_scope.module
+                            };
+                            if !this.is_accessible_from(binding.vis, adjusted_module) {
+                                this.dcx()
+                                    .struct_span_err(binding.span, "binding")
+                                    .with_span_label(adjusted_module.span, "module")
+                                    .emit();
+                            }
+                        }
+
                         // Below we report various ambiguity errors.
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
-                            return ControlFlow::Break(Ok(binding));
-                        }
+                        let (significant_visibility, import_vis) = match finalize {
+                            None | Some(Finalize { stage: Stage::Late, .. }) => {
+                                return ControlFlow::Break(Ok(binding));
+                            }
+                            Some(Finalize { significant_visibility, import_vis, .. }) => {
+                                (significant_visibility, import_vis)
+                            }
+                        };
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
                             // Found another solution, if the first one was "weak", report an error.
@@ -482,6 +504,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 innermost_binding,
                                 flags,
                                 innermost_flags,
+                                significant_visibility,
+                                import_vis,
                                 extern_prelude_item_binding,
                                 extern_prelude_flag_binding,
                             ) {
@@ -730,11 +754,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         innermost_binding: NameBinding<'ra>,
         flags: Flags,
         innermost_flags: Flags,
+        significant_visibility: bool,
+        import_vis: Option<ty::Visibility>,
         extern_prelude_item_binding: Option<NameBinding<'ra>>,
         extern_prelude_flag_binding: Option<NameBinding<'ra>>,
     ) -> bool {
         let (res, innermost_res) = (binding.res(), innermost_binding.res());
-        if res == innermost_res {
+
+        let vis_min = |v1: ty::Visibility<DefId>, v2: ty::Visibility<DefId>| {
+            if v1.is_at_least(v2, self.tcx) { v2 } else { v1 }
+        };
+        let bad_vis = significant_visibility
+            && vis_min(binding.vis, import_vis.unwrap().to_def_id())
+                != vis_min(innermost_binding.vis, import_vis.unwrap().to_def_id());
+
+        if res == innermost_res && !bad_vis {
             return false;
         }
 
@@ -1207,7 +1241,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && shadowing == Shadowing::Restricted
             && finalize.stage == Stage::Early
             && binding.expansion != LocalExpnId::ROOT
-            && binding.res() != shadowed_glob.res()
+            && (binding.res() != shadowed_glob.res() || finalize.significant_visibility)
         {
             self.ambiguity_errors.push(AmbiguityError {
                 kind: AmbiguityKind::GlobVsExpanded,

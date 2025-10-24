@@ -8,4 +8,4 @@ pub use same_res_ambigious_extern_macro::*;
 
 pub trait RustEmbed {}
 
-pub use RustEmbed as Embed;
+pub use self::RustEmbed as Embed;

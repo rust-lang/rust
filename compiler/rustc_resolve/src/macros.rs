@@ -868,11 +868,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for seg in &mut path {
                 seg.id = None;
             }
+
+            let finalize = Finalize::new(ast::CRATE_NODE_ID, path_span);
             match self.cm().resolve_path(
                 &path,
                 Some(ns),
                 &parent_scope,
-                Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
+                Some(Finalize { significant_visibility: false, ..finalize }),
                 None,
                 None,
             ) {
@@ -941,11 +943,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
+            let finalize = Finalize::new(ast::CRATE_NODE_ID, ident.span);
             match self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
-                Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
+                Some(Finalize { significant_visibility: false, ..finalize }),
                 true,
                 None,
                 None,
@@ -996,11 +999,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
+            let finalize = Finalize::new(ast::CRATE_NODE_ID, ident.span);
             let _ = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
-                Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
+                Some(Finalize { significant_visibility: false, ..finalize }),
                 true,
                 None,
                 None,
