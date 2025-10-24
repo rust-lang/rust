@@ -408,6 +408,12 @@ impl<Id: Into<DefId>> Visibility<Id> {
     }
 }
 
+impl<Id: Into<DefId> + Copy> Visibility<Id> {
+    pub fn min(self, vis: Visibility<Id>, tcx: TyCtxt<'_>) -> Visibility<Id> {
+        if self.is_at_least(vis, tcx) { vis } else { self }
+    }
+}
+
 impl Visibility<DefId> {
     pub fn expect_local(self) -> Visibility {
         self.map_id(|id| id.expect_local())

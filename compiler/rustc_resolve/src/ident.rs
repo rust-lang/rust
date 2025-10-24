@@ -5,6 +5,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_middle::ty::Visibility;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
@@ -465,9 +466,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
-                            return ControlFlow::Break(Ok(decl));
-                        }
+                        let import_vis = match finalize {
+                            None | Some(Finalize { stage: Stage::Late, .. }) => {
+                                return ControlFlow::Break(Ok(decl));
+                            }
+                            Some(Finalize { import_vis, .. }) => import_vis,
+                        };
 
                         if let Some(&(innermost_decl, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
@@ -479,6 +483,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 decl,
                                 scope,
                                 &innermost_results,
+                                import_vis,
                             ) {
                                 // No need to search for more potential ambiguities, one is enough.
                                 return ControlFlow::Break(Ok(innermost_decl));
@@ -756,12 +761,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
         scope: Scope<'ra>,
         innermost_results: &[(Decl<'ra>, Scope<'ra>)],
+        import_vis: Option<Visibility>,
     ) -> bool {
         let (innermost_decl, innermost_scope) = innermost_results[0];
         let (res, innermost_res) = (decl.res(), innermost_decl.res());
-        if res == innermost_res {
+        let ambig_vis = if res != innermost_res {
+            None
+        } else if let Some(import_vis) = import_vis
+            && let min =
+                (|d: Decl<'_>| d.vis().min(import_vis.to_def_id(), self.tcx).expect_local())
+            && let (min1, min2) = (min(decl), min(innermost_decl))
+            && min1 != min2
+        {
+            Some((min1, min2))
+        } else {
             return false;
-        }
+        };
 
         // FIXME: Use `scope` instead of `res` to detect built-in attrs and derive helpers,
         // it will exclude imports, make slightly more code legal, and will require lang approval.
@@ -848,10 +863,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         || (self.is_specific_builtin_macro(res, sym::core_panic)
                             && self.is_specific_builtin_macro(innermost_res, sym::std_panic)));
 
-                let warning = is_issue_147319_hack.then_some(AmbiguityWarning::PanicImport);
+                let warning = if ambig_vis.is_some() {
+                    Some(AmbiguityWarning::GlobImport)
+                } else if is_issue_147319_hack {
+                    Some(AmbiguityWarning::PanicImport)
+                } else {
+                    None
+                };
 
                 self.ambiguity_errors.push(AmbiguityError {
                     kind,
+                    ambig_vis,
                     ident: orig_ident,
                     b1: innermost_decl,
                     b2: decl,
