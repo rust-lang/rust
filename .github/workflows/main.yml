@@ -231,7 +231,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: [rustfmt, test, bench, dist]
 
     permissions:
