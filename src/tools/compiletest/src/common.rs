@@ -1075,10 +1075,31 @@ fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, Stri
     String::from_utf8(output.stdout).unwrap()
 }
 
+/// Path information for a single test file.
 #[derive(Debug, Clone)]
-pub struct TestPaths {
-    pub file: Utf8PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub relative_dir: Utf8PathBuf, // e.g., foo/bar
+pub(crate) struct TestPaths {
+    /// Full path to the test file.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/tests/ui/warnings/hello-world.rs`
+    ///
+    /// ---
+    ///
+    /// For `run-make` tests, this path is the _directory_ that contains
+    /// `rmake.rs`.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/tests/run-make/emit`
+    pub(crate) file: Utf8PathBuf,
+
+    /// Subset of the full path that excludes the suite directory and the
+    /// test filename. For tests in the root of their test suite directory,
+    /// this is blank.
+    ///
+    /// For example:
+    /// - `file`: `/home/ferris/rust/tests/ui/warnings/hello-world.rs`
+    /// - `relative_dir`: `warnings`
+    pub(crate) relative_dir: Utf8PathBuf,
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
