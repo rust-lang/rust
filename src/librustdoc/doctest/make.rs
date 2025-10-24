@@ -8,7 +8,7 @@ use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
 use rustc_errors::emitter::SilentEmitter;
-use rustc_errors::{DiagCtxt, DiagCtxtHandle};
+use rustc_errors::{Diag, DiagCtxt, DiagCtxtHandle};
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -136,16 +136,21 @@ impl<'a> BuildDocTestBuilder<'a> {
             maybe_crate_attrs,
         })) = result
         else {
-            // If the AST returned an error, we don't want this doctest to be merged with the
-            // others.
-            return DocTestBuilder::invalid(
-                Vec::new(),
-                String::new(),
-                String::new(),
-                String::new(),
-                source.to_string(),
+            // If we failed to parse the doctest, create a dummy doctest.
+            return DocTestBuilder {
+                supports_color: false,
+                has_main_fn: false,
+                global_crate_attrs: Vec::new(),
+                crate_attrs: String::new(),
+                maybe_crate_attrs: String::new(),
+                crates: String::new(),
+                everything_else: source.to_string(),
+                already_has_extern_crate: false,
                 test_id,
-            );
+                failed_to_parse: true,
+                // We certainly don't want to merge such a doctest with others.
+                can_be_merged: false,
+            };
         };
 
         debug!("crate_attrs:\n{crate_attrs}{maybe_crate_attrs}");
@@ -182,7 +187,7 @@ impl<'a> BuildDocTestBuilder<'a> {
             everything_else,
             already_has_extern_crate,
             test_id,
-            invalid_ast: false,
+            failed_to_parse: false,
             can_be_merged,
         }
     }
@@ -202,7 +207,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) crates: String,
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
-    pub(crate) invalid_ast: bool,
+    pub(crate) failed_to_parse: bool,
     pub(crate) can_be_merged: bool,
 }
 
@@ -281,29 +286,6 @@ impl std::string::ToString for DocTestWrapResult {
 }
 
 impl DocTestBuilder {
-    fn invalid(
-        global_crate_attrs: Vec<String>,
-        crate_attrs: String,
-        maybe_crate_attrs: String,
-        crates: String,
-        everything_else: String,
-        test_id: Option<String>,
-    ) -> Self {
-        Self {
-            supports_color: false,
-            has_main_fn: false,
-            global_crate_attrs,
-            crate_attrs,
-            maybe_crate_attrs,
-            crates,
-            everything_else,
-            already_has_extern_crate: false,
-            test_id,
-            invalid_ast: true,
-            can_be_merged: false,
-        }
-    }
-
     /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
     /// lines before the test code begins.
     pub(crate) fn generate_unique_doctest(
@@ -313,10 +295,10 @@ impl DocTestBuilder {
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
     ) -> (DocTestWrapResult, usize) {
-        if self.invalid_ast {
-            // If the AST failed to compile, no need to go generate a complete doctest, the error
-            // will be better this way.
-            debug!("invalid AST:\n{test_code}");
+        if self.failed_to_parse {
+            // If we failed to parse the doctest, there's no need to go generate a complete doctest,
+            // the diagnostics will be better this way.
+            debug!("failed to parse doctest:\n{test_code}");
             return (DocTestWrapResult::SyntaxError(test_code.to_string()), 0);
         }
         let mut line_offset = 0;
@@ -438,16 +420,6 @@ impl DocTestBuilder {
     }
 }
 
-fn reset_error_count(psess: &ParseSess) {
-    // Reset errors so that they won't be reported as compiler bugs when dropping the
-    // dcx. Any errors in the tests will be reported when the test file is compiled,
-    // Note that we still need to cancel the errors above otherwise `Diag` will panic on
-    // drop.
-    psess.dcx().reset_err_count();
-}
-
-const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
-
 fn parse_source(
     source: &str,
     crate_name: &Option<&str>,
@@ -457,15 +429,17 @@ fn parse_source(
     let mut info =
         ParseSourceInfo { already_has_extern_crate: crate_name.is_none(), ..Default::default() };
 
+    const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
     let wrapped_source = format!("{DOCTEST_CODE_WRAPPER}{source}\n}}");
 
     // Any parse errors should also appear when the doctest is compiled for real,
     // so just suppress them here.
     let emitter = SilentEmitter { translator: rustc_driver::default_translator() };
 
-    // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let psess = ParseSess::with_dcx(dcx, Arc::new(SourceMap::new(FilePathMapping::empty())));
+    // Reset errors at the end so that we don't panic on delayed bugs.
+    let _defer = rustc_data_structures::defer(|| psess.dcx().reset_err_count());
 
     // Don't strip any tokens; it wouldn't matter anyway because the source is wrapped in a function.
     let mut parser = match new_parser_from_source_str(
@@ -477,7 +451,6 @@ fn parse_source(
         Ok(p) => p,
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
-            reset_error_count(&psess);
             return Err(());
         }
     };
@@ -526,124 +499,120 @@ fn parse_source(
         is_extern_crate
     }
 
-    let mut prev_span_hi = 0;
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
-    let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
+    let mut prev_span_hi = 0;
 
-    let result = match parsed {
-        Ok(Some(ref item))
-            if let ast::ItemKind::Fn(ref fn_item) = item.kind
-                && let Some(ref body) = fn_item.body
-                // The parser might've recovered from some syntax errors and thus returned `Ok(_)`.
-                // However, since we've suppressed diagnostic emission above, we must ensure that
-                // we mark the doctest as syntactically invalid. Otherwise, we can end up generating
-                // a runnable doctest that's free of any errors even though the source was malformed.
-                && psess.dcx().has_errors().is_none() =>
-        {
-            for attr in &item.attrs {
-                if attr.style == AttrStyle::Outer || attr.has_any_name(not_crate_attrs) {
-                    // There is one exception to these attributes:
-                    // `#![allow(internal_features)]`. If this attribute is used, we need to
-                    // consider it only as a crate-level attribute.
-                    if attr.has_name(sym::allow)
-                        && let Some(list) = attr.meta_item_list()
-                        && list.iter().any(|sub_attr| sub_attr.has_name(sym::internal_features))
-                    {
-                        push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
-                    } else {
-                        push_to_s(
-                            &mut info.maybe_crate_attrs,
-                            source,
-                            attr.span,
-                            &mut prev_span_hi,
-                        );
-                    }
-                } else {
-                    push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
-                }
-            }
-            let mut has_non_items = false;
-            for stmt in &body.stmts {
-                let mut is_extern_crate = false;
-                match stmt.kind {
-                    StmtKind::Item(ref item) => {
-                        is_extern_crate = check_item(item, &mut info, crate_name);
-                    }
-                    // We assume that the macro calls will expand to item(s) even though they could
-                    // expand to statements and expressions.
-                    StmtKind::MacCall(ref mac_call) => {
-                        if !info.has_main_fn {
-                            // For backward compatibility, we look for the token sequence `fn main(…)`
-                            // in the macro input (!) to crudely detect main functions "masked by a
-                            // wrapper macro". For the record, this is a horrible heuristic!
-                            // See <https://github.com/rust-lang/rust/issues/56898>.
-                            let mut iter = mac_call.mac.args.tokens.iter();
-                            while let Some(token) = iter.next() {
-                                if let TokenTree::Token(token, _) = token
-                                    && let TokenKind::Ident(kw::Fn, _) = token.kind
-                                    && let Some(TokenTree::Token(ident, _)) = iter.peek()
-                                    && let TokenKind::Ident(sym::main, _) = ident.kind
-                                    && let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, _)) = {
-                                        iter.next();
-                                        iter.peek()
-                                    }
-                                {
-                                    info.has_main_fn = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    StmtKind::Let(_) | StmtKind::Expr(_) | StmtKind::Semi(_) | StmtKind::Empty => {
-                        has_non_items = true
-                    }
-                }
+    let item = parser.parse_item(rustc_parse::parser::ForceCollect::No).map_err(Diag::cancel)?;
 
-                // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
-                // tweak the span to include the attributes as well.
-                let mut span = stmt.span;
-                if let Some(attr) =
-                    stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer)
-                {
-                    span = span.with_lo(attr.span.lo());
-                }
-                if info.everything_else.is_empty()
-                    && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
-                {
-                    // To keep the doctest code "as close as possible" to the original, we insert
-                    // all the code located between this new span and the previous span which
-                    // might contain code comments and backlines.
-                    push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
-                }
-                if !is_extern_crate {
-                    push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
-                } else {
-                    push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
-                }
-            }
-            if has_non_items {
-                if info.has_main_fn
-                    && let Some(dcx) = parent_dcx
-                    && !span.is_dummy()
-                {
-                    dcx.span_warn(
-                        span,
-                        "the `main` function of this doctest won't be run as it contains \
-                         expressions at the top level, meaning that the whole doctest code will be \
-                         wrapped in a function",
-                    );
-                }
-                info.has_main_fn = false;
-            }
-            Ok(info)
-        }
-        Err(e) => {
-            e.cancel();
-            Err(())
-        }
-        _ => Err(()),
+    // The parser might've recovered from some syntax errors and thus returned `Ok(_)`.
+    // However, since we've suppressed diagnostic emission above, we must ensure that
+    // we mark the doctest as syntactically invalid. Otherwise, we can end up generating
+    // a runnable doctest that's free of any errors even though the source was malformed.
+    if psess.dcx().has_errors().is_some() {
+        return Err(());
+    }
+
+    let Some(box ast::Item {
+        attrs,
+        kind: ast::ItemKind::Fn(box ast::Fn { body: Some(body), .. }),
+        ..
+    }) = item
+    else {
+        // We know that this *has* to be a function with a body
+        // because we've wrapped the whole source in one above.
+        unreachable!()
     };
 
-    reset_error_count(&psess);
-    result
+    for attr in attrs {
+        if attr.style == AttrStyle::Outer || attr.has_any_name(not_crate_attrs) {
+            // There is one exception to these attributes:
+            // `#![allow(internal_features)]`. If this attribute is used, we need to
+            // consider it only as a crate-level attribute.
+            if attr.has_name(sym::allow)
+                && let Some(list) = attr.meta_item_list()
+                && list.iter().any(|sub_attr| sub_attr.has_name(sym::internal_features))
+            {
+                push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
+            } else {
+                push_to_s(&mut info.maybe_crate_attrs, source, attr.span, &mut prev_span_hi);
+            }
+        } else {
+            push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
+        }
+    }
+
+    let mut has_non_items = false;
+    for stmt in &body.stmts {
+        let mut is_extern_crate = false;
+        match stmt.kind {
+            StmtKind::Item(ref item) => {
+                is_extern_crate = check_item(item, &mut info, crate_name);
+            }
+            // We assume that the macro calls will expand to item(s) even though they could
+            // expand to statements and expressions.
+            StmtKind::MacCall(ref mac_call) => {
+                if !info.has_main_fn {
+                    // For backward compatibility, we look for the token sequence `fn main(…)`
+                    // in the macro input (!) to crudely detect main functions "masked by a
+                    // wrapper macro". For the record, this is a horrible heuristic!
+                    // See <https://github.com/rust-lang/rust/issues/56898>.
+                    let mut iter = mac_call.mac.args.tokens.iter();
+                    while let Some(token) = iter.next() {
+                        if let TokenTree::Token(token, _) = token
+                            && let TokenKind::Ident(kw::Fn, _) = token.kind
+                            && let Some(TokenTree::Token(ident, _)) = iter.peek()
+                            && let TokenKind::Ident(sym::main, _) = ident.kind
+                            && let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, _)) = {
+                                iter.next();
+                                iter.peek()
+                            }
+                        {
+                            info.has_main_fn = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            StmtKind::Let(_) | StmtKind::Expr(_) | StmtKind::Semi(_) | StmtKind::Empty => {
+                has_non_items = true
+            }
+        }
+
+        // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
+        // tweak the span to include the attributes as well.
+        let mut span = stmt.span;
+        if let Some(attr) = stmt.kind.attrs().iter().find(|attr| attr.style == AttrStyle::Outer) {
+            span = span.with_lo(attr.span.lo());
+        }
+        if info.everything_else.is_empty()
+            && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
+        {
+            // To keep the doctest code "as close as possible" to the original, we insert
+            // all the code located between this new span and the previous span which
+            // might contain code comments and backlines.
+            push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
+        }
+        if !is_extern_crate {
+            push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
+        } else {
+            push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
+        }
+    }
+
+    if has_non_items {
+        if info.has_main_fn
+            && let Some(dcx) = parent_dcx
+            && !span.is_dummy()
+        {
+            dcx.span_warn(
+                span,
+                "the `main` function of this doctest won't be run as it contains \
+                 expressions at the top level, meaning that the whole doctest code will be \
+                 wrapped in a function",
+            );
+        }
+        info.has_main_fn = false;
+    }
+
+    Ok(info)
 }
