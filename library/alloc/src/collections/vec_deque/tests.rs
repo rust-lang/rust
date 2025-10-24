@@ -1170,7 +1170,7 @@ fn extract_if_test() {
     let deleted = m.extract_if(.., |v| *v < 4).collect::<Vec<_>>();
 
     assert_eq!(deleted, &[1, 2, 3]);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[4, 5, 6]);
+    assert_eq!(m, &[4, 5, 6]);
 }
 
 #[test]
@@ -1179,7 +1179,7 @@ fn drain_to_empty_test() {
     let deleted = m.extract_if(.., |_| true).collect::<Vec<_>>();
 
     assert_eq!(deleted, &[1, 2, 3, 4, 5, 6]);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
+    assert_eq!(m, &[]);
 }
 
 #[test]
@@ -1196,7 +1196,7 @@ fn extract_if_empty() {
     }
 
     assert_eq!(list.len(), 0);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+    assert_eq!(list, vec![]);
 }
 
 #[test]
@@ -1219,7 +1219,7 @@ fn extract_if_zst() {
 
     assert_eq!(count, initial_len);
     assert_eq!(list.len(), 0);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+    assert_eq!(list, vec![]);
 }
 
 #[test]
@@ -1242,7 +1242,7 @@ fn extract_if_false() {
 
     assert_eq!(count, 0);
     assert_eq!(list.len(), initial_len);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(list, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 }
 
 #[test]
@@ -1266,7 +1266,7 @@ fn extract_if_true() {
 
     assert_eq!(count, initial_len);
     assert_eq!(list.len(), 0);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+    assert_eq!(list, vec![]);
 }
 
 #[test]
@@ -1285,10 +1285,7 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 14);
-        assert_eq!(
-            list.into_iter().collect::<Vec<_>>(),
-            vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
-        );
+        assert_eq!(list, vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
     }
 
     {
@@ -1303,10 +1300,7 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 13);
-        assert_eq!(
-            list.into_iter().collect::<Vec<_>>(),
-            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]
-        );
+        assert_eq!(list, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
     }
 
     {
@@ -1321,10 +1315,7 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
         assert_eq!(list.len(), 11);
-        assert_eq!(
-            list.into_iter().collect::<Vec<_>>(),
-            vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]
-        );
+        assert_eq!(list, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]);
     }
 
     {
@@ -1338,7 +1329,7 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
         assert_eq!(list.len(), 10);
-        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+        assert_eq!(list, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
 
     {
@@ -1352,7 +1343,7 @@ fn extract_if_complex() {
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
         assert_eq!(list.len(), 10);
-        assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+        assert_eq!(list, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
     }
 }
 
