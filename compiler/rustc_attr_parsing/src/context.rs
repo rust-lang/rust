@@ -47,7 +47,7 @@ use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
 use crate::attributes::non_exhaustive::NonExhaustiveParser;
 use crate::attributes::path::PathParser as PathAttributeParser;
-use crate::attributes::pin_project::PinProjectParser;
+use crate::attributes::pin_v2::PinV2Parser;
 use crate::attributes::proc_macro_attrs::{
     ProcMacroAttributeParser, ProcMacroDeriveParser, ProcMacroParser, RustcBuiltinMacroParser,
 };
@@ -234,7 +234,7 @@ attribute_parsers!(
         Single<WithoutArgs<NonExhaustiveParser>>,
         Single<WithoutArgs<ParenSugarParser>>,
         Single<WithoutArgs<PassByValueParser>>,
-        Single<WithoutArgs<PinProjectParser>>,
+        Single<WithoutArgs<PinV2Parser>>,
         Single<WithoutArgs<PointeeParser>>,
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,

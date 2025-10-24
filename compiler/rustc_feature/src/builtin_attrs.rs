@@ -893,13 +893,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, loop_match, experimental!(loop_match)
     ),
 
-    // The `#[pin_project]` attribute is part of the `pin_ergonomics` experiment
+    // The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment
     // that allows structurally pinning, tracked in:
     //
     // - https://github.com/rust-lang/rust/issues/130494
     gated!(
-        pin_project, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_project),
+        pin_v2, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
     ),
 
     // ==========================================================================

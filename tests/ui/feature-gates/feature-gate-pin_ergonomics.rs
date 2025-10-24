@@ -2,7 +2,7 @@
 
 use std::pin::Pin;
 
-#[pin_project] //~ ERROR the `#[pin_project]` attribute is an experimental feature
+#[pin_v2] //~ ERROR the `#[pin_v2]` attribute is an experimental feature
 struct Foo;
 
 impl Foo {
@@ -51,7 +51,7 @@ fn borrows() {
 mod not_compiled {
     use std::pin::Pin;
 
-    #[pin_project]
+    #[pin_v2]
     struct Foo;
 
     impl Foo {

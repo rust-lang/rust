@@ -1164,6 +1164,6 @@ pub(crate) struct ProjectOnNonPinProjectType {
     pub span: Span,
     #[note]
     pub def_span: Option<Span>,
-    #[suggestion(code = "#[pin_project]\n", applicability = "machine-applicable")]
+    #[suggestion(code = "#[pin_v2]\n", applicability = "machine-applicable")]
     pub sugg_span: Option<Span>,
 }

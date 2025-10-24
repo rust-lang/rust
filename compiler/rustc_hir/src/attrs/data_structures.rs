@@ -637,8 +637,8 @@ pub enum AttributeKind {
     /// Represents `#[pattern_complexity_limit]`
     PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
-    /// Represents `#[pin_project]`
-    PinProject(Span),
+    /// Represents `#[pin_v2]`
+    PinV2(Span),
 
     /// Represents `#[pointee]`
     Pointee(Span),

@@ -10,16 +10,16 @@
 
 use std::pin::Pin;
 
-#[cfg_attr(pin_ergonomics, pin_project)]
+#[cfg_attr(pin_ergonomics, pin_v2)]
 struct Foo<T, U> {
     x: T,
     y: U,
 }
 
-#[cfg_attr(pin_ergonomics, pin_project)]
+#[cfg_attr(pin_ergonomics, pin_v2)]
 struct Bar<T, U>(T, U);
 
-#[cfg_attr(pin_ergonomics, pin_project)]
+#[cfg_attr(pin_ergonomics, pin_v2)]
 enum Baz<T, U> {
     Foo(T, U),
     Bar { x: T, y: U },

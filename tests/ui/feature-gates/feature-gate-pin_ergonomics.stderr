@@ -148,11 +148,11 @@ LL |         let x: Pin<&_> = &pin const Foo;
    = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: the `#[pin_project]` attribute is an experimental feature
+error[E0658]: the `#[pin_v2]` attribute is an experimental feature
   --> $DIR/feature-gate-pin_ergonomics.rs:5:1
    |
-LL | #[pin_project]
-   | ^^^^^^^^^^^^^^
+LL | #[pin_v2]
+   | ^^^^^^^^^
    |
    = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
    = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable

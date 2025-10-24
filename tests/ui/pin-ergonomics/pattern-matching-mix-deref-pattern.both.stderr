@@ -1,4 +1,4 @@
-error: cannot project on type that is not `#[pin_project]`
+error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:121:9
    |
 LL |     let NonPinProject { x } = foo;
@@ -9,13 +9,13 @@ note: type defined here
    |
 LL | struct NonPinProject<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
-help: add `#[pin_project]` here
+help: add `#[pin_v2]` here
    |
-LL + #[pin_project]
+LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
 
-error: cannot project on type that is not `#[pin_project]`
+error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:125:9
    |
 LL |     let NonPinProject { x } = bar;
@@ -26,13 +26,13 @@ note: type defined here
    |
 LL | struct NonPinProject<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
-help: add `#[pin_project]` here
+help: add `#[pin_v2]` here
    |
-LL + #[pin_project]
+LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
 
-error: cannot project on type that is not `#[pin_project]`
+error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:131:9
    |
 LL |         NonPinProject { x } => {}
@@ -43,13 +43,13 @@ note: type defined here
    |
 LL | struct NonPinProject<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
-help: add `#[pin_project]` here
+help: add `#[pin_v2]` here
    |
-LL + #[pin_project]
+LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
 
-error: cannot project on type that is not `#[pin_project]`
+error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:139:9
    |
 LL |         NonPinProject { x } => {}
@@ -60,9 +60,9 @@ note: type defined here
    |
 LL | struct NonPinProject<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
-help: add `#[pin_project]` here
+help: add `#[pin_v2]` here
    |
-LL + #[pin_project]
+LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
 
