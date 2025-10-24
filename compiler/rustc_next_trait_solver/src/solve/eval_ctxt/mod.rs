@@ -275,7 +275,8 @@ where
             // as inductive even though it should not be, it may be unsound during coherence and
             // fixing it may cause inference breakage or introduce ambiguity.
             GoalSource::Misc => PathKind::Unknown,
-            GoalSource::NormalizeGoal(path_kind) => path_kind,
+            GoalSource::NormalizeGoal(path_kind)
+            | GoalSource::NestedNormalizationGoal(path_kind) => path_kind,
             GoalSource::ImplWhereBound => match self.current_goal_kind {
                 // We currently only consider a cycle coinductive if it steps
                 // into a where-clause of a coinductive trait.
@@ -679,7 +680,11 @@ where
                 ) = self.evaluate_goal_raw(source, unconstrained_goal, stalled_on)?;
                 // Add the nested goals from normalization to our own nested goals.
                 trace!(?nested_goals);
-                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
+                self.nested_goals.extend(
+                    nested_goals
+                        .into_iter()
+                        .map(|(s, g)| (GoalSource::NestedNormalizationGoal(s), g, None)),
+                );
 
                 // Finally, equate the goal's RHS with the unconstrained var.
                 //
@@ -1258,7 +1263,10 @@ where
                     (
                         Certainty::Yes,
                         NestedNormalizationGoals(
-                            goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
+                            goals
+                                .into_iter()
+                                .map(|(s, g, _)| (self.step_kind_for_source(s), g))
+                                .collect(),
                         ),
                     )
                 }
