@@ -1183,16 +1183,12 @@ impl DirBuilder {
 }
 
 pub fn readdir(p: &WCStr) -> io::Result<ReadDir> {
-    let mut p = p.to_wchars_with_null_unchecked().to_vec();
+    let p = p.to_wchars_with_null_unchecked().to_vec();
 
     // `p` already contains NUL, because before reading directory function,
     // it already passes `maybe_verbatim` that appending zero at the end, it
     // should be refactored.
-    if let Some(pos) = p.iter().position(|x| *x == 0) {
-        p.remove(pos);
-    }
-
-    let p_os_string = OsString::from_wide(&p);
+    let p_os_string = OsString::from_wide(&p[..p.len() - 1]);
     let p = Path::new(&p_os_string);
 
     // We push a `*` to the end of the path which cause the empty path to be
