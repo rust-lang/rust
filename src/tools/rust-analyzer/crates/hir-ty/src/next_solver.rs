@@ -11,7 +11,6 @@ pub mod infer;
 pub(crate) mod inspect;
 pub mod interner;
 mod ir_print;
-pub mod mapping;
 pub mod normalize;
 pub mod obligation_ctxt;
 mod opaques;

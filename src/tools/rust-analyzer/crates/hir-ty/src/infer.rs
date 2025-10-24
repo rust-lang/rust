@@ -73,7 +73,6 @@ use crate::{
         abi::Safety,
         fold::fold_tys,
         infer::traits::{Obligation, ObligationCause},
-        mapping::ChalkToNextSolver,
     },
     traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
@@ -1228,9 +1227,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     if matches!(mode, ImplTraitReplacingMode::TypeAlias) {
                         // RPITs don't have `tait_coercion_table`, so use inserted inference
                         // vars for them.
-                        if let Some(ty) =
-                            self.result.type_of_rpit.get(idx.to_nextsolver(self.interner()))
-                        {
+                        if let Some(ty) = self.result.type_of_rpit.get(idx) {
                             return *ty;
                         }
                         return ty;
@@ -1251,10 +1248,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             let Some(impl_traits) = impl_traits else {
                 return ty;
             };
-            let bounds = (*impl_traits).as_ref().map_bound(|its| {
-                its.impl_traits[idx.to_nextsolver(self.interner())].predicates.as_slice()
-            });
-            let var = match self.result.type_of_rpit.entry(idx.to_nextsolver(self.interner())) {
+            let bounds =
+                (*impl_traits).as_ref().map_bound(|its| its.impl_traits[idx].predicates.as_slice());
+            let var = match self.result.type_of_rpit.entry(idx) {
                 Entry::Occupied(entry) => return *entry.get(),
                 Entry::Vacant(entry) => *entry.insert(self.table.next_ty_var()),
             };

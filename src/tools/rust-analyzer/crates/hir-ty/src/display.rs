@@ -58,7 +58,6 @@ use crate::{
         TraitRef, Ty, TyKind, TypingMode,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
-        mapping::ChalkToNextSolver,
     },
     primitive,
     utils::{self, detect_variant_from_bytes},
@@ -1126,9 +1125,9 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             let datas = db
                                 .return_type_impl_traits(func)
                                 .expect("impl trait id without data");
-                            let data = (*datas).as_ref().map_bound(|rpit| {
-                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                            });
+                            let data = (*datas)
+                                .as_ref()
+                                .map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                             let bounds =
                                 || data.iter_instantiated_copied(f.interner, ty.args.as_slice());
                             let mut len = bounds().count();
@@ -1358,9 +1357,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data = (*datas).as_ref().map_bound(|rpit| {
-                            &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                        });
+                        let data =
+                            (*datas).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                         let bounds = data
                             .iter_instantiated_copied(interner, alias_ty.args.as_slice())
                             .collect::<Vec<_>>();
@@ -1377,9 +1375,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         let datas =
                             db.type_alias_impl_traits(alias).expect("impl trait id without data");
-                        let data = (*datas).as_ref().map_bound(|rpit| {
-                            &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                        });
+                        let data =
+                            (*datas).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                         let bounds = data
                             .iter_instantiated_copied(interner, alias_ty.args.as_slice())
                             .collect::<Vec<_>>();
