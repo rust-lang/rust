@@ -1,8 +1,8 @@
 error: invalid infostring for frontmatter
-  --> $DIR/dot-in-infostring-leading.rs:1:4
+  --> $DIR/infostring-space.rs:1:4
    |
-LL | ---.toml
-   |    ^^^^^
+LL | --- cargo clippy
+   |    ^^^^^^^^^^^^^
    |
    = note: frontmatter infostrings must be a single identifier immediately following the opening
 

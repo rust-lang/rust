@@ -1,5 +1,5 @@
 error: frontmatter close does not match the opening
-  --> $DIR/mismatch-2.rs:1:1
+  --> $DIR/fence-mismatch-2.rs:1:1
    |
 LL |   ----cargo
    |   ^---
@@ -13,7 +13,7 @@ LL | | ---cargo
    |   ...while the close has 3 dashes
 
 error: extra characters after frontmatter close are not allowed
-  --> $DIR/mismatch-2.rs:3:1
+  --> $DIR/fence-mismatch-2.rs:3:1
    |
 LL | ---cargo
    | ^^^^^^^^
