@@ -103,22 +103,19 @@ fn find_cdb(target: &str) -> Option<Utf8PathBuf> {
 }
 
 /// Returns Path to CDB
-pub(crate) fn analyze_cdb(
-    cdb: Option<String>,
-    target: &str,
-) -> (Option<Utf8PathBuf>, Option<[u16; 4]>) {
+pub(crate) fn discover_cdb(cdb: Option<String>, target: &str) -> Option<Utf8PathBuf> {
     let cdb = cdb.map(Utf8PathBuf::from).or_else(|| find_cdb(target));
+    cdb
+}
 
+pub(crate) fn query_cdb_version(cdb: &Utf8Path) -> Option<[u16; 4]> {
     let mut version = None;
-    if let Some(cdb) = cdb.as_ref() {
-        if let Ok(output) = Command::new(cdb).arg("/version").output() {
-            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                version = extract_cdb_version(&first_line);
-            }
+    if let Ok(output) = Command::new(cdb).arg("/version").output() {
+        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+            version = extract_cdb_version(&first_line);
         }
     }
-
-    (cdb, version)
+    version
 }
 
 pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
@@ -132,12 +129,11 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
     Some([major, minor, patch, build])
 }
 
-/// Returns (Path to GDB, GDB Version)
-pub(crate) fn analyze_gdb(
+pub(crate) fn discover_gdb(
     gdb: Option<String>,
     target: &str,
     android_cross_path: &Utf8Path,
-) -> (Option<String>, Option<u32>) {
+) -> Option<String> {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
     #[cfg(windows)]
@@ -159,6 +155,10 @@ pub(crate) fn analyze_gdb(
         Some(ref s) => s.to_owned(),
     };
 
+    Some(gdb)
+}
+
+pub(crate) fn query_gdb_version(gdb: &str) -> Option<u32> {
     let mut version_line = None;
     if let Ok(output) = Command::new(&gdb).arg("--version").output() {
         if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
@@ -168,10 +168,10 @@ pub(crate) fn analyze_gdb(
 
     let version = match version_line {
         Some(line) => extract_gdb_version(&line),
-        None => return (None, None),
+        None => return None,
     };
 
-    (Some(gdb), version)
+    version
 }
 
 pub(crate) fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
