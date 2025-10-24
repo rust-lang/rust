@@ -31,7 +31,7 @@ impl WCStr {
     }
 
     pub unsafe fn to_wchars_with_null_unchecked(&self) -> &[u16] {
-        unsafe { slice::from_raw_parts(self.as_ptr(), self.0.len()) }
+        unsafe { slice::from_raw_parts(self.0.as_ptr(), self.0.len()) }
     }
 
     pub fn as_ptr(&self) -> *const u16 {

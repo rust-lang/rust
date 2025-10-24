@@ -66,6 +66,7 @@ pub use imp::{
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
+    // FIXME: use with_native_path on all platforms
     #[cfg(not(windows))]
     return imp::readdir(path);
     #[cfg(windows)]
