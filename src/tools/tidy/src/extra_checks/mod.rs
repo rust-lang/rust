@@ -24,7 +24,7 @@ use std::str::FromStr;
 use std::{fmt, fs, io};
 
 use crate::CiInfo;
-use crate::diagnostics::DiagCtx;
+use crate::diagnostics::TidyCtx;
 
 mod rustdoc_js;
 
@@ -52,12 +52,11 @@ pub fn check(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    diag_ctx: DiagCtx,
+    tidy_ctx: TidyCtx,
 ) {
-    let mut check = diag_ctx.start_check("extra_checks");
+    let mut check = tidy_ctx.start_check("extra_checks");
 
     if let Err(e) = check_impl(
         root_path,
@@ -67,9 +66,9 @@ pub fn check(
         tools_path,
         npm,
         cargo,
-        bless,
         extra_checks,
         pos_args,
+        &tidy_ctx,
     ) {
         check.error(e);
     }
@@ -83,12 +82,13 @@ fn check_impl(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
+    tidy_ctx: &TidyCtx,
 ) -> Result<(), Error> {
     let show_diff =
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
+    let bless = tidy_ctx.is_bless_enabled();
 
     // Split comma-separated args up
     let mut lint_args = match extra_checks {

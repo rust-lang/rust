@@ -1563,10 +1563,6 @@ pub enum AggregateKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp<'tcx> {
-    /// Returns the size of a value of that type
-    SizeOf,
-    /// Returns the minimum alignment of a type
-    AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
     /// Returns whether we should perform some UB-checking at runtime.

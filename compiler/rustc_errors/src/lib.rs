@@ -400,17 +400,6 @@ impl CodeSuggestion {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
-                // Verify the assumption that all spans are disjoint
-                assert_eq!(
-                    substitution.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
-                    None,
-                    "all spans must be disjoint",
-                );
-
-                // Account for cases where we are suggesting the same code that's already
-                // there. This shouldn't happen often, but in some cases for multipart
-                // suggestions it's much easier to handle it here than in the origin.
-                substitution.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
                 // Find the bounding span.
                 let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
@@ -505,12 +494,16 @@ impl CodeSuggestion {
                             _ => 1,
                         })
                         .sum();
-
-                    line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
-                    });
-
+                    if !is_different(sm, &part.snippet, part.span) {
+                        // Account for cases where we are suggesting the same code that's already
+                        // there. This shouldn't happen often, but in some cases for multipart
+                        // suggestions it's much easier to handle it here than in the origin.
+                    } else {
+                        line_highlight.push(SubstitutionHighlight {
+                            start: (cur_lo.col.0 as isize + acc) as usize,
+                            end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        });
+                    }
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
                     // Account for the difference between the width of the current code and the
