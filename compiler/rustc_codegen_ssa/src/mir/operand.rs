@@ -5,13 +5,13 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
+use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
-use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
@@ -1039,8 +1039,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match *operand {
             mir::Operand::Copy(ref place) | mir::Operand::Move(ref place) => {
                 let kind = match operand {
-                    mir::Operand::Move(_) => sym::compiler_move,
-                    mir::Operand::Copy(_) => sym::compiler_copy,
+                    mir::Operand::Move(_) => LangItem::CompilerMove,
+                    mir::Operand::Copy(_) => LangItem::CompilerCopy,
                     _ => unreachable!(),
                 };
 
@@ -1086,7 +1086,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         bx: &Bx,
         place: mir::PlaceRef<'tcx>,
-        kind: Symbol,
+        kind: LangItem,
     ) -> Option<ty::Instance<'tcx>> {
         let tcx = bx.tcx();
         let sess = tcx.sess;
@@ -1116,9 +1116,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return None;
         }
 
-        // Look up the DefId for compiler_move or compiler_copy (skip if it's missing for some
-        // reason).
-        let def_id = tcx.get_diagnostic_item(kind)?;
+        // Look up the DefId for compiler_move or compiler_copy lang item
+        let def_id = tcx.lang_items().get(kind)?;
 
         // Create generic args: compiler_move<T, SIZE> or compiler_copy<T, SIZE>
         let size_const = ty::Const::from_target_usize(tcx, ty_size);
