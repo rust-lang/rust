@@ -475,10 +475,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             .opaque_type_data
                             .alloc(ImplTrait { predicates: Vec::default() });
 
-                        // FIXME(next-solver): this from_raw/into_raw dance isn't nice, but it's minimal
                         let impl_trait_id = origin.either(
-                            |f| ImplTraitId::ReturnTypeImplTrait(f, Idx::from_raw(idx.into_raw())),
-                            |a| ImplTraitId::TypeAliasImplTrait(a, Idx::from_raw(idx.into_raw())),
+                            |f| ImplTraitId::ReturnTypeImplTrait(f, idx),
+                            |a| ImplTraitId::TypeAliasImplTrait(a, idx),
                         );
                         let opaque_ty_id: SolverDefId =
                             self.db.intern_impl_trait_id(impl_trait_id).into();
