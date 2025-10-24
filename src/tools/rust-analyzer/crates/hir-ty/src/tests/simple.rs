@@ -3856,9 +3856,9 @@ fn main() {
             74..75 'f': F
             80..82 '{}': ()
             94..191 '{     ... }); }': ()
-            100..113 'async_closure': fn async_closure<impl FnOnce(i32)>(impl FnOnce(i32))
+            100..113 'async_closure': fn async_closure<impl AsyncFnOnce(i32)>(impl AsyncFnOnce(i32))
             100..147 'async_...    })': ()
-            114..146 'async ...     }': impl FnOnce(i32)
+            114..146 'async ...     }': impl AsyncFnOnce(i32)
             121..124 'arg': i32
             126..146 '{     ...     }': ()
             136..139 'arg': i32

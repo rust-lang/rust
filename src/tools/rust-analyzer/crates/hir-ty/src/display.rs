@@ -38,7 +38,8 @@ use rustc_apfloat::{
 use rustc_ast_ir::FloatTy;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, RegionKind, Upcast,
+    AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, CoroutineClosureArgsParts, RegionKind,
+    Upcast,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _, Tys as _},
 };
 use smallvec::SmallVec;
@@ -48,7 +49,7 @@ use triomphe::Arc;
 
 use crate::{
     CallableDefId, FnAbi, ImplTraitId, MemoryMap, TraitEnvironment, consteval,
-    db::{HirDatabase, InternedClosure},
+    db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
     mir::pad16,
@@ -1389,33 +1390,6 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             SizedByDefault::Sized { anchor: krate },
                         )?;
                     }
-                    ImplTraitId::AsyncBlockTypeImplTrait(body, ..) => {
-                        let future_trait =
-                            LangItem::Future.resolve_trait(db, body.module(db).krate());
-                        let output = future_trait.and_then(|t| {
-                            t.trait_items(db)
-                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
-                        });
-                        write!(f, "impl ")?;
-                        if let Some(t) = future_trait {
-                            f.start_location_link(t.into());
-                        }
-                        write!(f, "Future")?;
-                        if future_trait.is_some() {
-                            f.end_location_link();
-                        }
-                        write!(f, "<")?;
-                        if let Some(t) = output {
-                            f.start_location_link(t.into());
-                        }
-                        write!(f, "Output")?;
-                        if output.is_some() {
-                            f.end_location_link();
-                        }
-                        write!(f, " = ")?;
-                        alias_ty.args.type_at(0).hir_fmt(f)?;
-                        write!(f, ">")?;
-                    }
                 }
             }
             TyKind::Closure(id, substs) => {
@@ -1471,12 +1445,81 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     }
                     if f.closure_style == ClosureStyle::RANotation || !sig.output().is_unit() {
                         write!(f, " -> ")?;
-                        // FIXME: We display `AsyncFn` as `-> impl Future`, but this is hard to fix because
-                        // we don't have a trait environment here, required to normalize `<Ret as Future>::Output`.
                         sig.output().hir_fmt(f)?;
                     }
                 } else {
                     write!(f, "{{closure}}")?;
+                }
+            }
+            TyKind::CoroutineClosure(id, args) => {
+                let id = id.0;
+                if f.display_kind.is_source_code() {
+                    if !f.display_kind.allows_opaque() {
+                        return Err(HirDisplayError::DisplaySourceCodeError(
+                            DisplaySourceCodeError::OpaqueType,
+                        ));
+                    } else if f.closure_style != ClosureStyle::ImplFn {
+                        never!("Only `impl Fn` is valid for displaying closures in source code");
+                    }
+                }
+                match f.closure_style {
+                    ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
+                    ClosureStyle::ClosureWithId => {
+                        return write!(
+                            f,
+                            "{{async closure#{:?}}}",
+                            salsa::plumbing::AsId::as_id(&id).index()
+                        );
+                    }
+                    ClosureStyle::ClosureWithSubst => {
+                        write!(
+                            f,
+                            "{{async closure#{:?}}}",
+                            salsa::plumbing::AsId::as_id(&id).index()
+                        )?;
+                        return hir_fmt_generics(f, args.as_slice(), None, None);
+                    }
+                    _ => (),
+                }
+                let CoroutineClosureArgsParts { closure_kind_ty, signature_parts_ty, .. } =
+                    args.split_coroutine_closure_args();
+                let kind = closure_kind_ty.to_opt_closure_kind().unwrap();
+                let kind = match kind {
+                    rustc_type_ir::ClosureKind::Fn => "AsyncFn",
+                    rustc_type_ir::ClosureKind::FnMut => "AsyncFnMut",
+                    rustc_type_ir::ClosureKind::FnOnce => "AsyncFnOnce",
+                };
+                let TyKind::FnPtr(coroutine_sig, _) = signature_parts_ty.kind() else {
+                    unreachable!("invalid coroutine closure signature");
+                };
+                let coroutine_sig = coroutine_sig.skip_binder();
+                let coroutine_inputs = coroutine_sig.inputs();
+                let TyKind::Tuple(coroutine_inputs) = coroutine_inputs.as_slice()[1].kind() else {
+                    unreachable!("invalid coroutine closure signature");
+                };
+                let TyKind::Tuple(coroutine_output) = coroutine_sig.output().kind() else {
+                    unreachable!("invalid coroutine closure signature");
+                };
+                let coroutine_output = coroutine_output.as_slice()[1];
+                match f.closure_style {
+                    ClosureStyle::ImplFn => write!(f, "impl {kind}(")?,
+                    ClosureStyle::RANotation => write!(f, "async |")?,
+                    _ => unreachable!(),
+                }
+                if coroutine_inputs.is_empty() {
+                } else if f.should_truncate() {
+                    write!(f, "{TYPE_HINT_TRUNCATION}")?;
+                } else {
+                    f.write_joined(coroutine_inputs, ", ")?;
+                };
+                match f.closure_style {
+                    ClosureStyle::ImplFn => write!(f, ")")?,
+                    ClosureStyle::RANotation => write!(f, "|")?,
+                    _ => unreachable!(),
+                }
+                if f.closure_style == ClosureStyle::RANotation || !coroutine_output.is_unit() {
+                    write!(f, " -> ")?;
+                    coroutine_output.hir_fmt(f)?;
                 }
             }
             TyKind::Placeholder(_) => write!(f, "{{placeholder}}")?,
@@ -1567,28 +1610,69 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
             }
             TyKind::Infer(..) => write!(f, "_")?,
-            TyKind::Coroutine(_, subst) => {
-                if f.display_kind.is_source_code() {
-                    return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::Coroutine,
-                    ));
-                }
+            TyKind::Coroutine(coroutine_id, subst) => {
+                let InternedCoroutine(owner, expr_id) = coroutine_id.0.loc(db);
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
-                write!(f, "|")?;
-                resume_ty.hir_fmt(f)?;
-                write!(f, "|")?;
+                let body = db.body(owner);
+                let expr = &body[expr_id];
+                match expr {
+                    hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::Async,
+                        ..
+                    }
+                    | hir_def::hir::Expr::Async { .. } => {
+                        let future_trait =
+                            LangItem::Future.resolve_trait(db, owner.module(db).krate());
+                        let output = future_trait.and_then(|t| {
+                            t.trait_items(db)
+                                .associated_type_by_name(&Name::new_symbol_root(sym::Output))
+                        });
+                        write!(f, "impl ")?;
+                        if let Some(t) = future_trait {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Future")?;
+                        if future_trait.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, "<")?;
+                        if let Some(t) = output {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Output")?;
+                        if output.is_some() {
+                            f.end_location_link();
+                        }
+                        write!(f, " = ")?;
+                        return_ty.hir_fmt(f)?;
+                        write!(f, ">")?;
+                    }
+                    hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::Coroutine(..),
+                        ..
+                    } => {
+                        if f.display_kind.is_source_code() {
+                            return Err(HirDisplayError::DisplaySourceCodeError(
+                                DisplaySourceCodeError::Coroutine,
+                            ));
+                        }
+                        write!(f, "|")?;
+                        resume_ty.hir_fmt(f)?;
+                        write!(f, "|")?;
 
-                write!(f, " yields ")?;
-                yield_ty.hir_fmt(f)?;
+                        write!(f, " yields ")?;
+                        yield_ty.hir_fmt(f)?;
 
-                write!(f, " -> ")?;
-                return_ty.hir_fmt(f)?;
+                        write!(f, " -> ")?;
+                        return_ty.hir_fmt(f)?;
+                    }
+                    _ => panic!("invalid expr for coroutine: {expr:?}"),
+                }
             }
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
             TyKind::Pat(_, _) => write!(f, "{{pat}}")?,
             TyKind::UnsafeBinder(_) => write!(f, "{{unsafe binder}}")?,
-            TyKind::CoroutineClosure(_, _) => write!(f, "{{coroutine closure}}")?,
             TyKind::Alias(_, _) => write!(f, "{{alias}}")?,
         }
         Ok(())

@@ -11,10 +11,10 @@ use hir_def::{TraitId, type_ref::Rawness};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
-    AliasTyKind, BoundVar, BoundVarIndexKind, ClosureKind, DebruijnIndex, FlagComputation, Flags,
-    FloatTy, FloatVid, InferTy, IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast,
-    WithCachedTypeInfo,
+    AliasTyKind, BoundVar, BoundVarIndexKind, ClosureKind, CoroutineArgs, CoroutineArgsParts,
+    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid, Interner,
+    TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
         AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
         IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
@@ -26,7 +26,7 @@ use rustc_type_ir::{
 
 use crate::{
     ImplTraitId,
-    db::HirDatabase,
+    db::{HirDatabase, InternedCoroutine},
     next_solver::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
         CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
@@ -404,6 +404,40 @@ impl<'db> Ty<'db> {
                 .split_closure_args_untupled()
                 .closure_sig_as_fn_ptr_ty
                 .callable_sig(interner),
+            TyKind::CoroutineClosure(coroutine_id, args) => {
+                Some(args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+                    let unit_ty = Ty::new_unit(interner);
+                    let return_ty = Ty::new_coroutine(
+                        interner,
+                        coroutine_id,
+                        CoroutineArgs::new(
+                            interner,
+                            CoroutineArgsParts {
+                                parent_args: args.as_coroutine_closure().parent_args(),
+                                kind_ty: unit_ty,
+                                resume_ty: unit_ty,
+                                yield_ty: unit_ty,
+                                return_ty: sig.return_ty,
+                                // FIXME: Deduce this from the coroutine closure's upvars.
+                                tupled_upvars_ty: unit_ty,
+                            },
+                        )
+                        .args,
+                    );
+                    FnSig {
+                        inputs_and_output: Tys::new_from_iter(
+                            interner,
+                            sig.tupled_inputs_ty
+                                .tuple_fields()
+                                .iter()
+                                .chain(std::iter::once(return_ty)),
+                        ),
+                        c_variadic: sig.c_variadic,
+                        safety: sig.safety,
+                        abi: sig.abi,
+                    }
+                }))
+            }
             _ => None,
         }
     }
@@ -546,23 +580,6 @@ impl<'db> Ty<'db> {
                                 .collect()
                         })
                     }
-                    ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
-                        let krate = def.module(db).krate();
-                        if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
-                            // This is only used by type walking.
-                            // Parameters will be walked outside, and projection predicate is not used.
-                            // So just provide the Future trait.
-                            let impl_bound = TraitRef::new(
-                                interner,
-                                future_trait.into(),
-                                GenericArgs::new_from_iter(interner, []),
-                            )
-                            .upcast(interner);
-                            Some(vec![impl_bound])
-                        } else {
-                            None
-                        }
-                    }
                 }
             }
             TyKind::Param(param) => {
@@ -590,6 +607,24 @@ impl<'db> Ty<'db> {
                         _ => None,
                     },
                     _ => None,
+                }
+            }
+            TyKind::Coroutine(coroutine_id, _args) => {
+                let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
+                let krate = owner.module(db).krate();
+                if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
+                    // This is only used by type walking.
+                    // Parameters will be walked outside, and projection predicate is not used.
+                    // So just provide the Future trait.
+                    let impl_bound = TraitRef::new(
+                        interner,
+                        future_trait.into(),
+                        GenericArgs::new_from_iter(interner, []),
+                    )
+                    .upcast(interner);
+                    Some(vec![impl_bound])
+                } else {
+                    None
                 }
             }
             _ => None,
