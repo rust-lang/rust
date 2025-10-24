@@ -28,6 +28,25 @@ fn foo(n: i32) -> i32 {
 }
 
 #[test]
+fn doctest_add_braces_1() {
+    check_doc_test(
+        "add_braces",
+        r#####"
+fn foo(n: i32) -> i32 {
+    let x =$0 n + 2;
+}
+"#####,
+        r#####"
+fn foo(n: i32) -> i32 {
+    let x = {
+        n + 2
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_explicit_enum_discriminant() {
     check_doc_test(
         "add_explicit_enum_discriminant",
