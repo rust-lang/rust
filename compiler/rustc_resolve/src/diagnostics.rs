@@ -24,7 +24,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
@@ -152,7 +152,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     DeclKind::Def(_) => CRATE_NODE_ID,
                 };
                 self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
+                    if ambiguity_error.ambig_vis.is_some() {
+                        AMBIGUOUS_IMPORT_VISIBILITIES
+                    } else {
+                        AMBIGUOUS_GLOB_IMPORTS
+                    },
                     node_id,
                     diag.ident.span,
                     diag,
@@ -1996,7 +2000,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
-        let AmbiguityError { kind, ident, b1, b2, scope1, scope2, .. } = *ambiguity_error;
+        let AmbiguityError { kind, ambig_vis, ident, b1, b2, scope1, scope2, .. } =
+            *ambiguity_error;
         let extern_prelude_ambiguity = || {
             // Note: b1 may come from a module scope, as an extern crate item in module.
             matches!(scope2, Scope::ExternPreludeFlags)
@@ -2059,8 +2064,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (b1_note, b1_help_msgs) = could_refer_to(b1, scope1, "");
         let (b2_note, b2_help_msgs) = could_refer_to(b2, scope2, " also");
 
+        let ambig_vis = ambig_vis.map(|(vis1, vis2)| {
+            format!(
+                "{} or {}",
+                vis1.to_string(CRATE_DEF_ID, self.tcx),
+                vis2.to_string(CRATE_DEF_ID, self.tcx)
+            )
+        });
+
         errors::Ambiguity {
             ident,
+            ambig_vis,
             kind: kind.descr(),
             b1_note,
             b1_help_msgs,
