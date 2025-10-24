@@ -1,9 +1,7 @@
-#![allow(clippy::print_literal, clippy::write_literal)]
-#![warn(clippy::print_stdout, clippy::use_debug)]
+#![warn(clippy::use_debug)]
 
 use std::fmt::{Debug, Display, Formatter, Result};
 
-#[allow(dead_code)]
 struct Foo;
 
 impl Display for Foo {
@@ -21,22 +19,11 @@ impl Debug for Foo {
 }
 
 fn main() {
-    println!("Hello");
-    //~^ print_stdout
-
-    print!("Hello");
-    //~^ print_stdout
-
-    print!("Hello {}", "World");
-    //~^ print_stdout
-
     print!("Hello {:?}", "World");
-    //~^ print_stdout
-    //~| use_debug
+    //~^ use_debug
 
     print!("Hello {:#?}", "#orld");
-    //~^ print_stdout
-    //~| use_debug
+    //~^ use_debug
 
     assert_eq!(42, 1337);
 
