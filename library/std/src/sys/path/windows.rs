@@ -1,4 +1,3 @@
-use crate::alloc_crate::slice;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
 use crate::sys::api::utf16;
@@ -30,8 +29,8 @@ impl WCStr {
         unsafe { &*(s as *const [u16] as *const Self) }
     }
 
-    pub unsafe fn to_wchars_with_null_unchecked(&self) -> &[u16] {
-        unsafe { slice::from_raw_parts(self.0.as_ptr(), self.0.len()) }
+    pub const fn to_wchars_with_null_unchecked(&self) -> &[u16] {
+        &self.0
     }
 
     pub fn as_ptr(&self) -> *const u16 {

@@ -1183,7 +1183,7 @@ impl DirBuilder {
 }
 
 pub fn readdir(p: &WCStr) -> io::Result<ReadDir> {
-    let mut p = unsafe { p.to_wchars_with_null_unchecked() }.to_vec();
+    let mut p = p.to_wchars_with_null_unchecked().to_vec();
 
     // `p` already contains NUL, because before reading directory function,
     // it already passes `maybe_verbatim` that appending zero at the end, it
