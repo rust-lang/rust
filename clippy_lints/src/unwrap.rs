@@ -156,39 +156,52 @@ fn collect_unwrap_info<'tcx>(
         }
     }
 
-    match expr.kind {
-        ExprKind::Binary(op, left, right)
-            if matches!(
-                (invert, op.node),
-                (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr)
-            ) =>
-        {
-            let mut unwrap_info = collect_unwrap_info(cx, if_expr, left, branch, invert, false);
-            unwrap_info.extend(collect_unwrap_info(cx, if_expr, right, branch, invert, false));
-            unwrap_info
-        },
-        ExprKind::Unary(UnOp::Not, expr) => collect_unwrap_info(cx, if_expr, expr, branch, !invert, false),
-        ExprKind::MethodCall(method_name, receiver, [], _)
-            if let Some(local_id) = receiver.res_local_id()
-                && let ty = cx.typeck_results().expr_ty(receiver)
-                && let name = method_name.ident.name
-                && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
-        {
-            let safe_to_unwrap = unwrappable != invert;
+    fn inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        if_expr: &'tcx Expr<'_>,
+        expr: &'tcx Expr<'_>,
+        branch: &'tcx Expr<'_>,
+        invert: bool,
+        is_entire_condition: bool,
+        out: &mut Vec<UnwrapInfo<'tcx>>,
+    ) {
+        match expr.kind {
+            ExprKind::Binary(op, left, right)
+                if matches!(
+                    (invert, op.node),
+                    (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr)
+                ) =>
+            {
+                inner(cx, if_expr, left, branch, invert, false, out);
+                inner(cx, if_expr, right, branch, invert, false, out);
+            },
+            ExprKind::Unary(UnOp::Not, expr) => inner(cx, if_expr, expr, branch, !invert, false, out),
+            ExprKind::MethodCall(method_name, receiver, [], _)
+                if let Some(local_id) = receiver.res_local_id()
+                    && let ty = cx.typeck_results().expr_ty(receiver)
+                    && let name = method_name.ident.name
+                    && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
+            {
+                let safe_to_unwrap = unwrappable != invert;
 
-            vec![UnwrapInfo {
-                local_id,
-                if_expr,
-                check: expr,
-                check_name: name,
-                branch,
-                safe_to_unwrap,
-                kind,
-                is_entire_condition,
-            }]
-        },
-        _ => vec![],
+                out.push(UnwrapInfo {
+                    local_id,
+                    if_expr,
+                    check: expr,
+                    check_name: name,
+                    branch,
+                    safe_to_unwrap,
+                    kind,
+                    is_entire_condition,
+                });
+            },
+            _ => {},
+        }
     }
+
+    let mut out = vec![];
+    inner(cx, if_expr, expr, branch, invert, is_entire_condition, &mut out);
+    out
 }
 
 /// A HIR visitor delegate that checks if a local variable of type `Option` or `Result` is mutated,
@@ -321,21 +334,14 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                 && let Some(id) = self_arg.res_local_id()
                 && matches!(method_name.ident.name, sym::unwrap | sym::expect | sym::unwrap_err)
                 && let call_to_unwrap = matches!(method_name.ident.name, sym::unwrap | sym::expect)
-                && let Some(unwrappable) = self.unwrappables.iter()
-                    .find(|u| u.local_id == id)
+                && let Some(unwrappable) = self.unwrappables.iter().find(|u| u.local_id == id)
                 // Span contexts should not differ with the conditional branch
                 && let span_ctxt = expr.span.ctxt()
                 && unwrappable.branch.span.ctxt() == span_ctxt
                 && unwrappable.check.span.ctxt() == span_ctxt
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
-                    let is_entire_condition = unwrappable.is_entire_condition;
                     let unwrappable_variable_name = self.cx.tcx.hir_name(unwrappable.local_id);
-                    let suggested_pattern = if call_to_unwrap {
-                        unwrappable.kind.success_variant_pattern()
-                    } else {
-                        unwrappable.kind.error_variant_pattern()
-                    };
 
                     span_lint_hir_and_then(
                         self.cx,
@@ -347,12 +353,17 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                             method_name.ident.name, unwrappable.check_name,
                         ),
                         |diag| {
-                            if is_entire_condition {
+                            if unwrappable.is_entire_condition {
                                 diag.span_suggestion(
                                     unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                     "try",
                                     format!(
                                         "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
+                                        suggested_pattern = if call_to_unwrap {
+                                            unwrappable.kind.success_variant_pattern()
+                                        } else {
+                                            unwrappable.kind.error_variant_pattern()
+                                        },
                                         borrow_prefix = match as_ref_kind {
                                             Some(AsRefKind::AsRef) => "&",
                                             Some(AsRefKind::AsMut) => "&mut ",
