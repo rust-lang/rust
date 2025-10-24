@@ -15137,268 +15137,104 @@ pub unsafe fn vld1q_f16_x4(a: *const f16) -> float16x8x4_t {
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
 pub unsafe fn vld1_f32(ptr: *const f32) -> float32x2_t {
-    transmute(vld1_v2f32(
-        ptr as *const i8,
-        crate::mem::align_of::<f32>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
-pub unsafe fn vld1_f32(ptr: *const f32) -> float32x2_t {
-    let ret_val: float32x2_t = transmute(vld1_v2f32(
-        ptr as *const i8,
-        crate::mem::align_of::<f32>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<f32>() as i32;
+    transmute(vld1_v2f32::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
-    transmute(vld1q_v4f32(
-        ptr as *const i8,
-        crate::mem::align_of::<f32>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
-    let ret_val: float32x4_t = transmute(vld1q_v4f32(
-        ptr as *const i8,
-        crate::mem::align_of::<f32>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<f32>() as i32;
+    transmute(vld1q_v4f32::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1_u8(ptr: *const u8) -> uint8x8_t {
-    transmute(vld1_v8i8(
-        ptr as *const i8,
-        crate::mem::align_of::<u8>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-pub unsafe fn vld1_u8(ptr: *const u8) -> uint8x8_t {
-    let ret_val: uint8x8_t = transmute(vld1_v8i8(
-        ptr as *const i8,
-        crate::mem::align_of::<u8>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u8>() as i32;
+    transmute(vld1_v8i8::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1q_u8(ptr: *const u8) -> uint8x16_t {
-    transmute(vld1q_v16i8(
-        ptr as *const i8,
-        crate::mem::align_of::<u8>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-pub unsafe fn vld1q_u8(ptr: *const u8) -> uint8x16_t {
-    let ret_val: uint8x16_t = transmute(vld1q_v16i8(
-        ptr as *const i8,
-        crate::mem::align_of::<u8>() as i32,
-    ));
-    simd_shuffle!(
-        ret_val,
-        ret_val,
-        [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u8>() as i32;
+    transmute(vld1q_v16i8::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1_u16(ptr: *const u16) -> uint16x4_t {
-    transmute(vld1_v4i16(
-        ptr as *const i8,
-        crate::mem::align_of::<u16>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-pub unsafe fn vld1_u16(ptr: *const u16) -> uint16x4_t {
-    let ret_val: uint16x4_t = transmute(vld1_v4i16(
-        ptr as *const i8,
-        crate::mem::align_of::<u16>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u16>() as i32;
+    transmute(vld1_v4i16::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1q_u16(ptr: *const u16) -> uint16x8_t {
-    transmute(vld1q_v8i16(
-        ptr as *const i8,
-        crate::mem::align_of::<u16>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-pub unsafe fn vld1q_u16(ptr: *const u16) -> uint16x8_t {
-    let ret_val: uint16x8_t = transmute(vld1q_v8i16(
-        ptr as *const i8,
-        crate::mem::align_of::<u16>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u16>() as i32;
+    transmute(vld1q_v8i16::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
 pub unsafe fn vld1_u32(ptr: *const u32) -> uint32x2_t {
-    transmute(vld1_v2i32(
-        ptr as *const i8,
-        crate::mem::align_of::<u32>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
-pub unsafe fn vld1_u32(ptr: *const u32) -> uint32x2_t {
-    let ret_val: uint32x2_t = transmute(vld1_v2i32(
-        ptr as *const i8,
-        crate::mem::align_of::<u32>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u32>() as i32;
+    transmute(vld1_v2i32::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 pub unsafe fn vld1q_u32(ptr: *const u32) -> uint32x4_t {
-    transmute(vld1q_v4i32(
-        ptr as *const i8,
-        crate::mem::align_of::<u32>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
-pub unsafe fn vld1q_u32(ptr: *const u32) -> uint32x4_t {
-    let ret_val: uint32x4_t = transmute(vld1q_v4i32(
-        ptr as *const i8,
-        crate::mem::align_of::<u32>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u32>() as i32;
+    transmute(vld1q_v4i32::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64)"]
@@ -15410,212 +15246,86 @@ pub unsafe fn vld1q_u32(ptr: *const u32) -> uint32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
 pub unsafe fn vld1_u64(ptr: *const u64) -> uint64x1_t {
-    transmute(vld1_v1i64(
-        ptr as *const i8,
-        crate::mem::align_of::<u64>() as i32,
-    ))
+    const ALIGN: i32 = crate::mem::align_of::<u64>() as i32;
+    transmute(vld1_v1i64::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.64"))]
 pub unsafe fn vld1q_u64(ptr: *const u64) -> uint64x2_t {
-    transmute(vld1q_v2i64(
-        ptr as *const i8,
-        crate::mem::align_of::<u64>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.64"))]
-pub unsafe fn vld1q_u64(ptr: *const u64) -> uint64x2_t {
-    let ret_val: uint64x2_t = transmute(vld1q_v2i64(
-        ptr as *const i8,
-        crate::mem::align_of::<u64>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<u64>() as i32;
+    transmute(vld1q_v2i64::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1_p8(ptr: *const p8) -> poly8x8_t {
-    transmute(vld1_v8i8(
-        ptr as *const i8,
-        crate::mem::align_of::<p8>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-pub unsafe fn vld1_p8(ptr: *const p8) -> poly8x8_t {
-    let ret_val: poly8x8_t = transmute(vld1_v8i8(
-        ptr as *const i8,
-        crate::mem::align_of::<p8>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<p8>() as i32;
+    transmute(vld1_v8i8::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1q_p8(ptr: *const p8) -> poly8x16_t {
-    transmute(vld1q_v16i8(
-        ptr as *const i8,
-        crate::mem::align_of::<p8>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
-pub unsafe fn vld1q_p8(ptr: *const p8) -> poly8x16_t {
-    let ret_val: poly8x16_t = transmute(vld1q_v16i8(
-        ptr as *const i8,
-        crate::mem::align_of::<p8>() as i32,
-    ));
-    simd_shuffle!(
-        ret_val,
-        ret_val,
-        [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p8>() as i32;
+    transmute(vld1q_v16i8::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1_p16(ptr: *const p16) -> poly16x4_t {
-    transmute(vld1_v4i16(
-        ptr as *const i8,
-        crate::mem::align_of::<p16>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-pub unsafe fn vld1_p16(ptr: *const p16) -> poly16x4_t {
-    let ret_val: poly16x4_t = transmute(vld1_v4i16(
-        ptr as *const i8,
-        crate::mem::align_of::<p16>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<p16>() as i32;
+    transmute(vld1_v4i16::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
-    transmute(vld1q_v8i16(
-        ptr as *const i8,
-        crate::mem::align_of::<p16>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,v7")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
-pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
-    let ret_val: poly16x8_t = transmute(vld1q_v8i16(
-        ptr as *const i8,
-        crate::mem::align_of::<p16>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<p16>() as i32;
+    transmute(vld1q_v8i16::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,aes")]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.64"))]
 pub unsafe fn vld1q_p64(ptr: *const p64) -> poly64x2_t {
-    transmute(vld1q_v2i64(
-        ptr as *const i8,
-        crate::mem::align_of::<p64>() as i32,
-    ))
-}
-#[doc = "Load multiple single-element structures to one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[cfg(target_arch = "arm")]
-#[target_feature(enable = "neon,aes")]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.64"))]
-pub unsafe fn vld1q_p64(ptr: *const p64) -> poly64x2_t {
-    let ret_val: poly64x2_t = transmute(vld1q_v2i64(
-        ptr as *const i8,
-        crate::mem::align_of::<p64>() as i32,
-    ));
-    simd_shuffle!(ret_val, ret_val, [1, 0])
+    const ALIGN: i32 = crate::mem::align_of::<p64>() as i32;
+    transmute(vld1q_v2i64::<ALIGN>(ptr as *const i8))
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x2)"]
@@ -16694,7 +16404,8 @@ pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1_s8(ptr: *const i8) -> int8x8_t {
-    vld1_v8i8(ptr as *const i8, crate::mem::align_of::<i8>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i8>() as i32;
+    vld1_v8i8::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8)"]
@@ -16706,7 +16417,8 @@ pub unsafe fn vld1_s8(ptr: *const i8) -> int8x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 pub unsafe fn vld1q_s8(ptr: *const i8) -> int8x16_t {
-    vld1q_v16i8(ptr as *const i8, crate::mem::align_of::<i8>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i8>() as i32;
+    vld1q_v16i8::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16)"]
@@ -16718,7 +16430,8 @@ pub unsafe fn vld1q_s8(ptr: *const i8) -> int8x16_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1_s16(ptr: *const i16) -> int16x4_t {
-    vld1_v4i16(ptr as *const i8, crate::mem::align_of::<i16>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i16>() as i32;
+    vld1_v4i16::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16)"]
@@ -16730,7 +16443,8 @@ pub unsafe fn vld1_s16(ptr: *const i16) -> int16x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1q_s16(ptr: *const i16) -> int16x8_t {
-    vld1q_v8i16(ptr as *const i8, crate::mem::align_of::<i16>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i16>() as i32;
+    vld1q_v8i16::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32)"]
@@ -16742,7 +16456,8 @@ pub unsafe fn vld1q_s16(ptr: *const i16) -> int16x8_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
 pub unsafe fn vld1_s32(ptr: *const i32) -> int32x2_t {
-    vld1_v2i32(ptr as *const i8, crate::mem::align_of::<i32>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i32>() as i32;
+    vld1_v2i32::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32)"]
@@ -16754,7 +16469,8 @@ pub unsafe fn vld1_s32(ptr: *const i32) -> int32x2_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 pub unsafe fn vld1q_s32(ptr: *const i32) -> int32x4_t {
-    vld1q_v4i32(ptr as *const i8, crate::mem::align_of::<i32>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i32>() as i32;
+    vld1q_v4i32::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64)"]
@@ -16766,7 +16482,8 @@ pub unsafe fn vld1q_s32(ptr: *const i32) -> int32x4_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vldr))]
 pub unsafe fn vld1_s64(ptr: *const i64) -> int64x1_t {
-    vld1_v1i64(ptr as *const i8, crate::mem::align_of::<i64>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i64>() as i32;
+    vld1_v1i64::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64)"]
@@ -16778,7 +16495,8 @@ pub unsafe fn vld1_s64(ptr: *const i64) -> int64x1_t {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.64"))]
 pub unsafe fn vld1q_s64(ptr: *const i64) -> int64x2_t {
-    vld1q_v2i64(ptr as *const i8, crate::mem::align_of::<i64>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i64>() as i32;
+    vld1q_v2i64::<ALIGN>(ptr as *const i8)
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x2)"]
@@ -19417,160 +19135,136 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
     ret_val.3 = unsafe { simd_shuffle!(ret_val.3, ret_val.3, [7, 6, 5, 4, 3, 2, 1, 0]) };
     ret_val
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v1i64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1_v1i64(a: *const i8, b: i32) -> int64x1_t {
+unsafe fn vld1_v1i64<const ALIGN: i32>(a: *const i8) -> int64x1_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")]
         fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t;
     }
-    _vld1_v1i64(a, b)
+    _vld1_v1i64(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v2f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1_v2f32(a: *const i8, b: i32) -> float32x2_t {
+unsafe fn vld1_v2f32<const ALIGN: i32>(a: *const i8) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2f32")]
         fn _vld1_v2f32(a: *const i8, b: i32) -> float32x2_t;
     }
-    _vld1_v2f32(a, b)
+    _vld1_v2f32(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v2i32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1_v2i32(a: *const i8, b: i32) -> int32x2_t {
+unsafe fn vld1_v2i32<const ALIGN: i32>(a: *const i8) -> int32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2i32")]
         fn _vld1_v2i32(a: *const i8, b: i32) -> int32x2_t;
     }
-    _vld1_v2i32(a, b)
+    _vld1_v2i32(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v4i16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1_v4i16(a: *const i8, b: i32) -> int16x4_t {
+unsafe fn vld1_v4i16<const ALIGN: i32>(a: *const i8) -> int16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4i16")]
         fn _vld1_v4i16(a: *const i8, b: i32) -> int16x4_t;
     }
-    _vld1_v4i16(a, b)
+    _vld1_v4i16(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v8i8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1_v8i8(a: *const i8, b: i32) -> int8x8_t {
+unsafe fn vld1_v8i8<const ALIGN: i32>(a: *const i8) -> int8x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8i8")]
         fn _vld1_v8i8(a: *const i8, b: i32) -> int8x8_t;
     }
-    _vld1_v8i8(a, b)
+    _vld1_v8i8(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v16i8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1q_v16i8(a: *const i8, b: i32) -> int8x16_t {
+unsafe fn vld1q_v16i8<const ALIGN: i32>(a: *const i8) -> int8x16_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v16i8")]
         fn _vld1q_v16i8(a: *const i8, b: i32) -> int8x16_t;
     }
-    _vld1q_v16i8(a, b)
+    _vld1q_v16i8(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v2i64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1q_v2i64(a: *const i8, b: i32) -> int64x2_t {
+unsafe fn vld1q_v2i64<const ALIGN: i32>(a: *const i8) -> int64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v2i64")]
         fn _vld1q_v2i64(a: *const i8, b: i32) -> int64x2_t;
     }
-    _vld1q_v2i64(a, b)
+    _vld1q_v2i64(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v4f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1q_v4f32(a: *const i8, b: i32) -> float32x4_t {
+unsafe fn vld1q_v4f32<const ALIGN: i32>(a: *const i8) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4f32")]
         fn _vld1q_v4f32(a: *const i8, b: i32) -> float32x4_t;
     }
-    _vld1q_v4f32(a, b)
+    _vld1q_v4f32(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v4i32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1q_v4i32(a: *const i8, b: i32) -> int32x4_t {
+unsafe fn vld1q_v4i32<const ALIGN: i32>(a: *const i8) -> int32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4i32")]
         fn _vld1q_v4i32(a: *const i8, b: i32) -> int32x4_t;
     }
-    _vld1q_v4i32(a, b)
+    _vld1q_v4i32(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v8i16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
+#[rustc_legacy_const_generics(1)]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", ALIGN = 0))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-unsafe fn vld1q_v8i16(a: *const i8, b: i32) -> int16x8_t {
+unsafe fn vld1q_v8i16<const ALIGN: i32>(a: *const i8) -> int16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8i16")]
         fn _vld1q_v8i16(a: *const i8, b: i32) -> int16x8_t;
     }
-    _vld1q_v8i16(a, b)
+    _vld1q_v8i16(a, ALIGN)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_v4f16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19585,10 +19279,6 @@ unsafe fn vld1_v4f16(a: *const i8, b: i32) -> float16x4_t {
     }
     _vld1_v4f16(a, b)
 }
-#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_v8f16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -61060,117 +60750,229 @@ pub fn vsha256su1q_u32(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t)
     }
     unsafe { _vsha256su1q_u32(tw0_3, w8_11, w12_15) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v16i8)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v16i8")]
-        fn _vshiftins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+        fn _vshiftlins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
     }
-    unsafe { _vshiftins_v16i8(a, b, c) }
+    unsafe { _vshiftlins_v16i8(a, b, const { int8x16_t([N as i8; 16]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v1i64)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v1i64")]
-        fn _vshiftins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t;
+        fn _vshiftlins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t;
     }
-    unsafe { _vshiftins_v1i64(a, b, c) }
+    unsafe { _vshiftlins_v1i64(a, b, const { int64x1_t([N as i64; 1]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v2i32)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i32")]
-        fn _vshiftins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t;
+        fn _vshiftlins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t;
     }
-    unsafe { _vshiftins_v2i32(a, b, c) }
+    unsafe { _vshiftlins_v2i32(a, b, const { int32x2_t([N; 2]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v2i64)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i64")]
-        fn _vshiftins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _vshiftlins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
     }
-    unsafe { _vshiftins_v2i64(a, b, c) }
+    unsafe { _vshiftlins_v2i64(a, b, const { int64x2_t([N as i64; 2]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v4i16)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i16")]
-        fn _vshiftins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t;
+        fn _vshiftlins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t;
     }
-    unsafe { _vshiftins_v4i16(a, b, c) }
+    unsafe { _vshiftlins_v4i16(a, b, const { int16x4_t([N as i16; 4]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v4i32)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i32")]
-        fn _vshiftins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _vshiftlins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
     }
-    unsafe { _vshiftins_v4i32(a, b, c) }
+    unsafe { _vshiftlins_v4i32(a, b, const { int32x4_t([N; 4]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v8i16)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i16")]
-        fn _vshiftins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
+        fn _vshiftlins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
     }
-    unsafe { _vshiftins_v8i16(a, b, c) }
+    unsafe { _vshiftlins_v8i16(a, b, const { int16x8_t([N as i16; 8]) }) }
 }
-#[doc = "Shift Right and Insert (immediate)"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftins_v8i8)"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-fn vshiftins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
+#[rustc_legacy_const_generics(2)]
+fn vshiftlins_v8i8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i8")]
-        fn _vshiftins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
+        fn _vshiftlins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
     }
-    unsafe { _vshiftins_v8i8(a, b, c) }
+    unsafe { _vshiftlins_v8i8(a, b, const { int8x8_t([N as i8; 8]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v16i8)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v16i8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v16i8")]
+        fn _vshiftrins_v16i8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+    }
+    unsafe { _vshiftrins_v16i8(a, b, const { int8x16_t([-N as i8; 16]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v1i64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v1i64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v1i64")]
+        fn _vshiftrins_v1i64(a: int64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t;
+    }
+    unsafe { _vshiftrins_v1i64(a, b, const { int64x1_t([-N as i64; 1]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v2i32)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v2i32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i32")]
+        fn _vshiftrins_v2i32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t;
+    }
+    unsafe { _vshiftrins_v2i32(a, b, const { int32x2_t([-N; 2]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v2i64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v2i64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v2i64")]
+        fn _vshiftrins_v2i64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+    }
+    unsafe { _vshiftrins_v2i64(a, b, const { int64x2_t([-N as i64; 2]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v4i16)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v4i16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i16")]
+        fn _vshiftrins_v4i16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t;
+    }
+    unsafe { _vshiftrins_v4i16(a, b, const { int16x4_t([-N as i16; 4]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v4i32)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v4i32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v4i32")]
+        fn _vshiftrins_v4i32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+    }
+    unsafe { _vshiftrins_v4i32(a, b, const { int32x4_t([-N; 4]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v8i16)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v8i16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i16")]
+        fn _vshiftrins_v8i16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
+    }
+    unsafe { _vshiftrins_v8i16(a, b, const { int16x8_t([-N as i16; 8]) }) }
+}
+#[doc = "Shift Right and Insert (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshiftrins_v8i8)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
+#[rustc_legacy_const_generics(2)]
+fn vshiftrins_v8i8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vshiftins.v8i8")]
+        fn _vshiftrins_v8i8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
+    }
+    unsafe { _vshiftrins_v8i8(a, b, const { int8x8_t([-N as i8; 8]) }) }
 }
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s8)"]
@@ -62706,7 +62508,7 @@ pub fn vshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
-    vshiftins_v8i8(a, b, int8x8_t::splat(N as i8))
+    vshiftlins_v8i8::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_s8)"]
@@ -62718,7 +62520,7 @@ pub fn vsli_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
-    vshiftins_v16i8(a, b, int8x16_t::splat(N as i8))
+    vshiftlins_v16i8::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_s16)"]
@@ -62730,7 +62532,7 @@ pub fn vsliq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 4);
-    vshiftins_v4i16(a, b, int16x4_t::splat(N as i16))
+    vshiftlins_v4i16::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_s16)"]
@@ -62742,7 +62544,7 @@ pub fn vsli_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 4);
-    vshiftins_v8i16(a, b, int16x8_t::splat(N as i16))
+    vshiftlins_v8i16::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_s32)"]
@@ -62754,7 +62556,7 @@ pub fn vsliq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert!(N >= 0 && N <= 31);
-    vshiftins_v2i32(a, b, int32x2_t::splat(N))
+    vshiftlins_v2i32::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_s32)"]
@@ -62766,7 +62568,7 @@ pub fn vsli_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert!(N >= 0 && N <= 31);
-    vshiftins_v4i32(a, b, int32x4_t::splat(N))
+    vshiftlins_v4i32::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_s64)"]
@@ -62778,7 +62580,7 @@ pub fn vsliq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(N >= 0 && N <= 63);
-    vshiftins_v1i64(a, b, int64x1_t::splat(N as i64))
+    vshiftlins_v1i64::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_s64)"]
@@ -62790,7 +62592,7 @@ pub fn vsli_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert!(N >= 0 && N <= 63);
-    vshiftins_v2i64(a, b, int64x2_t::splat(N as i64))
+    vshiftlins_v2i64::<N>(a, b)
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_u8)"]
@@ -62802,13 +62604,7 @@ pub fn vsliq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        transmute(vshiftins_v8i8(
-            transmute(a),
-            transmute(b),
-            int8x8_t::splat(N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v8i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_u8)"]
@@ -62820,13 +62616,7 @@ pub fn vsli_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        transmute(vshiftins_v16i8(
-            transmute(a),
-            transmute(b),
-            int8x16_t::splat(N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v16i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_u16)"]
@@ -62838,13 +62628,7 @@ pub fn vsliq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        transmute(vshiftins_v4i16(
-            transmute(a),
-            transmute(b),
-            int16x4_t::splat(N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v4i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_u16)"]
@@ -62856,13 +62640,7 @@ pub fn vsli_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        transmute(vshiftins_v8i16(
-            transmute(a),
-            transmute(b),
-            int16x8_t::splat(N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v8i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_u32)"]
@@ -62874,13 +62652,7 @@ pub fn vsliq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 0 && N <= 31);
-    unsafe {
-        transmute(vshiftins_v2i32(
-            transmute(a),
-            transmute(b),
-            int32x2_t::splat(N),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v2i32::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_u32)"]
@@ -62892,13 +62664,7 @@ pub fn vsli_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 0 && N <= 31);
-    unsafe {
-        transmute(vshiftins_v4i32(
-            transmute(a),
-            transmute(b),
-            int32x4_t::splat(N),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v4i32::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_u64)"]
@@ -62910,13 +62676,7 @@ pub fn vsliq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 0 && N <= 63);
-    unsafe {
-        transmute(vshiftins_v1i64(
-            transmute(a),
-            transmute(b),
-            int64x1_t::splat(N as i64),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v1i64::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_u64)"]
@@ -62928,13 +62688,7 @@ pub fn vsli_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 0 && N <= 63);
-    unsafe {
-        transmute(vshiftins_v2i64(
-            transmute(a),
-            transmute(b),
-            int64x2_t::splat(N as i64),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v2i64::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_p8)"]
@@ -62946,13 +62700,7 @@ pub fn vsliq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        transmute(vshiftins_v8i8(
-            transmute(a),
-            transmute(b),
-            int8x8_t::splat(N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v8i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_p8)"]
@@ -62964,13 +62712,7 @@ pub fn vsli_n_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        transmute(vshiftins_v16i8(
-            transmute(a),
-            transmute(b),
-            int8x16_t::splat(N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v16i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_p16)"]
@@ -62982,13 +62724,7 @@ pub fn vsliq_n_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsli_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        transmute(vshiftins_v4i16(
-            transmute(a),
-            transmute(b),
-            int16x4_t::splat(N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v4i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_p16)"]
@@ -63000,13 +62736,7 @@ pub fn vsli_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsliq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 4);
-    unsafe {
-        transmute(vshiftins_v8i16(
-            transmute(a),
-            transmute(b),
-            int16x8_t::splat(N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftlins_v8i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s8)"]
@@ -63386,7 +63116,7 @@ pub fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(1 <= N && N <= 8);
-    vshiftins_v8i8(a, b, int8x8_t::splat(-N as i8))
+    vshiftrins_v8i8::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s8)"]
@@ -63398,7 +63128,7 @@ pub fn vsri_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert!(1 <= N && N <= 8);
-    vshiftins_v16i8(a, b, int8x16_t::splat(-N as i8))
+    vshiftrins_v16i8::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s16)"]
@@ -63410,7 +63140,7 @@ pub fn vsriq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert!(1 <= N && N <= 16);
-    vshiftins_v4i16(a, b, int16x4_t::splat(-N as i16))
+    vshiftrins_v4i16::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s16)"]
@@ -63422,7 +63152,7 @@ pub fn vsri_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert!(1 <= N && N <= 16);
-    vshiftins_v8i16(a, b, int16x8_t::splat(-N as i16))
+    vshiftrins_v8i16::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s32)"]
@@ -63434,7 +63164,7 @@ pub fn vsriq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert!(1 <= N && N <= 32);
-    vshiftins_v2i32(a, b, int32x2_t::splat(-N))
+    vshiftrins_v2i32::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s32)"]
@@ -63446,7 +63176,7 @@ pub fn vsri_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert!(1 <= N && N <= 32);
-    vshiftins_v4i32(a, b, int32x4_t::splat(-N))
+    vshiftrins_v4i32::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s64)"]
@@ -63458,7 +63188,7 @@ pub fn vsriq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     static_assert!(1 <= N && N <= 64);
-    vshiftins_v1i64(a, b, int64x1_t::splat(-N as i64))
+    vshiftrins_v1i64::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_s64)"]
@@ -63470,7 +63200,7 @@ pub fn vsri_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert!(1 <= N && N <= 64);
-    vshiftins_v2i64(a, b, int64x2_t::splat(-N as i64))
+    vshiftrins_v2i64::<N>(a, b)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_u8)"]
@@ -63482,13 +63212,7 @@ pub fn vsriq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert!(1 <= N && N <= 8);
-    unsafe {
-        transmute(vshiftins_v8i8(
-            transmute(a),
-            transmute(b),
-            int8x8_t::splat(-N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v8i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_u8)"]
@@ -63500,13 +63224,7 @@ pub fn vsri_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert!(1 <= N && N <= 8);
-    unsafe {
-        transmute(vshiftins_v16i8(
-            transmute(a),
-            transmute(b),
-            int8x16_t::splat(-N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v16i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_u16)"]
@@ -63518,13 +63236,7 @@ pub fn vsriq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert!(1 <= N && N <= 16);
-    unsafe {
-        transmute(vshiftins_v4i16(
-            transmute(a),
-            transmute(b),
-            int16x4_t::splat(-N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v4i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_u16)"]
@@ -63536,13 +63248,7 @@ pub fn vsri_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert!(1 <= N && N <= 16);
-    unsafe {
-        transmute(vshiftins_v8i16(
-            transmute(a),
-            transmute(b),
-            int16x8_t::splat(-N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v8i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_u32)"]
@@ -63554,13 +63260,7 @@ pub fn vsriq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert!(1 <= N && N <= 32);
-    unsafe {
-        transmute(vshiftins_v2i32(
-            transmute(a),
-            transmute(b),
-            int32x2_t::splat(-N),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v2i32::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_u32)"]
@@ -63572,13 +63272,7 @@ pub fn vsri_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert!(1 <= N && N <= 32);
-    unsafe {
-        transmute(vshiftins_v4i32(
-            transmute(a),
-            transmute(b),
-            int32x4_t::splat(-N),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v4i32::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_u64)"]
@@ -63590,13 +63284,7 @@ pub fn vsriq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     static_assert!(1 <= N && N <= 64);
-    unsafe {
-        transmute(vshiftins_v1i64(
-            transmute(a),
-            transmute(b),
-            int64x1_t::splat(-N as i64),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v1i64::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_u64)"]
@@ -63608,13 +63296,7 @@ pub fn vsri_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert!(1 <= N && N <= 64);
-    unsafe {
-        transmute(vshiftins_v2i64(
-            transmute(a),
-            transmute(b),
-            int64x2_t::splat(-N as i64),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v2i64::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_p8)"]
@@ -63626,13 +63308,7 @@ pub fn vsriq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert!(1 <= N && N <= 8);
-    unsafe {
-        transmute(vshiftins_v8i8(
-            transmute(a),
-            transmute(b),
-            int8x8_t::splat(-N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v8i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_p8)"]
@@ -63644,13 +63320,7 @@ pub fn vsri_n_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert!(1 <= N && N <= 8);
-    unsafe {
-        transmute(vshiftins_v16i8(
-            transmute(a),
-            transmute(b),
-            int8x16_t::splat(-N as i8),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v16i8::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_p16)"]
@@ -63662,13 +63332,7 @@ pub fn vsriq_n_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsri_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert!(1 <= N && N <= 16);
-    unsafe {
-        transmute(vshiftins_v4i16(
-            transmute(a),
-            transmute(b),
-            int16x4_t::splat(-N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v4i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_p16)"]
@@ -63680,13 +63344,7 @@ pub fn vsri_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[rustc_legacy_const_generics(2)]
 pub fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert!(1 <= N && N <= 16);
-    unsafe {
-        transmute(vshiftins_v8i16(
-            transmute(a),
-            transmute(b),
-            int16x8_t::splat(-N as i16),
-        ))
-    }
+    unsafe { transmute(vshiftrins_v8i16::<N>(transmute(a), transmute(b))) }
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f16)"]
@@ -63987,11 +63645,8 @@ pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1_f32(ptr: *mut f32, a: float32x2_t) {
-    vst1_v2f32(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<f32>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<f32>() as i32;
+    vst1_v2f32::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32)"]
@@ -64004,11 +63659,8 @@ pub unsafe fn vst1_f32(ptr: *mut f32, a: float32x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1q_f32(ptr: *mut f32, a: float32x4_t) {
-    vst1q_v4f32(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<f32>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<f32>() as i32;
+    vst1q_v4f32::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8)"]
@@ -64021,7 +63673,8 @@ pub unsafe fn vst1q_f32(ptr: *mut f32, a: float32x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1_s8(ptr: *mut i8, a: int8x8_t) {
-    vst1_v8i8(ptr as *const i8, a, crate::mem::align_of::<i8>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i8>() as i32;
+    vst1_v8i8::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8)"]
@@ -64034,7 +63687,8 @@ pub unsafe fn vst1_s8(ptr: *mut i8, a: int8x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1q_s8(ptr: *mut i8, a: int8x16_t) {
-    vst1q_v16i8(ptr as *const i8, a, crate::mem::align_of::<i8>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i8>() as i32;
+    vst1q_v16i8::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16)"]
@@ -64047,7 +63701,8 @@ pub unsafe fn vst1q_s8(ptr: *mut i8, a: int8x16_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1_s16(ptr: *mut i16, a: int16x4_t) {
-    vst1_v4i16(ptr as *const i8, a, crate::mem::align_of::<i16>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i16>() as i32;
+    vst1_v4i16::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16)"]
@@ -64060,7 +63715,8 @@ pub unsafe fn vst1_s16(ptr: *mut i16, a: int16x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1q_s16(ptr: *mut i16, a: int16x8_t) {
-    vst1q_v8i16(ptr as *const i8, a, crate::mem::align_of::<i16>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i16>() as i32;
+    vst1q_v8i16::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32)"]
@@ -64073,7 +63729,8 @@ pub unsafe fn vst1q_s16(ptr: *mut i16, a: int16x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1_s32(ptr: *mut i32, a: int32x2_t) {
-    vst1_v2i32(ptr as *const i8, a, crate::mem::align_of::<i32>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i32>() as i32;
+    vst1_v2i32::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32)"]
@@ -64086,7 +63743,8 @@ pub unsafe fn vst1_s32(ptr: *mut i32, a: int32x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1q_s32(ptr: *mut i32, a: int32x4_t) {
-    vst1q_v4i32(ptr as *const i8, a, crate::mem::align_of::<i32>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i32>() as i32;
+    vst1q_v4i32::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64)"]
@@ -64099,7 +63757,8 @@ pub unsafe fn vst1q_s32(ptr: *mut i32, a: int32x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1_s64(ptr: *mut i64, a: int64x1_t) {
-    vst1_v1i64(ptr as *const i8, a, crate::mem::align_of::<i64>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i64>() as i32;
+    vst1_v1i64::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64)"]
@@ -64112,7 +63771,8 @@ pub unsafe fn vst1_s64(ptr: *mut i64, a: int64x1_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1q_s64(ptr: *mut i64, a: int64x2_t) {
-    vst1q_v2i64(ptr as *const i8, a, crate::mem::align_of::<i64>() as i32)
+    const ALIGN: i32 = crate::mem::align_of::<i64>() as i32;
+    vst1q_v2i64::<ALIGN>(ptr as *const i8, a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8)"]
@@ -64125,11 +63785,8 @@ pub unsafe fn vst1q_s64(ptr: *mut i64, a: int64x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1_u8(ptr: *mut u8, a: uint8x8_t) {
-    vst1_v8i8(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u8>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u8>() as i32;
+    vst1_v8i8::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8)"]
@@ -64142,11 +63799,8 @@ pub unsafe fn vst1_u8(ptr: *mut u8, a: uint8x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1q_u8(ptr: *mut u8, a: uint8x16_t) {
-    vst1q_v16i8(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u8>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u8>() as i32;
+    vst1q_v16i8::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16)"]
@@ -64159,11 +63813,8 @@ pub unsafe fn vst1q_u8(ptr: *mut u8, a: uint8x16_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1_u16(ptr: *mut u16, a: uint16x4_t) {
-    vst1_v4i16(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u16>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u16>() as i32;
+    vst1_v4i16::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16)"]
@@ -64176,11 +63827,8 @@ pub unsafe fn vst1_u16(ptr: *mut u16, a: uint16x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1q_u16(ptr: *mut u16, a: uint16x8_t) {
-    vst1q_v8i16(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u16>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u16>() as i32;
+    vst1q_v8i16::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32)"]
@@ -64193,11 +63841,8 @@ pub unsafe fn vst1q_u16(ptr: *mut u16, a: uint16x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1_u32(ptr: *mut u32, a: uint32x2_t) {
-    vst1_v2i32(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u32>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u32>() as i32;
+    vst1_v2i32::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32)"]
@@ -64210,11 +63855,8 @@ pub unsafe fn vst1_u32(ptr: *mut u32, a: uint32x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
 pub unsafe fn vst1q_u32(ptr: *mut u32, a: uint32x4_t) {
-    vst1q_v4i32(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u32>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u32>() as i32;
+    vst1q_v4i32::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64)"]
@@ -64227,11 +63869,8 @@ pub unsafe fn vst1q_u32(ptr: *mut u32, a: uint32x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1_u64(ptr: *mut u64, a: uint64x1_t) {
-    vst1_v1i64(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u64>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u64>() as i32;
+    vst1_v1i64::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64)"]
@@ -64244,11 +63883,8 @@ pub unsafe fn vst1_u64(ptr: *mut u64, a: uint64x1_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1q_u64(ptr: *mut u64, a: uint64x2_t) {
-    vst1q_v2i64(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<u64>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<u64>() as i32;
+    vst1q_v2i64::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8)"]
@@ -64261,11 +63897,8 @@ pub unsafe fn vst1q_u64(ptr: *mut u64, a: uint64x2_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1_p8(ptr: *mut p8, a: poly8x8_t) {
-    vst1_v8i8(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p8>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p8>() as i32;
+    vst1_v8i8::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8)"]
@@ -64278,11 +63911,8 @@ pub unsafe fn vst1_p8(ptr: *mut p8, a: poly8x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
 pub unsafe fn vst1q_p8(ptr: *mut p8, a: poly8x16_t) {
-    vst1q_v16i8(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p8>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p8>() as i32;
+    vst1q_v16i8::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16)"]
@@ -64295,11 +63925,8 @@ pub unsafe fn vst1q_p8(ptr: *mut p8, a: poly8x16_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1_p16(ptr: *mut p16, a: poly16x4_t) {
-    vst1_v4i16(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p16>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p16>() as i32;
+    vst1_v4i16::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16)"]
@@ -64312,11 +63939,8 @@ pub unsafe fn vst1_p16(ptr: *mut p16, a: poly16x4_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
-    vst1q_v8i16(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p16>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p16>() as i32;
+    vst1q_v8i16::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64)"]
@@ -64329,11 +63953,8 @@ pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1_p64(ptr: *mut p64, a: poly64x1_t) {
-    vst1_v1i64(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p64>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p64>() as i32;
+    vst1_v1i64::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64)"]
@@ -64346,11 +63967,8 @@ pub unsafe fn vst1_p64(ptr: *mut p64, a: poly64x1_t) {
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
 pub unsafe fn vst1q_p64(ptr: *mut p64, a: poly64x2_t) {
-    vst1q_v2i64(
-        ptr as *const i8,
-        transmute(a),
-        crate::mem::align_of::<p64>() as i32,
-    )
+    const ALIGN: i32 = crate::mem::align_of::<p64>() as i32;
+    vst1q_v2i64::<ALIGN>(ptr as *const i8, transmute(a))
 }
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x2)"]
@@ -66973,175 +66591,145 @@ pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
 pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
     vst1q_s16_x4(transmute(a), transmute(b))
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v1i64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
-unsafe fn vst1_v1i64(addr: *const i8, val: int64x1_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1_v1i64<const ALIGN: i32>(addr: *const i8, val: int64x1_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v1i64.p0")]
         fn _vst1_v1i64(addr: *const i8, val: int64x1_t, align: i32);
     }
-    _vst1_v1i64(addr, val, align)
+    _vst1_v1i64(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v2f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
-unsafe fn vst1_v2f32(addr: *const i8, val: float32x2_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1_v2f32<const ALIGN: i32>(addr: *const i8, val: float32x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2f32.p0")]
         fn _vst1_v2f32(addr: *const i8, val: float32x2_t, align: i32);
     }
-    _vst1_v2f32(addr, val, align)
+    _vst1_v2f32(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v2i32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
-unsafe fn vst1_v2i32(addr: *const i8, val: int32x2_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1_v2i32<const ALIGN: i32>(addr: *const i8, val: int32x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2i32.p0")]
         fn _vst1_v2i32(addr: *const i8, val: int32x2_t, align: i32);
     }
-    _vst1_v2i32(addr, val, align)
+    _vst1_v2i32(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v4i16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
-unsafe fn vst1_v4i16(addr: *const i8, val: int16x4_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1_v4i16<const ALIGN: i32>(addr: *const i8, val: int16x4_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4i16.p0")]
         fn _vst1_v4i16(addr: *const i8, val: int16x4_t, align: i32);
     }
-    _vst1_v4i16(addr, val, align)
+    _vst1_v4i16(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v8i8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
-unsafe fn vst1_v8i8(addr: *const i8, val: int8x8_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1_v8i8<const ALIGN: i32>(addr: *const i8, val: int8x8_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v8i8.p0")]
         fn _vst1_v8i8(addr: *const i8, val: int8x8_t, align: i32);
     }
-    _vst1_v8i8(addr, val, align)
+    _vst1_v8i8(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_v16i8)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
-unsafe fn vst1q_v16i8(addr: *const i8, val: int8x16_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1q_v16i8<const ALIGN: i32>(addr: *const i8, val: int8x16_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v16i8.p0")]
         fn _vst1q_v16i8(addr: *const i8, val: int8x16_t, align: i32);
     }
-    _vst1q_v16i8(addr, val, align)
+    _vst1q_v16i8(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_v2i64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64"))]
-unsafe fn vst1q_v2i64(addr: *const i8, val: int64x2_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.64", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1q_v2i64<const ALIGN: i32>(addr: *const i8, val: int64x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v2i64.p0")]
         fn _vst1q_v2i64(addr: *const i8, val: int64x2_t, align: i32);
     }
-    _vst1q_v2i64(addr, val, align)
+    _vst1q_v2i64(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_v4f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
-unsafe fn vst1q_v4f32(addr: *const i8, val: float32x4_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1q_v4f32<const ALIGN: i32>(addr: *const i8, val: float32x4_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4f32.p0")]
         fn _vst1q_v4f32(addr: *const i8, val: float32x4_t, align: i32);
     }
-    _vst1q_v4f32(addr, val, align)
+    _vst1q_v4f32(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_v4i32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32"))]
-unsafe fn vst1q_v4i32(addr: *const i8, val: int32x4_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.32", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1q_v4i32<const ALIGN: i32>(addr: *const i8, val: int32x4_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v4i32.p0")]
         fn _vst1q_v4i32(addr: *const i8, val: int32x4_t, align: i32);
     }
-    _vst1q_v4i32(addr, val, align)
+    _vst1q_v4i32(addr, val, ALIGN)
 }
-#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_v8i16)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
-unsafe fn vst1q_v8i16(addr: *const i8, val: int16x8_t, align: i32) {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16", ALIGN = 0))]
+#[rustc_legacy_const_generics(2)]
+unsafe fn vst1q_v8i16<const ALIGN: i32>(addr: *const i8, val: int16x8_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1.v8i16.p0")]
         fn _vst1q_v8i16(addr: *const i8, val: int16x8_t, align: i32);
     }
-    _vst1q_v8i16(addr, val, align)
+    _vst1q_v8i16(addr, val, ALIGN)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_v4f16)"]
