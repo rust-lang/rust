@@ -211,7 +211,7 @@ macro_rules! declare_id_wrapper {
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Debug::fmt(&self.0, f)
+                std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
             }
         }
 
