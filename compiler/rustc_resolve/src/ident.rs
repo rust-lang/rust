@@ -640,6 +640,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 match result {
                     Ok((binding, flags)) => {
+                        if !matches!(scope, Scope::MacroUsePrelude) {
+                            let adjusted_module = if let Scope::Module(module, _) = scope
+                                && !matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..))
+                            {
+                                module
+                            } else {
+                                parent_scope.module
+                            };
+                            if !this.is_accessible_from(binding.vis, adjusted_module) {
+                                this.dcx()
+                                    .struct_span_err(binding.span, "binding")
+                                    .with_span_label(adjusted_module.span, "module")
+                                    .emit();
+                            }
+                        }
+
                         if !sub_namespace_match(binding.macro_kinds(), macro_kind) {
                             return None;
                         }
@@ -648,14 +664,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
-                            return Some(Ok(binding));
-                        }
+                        let significant_visibility = match finalize {
+                            None | Some(Finalize { stage: Stage::Late, .. }) => {
+                                return Some(Ok(binding));
+                            }
+                            Some(Finalize { significant_visibility, .. }) => significant_visibility,
+                        };
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
                             // Found another solution, if the first one was "weak", report an error.
                             let (res, innermost_res) = (binding.res(), innermost_binding.res());
-                            if res != innermost_res {
+                            if res != innermost_res || significant_visibility {
                                 let is_builtin = |res| {
                                     matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)))
                                 };
@@ -1065,7 +1084,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && shadowing == Shadowing::Restricted
             && finalize.stage == Stage::Early
             && binding.expansion != LocalExpnId::ROOT
-            && binding.res() != shadowed_glob.res()
+            && (binding.res() != shadowed_glob.res() || finalize.significant_visibility)
         {
             self.ambiguity_errors.push(AmbiguityError {
                 kind: AmbiguityKind::GlobVsExpanded,

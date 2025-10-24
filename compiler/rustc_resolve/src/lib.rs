@@ -2035,6 +2035,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         warn_ambiguity: bool,
     ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
+            // FIXME: Need to check if the `AmbiguityKind::GlobVsGlob`s caused by visibility
+            // mismatch ever passed through an import, but it's too breaking.
             let ambiguity_error = AmbiguityError {
                 kind,
                 ident,
@@ -2506,6 +2508,9 @@ struct Finalize {
     used: Used = Used::Other,
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
+    /// Ambiguous bindings with different visibilities need to be reported
+    /// even if they have the same `Res`olutions.
+    significant_visibility: bool = true,
 }
 
 impl Finalize {
