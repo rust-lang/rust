@@ -1270,6 +1270,28 @@ fn extract_if_true() {
 }
 
 #[test]
+fn extract_if_non_contiguous() {
+    let mut list =
+        [1, 2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37, 39]
+            .into_iter()
+            .collect::<VecDeque<_>>();
+    list.rotate_left(3);
+
+    assert!(!list.is_contiguous());
+    assert_eq!(
+        list,
+        [6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37, 39, 1, 2, 4]
+    );
+
+    let removed = list.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
+    assert_eq!(removed.len(), 10);
+    assert_eq!(removed, vec![6, 18, 20, 22, 24, 26, 34, 36, 2, 4]);
+
+    assert_eq!(list.len(), 14);
+    assert_eq!(list, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39, 1]);
+}
+
+#[test]
 fn extract_if_complex() {
     {
         //                [+xxx++++++xxxxx++++x+x++]
