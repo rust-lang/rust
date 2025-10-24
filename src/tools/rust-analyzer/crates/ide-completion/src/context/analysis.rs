@@ -1907,7 +1907,7 @@ fn is_in_block(node: &SyntaxNode) -> bool {
         .unwrap_or(false)
 }
 
-/// Similar to `has_parens`, heuristic sensing incomplete statement before ambigiguous `Expr`
+/// Similar to `has_parens`, heuristic sensing incomplete statement before ambiguous `Expr`
 ///
 /// Heuristic:
 ///
