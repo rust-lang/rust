@@ -185,10 +185,7 @@ unsafe extern "C-unwind" {
 ///
 /// [`throw`]: https://webassembly.github.io/exception-handling/core/syntax/instructions.html#syntax-instr-control
 /// [exception-handling proposal]: https://github.com/WebAssembly/exception-handling
-// FIXME: wasmtime does not currently support exception-handling, so cannot execute
-//        a wasm module with the throw instruction in it. once it does, we can
-//        reenable this attribute.
-// #[cfg_attr(test, assert_instr(throw, TAG = 0, ptr = core::ptr::null_mut()))]
+#[cfg_attr(test, assert_instr(throw, TAG = 0, ptr = core::ptr::null_mut()))]
 #[inline]
 #[unstable(feature = "wasm_exception_handling_intrinsics", issue = "122465")]
 // FIXME: Since this instruction unwinds, `core` built with `-C panic=unwind`
