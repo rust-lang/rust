@@ -3,7 +3,8 @@
 #![expect(
     clippy::if_same_then_else,
     clippy::branches_sharing_code,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    clippy::self_assignment
 )]
 
 macro_rules! m {
@@ -286,4 +287,86 @@ fn check_expect() {
         #[expect(clippy::panicking_unwrap)]
         x.expect("an error message");
     }
+}
+
+fn issue15321() {
+    struct Soption {
+        option: Option<bool>,
+        other: bool,
+    }
+    let mut sopt = Soption {
+        option: Some(true),
+        other: true,
+    };
+    // Lint: nothing was mutated
+    let _res = if sopt.option.is_some() {
+        sopt.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated field was mutated
+    let _res = if sopt.option.is_some() {
+        sopt.other = false;
+        sopt.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt.other = false;
+        sopt.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // No lint: the whole local was mutated
+    let _res = if sopt.option.is_some() {
+        sopt = sopt;
+        sopt.option.unwrap()
+    } else {
+        sopt.option = None;
+        sopt.option.unwrap()
+    };
+    // No lint: the field we're looking at was mutated
+    let _res = if sopt.option.is_some() {
+        sopt = sopt;
+        sopt.option.unwrap()
+    } else {
+        sopt.option = None;
+        sopt.option.unwrap()
+    };
+
+    struct Toption(Option<bool>, bool);
+    let mut topt = Toption(Some(true), true);
+    // Lint: nothing was mutated
+    let _res = if topt.0.is_some() {
+        topt.0.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        topt.0.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated field was mutated
+    let _res = if topt.0.is_some() {
+        topt.1 = false;
+        topt.0.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        topt.1 = false;
+        topt.0.unwrap()
+        //~^ panicking_unwrap
+    };
+    // No lint: the whole local was mutated
+    let _res = if topt.0.is_some() {
+        topt = topt;
+        topt.0.unwrap()
+    } else {
+        topt = topt;
+        topt.0.unwrap()
+    };
+    // No lint: the field we're looking at was mutated
+    let _res = if topt.0.is_some() {
+        topt.0 = None;
+        topt.0.unwrap()
+    } else {
+        topt.0 = None;
+        topt.0.unwrap()
+    };
 }

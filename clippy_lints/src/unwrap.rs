@@ -1,15 +1,20 @@
+use std::borrow::Cow;
+
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::source::snippet;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{can_use_if_let_chains, higher, sym};
+use rustc_abi::FieldIdx;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -114,11 +119,89 @@ impl UnwrappableKind {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq)]
+enum Local {
+    /// `x.opt`
+    WithFieldAccess {
+        local_id: HirId,
+        field_idx: FieldIdx,
+        /// The span of the whole expression
+        span: Span,
+    },
+    /// `x`
+    Pure { local_id: HirId },
+}
+
+/// Identical to derived impl, but ignores `span` on [`Local::WithFieldAccess`]
+impl PartialEq for Local {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::WithFieldAccess {
+                    local_id: self_local_id,
+                    field_idx: self_field_idx,
+                    ..
+                },
+                Self::WithFieldAccess {
+                    local_id: other_local_id,
+                    field_idx: other_field_idx,
+                    ..
+                },
+            ) => self_local_id == other_local_id && self_field_idx == other_field_idx,
+            (
+                Self::Pure {
+                    local_id: self_local_id,
+                },
+                Self::Pure {
+                    local_id: other_local_id,
+                },
+            ) => self_local_id == other_local_id,
+            _ => false,
+        }
+    }
+}
+
+impl Local {
+    fn snippet(self, cx: &LateContext<'_>) -> Cow<'static, str> {
+        match self {
+            Self::WithFieldAccess { span, .. } => snippet(cx.sess(), span, "_"),
+            Self::Pure { local_id } => cx.tcx.hir_name(local_id).to_string().into(),
+        }
+    }
+
+    fn is_potentially_local_place(self, place: &Place<'_>) -> bool {
+        match self {
+            Self::WithFieldAccess {
+                local_id, field_idx, ..
+            } => {
+                if is_potentially_local_place(local_id, place)
+                    // If there were projections other than the field projection, err on the side of caution and say
+                    // that they _might_ have mutated the field
+                    //
+                    // The reason we use `<=` and not `==` is that, if there were no projections, then the whole local
+                    // was mutated, which means that our field was mutated as well
+                    && place.projections.len() <= 1
+                    && place.projections.last().is_none_or(|proj| match proj.kind {
+                        ProjectionKind::Field(f_idx, _) => f_idx == field_idx,
+                        // If this is a projection we don't expect, it _might_ be mutating something
+                        _ => false,
+                    })
+                {
+                    true
+                } else {
+                    false
+                }
+            },
+            Self::Pure { local_id } => is_potentially_local_place(local_id, place),
+        }
+    }
+}
+
 /// Contains information about whether a variable can be unwrapped.
 #[derive(Copy, Clone, Debug)]
 struct UnwrapInfo<'tcx> {
     /// The variable that is checked
-    local_id: HirId,
+    local: Local,
     /// The if itself
     if_expr: &'tcx Expr<'tcx>,
     /// The check, like `x.is_ok()`
@@ -177,7 +260,7 @@ fn collect_unwrap_info<'tcx>(
             },
             ExprKind::Unary(UnOp::Not, expr) => inner(cx, if_expr, expr, branch, !invert, false, out),
             ExprKind::MethodCall(method_name, receiver, [], _)
-                if let Some(local_id) = receiver.res_local_id()
+                if let Some(local) = extract_local(cx, receiver)
                     && let ty = cx.typeck_results().expr_ty(receiver)
                     && let name = method_name.ident.name
                     && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
@@ -185,7 +268,7 @@ fn collect_unwrap_info<'tcx>(
                 let safe_to_unwrap = unwrappable != invert;
 
                 out.push(UnwrapInfo {
-                    local_id,
+                    local,
                     if_expr,
                     check: expr,
                     check_name: name,
@@ -204,6 +287,25 @@ fn collect_unwrap_info<'tcx>(
     out
 }
 
+/// Extracts either a local used by itself ([`Local::Pure`]), or a field access to a local
+/// ([`Local::WithFieldAccess`])
+fn extract_local(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Local> {
+    if let Some(local_id) = expr.res_local_id() {
+        Some(Local::Pure { local_id })
+    } else if let ExprKind::Field(recv, _) = expr.kind
+        && let Some(local_id) = recv.res_local_id()
+        && let Some(field_idx) = cx.typeck_results().opt_field_index(expr.hir_id)
+    {
+        Some(Local::WithFieldAccess {
+            local_id,
+            field_idx,
+            span: expr.span,
+        })
+    } else {
+        None
+    }
+}
+
 /// A HIR visitor delegate that checks if a local variable of type `Option` or `Result` is mutated,
 /// *except* for if `.as_mut()` is called.
 /// The reason for why we allow that one specifically is that `.as_mut()` cannot change
@@ -213,7 +315,7 @@ fn collect_unwrap_info<'tcx>(
 /// (And also `.as_mut()` is a somewhat common method that is still worth linting on.)
 struct MutationVisitor<'tcx> {
     is_mutated: bool,
-    local_id: HirId,
+    local: Local,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -237,7 +339,7 @@ fn is_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
 impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::Mutable = bk
-            && is_potentially_local_place(self.local_id, &cat.place)
+            && self.local.is_potentially_local_place(&cat.place)
             && !is_as_mut_use(self.tcx, diag_expr_id)
         {
             self.is_mutated = true;
@@ -245,7 +347,7 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     }
 
     fn mutate(&mut self, cat: &PlaceWithHirId<'tcx>, _: HirId) {
-        if is_potentially_local_place(self.local_id, &cat.place) {
+        if self.local.is_potentially_local_place(&cat.place) {
             self.is_mutated = true;
         }
     }
@@ -269,7 +371,7 @@ impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
             let mut delegate = MutationVisitor {
                 is_mutated: false,
-                local_id: unwrap_info.local_id,
+                local: unwrap_info.local,
                 tcx: self.cx.tcx,
             };
 
@@ -331,17 +433,17 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
             // find `unwrap[_err]()` or `expect("...")` calls:
             if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
                 && let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg)
-                && let Some(id) = self_arg.res_local_id()
+                && let Some(local) = extract_local(self.cx, self_arg)
                 && matches!(method_name.ident.name, sym::unwrap | sym::expect | sym::unwrap_err)
                 && let call_to_unwrap = matches!(method_name.ident.name, sym::unwrap | sym::expect)
-                && let Some(unwrappable) = self.unwrappables.iter().find(|u| u.local_id == id)
+                && let Some(unwrappable) = self.unwrappables.iter().find(|u| u.local == local)
                 // Span contexts should not differ with the conditional branch
                 && let span_ctxt = expr.span.ctxt()
                 && unwrappable.branch.span.ctxt() == span_ctxt
                 && unwrappable.check.span.ctxt() == span_ctxt
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
-                    let unwrappable_variable_name = self.cx.tcx.hir_name(unwrappable.local_id);
+                    let unwrappable_variable_str = unwrappable.local.snippet(self.cx);
 
                     span_lint_hir_and_then(
                         self.cx,
@@ -349,7 +451,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                         expr.hir_id,
                         expr.span,
                         format!(
-                            "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
+                            "called `{}` on `{unwrappable_variable_str}` after checking its variant with `{}`",
                             method_name.ident.name, unwrappable.check_name,
                         ),
                         |diag| {
@@ -358,7 +460,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                                     unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                     "try",
                                     format!(
-                                        "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
+                                        "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_str}",
                                         suggested_pattern = if call_to_unwrap {
                                             unwrappable.kind.success_variant_pattern()
                                         } else {
