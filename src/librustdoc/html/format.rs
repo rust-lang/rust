@@ -17,10 +17,10 @@ use rustc_abi::ExternAbi;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, MacroKinds};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{ConstStability, StabilityLevel, StableSince};
-use rustc_metadata::creader::{CStore, LoadedMacro};
+use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
@@ -360,27 +360,23 @@ fn generate_macro_def_id_path(
     let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
 
-    let fqp = clean::inline::item_relative_path(tcx, def_id);
-    let mut relative = fqp.iter().copied();
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
     if !cstore.has_crate_data(def_id.krate) {
         debug!("No data for crate {crate_name}");
         return Err(HrefError::NotInExternalCache);
     }
-    // Check to see if it is a macro 2.0 or built-in macro.
-    // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
-    let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx) {
-        // If `def.macro_rules` is `true`, then it's not a macro 2.0.
-        LoadedMacro::MacroDef { def, .. } => !def.macro_rules,
-        _ => false,
+    let DefKind::Macro(kinds) = tcx.def_kind(def_id) else {
+        unreachable!();
     };
-
-    let mut path = if is_macro_2 {
-        once(crate_name).chain(relative).collect()
+    let item_type = if kinds == MacroKinds::DERIVE {
+        ItemType::ProcDerive
+    } else if kinds == MacroKinds::ATTR {
+        ItemType::ProcAttribute
     } else {
-        vec![crate_name, relative.next_back().unwrap()]
+        ItemType::Macro
     };
+    let mut path = clean::inline::get_item_path(tcx, def_id, item_type);
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
         // it means that `relative` was empty, which is an error.
@@ -388,8 +384,9 @@ fn generate_macro_def_id_path(
         return Err(HrefError::NotInExternalCache);
     }
 
+    let fqp = path.clone();
     if let Some(last) = path.last_mut() {
-        *last = Symbol::intern(&format!("macro.{last}.html"));
+        *last = Symbol::intern(&format!("{}.{last}.html", item_type.as_str()));
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
@@ -410,7 +407,7 @@ fn generate_macro_def_id_path(
             return Err(HrefError::NotInExternalCache);
         }
     };
-    Ok((url, ItemType::Macro, fqp))
+    Ok((url, item_type, fqp))
 }
 
 fn generate_item_def_id_path(
