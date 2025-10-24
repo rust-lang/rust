@@ -495,7 +495,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             match (child_mode, nested_goal.source()) {
                 (
                     ChildMode::Trait(_) | ChildMode::Host(_),
-                    GoalSource::Misc | GoalSource::TypeRelating | GoalSource::NormalizeGoal(_),
+                    GoalSource::Misc
+                    | GoalSource::TypeRelating
+                    | GoalSource::NormalizeGoal(_)
+                    | GoalSource::NestedNormalizationGoal(_),
                 ) => {
                     continue;
                 }
