@@ -140,7 +140,12 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     Ok(())
 }
 
-pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Option<&str>) -> bool {
+pub fn compile_rust_programs(
+    toolchain: Option<&str>,
+    target: &str,
+    profile: &str,
+    linker: Option<&str>,
+) -> bool {
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
 
@@ -161,7 +166,7 @@ pub fn compile_rust_programs(toolchain: Option<&str>, target: &str, linker: Opti
     if toolchain.is_some_and(|val| !val.is_empty()) {
         cargo_command.arg(toolchain.unwrap());
     }
-    cargo_command.args(["build", "--target", target, "--release"]);
+    cargo_command.args(["build", "--target", target, "--profile", profile]);
 
     let mut rust_flags = "-Cdebuginfo=0".to_string();
     if let Some(linker) = linker {

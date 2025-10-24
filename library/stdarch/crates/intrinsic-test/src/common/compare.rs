@@ -11,7 +11,17 @@ fn runner_command(runner: &str) -> Command {
     cmd
 }
 
-pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: &str) -> bool {
+pub fn compare_outputs(
+    intrinsic_name_list: &Vec<String>,
+    runner: &str,
+    target: &str,
+    profile: &str,
+) -> bool {
+    let profile_dir = match profile {
+        "dev" => "debug",
+        _ => "release",
+    };
+
     let (c, rust) = rayon::join(
         || {
             runner_command(runner)
@@ -21,7 +31,9 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         },
         || {
             runner_command(runner)
-                .arg(format!("./target/{target}/release/intrinsic-test-programs"))
+                .arg(format!(
+                    "./target/{target}/{profile_dir}/intrinsic-test-programs"
+                ))
                 .current_dir("rust_programs")
                 .output()
         },
