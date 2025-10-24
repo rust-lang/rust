@@ -611,16 +611,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = self.monomorphize(ty);
                 let layout = bx.cx().layout_of(ty);
                 let val = match null_op {
-                    mir::NullOp::SizeOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.size.bytes();
-                        bx.cx().const_usize(val)
-                    }
-                    mir::NullOp::AlignOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.align.bytes();
-                        bx.cx().const_usize(val)
-                    }
                     mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()

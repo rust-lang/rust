@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("edition").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("edition").path(path));
     walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap();

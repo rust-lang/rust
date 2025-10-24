@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::features::{CollectedFeatures, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book";
@@ -85,8 +85,8 @@ fn maybe_suggest_dashes(names: &BTreeSet<String>, feature_name: &str, check: &mu
     }
 }
 
-pub fn check(path: &Path, features: CollectedFeatures, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check("unstable_book");
+pub fn check(path: &Path, features: CollectedFeatures, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("unstable_book");
 
     let lang_features = features.lang;
     let lib_features = features

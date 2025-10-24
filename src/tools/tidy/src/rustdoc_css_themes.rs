@@ -3,10 +3,10 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 
-pub fn check(librustdoc_path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("rustdoc_css_themes").path(librustdoc_path));
+pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_css_themes").path(librustdoc_path));
 
     let rustdoc_css = "html/static/css/rustdoc.css";
     let noscript_css = "html/static/css/noscript.css";

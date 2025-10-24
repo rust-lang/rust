@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::*;
 
-pub fn check(filepath: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("known_bug").path(filepath));
+pub fn check(filepath: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("known_bug").path(filepath));
     walk(filepath, |path, _is_dir| filter_not_rust(path), &mut |entry, contents| {
         let file: &Path = entry.path();
 

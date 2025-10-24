@@ -1,0 +1,19 @@
+error[E0080]: values of the type `[&usize; usize::MAX]` are too big for the target architecture
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: evaluation of `<[&usize; usize::MAX] as std::mem::SizedTypeProperties>::SIZE` failed here
+
+error[E0080]: values of the type `[&usize; usize::MAX]` are too big for the target architecture
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: evaluation of `<[&usize; usize::MAX] as std::mem::SizedTypeProperties>::ALIGN` failed here
+
+note: the above error was encountered while instantiating `fn Box::<[&usize; usize::MAX]>::new`
+  --> $DIR/issue-17913.rs:9:21
+   |
+LL |     let a: Box<_> = Box::new([&n; SIZE]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
