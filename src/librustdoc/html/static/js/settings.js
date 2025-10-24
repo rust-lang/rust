@@ -78,6 +78,8 @@
                     removeClass(document.documentElement, "word-wrap-source-code");
                 }
                 break;
+            case "show-private-items":
+                showPrivateItems(value === true);
         }
     }
 
@@ -274,6 +276,11 @@
                 "js_name": "word-wrap-source-code",
                 "default": false,
             },
+            {
+                "name": "Show private items",
+                "js_name": "show-private-items",
+                "default": false,
+            },
         ];
 
         // Then we build the DOM.
@@ -337,6 +344,19 @@
         );
         if (!isInPopover) {
             window.hidePopoverMenus();
+        }
+    }
+
+    /**
+     * @param {boolean} value
+     */
+    function showPrivateItems(value) {
+        /*document.querySelectorAll("dt:has([title='Restricted Visibility'])").forEach(x => x.hidden = !value);
+         */
+        if (value) {
+            removeClass(document.documentElement, "hide-priv");
+        } else {
+            addClass(document.documentElement, "hide-priv");
         }
     }
 
