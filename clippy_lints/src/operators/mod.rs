@@ -11,6 +11,7 @@ mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
+mod integer_division_remainder_used;
 mod invalid_upcast_comparisons;
 mod manual_div_ceil;
 mod manual_is_multiple_of;
@@ -911,6 +912,29 @@ declare_clippy_lint! {
     "a comparison involving an upcast which is always true or false"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the usage of division (`/`) and remainder (`%`) operations
+    /// when performed on any integer types using the default `Div` and `Rem` trait implementations.
+    ///
+    /// ### Why restrict this?
+    /// In cryptographic contexts, division can result in timing sidechannel vulnerabilities,
+    /// and needs to be replaced with constant-time code instead (e.g. Barrett reduction).
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let my_div = 10 / 2;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let my_div = 10 >> 1;
+    /// ```
+    #[clippy::version = "1.79.0"]
+    pub INTEGER_DIVISION_REMAINDER_USED,
+    restriction,
+    "use of disallowed default division and remainder operations"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -948,6 +972,7 @@ impl_lint_pass!(Operators => [
     FLOAT_EQUALITY_WITHOUT_ABS,
     IDENTITY_OP,
     INTEGER_DIVISION,
+    INTEGER_DIVISION_REMAINDER_USED,
     CMP_OWNED,
     FLOAT_CMP,
     FLOAT_CMP_CONST,
@@ -987,6 +1012,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 duration_subsec::check(cx, e, op.node, lhs, rhs);
                 float_equality_without_abs::check(cx, e, op.node, lhs, rhs);
                 integer_division::check(cx, e, op.node, lhs, rhs);
+                integer_division_remainder_used::check(cx, op.node, lhs, rhs, e.span);
                 cmp_owned::check(cx, op.node, lhs, rhs);
                 float_cmp::check(cx, e, op.node, lhs, rhs);
                 modulo_one::check(cx, e, op.node, rhs);
