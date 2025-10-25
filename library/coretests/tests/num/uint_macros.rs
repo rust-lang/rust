@@ -271,6 +271,12 @@ macro_rules! uint_module {
             assert_eq!(from_str::<$T>("x"), None);
         }
 
+        #[test]
+        #[should_panic]
+        fn test_pow_overflow() {
+            let _ = <$T>::pow(2, 129);
+        }
+
         test_runtime_and_compiletime! {
             fn test_parse_bytes() {
                 assert_eq_const_safe!(Result<$T, ParseIntError>: $T::from_str_radix("123", 10), Ok(123 as $T));
