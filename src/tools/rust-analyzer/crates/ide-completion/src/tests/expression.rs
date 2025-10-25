@@ -3268,6 +3268,12 @@ fn foo() -> (i32, i32) {
 #[test]
 fn let_in_condition() {
     check_edit("let", r#"fn f() { if $0 {} }"#, r#"fn f() { if let $1 = $0 {} }"#);
+    check_edit("let", r#"fn f() { if $0x {} }"#, r#"fn f() { if let $1 = $0x {} }"#);
+    check_edit(
+        "let",
+        r#"fn f() { if $0foo.bar() {} }"#,
+        r#"fn f() { if let $1 = $0foo.bar() {} }"#,
+    );
 }
 
 #[test]
