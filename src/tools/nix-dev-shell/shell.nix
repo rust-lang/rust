@@ -16,9 +16,14 @@ pkgs.mkShell {
     pkgs.nix
     pkgs.glibc.out
     pkgs.glibc.static
+    pkgs.rust-analyzer
     x
     # Get the runtime deps of the x wrapper
   ] ++ lists.flatten (attrsets.attrValues env);
+
+  shellHook = ''
+    export PATH=$(pwd)/build/host/stage0/bin:$PATH
+  '';
 
   env = {
     # Avoid creating text files for ICEs.
