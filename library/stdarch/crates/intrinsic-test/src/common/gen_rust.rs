@@ -10,16 +10,22 @@ use super::intrinsic_helpers::IntrinsicTypeDefinition;
 // The number of times each intrinsic will be called.
 pub(crate) const PASSES: u32 = 20;
 
+macro_rules! concatln {
+    ($($lines:expr),* $(,)?) => {
+        concat!($( $lines, "\n" ),*)
+    };
+}
+
 fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
     writeln!(
         w,
-        concat!(
-            "[package]\n",
-            "name = \"{name}\"\n",
-            "version = \"{version}\"\n",
-            "authors = [{authors}]\n",
-            "license = \"{license}\"\n",
-            "edition = \"2018\"\n",
+        concatln!(
+            "[package]",
+            "name = \"{name}\"",
+            "version = \"{version}\"",
+            "authors = [{authors}]",
+            "license = \"{license}\"",
+            "edition = \"2018\"",
         ),
         name = name,
         version = env!("CARGO_PKG_VERSION"),
@@ -247,23 +253,23 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
         }
     }
 
-    let indentation2 = indentation.nested();
-    let indentation3 = indentation2.nested();
-    writeln!(
+    write!(
         w,
-        "\
-            for (id, f) in specializations {{\n\
-                for i in 0..{passes} {{\n\
-                    unsafe {{\n\
-                        {loaded_args}\
-                        let __return_value = f({args});\n\
-                        println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});\n\
-                    }}\n\
-                }}\n\
-            }}",
-        loaded_args = intrinsic.arguments.load_values_rust(indentation3),
+        concatln!(
+            "    for (id, f) in specializations {{",
+            "        for i in 0..{passes} {{",
+            "            unsafe {{",
+            "{loaded_args}",
+            "                let __return_value = f({args});",
+            "                println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});",
+            "            }}",
+            "        }}",
+            "    }}",
+        ),
+        loaded_args = intrinsic.arguments.load_values_rust(indentation.nest_by(4)),
         args = intrinsic.arguments.as_call_param_rust(),
         return_value = intrinsic.results.print_result_rust(),
+        passes = passes,
     )
 }
 
