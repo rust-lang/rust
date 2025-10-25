@@ -14,7 +14,7 @@ cfg_select! {
         pub use unix::chroot;
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(any(target_os = "linux", target_os = "android"))]
-        pub(crate) use unix::CachedFileMetadata;
+        pub(super) use unix::CachedFileMetadata;
         use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {

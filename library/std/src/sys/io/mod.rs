@@ -50,8 +50,11 @@ mod is_terminal {
     }
 }
 
+mod kernel_copy;
+
 pub use io_slice::{IoSlice, IoSliceMut};
 pub use is_terminal::is_terminal;
+pub use kernel_copy::{CopyState, kernel_copy};
 
 // Bare metal platforms usually have very small amounts of RAM
 // (in the order of hundreds of KB)
