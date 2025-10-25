@@ -29,7 +29,7 @@ impl MyTrait for Thing {}
 // the shim calls the real function
 // CHECK-LABEL: define
 // CHECK-SAME: my_naked_function
-// CHECK-SAME: reify.shim.fnptr
+// CHECK-SAME: reify_fnptr
 
 // CHECK-LABEL: main
 #[unsafe(no_mangle)]
@@ -40,7 +40,7 @@ pub fn main() {
     // main calls the shim function
     // CHECK: call void
     // CHECK-SAME: my_naked_function
-    // CHECK-SAME: reify.shim.fnptr
+    // CHECK-SAME: reify_fnptr
     (F)(&Thing);
 }
 
