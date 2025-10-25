@@ -237,6 +237,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return Some((module.parent.unwrap().nearest_item_scope(), None));
         }
 
+        if module.is_transparent() {
+            return Some((module.parent.unwrap().nearest_item_scope(), None));
+        }
+
         // We need to support the next case under a deprecation warning
         // ```
         // struct MyStruct;
@@ -345,7 +349,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
                 let parent_scope = &ParentScope { module, ..*parent_scope };
                 let finalize = finalize.map(|f| Finalize { stage: Stage::Late, ..f });
-                return self
+                let binding = self
                     .cm()
                     .resolve_ident_in_scope_set(
                         orig_ident,
@@ -356,8 +360,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         ignore_binding,
                         None,
                     )
-                    .ok()
-                    .map(LexicalScopeBinding::Item);
+                    .ok();
+                match binding {
+                    Some(binding) => {
+                        return Some(LexicalScopeBinding::Item(binding));
+                    }
+                    None => {
+                        if !module.is_transparent() {
+                            return None;
+                        }
+                    }
+                }
             }
 
             if let RibKind::MacroDefinition(def) = rib.kind
