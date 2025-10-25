@@ -56,8 +56,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                 }
             }
             ArgParser::NameValue(_) => {
-                let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
-                    .suggestions(cx.attr_style, "inline");
+                let suggestions = cx.suggestions();
                 let span = cx.attr_span;
                 cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                 return None;
