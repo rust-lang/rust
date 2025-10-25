@@ -934,7 +934,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_trait_and_bounds(
-        &self,
+        &mut self,
         err: &mut Diag<'_>,
         source: PathSource<'_, '_, '_>,
         res: Option<Res>,
@@ -1479,7 +1479,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
-    fn restrict_assoc_type_in_where_clause(&self, span: Span, err: &mut Diag<'_>) -> bool {
+    fn restrict_assoc_type_in_where_clause(&mut self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
         let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
             kind:
@@ -1539,6 +1539,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     &poly_trait_ref.trait_ref.path.segments[..]
                 {
                     if ident.span == span {
+                        if matches!(
+                            self.resolve_path(
+                                &[Segment::from_ident(*ident)],
+                                Some(TypeNS),
+                                None,
+                                PathSource::Type,
+                            ),
+                            PathResult::Indeterminate | PathResult::Failed { .. }
+                        ) {
+                            // if the ident doesn't resolve to a type, don't suggest constrain associated type.
+                            return false;
+                        }
+
                         let Some(new_where_bound_predicate) =
                             mk_where_bound_predicate(path, poly_trait_ref, ty)
                         else {
