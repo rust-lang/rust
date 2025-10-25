@@ -180,6 +180,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
+
         if let Some(res) = res {
             BaseError {
                 msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
@@ -821,12 +822,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     args_snippet = snippet;
                 }
 
-                err.span_suggestion(
-                    call_span,
-                    format!("try calling `{ident}` as a method"),
-                    format!("self.{path_str}({args_snippet})"),
-                    Applicability::MachineApplicable,
-                );
+                if let Some(Res::Def(DefKind::Struct, def_id)) = res {
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                    err.note("constructor is not visible here due to private fields");
+                } else {
+                    err.span_suggestion(
+                        call_span,
+                        format!("try calling `{ident}` as a method"),
+                        format!("self.{path_str}({args_snippet})"),
+                        Applicability::MachineApplicable,
+                    );
+                }
+
                 return (true, suggested_candidates, candidates);
             }
         }
@@ -1611,6 +1618,47 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn update_err_for_private_tuple_struct_fields(
+        &mut self,
+        err: &mut Diag<'_>,
+        source: &PathSource<'_, '_, '_>,
+        def_id: DefId,
+    ) -> Option<Vec<Span>> {
+        match source {
+            // e.g. `if let Enum::TupleVariant(field1, field2) = _`
+            PathSource::TupleStruct(_, pattern_spans) => {
+                err.primary_message(
+                    "cannot match against a tuple struct which contains private fields",
+                );
+
+                // Use spans of the tuple struct pattern.
+                Some(Vec::from(*pattern_spans))
+            }
+            // e.g. `let _ = Enum::TupleVariant(field1, field2);`
+            PathSource::Expr(Some(Expr {
+                kind: ExprKind::Call(path, args),
+                span: call_span,
+                ..
+            })) => {
+                err.primary_message(
+                    "cannot initialize a tuple struct which contains private fields",
+                );
+                self.suggest_alternative_construction_methods(
+                    def_id,
+                    err,
+                    path.span,
+                    *call_span,
+                    &args[..],
+                );
+                // Use spans of the tuple struct definition.
+                self.r
+                    .field_idents(def_id)
+                    .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+            }
+            _ => None,
+        }
+    }
+
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
     /// function.
     /// Returns `true` if able to provide context-dependent help.
@@ -1942,42 +1990,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     return true;
                 };
 
-                let update_message =
-                    |this: &mut Self, err: &mut Diag<'_>, source: &PathSource<'_, '_, '_>| {
-                        match source {
-                            // e.g. `if let Enum::TupleVariant(field1, field2) = _`
-                            PathSource::TupleStruct(_, pattern_spans) => {
-                                err.primary_message(
-                                "cannot match against a tuple struct which contains private fields",
-                            );
-
-                                // Use spans of the tuple struct pattern.
-                                Some(Vec::from(*pattern_spans))
-                            }
-                            // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                            PathSource::Expr(Some(Expr {
-                                kind: ExprKind::Call(path, args),
-                                span: call_span,
-                                ..
-                            })) => {
-                                err.primary_message(
-                                "cannot initialize a tuple struct which contains private fields",
-                            );
-                                this.suggest_alternative_construction_methods(
-                                    def_id,
-                                    err,
-                                    path.span,
-                                    *call_span,
-                                    &args[..],
-                                );
-                                // Use spans of the tuple struct definition.
-                                this.r
-                                    .field_idents(def_id)
-                                    .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
-                            }
-                            _ => None,
-                        }
-                    };
                 let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                 if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
                     && is_accessible
@@ -2006,13 +2018,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
-                    update_message(self, err, &source);
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
                 }
                 if !is_expected(ctor_def) || is_accessible {
                     return true;
                 }
 
-                let field_spans = update_message(self, err, &source);
+                let field_spans =
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
 
                 if let Some(spans) =
                     field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
