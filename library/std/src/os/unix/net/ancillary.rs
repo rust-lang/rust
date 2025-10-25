@@ -48,7 +48,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
             msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }
 
-        let count = socket.recv_msg(&mut msg)?;
+        let count = socket.recv_msg_(&mut msg)?;
 
         ancillary.length = msg.msg_controllen as usize;
         ancillary.truncated = msg.msg_flags & libc::MSG_CTRUNC == libc::MSG_CTRUNC;
@@ -83,7 +83,7 @@ pub(super) fn send_vectored_with_ancillary_to(
 
         ancillary.truncated = false;
 
-        socket.send_msg(&mut msg)
+        socket.send_msg_(&mut msg)
     }
 }
 
