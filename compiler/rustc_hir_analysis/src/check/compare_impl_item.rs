@@ -1097,14 +1097,14 @@ fn check_region_bounds_on_impl_item<'tcx>(
         .expect("expected impl item to have generics or else we can't compare them")
         .span;
 
-    let mut generics_span = None;
+    let mut generics_span = tcx.def_span(trait_m.def_id);
     let mut bounds_span = vec![];
     let mut where_span = None;
 
     if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
         && let Some(trait_generics) = trait_node.generics()
     {
-        generics_span = Some(trait_generics.span);
+        generics_span = trait_generics.span;
         // FIXME: we could potentially look at the impl's bounds to not point at bounds that
         // *are* present in the impl.
         for p in trait_generics.predicates {

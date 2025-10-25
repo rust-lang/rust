@@ -3165,6 +3165,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     {
                         continue;
                     }
+                    if let LifetimeBinderKind::ImplAssocType = kind {
+                        continue;
+                    }
 
                     if !span.can_be_used_for_suggestions()
                         && suggest_note
