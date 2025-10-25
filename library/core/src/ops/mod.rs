@@ -199,6 +199,10 @@ pub use self::try_trait::Yeet;
 pub(crate) use self::try_trait::{ChangeOutputType, NeverShortCircuit};
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 pub use self::try_trait::{FromResidual, Try};
+#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+pub use self::unsize::CoercePointee;
+#[unstable(feature = "coerce_pointee_validated", issue = "none")]
+pub use self::unsize::CoercePointeeValidated;
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 pub use self::unsize::CoerceUnsized;
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]

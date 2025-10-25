@@ -11,8 +11,8 @@ LL | #[derive(CoercePointee)]
 error[E0658]: use of unstable library feature `derive_coerce_pointee`
   --> $DIR/feature-gate-derive-coerce-pointee.rs:1:5
    |
-LL | use std::marker::CoercePointee;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::CoercePointee;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #123430 <https://github.com/rust-lang/rust/issues/123430> for more information
    = help: add `#![feature(derive_coerce_pointee)]` to the crate attributes to enable

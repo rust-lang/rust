@@ -2,7 +2,7 @@
 //@ compile-flags: -Zunpretty=expanded
 //@ edition: 2015
 #![feature(derive_coerce_pointee)]
-use std::marker::CoercePointee;
+use std::ops::CoercePointee;
 
 pub trait MyTrait<T: ?Sized> {}
 
@@ -12,7 +12,7 @@ struct MyPointer<'a, #[pointee] T: ?Sized> {
     ptr: &'a T,
 }
 
-#[derive(core::marker::CoercePointee)]
+#[derive(core::ops::CoercePointee)]
 #[repr(transparent)]
 pub struct MyPointer2<'a, Y, Z: MyTrait<T>, #[pointee] T: ?Sized + MyTrait<T>, X: MyTrait<T> = ()>
 where
