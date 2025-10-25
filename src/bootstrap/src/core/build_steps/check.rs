@@ -102,15 +102,7 @@ impl Step for Std {
 
         let check_stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check");
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &check_stamp,
-            vec![],
-            true,
-            false,
-        );
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &check_stamp, vec![], false);
 
         drop(_guard);
 
@@ -145,7 +137,7 @@ impl Step for Std {
             build_compiler,
             target,
         );
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
         check_stamp
     }
 
@@ -362,7 +354,7 @@ impl Step for Rustc {
         let stamp =
             build_stamp::librustc_stamp(builder, build_compiler, target).with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 
         stamp
     }
@@ -560,7 +552,7 @@ impl Step for CraneliftCodegenBackend {
         )
         .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -629,7 +621,7 @@ impl Step for GccCodegenBackend {
         )
         .with_prefix("check");
 
-        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -752,7 +744,7 @@ fn run_tool_check_step(
         .with_prefix(&format!("{display_name}-check"));
 
     let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
-    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], false);
 }
 
 tool_check_step!(Rustdoc {
