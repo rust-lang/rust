@@ -107,23 +107,33 @@ fn spawn_test_thread(
         return None;
     }
 
-    let runnable_test = RunnableTest::new(test);
+    let args = TestThreadArgs {
+        config: Arc::clone(&test.config),
+        testpaths: test.testpaths.clone(),
+        revision: test.revision.clone(),
+    };
     let should_panic = test.desc.should_panic;
-    let run_test = move || run_test_inner(id, should_panic, runnable_test, completion_tx);
+    let run_test = move || test_thread_main(id, should_panic, args, completion_tx);
 
     let thread_builder = thread::Builder::new().name(test.desc.name.clone());
     let join_handle = thread_builder.spawn(run_test).unwrap();
     Some(join_handle)
 }
 
+struct TestThreadArgs {
+    config: Arc<Config>,
+    testpaths: TestPaths,
+    revision: Option<String>,
+}
+
 /// Runs a single test, within the dedicated thread spawned by the caller.
-fn run_test_inner(
+fn test_thread_main(
     id: TestId,
     should_panic: ShouldPanic,
-    runnable_test: RunnableTest,
+    args: TestThreadArgs,
     completion_sender: mpsc::Sender<TestCompletion>,
 ) {
-    let capture = CaptureKind::for_config(&runnable_test.config);
+    let capture = CaptureKind::for_config(&args.config);
 
     // Install a panic-capture buffer for use by the custom panic hook.
     if capture.should_set_panic_hook() {
@@ -133,7 +143,24 @@ fn run_test_inner(
     let stdout = capture.stdout();
     let stderr = capture.stderr();
 
-    let panic_payload = panic::catch_unwind(move || runnable_test.run(stdout, stderr)).err();
+    // Run the test, catching any panics so that we can gracefully report
+    // failure (or success).
+    //
+    // FIXME(Zalathar): Ideally we would report test failures with `Result`,
+    // and use panics only for bugs within compiletest itself, but that would
+    // require a major overhaul of error handling in the test runners.
+    let panic_payload = panic::catch_unwind(|| {
+        __rust_begin_short_backtrace(|| {
+            crate::runtest::run(
+                &args.config,
+                stdout,
+                stderr,
+                &args.testpaths,
+                args.revision.as_deref(),
+            );
+        });
+    })
+    .err();
 
     if let Some(panic_buf) = panic_hook::take_capture_buf() {
         let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
@@ -206,33 +233,6 @@ impl CaptureKind {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct TestId(usize);
-
-struct RunnableTest {
-    config: Arc<Config>,
-    testpaths: TestPaths,
-    revision: Option<String>,
-}
-
-impl RunnableTest {
-    fn new(test: &CollectedTest) -> Self {
-        let config = Arc::clone(&test.config);
-        let testpaths = test.testpaths.clone();
-        let revision = test.revision.clone();
-        Self { config, testpaths, revision }
-    }
-
-    fn run(&self, stdout: &dyn ConsoleOut, stderr: &dyn ConsoleOut) {
-        __rust_begin_short_backtrace(|| {
-            crate::runtest::run(
-                &self.config,
-                stdout,
-                stderr,
-                &self.testpaths,
-                self.revision.as_deref(),
-            );
-        });
-    }
-}
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
