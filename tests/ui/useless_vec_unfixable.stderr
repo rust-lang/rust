@@ -1,5 +1,5 @@
 error: useless use of `vec!`
-  --> tests/ui/useless_vec.rs:8:26
+  --> tests/ui/useless_vec_unfixable.rs:8:26
    |
 LL |       let _some_variable = vec![
    |  __________________________^
