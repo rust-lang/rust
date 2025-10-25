@@ -4,6 +4,15 @@ error[E0277]: the trait bound `{closure@$DIR/const_closure-const_trait_impl-ice-
 LL |     (const || (()).foo())();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `{closure@$DIR/const_closure-const_trait_impl-ice-113381.rs:15:6: 15:14}: [const] FnMut()` is not satisfied
+  --> $DIR/const_closure-const_trait_impl-ice-113381.rs:15:5
+   |
+LL |     (const || (()).foo())();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `call`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
