@@ -1,5 +1,9 @@
 //@ check-pass
 
+//! This test checks that the depth limit of the ImproperCTypes lints counts the depth
+//! of a type properly.
+//! Issue: https://github.com/rust-lang/rust/issues/130757
+
 #![recursion_limit = "5"]
 #![allow(unused)]
 #![deny(improper_ctypes)]
