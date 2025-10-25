@@ -1,13 +1,13 @@
 error: unclosed frontmatter
-  --> $DIR/unclosed-4.rs:1:1
+  --> $DIR/fence-unclosed-1.rs:1:1
    |
 LL | / ----cargo
-LL | |
+...  |
 LL | |
    | |_^
    |
 note: frontmatter opening here was not closed
-  --> $DIR/unclosed-4.rs:1:1
+  --> $DIR/fence-unclosed-1.rs:1:1
    |
 LL | ----cargo
    | ^^^^

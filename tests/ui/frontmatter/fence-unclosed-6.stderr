@@ -1,5 +1,5 @@
 error: unclosed frontmatter
-  --> $DIR/unclosed-6.rs:1:1
+  --> $DIR/fence-unclosed-6.rs:1:1
    |
 LL | / ---
 LL | |
@@ -10,7 +10,7 @@ LL | |
    | |_^
    |
 note: frontmatter opening here was not closed
-  --> $DIR/unclosed-6.rs:1:1
+  --> $DIR/fence-unclosed-6.rs:1:1
    |
 LL | ---
    | ^^^

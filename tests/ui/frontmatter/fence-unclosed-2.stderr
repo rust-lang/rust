@@ -1,24 +1,26 @@
 error: unclosed frontmatter
-  --> $DIR/unclosed-5.rs:1:1
+  --> $DIR/fence-unclosed-2.rs:1:1
    |
 LL | / ----cargo
 ...  |
-LL | |
-   | |_^
+LL | |     "----"
+LL | | }
+   | |__^
    |
 note: frontmatter opening here was not closed
-  --> $DIR/unclosed-5.rs:1:1
+  --> $DIR/fence-unclosed-2.rs:1:1
    |
 LL | ----cargo
    | ^^^^
 
 error[E0658]: frontmatters are experimental
-  --> $DIR/unclosed-5.rs:1:1
+  --> $DIR/fence-unclosed-2.rs:1:1
    |
 LL | / ----cargo
 ...  |
-LL | |
-   | |_^
+LL | |     "----"
+LL | | }
+   | |__^
    |
    = note: see issue #136889 <https://github.com/rust-lang/rust/issues/136889> for more information
    = help: add `#![feature(frontmatter)]` to the crate attributes to enable
