@@ -93,8 +93,8 @@ item_type! {
     Union = 20,
     ForeignType = 21,
     // OpaqueTy used to be here, but it was removed in #127276
-    ProcAttribute = 23,
-    ProcDerive = 24,
+    MacroAttribute = 23,
+    MacroDerive = 24,
     TraitAlias = 25,
     // This number is reserved for use in JavaScript
     // Generic = 26,
@@ -127,7 +127,11 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::VariantItem(..) => ItemType::Variant,
             clean::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
-            clean::MacroItem(..) => ItemType::Macro,
+            clean::MacroItem(mac) => match mac.kind {
+                MacroKind::Bang => ItemType::Macro,
+                MacroKind::Attr => ItemType::MacroAttribute,
+                MacroKind::Derive => ItemType::MacroDerive,
+            },
             clean::PrimitiveItem(..) => ItemType::Primitive,
             clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
@@ -139,48 +143,56 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
-                MacroKind::Attr => ItemType::ProcAttribute,
-                MacroKind::Derive => ItemType::ProcDerive,
+                MacroKind::Attr => ItemType::MacroAttribute,
+                MacroKind::Derive => ItemType::MacroDerive,
             },
             clean::StrippedItem(..) => unreachable!(),
         }
     }
 }
 
-impl From<DefKind> for ItemType {
-    fn from(other: DefKind) -> Self {
-        Self::from_def_kind(other, None)
-    }
-}
-
 impl ItemType {
     /// Depending on the parent kind, some variants have a different translation (like a `Method`
     /// becoming a `TyMethod`).
-    pub(crate) fn from_def_kind(kind: DefKind, parent_kind: Option<DefKind>) -> Self {
+    pub(crate) fn from_def_kind(kind: DefKind, parent_kind: Option<DefKind>) -> &'static [Self] {
         match kind {
-            DefKind::Enum => Self::Enum,
-            DefKind::Fn => Self::Function,
-            DefKind::Mod => Self::Module,
-            DefKind::Const => Self::Constant,
-            DefKind::Static { .. } => Self::Static,
-            DefKind::Struct => Self::Struct,
-            DefKind::Union => Self::Union,
-            DefKind::Trait => Self::Trait,
-            DefKind::TyAlias => Self::TypeAlias,
-            DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
-            DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
-            DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
-            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
-            DefKind::ForeignTy => Self::ForeignType,
-            DefKind::Variant => Self::Variant,
-            DefKind::Field => Self::StructField,
-            DefKind::AssocTy => Self::AssocType,
-            DefKind::AssocFn if let Some(DefKind::Trait) = parent_kind => Self::TyMethod,
-            DefKind::AssocFn => Self::Method,
-            DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
-            DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
-            DefKind::AssocConst => Self::AssocConst,
+            DefKind::Enum => &[Self::Enum],
+            DefKind::Fn => &[Self::Function],
+            DefKind::Mod => &[Self::Module],
+            DefKind::Const => &[Self::Constant],
+            DefKind::Static { .. } => &[Self::Static],
+            DefKind::Struct => &[Self::Struct],
+            DefKind::Union => &[Self::Union],
+            DefKind::Trait => &[Self::Trait],
+            DefKind::TyAlias => &[Self::TypeAlias],
+            DefKind::TraitAlias => &[Self::TraitAlias],
+            DefKind::Macro(MacroKinds::ATTR) => &[ItemType::MacroAttribute],
+            DefKind::Macro(MacroKinds::DERIVE) => &[ItemType::MacroDerive],
+            DefKind::Macro(MacroKinds::BANG) => &[ItemType::Macro],
+            DefKind::Macro(kinds) if kinds == MacroKinds::ATTR | MacroKinds::DERIVE => {
+                &[ItemType::MacroAttribute, ItemType::MacroDerive]
+            }
+            DefKind::Macro(kinds) if kinds == MacroKinds::ATTR | MacroKinds::BANG => {
+                &[ItemType::Macro, ItemType::MacroAttribute]
+            }
+            DefKind::Macro(kinds) if kinds == MacroKinds::DERIVE | MacroKinds::BANG => {
+                &[ItemType::Macro, ItemType::MacroDerive]
+            }
+            DefKind::Macro(kinds)
+                if kinds == MacroKinds::BANG | MacroKinds::ATTR | MacroKinds::DERIVE =>
+            {
+                &[ItemType::Macro, ItemType::MacroAttribute, ItemType::MacroDerive]
+            }
+            DefKind::Macro(kinds) => unimplemented!("unsupported macro kinds {kinds:?}"),
+            DefKind::ForeignTy => &[Self::ForeignType],
+            DefKind::Variant => &[Self::Variant],
+            DefKind::Field => &[Self::StructField],
+            DefKind::AssocTy => &[Self::AssocType],
+            DefKind::AssocFn if let Some(DefKind::Trait) = parent_kind => &[Self::TyMethod],
+            DefKind::AssocFn => &[Self::Method],
+            DefKind::Ctor(CtorOf::Struct, _) => &[Self::Struct],
+            DefKind::Ctor(CtorOf::Variant, _) => &[Self::Variant],
+            DefKind::AssocConst => &[Self::AssocConst],
             DefKind::TyParam
             | DefKind::ConstParam
             | DefKind::ExternCrate
@@ -193,7 +205,7 @@ impl ItemType {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody => Self::ForeignType,
+            | DefKind::SyntheticCoroutineBody => &[Self::ForeignType],
         }
     }
 
@@ -221,8 +233,8 @@ impl ItemType {
             ItemType::AssocConst => "associatedconstant",
             ItemType::ForeignType => "foreigntype",
             ItemType::Keyword => "keyword",
-            ItemType::ProcAttribute => "attr",
-            ItemType::ProcDerive => "derive",
+            ItemType::MacroAttribute => "attr",
+            ItemType::MacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
         }

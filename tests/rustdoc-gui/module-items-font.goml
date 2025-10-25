@@ -74,3 +74,13 @@ assert-css: (
     "#attributes + .item-table dd",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
+
+// attribute macros
+assert-css: (
+    "#attribute-macros + .item-table dt a",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
+assert-css: (
+    "#attribute-macros + .item-table dd",
+    {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
+)
