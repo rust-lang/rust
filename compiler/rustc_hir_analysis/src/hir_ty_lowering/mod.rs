@@ -588,6 +588,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 // as the rest of the type. As such, we ignore missing
                                 // stability attributes.
                             },
+                            None,
                         );
                     }
                     self.lowerer.lower_ty(ty).into()

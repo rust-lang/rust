@@ -2,11 +2,14 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use std::num::NonZero;
+use std::ops::ControlFlow;
 
 use rustc_ast::NodeId;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
+use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
@@ -191,6 +194,33 @@ pub fn early_report_macro_deprecation(
     };
     lint_buffer.buffer_lint(deprecation_lint(is_in_effect), node_id, span, diag);
 }
+/// suppress duplicate warning when importing unit or tuple structs
+/// (which have resolutions in multiple namespaces)
+fn check_already_linted(
+    tcx: TyCtxt<'_>,
+    hir_id: HirId,
+    def_id: DefId,
+    already_linted_paths: Option<&mut FxHashSet<(HirId, DefId)>>,
+) -> ControlFlow<()> {
+    let Some(already_linted_paths) = already_linted_paths else {
+        return ControlFlow::Continue(());
+    };
+
+    let def_id = match tcx.def_kind(def_id) {
+        // parent so the defid matches that of the struct
+        DefKind::Ctor(CtorOf::Struct, _) => tcx.parent(def_id),
+        // just the defid of the struct
+        DefKind::Struct => def_id,
+        // otherwise, we don't care
+        _ => return ControlFlow::Continue(()),
+    };
+
+    if already_linted_paths.insert((hir_id, def_id)) {
+        return ControlFlow::Continue(());
+    }
+
+    ControlFlow::Break(())
+}
 
 fn late_report_deprecation(
     tcx: TyCtxt<'_>,
@@ -199,6 +229,7 @@ fn late_report_deprecation(
     method_span: Option<Span>,
     hir_id: HirId,
     def_id: DefId,
+    already_linted_paths: Option<&mut FxHashSet<(HirId, DefId)>>,
 ) {
     if span.in_derive_expansion() {
         return;
@@ -211,6 +242,10 @@ fn late_report_deprecation(
     // which will by default invoke the expensive `visible_parent_map` query.
     // Skip all that work if the lint is allowed anyway.
     if tcx.lint_level_at_node(lint, hir_id).level == Level::Allow {
+        return;
+    }
+
+    if check_already_linted(tcx, hir_id, def_id, already_linted_paths).is_break() {
         return;
     }
 
@@ -303,7 +338,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
     ) -> EvalResult {
-        self.eval_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No)
+        self.eval_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No, None)
     }
 
     /// Evaluates the stability of an item.
@@ -324,6 +359,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
         allow_unstable: AllowUnstable,
+        already_linted_paths: Option<&mut FxHashSet<(HirId, DefId)>>,
     ) -> EvalResult {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
@@ -341,7 +377,15 @@ impl<'tcx> TyCtxt<'tcx> {
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version() {
-                    late_report_deprecation(self, depr_attr, span, method_span, id, def_id);
+                    late_report_deprecation(
+                        self,
+                        depr_attr,
+                        span,
+                        method_span,
+                        id,
+                        def_id,
+                        already_linted_paths,
+                    );
                 }
             };
         }
@@ -492,7 +536,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
     ) -> bool {
-        self.check_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No)
+        self.check_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No, None)
     }
 
     /// Checks if an item is stable or error out.
@@ -513,6 +557,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
         allow_unstable: AllowUnstable,
+        already_linted_paths: Option<&mut FxHashSet<(HirId, DefId)>>,
     ) -> bool {
         self.check_optional_stability(
             def_id,
@@ -525,6 +570,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // was referenced.
                 self.dcx().span_delayed_bug(span, format!("encountered unmarked API: {def_id:?}"));
             },
+            already_linted_paths,
         )
     }
 
@@ -542,14 +588,21 @@ impl<'tcx> TyCtxt<'tcx> {
         method_span: Option<Span>,
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
+        already_linted_paths: Option<&mut FxHashSet<(HirId, DefId)>>,
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
             self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
                 lint.primary_message(msg);
             })
         };
-        let eval_result =
-            self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);
+        let eval_result = self.eval_stability_allow_unstable(
+            def_id,
+            id,
+            span,
+            method_span,
+            allow_unstable,
+            already_linted_paths,
+        );
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
