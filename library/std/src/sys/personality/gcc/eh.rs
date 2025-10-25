@@ -14,7 +14,7 @@
 
 use core::ptr;
 
-use super::DwarfReader;
+use super::dwarf::DwarfReader;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
 pub const DW_EH_PE_absptr: u8 = 0x00;

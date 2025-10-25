@@ -37,9 +37,12 @@
 //! and the last personality routine transfers control to the catch block.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+mod dwarf;
+mod eh;
+
 use unwind as uw;
 
-use super::dwarf::eh::{self, EHAction, EHContext};
+use self::eh::{EHAction, EHContext};
 use crate::ffi::c_int;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
