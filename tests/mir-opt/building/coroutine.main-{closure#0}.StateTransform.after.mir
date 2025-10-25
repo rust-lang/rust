@@ -23,7 +23,7 @@
 } */
 
 fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
-    debug arg => (((*(_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18})) as variant#4).0: std::string::String);
+    debug arg => (((*_18) as variant#4).0: std::string::String);
     let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
     let _3: std::string::String;
     let mut _4: (&str, std::string::String, &std::panic::Location<'_>);
@@ -41,13 +41,6 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
     let mut _16: ();
     let mut _17: u32;
     let mut _18: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _19: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _20: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _21: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _22: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _23: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _24: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
-    let mut _25: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18};
 
     bb0: {
         _18 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
@@ -56,14 +49,12 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
     }
 
     bb1: {
-        _19 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        (((*_19) as variant#4).0: std::string::String) = move _2;
+        (((*_18) as variant#4).0: std::string::String) = move _2;
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _20 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        _6 = &(((*_20) as variant#4).0: std::string::String);
+        _6 = &(((*_18) as variant#4).0: std::string::String);
         _5 = <String as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
     }
 
@@ -84,8 +75,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Yielded(move _4);
         StorageDead(_3);
         StorageDead(_4);
-        _21 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        discriminant((*_21)) = 3;
+        discriminant((*_18)) = 3;
         return;
     }
 
@@ -108,8 +98,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
         _10 = &(*_11);
         StorageLive(_12);
         StorageLive(_13);
-        _22 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        _13 = &(((*_22) as variant#4).0: std::string::String);
+        _13 = &(((*_18) as variant#4).0: std::string::String);
         _12 = <String as Clone>::clone(move _13) -> [return: bb8, unwind unreachable];
     }
 
@@ -135,8 +124,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
         StorageDead(_9);
         StorageDead(_11);
         StorageDead(_15);
-        _23 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        discriminant((*_23)) = 4;
+        discriminant((*_18)) = 4;
         return;
     }
 
@@ -154,8 +142,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
         StorageDead(_11);
         StorageDead(_8);
         _16 = const ();
-        _24 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        drop((((*_24) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
+        drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {
@@ -164,8 +151,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2
 
     bb15: {
         _0 = CoroutineState::<(&str, String, &Location<'_>), ()>::Complete(move _16);
-        _25 = copy (_1.0: &mut {coroutine@$DIR/coroutine.rs:18:5: 18:18});
-        discriminant((*_25)) = 1;
+        discriminant((*_18)) = 1;
         return;
     }
 
