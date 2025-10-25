@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
@@ -527,7 +528,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
+        let def_id =
+            self.create_def(node_id, None, DefKind::AnonConst, DefPathData::LateAnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(
