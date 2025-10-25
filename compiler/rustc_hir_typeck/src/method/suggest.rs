@@ -3046,46 +3046,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         foreign_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
-        let foreign_def_ids = foreign_preds
-            .iter()
-            .filter_map(|pred| match pred.self_ty().kind() {
-                ty::Adt(def, _) => Some(def.did()),
-                _ => None,
-            })
-            .collect::<FxIndexSet<_>>();
-        let mut foreign_spans: MultiSpan = foreign_def_ids
-            .iter()
-            .filter_map(|def_id| {
-                let span = self.tcx.def_span(*def_id);
-                if span.is_dummy() { None } else { Some(span) }
-            })
-            .collect::<Vec<_>>()
-            .into();
-        for pred in &foreign_preds {
-            if let ty::Adt(def, _) = pred.self_ty().kind() {
-                foreign_spans.push_span_label(
-                    self.tcx.def_span(def.did()),
-                    format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
-                );
+
+        for pred in foreign_preds {
+            let ty = pred.self_ty();
+            let ty::Adt(def, _) = ty.kind() else { continue };
+            let span = self.tcx.def_span(def.did());
+            if span.is_dummy() {
+                continue;
             }
-        }
-        if foreign_spans.primary_span().is_some() {
-            let msg = if let [foreign_pred] = foreign_preds.as_slice() {
-                format!(
-                    "the foreign item type `{}` doesn't implement `{}`",
-                    foreign_pred.self_ty(),
-                    foreign_pred.trait_ref.print_trait_sugared()
-                )
-            } else {
-                format!(
-                    "the foreign item type{} {} implement required trait{} for this \
-                     operation to be valid",
-                    pluralize!(foreign_def_ids.len()),
-                    if foreign_def_ids.len() > 1 { "don't" } else { "doesn't" },
-                    pluralize!(foreign_preds.len()),
-                )
-            };
-            err.span_note(foreign_spans, msg);
+            let mut mspan: MultiSpan = span.into();
+            mspan.push_span_label(span, format!("`{ty}` is defined in another crate"));
+            err.span_note(
+                mspan,
+                format!("`{ty}` does not implement `{}`", pred.trait_ref.print_trait_sugared()),
+            );
         }
 
         let preds: Vec<_> = errors

@@ -6,10 +6,10 @@ LL |     let k = i + j;
    |             |
    |             Vec<R>
    |
-note: the foreign item type `Vec<R>` doesn't implement `Add`
+note: `Vec<R>` does not implement `Add`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
-   = note: not implement `Add`
+   = note: `Vec<R>` is defined in another crate
 
 error: aborting due to 1 previous error
 
