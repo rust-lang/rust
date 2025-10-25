@@ -113,7 +113,7 @@ fn make_uninhabited_err_indirectly(n: Never) -> Result<u32, Never> {
 fn make_fully_uninhabited_result(v: u32, n: Never) -> Result<(u32, Never), (Never, u32)> {
     // Actually reaching this would be UB, so we don't actually build a result.
 
-    // CHECK-LABEL: { i32, i32 } @make_fully_uninhabited_result(i32{{( signext)?}} %v)
+    // CHECK-LABEL: i32 @make_fully_uninhabited_result(i32{{( signext)?}} %v)
     // CHECK-NEXT: start:
     // CHECK-NEXT: call void @llvm.trap()
     // CHECK-NEXT: call void @llvm.trap()
