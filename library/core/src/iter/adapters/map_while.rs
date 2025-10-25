@@ -88,3 +88,6 @@ unsafe impl<I: InPlaceIterable, P> InPlaceIterable for MapWhile<I, P> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, P> !ExactSizeIterator for MapWhile<I, P> {}
