@@ -23,7 +23,7 @@ use rustc_mir_dataflow::impls::{
 };
 
 use crate::simplify::UsedInStmtLocals;
-use crate::util::is_within_packed;
+use crate::util::most_packed_projection;
 
 /// Performs the optimization on the body
 ///
@@ -65,7 +65,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                     // the move may be codegened as a pointer to that field.
                     // Using that disaligned pointer may trigger UB in the callee,
                     // so do nothing.
-                    && is_within_packed(tcx, body, place).is_none()
+                    && most_packed_projection(tcx, body, place).is_none()
                 {
                     call_operands_to_move.push((bb, index));
                 }

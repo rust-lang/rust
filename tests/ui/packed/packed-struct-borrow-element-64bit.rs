@@ -10,6 +10,6 @@ struct Foo4C {
 
 pub fn main() {
     let foo = Foo4C { bar: 1, baz: 2 };
-    let brw = &foo.baz; //~ERROR reference to packed field is unaligned
+    let brw = &foo.baz; //~ERROR reference to field of packed struct is unaligned
     assert_eq!(*brw, 2);
 }

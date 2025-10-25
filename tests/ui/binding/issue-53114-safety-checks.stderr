@@ -1,20 +1,20 @@
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:23:13
    |
 LL |     let _ = &p.b;
    |             ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:28:17
    |
 LL |     let (_,) = (&p.b,);
    |                 ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
@@ -50,23 +50,23 @@ LL |     let (_,) = (&u2.a,);
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:37:16
    |
 LL |     let _: _ = &p.b;
    |                ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:42:20
    |
 LL |     let (_,): _ = (&p.b,);
    |                    ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
@@ -102,23 +102,23 @@ LL |     let (_,): _ = (&u2.a,);
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:51:11
    |
 LL |     match &p.b  { _ => { } }
    |           ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error[E0793]: reference to packed field is unaligned
+error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:56:12
    |
 LL |     match (&p.b,)  { (_,) => { } }
    |            ^^^^
    |
-   = note: packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+   = note: this struct is at most 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 

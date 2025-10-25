@@ -51,7 +51,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
 
             match terminator.kind {
                 TerminatorKind::Drop { place, .. }
-                    if util::is_disaligned(tcx, body, typing_env, place) =>
+                    if util::unalignment(tcx, body, typing_env, place).is_some() =>
                 {
                     add_move_for_packed_drop(
                         tcx,
