@@ -1,13 +1,14 @@
 use itertools::Itertools;
 use std::process::Command;
 
+use crate::common::argument::ArgumentList;
 use crate::common::intrinsic::Intrinsic;
 
 use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
-const PASSES: u32 = 20;
+pub(crate) const PASSES: u32 = 20;
 
 fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
     writeln!(
@@ -117,6 +118,20 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     writeln!(w, "{cfg}")?;
 
     writeln!(w, "{definitions}")?;
+
+    let mut seen = std::collections::HashSet::new();
+
+    for intrinsic in intrinsics {
+        for arg in &intrinsic.arguments.args {
+            if !arg.has_constraint() && arg.ty.is_rust_vals_array_const() {
+                let name = arg.rust_vals_array_name().to_string();
+
+                if seen.insert(name) {
+                    ArgumentList::gen_arg_rust(arg, w, Indentation::default(), PASSES)?;
+                }
+            }
+        }
+    }
 
     for intrinsic in intrinsics {
         crate::common::gen_rust::create_rust_test_module(w, intrinsic)?;
