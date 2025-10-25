@@ -134,6 +134,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(rev_into_inner)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
