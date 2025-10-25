@@ -761,7 +761,9 @@ impl<'a> Parser<'a> {
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
         } else if self.eat(exp!(Bang)) {
-            // Parse `!`
+            // Ideally we'd use `eat_bang` here to allow us to parse `!=>` as `! =>`. However,
+            // `break_and_eat` doesn't "reglue" the split-off `=` with any following `>` (since
+            // that would likely be super fragile and complex).
             self.psess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
             PatKind::Never
         } else if self.eat_keyword(exp!(Underscore)) {
