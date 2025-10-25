@@ -369,4 +369,71 @@ fn issue15321() {
         topt.0 = None;
         topt.0.unwrap()
     };
+
+    // Nested field accesses get linted as well
+    struct Soption2 {
+        other: bool,
+        option: Soption,
+    }
+    let mut sopt2 = Soption2 {
+        other: true,
+        option: Soption {
+            option: Some(true),
+            other: true,
+        },
+    };
+    // Lint: no fields were mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated outer field was mutated -- don't get confused by `Soption2.other` having the
+    // same `FieldIdx` of 1 as `Soption.option`
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.other = false;
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.other = false;
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated inner field was mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.other = false;
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.option.other = false;
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Don't lint: the whole local was mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2 = sopt2;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2 = sopt2;
+        sopt2.option.option.unwrap()
+    };
+    // Don't lint: a parent field of the field we're looking at was mutated, and with that the
+    // field we're looking at
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option = sopt;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2.option = sopt;
+        sopt2.option.option.unwrap()
+    };
+    // Don't lint: the field we're looking at was mutated directly
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.option = None;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2.option.option = None;
+        sopt2.option.option.unwrap()
+    };
 }

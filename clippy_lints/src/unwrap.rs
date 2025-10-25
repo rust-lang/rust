@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::iter;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
@@ -119,12 +120,15 @@ impl UnwrappableKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq)]
+#[derive(Clone, Debug, Eq)]
 enum Local {
-    /// `x.opt`
+    /// `x.field1.field2.field3`
     WithFieldAccess {
         local_id: HirId,
-        field_idx: FieldIdx,
+        /// The indices of the field accessed.
+        ///
+        /// Stored last-to-first, e.g. for the example above: `[field3, field2, field1]`
+        field_indices: Vec<FieldIdx>,
         /// The span of the whole expression
         span: Span,
     },
@@ -139,15 +143,15 @@ impl PartialEq for Local {
             (
                 Self::WithFieldAccess {
                     local_id: self_local_id,
-                    field_idx: self_field_idx,
+                    field_indices: self_field_indices,
                     ..
                 },
                 Self::WithFieldAccess {
                     local_id: other_local_id,
-                    field_idx: other_field_idx,
+                    field_indices: other_field_indices,
                     ..
                 },
-            ) => self_local_id == other_local_id && self_field_idx == other_field_idx,
+            ) => self_local_id == other_local_id && self_field_indices == other_field_indices,
             (
                 Self::Pure {
                     local_id: self_local_id,
@@ -162,43 +166,42 @@ impl PartialEq for Local {
 }
 
 impl Local {
-    fn snippet(self, cx: &LateContext<'_>) -> Cow<'static, str> {
-        match self {
+    fn snippet(&self, cx: &LateContext<'_>) -> Cow<'static, str> {
+        match *self {
             Self::WithFieldAccess { span, .. } => snippet(cx.sess(), span, "_"),
             Self::Pure { local_id } => cx.tcx.hir_name(local_id).to_string().into(),
         }
     }
 
-    fn is_potentially_local_place(self, place: &Place<'_>) -> bool {
+    fn is_potentially_local_place(&self, place: &Place<'_>) -> bool {
         match self {
             Self::WithFieldAccess {
-                local_id, field_idx, ..
+                local_id,
+                field_indices,
+                ..
             } => {
-                if is_potentially_local_place(local_id, place)
-                    // If there were projections other than the field projection, err on the side of caution and say
-                    // that they _might_ have mutated the field
+                is_potentially_local_place(*local_id, place)
+                    // If there were projections other than field projections, err on the side of caution and say that they
+                    // _might_ be mutating something.
                     //
-                    // The reason we use `<=` and not `==` is that, if there were no projections, then the whole local
-                    // was mutated, which means that our field was mutated as well
-                    && place.projections.len() <= 1
-                    && place.projections.last().is_none_or(|proj| match proj.kind {
-                        ProjectionKind::Field(f_idx, _) => f_idx == field_idx,
-                        // If this is a projection we don't expect, it _might_ be mutating something
-                        _ => false,
+                    // The reason we use `<=` and not `==` is that a mutation of `struct` or `struct.field1` should count as
+                    // mutation of the child fields such as `struct.field1.field2`
+                    && place.projections.len() <= field_indices.len()
+                    && iter::zip(&place.projections, field_indices.iter().copied().rev()).all(|(proj, field_idx)| {
+                         match proj.kind {
+                            ProjectionKind::Field(f_idx, _) => f_idx == field_idx,
+                                // If this is a projection we don't expect, it _might_ be mutating something
+                                _ => false,
+                        }
                     })
-                {
-                    true
-                } else {
-                    false
-                }
             },
-            Self::Pure { local_id } => is_potentially_local_place(local_id, place),
+            Self::Pure { local_id } => is_potentially_local_place(*local_id, place),
         }
     }
 }
 
 /// Contains information about whether a variable can be unwrapped.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct UnwrapInfo<'tcx> {
     /// The variable that is checked
     local: Local,
@@ -287,20 +290,27 @@ fn collect_unwrap_info<'tcx>(
     out
 }
 
-/// Extracts either a local used by itself ([`Local::Pure`]), or a field access to a local
-/// ([`Local::WithFieldAccess`])
-fn extract_local(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Local> {
-    if let Some(local_id) = expr.res_local_id() {
-        Some(Local::Pure { local_id })
-    } else if let ExprKind::Field(recv, _) = expr.kind
-        && let Some(local_id) = recv.res_local_id()
+/// Extracts either a local used by itself ([`Local::Pure`]), or (one or more levels of) field
+/// access to a local ([`Local::WithFieldAccess`])
+fn extract_local(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> Option<Local> {
+    let span = expr.span;
+    let mut field_indices = vec![];
+    while let ExprKind::Field(recv, _) = expr.kind
         && let Some(field_idx) = cx.typeck_results().opt_field_index(expr.hir_id)
     {
-        Some(Local::WithFieldAccess {
-            local_id,
-            field_idx,
-            span: expr.span,
-        })
+        field_indices.push(field_idx);
+        expr = recv;
+    }
+    if let Some(local_id) = expr.res_local_id() {
+        if field_indices.is_empty() {
+            Some(Local::Pure { local_id })
+        } else {
+            Some(Local::WithFieldAccess {
+                local_id,
+                field_indices,
+                span,
+            })
+        }
     } else {
         None
     }
@@ -313,9 +323,9 @@ fn extract_local(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Local> {
 /// `is_some` + `unwrap` is equivalent to `if let Some(..) = ..`, which it would not be if
 /// the option is changed to None between `is_some` and `unwrap`, ditto for `Result`.
 /// (And also `.as_mut()` is a somewhat common method that is still worth linting on.)
-struct MutationVisitor<'tcx> {
+struct MutationVisitor<'tcx, 'lcl> {
     is_mutated: bool,
-    local: Local,
+    local: &'lcl Local,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -336,7 +346,7 @@ fn is_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     }
 }
 
-impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
+impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx, '_> {
     fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::Mutable = bk
             && self.local.is_potentially_local_place(&cat.place)
@@ -371,7 +381,7 @@ impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
             let mut delegate = MutationVisitor {
                 is_mutated: false,
-                local: unwrap_info.local,
+                local: &unwrap_info.local,
                 tcx: self.cx.tcx,
             };
 

@@ -415,5 +415,58 @@ LL |     let _res = if topt.0.is_some() {
 LL |         topt.0.unwrap()
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to 47 previous errors
+error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:387:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:390:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                   ----------------------------- because of this check
+...
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:397:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
+LL |         sopt2.other = false;
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:401:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                   ----------------------------- because of this check
+...
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:407:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
+LL |         sopt2.option.other = false;
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this call to `unwrap()` will always panic
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:411:9
+   |
+LL |     let _res = if sopt2.option.option.is_some() {
+   |                   ----------------------------- because of this check
+...
+LL |         sopt2.option.option.unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 53 previous errors
 
