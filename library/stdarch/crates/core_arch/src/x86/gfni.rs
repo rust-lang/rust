@@ -745,7 +745,6 @@ mod tests {
     #![allow(overflowing_literals)]
 
     use core::hint::black_box;
-    use core::intrinsics::size_of;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
