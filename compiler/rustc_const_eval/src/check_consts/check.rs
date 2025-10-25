@@ -645,10 +645,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::NullaryOp(
-                NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
-                _,
-            ) => {}
+            Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::RuntimeChecks(_), _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {

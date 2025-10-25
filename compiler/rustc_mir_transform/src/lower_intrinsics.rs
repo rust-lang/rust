@@ -23,13 +23,19 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
-                    sym::ub_checks => {
+                    sym::ub_checks | sym::overflow_checks | sym::contract_checks => {
+                        let op = match intrinsic.name {
+                            sym::ub_checks => RuntimeChecks::UbChecks,
+                            sym::contract_checks => RuntimeChecks::ContractChecks,
+                            sym::overflow_checks => RuntimeChecks::OverflowChecks,
+                            _ => unreachable!(),
+                        };
                         let target = target.unwrap();
                         block.statements.push(Statement::new(
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::NullaryOp(NullOp::UbChecks, tcx.types.bool),
+                                Rvalue::NullaryOp(NullOp::RuntimeChecks(op), tcx.types.bool),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
