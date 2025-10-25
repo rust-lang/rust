@@ -75,7 +75,7 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::emitter::TimingEvent;
 use crate::registry::Registry;
@@ -245,6 +245,7 @@ pub(crate) struct SubstitutionHighlight {
 impl SubstitutionPart {
     /// Try to turn a replacement into an addition when the span that is being
     /// overwritten matches either the prefix or suffix of the replacement.
+    #[instrument(level = "debug", skip(self, sm))]
     fn trim_trivial_replacements(self, sm: &SourceMap) -> TrimmedSubstitutionPart {
         let mut trimmed_part = TrimmedSubstitutionPart {
             original_span: self.span,
@@ -306,6 +307,16 @@ impl TrimmedSubstitutionPart {
 /// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
 /// of the suffix.
 fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
+    if suggestion.contains("::")
+        && suggestion.ends_with(original)
+        && suggestion.len() > original.len()
+    {
+        let prefix = &suggestion[..suggestion.len() - original.len()];
+        if prefix.ends_with("::") && suggestion.chars().next() == original.chars().next() {
+            return Some((0, prefix, original.len()));
+        }
+    }
+
     let common_prefix = original
         .chars()
         .zip(suggestion.chars())
