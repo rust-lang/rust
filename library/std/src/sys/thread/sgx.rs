@@ -2,6 +2,7 @@
 
 use crate::io;
 use crate::sys::pal::abi::{thread, usercalls};
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 
 pub struct Thread(task_queue::JoinHandle);
@@ -13,6 +14,7 @@ pub use self::task_queue::JoinNotifier;
 mod task_queue {
     use super::wait_notify;
     use crate::sync::{Mutex, MutexGuard};
+    use crate::thread::ThreadInit;
 
     pub type JoinHandle = wait_notify::Waiter;
 
@@ -25,19 +27,20 @@ mod task_queue {
     }
 
     pub(super) struct Task {
-        p: Box<dyn FnOnce() + Send>,
+        init: Box<ThreadInit>,
         done: JoinNotifier,
     }
 
     impl Task {
-        pub(super) fn new(p: Box<dyn FnOnce() + Send>) -> (Task, JoinHandle) {
+        pub(super) fn new(init: Box<ThreadInit>) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
             let done = JoinNotifier(Some(done));
-            (Task { p, done }, recv)
+            (Task { init, done }, recv)
         }
 
         pub(super) fn run(self) -> JoinNotifier {
-            (self.p)();
+            let rust_start = self.init.init();
+            rust_start();
             self.done
         }
     }
@@ -93,14 +96,10 @@ pub mod wait_notify {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(
-        _stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce() + Send>,
-    ) -> io::Result<Thread> {
+    pub unsafe fn new(_stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
         unsafe { usercalls::launch_thread()? };
-        let (task, handle) = task_queue::Task::new(p);
+        let (task, handle) = task_queue::Task::new(init);
         queue_lock.push(task);
         Ok(Thread(handle))
     }

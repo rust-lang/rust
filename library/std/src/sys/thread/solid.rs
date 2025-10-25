@@ -8,6 +8,7 @@ use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sys::pal::itron::error::{ItronError, expect_success, expect_success_aborting};
 use crate::sys::pal::itron::time::dur2reltims;
 use crate::sys::pal::itron::{abi, task};
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 use crate::{hint, io};
 
@@ -27,9 +28,9 @@ unsafe impl Sync for Thread {}
 /// State data shared between a parent thread and child thread. It's dropped on
 /// a transition to one of the final states.
 struct ThreadInner {
-    /// This field is used on thread creation to pass a closure from
+    /// This field is used on thread creation to pass initialization data from
     /// `Thread::new` to the created task.
-    start: UnsafeCell<ManuallyDrop<Box<dyn FnOnce()>>>,
+    init: UnsafeCell<ManuallyDrop<Box<ThreadInit>>>,
 
     /// A state machine. Each transition is annotated with `[...]` in the
     /// source code.
@@ -65,7 +66,7 @@ struct ThreadInner {
     lifecycle: Atomic<usize>,
 }
 
-// Safety: The only `!Sync` field, `ThreadInner::start`, is only touched by
+// Safety: The only `!Sync` field, `ThreadInner::init`, is only touched by
 //         the task represented by `ThreadInner`.
 unsafe impl Sync for ThreadInner {}
 
@@ -84,13 +85,9 @@ impl Thread {
     /// # Safety
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
-    pub unsafe fn new(
-        stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         let inner = Box::new(ThreadInner {
-            start: UnsafeCell::new(ManuallyDrop::new(p)),
+            init: UnsafeCell::new(ManuallyDrop::new(init)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
         });
 
@@ -100,10 +97,11 @@ impl Thread {
             let inner = unsafe { &*p_inner };
 
             // Safety: Since `trampoline` is called only once for each
-            //         `ThreadInner` and only `trampoline` touches `start`,
-            //         `start` contains contents and is safe to mutably borrow.
-            let p = unsafe { ManuallyDrop::take(&mut *inner.start.get()) };
-            p();
+            //         `ThreadInner` and only `trampoline` touches `init`,
+            //         `init` contains contents and is safe to mutably borrow.
+            let init = unsafe { ManuallyDrop::take(&mut *inner.init.get()) };
+            let rust_start = init.init();
+            rust_start();
 
             // Fix the current thread's state just in case, so that the
             // destructors won't abort
