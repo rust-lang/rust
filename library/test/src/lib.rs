@@ -45,7 +45,9 @@ pub mod test {
     pub use crate::cli::{TestOpts, parse_opts};
     pub use crate::helpers::metrics::{Metric, MetricMap};
     pub use crate::options::{Options, RunIgnored, RunStrategy, ShouldPanic};
-    pub use crate::test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
+    pub use crate::test_result::{
+        RustdocResult, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk, get_rustdoc_result,
+    };
     pub use crate::time::{TestExecTime, TestTimeOptions};
     pub use crate::types::{
         DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
@@ -568,6 +570,10 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .collect()
 }
 
+pub fn cannot_handle_should_panic() -> bool {
+    (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm")) && !cfg!(target_os = "emscripten")
+}
+
 pub fn run_test(
     opts: &TestOpts,
     force_ignore: bool,
@@ -579,9 +585,8 @@ pub fn run_test(
     let TestDescAndFn { desc, testfn } = test;
 
     // Emscripten can catch panics but other wasm targets cannot
-    let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
-        && !cfg!(target_os = "emscripten");
+    let ignore_because_no_process_support =
+        desc.should_panic != ShouldPanic::No && cannot_handle_should_panic();
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
         let message = CompletedTest::new(id, desc, TrIgnored, None, Vec::new());
