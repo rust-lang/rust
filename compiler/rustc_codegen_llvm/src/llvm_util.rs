@@ -602,6 +602,7 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
 /// The target features for compiler flags other than `-Ctarget-features`.
 fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
+    target_features::sls_features_by_flags(sess, features);
 
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
