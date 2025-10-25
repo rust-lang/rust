@@ -1,4 +1,4 @@
-error: `Error` is ambiguous
+error[E0759]: `Error` is ambiguous
   --> $DIR/ambiguous-15.rs:22:9
    |
 LL | fn a<E: Error>(_: E) {}
@@ -23,8 +23,9 @@ LL | pub use t2::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Error` is ambiguous
+error[E0759]: `Error` is ambiguous
   --> $DIR/ambiguous-15.rs:22:9
    |
 LL | fn a<E: Error>(_: E) {}

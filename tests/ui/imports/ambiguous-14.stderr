@@ -1,4 +1,4 @@
-error: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/ambiguous-14.rs:22:8
    |
 LL |     g::foo();
@@ -23,8 +23,9 @@ LL |     pub use b::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-error: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/ambiguous-14.rs:22:8
    |
 LL |     g::foo();
