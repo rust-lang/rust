@@ -926,7 +926,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Leg
 use crate::{
     cell::{RefCell, UnsafeCell},
     future::Future,
-    marker::PhantomPinned,
+    marker::{PhantomPinned, PointeeSized},
     mem, ptr,
 };
 use crate::{cmp, fmt};
@@ -1516,7 +1516,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     }
 }
 
-impl<'a, T: ?Sized> Pin<&'a T> {
+impl<'a, T: PointeeSized> Pin<&'a T> {
     /// Constructs a new pin by mapping the interior value.
     ///
     /// For example, if you wanted to get a `Pin` of a field of something,
@@ -1535,7 +1535,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
     where
-        U: ?Sized,
+        U: PointeeSized,
         F: FnOnce(&T) -> &U,
     {
         let pointer = &*self.pointer;
@@ -1572,7 +1572,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     }
 }
 
-impl<'a, T: ?Sized> Pin<&'a mut T> {
+impl<'a, T: PointeeSized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
@@ -1639,7 +1639,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
     where
-        U: ?Sized,
+        U: PointeeSized,
         F: FnOnce(&mut T) -> &mut U,
     {
         // SAFETY: the caller is responsible for not moving the
@@ -1652,7 +1652,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     }
 }
 
-impl<T: ?Sized> Pin<&'static T> {
+impl<T: PointeeSized> Pin<&'static T> {
     /// Gets a pinning reference from a `&'static` reference.
     ///
     /// This is safe because `T` is borrowed immutably for the `'static` lifetime, which
@@ -1666,7 +1666,7 @@ impl<T: ?Sized> Pin<&'static T> {
     }
 }
 
-impl<T: ?Sized> Pin<&'static mut T> {
+impl<T: PointeeSized> Pin<&'static mut T> {
     /// Gets a pinning mutable reference from a static mutable reference.
     ///
     /// This is safe because `T` is borrowed for the `'static` lifetime, which
@@ -1719,7 +1719,7 @@ mod helper {
     #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     #[rustc_diagnostic_item = "PinDerefMutHelper"]
     pub const trait PinDerefMutHelper {
-        type Target: ?Sized;
+        type Target: super::PointeeSized;
         fn deref_mut(&mut self) -> &mut Self::Target;
     }
 
@@ -1847,19 +1847,19 @@ where
 pub unsafe trait PinCoerceUnsized {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
+unsafe impl<'a, T: PointeeSized> PinCoerceUnsized for &'a T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
+unsafe impl<'a, T: PointeeSized> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
+unsafe impl<T: PointeeSized> PinCoerceUnsized for *const T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
+unsafe impl<T: PointeeSized> PinCoerceUnsized for *mut T {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///
