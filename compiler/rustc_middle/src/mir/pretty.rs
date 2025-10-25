@@ -353,8 +353,16 @@ pub fn write_mir_pretty<'tcx>(
             // are shared between mir_for_ctfe and optimized_mir
             writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
         } else {
-            let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
-            render_body(w, instance_mir)?;
+            if let Some((val, ty)) = tcx.trivial_const(def_id) {
+                ty::print::with_forced_impl_filename_line! {
+                    // see notes on #41697 elsewhere
+                    write!(w, "const {}", tcx.def_path_str(def_id))?
+                }
+                writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
+            } else {
+                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
+                render_body(w, instance_mir)?;
+            }
         }
     }
     Ok(())
