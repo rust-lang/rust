@@ -2875,6 +2875,71 @@ enum AsmLabelKind {
     Binary,
 }
 
+/// Checks if a potential label is actually a Hexagon register span notation.
+///
+/// Hexagon assembly uses register span notation like `r1:0`, `V5:4.w`, `p1:0` etc.
+/// These follow the pattern: `[letter][digit(s)]:[digit(s)][optional_suffix]`
+///
+/// Returns `true` if the string matches a valid Hexagon register span pattern.
+pub fn is_hexagon_register_span(possible_label: &str) -> bool {
+    // Extract the full register span from the context
+    if let Some(colon_idx) = possible_label.find(':') {
+        let after_colon = &possible_label[colon_idx + 1..];
+        is_hexagon_register_span_impl(&possible_label[..colon_idx], after_colon)
+    } else {
+        false
+    }
+}
+
+/// Helper function for use within the lint when we have statement context.
+fn is_hexagon_register_span_context(
+    possible_label: &str,
+    statement: &str,
+    colon_idx: usize,
+) -> bool {
+    // Extract what comes after the colon in the statement
+    let after_colon_start = colon_idx + 1;
+    if after_colon_start >= statement.len() {
+        return false;
+    }
+
+    // Get the part after the colon, up to the next whitespace or special character
+    let after_colon_full = &statement[after_colon_start..];
+    let after_colon = after_colon_full
+        .chars()
+        .take_while(|&c| c.is_ascii_alphanumeric() || c == '.')
+        .collect::<String>();
+
+    is_hexagon_register_span_impl(possible_label, &after_colon)
+}
+
+/// Core implementation for checking hexagon register spans.
+fn is_hexagon_register_span_impl(before_colon: &str, after_colon: &str) -> bool {
+    if before_colon.len() < 1 || after_colon.is_empty() {
+        return false;
+    }
+
+    let mut chars = before_colon.chars();
+    let start = chars.next().unwrap();
+
+    // Must start with a letter (r, V, p, etc.)
+    if !start.is_ascii_alphabetic() {
+        return false;
+    }
+
+    let rest = &before_colon[1..];
+
+    // Check if the part after the first letter is all digits and non-empty
+    if rest.is_empty() || !rest.chars().all(|c| c.is_ascii_digit()) {
+        return false;
+    }
+
+    // Check if after colon starts with digits (may have suffix like .w, .h)
+    let digits_after = after_colon.chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+
+    !digits_after.is_empty()
+}
+
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
@@ -2954,6 +3019,14 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                         } else if !(start.is_ascii_alphabetic() || matches!(start, '.' | '_')) {
                             // Named labels start with ASCII letters, `.` or `_`.
                             // anything else is not a label
+                            break 'label_loop;
+                        }
+
+                        // Check for Hexagon register span notation (e.g., "r1:0", "V5:4", "V3:2.w")
+                        // This is valid Hexagon assembly syntax, not a label
+                        if matches!(cx.tcx.sess.asm_arch, Some(InlineAsmArch::Hexagon))
+                            && is_hexagon_register_span_context(possible_label, statement, idx)
+                        {
                             break 'label_loop;
                         }
 
