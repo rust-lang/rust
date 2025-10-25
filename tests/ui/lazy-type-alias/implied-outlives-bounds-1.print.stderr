@@ -1,0 +1,11 @@
+error: rustc_outlives
+  --> $DIR/implied-outlives-bounds-1.rs:16:1
+   |
+LL | struct Type<'a, K, V>(&'a mut Alias<K, V>);
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: K: 'a
+   = note: V: 'a
+
+error: aborting due to 1 previous error
+
