@@ -1,0 +1,60 @@
+error[E0277]: the trait bound `[RangeTo<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944.rs:3:15
+   |
+LL |     vec.drain([..3]);
+   |         ----- ^^^^^ the trait `RangeBounds<usize>` is not implemented for `[RangeTo<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: consider removing `[]`
+   |
+LL -     vec.drain([..3]);
+LL +     vec.drain(..3);
+   |
+
+error[E0277]: the trait bound `[std::ops::Range<{integer}>; 1]: RangeBounds<usize>` is not satisfied
+  --> $DIR/remove-brackets-range-issue-147944.rs:11:15
+   |
+LL |     vec.drain(range);
+   |         ----- ^^^^^ the trait `RangeBounds<usize>` is not implemented for `[std::ops::Range<{integer}>; 1]`
+   |         |
+   |         required by a bound introduced by this call
+   |
+note: required by a bound in `Vec::<T, A>::drain`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0277]: no implementation for `std::ops::Range<{integer}> << usize`
+  --> $DIR/remove-brackets-range-issue-147944.rs:16:39
+   |
+LL |     take_array_of_one_different_trait([5..10]);
+   |     --------------------------------- ^^^^^^^ no implementation for `std::ops::Range<{integer}> << usize`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Shl<usize>` is not implemented for `std::ops::Range<{integer}>`
+note: required by a bound in `take_array_of_one_different_trait`
+  --> $DIR/remove-brackets-range-issue-147944.rs:25:41
+   |
+LL | fn take_array_of_one_different_trait<T: std::ops::Shl<usize>>(_arr: [T; 1]) {}
+   |                                         ^^^^^^^^^^^^^^^^^^^^ required by this bound in `take_array_of_one_different_trait`
+
+error[E0277]: no implementation for `[std::ops::Range<{integer}>; 1] << usize`
+  --> $DIR/remove-brackets-range-issue-147944.rs:19:26
+   |
+LL |     take_different_trait([5..10]);
+   |     -------------------- ^^^^^^^ no implementation for `[std::ops::Range<{integer}>; 1] << usize`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Shl<usize>` is not implemented for `[std::ops::Range<{integer}>; 1]`
+note: required by a bound in `take_different_trait`
+  --> $DIR/remove-brackets-range-issue-147944.rs:27:28
+   |
+LL | fn take_different_trait<T: std::ops::Shl<usize>>(_ty: T) {}
+   |                            ^^^^^^^^^^^^^^^^^^^^ required by this bound in `take_different_trait`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
