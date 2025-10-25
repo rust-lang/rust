@@ -1,0 +1,80 @@
+// MIR for `box_new` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(DefId(3:682 ~ alloc[78d6]::boxed::{impl#0}::new_uninit), UserArgs { args: [^c_0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(3:679 ~ alloc[78d6]::boxed::{impl#0}), self_ty: std::boxed::Box<^c_1, ^c_2> }) }), max_universe: U0, variables: [Ty { ui: U0, sub_root: 0 }, Ty { ui: U0, sub_root: 1 }, Ty { ui: U0, sub_root: 2 }] }, span: $DIR/write_via_move.rs:11:17: 11:32, inferred_ty: fn() -> std::boxed::Box<std::mem::MaybeUninit<[T; 1024]>> {std::boxed::Box::<[T; 1024]>::new_uninit}
+| 1: user_ty: Canonical { value: TypeOf(DefId(2:2175 ~ core[cfc2]::mem::maybe_uninit::{impl#2}::as_mut_ptr), UserArgs { args: [^c_0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(2:2168 ~ core[cfc2]::mem::maybe_uninit::{impl#2}), self_ty: std::mem::MaybeUninit<^c_1> }) }), max_universe: U0, variables: [Ty { ui: U0, sub_root: 0 }, Ty { ui: U0, sub_root: 1 }] }, span: $DIR/write_via_move.rs:12:15: 12:43, inferred_ty: for<'a> fn(&'a mut std::mem::MaybeUninit<[T; 1024]>) -> *mut [T; 1024] {std::mem::MaybeUninit::<[T; 1024]>::as_mut_ptr}
+|
+fn box_new(_1: T) -> Box<[T; 1024]> {
+    debug x => _1;
+    let mut _0: std::boxed::Box<[T; 1024]>;
+    let mut _2: std::boxed::Box<std::mem::MaybeUninit<[T; 1024]>>;
+    let mut _4: &mut std::mem::MaybeUninit<[T; 1024]>;
+    let mut _5: &mut std::mem::MaybeUninit<[T; 1024]>;
+    let _6: ();
+    let mut _7: *mut [T; 1024];
+    let mut _8: T;
+    let mut _9: std::boxed::Box<std::mem::MaybeUninit<[T; 1024]>>;
+    scope 1 {
+        debug b => _2;
+        let _3: *mut [T; 1024];
+        scope 2 {
+            debug ptr => _3;
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = Box::<[T; 1024]>::new_uninit() -> [return: bb1, unwind: bb7];
+    }
+
+    bb1: {
+        FakeRead(ForLet(None), _2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = &mut (*_2);
+        _4 = &mut (*_5);
+        _3 = MaybeUninit::<[T; 1024]>::as_mut_ptr(move _4) -> [return: bb2, unwind: bb6];
+    }
+
+    bb2: {
+        StorageDead(_4);
+        FakeRead(ForLet(None), _3);
+        StorageDead(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = copy _3;
+        StorageLive(_8);
+        _8 = copy _1;
+        (*_7) = [move _8; 1024];
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_9);
+        _9 = move _2;
+        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _9) -> [return: bb3, unwind: bb5];
+    }
+
+    bb3: {
+        StorageDead(_9);
+        StorageDead(_3);
+        drop(_2) -> [return: bb4, unwind: bb7];
+    }
+
+    bb4: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb5 (cleanup): {
+        drop(_9) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        drop(_2) -> [return: bb7, unwind terminate(cleanup)];
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+}
