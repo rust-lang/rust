@@ -29,21 +29,21 @@
 // lldb-command:run
 
 // lldb-command:v no_padding1
-// lldb-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
+// lldb-check:[...] ((0, 1), 2, 3) { 0 = (0, 1) { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
 // lldb-command:v no_padding2
-// lldb-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
+// lldb-check:[...] (4, (5, 6), 7) { 0 = 4 1 = (5, 6) { 0 = 5 1 = 6 } 2 = 7 }
 // lldb-command:v no_padding3
-// lldb-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
+// lldb-check:[...] (8, 9, (10, 11)) { 0 = 8 1 = 9 2 = (10, 11) { 0 = 10 1 = 11 } }
 
 // lldb-command:v internal_padding1
-// lldb-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
+// lldb-check:[...] (12, (13, 14)) { 0 = 12 1 = (13, 14) { 0 = 13 1 = 14 } }
 // lldb-command:v internal_padding2
-// lldb-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
+// lldb-check:[...] (15, (16, 17)) { 0 = 15 1 = (16, 17) { 0 = 16 1 = 17 } }
 
 // lldb-command:v padding_at_end1
-// lldb-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
+// lldb-check:[...] (18, (19, 20)) { 0 = 18 1 = (19, 20) { 0 = 19 1 = 20 } }
 // lldb-command:v padding_at_end2
-// lldb-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
+// lldb-check:[...] ((21, 22), 23) { 0 = (21, 22) { 0 = 21 1 = 22 } 1 = 23 }
 
 
 // === CDB TESTS ==================================================================================
