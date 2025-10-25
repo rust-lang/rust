@@ -684,17 +684,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_>,
     target_cpu: String,
 ) -> OngoingCodegen<B> {
-    // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, None);
-
-        ongoing_codegen.codegen_finished(tcx);
-
-        ongoing_codegen.check_for_errors(tcx.sess);
-
-        return ongoing_codegen;
-    }
-
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);
