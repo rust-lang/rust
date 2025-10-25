@@ -77,7 +77,11 @@ pub struct NonExpressiveNames {
     pub single_char_binding_names_threshold: u64,
 }
 
-impl_lint_pass!(NonExpressiveNames => [SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS]);
+impl_lint_pass!(NonExpressiveNames => [
+    JUST_UNDERSCORES_AND_DIGITS,
+    MANY_SINGLE_CHAR_NAMES,
+    SIMILAR_NAMES,
+]);
 
 impl NonExpressiveNames {
     pub fn new(conf: &'static Conf) -> Self {

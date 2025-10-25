@@ -75,7 +75,7 @@ declare_clippy_lint! {
     "`foo = bar; bar = foo` sequence"
 }
 
-declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
+declare_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {

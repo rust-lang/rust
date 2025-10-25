@@ -66,7 +66,9 @@ pub struct NeedlessBorrowsForGenericArgs<'tcx> {
     // `IntoIterator` for arrays requires Rust 1.53.
     msrv: Msrv,
 }
-impl_lint_pass!(NeedlessBorrowsForGenericArgs<'_> => [NEEDLESS_BORROWS_FOR_GENERIC_ARGS]);
+impl_lint_pass!(NeedlessBorrowsForGenericArgs<'_> => [
+    NEEDLESS_BORROWS_FOR_GENERIC_ARGS,
+]);
 
 impl NeedlessBorrowsForGenericArgs<'_> {
     pub fn new(conf: &'static Conf) -> Self {

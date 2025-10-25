@@ -144,10 +144,10 @@ declare_clippy_lint! {
 }
 
 impl_lint_pass!(Dereferencing<'_> => [
+    EXPLICIT_AUTO_DEREF,
     EXPLICIT_DEREF_METHODS,
     NEEDLESS_BORROW,
     REF_BINDING_TO_REFERENCE,
-    EXPLICIT_AUTO_DEREF,
 ]);
 
 #[derive(Default)]

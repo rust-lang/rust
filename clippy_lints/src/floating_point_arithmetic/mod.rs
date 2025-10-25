@@ -103,10 +103,7 @@ declare_clippy_lint! {
     "usage of sub-optimal floating point operations"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [
-    IMPRECISE_FLOPS,
-    SUBOPTIMAL_FLOPS
-]);
+declare_lint_pass!(FloatingPointArithmetic => [IMPRECISE_FLOPS, SUBOPTIMAL_FLOPS]);
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

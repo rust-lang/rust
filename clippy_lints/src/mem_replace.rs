@@ -125,8 +125,12 @@ declare_clippy_lint! {
     "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`"
 }
 
-impl_lint_pass!(MemReplace =>
-    [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_OPTION_WITH_SOME, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
+impl_lint_pass!(MemReplace => [
+    MEM_REPLACE_OPTION_WITH_NONE,
+    MEM_REPLACE_OPTION_WITH_SOME,
+    MEM_REPLACE_WITH_DEFAULT,
+    MEM_REPLACE_WITH_UNINIT,
+]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) -> bool {
     if is_none_expr(cx, src) {

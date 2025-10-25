@@ -105,7 +105,10 @@ declare_clippy_lint! {
     "implementing `IntoIterator for (&|&mut) Type` without an inherent `iter(_mut)` method"
 }
 
-declare_lint_pass!(IterWithoutIntoIter => [ITER_WITHOUT_INTO_ITER, INTO_ITER_WITHOUT_ITER]);
+declare_lint_pass!(IterWithoutIntoIter => [
+    INTO_ITER_WITHOUT_ITER,
+    ITER_WITHOUT_INTO_ITER,
+]);
 
 /// Checks if a given type is nameable in a trait (impl).
 /// RPIT is stable, but impl Trait in traits is not (yet), so when we have

@@ -30,7 +30,9 @@ declare_clippy_lint! {
     style,
     "detects cases of references to owned empty strings being passed as an argument to a function expecting `&str`"
 }
-declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [UNNECESSARY_OWNED_EMPTY_STRINGS]);
+declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [
+    UNNECESSARY_OWNED_EMPTY_STRINGS,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {

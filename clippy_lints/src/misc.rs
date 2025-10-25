@@ -94,9 +94,9 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(LintPass => [
+    SHORT_CIRCUIT_STATEMENT,
     USED_UNDERSCORE_BINDING,
     USED_UNDERSCORE_ITEMS,
-    SHORT_CIRCUIT_STATEMENT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for LintPass {

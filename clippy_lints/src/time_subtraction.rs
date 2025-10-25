@@ -83,7 +83,10 @@ impl UncheckedTimeSubtraction {
     }
 }
 
-impl_lint_pass!(UncheckedTimeSubtraction => [MANUAL_INSTANT_ELAPSED, UNCHECKED_TIME_SUBTRACTION]);
+impl_lint_pass!(UncheckedTimeSubtraction => [
+    MANUAL_INSTANT_ELAPSED,
+    UNCHECKED_TIME_SUBTRACTION,
+]);
 
 impl LateLintPass<'_> for UncheckedTimeSubtraction {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {

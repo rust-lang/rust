@@ -72,7 +72,7 @@ pub struct MutableKeyType<'tcx> {
     interior_mut: InteriorMut<'tcx>,
 }
 
-impl_lint_pass!(MutableKeyType<'_> => [ MUTABLE_KEY_TYPE ]);
+impl_lint_pass!(MutableKeyType<'_> => [MUTABLE_KEY_TYPE]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {

@@ -93,7 +93,7 @@ declare_clippy_lint! {
     "usage of the `unreachable!` macro"
 }
 
-impl_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
+impl_lint_pass!(PanicUnimplemented => [PANIC, TODO, UNIMPLEMENTED, UNREACHABLE]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

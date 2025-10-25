@@ -135,9 +135,9 @@ impl Lifetimes {
 }
 
 impl_lint_pass!(Lifetimes => [
-    NEEDLESS_LIFETIMES,
     ELIDABLE_LIFETIME_NAMES,
     EXTRA_UNUSED_LIFETIMES,
+    NEEDLESS_LIFETIMES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {

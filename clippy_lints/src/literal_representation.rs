@@ -196,10 +196,10 @@ pub struct LiteralDigitGrouping {
 }
 
 impl_lint_pass!(LiteralDigitGrouping => [
-    UNREADABLE_LITERAL,
     INCONSISTENT_DIGIT_GROUPING,
     LARGE_DIGIT_GROUPS,
     MISTYPED_LITERAL_SUFFIXES,
+    UNREADABLE_LITERAL,
     UNUSUAL_BYTE_GROUPINGS,
 ]);
 

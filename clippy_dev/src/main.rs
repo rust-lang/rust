@@ -4,8 +4,7 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, generate, lint, new_lint, new_parse_cx, release, serve, setup,
-    sync,
+    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, serve, setup, sync,
 };
 use std::env;
 
@@ -28,7 +27,7 @@ fn main() {
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
         DevCommand::UpdateLints { check } => {
-            new_parse_cx(|cx| generate::generate_lint_files(UpdateMode::from_check(check), &cx.parse_lint_decls()));
+            new_parse_cx(|cx| cx.parse_lint_decls().gen_decls(UpdateMode::from_check(check)));
         },
         DevCommand::NewLint {
             pass,
@@ -37,7 +36,7 @@ fn main() {
             r#type,
             msrv,
         } => match new_lint::create(clippy.version, pass, &name, &category, r#type.as_deref(), msrv) {
-            Ok(()) => new_parse_cx(|cx| generate::generate_lint_files(UpdateMode::Change, &cx.parse_lint_decls())),
+            Ok(()) => new_parse_cx(|cx| cx.parse_lint_decls().gen_decls(UpdateMode::Change)),
             Err(e) => eprintln!("Unable to create lint: {e}"),
         },
         DevCommand::Setup(SetupCommand { subcommand }) => match subcommand {

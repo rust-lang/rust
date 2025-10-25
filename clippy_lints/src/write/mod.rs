@@ -257,15 +257,15 @@ impl Write {
 }
 
 impl_lint_pass!(Write => [
-    PRINT_WITH_NEWLINE,
     PRINTLN_EMPTY_STRING,
-    PRINT_STDOUT,
-    PRINT_STDERR,
-    USE_DEBUG,
     PRINT_LITERAL,
-    WRITE_WITH_NEWLINE,
+    PRINT_STDERR,
+    PRINT_STDOUT,
+    PRINT_WITH_NEWLINE,
+    USE_DEBUG,
     WRITELN_EMPTY_STRING,
     WRITE_LITERAL,
+    WRITE_WITH_NEWLINE,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Write {

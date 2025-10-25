@@ -63,7 +63,11 @@ declare_clippy_lint! {
     "disallows usage of the `to_be_bytes` method"
 }
 
-declare_lint_pass!(EndianBytes => [HOST_ENDIAN_BYTES, LITTLE_ENDIAN_BYTES, BIG_ENDIAN_BYTES]);
+declare_lint_pass!(EndianBytes => [
+    BIG_ENDIAN_BYTES,
+    HOST_ENDIAN_BYTES,
+    LITTLE_ENDIAN_BYTES,
+]);
 
 const HOST_NAMES: [Symbol; 2] = [sym::from_ne_bytes, sym::to_ne_bytes];
 const LITTLE_NAMES: [Symbol; 2] = [sym::from_le_bytes, sym::to_le_bytes];

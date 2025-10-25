@@ -1,6 +1,7 @@
+use crate::new_parse_cx;
 use crate::utils::{
-    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
-    walk_dir_no_dot_or_target,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, slice_groups,
+    split_args_for_threads, walk_dir_no_dot_or_target,
 };
 use itertools::Itertools;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -326,10 +327,30 @@ fn run_rustfmt(update_mode: UpdateMode) {
 
 // the "main" function of cargo dev fmt
 pub fn run(update_mode: UpdateMode) {
-    run_rustfmt(update_mode);
     fmt_syms(update_mode);
     if let Err(e) = fmt_conf(update_mode.is_check()) {
         e.display();
         process::exit(1);
     }
+
+    new_parse_cx(|cx| {
+        let data = cx.parse_lint_decls();
+        let mut updater = FileUpdater::default();
+
+        for passes in slice_groups(&data.lint_passes, |head, tail| {
+            tail.iter().take_while(|&x| x.path == head.path).count()
+        }) {
+            updater.update_file_checked("cargo dev fmt", update_mode, &passes[0].path, &mut |_, src, dst| {
+                let pos = passes.iter().fold(0u32, |start, pass| {
+                    dst.push_str(&src[start as usize..pass.decl_range.start as usize]);
+                    pass.gen_mac(dst);
+                    pass.decl_range.end
+                });
+                dst.push_str(&src[pos as usize..]);
+                UpdateStatus::from_changed(src != dst)
+            });
+        }
+    });
+
+    run_rustfmt(update_mode);
 }

@@ -160,10 +160,10 @@ impl<'tcx> CopyAndPaste<'tcx> {
 }
 
 impl_lint_pass!(CopyAndPaste<'_> => [
+    BRANCHES_SHARING_CODE,
     IFS_SAME_COND,
-    SAME_FUNCTIONS_IN_IF_CONDITION,
     IF_SAME_THEN_ELSE,
-    BRANCHES_SHARING_CODE
+    SAME_FUNCTIONS_IN_IF_CONDITION,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {

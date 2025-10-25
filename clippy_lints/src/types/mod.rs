@@ -398,16 +398,16 @@ pub struct Types {
 }
 
 impl_lint_pass!(Types => [
-    BOX_COLLECTION,
-    VEC_BOX,
-    OPTION_OPTION,
-    LINKEDLIST,
     BORROWED_BOX,
-    REDUNDANT_ALLOCATION,
+    BOX_COLLECTION,
+    LINKEDLIST,
+    OPTION_OPTION,
+    OWNED_COW,
     RC_BUFFER,
     RC_MUTEX,
+    REDUNDANT_ALLOCATION,
     TYPE_COMPLEXITY,
-    OWNED_COW
+    VEC_BOX,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {

@@ -79,7 +79,11 @@ pub struct NoEffect {
     local_bindings: Vec<Vec<HirId>>,
 }
 
-impl_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION, NO_EFFECT_UNDERSCORE_BINDING]);
+impl_lint_pass!(NoEffect => [
+    NO_EFFECT,
+    NO_EFFECT_UNDERSCORE_BINDING,
+    UNNECESSARY_OPERATION,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {

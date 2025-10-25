@@ -164,7 +164,10 @@ declare_clippy_lint! {
     pedantic,
     "self receiver only used to recursively call method can be removed"
 }
-impl_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION, SELF_ONLY_USED_IN_RECURSION]);
+impl_lint_pass!(OnlyUsedInRecursion => [
+    ONLY_USED_IN_RECURSION,
+    SELF_ONLY_USED_IN_RECURSION,
+]);
 
 #[derive(Clone, Copy)]
 enum FnKind {

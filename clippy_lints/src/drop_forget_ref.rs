@@ -75,11 +75,7 @@ const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that 
 const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
                                    Forgetting such a type is the same as dropping it";
 
-declare_lint_pass!(DropForgetRef => [
-    DROP_NON_DROP,
-    FORGET_NON_DROP,
-    MEM_FORGET,
-]);
+declare_lint_pass!(DropForgetRef => [DROP_NON_DROP, FORGET_NON_DROP, MEM_FORGET]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

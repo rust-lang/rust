@@ -76,7 +76,9 @@ impl InconsistentStructConstructor {
     }
 }
 
-impl_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRUCTOR]);
+impl_lint_pass!(InconsistentStructConstructor => [
+    INCONSISTENT_STRUCT_CONSTRUCTOR,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {

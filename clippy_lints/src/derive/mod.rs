@@ -185,11 +185,11 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(Derive => [
-    EXPL_IMPL_CLONE_ON_COPY,
     DERIVED_HASH_WITH_MANUAL_EQ,
     DERIVE_ORD_XOR_PARTIAL_ORD,
+    DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+    EXPL_IMPL_CLONE_ON_COPY,
     UNSAFE_DERIVE_DESERIALIZE,
-    DERIVE_PARTIAL_EQ_WITHOUT_EQ
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Derive {

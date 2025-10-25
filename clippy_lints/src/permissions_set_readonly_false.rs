@@ -26,7 +26,9 @@ declare_clippy_lint! {
     suspicious,
     "Checks for calls to `std::fs::Permissions.set_readonly` with argument `false`"
 }
-declare_lint_pass!(PermissionsSetReadonlyFalse => [PERMISSIONS_SET_READONLY_FALSE]);
+declare_lint_pass!(PermissionsSetReadonlyFalse => [
+    PERMISSIONS_SET_READONLY_FALSE,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {

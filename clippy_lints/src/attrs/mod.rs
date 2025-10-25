@@ -482,10 +482,7 @@ pub struct Attributes {
     msrv: Msrv,
 }
 
-impl_lint_pass!(Attributes => [
-    INLINE_ALWAYS,
-    REPR_PACKED_WITHOUT_ABI,
-]);
+impl_lint_pass!(Attributes => [INLINE_ALWAYS, REPR_PACKED_WITHOUT_ABI]);
 
 impl Attributes {
     pub fn new(conf: &'static Conf) -> Self {
@@ -531,8 +528,8 @@ impl EarlyAttributes {
 
 impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
-    NON_MINIMAL_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
+    NON_MINIMAL_CFG,
     UNNECESSARY_CLIPPY_CFG,
 ]);
 
@@ -561,13 +558,13 @@ impl PostExpansionEarlyAttributes {
 impl_lint_pass!(PostExpansionEarlyAttributes => [
     ALLOW_ATTRIBUTES,
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
-    DEPRECATED_SEMVER,
-    IGNORE_WITHOUT_REASON,
-    USELESS_ATTRIBUTE,
     BLANKET_CLIPPY_RESTRICTION_LINTS,
-    SHOULD_PANIC_WITHOUT_EXPECT,
-    MIXED_ATTRIBUTES_STYLE,
+    DEPRECATED_SEMVER,
     DUPLICATED_ATTRIBUTES,
+    IGNORE_WITHOUT_REASON,
+    MIXED_ATTRIBUTES_STYLE,
+    SHOULD_PANIC_WITHOUT_EXPECT,
+    USELESS_ATTRIBUTE,
 ]);
 
 impl EarlyLintPass for PostExpansionEarlyAttributes {

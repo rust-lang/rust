@@ -65,7 +65,7 @@ pub struct QuestionMark {
     inferred_ret_closure_stack: u16,
 }
 
-impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
+impl_lint_pass!(QuestionMark => [MANUAL_LET_ELSE, QUESTION_MARK]);
 
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {

@@ -82,7 +82,10 @@ impl StringPatterns {
     }
 }
 
-impl_lint_pass!(StringPatterns => [MANUAL_PATTERN_CHAR_COMPARISON, SINGLE_CHAR_PATTERN]);
+impl_lint_pass!(StringPatterns => [
+    MANUAL_PATTERN_CHAR_COMPARISON,
+    SINGLE_CHAR_PATTERN,
+]);
 
 const PATTERN_METHODS: [(Symbol, usize); 22] = [
     (sym::contains, 0),

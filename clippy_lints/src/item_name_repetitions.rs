@@ -197,9 +197,9 @@ impl ItemNameRepetitions {
 
 impl_lint_pass!(ItemNameRepetitions => [
     ENUM_VARIANT_NAMES,
-    STRUCT_FIELD_NAMES,
+    MODULE_INCEPTION,
     MODULE_NAME_REPETITIONS,
-    MODULE_INCEPTION
+    STRUCT_FIELD_NAMES,
 ]);
 
 #[must_use]

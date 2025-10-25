@@ -100,7 +100,10 @@ impl TraitBounds {
     }
 }
 
-impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS, TRAIT_DUPLICATION_IN_BOUNDS]);
+impl_lint_pass!(TraitBounds => [
+    TRAIT_DUPLICATION_IN_BOUNDS,
+    TYPE_REPETITION_IN_BOUNDS,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {

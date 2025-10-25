@@ -113,7 +113,7 @@ impl FormatImpl {
     }
 }
 
-impl_lint_pass!(FormatImpl => [RECURSIVE_FORMAT_IMPL, PRINT_IN_FORMAT_IMPL]);
+impl_lint_pass!(FormatImpl => [PRINT_IN_FORMAT_IMPL, RECURSIVE_FORMAT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for FormatImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {

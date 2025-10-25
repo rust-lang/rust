@@ -102,7 +102,10 @@ impl ExcessiveBools {
     }
 }
 
-impl_lint_pass!(ExcessiveBools => [STRUCT_EXCESSIVE_BOOLS, FN_PARAMS_EXCESSIVE_BOOLS]);
+impl_lint_pass!(ExcessiveBools => [
+    FN_PARAMS_EXCESSIVE_BOOLS,
+    STRUCT_EXCESSIVE_BOOLS,
+]);
 
 fn has_n_bools<'tcx>(iter: impl Iterator<Item = &'tcx Ty<'tcx>>, mut count: u64) -> bool {
     iter.filter(|ty| is_bool(ty)).any(|_| {

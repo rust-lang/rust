@@ -79,7 +79,10 @@ declare_clippy_lint! {
     "whether an expression contains a diverging sub expression"
 }
 
-declare_lint_pass!(EvalOrderDependence => [MIXED_READ_WRITE_IN_EXPRESSION, DIVERGING_SUB_EXPRESSION]);
+declare_lint_pass!(EvalOrderDependence => [
+    DIVERGING_SUB_EXPRESSION,
+    MIXED_READ_WRITE_IN_EXPRESSION,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

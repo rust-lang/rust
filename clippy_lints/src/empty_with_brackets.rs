@@ -90,7 +90,10 @@ pub struct EmptyWithBrackets {
     empty_tuple_enum_variants: FxIndexMap<LocalDefId, Usage>,
 }
 
-impl_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM_VARIANTS_WITH_BRACKETS]);
+impl_lint_pass!(EmptyWithBrackets => [
+    EMPTY_ENUM_VARIANTS_WITH_BRACKETS,
+    EMPTY_STRUCTS_WITH_BRACKETS,
+]);
 
 impl LateLintPass<'_> for EmptyWithBrackets {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {

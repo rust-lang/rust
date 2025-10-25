@@ -260,12 +260,12 @@ declare_clippy_lint! {
 
 impl_lint_pass!(FormatArgs<'_> => [
     FORMAT_IN_FORMAT_ARGS,
+    POINTER_FORMAT,
     TO_STRING_IN_FORMAT_ARGS,
     UNINLINED_FORMAT_ARGS,
     UNNECESSARY_DEBUG_FORMATTING,
-    UNUSED_FORMAT_SPECS,
-    POINTER_FORMAT,
     UNNECESSARY_TRAILING_COMMA,
+    UNUSED_FORMAT_SPECS,
 ]);
 
 #[expect(clippy::struct_field_names)]

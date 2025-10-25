@@ -61,7 +61,7 @@ declare_clippy_lint! {
     style,
     "use dedicated method to check if a float is finite"
 }
-impl_lint_pass!(ManualFloatMethods => [MANUAL_IS_INFINITE, MANUAL_IS_FINITE]);
+impl_lint_pass!(ManualFloatMethods => [MANUAL_IS_FINITE, MANUAL_IS_INFINITE]);
 
 #[derive(Clone, Copy)]
 enum Variant {

@@ -101,7 +101,7 @@ pub struct UnitTypes {
     format_args: FormatArgsStorage,
 }
 
-impl_lint_pass!(UnitTypes => [LET_UNIT_VALUE, UNIT_CMP, UNIT_ARG]);
+impl_lint_pass!(UnitTypes => [LET_UNIT_VALUE, UNIT_ARG, UNIT_CMP]);
 
 impl UnitTypes {
     pub fn new(format_args: FormatArgsStorage) -> Self {

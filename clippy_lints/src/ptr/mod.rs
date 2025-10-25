@@ -135,7 +135,7 @@ declare_clippy_lint! {
     "use `std::ptr::eq` when comparing raw pointers"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, PTR_EQ]);
+declare_lint_pass!(Ptr => [CMP_NULL, MUT_FROM_REF, PTR_ARG, PTR_EQ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {

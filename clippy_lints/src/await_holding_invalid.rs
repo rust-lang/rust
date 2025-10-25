@@ -171,7 +171,11 @@ declare_clippy_lint! {
     "holding a type across an await point which is not allowed to be held as per the configuration"
 }
 
-impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
+impl_lint_pass!(AwaitHolding => [
+    AWAIT_HOLDING_INVALID_TYPE,
+    AWAIT_HOLDING_LOCK,
+    AWAIT_HOLDING_REFCELL_REF,
+]);
 
 pub struct AwaitHolding {
     def_ids: DefIdMap<(&'static str, &'static DisallowedPathWithoutReplacement)>,

@@ -127,7 +127,12 @@ declare_clippy_lint! {
     "non-binding `let` without a type annotation"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE, LET_UNDERSCORE_UNTYPED]);
+declare_lint_pass!(LetUnderscore => [
+    LET_UNDERSCORE_FUTURE,
+    LET_UNDERSCORE_LOCK,
+    LET_UNDERSCORE_MUST_USE,
+    LET_UNDERSCORE_UNTYPED,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {

@@ -243,7 +243,10 @@ declare_clippy_lint! {
 // Max length a b"foo" string can take
 const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 
-declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS_BYTES]);
+declare_lint_pass!(StringLitAsBytes => [
+    STRING_FROM_UTF8_AS_BYTES,
+    STRING_LIT_AS_BYTES,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {

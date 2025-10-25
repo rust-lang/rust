@@ -175,10 +175,10 @@ impl Ranges {
 }
 
 impl_lint_pass!(Ranges => [
-    RANGE_PLUS_ONE,
-    RANGE_MINUS_ONE,
-    REVERSED_EMPTY_RANGES,
     MANUAL_RANGE_CONTAINS,
+    RANGE_MINUS_ONE,
+    RANGE_PLUS_ONE,
+    REVERSED_EMPTY_RANGES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {

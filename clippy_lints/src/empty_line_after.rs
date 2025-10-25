@@ -101,8 +101,8 @@ pub struct EmptyLineAfter {
 }
 
 impl_lint_pass!(EmptyLineAfter => [
-    EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
 ]);
 
 impl EmptyLineAfter {

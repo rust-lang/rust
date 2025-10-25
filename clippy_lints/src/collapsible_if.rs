@@ -259,7 +259,7 @@ impl CollapsibleIf {
     }
 }
 
-impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
+impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_ELSE_IF, COLLAPSIBLE_IF]);
 
 impl LateLintPass<'_> for CollapsibleIf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {

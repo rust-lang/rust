@@ -257,7 +257,10 @@ pub struct NonCopyConst<'tcx> {
     freeze_tys: FxHashMap<Ty<'tcx>, IsFreeze>,
 }
 
-impl_lint_pass!(NonCopyConst<'_> => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTERIOR_MUTABLE_CONST]);
+impl_lint_pass!(NonCopyConst<'_> => [
+    BORROW_INTERIOR_MUTABLE_CONST,
+    DECLARE_INTERIOR_MUTABLE_CONST,
+]);
 
 impl<'tcx> NonCopyConst<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {

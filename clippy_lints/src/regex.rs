@@ -119,7 +119,7 @@ pub struct Regex {
     loop_stack: Vec<(OwnerId, Span)>,
 }
 
-impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX, REGEX_CREATION_IN_LOOPS]);
+impl_lint_pass!(Regex => [INVALID_REGEX, REGEX_CREATION_IN_LOOPS, TRIVIAL_REGEX]);
 
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {

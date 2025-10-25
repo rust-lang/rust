@@ -108,7 +108,10 @@ declare_clippy_lint! {
     suspicious,
     "non-canonical implementation of `PartialOrd` on an `Ord` type"
 }
-impl_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL_PARTIAL_ORD_IMPL]);
+impl_lint_pass!(NonCanonicalImpls => [
+    NON_CANONICAL_CLONE_IMPL,
+    NON_CANONICAL_PARTIAL_ORD_IMPL,
+]);
 
 #[expect(
     clippy::struct_field_names,

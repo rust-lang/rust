@@ -109,7 +109,11 @@ impl StdReexports {
     }
 }
 
-impl_lint_pass!(StdReexports => [STD_INSTEAD_OF_CORE, STD_INSTEAD_OF_ALLOC, ALLOC_INSTEAD_OF_CORE]);
+impl_lint_pass!(StdReexports => [
+    ALLOC_INSTEAD_OF_CORE,
+    STD_INSTEAD_OF_ALLOC,
+    STD_INSTEAD_OF_CORE,
+]);
 
 #[derive(Debug)]
 enum LintPoint {

@@ -106,7 +106,10 @@ impl UndocumentedUnsafeBlocks {
     }
 }
 
-impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
+impl_lint_pass!(UndocumentedUnsafeBlocks => [
+    UNDOCUMENTED_UNSAFE_BLOCKS,
+    UNNECESSARY_SAFETY_COMMENT,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {

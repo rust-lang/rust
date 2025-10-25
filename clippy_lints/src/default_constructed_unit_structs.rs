@@ -45,7 +45,9 @@ declare_clippy_lint! {
     complexity,
     "unit structs can be constructed without calling `default`"
 }
-declare_lint_pass!(DefaultConstructedUnitStructs => [DEFAULT_CONSTRUCTED_UNIT_STRUCTS]);
+declare_lint_pass!(DefaultConstructedUnitStructs => [
+    DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
+]);
 
 fn is_alias(ty: hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref qpath) = ty.kind {

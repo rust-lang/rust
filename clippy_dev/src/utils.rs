@@ -600,3 +600,27 @@ pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
     })
 }
+
+pub fn slice_groups<'a, T>(
+    slice: &'a [T],
+    split_idx: impl FnMut(&'a T, &'a [T]) -> usize,
+) -> impl Iterator<Item = &'a [T]> {
+    struct I<'a, T, F> {
+        slice: &'a [T],
+        split_idx: F,
+    }
+    impl<'a, T, F: FnMut(&'a T, &'a [T]) -> usize> Iterator for I<'a, T, F> {
+        type Item = &'a [T];
+        fn next(&mut self) -> Option<Self::Item> {
+            let (head, tail) = self.slice.split_first()?;
+            if let Some((head, tail)) = self.slice.split_at_checked((self.split_idx)(head, tail) + 1) {
+                self.slice = tail;
+                Some(head)
+            } else {
+                self.slice = &[];
+                None
+            }
+        }
+    }
+    I { slice, split_idx }
+}

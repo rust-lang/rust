@@ -237,7 +237,10 @@ impl PassByRefOrValue {
     }
 }
 
-impl_lint_pass!(PassByRefOrValue => [TRIVIALLY_COPY_PASS_BY_REF, LARGE_TYPES_PASSED_BY_VALUE]);
+impl_lint_pass!(PassByRefOrValue => [
+    LARGE_TYPES_PASSED_BY_VALUE,
+    TRIVIALLY_COPY_PASS_BY_REF,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
