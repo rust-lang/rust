@@ -2078,27 +2078,43 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         cmd.arg("--python").arg(builder.python());
 
-        if let Some(ref gdb) = builder.config.gdb {
-            cmd.arg("--gdb").arg(gdb);
+        // FIXME(#148099): Currently we set these Android-related flags in all
+        // modes, even though they should only be needed in "debuginfo" mode,
+        // because the GDB-discovery code in compiletest currently assumes that
+        // `--android-cross-path` is always set for Android targets.
+        cmd.arg("--adb-path").arg("adb");
+        cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
+        if target.contains("android") && !builder.config.dry_run() {
+            // Assume that cc for this target comes from the android sysroot
+            cmd.arg("--android-cross-path")
+                .arg(builder.cc(target).parent().unwrap().parent().unwrap());
+        } else {
+            cmd.arg("--android-cross-path").arg("");
         }
 
-        let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
-        let lldb_version = command(&lldb_exe)
-            .allow_failure()
-            .arg("--version")
-            .run_capture(builder)
-            .stdout_if_ok()
-            .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
-        if let Some(ref vers) = lldb_version {
-            cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = command(&lldb_exe)
+        if mode == "debuginfo" {
+            if let Some(ref gdb) = builder.config.gdb {
+                cmd.arg("--gdb").arg(gdb);
+            }
+
+            let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
+            let lldb_version = command(&lldb_exe)
                 .allow_failure()
-                .arg("-P")
-                .run_capture_stdout(builder)
+                .arg("--version")
+                .run_capture(builder)
                 .stdout_if_ok()
-                .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
-            if let Some(ref dir) = lldb_python_dir {
-                cmd.arg("--lldb-python-dir").arg(dir);
+                .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
+            if let Some(ref vers) = lldb_version {
+                cmd.arg("--lldb-version").arg(vers);
+                let lldb_python_dir = command(&lldb_exe)
+                    .allow_failure()
+                    .arg("-P")
+                    .run_capture_stdout(builder)
+                    .stdout_if_ok()
+                    .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
+                if let Some(ref dir) = lldb_python_dir {
+                    cmd.arg("--lldb-python-dir").arg(dir);
+                }
             }
         }
 
@@ -2331,16 +2347,6 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());
-
-        cmd.arg("--adb-path").arg("adb");
-        cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
-        if target.contains("android") && !builder.config.dry_run() {
-            // Assume that cc for this target comes from the android sysroot
-            cmd.arg("--android-cross-path")
-                .arg(builder.cc(target).parent().unwrap().parent().unwrap());
-        } else {
-            cmd.arg("--android-cross-path").arg("");
-        }
 
         if builder.config.cmd.rustfix_coverage() {
             cmd.arg("--rustfix-coverage");
