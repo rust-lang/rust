@@ -108,7 +108,7 @@ struct QueryModifiers {
     anon: Option<Ident>,
 
     /// Always evaluate the query, ignoring its dependencies
-    eval_always: Option<Ident>,
+    no_incremental: Option<Ident>,
 
     /// Whether the query has a call depth limit
     depth_limit: Option<Ident>,
@@ -141,7 +141,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut cycle_stash = None;
     let mut no_hash = None;
     let mut anon = None;
-    let mut eval_always = None;
+    let mut no_incremental = None;
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut feedable = None;
@@ -199,8 +199,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(no_hash = modifier);
         } else if modifier == "anon" {
             try_insert!(anon = modifier);
-        } else if modifier == "eval_always" {
-            try_insert!(eval_always = modifier);
+        } else if modifier == "no_incremental" {
+            try_insert!(no_incremental = modifier);
         } else if modifier == "depth_limit" {
             try_insert!(depth_limit = modifier);
         } else if modifier == "separate_provide_extern" {
@@ -225,7 +225,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         cycle_stash,
         no_hash,
         anon,
-        eval_always,
+        no_incremental,
         depth_limit,
         separate_provide_extern,
         feedable,
@@ -372,7 +372,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
             cycle_stash,
             no_hash,
             anon,
-            eval_always,
+            no_incremental,
             depth_limit,
             separate_provide_extern,
             return_result_from_ensure_ok,
@@ -408,9 +408,9 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
                 "Query {name} cannot be both `feedable` and `anon`."
             );
             assert!(
-                modifiers.eval_always.is_none(),
+                modifiers.no_incremental.is_none(),
                 feedable.span(),
-                "Query {name} cannot be both `feedable` and `eval_always`."
+                "Query {name} cannot be both `feedable` and `no_incremental`."
             );
             feedable_queries.extend(quote! {
                 [#attribute_stream] fn #name(#arg) #result,
