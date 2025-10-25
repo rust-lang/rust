@@ -1,3 +1,5 @@
+//@ no-prefer-dynamic
+
 // Helper definition for test/run-pass/check-static-recursion-foreign.rs.
 
 #![feature(rustc_private)]
