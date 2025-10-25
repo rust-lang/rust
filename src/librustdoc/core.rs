@@ -29,7 +29,7 @@ use tracing::{debug, info};
 
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
-use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
+use crate::config::{DocumentPrivate, Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
@@ -243,7 +243,7 @@ pub(crate) fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
-    let resolve_doc_links = if render_options.document_private {
+    let resolve_doc_links = if render_options.document_private.0 {
         ResolveDocLinks::All
     } else {
         ResolveDocLinks::Exported
@@ -415,7 +415,7 @@ pub(crate) fn run_global_ctxt(
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
         if attr.is_word() && attr.has_name(sym::document_private_items) {
-            ctxt.render_options.document_private = true;
+            ctxt.render_options.document_private = DocumentPrivate(true);
         }
     }
 
@@ -427,9 +427,9 @@ pub(crate) fn run_global_ctxt(
     for p in passes::defaults(show_coverage) {
         let run = match p.condition {
             Always => true,
-            WhenDocumentPrivate => ctxt.render_options.document_private,
-            WhenNotDocumentPrivate => !ctxt.render_options.document_private,
-            WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
+            WhenDocumentPrivate => ctxt.render_options.document_private.0,
+            WhenNotDocumentPrivate => !ctxt.render_options.document_private.0,
+            WhenNotDocumentHidden => !ctxt.render_options.document_hidden.0,
         };
         if run {
             debug!("running pass {}", p.pass.name);

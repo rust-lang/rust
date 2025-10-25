@@ -18,6 +18,7 @@ use rustc_span::edition::Edition;
 use rustc_span::{BytePos, FileName, SourceFile};
 use tracing::{debug, trace, warn};
 
+use crate::config::NoEmitShared;
 use crate::html::render::Context;
 use crate::{clean, config, formats};
 
@@ -274,7 +275,7 @@ pub(crate) fn run(
 ) {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
-        renderopts.no_emit_shared = true;
+        renderopts.no_emit_shared = NoEmitShared(true);
         let (cx, _) = Context::init(krate, renderopts, cache, tcx, Default::default())
             .map_err(|e| e.to_string())?;
 
