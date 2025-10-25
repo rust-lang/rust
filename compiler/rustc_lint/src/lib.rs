@@ -37,6 +37,7 @@ mod async_closures;
 mod async_fn_in_trait;
 mod autorefs;
 pub mod builtin;
+mod cmse_uninitialized_leak;
 mod context;
 mod dangling;
 mod default_could_be_derived;
@@ -86,6 +87,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
 use builtin::*;
+use cmse_uninitialized_leak::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
@@ -246,6 +248,7 @@ late_lint_methods!(
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
+            CmseUninitializedLeak: CmseUninitializedLeak,
         ]
     ]
 );
