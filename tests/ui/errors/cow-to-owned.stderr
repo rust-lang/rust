@@ -1,0 +1,17 @@
+error[E0515]: cannot return value referencing function parameter `x`
+  --> $DIR/cow-to-owned.rs:4:64
+   |
+LL |     _ = std::env::var_os("RUST_LOG").map_or("warn".into(), |x| x.to_string_lossy().to_owned());
+   |                                                                -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                |
+   |                                                                returns a value referencing data owned by the current function
+   |                                                                `x` is borrowed here
+   |
+help: try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`
+   |
+LL |     _ = std::env::var_os("RUST_LOG").map_or("warn".into(), |x| x.to_string_lossy().into_owned());
+   |                                                                                    ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.
