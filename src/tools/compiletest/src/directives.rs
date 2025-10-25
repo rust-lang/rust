@@ -11,7 +11,7 @@ use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 pub(crate) use crate::directives::auxiliary::AuxProps;
 use crate::directives::auxiliary::parse_and_update_aux;
 use crate::directives::directive_names::{
-    KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
+    KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::line::{DirectiveLine, line_directive};
@@ -786,7 +786,7 @@ fn check_directive<'a>(
 ) -> CheckDirectiveResult<'a> {
     let &DirectiveLine { name: directive_name, .. } = directive_ln;
 
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES.contains(&directive_name)
+    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
         || match mode {
             TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
@@ -799,7 +799,7 @@ fn check_directive<'a>(
     let trailing_directive = directive_ln
         .remark_after_space()
         .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
+        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
     // FIXME(Zalathar): Consider emitting specialized error/help messages for
     // bogus directive names that are similar to real ones, e.g.:
