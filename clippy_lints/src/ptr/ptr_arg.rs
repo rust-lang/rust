@@ -23,7 +23,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
 
-use crate::vec::is_allowed_vec_method;
+use crate::useless_vec::is_allowed_vec_method;
 
 pub(super) fn check_body<'tcx>(
     cx: &LateContext<'tcx>,
