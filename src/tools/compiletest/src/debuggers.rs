@@ -132,7 +132,7 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
 pub(crate) fn discover_gdb(
     gdb: Option<String>,
     target: &str,
-    android_cross_path: &Utf8Path,
+    android_cross_path: Option<&Utf8Path>,
 ) -> Option<String> {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";
@@ -141,7 +141,7 @@ pub(crate) fn discover_gdb(
 
     let fallback_gdb = || {
         if is_android_gdb_target(target) {
-            let mut gdb_path = android_cross_path.to_string();
+            let mut gdb_path = android_cross_path.unwrap().to_string();
             gdb_path.push_str("/bin/gdb");
             gdb_path
         } else {
