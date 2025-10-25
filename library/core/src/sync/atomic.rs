@@ -433,7 +433,8 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 ///
 /// [nomicon]: ../../../nomicon/atomics.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Debug, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[non_exhaustive]
 #[rustc_diagnostic_item = "Ordering"]
 pub enum Ordering {
