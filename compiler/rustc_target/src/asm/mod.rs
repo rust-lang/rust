@@ -935,6 +935,7 @@ pub enum InlineAsmClobberAbi {
     AArch64NoX18,
     Arm64EC,
     Avr,
+    AvrTiny,
     RiscV,
     RiscVE,
     LoongArch,
@@ -995,7 +996,11 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Avr => match name {
-                "C" | "system" => Ok(InlineAsmClobberAbi::Avr),
+                "C" | "system" => Ok(if avr::is_tiny(target_features) {
+                    InlineAsmClobberAbi::AvrTiny
+                } else {
+                    InlineAsmClobberAbi::Avr
+                }),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => match name {
@@ -1164,6 +1169,13 @@ impl InlineAsmClobberAbi {
                     // this is not necessary to be listed here, since the SREG
                     // is considered clobbered anyways unless `preserve_flags`
                     // is used.
+                }
+            },
+            InlineAsmClobberAbi::AvrTiny => clobbered_regs! {
+                Avr AvrInlineAsmReg {
+                    // Refs: https://gcc.gnu.org/wiki/avr-gcc#Reduced_Tiny
+
+                    r20, r21, r22, r23, r24, r25, r26, r27, r30, r31,
                 }
             },
             InlineAsmClobberAbi::RiscV => clobbered_regs! {
