@@ -527,7 +527,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
+        and the specified memory ranges do not overlap \
+        (src{src}, dst:{dst}, size:{size}, align:{align}, count:{count})",
         (
             src: *const () = src as *const (),
             dst: *mut () = dst as *mut (),
@@ -625,7 +626,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
+            "ptr::copy requires that both pointer arguments are aligned and non-null \
+            (src{src}, dst:{dst}, align:{align})",
             (
                 src: *const () = src as *const (),
                 dst: *mut () = dst as *mut (),
@@ -699,7 +701,8 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
+            "ptr::write_bytes requires that the destination pointer is aligned and non-null \
+            (dst:{addr}, align:{align})",
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
@@ -1396,7 +1399,8 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
         check_library_ub,
         "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
+        and the specified memory ranges do not overlap \
+        (x:{x}, y:{y}, size:{size}, align:{align}, count:{count})",
         (
             x: *mut () = x as *mut (),
             y: *mut () = y as *mut (),
@@ -1581,7 +1585,8 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::replace requires that the pointer argument is aligned and non-null",
+            "ptr::replace requires that the pointer argument is aligned and non-null \
+            (dst:{addr}, (align:{align}))",
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
@@ -1734,7 +1739,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::read requires that the pointer argument is aligned and non-null",
+            "ptr::read requires that the pointer argument is aligned and non-null \
+            (src:{addr}, align:{align})",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
@@ -1934,7 +1940,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
         #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::write requires that the pointer argument is aligned and non-null",
+            "ptr::write requires that the pointer argument is aligned and non-null \
+            (dst:{addr}, align:{align})",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
@@ -2109,7 +2116,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::read_volatile requires that the pointer argument is aligned",
+            "ptr::read_volatile requires that the pointer argument is aligned \
+            (src:{addr}, align:{align})",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
@@ -2196,7 +2204,8 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::write_volatile requires that the pointer argument is aligned",
+            "ptr::write_volatile requires that the pointer argument is aligned \
+            (dst:{addr}, align:{align})",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
