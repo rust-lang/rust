@@ -112,7 +112,7 @@ fn spawn_test_thread(
         config: Arc::clone(&test.config),
         testpaths: test.testpaths.clone(),
         revision: test.revision.clone(),
-        should_panic: test.desc.should_panic,
+        should_fail: test.desc.should_fail,
         completion_sender,
     };
     let thread_builder = thread::Builder::new().name(test.desc.name.clone());
@@ -127,7 +127,7 @@ struct TestThreadArgs {
     config: Arc<Config>,
     testpaths: TestPaths,
     revision: Option<String>,
-    should_panic: ShouldPanic,
+    should_fail: ShouldFail,
 
     completion_sender: mpsc::Sender<TestCompletion>,
 }
@@ -170,11 +170,11 @@ fn test_thread_main(args: TestThreadArgs) {
     }
 
     // Interpret the presence/absence of a panic as test failure/success.
-    let outcome = match (args.should_panic, panic_payload) {
-        (ShouldPanic::No, None) | (ShouldPanic::Yes, Some(_)) => TestOutcome::Succeeded,
-        (ShouldPanic::No, Some(_)) => TestOutcome::Failed { message: None },
-        (ShouldPanic::Yes, None) => {
-            TestOutcome::Failed { message: Some("test did not panic as expected") }
+    let outcome = match (args.should_fail, panic_payload) {
+        (ShouldFail::No, None) | (ShouldFail::Yes, Some(_)) => TestOutcome::Succeeded,
+        (ShouldFail::No, Some(_)) => TestOutcome::Failed { message: None },
+        (ShouldFail::Yes, None) => {
+            TestOutcome::Failed { message: Some("`//@ should-fail` test did not fail as expected") }
         }
     };
 
@@ -338,7 +338,7 @@ pub(crate) struct CollectedTestDesc {
     pub(crate) filterable_path: Utf8PathBuf,
     pub(crate) ignore: bool,
     pub(crate) ignore_message: Option<Cow<'static, str>>,
-    pub(crate) should_panic: ShouldPanic,
+    pub(crate) should_fail: ShouldFail,
 }
 
 /// Whether console output should be colored or not.
@@ -350,9 +350,10 @@ pub enum ColorConfig {
     NeverColor,
 }
 
-/// Whether test is expected to panic or not.
+/// Tests with `//@ should-fail` are tests of compiletest itself, and should
+/// be reported as successful if and only if they would have _failed_.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ShouldPanic {
+pub(crate) enum ShouldFail {
     No,
     Yes,
 }
