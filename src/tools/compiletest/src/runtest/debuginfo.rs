@@ -153,7 +153,10 @@ impl TestCx<'_> {
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str(&format!("set sysroot {}\n", &self.config.android_cross_path));
+            script_str.push_str(&format!(
+                "set sysroot {}\n",
+                self.config.android_cross_path.as_deref().unwrap()
+            ));
             script_str.push_str(&format!("file {}\n", exe_file));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!(
