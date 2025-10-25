@@ -5,6 +5,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 pub extern crate hermit_abi;
 
+#[path = "../../sys/ffi/bytes.rs"]
 pub mod ffi;
 pub mod io;
 

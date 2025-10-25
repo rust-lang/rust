@@ -5,5 +5,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 pub mod env;
-#[path = "../windows/ffi.rs"]
+#[path = "../../sys/ffi/windows.rs"]
 pub mod ffi;
