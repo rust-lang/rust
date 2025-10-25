@@ -9,8 +9,8 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
+use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -365,6 +365,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Loops are only exited by `break` expressions.
                     None
                 })
+            }
+            // The `write_via_move` intrinsic needs to be special-cased very early to avoid
+            // introducing unnecessary copies that can be hard to remove again later:
+            // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
+            ExprKind::Call { ty, fun, ref args, .. }
+                if let ty::FnDef(def_id, _generic_args) = ty.kind()
+                    && let Some(intrinsic) = this.tcx.intrinsic(def_id)
+                    && intrinsic.name == sym::write_via_move =>
+            {
+                // We still have to evaluate the callee expression as normal (but we don't care
+                // about its result).
+                let _fun = unpack!(block = this.as_local_operand(block, fun));
+                // The destination must have unit type (so we don't actually have to store anything
+                // into it).
+                assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
+
+                // Compile this to an assignment of the argument into the destination.
+                let [ptr, val] = **args else {
+                    span_bug!(expr_span, "invalid write_via_move call")
+                };
+                let Some(ptr) = unpack!(block = this.as_local_operand(block, ptr)).place() else {
+                    span_bug!(expr_span, "invalid write_via_move call")
+                };
+                let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
+                this.expr_into_dest(ptr_deref, block, val)
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
