@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags:--test -Zunstable-options --nocapture
+//@ compile-flags:--test -Zunstable-options --no-capture
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 

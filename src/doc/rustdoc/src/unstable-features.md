@@ -362,7 +362,7 @@ Using `index-page` option enables `enable-index-page` option as well.
 
 This feature allows the generation of a default index-page which lists the generated crates.
 
-## `--nocapture`: disable output capture for test
+## `--no-capture`: disable output capture for test
 
 When this flag is used with `--test`, the output (stdout and stderr) of your tests won't be
 captured by rustdoc. Instead, the output will be directed to your terminal,

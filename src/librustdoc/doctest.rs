@@ -326,8 +326,8 @@ pub(crate) fn run_tests(
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
     test_args.extend_from_slice(&rustdoc_options.test_args);
-    if rustdoc_options.nocapture {
-        test_args.push("--nocapture".to_string());
+    if rustdoc_options.no_capture {
+        test_args.push("--no-capture".to_string());
     }
 
     let mut nb_errors = 0;
@@ -644,8 +644,8 @@ fn run_test(
             // tested as standalone tests.
             return (Duration::default(), Err(TestFailure::CompileError));
         }
-        if !rustdoc_options.nocapture {
-            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+        if !rustdoc_options.no_capture {
+            // If `no_capture` is disabled, then we don't display rustc's output when compiling
             // the merged doctests.
             compiler.stderr(Stdio::null());
         }
@@ -721,8 +721,8 @@ fn run_test(
             // tested as standalone tests.
             return (instant.elapsed(), Err(TestFailure::CompileError));
         }
-        if !rustdoc_options.nocapture {
-            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+        if !rustdoc_options.no_capture {
+            // If `no_capture` is disabled, then we don't display rustc's output when compiling
             // the merged doctests.
             runner_compiler.stderr(Stdio::null());
         }
@@ -821,7 +821,7 @@ fn run_test(
         cmd.current_dir(run_directory);
     }
 
-    let result = if doctest.is_multiple_tests() || rustdoc_options.nocapture {
+    let result = if doctest.is_multiple_tests() || rustdoc_options.no_capture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -1016,7 +1016,7 @@ impl CreateRunnableDocTests {
             .span(scraped_test.span)
             .build(dcx);
         let is_standalone = !doctest.can_be_merged
-            || self.rustdoc_options.nocapture
+            || self.rustdoc_options.no_capture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
         if is_standalone {
             let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);
