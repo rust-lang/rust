@@ -1077,6 +1077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
+        self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
         err.emit()
     }
 
@@ -3277,6 +3278,80 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
                 return;
+            }
+        }
+    }
+
+    fn suggest_bounds_for_range_to_method(
+        &self,
+        err: &mut Diag<'_>,
+        source: SelfSource<'tcx>,
+        item_ident: Ident,
+    ) {
+        if let SelfSource::MethodCall(rcvr_expr) = source
+            && let hir::ExprKind::Struct(qpath, fields, _) = rcvr_expr.kind
+            && let hir::QPath::LangItem(lang_item, _) = qpath
+        {
+            let is_inclusive = match lang_item {
+                hir::LangItem::RangeTo => false,
+                hir::LangItem::RangeToInclusive | hir::LangItem::RangeInclusiveCopy => true,
+                _ => return,
+            };
+
+            let tcx = self.tcx;
+            if let Some(iterator_trait) = tcx.get_diagnostic_item(sym::Iterator) {
+                let has_method = tcx
+                    .associated_items(iterator_trait)
+                    .filter_by_name_unhygienic(item_ident.name)
+                    .next()
+                    .is_some();
+
+                if !has_method {
+                    return;
+                }
+            }
+
+            let element_ty = self.typeck_results.borrow().expr_ty_opt(rcvr_expr).and_then(|ty| {
+                if let ty::Adt(_, args) = ty.kind() {
+                    args.get(0).and_then(|arg| arg.as_type())
+                } else {
+                    None
+                }
+            });
+
+            let is_integral = element_ty.is_some_and(|ty| ty.is_integral());
+            let source_map = self.tcx.sess.source_map();
+            let range_type = if is_inclusive { "RangeInclusive" } else { "Range" };
+
+            // Check if the end bound is a negative number
+            let end_is_negative = is_integral
+                && fields.iter().find(|f| f.ident.name == rustc_span::sym::end).is_some_and(
+                    |end_field| {
+                        matches!(end_field.expr.kind, hir::ExprKind::Unary(rustc_ast::UnOp::Neg, _))
+                    },
+                );
+
+            if let Ok(snippet) = source_map.span_to_snippet(rcvr_expr.span) {
+                let offset = snippet
+                    .chars()
+                    .take_while(|&c| c == '(' || c.is_whitespace())
+                    .map(|c| c.len_utf8())
+                    .sum::<usize>();
+
+                let insert_span = rcvr_expr
+                    .span
+                    .with_lo(rcvr_expr.span.lo() + rustc_span::BytePos(offset as u32))
+                    .shrink_to_lo();
+                let span_value = if is_integral && !end_is_negative { "0" } else { "/* start */" };
+
+                err.span_suggestion_verbose(
+                    insert_span,
+                    format!(
+                        "consider using a bounded `{range_type}` by adding a concrete starting value"
+                    ),
+                    span_value,
+                    Applicability::HasPlaceholders,
+                );
             }
         }
     }
