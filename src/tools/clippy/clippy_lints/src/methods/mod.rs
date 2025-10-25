@@ -4854,8 +4854,8 @@ impl_lint_pass!(Methods => [
 /// come from expansion.
 pub fn method_call<'tcx>(recv: &'tcx Expr<'tcx>) -> Option<(Symbol, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
-        && !args.iter().any(|e| e.span.from_expansion())
-        && !receiver.span.from_expansion()
+        && !args.iter().any(|e| e.range_span().unwrap_or(e.span).from_expansion())
+        && !receiver.range_span().unwrap_or(receiver.span).from_expansion()
     {
         Some((path.ident.name, receiver, args, path.ident.span, call_span))
     } else {

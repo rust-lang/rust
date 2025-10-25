@@ -122,7 +122,7 @@ impl NoEffect {
                 return true;
             }
 
-            if expr.span.from_expansion() {
+            if expr.range_span().unwrap_or(expr.span).from_expansion() {
                 return false;
             }
             let expr = peel_blocks(expr);
@@ -273,7 +273,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Semi(expr) = stmt.kind
         && !stmt.span.in_external_macro(cx.sess().source_map())
         && let ctxt = stmt.span.ctxt()
-        && expr.span.ctxt() == ctxt
+        && expr.range_span().unwrap_or(expr.span).ctxt() == ctxt
         && let Some(reduced) = reduce_expression(cx, expr)
         && reduced.iter().all(|e| e.span.ctxt() == ctxt)
     {
@@ -330,7 +330,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
 }
 
 fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
-    if expr.span.from_expansion() {
+    if expr.range_span().unwrap_or(expr.span).from_expansion() {
         return None;
     }
     match expr.kind {
