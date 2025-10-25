@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // check that existing borrows due to a closure capture give a special note
 
 fn move_while_borrowed(x: String) {

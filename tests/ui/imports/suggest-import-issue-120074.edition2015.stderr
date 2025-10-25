@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: unresolved import
-  --> $DIR/suggest-import-issue-120074.rs:12:35
+  --> $DIR/suggest-import-issue-120074.rs:14:35
    |
 LL |     println!("Hello, {}!", crate::bar::do_the_thing);
    |                                   ^^^ unresolved import

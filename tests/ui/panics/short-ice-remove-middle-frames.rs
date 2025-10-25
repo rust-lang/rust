@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ compile-flags:-Cstrip=none
 //@ run-fail
 //@ check-run-results

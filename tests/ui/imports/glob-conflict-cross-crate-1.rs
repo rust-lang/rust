@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:glob-conflict.rs
 
 extern crate glob_conflict;

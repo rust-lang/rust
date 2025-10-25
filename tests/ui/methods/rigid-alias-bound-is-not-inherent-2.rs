@@ -1,3 +1,4 @@
+//@ edition:2015
 // Regression test for <github.com/rust-lang/rust/issues/145185>.
 
 mod module {

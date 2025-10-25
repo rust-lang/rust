@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // We don't need those errors. Ideally we would silence them, but to do so we need to move the
 // lint from being an early-lint during parsing to a late-lint, because it needs to be aware of
 // the types involved.

@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(associated_const_equality)]
 
 pub enum Mode {

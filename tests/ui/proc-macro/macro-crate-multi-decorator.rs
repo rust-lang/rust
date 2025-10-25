@@ -1,3 +1,4 @@
+//@ edition:2015
 // The duplicate macro will create a copy of the item with the given identifier.
 
 //@ check-pass

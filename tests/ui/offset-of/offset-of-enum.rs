@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(offset_of_enum)]
 
 use std::mem::offset_of;

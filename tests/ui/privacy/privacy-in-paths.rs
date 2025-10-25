@@ -1,3 +1,4 @@
+//@ edition:2015
 mod foo {
     pub use self::bar::S;
     mod bar {
