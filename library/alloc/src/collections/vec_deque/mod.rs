@@ -32,6 +32,11 @@ pub use self::drain::Drain;
 
 mod drain;
 
+#[unstable(feature = "vec_deque_extract_if", issue = "147750")]
+pub use self::extract_if::ExtractIf;
+
+mod extract_if;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iter_mut::IterMut;
 
@@ -541,6 +546,95 @@ impl<T, A: Allocator> VecDeque<T, A> {
             }
         }
         debug_assert!(self.head < self.capacity() || self.capacity() == 0);
+    }
+
+    /// Creates an iterator which uses a closure to determine if an element in the range should be removed.
+    ///
+    /// If the closure returns `true`, the element is removed from the deque and yielded. If the closure
+    /// returns `false`, or panics, the element remains in the deque and will not be yielded.
+    ///
+    /// Only elements that fall in the provided range are considered for extraction, but any elements
+    /// after the range will still have to be moved if any element has been extracted.
+    ///
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain_mut`] with a negated predicate if you do not need the returned iterator.
+    ///
+    /// [`retain_mut`]: VecDeque::retain_mut
+    ///
+    /// Using this method is equivalent to the following code:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// # use std::collections::VecDeque;
+    /// # let some_predicate = |x: &mut i32| { *x % 2 == 1 };
+    /// # let mut deq: VecDeque<_> = (0..10).collect();
+    /// # let mut deq2 = deq.clone();
+    /// # let range = 1..5;
+    /// let mut i = range.start;
+    /// let end_items = deq.len() - range.end;
+    /// # let mut extracted = vec![];
+    ///
+    /// while i < deq.len() - end_items {
+    ///     if some_predicate(&mut deq[i]) {
+    ///         let val = deq.remove(i).unwrap();
+    ///         // your code here
+    /// #         extracted.push(val);
+    ///     } else {
+    ///         i += 1;
+    ///     }
+    /// }
+    ///
+    /// # let extracted2: Vec<_> = deq2.extract_if(range, some_predicate).collect();
+    /// # assert_eq!(deq, deq2);
+    /// # assert_eq!(extracted, extracted2);
+    /// ```
+    ///
+    /// But `extract_if` is easier to use. `extract_if` is also more efficient,
+    /// because it can backshift the elements of the array in bulk.
+    ///
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
+    ///
+    /// # Panics
+    ///
+    /// If `range` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a deque into even and odd values, reusing the original deque:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut numbers = VecDeque::from([1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    ///
+    /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<VecDeque<_>>();
+    /// let odds = numbers;
+    ///
+    /// assert_eq!(evens, VecDeque::from([2, 4, 6, 8, 14]));
+    /// assert_eq!(odds, VecDeque::from([1, 3, 5, 9, 11, 13, 15]));
+    /// ```
+    ///
+    /// Using the range argument to only process a part of the deque:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut items = VecDeque::from([0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2]);
+    /// let ones = items.extract_if(7.., |x| *x == 1).collect::<VecDeque<_>>();
+    /// assert_eq!(items, VecDeque::from([0, 0, 0, 0, 0, 0, 0, 2, 2, 2]));
+    /// assert_eq!(ones.len(), 3);
+    /// ```
+    #[unstable(feature = "vec_deque_extract_if", issue = "147750")]
+    pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
+    where
+        F: FnMut(&mut T) -> bool,
+        R: RangeBounds<usize>,
+    {
+        ExtractIf::new(self, filter, range)
     }
 }
 
