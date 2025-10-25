@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(slice_as_array))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -16,7 +17,6 @@
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
 #![feature(rustdoc_internals)]
-#![feature(slice_as_array)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
