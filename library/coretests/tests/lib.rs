@@ -81,7 +81,6 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
-#![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(next_index)]
