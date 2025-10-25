@@ -1,7 +1,7 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
-use crate::ptr;
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
+use crate::{hint, ptr};
 
 pub unsafe trait DestroyedState: Sized + Copy {
     fn register_dtor<T>(s: &Storage<T, Self>);
@@ -58,7 +58,10 @@ where
     pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         match self.state.get() {
             State::Alive => self.value.get().cast(),
-            State::Destroyed(_) => ptr::null(),
+            State::Destroyed(_) => {
+                hint::cold_path();
+                ptr::null()
+            }
             State::Uninitialized => unsafe { self.get_or_init_slow(i, f) },
         }
     }

@@ -1,4 +1,5 @@
 use crate::cell::{Cell, UnsafeCell};
+use crate::hint;
 use crate::ptr::{self, drop_in_place};
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
@@ -34,7 +35,10 @@ impl<T> Storage<T> {
     pub unsafe fn get(&self) -> *const T {
         match self.state.get() {
             State::Alive => self.val.get(),
-            State::Destroyed => ptr::null(),
+            State::Destroyed => {
+                hint::cold_path();
+                ptr::null()
+            }
             State::Initial => unsafe { self.initialize() },
         }
     }

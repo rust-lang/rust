@@ -327,6 +327,7 @@
 #![feature(cfg_select)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
+#![feature(cold_path)]
 #![feature(const_convert)]
 #![feature(const_mul_add)]
 #![feature(core_intrinsics)]

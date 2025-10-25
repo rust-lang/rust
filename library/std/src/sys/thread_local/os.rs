@@ -2,6 +2,7 @@ use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
 use crate::alloc::{self, Layout};
 use crate::cell::Cell;
+use crate::hint;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
@@ -186,7 +187,10 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
             // is not running) + it is coming from a trusted source (self).
             2.. => unsafe { &(*ptr).value },
             // destructor is running
-            1 => ptr::null(),
+            1 => {
+                hint::cold_path();
+                ptr::null()
+            }
             // SAFETY: trivially correct.
             0 => unsafe { Self::try_initialize(key, i, f) },
         }
