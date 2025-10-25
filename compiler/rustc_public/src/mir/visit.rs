@@ -282,9 +282,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location)
                     }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::NullaryOp(_, ty) => {
-                        self.visit_ty(ty, location);
-                    }
+                    Rvalue::NullaryOp(_) => {}
                     Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
                         self.visit_operand(op, location);
                     }

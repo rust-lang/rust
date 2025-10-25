@@ -607,17 +607,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            mir::Rvalue::NullaryOp(ref null_op, ty) => {
-                let ty = self.monomorphize(ty);
-                let layout = bx.cx().layout_of(ty);
+            mir::Rvalue::NullaryOp(ref null_op) => {
                 let val = match null_op {
-                    mir::NullOp::OffsetOf(fields) => {
-                        let val = bx
-                            .tcx()
-                            .offset_of_subfield(bx.typing_env(), layout, fields.iter())
-                            .bytes();
-                        bx.cx().const_usize(val)
-                    }
                     mir::NullOp::UbChecks => {
                         let val = bx.tcx().sess.ub_checks();
                         bx.cx().const_bool(val)
