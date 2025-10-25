@@ -120,8 +120,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_singlethreadfence
                 | sym::caller_location => {}
                 _ => {
-                    span_bug!(span, "nullary intrinsic {name} must either be in a const block or explicitly opted out because it is inherently a runtime intrinsic
-");
+                    span_bug!(
+                        span,
+                        "Nullary intrinsic {name} must be called in a const block. \
+                        If you are seeing this message from code outside the standard library, the \
+                        unstable implementation details of the relevant intrinsic may have changed. \
+                        Consider using stable APIs instead. \
+                        If you are adding a new nullary intrinsic that is inherently a runtime \
+                        intrinsic, update this check."
+                    );
                 }
             }
         }
