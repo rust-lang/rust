@@ -10,6 +10,7 @@ use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
 use std::{cmp, iter};
 
+use arrayvec::ArrayVec;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
 use rustc_span::BytePos;
@@ -818,7 +819,7 @@ impl<'src> Classifier<'src> {
     }
 
     /// Concatenate colons and idents as one when possible.
-    fn get_full_ident_path(&mut self) -> Vec<(TokenKind, usize, usize)> {
+    fn get_full_ident_path(&mut self) -> ArrayVec<(TokenKind, usize, usize), 2> {
         let start = self.byte_pos as usize;
         let mut pos = start;
         let mut has_ident = false;
@@ -832,13 +833,16 @@ impl<'src> Classifier<'src> {
             // Ident path can start with "::" but if we already have content in the ident path,
             // the "::" is mandatory.
             if has_ident && nb == 0 {
-                return vec![(TokenKind::Ident, start, pos)];
+                return ArrayVec::from_iter([(TokenKind::Ident, start, pos)]);
             } else if nb != 0 && nb != 2 {
-                if has_ident {
-                    return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
+                return if has_ident {
+                    ArrayVec::from_iter([
+                        (TokenKind::Ident, start, pos),
+                        (TokenKind::Colon, pos, pos + nb),
+                    ])
                 } else {
-                    return vec![(TokenKind::Colon, start, pos + nb)];
-                }
+                    ArrayVec::from_iter([(TokenKind::Colon, start, pos + nb)])
+                };
             }
 
             if let Some((None, text)) = self.tokens.peek().map(|(token, text)| {
@@ -854,15 +858,21 @@ impl<'src> Classifier<'src> {
                 pos += text.len() + nb;
                 has_ident = true;
                 self.tokens.next();
-            } else if nb > 0 && has_ident {
-                return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
-            } else if nb > 0 {
-                return vec![(TokenKind::Colon, start, start + nb)];
-            } else if has_ident {
-                return vec![(TokenKind::Ident, start, pos)];
-            } else {
-                return Vec::new();
+                continue;
             }
+
+            return if nb > 0 && has_ident {
+                ArrayVec::from_iter([
+                    (TokenKind::Ident, start, pos),
+                    (TokenKind::Colon, pos, pos + nb),
+                ])
+            } else if nb > 0 {
+                ArrayVec::from_iter([(TokenKind::Colon, start, start + nb)])
+            } else if has_ident {
+                ArrayVec::from_iter([(TokenKind::Ident, start, pos)])
+            } else {
+                ArrayVec::new()
+            };
         }
     }
 
@@ -885,7 +895,7 @@ impl<'src> Classifier<'src> {
     /// The general structure for this method is to iterate over each token,
     /// possibly giving it an HTML span with a class specifying what flavor of
     /// token is used.
-    fn highlight(mut self, sink: &mut dyn FnMut(Span, Highlight<'src>)) {
+    fn highlight(mut self, mut sink: impl FnMut(Span, Highlight<'src>)) {
         loop {
             if let Some(decs) = self.decorations.as_mut() {
                 let byte_pos = self.byte_pos;
@@ -903,13 +913,12 @@ impl<'src> Classifier<'src> {
             if self
                 .tokens
                 .peek()
-                .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
-                .unwrap_or(false)
+                .is_some_and(|(kind, _)| matches!(kind, TokenKind::Colon | TokenKind::Ident))
             {
                 let tokens = self.get_full_ident_path();
                 for (token, start, end) in &tokens {
                     let text = &self.src[*start..*end];
-                    self.advance(*token, text, sink, *start as u32);
+                    self.advance(*token, text, &mut sink, *start as u32);
                     self.byte_pos += text.len() as u32;
                 }
                 if !tokens.is_empty() {
@@ -917,7 +926,7 @@ impl<'src> Classifier<'src> {
                 }
             }
             if let Some((token, text, before)) = self.next() {
-                self.advance(token, text, sink, before);
+                self.advance(token, text, &mut sink, before);
             } else {
                 break;
             }
@@ -934,26 +943,28 @@ impl<'src> Classifier<'src> {
         &mut self,
         token: TokenKind,
         text: &'src str,
-        sink: &mut dyn FnMut(Span, Highlight<'src>),
+        mut sink: impl FnMut(Span, Highlight<'src>),
         before: u32,
     ) {
         let lookahead = self.peek();
         let file_span = self.file_span;
-        let no_highlight = |sink: &mut dyn FnMut(_, _)| {
-            sink(new_span(before, text, file_span), Highlight::Token { text, class: None })
-        };
-        let whitespace = |sink: &mut dyn FnMut(_, _)| {
+        let no_highlight =
+            || (new_span(before, text, file_span), Highlight::Token { text, class: None });
+        let mut whitespace = |class| {
             let mut start = 0u32;
             for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
                 sink(
                     new_span(before + start, part, file_span),
-                    Highlight::Token { text: part, class: None },
+                    Highlight::Token { text: part, class },
                 );
                 start += part.len() as u32;
             }
         };
         let class = match token {
-            TokenKind::Whitespace => return whitespace(sink),
+            TokenKind::Whitespace => {
+                whitespace(None);
+                return;
+            }
             TokenKind::LineComment { doc_style } | TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_some() {
                     Class::DocComment
@@ -974,7 +985,10 @@ impl<'src> Classifier<'src> {
             // or a reference or pointer type. Unless, of course, it looks like
             // a logical and or a multiplication operator: `&&` or `* `.
             TokenKind::Star => match self.tokens.peek() {
-                Some((TokenKind::Whitespace, _)) => return whitespace(sink),
+                Some((TokenKind::Whitespace, _)) => {
+                    whitespace(None);
+                    return;
+                }
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(
@@ -1004,7 +1018,10 @@ impl<'src> Classifier<'src> {
                     sink(DUMMY_SP, Highlight::Token { text: "&=", class: None });
                     return;
                 }
-                Some((TokenKind::Whitespace, _)) => return whitespace(sink),
+                Some((TokenKind::Whitespace, _)) => {
+                    whitespace(None);
+                    return;
+                }
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(
@@ -1028,7 +1045,11 @@ impl<'src> Classifier<'src> {
                     sink(DUMMY_SP, Highlight::Token { text: "=>", class: None });
                     return;
                 }
-                _ => return no_highlight(sink),
+                _ => {
+                    let (span, highlight) = no_highlight();
+                    sink(span, highlight);
+                    return;
+                }
             },
             TokenKind::Minus if lookahead == Some(TokenKind::Gt) => {
                 self.next();
@@ -1045,7 +1066,11 @@ impl<'src> Classifier<'src> {
             | TokenKind::Percent
             | TokenKind::Bang
             | TokenKind::Lt
-            | TokenKind::Gt => return no_highlight(sink),
+            | TokenKind::Gt => {
+                let (span, highlight) = no_highlight();
+                sink(span, highlight);
+                return;
+            }
 
             // Miscellaneous, no highlighting.
             TokenKind::Dot
@@ -1060,7 +1085,11 @@ impl<'src> Classifier<'src> {
             | TokenKind::Tilde
             | TokenKind::Colon
             | TokenKind::Frontmatter { .. }
-            | TokenKind::Unknown => return no_highlight(sink),
+            | TokenKind::Unknown => {
+                let (span, highlight) = no_highlight();
+                sink(span, highlight);
+                return;
+            }
 
             TokenKind::Question => Class::QuestionMark,
 
@@ -1069,7 +1098,11 @@ impl<'src> Classifier<'src> {
                     self.in_macro_nonterminal = true;
                     Class::MacroNonTerminal
                 }
-                _ => return no_highlight(sink),
+                _ => {
+                    let (span, highlight) = no_highlight();
+                    sink(span, highlight);
+                    return;
+                }
             },
 
             // This might be the start of an attribute. We're going to want to
@@ -1100,9 +1133,11 @@ impl<'src> Classifier<'src> {
                             Highlight::EnterSpan { class: Class::Attribute },
                         );
                     }
-                    _ => (),
+                    _ => {}
                 }
-                return no_highlight(sink);
+                let (span, highlight) = no_highlight();
+                sink(span, highlight);
+                return;
             }
             TokenKind::CloseBracket => {
                 if self.in_attribute {
@@ -1114,7 +1149,9 @@ impl<'src> Classifier<'src> {
                     sink(DUMMY_SP, Highlight::ExitSpan);
                     return;
                 }
-                return no_highlight(sink);
+                let (span, highlight) = no_highlight();
+                sink(span, highlight);
+                return;
             }
             TokenKind::Literal { kind, .. } => match kind {
                 // Text literals.
@@ -1129,7 +1166,11 @@ impl<'src> Classifier<'src> {
                 // Number literals.
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
-            TokenKind::GuardedStrPrefix => return no_highlight(sink),
+            TokenKind::GuardedStrPrefix => {
+                let (span, highlight) = no_highlight();
+                sink(span, highlight);
+                return;
+            }
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
                 let span = new_span(before, text, file_span);
@@ -1165,14 +1206,7 @@ impl<'src> Classifier<'src> {
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
-        let mut start = 0u32;
-        for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
-            sink(
-                new_span(before + start, part, file_span),
-                Highlight::Token { text: part, class: Some(class) },
-            );
-            start += part.len() as u32;
-        }
+        whitespace(Some(class));
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
