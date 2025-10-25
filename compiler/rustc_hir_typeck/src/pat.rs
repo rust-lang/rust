@@ -18,7 +18,7 @@ use rustc_hir::{
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
@@ -403,7 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
         self.write_ty(pat.hir_id, ty);
 
-        // If we implicitly inserted overloaded dereferences before matching, check the pattern to
+        // If we implicitly inserted overloaded dereferences before matching check the pattern to
         // see if the dereferenced types need `DerefMut` bounds.
         if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
             && derefed_tys.iter().any(|adjust| adjust.kind == PatAdjust::OverloadedDeref)
@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 pat,
                 derefed_tys.iter().filter_map(|adjust| match adjust.kind {
                     PatAdjust::OverloadedDeref => Some(adjust.source),
-                    PatAdjust::BuiltinDeref => None,
+                    PatAdjust::BuiltinDeref | PatAdjust::PinDeref => None,
                 }),
             );
         }
@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
         #[cfg(debug_assertions)]
-        if pat_info.binding_mode == ByRef::Yes(Mutability::Mut)
+        if matches!(pat_info.binding_mode, ByRef::Yes(_, Mutability::Mut))
             && pat_info.max_ref_mutbl != MutblCap::Mut
             && self.downgrade_mut_inside_shared()
         {
@@ -489,12 +489,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_pat_info = pat_info;
         let pat_info = PatInfo { current_depth: old_pat_info.current_depth + 1, ..old_pat_info };
 
+        let adjust_binding_mode = |inner_pinnedness, inner_mutability| {
+            match pat_info.binding_mode {
+                // If default binding mode is by value, make it `ref`, `ref mut`, `ref pin const`
+                // or `ref pin mut` (depending on whether we observe `&`, `&mut`, `&pin const` or
+                // `&pin mut`).
+                ByRef::No => ByRef::Yes(inner_pinnedness, inner_mutability),
+                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
+                // Pinnedness is preserved.
+                ByRef::Yes(pinnedness, Mutability::Mut) => ByRef::Yes(pinnedness, inner_mutability),
+                // Once a `ref`, always a `ref`.
+                // This is because a `& &mut` cannot mutate the underlying value.
+                // Pinnedness is preserved.
+                ByRef::Yes(pinnedness, Mutability::Not) => ByRef::Yes(pinnedness, Mutability::Not),
+            }
+        };
+
         match pat.kind {
-            // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
+            // Peel off a `&` or `&mut`from the scrutinee type. See the examples in
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
             _ if let AdjustMode::Peel { kind: peel_kind } = adjust_mode
                 && pat.default_binding_modes
-                && let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
+                && let &ty::Ref(_, inner_ty, inner_mutability) = expected.kind()
                 && self.should_peel_ref(peel_kind, expected) =>
             {
                 debug!("inspecting {:?}", expected);
@@ -508,22 +524,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .or_default()
                     .push(PatAdjustment { kind: PatAdjust::BuiltinDeref, source: expected });
 
-                let mut binding_mode = ByRef::Yes(match pat_info.binding_mode {
-                    // If default binding mode is by value, make it `ref` or `ref mut`
-                    // (depending on whether we observe `&` or `&mut`).
-                    ByRef::No |
-                    // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                    ByRef::Yes(Mutability::Mut) => inner_mutability,
-                    // Once a `ref`, always a `ref`.
-                    // This is because a `& &mut` cannot mutate the underlying value.
-                    ByRef::Yes(Mutability::Not) => Mutability::Not,
-                });
+                let mut binding_mode = adjust_binding_mode(Pinnedness::Not, inner_mutability);
 
                 let mut max_ref_mutbl = pat_info.max_ref_mutbl;
                 if self.downgrade_mut_inside_shared() {
                     binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
                 }
-                if binding_mode == ByRef::Yes(Mutability::Not) {
+                if matches!(binding_mode, ByRef::Yes(_, Mutability::Not)) {
                     max_ref_mutbl = MutblCap::Not;
                 }
                 debug!("default binding mode is now {:?}", binding_mode);
@@ -533,6 +540,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Recurse with the new expected type.
                 self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
             }
+            // If `pin_ergonomics` is enabled, peel the `&pin` from the pinned reference type. See the
+            // examples in `tests/ui/async-await/pin-ergonomics/`.
+            _ if self.tcx.features().pin_ergonomics()
+                && let AdjustMode::Peel { kind: peel_kind } = adjust_mode
+                && pat.default_binding_modes
+                && self.should_peel_smart_pointer(peel_kind, expected)
+                && let Some(pinned_ty) = expected.pinned_ty()
+                // Currently, only pinned reference is specially handled, leaving other
+                // pinned types (e.g. `Pin<Box<T>>` to deref patterns) handled as a
+                // deref pattern.
+                && let &ty::Ref(_, inner_ty, inner_mutability) = pinned_ty.kind() =>
+            {
+                debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
+
+                // if the inner_ty is an ADT, make sure that it can be structurally pinned
+                // (i.e., it is `#[pin_v2]`).
+                if let Some(adt) = inner_ty.ty_adt_def()
+                    && !adt.is_pin_project()
+                    && !adt.is_pin()
+                {
+                    let def_span: Option<Span> = self.tcx.hir_span_if_local(adt.did());
+                    let sugg_span = def_span.map(|span| span.shrink_to_lo());
+                    self.dcx().emit_err(crate::errors::ProjectOnNonPinProjectType {
+                        span: pat.span,
+                        def_span,
+                        sugg_span,
+                    });
+                }
+
+                let binding_mode = adjust_binding_mode(Pinnedness::Pinned, inner_mutability);
+                // If the pinnedness is `Not`, it means the pattern is unpinned
+                // and thus requires an `Unpin` bound.
+                if matches!(binding_mode, ByRef::Yes(Pinnedness::Not, _)) {
+                    self.register_bound(
+                        inner_ty,
+                        self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
+                        self.misc(pat.span),
+                    )
+                }
+                debug!("default binding mode is now {:?}", binding_mode);
+
+                // Use the old pat info to keep `current_depth` to its old value.
+                let new_pat_info = PatInfo { binding_mode, ..old_pat_info };
+
+                self.check_deref_pattern(
+                    pat,
+                    opt_path_res,
+                    adjust_mode,
+                    expected,
+                    inner_ty,
+                    PatAdjust::PinDeref,
+                    new_pat_info,
+                )
+            }
             // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
             // examples in `tests/ui/pattern/deref_patterns/`.
             _ if self.tcx.features().deref_patterns()
@@ -540,35 +601,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && pat.default_binding_modes
                 && self.should_peel_smart_pointer(peel_kind, expected) =>
             {
-                debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
+                debug!("scrutinee ty {expected:?} is a smart pointer, inserting pin deref");
+
                 // The scrutinee is a smart pointer; implicitly dereference it. This adds a
                 // requirement that `expected: DerefPure`.
-                let mut inner_ty = self.deref_pat_target(pat.span, expected);
+                let inner_ty = self.deref_pat_target(pat.span, expected);
                 // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
                 // `ref mut` bindings. See `Self::register_deref_mut_bounds_if_needed`.
 
-                let mut typeck_results = self.typeck_results.borrow_mut();
-                let mut pat_adjustments_table = typeck_results.pat_adjustments_mut();
-                let pat_adjustments = pat_adjustments_table.entry(pat.hir_id).or_default();
-                // We may reach the recursion limit if a user matches on a type `T` satisfying
-                // `T: Deref<Target = T>`; error gracefully in this case.
-                // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
-                // this check out of this branch. Alternatively, this loop could be implemented with
-                // autoderef and this check removed. For now though, don't break code compiling on
-                // stable with lots of `&`s and a low recursion limit, if anyone's done that.
-                if self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
-                    // Preserve the smart pointer type for THIR lowering and closure upvar analysis.
-                    pat_adjustments
-                        .push(PatAdjustment { kind: PatAdjust::OverloadedDeref, source: expected });
-                } else {
-                    let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
-                    inner_ty = Ty::new_error(self.tcx, guar);
-                }
-                drop(typeck_results);
-
-                // Recurse, using the old pat info to keep `current_depth` to its old value.
-                // Peeling smart pointers does not update the default binding mode.
-                self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, old_pat_info)
+                self.check_deref_pattern(
+                    pat,
+                    opt_path_res,
+                    adjust_mode,
+                    expected,
+                    inner_ty,
+                    PatAdjust::OverloadedDeref,
+                    old_pat_info,
+                )
             }
             PatKind::Missing | PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
@@ -645,6 +694,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
         }
+    }
+
+    fn check_deref_pattern(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        opt_path_res: Option<Result<ResolvedPat<'tcx>, ErrorGuaranteed>>,
+        adjust_mode: AdjustMode,
+        expected: Ty<'tcx>,
+        mut inner_ty: Ty<'tcx>,
+        pat_adjust_kind: PatAdjust,
+        pat_info: PatInfo<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert!(
+            !matches!(pat_adjust_kind, PatAdjust::BuiltinDeref),
+            "unexpected deref pattern for builtin reference type {expected:?}",
+        );
+
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut pat_adjustments_table = typeck_results.pat_adjustments_mut();
+        let pat_adjustments = pat_adjustments_table.entry(pat.hir_id).or_default();
+        // We may reach the recursion limit if a user matches on a type `T` satisfying
+        // `T: Deref<Target = T>`; error gracefully in this case.
+        // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
+        // this check out of this branch. Alternatively, this loop could be implemented with
+        // autoderef and this check removed. For now though, don't break code compiling on
+        // stable with lots of `&`s and a low recursion limit, if anyone's done that.
+        if self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
+            // Preserve the smart pointer type for THIR lowering and closure upvar analysis.
+            pat_adjustments.push(PatAdjustment { kind: pat_adjust_kind, source: expected });
+        } else {
+            let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
+            inner_ty = Ty::new_error(self.tcx, guar);
+        }
+        drop(typeck_results);
+
+        // Recurse, using the old pat info to keep `current_depth` to its old value.
+        // Peeling smart pointers does not update the default binding mode.
+        self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, pat_info)
     }
 
     /// How should the binding mode and expected type be adjusted?
@@ -1061,7 +1148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
+            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(_, def_br_mutbl) = def_br => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -1091,8 +1178,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(user_br_mutbl), _) => {
-                if let ByRef::Yes(def_br_mutbl) = def_br {
+            BindingMode(ByRef::Yes(_, user_br_mutbl), _) => {
+                if let ByRef::Yes(_, def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
@@ -1108,7 +1195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if bm.0 == ByRef::Yes(Mutability::Mut)
+        if matches!(bm.0, ByRef::Yes(_, Mutability::Mut))
             && let MutblCap::WeaklyNot(and_pat_span) = pat_info.max_ref_mutbl
         {
             let mut err = struct_span_code_err!(
@@ -1136,7 +1223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_ty = self.local_ty(pat.span, pat.hir_id);
         let eq_ty = match bm.0 {
-            ByRef::Yes(mutbl) => {
+            ByRef::Yes(Pinnedness::Not, mutbl) => {
                 // If the binding is like `ref x | ref mut x`,
                 // then `x` is assigned a value of type `&M T` where M is the
                 // mutability and T is the expected type.
@@ -1146,6 +1233,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // See (note_1) for an explanation.
                 self.new_ref_ty(pat.span, mutbl, expected)
             }
+            // Wrapping the type into `Pin` if the binding is like `ref pin const|mut x`
+            ByRef::Yes(Pinnedness::Pinned, mutbl) => Ty::new_adt(
+                self.tcx,
+                self.tcx.adt_def(self.tcx.require_lang_item(hir::LangItem::Pin, pat.span)),
+                self.tcx.mk_args(&[self.new_ref_ty(pat.span, mutbl, expected).into()]),
+            ),
             // Otherwise, the type of x is the expected type `T`.
             ByRef::No => expected, // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
         };
@@ -2605,7 +2698,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected = self.try_structurally_resolve_type(pat.span, expected);
         // Determine whether we're consuming an inherited reference and resetting the default
         // binding mode, based on edition and enabled experimental features.
-        if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
+        if let ByRef::Yes(inh_pin, inh_mut) = pat_info.binding_mode
+            // FIXME(pin_ergonomics): since `&pin` pattern is supported, the condition here
+            // should be adjusted to `pat_pin == inh_pin`
+            && (!self.tcx.features().pin_ergonomics() || inh_pin == Pinnedness::Not)
+        {
             match self.ref_pat_matches_inherited_ref(pat.span.edition()) {
                 InheritedRefMatchRule::EatOuter => {
                     // ref pattern attempts to consume inherited reference
@@ -3126,8 +3223,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the user-provided binding modifier doesn't match the default binding mode, we'll
             // need to suggest reference patterns, which can affect other bindings.
             // For simplicity, we opt to suggest making the pattern fully explicit.
-            info.suggest_eliding_modes &=
-                user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
+            info.suggest_eliding_modes &= matches!(
+                user_bind_annot,
+                BindingMode(ByRef::Yes(_, mutbl), Mutability::Not) if mutbl == def_br_mutbl
+            );
             if user_bind_annot == BindingMode(ByRef::No, Mutability::Mut) {
                 info.bad_mut_modifiers = true;
                 "`mut` binding modifier"

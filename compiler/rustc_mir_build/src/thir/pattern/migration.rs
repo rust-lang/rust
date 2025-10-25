@@ -212,7 +212,7 @@ impl<'a> PatMigration<'a> {
         }
         if !self.info.suggest_eliding_modes
             && explicit_ba.0 == ByRef::No
-            && let ByRef::Yes(mutbl) = mode.0
+            && let ByRef::Yes(_, mutbl) = mode.0
         {
             // If we can't fix the pattern by eliding modifiers, we'll need to make the pattern
             // fully explicit. i.e. we'll need to suggest reference patterns for this.

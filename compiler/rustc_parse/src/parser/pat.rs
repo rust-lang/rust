@@ -7,7 +7,8 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
     self as ast, Arm, AttrVec, BindingMode, ByRef, Expr, ExprKind, LocalKind, MacCall, Mutability,
-    Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt, StmtKind,
+    Pat, PatField, PatFieldsRest, PatKind, Path, Pinnedness, QSelf, RangeEnd, RangeSyntax, Stmt,
+    StmtKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
@@ -778,7 +779,11 @@ impl<'a> Parser<'a> {
             }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingMode(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
+            self.parse_pat_ident(
+                // FIXME(pin_ergonomics): support `ref pin const|mut` bindings
+                BindingMode(ByRef::Yes(Pinnedness::Not, mutbl), Mutability::Not),
+                syntax_loc,
+            )?
         } else if self.eat_keyword(exp!(Box)) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -1093,7 +1098,7 @@ impl<'a> Parser<'a> {
             self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
-        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), Mutability::Mut), ..)) {
+        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(..), Mutability::Mut), ..)) {
             self.psess.gated_spans.gate(sym::mut_ref, pat.span);
         }
         Ok(pat.kind)

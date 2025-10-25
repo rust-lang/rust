@@ -1667,6 +1667,7 @@ symbols! {
         pin,
         pin_ergonomics,
         pin_macro,
+        pin_v2,
         platform_intrinsics,
         plugin,
         plugin_registrar,

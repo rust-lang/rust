@@ -283,7 +283,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
-                    | AttributeKind::RustcMain,
+                    | AttributeKind::RustcMain
+                    | AttributeKind::PinV2(..),
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);

@@ -2,11 +2,11 @@
 
 use std::pin::Pin;
 
+#[pin_v2] //~ ERROR the `#[pin_v2]` attribute is an experimental feature
 struct Foo;
 
 impl Foo {
-    fn foo(self: Pin<&mut Self>) {
-    }
+    fn foo(self: Pin<&mut Self>) {}
     fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
     fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
 }
@@ -51,11 +51,11 @@ fn borrows() {
 mod not_compiled {
     use std::pin::Pin;
 
+    #[pin_v2]
     struct Foo;
 
     impl Foo {
-        fn foo(self: Pin<&mut Self>) {
-        }
+        fn foo(self: Pin<&mut Self>) {}
         fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
         fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
     }

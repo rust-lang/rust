@@ -36,8 +36,8 @@ use rustc_ast::tokenstream::{
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
-    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Recovered, Safety, StrLit,
-    Visibility, VisibilityKind,
+    DelimArgs, Expr, ExprKind, Extern, HasAttrs, HasTokens, Mutability, Pinnedness, Recovered,
+    Safety, StrLit, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -1317,7 +1317,12 @@ impl<'a> Parser<'a> {
 
     /// Parses reference binding mode (`ref`, `ref mut`, or nothing).
     fn parse_byref(&mut self) -> ByRef {
-        if self.eat_keyword(exp!(Ref)) { ByRef::Yes(self.parse_mutability()) } else { ByRef::No }
+        if self.eat_keyword(exp!(Ref)) {
+            // FIXME(pin_ergonomics): support `ref pin const|mut` bindings
+            ByRef::Yes(Pinnedness::Not, self.parse_mutability())
+        } else {
+            ByRef::No
+        }
     }
 
     /// Possibly parses mutability (`const` or `mut`).

@@ -63,7 +63,7 @@ fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<Mutability> {
             .qpath_res(qpath, arm.pat.hir_id)
             .ctor_parent(cx)
             .is_lang_item(cx, LangItem::OptionSome)
-        && let PatKind::Binding(BindingMode(ByRef::Yes(mutabl), _), .., ident, _) = first_pat.kind
+        && let PatKind::Binding(BindingMode(ByRef::Yes(_, mutabl), _), .., ident, _) = first_pat.kind
         && let ExprKind::Call(e, [arg]) = peel_blocks(arm.body).kind
         && e.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
         && let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind

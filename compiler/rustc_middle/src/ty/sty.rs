@@ -1349,6 +1349,23 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    pub fn pinned_ty(self) -> Option<Ty<'tcx>> {
+        match self.kind() {
+            Adt(def, args) if def.is_pin() => Some(args.type_at(0)),
+            _ => None,
+        }
+    }
+
+    pub fn pinned_ref(self) -> Option<(Ty<'tcx>, ty::Mutability)> {
+        if let Adt(def, args) = self.kind()
+            && def.is_pin()
+            && let &ty::Ref(_, ty, mutbl) = args.type_at(0).kind()
+        {
+            return Some((ty, mutbl));
+        }
+        None
+    }
+
     /// Panics if called on any type other than `Box<T>`.
     pub fn expect_boxed_ty(self) -> Ty<'tcx> {
         self.boxed_ty()

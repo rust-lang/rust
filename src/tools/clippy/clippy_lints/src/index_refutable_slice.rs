@@ -94,7 +94,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
         // We'll just ignore mut and ref mut for simplicity sake right now
         if let hir::PatKind::Binding(hir::BindingMode(by_ref, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
             pat.kind
-            && by_ref != hir::ByRef::Yes(hir::Mutability::Mut)
+            && !matches!(by_ref, hir::ByRef::Yes(_, hir::Mutability::Mut))
         {
             // This block catches bindings with sub patterns. It would be hard to build a correct suggestion
             // for them and it's likely that the user knows what they are doing in such a case.
