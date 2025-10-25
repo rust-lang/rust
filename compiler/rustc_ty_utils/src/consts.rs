@@ -264,7 +264,6 @@ fn recurse_build<'tcx>(
         ExprKind::VarRef { .. }
         | ExprKind::UpvarRef { .. }
         | ExprKind::StaticRef { .. }
-        | ExprKind::OffsetOf { .. }
         | ExprKind::ThreadLocalRef(_) => {
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
@@ -364,7 +363,6 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::ZstLiteral { .. }
             | thir::ExprKind::StaticRef { .. }
             | thir::ExprKind::InlineAsm(_)
-            | thir::ExprKind::OffsetOf { .. }
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
         }

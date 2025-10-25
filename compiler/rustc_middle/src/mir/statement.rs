@@ -756,7 +756,7 @@ impl<'tcx> Rvalue<'tcx> {
                 _,
             )
             | Rvalue::BinaryOp(_, _)
-            | Rvalue::NullaryOp(_, _)
+            | Rvalue::NullaryOp(_)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
@@ -794,8 +794,7 @@ impl<'tcx> Rvalue<'tcx> {
                 op.ty(tcx, arg_ty)
             }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => tcx.types.usize,
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => tcx.types.bool,
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -859,10 +858,9 @@ impl BorrowKind {
     }
 }
 
-impl<'tcx> NullOp<'tcx> {
-    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+impl NullOp {
+    pub fn ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            NullOp::OffsetOf(_) => tcx.types.usize,
             NullOp::RuntimeChecks(_) => tcx.types.bool,
         }
     }

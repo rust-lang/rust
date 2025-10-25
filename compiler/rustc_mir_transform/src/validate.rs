@@ -1436,53 +1436,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::NullaryOp(NullOp::OffsetOf(indices), container) => {
-                let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
-                    this.fail(location, format!("Out of bounds field {field:?} for {ty}"));
-                };
-
-                let mut current_ty = *container;
-
-                for (variant, field) in indices.iter() {
-                    match current_ty.kind() {
-                        ty::Tuple(fields) => {
-                            if variant != FIRST_VARIANT {
-                                self.fail(
-                                    location,
-                                    format!("tried to get variant {variant:?} of tuple"),
-                                );
-                                return;
-                            }
-                            let Some(&f_ty) = fields.get(field.as_usize()) else {
-                                fail_out_of_bounds(self, location, field, current_ty);
-                                return;
-                            };
-
-                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
-                        }
-                        ty::Adt(adt_def, args) => {
-                            let Some(field) = adt_def.variant(variant).fields.get(field) else {
-                                fail_out_of_bounds(self, location, field, current_ty);
-                                return;
-                            };
-
-                            let f_ty = field.ty(self.tcx, args);
-                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
-                        }
-                        _ => {
-                            self.fail(
-                                location,
-                                format!("Cannot get offset ({variant:?}, {field:?}) from type {current_ty}"),
-                            );
-                            return;
-                        }
-                    }
-                }
-            }
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _)
+            | Rvalue::NullaryOp(NullOp::RuntimeChecks(_))
             | Rvalue::Discriminant(_) => {}
 
             Rvalue::WrapUnsafeBinder(op, ty) => {

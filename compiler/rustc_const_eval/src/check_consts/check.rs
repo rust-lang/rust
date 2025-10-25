@@ -645,7 +645,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::RuntimeChecks(_), _) => {}
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(op, operand) => {
@@ -853,7 +853,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Intrinsics are language primitives, not regular calls, so treat them separately.
-                if let Some(intrinsic) = tcx.intrinsic(callee) {
+                if let Some(intrinsic) = tcx.intrinsic(callee)
+                    && intrinsic.name != sym::offset_of
+                {
                     if !tcx.is_const_fn(callee) {
                         // Non-const intrinsic.
                         self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });

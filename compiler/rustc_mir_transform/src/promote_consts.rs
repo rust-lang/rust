@@ -449,8 +449,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::NullaryOp(op, _) => match op {
-                NullOp::OffsetOf(_) => {}
+            Rvalue::NullaryOp(op) => match op {
                 NullOp::RuntimeChecks(_) => {}
             },
 

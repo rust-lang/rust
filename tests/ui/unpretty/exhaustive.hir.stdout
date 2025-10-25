@@ -343,7 +343,7 @@ mod expressions {
 
 
 
-        { offset_of!(T, field) };
+        const { offset_of!(T, field) };
     }
     /// ExprKind::MacCall
     fn expr_mac_call() { "..."; "..."; "..."; }

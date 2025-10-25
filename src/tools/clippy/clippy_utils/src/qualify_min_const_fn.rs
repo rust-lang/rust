@@ -194,7 +194,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::RuntimeChecks(_), _) | Rvalue::ShallowInitBox(_, _) => Ok(()),
+        Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, cx.tcx);
             if ty.is_integral() || ty.is_bool() {
