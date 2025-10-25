@@ -25,4 +25,23 @@ fn main() {
         .target("aarch64-unknown-none-softfloat")
         .arg("-Zfixed-x18")
         .run();
+
+    rustdoc()
+        .input("c.rs")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("-Zfixed-x18")
+        .arg("--test")
+        .run();
+
+    rustdoc()
+        .input("c.rs")
+        .edition("2024")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("-Zfixed-x18")
+        .arg("--test")
+        .run();
 }
