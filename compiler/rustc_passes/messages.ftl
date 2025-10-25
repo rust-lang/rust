@@ -219,7 +219,6 @@ passes_doc_test_unknown_passes =
     unknown `doc` attribute `{$path}`
     .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
     .label = no longer functions
-    .help = you may want to use `doc(document_private_items)`
     .no_op_note = `doc({$path})` is now a no-op
 
 passes_doc_test_unknown_plugins =
