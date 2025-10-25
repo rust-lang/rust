@@ -30,10 +30,8 @@ fn transmute<L: Trait<R>, R>(r: L) -> <L::Proof as Trait<R>>::Proof { r }
 fn main() {
     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
     //~^ ERROR overflow evaluating the requirement `Vec<u8>: Trait<String>`
-    //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == String`
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof: Sized`
     //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof well-formed`
-    //[next]~| ERROR overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
     println!("{}", s); // ABC
 }
