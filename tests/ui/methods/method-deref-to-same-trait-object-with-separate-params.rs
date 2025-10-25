@@ -10,7 +10,7 @@
 use std::marker::PhantomData;
 
 mod internal {
-    use std::ops::{CoerceUnsized, Deref, DispatchFromDyn};
+    use std::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
     use std::marker::{PhantomData, Unsize};
 
     pub struct Smaht<T: ?Sized, MISC>(pub Box<T>, pub PhantomData<MISC>);
@@ -21,6 +21,9 @@ mod internal {
         fn deref(&self) -> &Self::Target {
             &self.0
         }
+    }
+    impl<T: ?Sized, MISC> Receiver for Smaht<T, MISC> {
+        type Target = T;
     }
     impl<T: ?Sized + Unsize<U>, U: ?Sized, MISC> CoerceUnsized<Smaht<U, MISC>>
         for Smaht<T, MISC>
@@ -51,6 +54,9 @@ mod internal {
     impl Deref for dyn Foo {
         type Target = ();
         fn deref(&self) -> &() { &() }
+    }
+    impl Receiver for dyn Foo {
+        type Target = ();
     }
 
     impl Foo for () {}
