@@ -166,10 +166,10 @@
 
 // FOREIGN TYPES
 // gdb-command:whatis foreign1
-// gdb-check:type = *mut type_names::{extern#0}::ForeignType1
+// gdb-check:type = *const type_names::{extern#0}::ForeignType1
 
 // gdb-command:whatis foreign2
-// gdb-check:type = *mut type_names::mod1::{extern#0}::ForeignType2
+// gdb-check:type = *const type_names::mod1::{extern#0}::ForeignType2
 
 // === CDB TESTS ==================================================================================
 

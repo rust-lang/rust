@@ -43,12 +43,12 @@
 // gdb-check: type = struct basic_types_metadata::main::{closure_env#0}
 // gdb-command:ptype closure_1
 // gdb-check: type = struct basic_types_metadata::main::{closure_env#1} {
-// gdb-check:     *mut bool,
+// gdb-check:     _ref__b: &bool,
 // gdb-check: }
 // gdb-command:ptype closure_2
 // gdb-check: type = struct basic_types_metadata::main::{closure_env#2} {
-// gdb-check:     *mut bool,
-// gdb-check:     *mut isize,
+// gdb-check:     _ref__b: &bool,
+// gdb-check:     _ref__i: &isize,
 // gdb-check: }
 
 //
