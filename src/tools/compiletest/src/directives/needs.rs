@@ -70,6 +70,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without memory tagging sanitizer",
         },
         Need {
+            name: "needs-sanitizer-realtime",
+            condition: cache.sanitizer_realtime,
+            ignore_reason: "ignored on targets without realtime sanitizer",
+        },
+        Need {
             name: "needs-sanitizer-shadow-call-stack",
             condition: cache.sanitizer_shadow_call_stack,
             ignore_reason: "ignored on targets without shadow call stacks",
@@ -320,6 +325,7 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_thread: bool,
     sanitizer_hwaddress: bool,
     sanitizer_memtag: bool,
+    sanitizer_realtime: bool,
     sanitizer_shadow_call_stack: bool,
     sanitizer_safestack: bool,
     xray: bool,
@@ -346,6 +352,7 @@ impl CachedNeedsConditions {
             sanitizer_thread: sanitizers.contains(&Sanitizer::Thread),
             sanitizer_hwaddress: sanitizers.contains(&Sanitizer::Hwaddress),
             sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
+            sanitizer_realtime: sanitizers.contains(&Sanitizer::Realtime),
             sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
             sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
             xray: config.target_cfg().xray,

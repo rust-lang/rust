@@ -818,7 +818,7 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     }
 
     let codegen_fn_attrs = tcx.codegen_fn_attrs(inliner.caller_def_id());
-    if callee_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
+    if callee_attrs.sanitizers != codegen_fn_attrs.sanitizers {
         return Err("incompatible sanitizer set");
     }
 

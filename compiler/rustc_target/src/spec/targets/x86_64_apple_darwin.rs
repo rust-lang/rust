@@ -21,7 +21,8 @@ pub(crate) fn target() -> Target {
             supported_sanitizers: SanitizerSet::ADDRESS
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK
-                | SanitizerSet::THREAD,
+                | SanitizerSet::THREAD
+                | SanitizerSet::REALTIME,
             supports_xray: true,
             ..opts
         },

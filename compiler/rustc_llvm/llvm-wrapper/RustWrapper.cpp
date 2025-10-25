@@ -245,6 +245,8 @@ enum class LLVMRustAttributeKind {
   DeadOnUnwind = 43,
   DeadOnReturn = 44,
   CapturesReadOnly = 45,
+  SanitizeRealtimeNonblocking = 46,
+  SanitizeRealtimeBlocking = 47,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -340,6 +342,10 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
   case LLVMRustAttributeKind::CapturesAddress:
   case LLVMRustAttributeKind::CapturesReadOnly:
     report_fatal_error("Should be handled separately");
+  case LLVMRustAttributeKind::SanitizeRealtimeNonblocking:
+    return Attribute::SanitizeRealtime;
+  case LLVMRustAttributeKind::SanitizeRealtimeBlocking:
+    return Attribute::SanitizeRealtimeBlocking;
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }

@@ -45,7 +45,7 @@ implementation:
    [marked][sanitizer-attribute] with appropriate LLVM attribute:
    `SanitizeAddress`, `SanitizeHWAddress`, `SanitizeMemory`, or
    `SanitizeThread`. By default all functions are instrumented, but this
-   behaviour can be changed with `#[sanitize(xyz = "on|off")]`.
+   behaviour can be changed with `#[sanitize(xyz = "on|off|<other>")]`.
 
 *  The decision whether to perform instrumentation or not is possible only at a
    function granularity. In the cases were those decision differ between

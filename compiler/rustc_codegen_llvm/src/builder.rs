@@ -1803,7 +1803,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::CFI)
             {
                 return;
             }
@@ -1861,7 +1861,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
             {
                 return None;
             }
