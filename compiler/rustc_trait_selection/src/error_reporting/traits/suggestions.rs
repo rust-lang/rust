@@ -5181,42 +5181,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn suggest_remove_brackets_from_range(
         &self,
+        err: &mut Diag<'_>,
         main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
         leaf_trait_predicate: ty::PolyTraitPredicate<'tcx>,
         span: Span,
-        err: &mut Diag<'_>,
     ) {
-        let is_trait_range_bounds =
-            match self.tcx.get_diagnostic_name(leaf_trait_predicate.def_id()) {
-                Some(trait_name) if trait_name == sym::RangeBounds => true,
-                _ => false,
-            };
-        if !is_trait_range_bounds {
-            return;
-        }
-        if let ty::Array(inner_type, size_value) =
-            main_trait_predicate.self_ty().skip_binder().kind()
+        if self.tcx.is_diagnostic_item(sym::RangeBounds, leaf_trait_predicate.def_id())
+            && let ty::Array(inner_type, arr_size) =
+                main_trait_predicate.self_ty().skip_binder().kind()
+            && let ty::Adt(adt_def, _) = inner_type.kind()
+            && self.tcx.is_range(adt_def.did())
+            && let Some(1) = arr_size.try_to_target_usize(self.tcx)
         {
-            let is_inner_type_range = if let ty::Adt(adt_def, _) = inner_type.kind()
-                && self.tcx.is_range(adt_def.did())
+            if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span)
+                && snip.starts_with('[')
+                && snip.ends_with(']')
             {
-                true
-            } else {
-                false
-            };
-            let is_array_size_one = size_value.try_to_target_usize(self.tcx) == Some(1);
-
-            if is_inner_type_range && is_array_size_one {
-                if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion_verbose(
-                        span,
-                        "consider removing `[]`",
-                        &snip[1..snip.len() - 1],
-                        Applicability::MachineApplicable,
-                    );
-                }
+                err.span_suggestion_verbose(
+                    span,
+                    "consider removing `[]`",
+                    &snip[1..snip.len() - 1],
+                    Applicability::MachineApplicable,
+                );
             }
-        };
+        }
     }
 }
 
