@@ -1,0 +1,8 @@
+error: suffixes on string literals are invalid
+  --> $DIR/raw-string-suffix-long.rs:5:14
+   |
+LL |     let s2 = r##"test"##suffix;
+   |              ^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
+
+error: aborting due to 1 previous error
+
