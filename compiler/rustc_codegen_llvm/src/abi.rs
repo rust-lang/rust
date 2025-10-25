@@ -39,13 +39,11 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 4] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
-    (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
-    (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
 ];
 
 fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
@@ -81,13 +79,21 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
         }
         for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
             if regular.contains(attr) {
-                // captures(...) is only available since LLVM 21.
-                if (attr == ArgAttribute::CapturesReadOnly || attr == ArgAttribute::CapturesAddress)
-                    && llvm_util::get_version() < (21, 0, 0)
-                {
-                    continue;
-                }
                 attrs.push(llattr.create_attr(cx.llcx));
+            }
+        }
+        // captures(...) is only available since LLVM 21.
+        if (21, 0, 0) <= llvm_util::get_version() {
+            const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
+                (ArgAttribute::CapturesNone, llvm::AttributeKind::CapturesNone),
+                (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
+                (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
+            ];
+            for (attr, llattr) in CAPTURES_ATTRIBUTES {
+                if regular.contains(attr) {
+                    attrs.push(llattr.create_attr(cx.llcx));
+                    break;
+                }
             }
         }
     } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {

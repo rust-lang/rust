@@ -11,65 +11,91 @@
 
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
-use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, DeducedReadOnlyParam};
+use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
-/// A visitor that determines which arguments have been mutated. We can't use the mutability field
-/// on LocalDecl for this because it has no meaning post-optimization.
-struct DeduceReadOnly {
-    /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
-    /// 1). The bit is false if the argument may have been mutated or true if we know it hasn't
-    /// been up to the point we're at.
-    read_only: IndexVec<usize, DeducedReadOnlyParam>,
+/// A visitor that determines how a return place and arguments are used inside MIR body.
+/// To determine whether a local is mutated we can't use the mutability field on LocalDecl
+/// because it has no meaning post-optimization.
+struct DeduceParamAttrs {
+    /// Summarizes how a return place and arguments are used inside MIR body.
+    usage: IndexVec<Local, UsageSummary>,
 }
 
-impl DeduceReadOnly {
-    /// Returns a new DeduceReadOnly instance.
-    fn new(arg_count: usize) -> Self {
-        Self { read_only: IndexVec::from_elem_n(DeducedReadOnlyParam::empty(), arg_count) }
+impl DeduceParamAttrs {
+    /// Returns a new DeduceParamAttrs instance.
+    fn new(body: &Body<'_>) -> Self {
+        let mut this =
+            Self { usage: IndexVec::from_elem_n(UsageSummary::empty(), body.arg_count + 1) };
+        // Code generation indicates that a return place is writable. To avoid setting both
+        // `readonly` and `writable` attributes, when return place is never written to, mark it as
+        // mutated.
+        this.usage[RETURN_PLACE] |= UsageSummary::MUTATE;
+        this
     }
 
-    /// Returns whether the given local is a parameter and its index.
-    fn as_param(&self, local: Local) -> Option<usize> {
-        // Locals and parameters are shifted by `RETURN_PLACE`.
-        let param_index = local.as_usize().checked_sub(1)?;
-        if param_index < self.read_only.len() { Some(param_index) } else { None }
+    /// Returns whether a local is the return place or an argument and returns its index.
+    fn as_param(&self, local: Local) -> Option<Local> {
+        if local.index() < self.usage.len() { Some(local) } else { None }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
+impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        // We're only interested in arguments.
-        let Some(param_index) = self.as_param(place.local) else { return };
+        // We're only interested in the return place or an argument.
+        let Some(i) = self.as_param(place.local) else { return };
 
         match context {
-            // Not mutating, so it's fine.
+            // Not actually using the local.
             PlaceContext::NonUse(..) => {}
-            // Dereference is not a mutation.
+            // Neither mutated nor captured.
             _ if place.is_indirect_first_projection() => {}
             // This is a `Drop`. It could disappear at monomorphization, so mark it specially.
             PlaceContext::MutatingUse(MutatingUseContext::Drop)
                 // Projection changes the place's type, so `needs_drop(local.ty)` is not
                 // `needs_drop(place.ty)`.
                 if place.projection.is_empty() => {
-                self.read_only[param_index] |= DeducedReadOnlyParam::IF_NO_DROP;
+                    self.usage[i] |= UsageSummary::DROP;
             }
-            // This is a mutation, so mark it as such.
-            PlaceContext::MutatingUse(..)
-            // Whether mutating though a `&raw const` is allowed is still undecided, so we
-            // disable any sketchy `readonly` optimizations for now.
+            PlaceContext::MutatingUse(
+                  MutatingUseContext::Call
+                | MutatingUseContext::Yield
+                | MutatingUseContext::Drop
+                | MutatingUseContext::Borrow
+                | MutatingUseContext::RawBorrow) => {
+                self.usage[i] |= UsageSummary::MUTATE;
+                self.usage[i] |= UsageSummary::CAPTURE;
+            }
+            PlaceContext::MutatingUse(
+                  MutatingUseContext::Store
+                | MutatingUseContext::SetDiscriminant
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Projection
+                | MutatingUseContext::Retag) => {
+                self.usage[i] |= UsageSummary::MUTATE;
+            }
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
-                self.read_only[param_index] |= DeducedReadOnlyParam::MUTATED;
+                // Whether mutating though a `&raw const` is allowed is still undecided, so we
+                // disable any sketchy `readonly` optimizations for now.
+                self.usage[i] |= UsageSummary::MUTATE;
+                self.usage[i] |= UsageSummary::CAPTURE;
             }
-            // Not mutating if the parameter is `Freeze`.
             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
-                self.read_only[param_index] |= DeducedReadOnlyParam::IF_FREEZE;
+                // Not mutating if the parameter is `Freeze`.
+                self.usage[i] |= UsageSummary::SHARED_BORROW;
+                self.usage[i] |= UsageSummary::CAPTURE;
             }
             // Not mutating, so it's fine.
-            PlaceContext::NonMutatingUse(..) => {}
+            PlaceContext::NonMutatingUse(
+                  NonMutatingUseContext::Inspect
+                | NonMutatingUseContext::Copy
+                | NonMutatingUseContext::Move
+                | NonMutatingUseContext::FakeBorrow
+                | NonMutatingUseContext::PlaceMention
+                | NonMutatingUseContext::Projection) => {}
         }
     }
 
@@ -98,11 +124,11 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
                 if let Operand::Move(place) = arg.node
-                    // We're only interested in arguments.
-                    && let Some(param_index) = self.as_param(place.local)
                     && !place.is_indirect_first_projection()
+                    && let Some(i) = self.as_param(place.local)
                 {
-                    self.read_only[param_index] |= DeducedReadOnlyParam::MUTATED;
+                    self.usage[i] |= UsageSummary::MUTATE;
+                    self.usage[i] |= UsageSummary::CAPTURE;
                 }
             }
         };
@@ -154,10 +180,9 @@ pub(super) fn deduced_param_attrs<'tcx>(
     if matches!(fn_ty.kind(), ty::FnDef(..))
         && fn_ty
             .fn_sig(tcx)
-            .inputs()
+            .inputs_and_output()
             .skip_binder()
             .iter()
-            .cloned()
             .all(type_will_always_be_passed_directly)
     {
         return &[];
@@ -170,13 +195,13 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Grab the optimized MIR. Analyze it to determine which arguments have been mutated.
     let body: &Body<'tcx> = tcx.optimized_mir(def_id);
-    let mut deduce_read_only = DeduceReadOnly::new(body.arg_count);
-    deduce_read_only.visit_body(body);
-    tracing::trace!(?deduce_read_only.read_only);
+    let mut deduce = DeduceParamAttrs::new(body);
+    deduce.visit_body(body);
+    tracing::trace!(?deduce.usage);
 
-    let mut deduced_param_attrs: &[_] = tcx.arena.alloc_from_iter(
-        deduce_read_only.read_only.into_iter().map(|read_only| DeducedParamAttrs { read_only }),
-    );
+    let mut deduced_param_attrs: &[_] = tcx
+        .arena
+        .alloc_from_iter(deduce.usage.into_iter().map(|usage| DeducedParamAttrs { usage }));
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
     // default set of attributes, so we don't have to store them explicitly. Pop them off to save a

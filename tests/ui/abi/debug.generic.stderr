@@ -454,7 +454,7 @@ error: ABIs are not compatible
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: NoAlias | CapturesAddress | NonNull | NoUndef,
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
                            arg_ext: None,
                            pointee_size: Size(32 bytes),
                            pointee_align: Some(
@@ -527,7 +527,7 @@ error: ABIs are not compatible
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: NoAlias | CapturesAddress | NonNull | NoUndef,
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
                            arg_ext: None,
                            pointee_size: Size(128 bytes),
                            pointee_align: Some(
@@ -939,7 +939,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                    },
                    mode: Direct(
                        ArgAttributes {
-                           regular: NoAlias | NonNull | ReadOnly | NoUndef | CapturesReadOnly,
+                           regular: CapturesReadOnly | NoAlias | NonNull | ReadOnly | NoUndef,
                            arg_ext: None,
                            pointee_size: Size(2 bytes),
                            pointee_align: Some(
