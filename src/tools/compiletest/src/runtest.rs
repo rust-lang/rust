@@ -6,7 +6,6 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::Arc;
 use std::{env, fmt, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
@@ -110,7 +109,7 @@ fn dylib_name(name: &str) -> String {
 }
 
 pub fn run(
-    config: Arc<Config>,
+    config: &Config,
     stdout: &dyn ConsoleOut,
     stderr: &dyn ConsoleOut,
     testpaths: &TestPaths,
