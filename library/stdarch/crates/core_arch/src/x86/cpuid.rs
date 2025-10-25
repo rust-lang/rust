@@ -67,7 +67,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
             inout("eax") leaf => eax,
             inout("ecx") sub_leaf => ecx,
             out("edx") edx,
-            options(nostack, preserves_flags),
+            options(nostack, nomem, pure, preserves_flags),
         );
     }
     #[cfg(target_arch = "x86_64")]
@@ -80,7 +80,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
             inout("eax") leaf => eax,
             inout("ecx") sub_leaf => ecx,
             out("edx") edx,
-            options(nostack, preserves_flags),
+            options(nostack, nomem, pure, preserves_flags),
         );
     }
     CpuidResult { eax, ebx, ecx, edx }
