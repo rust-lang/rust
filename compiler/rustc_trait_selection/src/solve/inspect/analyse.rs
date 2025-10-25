@@ -463,7 +463,7 @@ pub trait ProofTreeVisitor<'tcx> {
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> Self::Result;
 }
 
-#[extension(pub trait ProofTreeInferCtxtExt<'tcx>)]
+#[extension(pub trait InferCtxtProofTreeExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
     fn visit_proof_tree<V: ProofTreeVisitor<'tcx>>(
         &self,
