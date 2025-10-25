@@ -12,7 +12,7 @@ pub(crate) use graph::DepGraphData;
 pub use graph::{DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap, hash_result};
 pub use query::DepGraphQuery;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::DynSync;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use tracing::instrument;
@@ -92,7 +92,7 @@ pub trait DepContext: Copy {
     fn with_reduced_queries<T>(self, _: impl FnOnce() -> T) -> T;
 }
 
-pub trait Deps: DynSync {
+pub trait Deps: DynSend + DynSync + Send + Sync + 'static {
     /// Execute the operation with provided dependencies.
     fn with_deps<OP, R>(deps: TaskDepsRef<'_>, op: OP) -> R
     where
