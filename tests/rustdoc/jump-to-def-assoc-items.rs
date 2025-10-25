@@ -26,8 +26,9 @@ impl C {
     pub fn wat() {}
 }
 
-//@ has - '//a[@href="{{channel}}/core/fmt/macros/macro.Debug.html"]' 'Debug'
-//@ has - '//a[@href="{{channel}}/core/cmp/macro.PartialEq.html"]' 'PartialEq'
+// These two links must not change and in particular must contain `/derive.`!
+//@ has - '//a[@href="{{channel}}/core/fmt/macros/derive.Debug.html"]' 'Debug'
+//@ has - '//a[@href="{{channel}}/core/cmp/derive.PartialEq.html"]' 'PartialEq'
 #[derive(Debug, PartialEq)]
 pub struct Bar;
 impl Trait for Bar {
