@@ -224,7 +224,7 @@ impl RunnableTest {
     fn run(&self, stdout: &dyn ConsoleOut, stderr: &dyn ConsoleOut) {
         __rust_begin_short_backtrace(|| {
             crate::runtest::run(
-                Arc::clone(&self.config),
+                &self.config,
                 stdout,
                 stderr,
                 &self.testpaths,
