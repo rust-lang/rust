@@ -248,12 +248,18 @@ pub struct Config {
 
     /// Path to libraries needed to run the *staged* `rustc`-under-test on the **host** platform.
     ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/lib`
+    ///
     /// FIXME: maybe rename this to reflect (1) which target platform (host, not target), and (2)
     /// which `rustc` (the `rustc`-under-test, not the stage 0 `rustc` unless forced).
     pub compile_lib_path: Utf8PathBuf,
 
     /// Path to libraries needed to run the compiled executable for the **target** platform. This
     /// corresponds to the **target** sysroot libraries, including the **target** standard library.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/i686-unknown-linux-gnu/lib`
     ///
     /// FIXME: maybe rename this to reflect (1) which target platform (target, not host), and (2)
     /// what "run libraries" are against.
@@ -266,6 +272,9 @@ pub struct Config {
     /// Path to the *staged*  `rustc`-under-test. Unless forced, this `rustc` is *staged*, and must
     /// not be confused with [`Self::stage0_rustc_path`].
     ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc`
+    ///
     /// FIXME: maybe rename this to reflect that this is the `rustc`-under-test.
     pub rustc_path: Utf8PathBuf,
 
@@ -274,11 +283,17 @@ pub struct Config {
     /// *not* used to compile the test recipes), and so must be staged as there may be differences
     /// between e.g. beta `cargo` vs in-tree `cargo`.
     ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1-tools-bin/cargo`
+    ///
     /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
     pub cargo_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
     /// [`Self::rustc_path`].
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/rustc`
     pub stage0_rustc_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 1 or higher `rustc` used to obtain target information via
@@ -312,6 +327,9 @@ pub struct Config {
     pub llvm_filecheck: Option<Utf8PathBuf>,
 
     /// Path to a host LLVM bintools directory.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/llvm/bin`
     pub llvm_bin_dir: Option<Utf8PathBuf>,
 
     /// The path to the **target** `clang` executable to run `clang`-based tests with. If `None`,
@@ -321,27 +339,38 @@ pub struct Config {
     /// Path to the directory containing the sources. This corresponds to the root folder of a
     /// `rust-lang/rust` checkout.
     ///
+    /// For example:
+    /// - `/home/ferris/rust`
+    ///
     /// FIXME: this name is confusing, because this is actually `$checkout_root`, **not** the
     /// `$checkout_root/src/` folder.
     pub src_root: Utf8PathBuf,
 
-    /// Path to the directory containing the test suites sources. This corresponds to the
-    /// `$src_root/tests/` folder.
+    /// Absolute path to the test suite directory.
     ///
-    /// Must be an immediate subdirectory of [`Self::src_root`].
-    ///
-    /// FIXME: this name is also confusing, maybe just call it `tests_root`.
+    /// For example:
+    /// - `/home/ferris/rust/tests/ui`
+    /// - `/home/ferris/rust/tests/coverage`
     pub src_test_suite_root: Utf8PathBuf,
 
-    /// Path to the build directory (e.g. `build/`).
+    /// Path to the top-level build directory used by bootstrap.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/build`
     pub build_root: Utf8PathBuf,
 
-    /// Path to the test suite specific build directory (e.g. `build/host/test/ui/`).
+    /// Path to the build directory used by the current test suite.
     ///
-    /// Must be a subdirectory of [`Self::build_root`].
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/test/ui`
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/test/coverage`
     pub build_test_suite_root: Utf8PathBuf,
 
     /// Path to the directory containing the sysroot of the `rustc`-under-test.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1`
+    /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage2`
     ///
     /// When stage 0 is forced, this will correspond to the sysroot *of* that specified stage 0
     /// `rustc`.
@@ -1075,10 +1104,31 @@ fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, Stri
     String::from_utf8(output.stdout).unwrap()
 }
 
+/// Path information for a single test file.
 #[derive(Debug, Clone)]
-pub struct TestPaths {
-    pub file: Utf8PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub relative_dir: Utf8PathBuf, // e.g., foo/bar
+pub(crate) struct TestPaths {
+    /// Full path to the test file.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/tests/ui/warnings/hello-world.rs`
+    ///
+    /// ---
+    ///
+    /// For `run-make` tests, this path is the _directory_ that contains
+    /// `rmake.rs`.
+    ///
+    /// For example:
+    /// - `/home/ferris/rust/tests/run-make/emit`
+    pub(crate) file: Utf8PathBuf,
+
+    /// Subset of the full path that excludes the suite directory and the
+    /// test filename. For tests in the root of their test suite directory,
+    /// this is blank.
+    ///
+    /// For example:
+    /// - `file`: `/home/ferris/rust/tests/ui/warnings/hello-world.rs`
+    /// - `relative_dir`: `warnings`
+    pub(crate) relative_dir: Utf8PathBuf,
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
