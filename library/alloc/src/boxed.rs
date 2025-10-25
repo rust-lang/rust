@@ -206,7 +206,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{AllocError, Allocator, Global, Layout, exchange_malloc};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
@@ -262,7 +262,15 @@ impl<T> Box<T> {
     #[rustc_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        return box_new(x);
+        // SAFETY: the size and align of a valid type `T` are always valid for `Layout`.
+        let ptr = unsafe {
+            exchange_malloc(<T as SizedTypeProperties>::SIZE, <T as SizedTypeProperties>::ALIGN)
+        } as *mut T;
+        // Nothing below can panic so we do not have to worry about deallocating `ptr`.
+        // SAFETY: we just allocated the box to store `x`.
+        unsafe { core::intrinsics::write_via_move(ptr, x) };
+        // SAFETY: we just initialized `b`.
+        unsafe { mem::transmute(ptr) }
     }
 
     /// Constructs a new box with uninitialized contents.
