@@ -17,7 +17,7 @@
 // cdb-check:     [+0x[...]] x                : [...] [Type: alloc::string::String]
 // cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
 // cdb-command:dx simple_closure
-// cdb-checksimple_closure   [Type: closures::main::closure_env$5]
+// cdb-check:simple_closure   [Type: closures::main::closure_env$5]
 // cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
 // cdb-command:g
 // cdb-command:dx first_closure
