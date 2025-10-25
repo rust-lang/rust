@@ -28,7 +28,9 @@ use rustc_session::config::{
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
+use rustc_target::spec::{
+    Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+};
 use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
@@ -181,22 +183,22 @@ pub(crate) unsafe fn create_module<'ll>(
     let llvm_version = llvm_util::get_version();
 
     if llvm_version < (21, 0, 0) {
-        if sess.target.arch == "nvptx64" {
+        if sess.target.arch == Arch::Nvptx64 {
             // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
             target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
         }
-        if sess.target.arch == "amdgpu" {
+        if sess.target.arch == Arch::AmdGpu {
             // LLVM 21 adds the address width for address space 8.
             // See https://github.com/llvm/llvm-project/pull/139419
             target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
         }
     }
     if llvm_version < (22, 0, 0) {
-        if sess.target.arch == "avr" {
+        if sess.target.arch == Arch::Avr {
             // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
             target_data_layout = target_data_layout.replace("n8:16", "n8")
         }
-        if sess.target.arch == "nvptx64" {
+        if sess.target.arch == Arch::Nvptx64 {
             // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
             target_data_layout = target_data_layout.replace("-i256:256", "");
         }
@@ -371,7 +373,7 @@ pub(crate) unsafe fn create_module<'ll>(
 
     if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
     {
-        if sess.target.arch == "aarch64" {
+        if sess.target.arch == Arch::AArch64 {
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,
@@ -502,7 +504,7 @@ pub(crate) unsafe fn create_module<'ll>(
     // FIXME: https://github.com/llvm/llvm-project/issues/50591
     // If llvm_abiname is empty, emit nothing.
     let llvm_abiname = &sess.target.options.llvm_abiname;
-    if matches!(sess.target.arch.as_ref(), "riscv32" | "riscv64") && !llvm_abiname.is_empty() {
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) && !llvm_abiname.is_empty() {
         llvm::add_module_flag_str(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
@@ -667,7 +669,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// This corresponds to the `-fobjc-abi-version=` flag in Clang / GCC.
     pub(crate) fn objc_abi_version(&self) -> u32 {
         assert!(self.tcx.sess.target.is_like_darwin);
-        if self.tcx.sess.target.arch == "x86" && self.tcx.sess.target.os == "macos" {
+        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == "macos" {
             // 32-bit x86 macOS uses ABI version 1 (a.k.a. the "fragile ABI").
             1
         } else {

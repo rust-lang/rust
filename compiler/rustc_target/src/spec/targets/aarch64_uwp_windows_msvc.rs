@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetMetadata, base};
+use crate::spec::{Arch, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         data_layout:
             "e-m:w-p270:32:32-p271:32:32-p272:64:64-p:64:64-i32:32-i64:64-i128:128-n32:64-S128-Fn32"
                 .into(),
-        arch: "aarch64".into(),
+        arch: Arch::AArch64,
         options: base,
     }
 }
