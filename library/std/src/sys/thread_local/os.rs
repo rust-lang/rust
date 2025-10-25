@@ -2,6 +2,7 @@ use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
 use crate::alloc::{self, Layout};
 use crate::cell::Cell;
+use crate::hint;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
@@ -181,30 +182,28 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
     pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let key = self.key.force();
         let ptr = unsafe { get(key) as *mut Value<T> };
-        if ptr.addr() > 1 {
+        match ptr.addr() {
             // SAFETY: the check ensured the pointer is safe (its destructor
             // is not running) + it is coming from a trusted source (self).
-            unsafe { &(*ptr).value }
-        } else {
+            2.. => unsafe { &(*ptr).value },
+            // destructor is running
+            1 => {
+                hint::cold_path();
+                ptr::null()
+            }
             // SAFETY: trivially correct.
-            unsafe { Self::try_initialize(key, ptr, i, f) }
+            0 => unsafe { Self::try_initialize(key, i, f) },
         }
     }
 
     /// # Safety
     /// * `key` must be the result of calling `self.key.force()`
-    /// * `ptr` must be the current value associated with `key`.
+    /// * The current pointer associated with `key` must be null.
     unsafe fn try_initialize(
         key: Key,
-        ptr: *mut Value<T>,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
     ) -> *const T {
-        if ptr.addr() == 1 {
-            // destructor is running
-            return ptr::null();
-        }
-
         let value = AlignedBox::<T, ALIGN>::new(Value {
             value: i.and_then(Option::take).unwrap_or_else(f),
             key,
