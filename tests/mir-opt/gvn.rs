@@ -521,11 +521,9 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     opaque(*u);
     opaque(*u);
 
-    // `*s` is not Copy, but `(*s).0` is, but we still cannot reuse.
     // CHECK: [[st10:_.*]] = copy ((*_3).0: u32);
-    // CHECK: opaque::<u32>(move [[st10]])
-    // CHECK: [[st11:_.*]] = copy ((*_3).0: u32);
-    // CHECK: opaque::<u32>(move [[st11]])
+    // CHECK: opaque::<u32>(copy [[st10]])
+    // CHECK: opaque::<u32>(copy [[st10]])
     opaque(s.0);
     opaque(s.0);
 }
