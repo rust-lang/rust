@@ -15,6 +15,7 @@ use std::time::Duration;
 use std::{env, thread};
 
 const REMOTE_ADDR_ENV: &str = "TEST_DEVICE_ADDR";
+const CONNECT_TIMEOUT: &str = "TEST_DEVICE_CONNECT_TIMEOUT";
 const DEFAULT_ADDR: &str = "127.0.0.1:12345";
 
 macro_rules! t {
@@ -69,7 +70,22 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
     }
 
     // Wait for the emulator to come online
-    loop {
+    let mut total_dur = Duration::from_secs(0);
+    let timeout = env::var(CONNECT_TIMEOUT)
+        .ok()
+        .and_then(|timeout| {
+            match timeout.parse::<u64>() {
+                Ok(n) => Some(n),
+                Err(_) => {
+                    println!("The {CONNECT_TIMEOUT} env variable is not a valid integer, using default timeout");
+                    None
+                }
+            }
+        })
+        .map(Duration::from_secs)
+        .unwrap_or_else(|| Duration::from_secs(300));
+
+    while total_dur < timeout {
         let dur = Duration::from_millis(2000);
         if let Ok(mut client) = TcpStream::connect(&device_address) {
             t!(client.set_read_timeout(Some(dur)));
@@ -77,12 +93,15 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
             if client.write_all(b"ping").is_ok() {
                 let mut b = [0; 4];
                 if client.read_exact(&mut b).is_ok() {
-                    break;
+                    return;
                 }
             }
         }
         thread::sleep(dur);
+        total_dur += dur;
     }
+
+    panic!("Test device at {device_address} timed out");
 }
 
 fn start_android_emulator(server: &Path) {
