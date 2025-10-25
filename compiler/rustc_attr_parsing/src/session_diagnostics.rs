@@ -4,6 +4,7 @@ use rustc_ast::{self as ast, Path};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan,
 };
 use rustc_feature::AttributeTemplate;
 use rustc_hir::{AttrPath, Target};
@@ -32,6 +33,40 @@ pub(crate) struct InvalidPredicate {
     pub span: Span,
 
     pub predicate: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_empty)]
+pub(crate) struct DocAliasEmpty<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_bad_char)]
+pub(crate) struct DocAliasBadChar<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+    pub char_: char,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_alias_start_end)]
+pub(crate) struct DocAliasStartEnd<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_str: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
 }
 
 /// Error code: E0541
@@ -578,6 +613,21 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     #[label(attr_parsing_naked_attribute)]
     pub naked_span: Span,
     pub attr: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_doc_alias_duplicated)]
+pub(crate) struct DocAliasDuplicated {
+    #[label]
+    pub first_defn: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_doc_inline_conflict)]
+#[help]
+pub(crate) struct DocKeywordConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
 }
 
 #[derive(Diagnostic)]
