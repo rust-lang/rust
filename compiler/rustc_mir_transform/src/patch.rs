@@ -192,6 +192,12 @@ impl<'tcx> MirPatch<'tcx> {
         Local::new(index)
     }
 
+    /// Remove the last temporary local in the queue.
+    /// CAN ONLY DO THIS when the local is unused.
+    pub(crate) fn revert_last_new_temp(&mut self) {
+        self.new_locals.pop();
+    }
+
     /// Returns the type of a local that's newly-added in the patch.
     pub(crate) fn local_ty(&self, local: Local) -> Ty<'tcx> {
         let local = local.as_usize();
