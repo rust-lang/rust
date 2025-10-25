@@ -98,41 +98,42 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
 fn spawn_test_thread(
     id: TestId,
     test: &CollectedTest,
-    completion_tx: mpsc::Sender<TestCompletion>,
+    completion_sender: mpsc::Sender<TestCompletion>,
 ) -> Option<thread::JoinHandle<()>> {
     if test.desc.ignore && !test.config.run_ignored {
-        completion_tx
+        completion_sender
             .send(TestCompletion { id, outcome: TestOutcome::Ignored, stdout: None })
             .unwrap();
         return None;
     }
 
     let args = TestThreadArgs {
+        id,
         config: Arc::clone(&test.config),
         testpaths: test.testpaths.clone(),
         revision: test.revision.clone(),
+        should_panic: test.desc.should_panic,
+        completion_sender,
     };
-    let should_panic = test.desc.should_panic;
-    let run_test = move || test_thread_main(id, should_panic, args, completion_tx);
-
     let thread_builder = thread::Builder::new().name(test.desc.name.clone());
-    let join_handle = thread_builder.spawn(run_test).unwrap();
+    let join_handle = thread_builder.spawn(move || test_thread_main(args)).unwrap();
     Some(join_handle)
 }
 
+/// All of the owned data needed by `test_thread_main`.
 struct TestThreadArgs {
+    id: TestId,
+
     config: Arc<Config>,
     testpaths: TestPaths,
     revision: Option<String>,
+    should_panic: ShouldPanic,
+
+    completion_sender: mpsc::Sender<TestCompletion>,
 }
 
 /// Runs a single test, within the dedicated thread spawned by the caller.
-fn test_thread_main(
-    id: TestId,
-    should_panic: ShouldPanic,
-    args: TestThreadArgs,
-    completion_sender: mpsc::Sender<TestCompletion>,
-) {
+fn test_thread_main(args: TestThreadArgs) {
     let capture = CaptureKind::for_config(&args.config);
 
     // Install a panic-capture buffer for use by the custom panic hook.
@@ -168,7 +169,8 @@ fn test_thread_main(
         write!(stderr, "{panic_buf}");
     }
 
-    let outcome = match (should_panic, panic_payload) {
+    // Interpret the presence/absence of a panic as test failure/success.
+    let outcome = match (args.should_panic, panic_payload) {
         (ShouldPanic::No, None) | (ShouldPanic::Yes, Some(_)) => TestOutcome::Succeeded,
         (ShouldPanic::No, Some(_)) => TestOutcome::Failed { message: None },
         (ShouldPanic::Yes, None) => {
@@ -177,7 +179,7 @@ fn test_thread_main(
     };
 
     let stdout = capture.into_inner();
-    completion_sender.send(TestCompletion { id, outcome, stdout }).unwrap();
+    args.completion_sender.send(TestCompletion { id: args.id, outcome, stdout }).unwrap();
 }
 
 enum CaptureKind {
