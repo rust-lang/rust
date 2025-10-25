@@ -18,8 +18,6 @@ pub mod itron {
 // `crate::sys::error`
 pub(crate) mod error;
 pub mod os;
-#[path = "../unsupported/pipe.rs"]
-pub mod pipe;
 pub use self::itron::thread_parking;
 pub mod time;
 
