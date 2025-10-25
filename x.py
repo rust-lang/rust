@@ -2,7 +2,7 @@
 # Some systems don't have `python3` in their PATH. This isn't supported by x.py directly;
 # they should use `x` or `x.ps1` instead.
 
-# This file is only a "symlink" to bootstrap.py — all logic should go there.
+# This file is only a "symlink" to bootstrap.py; all logic should go there.
 
 # Parts of `bootstrap.py` use the `multiprocessing` module, so this entry point
 # must use the normal `if __name__ == '__main__':` convention to avoid problems.
@@ -16,7 +16,10 @@ if __name__ == "__main__":
     major = sys.version_info.major
     minor = sys.version_info.minor
 
-    # If this is Python 2, try to re-execute using Python 3.
+    # If this is python2, check if python3 is available and re-execute with that
+    # interpreter. Only python3 allows downloading CI LLVM.
+    #
+    # This matters if someone's system `python` is python2.
     if major < 3:
         try:
             os.execvp("py", ["py", "-3"] + sys.argv)
@@ -24,36 +27,32 @@ if __name__ == "__main__":
             try:
                 os.execvp("python3", ["python3"] + sys.argv)
             except OSError:
-                sys.exit(
-                    "Error: Python 3 is required to run this script, "
-                    "but it was not found on your system."
-                )
+                # Python 3 isn't available, fall back to python 2
+                pass
 
-    # Soft deprecation of old Python versions (< 3.8)
+    # Soft deprecation of old python versions
     skip_check = os.environ.get("RUST_IGNORE_OLD_PYTHON") == "1"
-    if not skip_check and (major < 3 or (major == 3 and minor < 8)):
+    if not skip_check and (major < 3 or (major == 3 and minor < 6)):
         msg = cleandoc(
-            f"""
-            Using Python {major}.{minor}, but >= 3.8 is recommended.
-            Your Python version should continue to work for now,
-            but this may change in the future. If Python >= 3.8 is
-            not available on your system, please file an issue to
-            help us understand timelines.
-
-            This message can be suppressed by setting:
-            RUST_IGNORE_OLD_PYTHON=1
             """
+            Using python {}.{} but >= 3.6 is recommended. Your python version
+            should continue to work for the near future, but this will
+            eventually change. If python >= 3.6 is not available on your system,
+            please file an issue to help us understand timelines.
+
+            This message can be suppressed by setting `RUST_IGNORE_OLD_PYTHON=1`
+            """.format(major, minor)
         )
         warnings.warn(msg, stacklevel=2)
 
     rust_dir = os.path.dirname(os.path.abspath(__file__))
     bootstrap_path = os.path.join(rust_dir, "src", "bootstrap")
 
-    # Verify that the bootstrap path exists
+    # Ensure bootstrap directory exists for clearer errors
     if not os.path.isdir(bootstrap_path):
-        sys.exit(f"Error: Expected bootstrap directory not found at: {bootstrap_path}")
+        sys.exit(f"Error: expected bootstrap directory not found at {bootstrap_path}")
 
-    # Add bootstrap path to module search path
+    # For the import below, have Python search in src/bootstrap first.
     sys.path.insert(0, bootstrap_path)
 
     try:
@@ -61,7 +60,4 @@ if __name__ == "__main__":
     except ImportError as e:
         sys.exit(f"Error importing bootstrap module: {e}")
 
-    try:
-        bootstrap.main()
-    except Exception as e:
-        sys.exit(f"Bootstrap failed: {e}")
+    bootstrap.main()
