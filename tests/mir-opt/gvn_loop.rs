@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics, rustc_attrs)]

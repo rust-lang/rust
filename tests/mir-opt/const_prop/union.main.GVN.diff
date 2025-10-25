@@ -34,9 +34,7 @@
           StorageDead(_1);
           return;
       }
-+ }
-+ 
-+ ALLOC0 (size: 4, align: 4) {
-+     01 00 00 00                                     │ ....
   }
++ 
++ ALLOC0 (size: 4, align: 4) { .. }
   
