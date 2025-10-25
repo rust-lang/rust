@@ -573,6 +573,44 @@ impl<'a> Parser<'a> {
         let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
+            // We might be mistakenly trying to use a generic type as a generic parameter.
+            // impl<X<T>> Trait for Y<T> { ... }
+            if self.look_ahead(0, |t| t == &token::Lt)
+                && self.look_ahead(1, |t| t.is_ident())
+                && self.look_ahead(2, |t| t == &token::Lt)
+            {
+                self.bump(); // <
+                let ident = self.parse_ident()?;
+                let generics = self.parse_generics()?;
+                let span = ident.span.to(generics.span);
+                let snippet = self.span_to_snippet(span).unwrap();
+
+                let msg = format!("expected type parameter, found path `{}`", snippet);
+                let mut err = self.dcx().struct_span_err(span, msg);
+                err.span_label(span, "expected type parameter, found path");
+                err.span_suggestion(
+                    span,
+                    "you might have meant to bind a type parameter to a trait",
+                    format!("T: {snippet}"),
+                    Applicability::Unspecified,
+                );
+
+                let mut mapped = String::new();
+                for i in 0..generics.params.len() {
+                    mapped += &format!("{}: {}", generics.params[i].ident, ident);
+                    if i != (generics.params.len() - 1) {
+                        mapped += ", ";
+                    }
+                }
+                err.span_suggestion(span, if generics.params.len() == 1 {
+                    format!("alternatively, you might have meant to bind type parameter `{}` to trait `{}`", generics.params[0].ident.name.as_str(), ident.name.as_str())
+                } else {
+                    format!("alternatively, you might have meant to bind type parameters to trait `{}`", ident.name.as_str())
+                }, mapped, Applicability::Unspecified);
+
+                return Err(err);
+            }
+
             let mut generics = Generics::default();
             // impl A for B {}
             //    /\ this is where `generics.span` should point when there are no type params.
