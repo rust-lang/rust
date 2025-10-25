@@ -1,5 +1,4 @@
 //@no-rustfix: no suggestions
-
 #![warn(clippy::useless_vec)]
 
 // Regression test for <https://github.com/rust-lang/rust-clippy/issues/13692>.
