@@ -460,6 +460,8 @@ pub(crate) fn is_in_condition(it: &ast::Expr) -> bool {
                 ast::MatchGuard(guard) => guard.condition()? == *it,
                 ast::BinExpr(bin_expr) => (bin_expr.op_token()?.kind() == T![&&])
                     .then(|| is_in_condition(&bin_expr.into()))?,
+                ast::Expr(expr) => (expr.syntax().text_range().start() == it.syntax().text_range().start())
+                    .then(|| is_in_condition(&expr))?,
                 _ => return None,
             } })
         })
