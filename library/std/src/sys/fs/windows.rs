@@ -1037,7 +1037,7 @@ impl fmt::Debug for File {
             }
 
             // Getting analogue of file mode (unix) using file attributes
-            // See https://learn.microsoft.com/ru-ru/windows/win32/fileio/file-attribute-constants
+            // See https://learn.microsoft.com/windows/win32/fileio/file-attribute-constants
             b.field("attrs", &file_attr.attributes);
         }
 
