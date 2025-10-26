@@ -365,30 +365,120 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 })
             }
-            // The `write_via_move` intrinsic needs to be special-cased very early to avoid
-            // introducing unnecessary copies that can be hard to remove again later:
-            // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
+            // Some intrinsics are handled here because they desperately want to avoid introducing
+            // unnecessary copies.
             ExprKind::Call { ty, fun, ref args, .. }
-                if let ty::FnDef(def_id, _generic_args) = ty.kind()
+                if let ty::FnDef(def_id, generic_args) = ty.kind()
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
-                    && intrinsic.name == sym::write_via_move =>
+                    && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
             {
                 // We still have to evaluate the callee expression as normal (but we don't care
                 // about its result).
                 let _fun = unpack!(block = this.as_local_operand(block, fun));
-                // The destination must have unit type (so we don't actually have to store anything
-                // into it).
-                assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
 
-                // Compile this to an assignment of the argument into the destination.
-                let [ptr, val] = **args else {
-                    span_bug!(expr_span, "invalid write_via_move call")
-                };
-                let Some(ptr) = unpack!(block = this.as_local_operand(block, ptr)).place() else {
-                    span_bug!(expr_span, "invalid write_via_move call")
-                };
-                let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
-                this.expr_into_dest(ptr_deref, block, val)
+                match intrinsic.name {
+                    sym::write_via_move => {
+                        // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
+
+                        // The destination must have unit type (so we don't actually have to store anything
+                        // into it).
+                        assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
+
+                        // Compile this to an assignment of the argument into the destination.
+                        let [ptr, val] = **args else {
+                            span_bug!(expr_span, "invalid write_via_move call")
+                        };
+                        let Some(ptr) = unpack!(block = this.as_local_operand(block, ptr)).place()
+                        else {
+                            span_bug!(expr_span, "invalid write_via_move call")
+                        };
+                        let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
+                        this.expr_into_dest(ptr_deref, block, val)
+                    }
+                    sym::write_box_via_move => {
+                        // `write_box_via_move(b, val)` becomes
+                        // ```
+                        // *box_uninit_as_mut_ptr(&mut b) = val;
+                        // b
+                        // ```
+                        let tcx = this.tcx;
+                        let t = generic_args.type_at(0);
+                        let [b, val] = **args else {
+                            span_bug!(expr_span, "invalid init_box_via_move call")
+                        };
+                        let box_ty = this.thir.exprs[b].ty;
+                        let Some(b) = unpack!(block = this.as_local_operand(block, b)).place()
+                        else {
+                            span_bug!(expr_span, "invalid init_box_via_move call")
+                        };
+
+                        // Create reference to `b`.
+                        let box_ref = this
+                            .local_decls
+                            .push(LocalDecl::new(Ty::new_mut_ptr(tcx, box_ty), expr_span));
+                        this.cfg.push(
+                            block,
+                            Statement::new(source_info, StatementKind::StorageLive(box_ref)),
+                        );
+                        // Make sure `StorageDead` gets emitted.
+                        this.schedule_drop_storage_and_value(
+                            expr_span,
+                            this.local_scope(),
+                            box_ref,
+                        );
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            box_ref.into(),
+                            Rvalue::RawPtr(RawPtrKind::Mut, b),
+                        );
+
+                        // Invoke `box_uninit_as_mut_ptr`.
+                        let as_mut_ptr_fn = Operand::function_handle(
+                            tcx,
+                            tcx.require_lang_item(LangItem::BoxUninitAsMutPtr, expr_span),
+                            [t.into()],
+                            expr_span,
+                        );
+                        let inner_ptr = this.temp(Ty::new_mut_ptr(tcx, t), expr_span);
+                        let success = this.cfg.start_new_block();
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Call {
+                                func: as_mut_ptr_fn,
+                                args: [Spanned {
+                                    node: Operand::Copy(box_ref.into()),
+                                    span: expr_span,
+                                }]
+                                .into(),
+                                destination: inner_ptr,
+                                target: Some(success),
+                                unwind: UnwindAction::Continue,
+                                call_source: CallSource::Misc,
+                                fn_span: expr_span,
+                            },
+                        );
+                        this.diverge_from(block);
+                        block = success;
+
+                        // Store `val` into `inner_ptr`.
+                        let ptr_deref = Place::from(inner_ptr)
+                            .project_deeper(&[ProjectionElem::Deref], this.tcx);
+                        unpack!(block = this.expr_into_dest(ptr_deref, block, val));
+
+                        // Return `b`
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            destination,
+                            // Move from `b` so that does not get dropped any more.
+                            Rvalue::Use(Operand::Move(b)),
+                        );
+                        block.unit()
+                    }
+                    _ => rustc_middle::bug!(),
+                }
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
@@ -794,7 +884,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // these are the cases that are more naturally handled by some other mode
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
-            | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }

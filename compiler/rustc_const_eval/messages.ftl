@@ -384,12 +384,6 @@ const_eval_too_many_caller_args =
 
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {const_eval_const_context}s
 
-const_eval_unallowed_heap_allocations =
-    allocations are not allowed in {const_eval_const_context}s
-    .label = allocation not allowed in {const_eval_const_context}s
-    .teach_note =
-        The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created.
-
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
 

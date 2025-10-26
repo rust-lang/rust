@@ -628,11 +628,6 @@ impl<T: ?Sized, A: Allocator> Deref for Box<T, A> {
     }
 }
 
-#[lang = "exchange_malloc"]
-unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    libc::malloc(size)
-}
-
 #[lang = "drop"]
 pub trait Drop {
     fn drop(&mut self);

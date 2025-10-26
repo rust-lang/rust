@@ -51,8 +51,6 @@ pub(crate) enum GenericConstantTooComplexSub {
     YieldNotSupported(#[primary_span] Span),
     #[label(ty_utils_loop_not_supported)]
     LoopNotSupported(#[primary_span] Span),
-    #[label(ty_utils_box_not_supported)]
-    BoxNotSupported(#[primary_span] Span),
     #[label(ty_utils_binary_not_supported)]
     BinaryNotSupported(#[primary_span] Span),
     #[label(ty_utils_by_use_not_supported)]

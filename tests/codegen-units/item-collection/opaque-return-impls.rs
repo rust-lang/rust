@@ -42,7 +42,7 @@ pub fn foo2() -> Box<dyn TestTrait2> {
 }
 
 //~ MONO_ITEM fn <TestStruct2 as TestTrait2>::test_func2
-//~ MONO_ITEM fn alloc::alloc::exchange_malloc
+//~ MONO_ITEM fn std::boxed::box_new_uninit
 //~ MONO_ITEM fn foo2
 //~ MONO_ITEM fn std::alloc::Global::alloc_impl
 //~ MONO_ITEM fn std::boxed::Box::<TestStruct2>::new
