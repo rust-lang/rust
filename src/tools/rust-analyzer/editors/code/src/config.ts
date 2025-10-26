@@ -31,7 +31,7 @@ export class Config {
     workspaceState: vscode.Memento;
 
     private readonly rootSection = "rust-analyzer";
-    private readonly requiresServerReloadOpts = ["cargo", "server", "files", "showSyntaxTree"].map(
+    private readonly requiresServerReloadOpts = ["server", "files", "showSyntaxTree"].map(
         (opt) => `${this.rootSection}.${opt}`,
     );
 
