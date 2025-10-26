@@ -79,8 +79,8 @@ static STATIC10: UnsafeStruct = UnsafeStruct;
 struct MyOwned;
 
 static STATIC11: Vec<MyOwned> = vec![MyOwned];
-//~^ ERROR allocations are not allowed in statics
-//~^^ ERROR cannot call non-const
+//~^ ERROR cannot call non-const function
+//~| ERROR cannot call non-const
 
 static mut STATIC12: UnsafeStruct = UnsafeStruct;
 
@@ -93,29 +93,29 @@ static mut STATIC14: SafeStruct = SafeStruct {
 };
 
 static STATIC15: &'static [Vec<MyOwned>] = &[
-    vec![MyOwned], //~ ERROR allocations are not allowed in statics
-    //~^ ERROR cannot call non-const
-    vec![MyOwned], //~ ERROR allocations are not allowed in statics
-                   //~^ ERROR cannot call non-const
+    vec![MyOwned], //~ ERROR cannot call non-const function
+    //~| ERROR cannot call non-const
+    vec![MyOwned], //~ ERROR cannot call non-const function
+                   //~| ERROR cannot call non-const
 ];
 
 static STATIC16: (&'static Vec<MyOwned>, &'static Vec<MyOwned>) = (
-    &vec![MyOwned], //~ ERROR allocations are not allowed in statics
-    //~^ ERROR cannot call non-const
-    &vec![MyOwned], //~ ERROR allocations are not allowed in statics
-                    //~^ ERROR cannot call non-const
+    &vec![MyOwned], //~ ERROR cannot call non-const function
+    //~| ERROR cannot call non-const
+    &vec![MyOwned], //~ ERROR cannot call non-const function
+                    //~| ERROR cannot call non-const
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 
 static STATIC19: Vec<isize> = vec![3];
-//~^ ERROR allocations are not allowed in statics
-//~^^ ERROR cannot call non-const
+//~^ ERROR cannot call non-const function
+//~| ERROR cannot call non-const
 
 pub fn main() {
     let y = {
-        static x: Vec<isize> = vec![3]; //~ ERROR allocations are not allowed in statics
-        //~^ ERROR cannot call non-const
+        static x: Vec<isize> = vec![3]; //~ ERROR cannot call non-const function
+        //~| ERROR cannot call non-const
         x
         //~^ ERROR cannot move out of static
     };
