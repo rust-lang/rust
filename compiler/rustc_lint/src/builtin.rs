@@ -2697,7 +2697,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// use std::ptr;
     /// unsafe {
