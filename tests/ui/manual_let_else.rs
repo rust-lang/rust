@@ -6,7 +6,7 @@
     clippy::let_unit_value,
     clippy::match_single_binding,
     clippy::never_loop,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::diverging_sub_expression,
     clippy::single_match,
     clippy::manual_unwrap_or_default

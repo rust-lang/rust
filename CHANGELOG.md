@@ -6584,6 +6584,7 @@ Released 2018-09-13
 [`needless_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_else
 [`needless_for_each`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_for_each
 [`needless_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_if
+[`needless_ifs`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_ifs
 [`needless_late_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_late_init
 [`needless_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_lifetimes
 [`needless_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_match

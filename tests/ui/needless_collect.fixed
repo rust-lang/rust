@@ -1,6 +1,6 @@
 #![allow(
     unused,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::suspicious_map,
     clippy::iter_count,
     clippy::manual_contains
