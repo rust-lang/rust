@@ -11,6 +11,7 @@ mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
+mod invalid_upcast_comparisons;
 mod manual_div_ceil;
 mod manual_is_multiple_of;
 mod manual_midpoint;
@@ -888,6 +889,28 @@ declare_clippy_lint! {
     "manually reimplementing `div_ceil`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for comparisons where the relation is always either
+    /// true or false, but where one side has been upcast so that the comparison is
+    /// necessary. Only integer types are checked.
+    ///
+    /// ### Why is this bad?
+    /// An expression like `let x : u8 = ...; (x as u32) > 300`
+    /// will mistakenly imply that it is possible for `x` to be outside the range of
+    /// `u8`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x: u8 = 1;
+    /// (x as u32) > 300;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub INVALID_UPCAST_COMPARISONS,
+    pedantic,
+    "a comparison involving an upcast which is always true or false"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
@@ -935,6 +958,7 @@ impl_lint_pass!(Operators => [
     MANUAL_MIDPOINT,
     MANUAL_IS_MULTIPLE_OF,
     MANUAL_DIV_CEIL,
+    INVALID_UPCAST_COMPARISONS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -950,6 +974,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     }
                     erasing_op::check(cx, e, op.node, lhs, rhs);
                     identity_op::check(cx, e, op.node, lhs, rhs);
+                    invalid_upcast_comparisons::check(cx, op.node, lhs, rhs, e.span);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                     manual_is_multiple_of::check(cx, e, op.node, lhs, rhs, self.msrv);
