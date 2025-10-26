@@ -2450,7 +2450,6 @@ ui/single-use-lifetime/issue-107998.rs
 ui/single-use-lifetime/issue-117965.rs
 ui/span/issue-107353.rs
 ui/span/issue-11925.rs
-ui/span/issue-15480.rs
 ui/span/issue-23338-locals-die-before-temps-of-body.rs
 ui/span/issue-23729.rs
 ui/span/issue-23827.rs

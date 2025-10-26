@@ -539,18 +539,6 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
 }
 
 #[derive(Debug)]
-pub(crate) struct HeapAllocation;
-impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::UnallowedHeapAllocations {
-            span,
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0010),
-        })
-    }
-}
-
-#[derive(Debug)]
 pub(crate) struct InlineAsm;
 impl<'tcx> NonConstOp<'tcx> for InlineAsm {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {

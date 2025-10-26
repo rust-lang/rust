@@ -268,10 +268,6 @@ pub enum ExprKind<'tcx> {
         hir_id: HirId,
         value: ExprId,
     },
-    /// A `box <value>` expression.
-    Box {
-        value: ExprId,
-    },
     /// An `if` expression.
     If {
         if_then_scope: region::Scope,
