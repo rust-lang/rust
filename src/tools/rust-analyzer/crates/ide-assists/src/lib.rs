@@ -201,6 +201,7 @@ mod handlers {
     mod qualify_path;
     mod raw_string;
     mod remove_dbg;
+    mod remove_else_branches;
     mod remove_mut;
     mod remove_parentheses;
     mod remove_underscore;
@@ -343,6 +344,7 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            remove_else_branches::remove_else_branches,
             remove_parentheses::remove_parentheses,
             remove_underscore::remove_underscore,
             remove_unused_imports::remove_unused_imports,
