@@ -1022,12 +1022,25 @@ impl FromRawHandle for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
         if let Ok(path) = get_path(self) {
             b.field("path", &path);
         }
+
+        if let Ok(file_attr) = self.file_attr() {
+            b.field("read", &true);
+            if file_attr.perm().readonly() {
+                b.field("write", &false);
+            } else {
+                b.field("write", &true);
+            }
+
+            // Getting analogue of file mode (unix) using file attributes
+            // See https://learn.microsoft.com/ru-ru/windows/win32/fileio/file-attribute-constants
+            b.field("attrs", &file_attr.attributes);
+        }
+
         b.finish()
     }
 }
