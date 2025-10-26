@@ -1,0 +1,754 @@
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:60:13
+   |
+LL |         use crate;
+   |             ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:63:15
+   |
+LL |         use ::crate;
+   |               ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:64:15
+   |
+LL |         use ::crate as _crate2;
+   |               ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:65:16
+   |
+LL |         use ::{crate};
+   |                ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:66:16
+   |
+LL |         use ::{crate as _nested_crate2};
+   |                ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:68:21
+   |
+LL |         use foobar::crate;
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:69:21
+   |
+LL |         use foobar::crate as _crate3;
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:70:22
+   |
+LL |         use foobar::{crate};
+   |                      ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:71:22
+   |
+LL |         use foobar::{crate as _nested_crate3};
+   |                      ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:73:20
+   |
+LL |         use crate::crate;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:74:20
+   |
+LL |         use crate::crate as _crate4;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:75:21
+   |
+LL |         use crate::{crate};
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:76:21
+   |
+LL |         use crate::{crate as _nested_crate4};
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:78:20
+   |
+LL |         use super::crate;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:79:20
+   |
+LL |         use super::crate as _crate5;
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:80:21
+   |
+LL |         use super::{crate};
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:81:21
+   |
+LL |         use super::{crate as _nested_crate5};
+   |                     ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:83:19
+   |
+LL |         use self::crate;
+   |                   ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:84:19
+   |
+LL |         use self::crate as _crate6;
+   |                   ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:85:20
+   |
+LL |         use self::{crate};
+   |                    ^^^^^
+
+error: `crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:86:20
+   |
+LL |         use self::{crate as _nested_crate6};
+   |                    ^^^^^
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:89:13
+   |
+LL |         use super;
+   |             ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use super as name;
+   |                   +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:92:15
+   |
+LL |         use ::super;
+   |               ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use ::super as name;
+   |                     +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:94:16
+   |
+LL |         use ::{super};
+   |                ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use ::{super as name};
+   |                      +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:97:21
+   |
+LL |         use foobar::super;
+   |                     ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use foobar::super as name;
+   |                           +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:99:22
+   |
+LL |         use foobar::{super};
+   |                      ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use foobar::{super as name};
+   |                            +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:102:20
+   |
+LL |         use crate::super;
+   |                    ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use crate::super as name;
+   |                          +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:104:21
+   |
+LL |         use crate::{super};
+   |                     ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use crate::{super as name};
+   |                           +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:107:20
+   |
+LL |         use super::super;
+   |                    ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use super::super as name;
+   |                          +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:109:21
+   |
+LL |         use super::{super};
+   |                     ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use super::{super as name};
+   |                           +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:112:19
+   |
+LL |         use self::super;
+   |                   ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use self::super as name;
+   |                         +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:114:20
+   |
+LL |         use self::{super};
+   |                    ^^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use self::{super as name};
+   |                          +++++++
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:118:13
+   |
+LL |         use self;
+   |             ^^^^
+
+error: crate root cannot be imported
+  --> $DIR/use-path-segment-kw.rs:121:13
+   |
+LL |         use ::self;
+   |             ^^^^^^
+
+error: crate root cannot be imported
+  --> $DIR/use-path-segment-kw.rs:122:13
+   |
+LL |         use ::self as _self2;
+   |             ^^^^^^^^^^^^^^^^
+
+error: crate root cannot be imported
+  --> $DIR/use-path-segment-kw.rs:123:16
+   |
+LL |         use ::{self};
+   |                ^^^^
+
+error: crate root cannot be imported
+  --> $DIR/use-path-segment-kw.rs:124:16
+   |
+LL |         use ::{self as _nested_self2};
+   |                ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:126:28
+   |
+LL |         pub use foobar::qux::self;
+   |                            ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use foobar::qux::self;
+LL +         pub use foobar::qux;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use foobar::qux::{self};
+   |                              +    +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:127:23
+   |
+LL |         pub use foobar::self as _self3;
+   |                       ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use foobar::self as _self3;
+LL +         pub use foobar as _self3;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use foobar::{self as _self3};
+   |                         +              +
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:131:18
+   |
+LL |         use crate::self;
+   |                  ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use crate::self;
+LL +         use crate;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use crate::{self};
+   |                    +    +
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:131:20
+   |
+LL |         use crate::self;
+   |                    ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:133:22
+   |
+LL |         pub use crate::self as _self4;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use crate::self as _self4;
+LL +         pub use crate as _self4;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use crate::{self as _self4};
+   |                        +              +
+
+error: crate root imports need to be explicitly named: `use crate as name;`
+  --> $DIR/use-path-segment-kw.rs:134:21
+   |
+LL |         use crate::{self};
+   |                     ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:137:18
+   |
+LL |         use super::self;
+   |                  ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use super::self;
+LL +         use super;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use super::{self};
+   |                    +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:137:20
+   |
+LL |         use super::self;
+   |                    ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:139:22
+   |
+LL |         pub use super::self as _self5;
+   |                      ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use super::self as _self5;
+LL +         pub use super as _self5;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use super::{self as _self5};
+   |                        +              +
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:140:21
+   |
+LL |         use super::{self};
+   |                     ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use super::{self as name};
+   |                          +++++++
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:143:17
+   |
+LL |         use self::self;
+   |                 ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         use self::self;
+LL +         use self;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         use self::{self};
+   |                   +    +
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:143:19
+   |
+LL |         use self::self;
+   |                   ^^^^
+
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-path-segment-kw.rs:145:21
+   |
+LL |         pub use self::self as _self6;
+   |                     ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL -         pub use self::self as _self6;
+LL +         pub use self as _self6;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL |         pub use self::{self as _self6};
+   |                       +              +
+
+error: imports need to be explicitly named
+  --> $DIR/use-path-segment-kw.rs:146:20
+   |
+LL |         use self::{self};
+   |                    ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |         use self::{self as name};
+   |                         +++++++
+
+error: `$crate` may not be imported
+  --> $DIR/use-path-segment-kw.rs:5:13
+   |
+LL |         use $crate;
+   |             ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:8:15
+   |
+LL |         use ::$crate;
+   |               ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:9:15
+   |
+LL |         use ::$crate as _dollar_crate2;
+   |               ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:10:16
+   |
+LL |         use ::{$crate};
+   |                ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:11:16
+   |
+LL |         use ::{$crate as _nested_dollar_crate2};
+   |                ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:13:17
+   |
+LL |         use $m::$crate;
+   |                 ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:14:17
+   |
+LL |         use $m::$crate as _dollar_crate3;
+   |                 ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:15:18
+   |
+LL |         use $m::{$crate};
+   |                  ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:16:18
+   |
+LL |         use $m::{$crate as _nested_dollar_crate3};
+   |                  ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:18:20
+   |
+LL |         use crate::$crate;
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:19:20
+   |
+LL |         use crate::$crate as _dollar_crate4;
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:20:21
+   |
+LL |         use crate::{$crate};
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:21:21
+   |
+LL |         use crate::{$crate as _nested_dollar_crate4};
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:23:20
+   |
+LL |         use super::$crate;
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:24:20
+   |
+LL |         use super::$crate as _dollar_crate5;
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:25:21
+   |
+LL |         use super::{$crate};
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:26:21
+   |
+LL |         use super::{$crate as _nested_dollar_crate5};
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:28:19
+   |
+LL |         use self::$crate;
+   |                   ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:29:19
+   |
+LL |         use self::$crate as _dollar_crate6;
+   |                   ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:30:20
+   |
+LL |         use self::{$crate};
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:31:20
+   |
+LL |         use self::{$crate as _nested_dollar_crate6};
+   |                    ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:33:21
+   |
+LL |         use $crate::$crate;
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:34:21
+   |
+LL |         use $crate::$crate as _dollar_crate7;
+   |                     ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:35:22
+   |
+LL |         use $crate::{$crate};
+   |                      ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `$crate` in paths can only be used in start position
+  --> $DIR/use-path-segment-kw.rs:36:22
+   |
+LL |         use $crate::{$crate as _nested_dollar_crate7};
+   |                      ^^^^^^
+...
+LL |         macro_dollar_crate!(foobar);
+   |         --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:93:13
+   |
+LL |         use ::super as _super2;
+   |             ^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `super`
+  --> $DIR/use-path-segment-kw.rs:95:16
+   |
+LL |         use ::{super as _nested_super2};
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:103:13
+   |
+LL |         use crate::super as _super4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error[E0432]: unresolved import `crate::super`
+  --> $DIR/use-path-segment-kw.rs:105:21
+   |
+LL |         use crate::{super as _nested_super4};
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ no `super` in the root
+
+error: aborting due to 80 previous errors
+
+Some errors have detailed explanations: E0429, E0432.
+For more information about an error, try `rustc --explain E0429`.
