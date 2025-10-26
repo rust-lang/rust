@@ -2697,7 +2697,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// use std::ptr;
     /// unsafe {
@@ -2716,7 +2716,7 @@ declare_lint! {
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub DEREF_NULLPTR,
-    Warn,
+    Deny,
     "detects when an null pointer is dereferenced"
 }
 
