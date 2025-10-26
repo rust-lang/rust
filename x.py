@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # Ensure bootstrap directory exists for clearer errors
     if not os.path.isdir(bootstrap_path):
-        sys.exit(f"Error: expected bootstrap directory not found at {bootstrap_path}")
+        sys.exit("Error: expected bootstrap directory not found at {}".format(bootstrap_path))
 
     # For the import below, have Python search in src/bootstrap first.
     sys.path.insert(0, bootstrap_path)
@@ -58,6 +58,6 @@ if __name__ == "__main__":
     try:
         import bootstrap
     except ImportError as e:
-        sys.exit(f"Error importing bootstrap module: {e}")
+        sys.exit("Error importing bootstrap module: {}".format(e))
 
     bootstrap.main()
