@@ -374,12 +374,8 @@ impl Global {
                 let raw_ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocError)?;
                 if zeroed {
-                    let mut offset = 0;
-                    while offset < size {
-                        offset += 1;
-                        // SAFETY: the pointer returned by `const_allocate` is valid to write to.
-                        ptr.add(offset).write(0)
-                    }
+                    // SAFETY: the pointer returned by `const_allocate` is valid to write to.
+                    ptr.write_bytes(0, size);
                 }
                 Ok(NonNull::slice_from_raw_parts(ptr, size))
             },

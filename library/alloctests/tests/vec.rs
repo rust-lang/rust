@@ -2760,7 +2760,7 @@ fn const_heap() {
             x *= 2;
         }
         assert!(v.len() == 6);
-        v.const_leak()
+        v.const_make_global()
     };
 
     assert_eq!([1, 2, 4, 8, 16, 32], X);

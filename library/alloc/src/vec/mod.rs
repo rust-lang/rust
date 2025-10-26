@@ -83,7 +83,7 @@ use core::hash::{Hash, Hasher};
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::marker::Destruct;
-use core::marker::PhantomData;
+use core::marker::{Freeze, PhantomData};
 use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, TransmuteFrom};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -885,11 +885,17 @@ impl<T> Vec<T> {
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
 
-    /// Leaks the `Vec<T>` to be interned statically. This mut be done for all
-    /// `Vec<T>` created during compile time.
+    /// Interns the `Vec<T>`, making the underlying memory read-only. This method should be
+    /// called during compile time. (This is a no-op if called during runtime)
+    ///
+    /// This method must be called if the memory used by `Vec` needs to appear in the final
+    /// values of constants.
     #[unstable(feature = "const_heap", issue = "79597")]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    pub const fn const_leak(mut self) -> &'static [T] {
+    pub const fn const_make_global(mut self) -> &'static [T]
+    where
+        T: Freeze,
+    {
         unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
         let me = ManuallyDrop::new(self);
         unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
