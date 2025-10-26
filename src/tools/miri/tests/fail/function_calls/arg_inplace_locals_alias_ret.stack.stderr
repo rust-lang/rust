@@ -1,0 +1,25 @@
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL |             Call(_non_copy = callee(Move(_non_copy)), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created here, as the root tag for ALLOC
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL |             Call(_non_copy = callee(Move(_non_copy)), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: <TAG> is this argument
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL |     x
+   |     ^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

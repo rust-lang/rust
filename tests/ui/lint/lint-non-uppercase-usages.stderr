@@ -4,7 +4,7 @@ warning: constant `my_static` should have an upper case name
 LL | const my_static: u32 = 0;
    |       ^^^^^^^^^
    |
-   = note: `#[warn(non_upper_case_globals)]` on by default
+   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
 help: convert the identifier to upper case
    |
 LL - const my_static: u32 = 0;
@@ -29,7 +29,7 @@ warning: const parameter `foo` should have an upper case name
 LL | fn foo<const foo: u32>() {
    |              ^^^
    |
-help: convert the identifier to upper case (notice the capitalization difference)
+help: convert the identifier to upper case (notice the capitalization)
    |
 LL - fn foo<const foo: u32>() {
 LL + fn foo<const FOO: u32>() {

@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{
-    fulfill_or_allowed, get_parent_as_impl, is_trait_method, parent_item_name, peel_ref_operators, sym,
-};
+use clippy_utils::{fulfill_or_allowed, get_parent_as_impl, parent_item_name, peel_ref_operators, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -176,12 +175,11 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
-                PatKind::Expr(lit) => match lit.kind {
-                    PatExprKind::Lit { lit, .. } => match lit.node {
-                        LitKind::Str(lit, _) => lit.as_str().is_empty(),
-                        _ => false,
-                    },
-                    _ => false,
+                PatKind::Expr(lit)
+                    if let PatExprKind::Lit { lit, .. } = lit.kind
+                        && let LitKind::Str(lit, _) = lit.node =>
+                {
+                    lit.as_str().is_empty()
                 },
                 _ => false,
             }
@@ -205,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         }
 
         if let ExprKind::MethodCall(method, lhs_expr, [rhs_expr], _) = expr.kind
-            && is_trait_method(cx, expr, sym::PartialEq)
+            && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::PartialEq)
             && !expr.span.from_expansion()
         {
             check_empty_expr(
@@ -336,42 +334,35 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
 }
 
 fn is_first_generic_integral<'tcx>(segment: &'tcx PathSegment<'tcx>) -> bool {
-    if let Some(generic_args) = segment.args {
-        if generic_args.args.is_empty() {
-            return false;
-        }
-        let arg = &generic_args.args[0];
-        if let GenericArg::Type(rustc_hir::Ty {
-            kind: TyKind::Path(QPath::Resolved(_, path)),
-            ..
-        }) = arg
-        {
-            let segments = &path.segments;
-            let segment = &segments[0];
-            let res = &segment.res;
-            if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
-                return true;
-            }
-        }
+    if let Some(generic_args) = segment.args
+        && let [GenericArg::Type(ty), ..] = &generic_args.args
+        && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+        && let [segment, ..] = &path.segments
+        && matches!(segment.res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_)))
+    {
+        true
+    } else {
+        false
     }
-
-    false
 }
 
 fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<LenOutput> {
     if let Some(segment) = extract_future_output(cx, sig.output()) {
         let res = segment.res;
 
-        if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
+        if matches!(res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_))) {
             return Some(LenOutput::Integral);
         }
 
-        if let Res::Def(_, def_id) = res {
-            if cx.tcx.is_diagnostic_item(sym::Option, def_id) && is_first_generic_integral(segment) {
-                return Some(LenOutput::Option(def_id));
-            } else if cx.tcx.is_diagnostic_item(sym::Result, def_id) && is_first_generic_integral(segment) {
-                return Some(LenOutput::Result(def_id));
+        if let Res::Def(_, def_id) = res
+            && let Some(res) = match cx.tcx.get_diagnostic_name(def_id) {
+                Some(sym::Option) => Some(LenOutput::Option(def_id)),
+                Some(sym::Result) => Some(LenOutput::Result(def_id)),
+                _ => None,
             }
+            && is_first_generic_integral(segment)
+        {
+            return Some(res);
         }
 
         return None;
@@ -379,11 +370,10 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
 
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
-        },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Result(adt.did()))
+        ty::Adt(adt, subs) => match cx.tcx.get_diagnostic_name(adt.did()) {
+            Some(sym::Option) => subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did())),
+            Some(sym::Result) => subs.type_at(0).is_integral().then(|| LenOutput::Result(adt.did())),
+            _ => None,
         },
         _ => None,
     }

@@ -4,7 +4,6 @@ use std::io::{BufRead, BufReader};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::common::Config;
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
@@ -20,11 +19,7 @@ pub(super) struct DebuggerCommands {
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(
-        file: &Utf8Path,
-        config: &Config,
-        debugger_prefix: &str,
-    ) -> Result<Self, String> {
+    pub fn parse_from(file: &Utf8Path, debugger_prefix: &str) -> Result<Self, String> {
         let command_directive = format!("{debugger_prefix}-command");
         let check_directive = format!("{debugger_prefix}-check");
 
@@ -47,10 +42,10 @@ impl DebuggerCommands {
                 continue;
             };
 
-            if let Some(command) = config.parse_name_value_directive(&line, &command_directive) {
+            if let Some(command) = parse_name_value(&line, &command_directive) {
                 commands.push(command);
             }
-            if let Some(pattern) = config.parse_name_value_directive(&line, &check_directive) {
+            if let Some(pattern) = parse_name_value(&line, &check_directive) {
                 check_lines.push((line_no, pattern));
             }
         }
@@ -107,6 +102,18 @@ impl DebuggerCommands {
 
             Err(msg)
         }
+    }
+}
+
+/// Split off from the main `parse_name_value_directive`, so that improvements
+/// to directive handling aren't held back by debuginfo test commands.
+fn parse_name_value(line: &str, name: &str) -> Option<String> {
+    if let Some(after_name) = line.strip_prefix(name)
+        && let Some(value) = after_name.strip_prefix(':')
+    {
+        Some(value.to_owned())
+    } else {
+        None
     }
 }
 

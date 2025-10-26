@@ -1,7 +1,7 @@
 //@ compile-flags: -Ztreat-err-as-bug
 //@ failure-status: 101
 //@ normalize-stderr: "note: .*\n\n" -> ""
-//@ normalize-stderr: "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ normalize-stderr: "thread 'rustc'.*panicked.*:\n.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 
 #![crate_type = "rlib"]

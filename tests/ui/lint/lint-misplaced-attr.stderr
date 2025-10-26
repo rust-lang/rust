@@ -10,11 +10,16 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+error: crate-level attribute should be an inner attribute
   --> $DIR/lint-misplaced-attr.rs:10:1
    |
 LL | #[crate_type = "bin"] fn main() {}
    | ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `!`
+   |
+LL | #![crate_type = "bin"] fn main() {}
+   |  +
 
 error: aborting due to 2 previous errors
 

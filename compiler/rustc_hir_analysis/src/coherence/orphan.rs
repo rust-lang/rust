@@ -22,7 +22,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
     trait_ref.error_reported()?;
 
     match orphan_check(tcx, impl_def_id, OrphanCheckMode::Proper) {
@@ -206,12 +206,8 @@ pub(crate) fn orphan_check_impl(
                 (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
             }
 
-            ty::Pat(..) => (
-                LocalImpl::Disallow { problematic_kind: "pattern type" },
-                NonlocalImpl::DisallowOther,
-            ),
-
             ty::Bool
+            | ty::Pat(..)
             | ty::Char
             | ty::Int(..)
             | ty::Uint(..)
@@ -230,10 +226,12 @@ pub(crate) fn orphan_check_impl(
             ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Infer(..) => {
+            | ty::CoroutineWitness(..) => {
+                return Err(tcx
+                    .dcx()
+                    .delayed_bug("cannot define inherent `impl` for closure types"));
+            }
+            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 let sp = tcx.def_span(impl_def_id);
                 span_bug!(sp, "weird self type for autotrait impl")
             }
@@ -292,7 +290,7 @@ fn orphan_check<'tcx>(
 ) -> Result<(), OrphanCheckErr<TyCtxt<'tcx>, FxIndexSet<DefId>>> {
     // We only accept this routine to be invoked on implementations
     // of a trait, not inherent implementations.
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id);
     debug!(trait_ref = ?trait_ref.skip_binder());
 
     // If the *trait* is local to the crate, ok.
@@ -313,7 +311,7 @@ fn orphan_check<'tcx>(
         let ocx = traits::ObligationCtxt::new(&infcx);
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
         let ty = infcx.resolve_vars_if_possible(ty);
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             return Ok(user_ty);
         }
@@ -384,7 +382,7 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let item = tcx.hir_expect_item(impl_def_id);
             let impl_ = item.expect_impl();
-            let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
+            let of_trait = impl_.of_trait.unwrap();
 
             let span = tcx.def_span(impl_def_id);
             let mut diag = tcx.dcx().create_err(match trait_ref.self_ty().kind() {
@@ -401,10 +399,10 @@ fn emit_orphan_check_error<'tcx>(
                     impl_.self_ty.span
                 } else {
                     // Point at `C<B>` in `impl<A, B> for C<B> in D<A>`
-                    hir_trait_ref.path.span
+                    of_trait.trait_ref.path.span
                 };
 
-                ty = tcx.erase_regions(ty);
+                ty = tcx.erase_and_anonymize_regions(ty);
 
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);

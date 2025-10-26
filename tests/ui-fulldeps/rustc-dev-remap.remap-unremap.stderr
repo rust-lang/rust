@@ -2,8 +2,13 @@ error[E0277]: the trait bound `NotAValidResultType: VisitorResult` is not satisf
   --> $DIR/rustc-dev-remap.rs:LL:COL
    |
 LL |     type Result = NotAValidResultType;
-   |                   ^^^^^^^^^^^^^^^^^^^ the trait `VisitorResult` is not implemented for `NotAValidResultType`
+   |                   ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `VisitorResult` is not implemented for `NotAValidResultType`
+  --> $DIR/rustc-dev-remap.rs:LL:COL
+   |
+LL | struct NotAValidResultType;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: the following other types implement trait `VisitorResult`:
              ()
              ControlFlow<T>

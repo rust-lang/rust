@@ -350,6 +350,12 @@ Tests for FFI with C varargs (`va_list`).
 
 Tests for detection and handling of cyclic trait dependencies.
 
+## `tests/ui/darwin-objc/`: Darwin Objective-C
+
+Tests exercising `#![feature(darwin_objc)]`.
+
+See [Tracking Issue for `darwin_objc` #145496](https://github.com/rust-lang/rust/issues/145496).
+
 ## `tests/ui/dataflow_const_prop/`
 
 Contains a single regression test for const prop in `SwitchInt` pass crashing when `ptr2int` transmute is involved.
@@ -411,6 +417,10 @@ These tests revolve around command-line flags which change the way error/warning
 ## `tests/ui/diagnostic_namespace/`
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
+
+## `tests/ui/diagnostics-infra`
+
+This directory contains tests and infrastructure related to the diagnostics system, including support for translatable diagnostics
 
 ## `tests/ui/diagnostic-width/`: `--diagnostic-width`
 
@@ -649,10 +659,6 @@ Tests on range patterns where one of the bounds is not a direct value.
 ## `tests/ui/hashmap/`
 
 Tests for the standard library collection [`std::collections::HashMap`](https://doc.rust-lang.org/std/collections/struct.HashMap.html).
-
-## `tests/ui/hello_world/`
-
-Tests that the basic hello-world program is not somehow broken.
 
 ## `tests/ui/higher-ranked/`
 
@@ -1232,6 +1238,10 @@ Exercises sanitizer support. See [Sanitizer | The rustc book](https://doc.rust-l
 ## `tests/ui/self/`: `self` keyword
 
 Tests with erroneous ways of using `self`, such as using `this.x` syntax as seen in other languages, having it not be the first argument, or using it in a non-associated function (no `impl` or `trait`). It also contains correct uses of `self` which have previously been observed to cause ICEs.
+
+## `tests/ui/self-profile/`: self-profiling
+
+Tests related to the self-profiler (`-Zself-profile`) functionality of rustc.
 
 ## `tests/ui/sepcomp/`: Separate Compilation
 

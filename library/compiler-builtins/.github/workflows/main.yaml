@@ -34,7 +34,9 @@ jobs:
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
         if: github.event_name == 'pull_request'
-      - run: python3 ci/ci-util.py generate-matrix >> "$GITHUB_OUTPUT"
+      - run: |
+          set -eo pipefail # Needed to actually fail the job if ci-util fails
+          python3 ci/ci-util.py generate-matrix | tee "$GITHUB_OUTPUT"
         id: script
 
   test:
@@ -49,9 +51,7 @@ jobs:
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
         - target: aarch64-pc-windows-msvc
-          os: windows-2025
-          test_verbatim: 1
-          build_only: 1
+          os: windows-11-arm
         - target: arm-unknown-linux-gnueabi
           os: ubuntu-24.04
         - target: arm-unknown-linux-gnueabihf
@@ -70,8 +70,12 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: powerpc64le-unknown-linux-gnu
+          os: ubuntu-24.04-ppc64le
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: s390x-unknown-linux-gnu
+          os: ubuntu-24.04-s390x
         - target: thumbv6m-none-eabi
           os: ubuntu-24.04
         - target: thumbv7em-none-eabi
@@ -88,10 +92,8 @@ jobs:
           os: macos-13
         - target: i686-pc-windows-msvc
           os: windows-2025
-          test_verbatim: 1
         - target: x86_64-pc-windows-msvc
           os: windows-2025
-          test_verbatim: 1
         - target: i686-pc-windows-gnu
           os: windows-2025
           channel: nightly-i686-gnu
@@ -102,11 +104,23 @@ jobs:
     needs: [calculate_vars]
     env:
       BUILD_ONLY: ${{ matrix.build_only }}
-      TEST_VERBATIM: ${{ matrix.test_verbatim }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
     steps:
+    - name: Print $HOME
+      shell: bash
+      run: |
+        set -x
+        echo "${HOME:-not found}"
+        pwd
+        printenv
     - name: Print runner information
       run: uname -a
+
+    # Native ppc and s390x runners don't have rustup by default
+    - name: Install rustup
+      if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
+      run: sudo apt-get update && sudo apt-get install -y rustup
+
     - uses: actions/checkout@v4
     - name: Install Rust (rustup)
       shell: bash
@@ -117,7 +131,12 @@ jobs:
         rustup update "$channel" --no-self-update
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
+
+    # Our scripts use nextest if possible. This is skipped on the native ppc
+    # and s390x runners since install-action doesn't support them.
     - uses: taiki-e/install-action@nextest
+      if: "!(matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x')"
+
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -144,7 +163,7 @@ jobs:
       shell: bash
     - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
       shell: bash
-      
+
     - name: Download musl source
       run: ./ci/update-musl.sh
       shell: bash
@@ -256,7 +275,7 @@ jobs:
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
-    
+
     - name: Run wall time benchmarks
       run: |
         # Always use the same seed for benchmarks. Ideally we should switch to a
@@ -311,8 +330,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-    - name: Install stable `rustfmt`
-      run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
+    - name: Install nightly `rustfmt`
+      run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
     - run: cargo fmt -- --check
 
   extensive:

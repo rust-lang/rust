@@ -14,6 +14,11 @@ LL |
 LL |             var = Some(NotCopyable);
    |             --- variable moved due to use in closure
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/option-content-move2.rs:5:12
+   |
+LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
+   |            ^^^^^^^^^^^^
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move2.rs:1:1
    |
@@ -38,6 +43,12 @@ LL |         move || {
 LL |
 LL |             var = Some(NotCopyableButCloneable);
    |             --- variable moved due to use in closure
+   |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/option-content-move2.rs:5:12
+   |
+LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
+   |            ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

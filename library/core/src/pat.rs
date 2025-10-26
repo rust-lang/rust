@@ -1,5 +1,8 @@
 //! Helper module for exporting the `pattern_type` macro
 
+use crate::marker::{Freeze, PointeeSized, Unsize};
+use crate::ops::{CoerceUnsized, DispatchFromDyn};
+
 /// Creates a pattern type.
 /// ```ignore (cannot test this from within core yet)
 /// type Positive = std::pat::pattern_type!(i32 is 1..);
@@ -18,12 +21,11 @@ macro_rules! pattern_type {
 /// used right now to simplify ast lowering of pattern type ranges.
 #[unstable(feature = "pattern_type_range_trait", issue = "123646")]
 #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
-#[const_trait]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not a valid base type for range patterns",
     label = "only integer types and `char` are supported"
 )]
-pub trait RangePattern {
+pub const trait RangePattern {
     /// Trait version of the inherent `MIN` assoc const.
     #[lang = "RangeMin"]
     const MIN: Self;
@@ -74,3 +76,16 @@ impl const RangePattern for char {
         }
     }
 }
+
+impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where
+    T: Unsize<U>
+{
+}
+
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null) {}
+
+impl<T: PointeeSized> Unpin for pattern_type!(*const T is !null) {}
+
+unsafe impl<T: PointeeSized> Freeze for pattern_type!(*const T is !null) {}
+
+unsafe impl<T: PointeeSized> Freeze for pattern_type!(*mut T is !null) {}

@@ -98,7 +98,7 @@ pub(crate) fn view_memory_layout(
         Definition::BuiltinType(it) => it.ty(db),
         Definition::SelfType(it) => it.self_ty(db),
         Definition::Local(it) => it.ty(db),
-        Definition::Field(it) => it.ty(db),
+        Definition::Field(it) => it.ty(db).to_type(db),
         Definition::Const(it) => it.ty(db),
         Definition::Static(it) => it.ty(db),
         _ => return None,
@@ -141,7 +141,7 @@ pub(crate) fn view_memory_layout(
             if let Ok(child_layout) = child_ty.layout(db) {
                 nodes.push(MemoryLayoutNode {
                     item_name: field.name(db),
-                    typename: child_ty.display(db, display_target).to_string(),
+                    typename: { child_ty.display(db, display_target).to_string() },
                     size: child_layout.size(),
                     alignment: child_layout.align(),
                     offset: match *field {
@@ -219,7 +219,7 @@ mod tests {
     ) -> Option<RecursiveMemoryLayout> {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
 
-        view_memory_layout(&analysis.db, position)
+        hir::attach_db(&analysis.db, || view_memory_layout(&analysis.db, position))
     }
 
     #[test]

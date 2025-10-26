@@ -52,8 +52,6 @@ pub use index::SliceIndex;
 pub use index::{range, try_range};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
-#[unstable(feature = "array_chunks", issue = "74985")]
-pub use iter::{ArrayChunks, ArrayChunksMut};
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use iter::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -330,7 +328,7 @@ impl<T> [T] {
         } else {
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the reference outlive the slice.
-            Some(unsafe { &*(self.as_ptr().cast::<[T; N]>()) })
+            Some(unsafe { &*(self.as_ptr().cast_array()) })
         }
     }
 
@@ -361,7 +359,7 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(self.as_mut_ptr().cast::<[T; N]>()) })
+            Some(unsafe { &mut *(self.as_mut_ptr().cast_array()) })
         }
     }
 
@@ -389,7 +387,7 @@ impl<T> [T] {
 
         // SAFETY: We explicitly check for the correct number of elements,
         //   and do not let the references outlive the slice.
-        Some((unsafe { &*(first.as_ptr().cast::<[T; N]>()) }, tail))
+        Some((unsafe { &*(first.as_ptr().cast_array()) }, tail))
     }
 
     /// Returns a mutable array reference to the first `N` items in the slice and the remaining
@@ -422,7 +420,7 @@ impl<T> [T] {
         // SAFETY: We explicitly check for the correct number of elements,
         //   do not let the reference outlive the slice,
         //   and enforce exclusive mutability of the chunk by the split.
-        Some((unsafe { &mut *(first.as_mut_ptr().cast::<[T; N]>()) }, tail))
+        Some((unsafe { &mut *(first.as_mut_ptr().cast_array()) }, tail))
     }
 
     /// Returns an array reference to the last `N` items in the slice and the remaining slice.
@@ -450,7 +448,7 @@ impl<T> [T] {
 
         // SAFETY: We explicitly check for the correct number of elements,
         //   and do not let the references outlive the slice.
-        Some((init, unsafe { &*(last.as_ptr().cast::<[T; N]>()) }))
+        Some((init, unsafe { &*(last.as_ptr().cast_array()) }))
     }
 
     /// Returns a mutable array reference to the last `N` items in the slice and the remaining
@@ -484,7 +482,7 @@ impl<T> [T] {
         // SAFETY: We explicitly check for the correct number of elements,
         //   do not let the reference outlive the slice,
         //   and enforce exclusive mutability of the chunk by the split.
-        Some((init, unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) }))
+        Some((init, unsafe { &mut *(last.as_mut_ptr().cast_array()) }))
     }
 
     /// Returns an array reference to the last `N` items in the slice.
@@ -513,7 +511,7 @@ impl<T> [T] {
 
         // SAFETY: We explicitly check for the correct number of elements,
         //   and do not let the references outlive the slice.
-        Some(unsafe { &*(last.as_ptr().cast::<[T; N]>()) })
+        Some(unsafe { &*(last.as_ptr().cast_array()) })
     }
 
     /// Returns a mutable array reference to the last `N` items in the slice.
@@ -544,7 +542,7 @@ impl<T> [T] {
         // SAFETY: We explicitly check for the correct number of elements,
         //   do not let the reference outlive the slice,
         //   and require exclusive access to the entire slice to mutate the chunk.
-        Some(unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) })
+        Some(unsafe { &mut *(last.as_mut_ptr().cast_array()) })
     }
 
     /// Returns a reference to an element or subslice depending on the type of
@@ -571,7 +569,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     pub const fn get<I>(&self, index: I) -> Option<&I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: [const] SliceIndex<Self>,
     {
         index.get(self)
     }
@@ -598,7 +596,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     pub const fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
-        I: ~const SliceIndex<Self>,
+        I: [const] SliceIndex<Self>,
     {
         index.get_mut(self)
     }
@@ -638,7 +636,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     pub const unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: [const] SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -683,7 +681,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_index", issue = "143775")]
     pub const unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
-        I: ~const SliceIndex<Self>,
+        I: [const] SliceIndex<Self>,
     {
         // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
         // the slice is dereferenceable because `self` is a safe reference.
@@ -848,7 +846,7 @@ impl<T> [T] {
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() == N {
-            let ptr = self.as_ptr() as *const [T; N];
+            let ptr = self.as_ptr().cast_array();
 
             // SAFETY: The underlying array of a slice can be reinterpreted as an actual array `[T; N]` if `N` is not greater than the slice's length.
             let me = unsafe { &*ptr };
@@ -866,7 +864,7 @@ impl<T> [T] {
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() == N {
-            let ptr = self.as_mut_ptr() as *mut [T; N];
+            let ptr = self.as_mut_ptr().cast_array();
 
             // SAFETY: The underlying array of a slice can be reinterpreted as an actual array `[T; N]` if `N` is not greater than the slice's length.
             let me = unsafe { &mut *ptr };
@@ -971,7 +969,7 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_reverse", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_slice_reverse", since = "1.90.0")]
     #[inline]
     pub const fn reverse(&mut self) {
         let half_len = self.len() / 2;
@@ -1232,7 +1230,7 @@ impl<T> [T] {
     ///
     /// [`chunks`]: slice::chunks
     /// [`rchunks_exact`]: slice::rchunks_exact
-    /// [`as_chunks`]: slice::chunks
+    /// [`as_chunks`]: slice::as_chunks
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
@@ -1448,42 +1446,6 @@ impl<T> [T] {
         (remainder, array_slice)
     }
 
-    /// Returns an iterator over `N` elements of the slice at a time, starting at the
-    /// beginning of the slice.
-    ///
-    /// The chunks are array references and do not overlap. If `N` does not divide the
-    /// length of the slice, then the last up to `N-1` elements will be omitted and can be
-    /// retrieved from the `remainder` function of the iterator.
-    ///
-    /// This method is the const generic equivalent of [`chunks_exact`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_chunks)]
-    /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.array_chunks();
-    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
-    /// assert!(iter.next().is_none());
-    /// assert_eq!(iter.remainder(), &['m']);
-    /// ```
-    ///
-    /// [`chunks_exact`]: slice::chunks_exact
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    #[track_caller]
-    pub const fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
-        ArrayChunks::new(self)
-    }
-
     /// Splits the slice into a slice of `N`-element arrays,
     /// assuming that there's no remainder.
     ///
@@ -1644,44 +1606,6 @@ impl<T> [T] {
         // that the length of the subslice is a multiple of N.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (remainder, array_slice)
-    }
-
-    /// Returns an iterator over `N` elements of the slice at a time, starting at the
-    /// beginning of the slice.
-    ///
-    /// The chunks are mutable array references and do not overlap. If `N` does not divide
-    /// the length of the slice, then the last up to `N-1` elements will be omitted and
-    /// can be retrieved from the `into_remainder` function of the iterator.
-    ///
-    /// This method is the const generic equivalent of [`chunks_exact_mut`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is zero. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_chunks)]
-    /// let v = &mut [0, 0, 0, 0, 0];
-    /// let mut count = 1;
-    ///
-    /// for chunk in v.array_chunks_mut() {
-    ///     *chunk = [count; 2];
-    ///     count += 1;
-    /// }
-    /// assert_eq!(v, &[1, 1, 2, 2, 0]);
-    /// ```
-    ///
-    /// [`chunks_exact_mut`]: slice::chunks_exact_mut
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    #[track_caller]
-    pub const fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
-        ArrayChunksMut::new(self)
     }
 
     /// Returns an iterator over overlapping windows of `N` elements of a slice,
@@ -3705,7 +3629,7 @@ impl<T> [T] {
     /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_slice_rotate", issue = "143812")]
+    #[rustc_const_stable(feature = "const_slice_rotate", since = "CURRENT_RUSTC_VERSION")]
     pub const fn rotate_left(&mut self, mid: usize) {
         assert!(mid <= self.len());
         let k = self.len() - mid;
@@ -3751,7 +3675,7 @@ impl<T> [T] {
     /// assert_eq!(a, ['a', 'e', 'b', 'c', 'd', 'f']);
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_slice_rotate", issue = "143812")]
+    #[rustc_const_stable(feature = "const_slice_rotate", since = "CURRENT_RUSTC_VERSION")]
     pub const fn rotate_right(&mut self, k: usize) {
         assert!(k <= self.len());
         let mid = self.len() - k;
@@ -3934,8 +3858,8 @@ impl<T> [T] {
     {
         // The panic code path was put into a cold function to not bloat the
         // call site.
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-        #[cfg_attr(feature = "panic_immediate_abort", inline)]
+        #[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+        #[cfg_attr(panic = "immediate-abort", inline)]
         #[track_caller]
         const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
             const_panic!(
@@ -4050,8 +3974,9 @@ impl<T> [T] {
     ///
     /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
+    #[rustc_const_unstable(feature = "const_swap_with_slice", issue = "142204")]
     #[track_caller]
-    pub fn swap_with_slice(&mut self, other: &mut [T]) {
+    pub const fn swap_with_slice(&mut self, other: &mut [T]) {
         assert!(self.len() == other.len(), "destination and source slices have different lengths");
         // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
         // checked to have the same length. The slices cannot overlap because

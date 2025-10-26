@@ -42,7 +42,7 @@ pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     } else {
         // Allow users to tag any macro as being format!-like
         // TODO: consider deleting FORMAT_MACRO_DIAG_ITEMS and using just this method
-        get_unique_attr(cx.sess(), cx.tcx.get_attrs_unchecked(macro_def_id), sym::format_args).is_some()
+        get_unique_attr(cx.sess(), cx.tcx.get_all_attrs(macro_def_id), sym::format_args).is_some()
     }
 }
 
@@ -250,18 +250,13 @@ impl<'a> PanicExpn<'a> {
         };
         let name = path.segments.last().unwrap().ident.name;
 
-        // This has no argument
-        if name == sym::panic_cold_explicit {
-            return Some(Self::Empty);
-        }
-
         let [arg, rest @ ..] = args else {
             return None;
         };
         let result = match name {
             sym::panic if arg.span.eq_ctxt(expr.span) => Self::Empty,
             sym::panic | sym::panic_str => Self::Str(arg),
-            sym::panic_display | sym::panic_cold_display => {
+            sym::panic_display => {
                 let ExprKind::AddrOf(_, _, e) = &arg.kind else {
                     return None;
                 };

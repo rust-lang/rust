@@ -37,7 +37,7 @@ def cargo_miri(cmd, quiet = True, targets = None):
 
 def normalize_stdout(str):
     str = str.replace("src\\", "src/") # normalize paths across platforms
-    str = re.sub("finished in \\d+\\.\\d\\ds", "finished in $TIME", str) # the time keeps changing, obviously
+    str = re.sub("\\b\\d+\\.\\d+s\\b", "$TIME", str) # the time keeps changing, obviously
     return str
 
 def check_output(actual, path, name):

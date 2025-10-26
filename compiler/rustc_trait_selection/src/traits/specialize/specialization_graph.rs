@@ -38,7 +38,7 @@ enum Inserted<'tcx> {
 impl<'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         if let Some(st) =
             fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
         {
@@ -54,7 +54,7 @@ impl<'tcx> Children {
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         let vec: &mut Vec<DefId>;
         if let Some(st) =
             fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::InstantiateWithInfer)
@@ -113,7 +113,7 @@ impl<'tcx> Children {
                 // Found overlap, but no specialization; error out or report future-compat warning.
 
                 // Do we *still* get overlap if we disable the future-incompatible modes?
-                let should_err = traits::overlapping_impls(
+                let should_err = traits::overlapping_trait_impls(
                     tcx,
                     possible_sibling,
                     impl_def_id,
@@ -137,7 +137,7 @@ impl<'tcx> Children {
             };
 
             let last_lint_mut = &mut last_lint;
-            let (le, ge) = traits::overlapping_impls(
+            let (le, ge) = traits::overlapping_trait_impls(
                 tcx,
                 possible_sibling,
                 impl_def_id,
@@ -164,7 +164,7 @@ impl<'tcx> Children {
             if le && !ge {
                 debug!(
                     "descending as child of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
+                    tcx.impl_trait_ref(possible_sibling).instantiate_identity()
                 );
 
                 // The impl specializes `possible_sibling`.
@@ -172,7 +172,7 @@ impl<'tcx> Children {
             } else if ge && !le {
                 debug!(
                     "placing as parent of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
+                    tcx.impl_trait_ref(possible_sibling).instantiate_identity()
                 );
 
                 replace_children.push(possible_sibling);
@@ -242,7 +242,7 @@ impl<'tcx> Graph {
         assert!(impl_def_id.is_local());
 
         // FIXME: use `EarlyBinder` in `self.children`
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).skip_binder();
         let trait_def_id = trait_ref.def_id;
 
         debug!(
@@ -354,7 +354,7 @@ pub(crate) fn assoc_def(
     impl_def_id: DefId,
     assoc_def_id: DefId,
 ) -> Result<LeafDef, ErrorGuaranteed> {
-    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
     let trait_def = tcx.trait_def(trait_def_id);
 
     // This function may be called while we are still building the
@@ -387,7 +387,7 @@ pub(crate) fn assoc_def(
     if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
         // Ensure that the impl is constrained, otherwise projection may give us
         // bad unconstrained infer vars.
-        if assoc_item.item.container == ty::AssocItemContainer::Impl
+        if let ty::AssocContainer::TraitImpl(_) = assoc_item.item.container
             && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
         {
             tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;

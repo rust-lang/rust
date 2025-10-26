@@ -9,6 +9,7 @@ use crate::{FileRange, HighlightConfig, HlTag, TextRange, fixture};
 
 const HL_CONFIG: HighlightConfig = HighlightConfig {
     strings: true,
+    comments: true,
     punctuation: true,
     specialize_punctuation: true,
     specialize_operator: true,
@@ -1220,14 +1221,23 @@ fn foo(x: &fn(&dyn Trait)) {}
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
+fn check_highlighting_with_config(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    config: HighlightConfig,
+    expect: ExpectFile,
+    rainbow: bool,
+) {
+    let (analysis, file_id) = fixture::file(ra_fixture.trim());
+    let actual_html = &analysis.highlight_as_html_with_config(config, file_id, rainbow).unwrap();
+    expect.assert_eq(actual_html)
+}
+
 fn check_highlighting(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: ExpectFile,
     rainbow: bool,
 ) {
-    let (analysis, file_id) = fixture::file(ra_fixture.trim());
-    let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
-    expect.assert_eq(actual_html)
+    check_highlighting_with_config(ra_fixture, HL_CONFIG, expect, rainbow)
 }
 
 #[test]
@@ -1432,6 +1442,27 @@ fn main() {
 //- /main.rs
 "#,
         expect_file!["./test_data/highlight_issue_19357.html"],
+        false,
+    );
+}
+
+#[test]
+fn test_comment_highlighting_disabled() {
+    // Test that comments are not highlighted when disabled
+    check_highlighting_with_config(
+        r#"
+// This is a regular comment
+/// This is a doc comment
+fn main() {
+    // Another comment
+    println!("Hello, world!");
+}
+"#,
+        HighlightConfig {
+            comments: false, // Disable comment highlighting
+            ..HL_CONFIG
+        },
+        expect_file!["./test_data/highlight_comments_disabled.html"],
         false,
     );
 }

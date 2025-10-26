@@ -189,3 +189,25 @@ pub use bar::P;
 //@ has - '//*[@id="variant.A"]/h3' 'A(u32)'
 //@ matches - '//*[@id="variant.B"]/h3' '^B$'
 pub use bar::Q;
+
+// Ensure signed implicit discriminants are rendered correctly after a negative explicit value.
+//@ has 'foo/enum.R.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'A = -2,'
+//@ has - '//*[@class="rust item-decl"]/code' 'B = -1,'
+//@ matches - '//*[@id="variant.A"]/h3' '^A = -2$'
+//@ matches - '//*[@id="variant.B"]/h3' '^B = -1$'
+pub enum R {
+    A = -2,
+    B,
+}
+
+// Also check that incrementing -1 yields 0 for the next implicit variant.
+//@ has 'foo/enum.S.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'A = -1,'
+//@ has - '//*[@class="rust item-decl"]/code' 'B = 0,'
+//@ matches - '//*[@id="variant.A"]/h3' '^A = -1$'
+//@ matches - '//*[@id="variant.B"]/h3' '^B = 0$'
+pub enum S {
+    A = -1,
+    B,
+}

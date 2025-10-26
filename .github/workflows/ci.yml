@@ -52,7 +52,7 @@ jobs:
       run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
@@ -113,7 +113,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
@@ -122,8 +122,15 @@ jobs:
       # intensive jobs to run on free runners, which however also have
       # less disk space.
       - name: free up disk space
-        run: src/ci/scripts/free-disk-space.sh
+        run: src/ci/scripts/free-disk-space-linux.sh
         if: matrix.free_disk
+
+      # If we don't need to free up disk space then just report how much space we have
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+        if: matrix.free_disk == false
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
@@ -151,9 +158,6 @@ jobs:
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-
-      - name: install rust
-        run: src/ci/scripts/install-rust.sh
 
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
@@ -242,6 +246,8 @@ jobs:
         run: src/ci/scripts/create-doc-artifacts.sh
 
       - name: print disk usage
+        # We also want to know the disk usage when the job fails.
+        if: always()
         run: |
           echo "disk usage:"
           df -h
@@ -309,7 +315,7 @@ jobs:
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       # Calculate the exit status of the whole CI workflow.

@@ -12,8 +12,8 @@ use rowan::{GreenNodeData, GreenTokenData};
 use crate::{
     NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, T, TokenText,
     ast::{
-        self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName, SyntaxNode,
-        support,
+        self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
+        HasTypeBounds, SyntaxNode, support,
     },
     ted,
 };
@@ -805,9 +805,7 @@ impl ast::SelfParam {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TypeBoundKind {
     /// Trait
-    PathType(ast::PathType),
-    /// for<'a> ...
-    ForType(ast::ForType),
+    PathType(Option<ast::ForBinder>, ast::PathType),
     /// use
     Use(ast::UseBoundGenericArgs),
     /// 'a
@@ -817,9 +815,7 @@ pub enum TypeBoundKind {
 impl ast::TypeBound {
     pub fn kind(&self) -> TypeBoundKind {
         if let Some(path_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::PathType(path_type)
-        } else if let Some(for_type) = support::children(self.syntax()).next() {
-            TypeBoundKind::ForType(for_type)
+            TypeBoundKind::PathType(self.for_binder(), path_type)
         } else if let Some(args) = self.use_bound_generic_args() {
             TypeBoundKind::Use(args)
         } else if let Some(lifetime) = self.lifetime() {
@@ -884,51 +880,6 @@ impl AstNode for TypeOrConstParam {
 
 impl HasAttrs for TypeOrConstParam {}
 
-#[derive(Debug, Clone)]
-pub enum TraitOrAlias {
-    Trait(ast::Trait),
-    TraitAlias(ast::TraitAlias),
-}
-
-impl TraitOrAlias {
-    pub fn name(&self) -> Option<ast::Name> {
-        match self {
-            TraitOrAlias::Trait(x) => x.name(),
-            TraitOrAlias::TraitAlias(x) => x.name(),
-        }
-    }
-}
-
-impl AstNode for TraitOrAlias {
-    fn can_cast(kind: SyntaxKind) -> bool
-    where
-        Self: Sized,
-    {
-        matches!(kind, SyntaxKind::TRAIT | SyntaxKind::TRAIT_ALIAS)
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        let res = match syntax.kind() {
-            SyntaxKind::TRAIT => TraitOrAlias::Trait(ast::Trait { syntax }),
-            SyntaxKind::TRAIT_ALIAS => TraitOrAlias::TraitAlias(ast::TraitAlias { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            TraitOrAlias::Trait(it) => it.syntax(),
-            TraitOrAlias::TraitAlias(it) => it.syntax(),
-        }
-    }
-}
-
-impl HasAttrs for TraitOrAlias {}
-
 pub enum VisibilityKind {
     In(ast::Path),
     PubCrate,
@@ -961,11 +912,10 @@ impl ast::Visibility {
 
 impl ast::LifetimeParam {
     pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .skip_while(|x| x.kind() != T![:])
-            .filter(|it| it.kind() == T![lifetime_ident])
+        self.type_bound_list()
+            .into_iter()
+            .flat_map(|it| it.bounds())
+            .filter_map(|it| it.lifetime()?.lifetime_ident_token())
     }
 }
 

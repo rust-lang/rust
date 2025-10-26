@@ -1,4 +1,4 @@
-error: Undefined Behavior: calling a function with argument of type std::simd::Simd<u32, 8> passing data of type std::simd::Simd<u64, 4>
+error: Undefined Behavior: calling a function whose parameter #1 has type std::simd::Simd<u32, 8> passing argument of type std::simd::Simd<u64, 4>
   --> tests/fail/function_pointers/abi_mismatch_vector.rs:LL:CC
    |
 LL |     g(Default::default())

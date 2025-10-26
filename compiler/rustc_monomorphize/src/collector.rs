@@ -205,39 +205,46 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-use std::cell::OnceCell;
-use std::path::PathBuf;
+mod autodiff;
 
-use rustc_attr_data_structures::InlineAttr;
+use std::cell::OnceCell;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
-use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
+use rustc_middle::mir::mono::{
+    CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono,
+};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, MentionedItem, traversal};
+use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
-use rustc_session::Limit;
 use rustc_session::config::{DebugInfo, EntryFnType};
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
+use crate::collector::autodiff::collect_autodiff_fn;
+use crate::errors::{
+    self, EncounteredErrorWhileInstantiating, EncounteredErrorWhileInstantiatingGlobalAsm,
+    NoOptimizedMir, RecursionLimit,
+};
 
 #[derive(PartialEq)]
 pub(crate) enum MonoItemCollectionStrategy {
@@ -470,7 +477,22 @@ fn collect_items_rec<'tcx>(
             ));
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let (used, mentioned) = tcx.items_of_instance((instance, mode));
+                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                    // Normalization errors here are usually due to trait solving overflow.
+                    // FIXME: I assume that there are few type errors at post-analysis stage, but not
+                    // entirely sure.
+                    // We have to emit the error outside of `items_of_instance` to access the
+                    // span of the `starting_item`.
+                    let def_id = instance.def_id();
+                    let def_span = tcx.def_span(def_id);
+                    let def_path_str = tcx.def_path_str(def_id);
+                    tcx.dcx().emit_fatal(RecursionLimit {
+                        span: starting_item.span,
+                        instance,
+                        def_span,
+                        def_path_str,
+                    });
+                };
                 used_items.extend(used.into_iter().copied());
                 mentioned_items.extend(mentioned.into_iter().copied());
             });
@@ -525,11 +547,23 @@ fn collect_items_rec<'tcx>(
         && starting_item.node.is_generic_fn()
         && starting_item.node.is_user_defined()
     {
-        let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
-        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
-            span: starting_item.span,
-            formatted_item,
-        });
+        match starting_item.node {
+            MonoItem::Fn(instance) => tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
+                span: starting_item.span,
+                kind: "fn",
+                instance,
+            }),
+            MonoItem::Static(def_id) => tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
+                span: starting_item.span,
+                kind: "static",
+                instance: Instance::new_raw(def_id, GenericArgs::empty()),
+            }),
+            MonoItem::GlobalAsm(_) => {
+                tcx.dcx().emit_note(EncounteredErrorWhileInstantiatingGlobalAsm {
+                    span: starting_item.span,
+                })
+            }
+        }
     }
     // Only updating `usage_map` for used items as otherwise we may be inserting the same item
     // multiple times (if it is first 'mentioned' and then later actually used), and the usage map
@@ -587,6 +621,35 @@ fn collect_items_rec<'tcx>(
     }
 }
 
+// Check whether we can normalize every type in the instantiated MIR body.
+fn check_normalization_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &Body<'tcx>,
+) -> Result<(), NormalizationErrorInMono> {
+    struct NormalizationChecker<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+    }
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for NormalizationChecker<'tcx> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+            match self.instance.try_instantiate_mir_and_normalize_erasing_regions(
+                self.tcx,
+                ty::TypingEnv::fully_monomorphized(),
+                ty::EarlyBinder::bind(t),
+            ) {
+                Ok(_) => ControlFlow::Continue(()),
+                Err(_) => ControlFlow::Break(()),
+            }
+        }
+    }
+
+    let mut checker = NormalizationChecker { tcx, instance };
+    if body.visit_with(&mut checker).is_break() { Err(NormalizationErrorInMono) } else { Ok(()) }
+}
+
 fn check_recursion_limit<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -612,22 +675,7 @@ fn check_recursion_limit<'tcx>(
     if !recursion_limit.value_within_limit(adjusted_recursion_depth) {
         let def_span = tcx.def_span(def_id);
         let def_path_str = tcx.def_path_str(def_id);
-        let (shrunk, written_to_path) = shrunk_instance_name(tcx, instance);
-        let mut path = PathBuf::new();
-        let was_written = if let Some(written_to_path) = written_to_path {
-            path = written_to_path;
-            true
-        } else {
-            false
-        };
-        tcx.dcx().emit_fatal(RecursionLimit {
-            span,
-            shrunk,
-            def_span,
-            def_path_str,
-            was_written,
-            path,
-        });
+        tcx.dcx().emit_fatal(RecursionLimit { span, instance, def_span, def_path_str });
     }
 
     recursion_depths.insert(def_id, recursion_depth + 1);
@@ -788,7 +836,35 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
+
+                // HACK(explicit_tail_calls): collect tail calls to `#[track_caller]` functions as indirect,
+                // because we later call them as such, to prevent issues with ABI incompatibility.
+                // Ideally we'd replace such tail calls with normal call + return, but this requires
+                // post-mono MIR optimizations, which we don't yet have.
+                let force_indirect_call =
+                    if matches!(terminator.kind, mir::TerminatorKind::TailCall { .. })
+                        && let &ty::FnDef(def_id, args) = callee_ty.kind()
+                        && let instance = ty::Instance::expect_resolve(
+                            self.tcx,
+                            ty::TypingEnv::fully_monomorphized(),
+                            def_id,
+                            args,
+                            source,
+                        )
+                        && instance.def.requires_caller_location(self.tcx)
+                    {
+                        true
+                    } else {
+                        false
+                    };
+
+                visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    !force_indirect_call,
+                    source,
+                    &mut self.used_items,
+                )
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -913,6 +989,8 @@ fn visit_instance_use<'tcx>(
         return;
     }
     if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
+        collect_autodiff_fn(tcx, instance, intrinsic, output);
+
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
@@ -1067,6 +1145,7 @@ fn find_tails_for_unsizing<'tcx>(
     debug_assert!(!target_ty.has_param(), "{target_ty} should be fully monomorphic");
 
     match (source_ty.kind(), target_ty.kind()) {
+        (&ty::Pat(source, _), &ty::Pat(target, _)) => find_tails_for_unsizing(tcx, source, target),
         (
             &ty::Ref(_, source_pointee, _),
             &ty::Ref(_, target_pointee, _) | &ty::RawPtr(target_pointee, _),
@@ -1228,11 +1307,15 @@ fn collect_items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     mode: CollectionMode,
-) -> (MonoItems<'tcx>, MonoItems<'tcx>) {
+) -> Result<(MonoItems<'tcx>, MonoItems<'tcx>), NormalizationErrorInMono> {
     // This item is getting monomorphized, do mono-time checks.
+    let body = tcx.instance_mir(instance.def);
+    // Plenty of code paths later assume that everything can be normalized. So we have to check
+    // normalization first.
+    // We choose to emit the error outside to provide helpful diagnostics.
+    check_normalization_error(tcx, instance, body)?;
     tcx.ensure_ok().check_mono_item(instance);
 
-    let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
     // visited, but at that point each mentioned item has been monomorphized, added to the
@@ -1282,19 +1365,22 @@ fn collect_items_of_instance<'tcx>(
         }
     }
 
-    (used_items, mentioned_items)
+    Ok((used_items, mentioned_items))
 }
 
 fn items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     (instance, mode): (Instance<'tcx>, CollectionMode),
-) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
-    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode);
+) -> Result<
+    (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]),
+    NormalizationErrorInMono,
+> {
+    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode)?;
 
     let used_items = tcx.arena.alloc_from_iter(used_items);
     let mentioned_items = tcx.arena.alloc_from_iter(mentioned_items);
 
-    (used_items, mentioned_items)
+    Ok((used_items, mentioned_items))
 }
 
 /// `item` must be already monomorphized.
@@ -1483,7 +1569,7 @@ impl<'v> RootCollector<'_, 'v> {
                     }
                 }
             }
-            DefKind::Impl { .. } => {
+            DefKind::Impl { of_trait: true } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager {
                     create_mono_items_for_default_impls(self.tcx, id, self.output);
                 }
@@ -1504,7 +1590,20 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_nested_body(&mut self, def_id: LocalDefId) {
         match self.tcx.def_kind(def_id) {
             DefKind::Closure => {
-                if self.strategy == MonoItemCollectionStrategy::Eager
+                // for 'pub async fn foo(..)' also trying to monomorphize foo::{closure}
+                let is_pub_fn_coroutine =
+                    match *self.tcx.type_of(def_id).instantiate_identity().kind() {
+                        ty::Coroutine(cor_id, _args) => {
+                            let tcx = self.tcx;
+                            let parent_id = tcx.parent(cor_id);
+                            tcx.def_kind(parent_id) == DefKind::Fn
+                                && tcx.asyncness(parent_id).is_async()
+                                && tcx.visibility(parent_id).is_public()
+                        }
+                        ty::Closure(..) | ty::CoroutineClosure(..) => false,
+                        _ => unreachable!(),
+                    };
+                if (self.strategy == MonoItemCollectionStrategy::Eager || is_pub_fn_coroutine)
                     && !self
                         .tcx
                         .generics_of(self.tcx.typeck_root_def_id(def_id.to_def_id()))
@@ -1514,7 +1613,7 @@ impl<'v> RootCollector<'_, 'v> {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
-                            Instance::new_raw(def_id, self.tcx.erase_regions(args))
+                            Instance::new_raw(def_id, self.tcx.erase_and_anonymize_regions(args))
                         }
                         _ => unreachable!(),
                     };
@@ -1617,9 +1716,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
-        return;
-    };
+    let impl_ = tcx.impl_trait_header(item.owner_id);
 
     if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
         return;

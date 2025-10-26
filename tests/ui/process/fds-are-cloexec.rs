@@ -74,8 +74,15 @@ fn child(args: &[String]) {
         let fd: libc::c_int = arg.parse().unwrap();
         unsafe {
             assert_eq!(libc::read(fd, b.as_mut_ptr() as *mut _, 2), -1);
-            assert_eq!(io::Error::last_os_error().raw_os_error(),
-                       Some(libc::EBADF));
+            let raw = io::Error::last_os_error().raw_os_error();
+            if cfg!(all(target_vendor = "apple", not(target_os = "macos"))) {
+                // Workaround: iOS/tvOS/watchOS/visionOS seems to treat `tcp6`
+                // as a directory?
+                if raw == Some(libc::EISDIR) {
+                    continue;
+                }
+            }
+            assert_eq!(raw, Some(libc::EBADF));
         }
     }
 }

@@ -34,22 +34,12 @@ pub macro link_dylib {
 
 #[cfg(feature = "windows_raw_dylib")]
 pub macro link($($tt:tt)*) {
-    $crate::link_raw_dylib!($($tt)*)
+    $crate::link_raw_dylib!($($tt)*);
 }
 
 #[cfg(not(feature = "windows_raw_dylib"))]
-pub macro link {
-    ($library:literal $abi:literal $($link_name:literal)? $(#[$doc:meta])? fn $($function:tt)*) => (
-        // Note: the windows-targets crate uses a pre-built Windows.lib import library which we don't
-        // have in this repo. So instead we always link kernel32.lib and add the rest of the import
-        // libraries below by using an empty extern block. This works because extern blocks are not
-        // connected to the library given in the #[link] attribute.
-        #[link(name = "kernel32")]
-        unsafe extern $abi {
-            $(#[link_name=$link_name])?
-            pub fn $($function)*;
-        }
-    )
+pub macro link($($tt:tt)*) {
+    $crate::link_dylib!($($tt)*);
 }
 
 #[cfg(not(feature = "windows_raw_dylib"))]

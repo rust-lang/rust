@@ -56,7 +56,11 @@ LL |     test(NoSync);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Sync` is not implemented for `NoSync`
+help: the trait `Sync` is not implemented for `NoSync`
+  --> $DIR/typeck-unsafe-always-share.rs:12:1
+   |
+LL | struct NoSync;
+   | ^^^^^^^^^^^^^
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |

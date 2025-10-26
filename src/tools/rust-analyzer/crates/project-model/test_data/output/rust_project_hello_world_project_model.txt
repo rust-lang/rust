@@ -40,8 +40,8 @@
             entries: {},
         },
         ws_data: CrateWorkspaceData {
-            data_layout: Err(
-                "test has no data layout",
+            target: Err(
+                "test has no target data",
             ),
             toolchain: None,
         },

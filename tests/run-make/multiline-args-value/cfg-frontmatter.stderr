@@ -1,0 +1,4 @@
+error: invalid `--cfg` argument: `---
+       ---
+       key` (expected `key` or `key="value"`)
+

@@ -13,10 +13,15 @@ use std::path::Path;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
+use utils::check_nondet;
 
 fn main() {
     test_path_conversion();
     test_file();
+    // Partial reads/writes are apparently not a thing on Windows.
+    if cfg!(not(windows)) {
+        test_file_partial_reads_writes();
+    }
     test_file_create_new();
     test_metadata();
     test_seek();
@@ -53,7 +58,7 @@ fn test_file() {
     file.write(&mut []).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 0);
 
-    file.write(bytes).unwrap();
+    file.write_all(bytes).unwrap();
     assert_eq!(file.metadata().unwrap().len(), bytes.len() as u64);
     // Test opening, reading and closing a file.
     let mut file = File::open(&path).unwrap();
@@ -66,8 +71,36 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
+    // Writing to a file opened for reading should error (and not stop interpretation). std does not
+    // categorize the error so we don't check for details.
+    file.write(&[0]).unwrap_err();
+    // However, writing 0 bytes can succeed or fail.
+    let _ignore = file.write(&[]);
+
     // Removing file should succeed.
     remove_file(&path).unwrap();
+}
+
+fn test_file_partial_reads_writes() {
+    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
+    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
+
+    // Ensure we sometimes do incomplete writes.
+    check_nondet(|| {
+        let _ = remove_file(&path1); // FIXME(win, issue #4483): errors if the file already exists
+        let mut file = File::create(&path1).unwrap();
+        file.write(&[0; 4]).unwrap() == 4
+    });
+    // Ensure we sometimes do incomplete reads.
+    check_nondet(|| {
+        let mut file = File::open(&path2).unwrap();
+        let mut buf = [0; 4];
+        file.read(&mut buf).unwrap() == 4
+    });
+
+    // Clean up
+    remove_file(&path1).unwrap();
+    remove_file(&path2).unwrap();
 }
 
 fn test_file_clone() {

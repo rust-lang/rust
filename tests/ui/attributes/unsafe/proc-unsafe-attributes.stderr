@@ -1,11 +1,11 @@
 error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
 
 error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
@@ -28,19 +28,8 @@ LL | #[unsafe(proc_macro_derive(Foo))]
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: expected identifier, found keyword `unsafe`
-  --> $DIR/proc-unsafe-attributes.rs:12:21
-   |
-LL | #[proc_macro_derive(unsafe(Foo))]
-   |                     ^^^^^^ expected identifier, found keyword
-   |
-help: escape `unsafe` to use it as an identifier
-   |
-LL | #[proc_macro_derive(r#unsafe(Foo))]
-   |                     ++
-
 error: `proc_macro_attribute` is not an unsafe attribute
-  --> $DIR/proc-unsafe-attributes.rs:17:3
+  --> $DIR/proc-unsafe-attributes.rs:18:3
    |
 LL | #[unsafe(proc_macro_attribute)]
    |   ^^^^^^ this is not an unsafe attribute
@@ -48,7 +37,7 @@ LL | #[unsafe(proc_macro_attribute)]
    = note: extraneous unsafe is not allowed in attributes
 
 error: `allow` is not an unsafe attribute
-  --> $DIR/proc-unsafe-attributes.rs:22:3
+  --> $DIR/proc-unsafe-attributes.rs:23:3
    |
 LL | #[unsafe(allow(dead_code))]
    |   ^^^^^^ this is not an unsafe attribute
@@ -56,7 +45,7 @@ LL | #[unsafe(allow(dead_code))]
    = note: extraneous unsafe is not allowed in attributes
 
 error: `allow` is not an unsafe attribute
-  --> $DIR/proc-unsafe-attributes.rs:26:3
+  --> $DIR/proc-unsafe-attributes.rs:27:3
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |   ^^^^^^ this is not an unsafe attribute
@@ -64,7 +53,7 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    = note: extraneous unsafe is not allowed in attributes
 
 error: expected identifier, found keyword `unsafe`
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^ expected identifier, found keyword
@@ -93,13 +82,13 @@ LL | #[proc_macro_derive(unsafe(Foo))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/proc-unsafe-attributes.rs:17:1
+  --> $DIR/proc-unsafe-attributes.rs:18:1
    |
 LL | #[unsafe(proc_macro_attribute)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
@@ -107,7 +96,44 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
+   |
+LL | #[unsafe(allow(unsafe(dead_code)))]
+   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/proc-unsafe-attributes.rs:12:21
+   |
+LL | #[proc_macro_derive(unsafe(Foo))]
+   |                     ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[proc_macro_derive(r#unsafe(Foo))]
+   |                     ++
+
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/proc-unsafe-attributes.rs:12:1
+   |
+LL | #[proc_macro_derive(unsafe(Foo))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |                           |
+   |                           didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(unsafe(Foo))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(unsafe(Foo))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
@@ -115,21 +141,14 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
+  --> $DIR/proc-unsafe-attributes.rs:27:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0452]: malformed lint attribute input
-  --> $DIR/proc-unsafe-attributes.rs:26:16
-   |
-LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+error: aborting due to 18 previous errors
 
-error: aborting due to 17 previous errors
-
-For more information about this error, try `rustc --explain E0452`.
+Some errors have detailed explanations: E0452, E0565.
+For more information about an error, try `rustc --explain E0452`.

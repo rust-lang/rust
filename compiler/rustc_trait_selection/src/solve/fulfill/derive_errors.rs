@@ -95,15 +95,17 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
             root_obligation.cause.span,
             None,
         ) {
-            Ok(GoalEvaluation { certainty: Certainty::Maybe(MaybeCause::Ambiguity), .. }) => {
-                (FulfillmentErrorCode::Ambiguity { overflow: None }, true)
-            }
+            Ok(GoalEvaluation {
+                certainty: Certainty::Maybe { cause: MaybeCause::Ambiguity, .. },
+                ..
+            }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
             Ok(GoalEvaluation {
                 certainty:
-                    Certainty::Maybe(MaybeCause::Overflow {
-                        suggest_increasing_limit,
-                        keep_constraints: _,
-                    }),
+                    Certainty::Maybe {
+                        cause:
+                            MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: _ },
+                        ..
+                    },
                 ..
             }) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
@@ -229,7 +231,6 @@ impl<'tcx> BestObligation<'tcx> {
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
-                                            | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
                                     ) && nested_goal.result().is_err()
                                 },
@@ -266,7 +267,8 @@ impl<'tcx> BestObligation<'tcx> {
             );
             // Skip nested goals that aren't the *reason* for our goal's failure.
             match (self.consider_ambiguities, nested_goal.result()) {
-                (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+                (true, Ok(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. }))
+                | (false, Err(_)) => {}
                 _ => continue,
             }
 
@@ -407,7 +409,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         let tcx = goal.infcx().tcx;
         // Skip goals that aren't the *reason* for our goal's failure.
         match (self.consider_ambiguities, goal.result()) {
-            (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+            (true, Ok(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. })) | (false, Err(_)) => {
+            }
             _ => return ControlFlow::Continue(()),
         }
 
@@ -518,10 +521,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                         parent_host_pred,
                     ));
                     impl_where_bound_count += 1;
-                }
-                // Skip over a higher-ranked predicate.
-                (_, GoalSource::InstantiateHigherRanked) => {
-                    obligation = self.obligation.clone();
                 }
                 (ChildMode::PassThrough, _)
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {

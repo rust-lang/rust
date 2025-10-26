@@ -139,6 +139,34 @@ mod uninit;
 /// // Note: With the manual implementations the above line will compile.
 /// ```
 ///
+/// ## `Clone` and `PartialEq`/`Eq`
+/// `Clone` is intended for the duplication of objects. Consequently, when implementing
+/// both `Clone` and [`PartialEq`], the following property is expected to hold:
+/// ```text
+/// x == x -> x.clone() == x
+/// ```
+/// In other words, if an object compares equal to itself,
+/// its clone must also compare equal to the original.
+///
+/// For types that also implement [`Eq`] – for which `x == x` always holds –
+/// this implies that `x.clone() == x` must always be true.
+/// Standard library collections such as
+/// [`HashMap`], [`HashSet`], [`BTreeMap`], [`BTreeSet`] and [`BinaryHeap`]
+/// rely on their keys respecting this property for correct behavior.
+/// Furthermore, these collections require that cloning a key preserves the outcome of the
+/// [`Hash`] and [`Ord`] methods. Thankfully, this follows automatically from `x.clone() == x`
+/// if `Hash` and `Ord` are correctly implemented according to their own requirements.
+///
+/// When deriving both `Clone` and [`PartialEq`] using `#[derive(Clone, PartialEq)]`
+/// or when additionally deriving [`Eq`] using `#[derive(Clone, PartialEq, Eq)]`,
+/// then this property is automatically upheld – provided that it is satisfied by
+/// the underlying types.
+///
+/// Violating this property is a logic error. The behavior resulting from a logic error is not
+/// specified, but users of the trait must ensure that such logic errors do *not* result in
+/// undefined behavior. This means that `unsafe` code **must not** rely on this property
+/// being satisfied.
+///
 /// ## Additional implementors
 ///
 /// In addition to the [implementors listed below][impls],
@@ -152,14 +180,18 @@ mod uninit;
 ///   (even if the referent doesn't),
 ///   while variables captured by mutable reference never implement `Clone`.
 ///
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [`BTreeMap`]: ../../std/collections/struct.BTreeMap.html
+/// [`BTreeSet`]: ../../std/collections/struct.BTreeSet.html
+/// [`BinaryHeap`]: ../../std/collections/struct.BinaryHeap.html
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-#[const_trait]
-pub trait Clone: Sized {
+pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
     ///
     /// Note that what "duplicate" means varies by type:
@@ -212,7 +244,7 @@ pub trait Clone: Sized {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn clone_from(&mut self, source: &Self)
     where
-        Self: ~const Destruct,
+        Self: [const] Destruct,
     {
         *self = source.clone()
     }
@@ -543,7 +575,8 @@ mod impls {
         ($($t:ty)*) => {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
-                impl Clone for $t {
+                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                impl const Clone for $t {
                     #[inline(always)]
                     fn clone(&self) -> Self {
                         *self
@@ -561,7 +594,8 @@ mod impls {
     }
 
     #[unstable(feature = "never_type", issue = "35121")]
-    impl Clone for ! {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl const Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
@@ -569,7 +603,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for *const T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -577,7 +612,8 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for *mut T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -586,7 +622,8 @@ mod impls {
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> Clone for &T {
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    impl<T: PointeeSized> const Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {

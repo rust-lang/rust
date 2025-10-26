@@ -108,6 +108,7 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-init:
 ///                                             // {}
 ///     let a = S; let mut b = S; let c; let d; // {a, b}
@@ -197,6 +198,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-uninit:
 ///                                             // {a, b, c, d}
 ///     let a = S; let mut b = S; let c; let d; // {      c, d}
@@ -289,6 +291,7 @@ impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // ever-init:
 ///                                             // {          }
 ///     let a = S; let mut b = S; let c; let d; // {a, b      }
@@ -637,16 +640,13 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         debug!("initializes move_indexes {:?}", init_loc_map[location]);
         state.gen_all(init_loc_map[location].iter().copied());
 
-        if let mir::StatementKind::StorageDead(local) = stmt.kind {
+        if let mir::StatementKind::StorageDead(local) = stmt.kind
             // End inits for StorageDead, so that an immutable variable can
             // be reinitialized on the next iteration of the loop.
-            if let Some(move_path_index) = rev_lookup.find_local(local) {
-                debug!(
-                    "clears the ever initialized status of {:?}",
-                    init_path_map[move_path_index]
-                );
-                state.kill_all(init_path_map[move_path_index].iter().copied());
-            }
+            && let Some(move_path_index) = rev_lookup.find_local(local)
+        {
+            debug!("clears the ever initialized status of {:?}", init_path_map[move_path_index]);
+            state.kill_all(init_path_map[move_path_index].iter().copied());
         }
     }
 

@@ -1,0 +1,5 @@
+// Check that enzyme_type attributes are NOT present when NoTT flag is used
+// This verifies the NoTT flag correctly disables TypeTree metadata
+
+CHECK: define{{.*}}@square
+CHECK-NOT: "enzyme_type"

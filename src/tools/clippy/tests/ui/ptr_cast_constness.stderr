@@ -89,5 +89,11 @@ error: `as` casting between raw pointers while changing only its constness
 LL |     let _ = std::ptr::addr_of_mut!(local) as *const _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `std::ptr::addr_of_mut!(local).cast_const()`
 
-error: aborting due to 14 previous errors
+error: `as` casting between raw pointers while changing only its constness
+  --> tests/ui/ptr_cast_constness.rs:112:26
+   |
+LL |     let _ptr: *mut u32 = r as *const _ as *mut _;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `(r as *const u32).cast_mut()`
+
+error: aborting due to 15 previous errors
 

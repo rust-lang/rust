@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use cfg_if::cfg_if;
-
 // Export the macros for all supported architectures.
 #[macro_use]
 mod x86;
@@ -24,38 +22,48 @@ mod loongarch;
 #[macro_use]
 mod s390x;
 
-cfg_if! {
-    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+cfg_select! {
+    any(target_arch = "x86", target_arch = "x86_64") => {
         #[stable(feature = "simd_x86", since = "1.27.0")]
         pub use x86::*;
-    } else if #[cfg(target_arch = "arm")] {
+    }
+    target_arch = "arm" => {
         #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
         pub use arm::*;
-    } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
+    }
+    any(target_arch = "aarch64", target_arch = "arm64ec") => {
         #[stable(feature = "simd_aarch64", since = "1.60.0")]
         pub use aarch64::*;
-    } else if #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {
+    }
+    any(target_arch = "riscv32", target_arch = "riscv64") => {
         #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")]
         pub use riscv::*;
-    } else if #[cfg(target_arch = "powerpc")] {
+    }
+    target_arch = "powerpc" => {
         #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
         pub use powerpc::*;
-    } else if #[cfg(target_arch = "powerpc64")] {
+    }
+    target_arch = "powerpc64" => {
         #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
         pub use powerpc64::*;
-    } else if #[cfg(target_arch = "mips")] {
+    }
+    target_arch = "mips" => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips::*;
-    } else if #[cfg(target_arch = "mips64")] {
+    }
+    target_arch = "mips64" => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips64::*;
-    } else if #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))] {
+    }
+    any(target_arch = "loongarch32", target_arch = "loongarch64") => {
         #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
         pub use loongarch::*;
-    } else if #[cfg(target_arch = "s390x")] {
+    }
+    target_arch = "s390x" => {
         #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
         pub use s390x::*;
-    } else {
+    }
+    _ => {
         // Unimplemented architecture:
         #[doc(hidden)]
         pub(crate) enum Feature {

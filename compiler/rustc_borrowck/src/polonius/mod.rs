@@ -146,8 +146,8 @@ impl PoloniusContext {
     /// - converting NLL typeck constraints to be localized
     /// - encoding liveness constraints
     ///
-    /// Then, this graph is traversed, and combined with kills, reachability is recorded as loan
-    /// liveness, to be used by the loan scope and active loans computations.
+    /// Then, this graph is traversed, reachability is recorded as loan liveness, to be used by the
+    /// loan scope and active loans computations.
     ///
     /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
@@ -182,8 +182,6 @@ impl PoloniusContext {
         // Now that we have a complete graph, we can compute reachability to trace the liveness of
         // loans for the next step in the chain, the NLL loan scope and active loans computations.
         let live_loans = compute_loan_liveness(
-            tcx,
-            body,
             regioncx.liveness_constraints(),
             regioncx.outlives_constraints(),
             borrow_set,

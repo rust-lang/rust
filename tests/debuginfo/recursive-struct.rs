@@ -1,6 +1,8 @@
 //@ ignore-lldb
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // gdb-command:run
 
@@ -58,11 +60,10 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::Opt::{Empty, Val};
 use std::boxed::Box as B;
+use std::marker::PhantomData;
 
 enum Opt<T> {
     Empty,
@@ -97,6 +98,11 @@ struct LongCycle4<T> {
 struct LongCycleWithAnonymousTypes {
     next: Opt<Box<Box<Box<Box<Box<LongCycleWithAnonymousTypes>>>>>>,
     value: usize,
+}
+
+struct Expanding<T> {
+    a: PhantomData<T>,
+    b: *const Expanding<(T, T)>,
 }
 
 // This test case makes sure that recursive structs are properly described. The Node structs are
@@ -205,6 +211,9 @@ fn main() {
         },
         value: 30
     })))));
+
+    // This type can generate new instances infinitely if not handled properly.
+    std::hint::black_box(Expanding::<()> { a: PhantomData, b: std::ptr::null() });
 
     zzz(); // #break
 }

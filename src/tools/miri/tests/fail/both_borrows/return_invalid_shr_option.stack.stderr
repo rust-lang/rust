@@ -14,7 +14,7 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x4..0x8]
    |
 LL |     let ret = Some(unsafe { &(*xraw).1 });
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0x8] by a write access
+help: <TAG> was later invalidated at offsets [0x4..0x8] by a write access
   --> tests/fail/both_borrows/return_invalid_shr_option.rs:LL:CC
    |
 LL |     unsafe { *xraw = (42, 23) }; // unfreeze

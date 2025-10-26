@@ -1,24 +1,23 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use std::any::Any;
-use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_data_structures::{CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
 };
+use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_expand::{MacroRulesMacroExpander, compile_declarative_macro};
-use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
+use rustc_hir::StabilityLevel;
+use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
+use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
@@ -40,9 +39,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
+    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
+    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -79,28 +78,25 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = &'ra Cell<MacroRulesScope<'ra>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra CacheCell<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
 pub(crate) fn sub_namespace_match(
-    candidate: Option<MacroKind>,
+    candidate: Option<MacroKinds>,
     requirement: Option<MacroKind>,
 ) -> bool {
-    #[derive(PartialEq)]
-    enum SubNS {
-        Bang,
-        AttrLike,
-    }
-    let sub_ns = |kind| match kind {
-        MacroKind::Bang => SubNS::Bang,
-        MacroKind::Attr | MacroKind::Derive => SubNS::AttrLike,
-    };
-    let candidate = candidate.map(sub_ns);
-    let requirement = requirement.map(sub_ns);
     // "No specific sub-namespace" means "matches anything" for both requirements and candidates.
-    candidate.is_none() || requirement.is_none() || candidate == requirement
+    let (Some(candidate), Some(requirement)) = (candidate, requirement) else {
+        return true;
+    };
+    match requirement {
+        MacroKind::Bang => candidate.contains(MacroKinds::BANG),
+        MacroKind::Attr | MacroKind::Derive => {
+            candidate.intersects(MacroKinds::ATTR | MacroKinds::DERIVE)
+        }
+    }
 }
 
 // We don't want to format a path using pretty-printing,
@@ -192,7 +188,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
-        parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
+        parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
         if let Some(unexpanded_invocations) =
             self.impl_unexpanded_invocations.get_mut(&self.invocation_parent(expansion))
         {
@@ -322,6 +318,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                 parent_scope.expansion,
                 span,
                 fast_print_path(path),
+                kind,
                 def_id,
                 def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
             ),
@@ -355,11 +352,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
             let def_id = self.local_def_id(node_id);
             let m = &self.local_macro_map[&def_id];
-            let SyntaxExtensionKind::LegacyBang(ref ext) = m.ext.kind else {
-                continue;
-            };
-            let ext: &dyn Any = ext.as_ref();
-            let Some(m) = ext.downcast_ref::<MacroRulesMacroExpander>() else {
+            let SyntaxExtensionKind::MacroRules(ref m) = m.ext.kind else {
                 continue;
             };
             for arm_i in unused_arms.iter() {
@@ -402,9 +395,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
             if resolution.exts.is_none() {
                 resolution.exts = Some(
-                    match self.resolve_macro_path(
+                    match self.cm().resolve_macro_path(
                         &resolution.path,
-                        Some(MacroKind::Derive),
+                        MacroKind::Derive,
                         &parent_scope,
                         true,
                         force,
@@ -511,7 +504,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn glob_delegation_suffixes(
-        &mut self,
+        &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
@@ -535,11 +528,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         target_trait.for_each_child(self, |this, ident, ns, _binding| {
             // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
-                && overriding_keys.contains(&BindingKey::new(ident, ns))
+                && overriding_keys.contains(&BindingKey::new(ident.0, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
-                idents.push((ident, None));
+                idents.push((ident.0, None));
             }
         });
         Ok(idents)
@@ -567,9 +560,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.resolve_macro_or_delegation_path(
+        let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
             path,
-            Some(kind),
+            kind,
             parent_scope,
             true,
             force,
@@ -632,7 +625,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.check_stability_and_deprecation(&ext, path, node_id);
 
-        let unexpected_res = if ext.macro_kind() != kind {
+        let unexpected_res = if !ext.macro_kinds().contains(kind.into()) {
             Some((kind.article(), kind.descr_expected()))
         } else if matches!(res, Res::Def(..)) {
             match supports_macro_expansion {
@@ -664,7 +657,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Suggest moving the macro out of the derive() if the macro isn't Derive
             if !path.span.from_expansion()
                 && kind == MacroKind::Derive
-                && ext.macro_kind() != MacroKind::Derive
+                && !ext.macro_kinds().contains(MacroKinds::DERIVE)
+                && ext.macro_kinds().contains(MacroKinds::ATTR)
             {
                 err.remove_surrounding_derive = Some(RemoveSurroundingDerive { span: path.span });
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
@@ -712,10 +706,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Ok((ext, res))
     }
 
-    pub(crate) fn resolve_macro_path(
-        &mut self,
+    pub(crate) fn resolve_macro_path<'r>(
+        self: CmResolver<'r, 'ra, 'tcx>,
         path: &ast::Path,
-        kind: Option<MacroKind>,
+        kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
@@ -735,10 +729,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         )
     }
 
-    fn resolve_macro_or_delegation_path(
-        &mut self,
+    fn resolve_macro_or_delegation_path<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
         ast_path: &ast::Path,
-        kind: Option<MacroKind>,
+        kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         trace: bool,
         force: bool,
@@ -752,7 +746,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Possibly apply the macro helper hack
         if deleg_impl.is_none()
-            && kind == Some(MacroKind::Bang)
+            && kind == MacroKind::Bang
             && let [segment] = path.as_slice()
             && segment.ident.span.ctxt().outer_expn_data().local_inner_macros
         {
@@ -762,7 +756,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let res = if deleg_impl.is_some() || path.len() > 1 {
             let ns = if deleg_impl.is_some() { TypeNS } else { MacroNS };
-            let res = match self.maybe_resolve_path(&path, Some(ns), parent_scope, ignore_import) {
+            let res = match self.reborrow().maybe_resolve_path(
+                &path,
+                Some(ns),
+                parent_scope,
+                ignore_import,
+            ) {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
@@ -775,8 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             if trace {
-                let kind = kind.expect("macro kind must be specified if tracing is enabled");
-                self.multi_segment_macro_resolutions.push((
+                self.multi_segment_macro_resolutions.borrow_mut(&self).push((
                     path,
                     path_span,
                     kind,
@@ -789,10 +787,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            let scope_set = kind.map_or(ScopeSet::All(MacroNS), ScopeSet::Macro);
-            let binding = self.early_resolve_ident_in_lexical_scope(
+            let binding = self.reborrow().resolve_ident_in_scope_set(
                 path[0].ident,
-                scope_set,
+                ScopeSet::Macro(kind),
                 parent_scope,
                 None,
                 force,
@@ -804,8 +801,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             if trace {
-                let kind = kind.expect("macro kind must be specified if tracing is enabled");
-                self.single_segment_macro_resolutions.push((
+                self.single_segment_macro_resolutions.borrow_mut(&self).push((
                     path[0].ident,
                     kind,
                     *parent_scope,
@@ -816,7 +812,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             let res = binding.map(|binding| binding.res());
             self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
-            self.report_out_of_scope_macro_calls(
+            self.reborrow().report_out_of_scope_macro_calls(
                 ast_path,
                 parent_scope,
                 invoc_in_mod_inert_attr,
@@ -871,13 +867,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let macro_resolutions = mem::take(&mut self.multi_segment_macro_resolutions);
+        let macro_resolutions = self.multi_segment_macro_resolutions.take(self);
         for (mut path, path_span, kind, parent_scope, initial_res, ns) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
                 seg.id = None;
             }
-            match self.resolve_path(
+            match self.cm().resolve_path(
                 &path,
                 Some(ns),
                 &parent_scope,
@@ -904,8 +900,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             path_res
                         {
                             // try to suggest if it's not a macro, maybe a function
-                            if let PathResult::NonModule(partial_res) =
-                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
+                            if let PathResult::NonModule(partial_res) = self
+                                .cm()
+                                .maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
                                 && partial_res.unresolved_segments() == 0
                             {
                                 let sm = self.tcx.sess.source_map();
@@ -947,9 +944,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        let macro_resolutions = mem::take(&mut self.single_segment_macro_resolutions);
+        let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
-            match self.early_resolve_ident_in_lexical_scope(
+            match self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
@@ -977,7 +974,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             LEGACY_DERIVE_HELPERS,
                             node_id,
                             ident.span,
-                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
+                            errors::LegacyDeriveHelpers { span: binding.span },
                         );
                     }
                 }
@@ -1004,7 +1001,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
-            let _ = self.early_resolve_ident_in_lexical_scope(
+            let _ = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
@@ -1023,40 +1020,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id: NodeId,
     ) {
         let span = path.span;
-        if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
+        if let Some(stability) = &ext.stability
+            && let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
                 stability.level
-            {
-                let feature = stability.feature;
+        {
+            let feature = stability.feature;
 
-                let is_allowed =
-                    |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
-                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
-                if !is_allowed(feature) && !allowed_by_implication {
-                    let lint_buffer = &mut self.lint_buffer;
-                    let soft_handler = |lint, span, msg: String| {
-                        lint_buffer.buffer_lint(
-                            lint,
-                            node_id,
-                            span,
-                            BuiltinLintDiag::UnstableFeature(
-                                // FIXME make this translatable
-                                msg.into(),
-                            ),
-                        )
-                    };
-                    stability::report_unstable(
-                        self.tcx.sess,
-                        feature,
-                        reason.to_opt_reason(),
-                        issue,
-                        None,
-                        is_soft,
+            let is_allowed =
+                |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
+            let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
+            if !is_allowed(feature) && !allowed_by_implication {
+                let lint_buffer = &mut self.lint_buffer;
+                let soft_handler = |lint, span, msg: String| {
+                    lint_buffer.buffer_lint(
+                        lint,
+                        node_id,
                         span,
-                        soft_handler,
-                        stability::UnstableKind::Regular,
-                    );
-                }
+                        BuiltinLintDiag::UnstableFeature(
+                            // FIXME make this translatable
+                            msg.into(),
+                        ),
+                    )
+                };
+                stability::report_unstable(
+                    self.tcx.sess,
+                    feature,
+                    reason.to_opt_reason(),
+                    issue,
+                    None,
+                    is_soft,
+                    span,
+                    soft_handler,
+                    stability::UnstableKind::Regular,
+                );
             }
         }
         if let Some(depr) = &ext.deprecation {
@@ -1090,8 +1086,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn report_out_of_scope_macro_calls(
-        &mut self,
+    fn report_out_of_scope_macro_calls<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
         path: &ast::Path,
         parent_scope: &ParentScope<'ra>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
@@ -1101,7 +1097,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && let Some(binding) = binding
             // This is a `macro_rules` itself, not some import.
             && let NameBindingKind::Res(res) = binding.kind
-            && let Res::Def(DefKind::Macro(MacroKind::Bang), def_id) = res
+            && let Res::Def(DefKind::Macro(kinds), def_id) = res
+            && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
             && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
@@ -1110,7 +1107,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // If such resolution is successful and gives the same result
             // (e.g. if the macro is re-imported), then silence the lint.
             let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
-            let fallback_binding = self.early_resolve_ident_in_lexical_scope(
+            let fallback_binding = self.reborrow().resolve_ident_in_scope_set(
                 path.segments[0].ident,
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
@@ -1148,8 +1145,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
-            let macro_kind = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kind());
-            if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
+            let macro_kinds = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kinds());
+            if macro_kinds.is_some() && sub_namespace_match(macro_kinds, Some(MacroKind::Attr)) {
                 self.dcx()
                     .emit_err(errors::NameReservedInAttributeNamespace { span: ident.span, ident });
             }
@@ -1206,7 +1203,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut indeterminate = false;
         for ns in namespaces {
-            match self.maybe_resolve_path(path, Some(*ns), &parent_scope, None) {
+            match self.cm().maybe_resolve_path(path, Some(*ns), &parent_scope, None) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);

@@ -153,5 +153,21 @@ LL |     option().map(|value| println!("{:?}", value));
    |     |
    |     help: try: `if let Some(value) = option() { println!("{:?}", value) }`
 
-error: aborting due to 19 previous errors
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:108:5
+   |
+LL |     x.map(|x| unsafe { f(x) });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try: `if let Some(x) = x { unsafe { f(x) } }`
+
+error: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+  --> tests/ui/option_map_unit_fn_fixable.rs:110:5
+   |
+LL |     x.map(|x| unsafe { { f(x) } });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try: `if let Some(x) = x { unsafe { f(x) } }`
+
+error: aborting due to 21 previous errors
 

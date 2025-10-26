@@ -10,6 +10,7 @@ LL |     Box::new(|| x)
    |              |
    |              captured by this `Fn` closure
    |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     Box::new(|| x.clone())

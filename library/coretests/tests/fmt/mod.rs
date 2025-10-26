@@ -12,6 +12,12 @@ fn test_lifetime() {
     let a = format_args!("hello {a} {a:?}");
     assert_eq!(a.to_string(), "hello hello hello hello hello hello hello");
 
+    // Check that temporaries as arguments are extended.
+    let b = format_args!("{}", String::new());
+    let c = format_args!("{}{}", String::new(), String::new());
+    assert_eq!(b.to_string(), "");
+    assert_eq!(c.to_string(), "");
+
     // Without arguments, it should also work in consts.
     const A: std::fmt::Arguments<'static> = format_args!("hello");
     assert_eq!(A.to_string(), "hello");
@@ -55,6 +61,36 @@ fn test_fmt_debug_of_raw_pointers() {
     let vtable = &mut 500 as &mut dyn Debug;
     check_fmt(vtable as *mut dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
     check_fmt(vtable as *const dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
+}
+
+#[test]
+fn test_fmt_debug_of_mut_reference() {
+    let mut x: u32 = 0;
+
+    assert_eq!(format!("{:?}", &mut x), "0");
+}
+
+#[test]
+fn test_default_write_impls() {
+    use core::fmt::Write;
+
+    struct Buf(String);
+
+    impl Write for Buf {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            self.0.write_str(s)
+        }
+    }
+
+    let mut buf = Buf(String::new());
+    buf.write_char('a').unwrap();
+
+    assert_eq!(buf.0, "a");
+
+    let mut buf = Buf(String::new());
+    buf.write_fmt(format_args!("a")).unwrap();
+
+    assert_eq!(buf.0, "a");
 }
 
 #[test]

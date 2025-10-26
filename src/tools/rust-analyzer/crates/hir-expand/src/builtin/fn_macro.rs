@@ -19,7 +19,7 @@ use syntax_bridge::syntax_node_to_token_tree;
 
 use crate::{
     EditionedFileId, ExpandError, ExpandResult, Lookup as _, MacroCallId,
-    builtin::quote::{WithDelimiter, dollar_crate, quote},
+    builtin::quote::{WithDelimiter, dollar_crate},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
@@ -555,12 +555,11 @@ fn concat_expand(
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
         // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
-        if let TtElement::Subtree(subtree, subtree_iter) = &t {
-            if let [tt::TokenTree::Leaf(tt)] = subtree_iter.remaining().flat_tokens() {
-                if subtree.delimiter.kind == tt::DelimiterKind::Parenthesis {
-                    t = TtElement::Leaf(tt);
-                }
-            }
+        if let TtElement::Subtree(subtree, subtree_iter) = &t
+            && let [tt::TokenTree::Leaf(tt)] = subtree_iter.remaining().flat_tokens()
+            && subtree.delimiter.kind == tt::DelimiterKind::Parenthesis
+        {
+            t = TtElement::Leaf(tt);
         }
         match t {
             TtElement::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
@@ -891,7 +890,7 @@ fn include_str_expand(
     };
 
     let text = db.file_text(file_id.file_id(db));
-    let text = &*text.text(db);
+    let text = &**text.text(db);
 
     ExpandResult::ok(quote!(call_site =>#text))
 }

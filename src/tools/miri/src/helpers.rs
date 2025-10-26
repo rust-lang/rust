@@ -1,11 +1,12 @@
 use std::num::NonZero;
+use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
-use rustc_abi::{Align, CanonAbi, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
+use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_hash::FxHashSet;
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
@@ -14,11 +15,10 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -33,6 +33,8 @@ pub enum AccessKind {
 ///
 /// A `None` namespace indicates we are looking for a module.
 fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>) -> Option<DefId> {
+    let _trace = enter_trace_span!("try_resolve_did", ?path);
+
     /// Yield all children of the given item, that have the given name.
     fn find_children<'tcx: 'a, 'a>(
         tcx: TyCtxt<'tcx>,
@@ -134,7 +136,6 @@ pub fn iter_exported_symbols<'tcx>(
         let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
             codegen_attrs.contains_extern_indicator()
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
@@ -437,7 +438,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// For now, arguments must be scalars (so that the caller does not have to know the layout).
     ///
     /// If you do not provide a return place, a dangling zero-sized place will be created
-    /// for your convenience.
+    /// for your convenience. This is only valid if the return type is `()`.
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
@@ -452,7 +453,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
+            None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
         // Construct a function pointer type representing the caller perspective.
@@ -465,6 +466,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
+        // This will also show proper errors if there is any ABI mismatch.
         this.init_stack_frame(
             f,
             mir,
@@ -649,7 +651,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                let mut emitted_warnings = this.machine.reject_in_isolation_warned.borrow_mut();
+                // Deduplicate these warnings *by shim* (not by span)
+                static DEDUP: Mutex<FxHashSet<String>> =
+                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
@@ -929,21 +934,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
-    /// Check that the calling convention is what we expect.
-    fn check_callconv<'a>(
-        &self,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-    ) -> InterpResult<'a, ()> {
-        if fn_abi.conv != exp_abi {
-            throw_ub_format!(
-                r#"calling a function with calling convention "{exp_abi}" using caller calling convention "{}""#,
-                fn_abi.conv
-            );
-        }
-        interp_ok(())
-    }
-
     fn frame_in_std(&self) -> bool {
         let this = self.eval_context_ref();
         let frame = this.frame();
@@ -967,236 +957,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         crate_name == "std" || crate_name == "std_miri_test"
     }
 
-    fn check_abi_and_shim_symbol_clash(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-        link_name: Symbol,
-    ) -> InterpResult<'tcx, ()> {
-        self.check_callconv(abi, exp_abi)?;
-        if let Some((body, instance)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
-            // If compiler-builtins is providing the symbol, then don't treat it as a clash.
-            // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
-            // performance. Note that this means we won't catch any undefined behavior in
-            // compiler-builtins when running other crates, but Miri can still be run on
-            // compiler-builtins itself (or any crate that uses it as a normal dependency)
-            if self.eval_context_ref().tcx.is_compiler_builtins(instance.def_id().krate) {
-                return interp_ok(());
-            }
-
-            throw_machine_stop!(TerminationInfo::SymbolShimClashing {
-                link_name,
-                span: body.span.data(),
-            })
-        }
-        interp_ok(())
-    }
-
-    fn check_shim<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-
-        if abi.c_variadic {
-            throw_ub_format!(
-                "calling a non-variadic function with a variadic caller-side signature"
-            );
-        }
-        if let Ok(ops) = args.try_into() {
-            return interp_ok(ops);
-        }
-        throw_ub_format!(
-            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
-            args.len(),
-            N
-        )
-    }
-
-    /// Check that the given `caller_fn_abi` matches the expected ABI described by
-    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and then returns the list of
-    /// arguments.
-    fn check_shim_abi<'a, const N: usize>(
-        &mut self,
-        link_name: Symbol,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        callee_abi: ExternAbi,
-        callee_input_tys: [Ty<'tcx>; N],
-        callee_output_ty: Ty<'tcx>,
-        caller_args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        let this = self.eval_context_mut();
-        let mut inputs_and_output = callee_input_tys.to_vec();
-        inputs_and_output.push(callee_output_ty);
-        let fn_sig_binder = Binder::dummy(FnSig {
-            inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
-            c_variadic: false,
-            // This does not matter for the ABI.
-            safety: Safety::Safe,
-            abi: callee_abi,
-        });
-        let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
-
-        this.check_abi_and_shim_symbol_clash(caller_fn_abi, callee_fn_abi.conv, link_name)?;
-
-        if caller_fn_abi.c_variadic {
-            throw_ub_format!(
-                "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
-            );
-        }
-
-        if callee_fn_abi.fixed_count != caller_fn_abi.fixed_count {
-            throw_ub_format!(
-                "ABI mismatch: expected {} arguments, found {} arguments ",
-                callee_fn_abi.fixed_count,
-                caller_fn_abi.fixed_count
-            );
-        }
-
-        if callee_fn_abi.can_unwind && !caller_fn_abi.can_unwind {
-            throw_ub_format!(
-                "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
-            );
-        }
-
-        if !this.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
-            throw_ub!(AbiMismatchReturn {
-                caller_ty: caller_fn_abi.ret.layout.ty,
-                callee_ty: callee_fn_abi.ret.layout.ty
-            });
-        }
-
-        if let Some(index) = caller_fn_abi
-            .args
-            .iter()
-            .zip(callee_fn_abi.args.iter())
-            .map(|(caller_arg, callee_arg)| this.check_argument_compat(caller_arg, callee_arg))
-            .collect::<InterpResult<'tcx, Vec<bool>>>()?
-            .into_iter()
-            .position(|b| !b)
-        {
-            throw_ub!(AbiMismatchArgument {
-                caller_ty: caller_fn_abi.args[index].layout.ty,
-                callee_ty: callee_fn_abi.args[index].layout.ty
-            });
-        }
-
-        if let Ok(ops) = caller_args.try_into() {
-            return interp_ok(ops);
-        }
-        unreachable!()
-    }
-
-    /// Check shim for variadic function.
-    /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
-    fn check_shim_variadic<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
-    where
-        &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
-    {
-        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-
-        if !abi.c_variadic {
-            throw_ub_format!(
-                "calling a variadic function with a non-variadic caller-side signature"
-            );
-        }
-        if abi.fixed_count != u32::try_from(N).unwrap() {
-            throw_ub_format!(
-                "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
-                link_name.as_str(),
-                abi.fixed_count
-            )
-        }
-        if let Some(args) = args.split_first_chunk() {
-            return interp_ok(args);
-        }
-        panic!("mismatch between signature and `args` slice");
-    }
-
     /// Mark a machine allocation that was just created as immutable.
     fn mark_immutable(&mut self, mplace: &MPlaceTy<'tcx>) {
         let this = self.eval_context_mut();
         // This got just allocated, so there definitely is a pointer here.
         let provenance = mplace.ptr().into_pointer_or_addr().unwrap().provenance;
         this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
-    }
-
-    /// Converts `src` from floating point to integer type `dest_ty`
-    /// after rounding with mode `round`.
-    /// Returns `None` if `f` is NaN or out of range.
-    fn float_to_int_checked(
-        &self,
-        src: &ImmTy<'tcx>,
-        cast_to: TyAndLayout<'tcx>,
-        round: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
-        let this = self.eval_context_ref();
-
-        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
-            ecx: &MiriInterpCx<'tcx>,
-            src: F,
-            cast_to: TyAndLayout<'tcx>,
-            round: rustc_apfloat::Round,
-        ) -> (Scalar, rustc_apfloat::Status) {
-            let int_size = cast_to.layout.size;
-            match cast_to.ty.kind() {
-                // Unsigned
-                ty::Uint(_) => {
-                    let res = src.to_u128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_uint(res.value, int_size), res.status)
-                }
-                // Signed
-                ty::Int(_) => {
-                    let res = src.to_i128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_int(res.value, int_size), res.status)
-                }
-                // Nothing else
-                _ =>
-                    span_bug!(
-                        ecx.cur_span(),
-                        "attempted float-to-int conversion with non-int output type {}",
-                        cast_to.ty,
-                    ),
-            }
-        }
-
-        let ty::Float(fty) = src.layout.ty.kind() else {
-            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
-        };
-
-        let (val, status) = match fty {
-            FloatTy::F16 =>
-                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round),
-            FloatTy::F32 =>
-                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            FloatTy::F64 =>
-                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            FloatTy::F128 =>
-                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round),
-        };
-
-        if status.intersects(
-            rustc_apfloat::Status::INVALID_OP
-                | rustc_apfloat::Status::OVERFLOW
-                | rustc_apfloat::Status::UNDERFLOW,
-        ) {
-            // Floating point value is NaN (flagged with INVALID_OP) or outside the range
-            // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-            interp_ok(None)
-        } else {
-            // Floating point value can be represented by the integer type after rounding.
-            // The INEXACT flag is ignored on purpose to allow rounding.
-            interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
-        }
     }
 
     /// Returns an integer type that is twice wide as `ty`
@@ -1257,8 +1023,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
                     )
                 });
-                let val = this.read_immediate(&const_val)?;
-                array.push(val);
+                match const_val.layout.ty.kind() {
+                    ty::FnPtr(..) => {
+                        array.push(this.read_immediate(&const_val)?);
+                    }
+                    ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
+                        let mut elems = this.project_array_fields(&const_val)?;
+                        while let Some((_idx, elem)) = elems.next(this)? {
+                            array.push(this.read_immediate(&elem)?);
+                        }
+                    }
+                    _ =>
+                        throw_unsup_format!(
+                            "only function pointers and arrays of function pointers are supported in well-known linker sections"
+                        ),
+                }
             }
             interp_ok(())
         })?;
@@ -1284,8 +1063,8 @@ impl<'tcx> MiriMachine<'tcx> {
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
     /// It will work even when the stack is empty.
-    pub fn current_span(&self) -> Span {
-        self.threads.active_thread_ref().current_span()
+    pub fn current_user_relevant_span(&self) -> Span {
+        self.threads.active_thread_ref().current_user_relevant_span()
     }
 
     /// Returns the span of the *caller* of the current operation, again
@@ -1315,39 +1094,6 @@ impl<'tcx> MiriMachine<'tcx> {
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
             && !frame.instance().def.requires_caller_location(self.tcx)
     }
-}
-
-/// Check that the number of args is what we expect.
-pub fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
-where
-    &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
-{
-    if let Ok(ops) = args.try_into() {
-        return interp_ok(ops);
-    }
-    throw_ub_format!(
-        "incorrect number of arguments for intrinsic: got {}, expected {}",
-        args.len(),
-        N
-    )
-}
-
-/// Check that the number of varargs is at least the minimum what we expect.
-/// Fixed args should not be included.
-pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
-    name: &'a str,
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-    if let Some((ops, _)) = args.split_first_chunk() {
-        return interp_ok(ops);
-    }
-    throw_ub_format!(
-        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
-        args.len(),
-        N
-    )
 }
 
 pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
@@ -1381,20 +1127,6 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
     // sign-extend it to `size` as required.
     let val = if b { -1 } else { 0 };
     Scalar::from_int(val, size)
-}
-
-pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
-    assert!(
-        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
-        "SIMD mask element type must be an integer, but this is `{}`",
-        elem.layout.ty
-    );
-    let val = elem.to_scalar().to_int(elem.layout.size)?;
-    interp_ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
 }
 
 /// Check whether an operation that writes to a target buffer was successful.
@@ -1435,43 +1167,14 @@ impl ToU64 for usize {
     }
 }
 
-/// This struct is needed to enforce `#[must_use]` on values produced by [enter_trace_span] even
-/// when the "tracing" feature is not enabled.
-#[must_use]
-pub struct MaybeEnteredTraceSpan {
-    #[cfg(feature = "tracing")]
-    pub _entered_span: tracing::span::EnteredSpan,
-}
-
 /// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
-/// This is like [rustc_const_eval::enter_trace_span] except that it does not depend on the
-/// [Machine] trait to check if tracing is enabled, because from the Miri codebase we can directly
-/// check whether the "tracing" feature is enabled, unlike from the rustc_const_eval codebase.
-///
-/// In addition to the syntax accepted by [tracing::span!], this macro optionally allows passing
-/// the span name (i.e. the first macro argument) in the form `NAME::SUBNAME` (without quotes) to
-/// indicate that the span has name "NAME" (usually the name of the component) and has an additional
-/// more specific name "SUBNAME" (usually the function name). The latter is passed to the [tracing]
-/// infrastructure as a span field with the name "NAME". This allows not being distracted by
-/// subnames when looking at the trace in <https://ui.perfetto.dev>, but when deeper introspection
-/// is needed within a component, it's still possible to view the subnames directly in the UI by
-/// selecting a span, clicking on the "NAME" argument on the right, and clicking on "Visualize
-/// argument values".
-/// ```rust
-/// // for example, the first will expand to the second
-/// enter_trace_span!(borrow_tracker::on_stack_pop, /* ... */)
-/// enter_trace_span!("borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */)
-/// ```
+/// This calls [rustc_const_eval::enter_trace_span] with [MiriMachine] as the first argument, which
+/// will in turn call [MiriMachine::enter_trace_span], which takes care of determining at compile
+/// time whether to trace or not (and supposedly the call is compiled out if tracing is disabled).
+/// Look at [rustc_const_eval::enter_trace_span] for complete documentation, examples and tips.
 #[macro_export]
 macro_rules! enter_trace_span {
-    ($name:ident :: $subname:ident $($tt:tt)*) => {{
-        enter_trace_span!(stringify!($name), $name = %stringify!(subname) $($tt)*)
-    }};
-
     ($($tt:tt)*) => {
-        $crate::MaybeEnteredTraceSpan {
-            #[cfg(feature = "tracing")]
-            _entered_span: tracing::info_span!($($tt)*).entered()
-        }
+        rustc_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
     };
 }

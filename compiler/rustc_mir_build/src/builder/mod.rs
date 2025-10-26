@@ -11,9 +11,10 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -23,10 +24,12 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
+use rustc_session::lint;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::DropKind;
+use crate::errors;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -65,11 +68,6 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                     construct_const(tcx, def, thir, expr, ty)
                 }
             };
-
-            // Checking liveness after building the THIR ensures there were no typeck errors.
-            //
-            // maybe move the check to a MIR pass?
-            tcx.ensure_ok().check_liveness(def);
 
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
@@ -394,12 +392,10 @@ enum NeedsTemporary {
     Maybe,
 }
 
-///////////////////////////////////////////////////////////////////////////
 /// The `BlockAnd` "monad" packages up the new basic block along with a
 /// produced value (sometimes just unit, of course). The `unpack!`
 /// macro (and methods below) makes working with `BlockAnd` much more
 /// convenient.
-
 #[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
@@ -437,9 +433,7 @@ macro_rules! unpack {
     }};
 }
 
-///////////////////////////////////////////////////////////////////////////
-/// the main entry point for building MIR for a function
-
+/// The main entry point for building MIR for a function.
 fn construct_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def: LocalDefId,
@@ -479,8 +473,7 @@ fn construct_fn<'tcx>(
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
-    if let Some(custom_mir_attr) =
-        tcx.hir_attrs(fn_id).iter().find(|attr| attr.has_name(sym::custom_mir))
+    if let Some((dialect, phase)) = find_attr!(tcx.hir_attrs(fn_id), AttributeKind::CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,
@@ -492,7 +485,8 @@ fn construct_fn<'tcx>(
             return_ty,
             return_ty_span,
             span_with_body,
-            custom_mir_attr,
+            dialect.as_ref().map(|(d, _)| *d),
+            phase.as_ref().map(|(p, _)| *p),
         );
     }
 
@@ -534,6 +528,7 @@ fn construct_fn<'tcx>(
         return_block.unit()
     });
 
+    builder.lint_and_remove_uninhabited();
     let mut body = builder.finish();
 
     body.spread_arg = if abi == ExternAbi::RustCall {
@@ -591,6 +586,7 @@ fn construct_const<'a, 'tcx>(
 
     builder.build_drop_trees();
 
+    builder.lint_and_remove_uninhabited();
     builder.finish()
 }
 
@@ -789,6 +785,98 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         builder
     }
 
+    #[allow(dead_code)]
+    fn dump_for_debugging(&self) {
+        let mut body = Body::new(
+            MirSource::item(self.def_id.to_def_id()),
+            self.cfg.basic_blocks.clone(),
+            self.source_scopes.clone(),
+            self.local_decls.clone(),
+            self.canonical_user_type_annotations.clone(),
+            self.arg_count.clone(),
+            self.var_debug_info.clone(),
+            self.fn_span.clone(),
+            self.coroutine.clone(),
+            None,
+        );
+        body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
+
+        let writer = pretty::MirWriter::new(self.tcx);
+        writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
+    }
+
+    fn lint_and_remove_uninhabited(&mut self) {
+        let mut lints = vec![];
+
+        for bbdata in self.cfg.basic_blocks.iter_mut() {
+            let term = bbdata.terminator_mut();
+            let TerminatorKind::Call { ref mut target, destination, .. } = term.kind else {
+                continue;
+            };
+            let Some(target_bb) = *target else { continue };
+
+            let ty = destination.ty(&self.local_decls, self.tcx).ty;
+            let ty_is_inhabited = ty.is_inhabited_from(
+                self.tcx,
+                self.parent_module,
+                self.infcx.typing_env(self.param_env),
+            );
+
+            if !ty_is_inhabited {
+                // Unreachable code warnings are already emitted during type checking.
+                // However, during type checking, full type information is being
+                // calculated but not yet available, so the check for diverging
+                // expressions due to uninhabited result types is pretty crude and
+                // only checks whether ty.is_never(). Here, we have full type
+                // information available and can issue warnings for less obviously
+                // uninhabited types (e.g. empty enums). The check above is used so
+                // that we do not emit the same warning twice if the uninhabited type
+                // is indeed `!`.
+                if !ty.is_never() {
+                    lints.push((target_bb, ty, term.source_info.span));
+                }
+
+                // The presence or absence of a return edge affects control-flow sensitive
+                // MIR checks and ultimately whether code is accepted or not. We can only
+                // omit the return edge if a return type is visibly uninhabited to a module
+                // that makes the call.
+                *target = None;
+            }
+        }
+
+        for (target_bb, orig_ty, orig_span) in lints {
+            if orig_span.in_external_macro(self.tcx.sess.source_map()) {
+                continue;
+            }
+            let target_bb = &self.cfg.basic_blocks[target_bb];
+            let (target_loc, descr) = target_bb
+                .statements
+                .iter()
+                .find_map(|stmt| match stmt.kind {
+                    StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => None,
+                    StatementKind::FakeRead(..) => Some((stmt.source_info, "definition")),
+                    _ => Some((stmt.source_info, "expression")),
+                })
+                .unwrap_or_else(|| (target_bb.terminator().source_info, "expression"));
+            let lint_root = self.source_scopes[target_loc.scope]
+                .local_data
+                .as_ref()
+                .unwrap_crate_local()
+                .lint_root;
+            self.tcx.emit_node_span_lint(
+                lint::builtin::UNREACHABLE_CODE,
+                lint_root,
+                target_loc.span,
+                errors::UnreachableDueToUninhabited {
+                    expr: target_loc.span,
+                    orig: orig_span,
+                    descr,
+                    ty: orig_ty,
+                },
+            );
+        }
+    }
+
     fn finish(self) -> Body<'tcx> {
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
@@ -804,18 +892,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
 
+        let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
-                use rustc_middle::mir::pretty;
-                let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
-                pretty::write_mir_fn(
-                    self.tcx,
-                    &body,
-                    &mut |_, _| Ok(()),
-                    &mut std::io::stdout(),
-                    options,
-                )
-                .unwrap();
+                writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
             }
         }
@@ -969,6 +1049,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 opt_ty_info: param.ty_span,
                                 opt_match_place: Some((None, span)),
                                 pat_span: span,
+                                introductions: vec![VarBindingIntroduction {
+                                    span,
+                                    is_shorthand: false,
+                                }],
                             }))
                         };
                     self.var_indices.insert(var, LocalsForNode::One(local));

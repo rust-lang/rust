@@ -140,10 +140,10 @@ fn test_asinh() {
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     // regression test for the catastrophic cancellation fixed in 72486
-    assert_approx_eq!((-3000.0f32).asinh(), -8.699514775987968673236893537700647f32);
+    assert_approx_eq!((-3000.0f32).asinh(), -8.699514775987968673236893537700647f32, APPROX_DELTA);
 
     // test for low accuracy from issue 104548
-    assert_approx_eq!(60.0f32, 60.0f32.sinh().asinh());
+    assert_approx_eq!(60.0f32, 60.0f32.sinh().asinh(), APPROX_DELTA);
     // mul needed for approximate comparison to be meaningful
     assert_approx_eq!(1.0f32, 1e-15f32.sinh().asinh() * 1e15f32);
 }
@@ -193,13 +193,13 @@ fn test_atanh() {
 #[test]
 fn test_gamma() {
     // precision can differ between platforms
-    assert_approx_eq!(1.0f32.gamma(), 1.0f32);
-    assert_approx_eq!(2.0f32.gamma(), 1.0f32);
-    assert_approx_eq!(3.0f32.gamma(), 2.0f32);
-    assert_approx_eq!(4.0f32.gamma(), 6.0f32);
-    assert_approx_eq!(5.0f32.gamma(), 24.0f32);
-    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt());
-    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt());
+    assert_approx_eq!(1.0f32.gamma(), 1.0f32, APPROX_DELTA);
+    assert_approx_eq!(2.0f32.gamma(), 1.0f32, APPROX_DELTA);
+    assert_approx_eq!(3.0f32.gamma(), 2.0f32, APPROX_DELTA);
+    assert_approx_eq!(4.0f32.gamma(), 6.0f32, APPROX_DELTA);
+    assert_approx_eq!(5.0f32.gamma(), 24.0f32, APPROX_DELTA);
+    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt(), APPROX_DELTA);
+    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt(), APPROX_DELTA);
     assert_eq!(0.0f32.gamma(), f32::INFINITY);
     assert_eq!((-0.0f32).gamma(), f32::NEG_INFINITY);
     assert!((-1.0f32).gamma().is_nan());
@@ -218,7 +218,7 @@ fn test_ln_gamma() {
     assert_eq!(2.0f32.ln_gamma().1, 1);
     assert_approx_eq!(3.0f32.ln_gamma().0, 2.0f32.ln());
     assert_eq!(3.0f32.ln_gamma().1, 1);
-    assert_approx_eq!((-0.5f32).ln_gamma().0, (2.0 * consts::PI.sqrt()).ln());
+    assert_approx_eq!((-0.5f32).ln_gamma().0, (2.0 * consts::PI.sqrt()).ln(), APPROX_DELTA);
     assert_eq!((-0.5f32).ln_gamma().1, -1);
 }
 

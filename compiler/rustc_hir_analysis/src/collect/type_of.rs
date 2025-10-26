@@ -14,6 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
+use crate::check::wfcheck::check_static_item;
 use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
@@ -124,8 +125,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Some(ty::ImplTraitInTraitData::Impl { fn_def_id }) => {
             match tcx.collect_return_position_impl_trait_in_trait_tys(fn_def_id) {
                 Ok(map) => {
-                    let assoc_item = tcx.associated_item(def_id);
-                    return map[&assoc_item.trait_item_def_id.unwrap()];
+                    let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
+                    return map[&trait_item_def_id];
                 }
                 Err(_) => {
                     return ty::EarlyBinder::bind(Ty::new_error_with_message(
@@ -197,7 +198,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
             }
             ImplItemKind::Type(ty) => {
-                if tcx.impl_trait_ref(tcx.hir_get_parent_item(hir_id)).is_none() {
+                if let ImplItemImplKind::Inherent { .. } = item.impl_kind {
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
@@ -217,7 +218,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         "static variable",
                     )
                 } else {
-                    icx.lower_ty(ty)
+                    let ty = icx.lower_ty(ty);
+                    // MIR relies on references to statics being scalars.
+                    // Verify that here to avoid ill-formed MIR.
+                    // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                    // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                    match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
+                        Ok(()) => ty,
+                        Err(guar) => Ty::new_error(tcx, guar),
+                    }
                 }
             }
             ItemKind::Const(ident, _, ty, body_id) => {
@@ -242,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
-                _ => icx.lower_ty(*self_ty),
+                _ => icx.lower_ty(self_ty),
             },
             ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -275,7 +284,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ForeignItemKind::Static(t, _, _) => icx.lower_ty(t),
+            ForeignItemKind::Static(ty, _, _) => {
+                let ty = icx.lower_ty(ty);
+                // MIR relies on references to statics being scalars.
+                // Verify that here to avoid ill-formed MIR.
+                // We skip the `Sync` check to avoid cycles for type-alias-impl-trait,
+                // relying on the fact that non-Sync statics don't ICE the rest of the compiler.
+                match check_static_item(tcx, def_id, ty, /* should_check_for_sync */ false) {
+                    Ok(()) => ty,
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
             ForeignItemKind::Type => Ty::new_foreign(tcx, def_id.to_def_id()),
         },
 

@@ -18,7 +18,7 @@ use crate::builder::Builder;
 use crate::builder::Kind;
 #[cfg(not(test))]
 use crate::core::build_steps::tool;
-use crate::core::config::Target;
+use crate::core::config::{CompilerBuiltins, Target};
 use crate::utils::exec::command;
 use crate::{Build, Subcommand};
 
@@ -34,6 +34,7 @@ pub struct Finder {
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
+    "x86_64-unknown-motor",
     "v810-unknown-vb",
 ];
 
@@ -236,6 +237,10 @@ than building it.
             continue;
         }
 
+        if target.contains("motor") {
+            continue;
+        }
+
         // skip check for cross-targets
         if skip_target_sanity && target != &build.host_target {
             continue;
@@ -284,7 +289,7 @@ than building it.
 
             if !has_target {
                 panic!(
-                    "No such target exists in the target list,\n\
+                    "{target_str}: No such target exists in the target list,\n\
                      make sure to correctly specify the location \
                      of the JSON specification file \
                      for custom targets!\n\
@@ -325,6 +330,24 @@ than building it.
             .target_config
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
+
+        // compiler-rt c fallbacks for wasm cannot be built with gcc
+        if target.contains("wasm")
+            && (*build.config.optimized_compiler_builtins(*target)
+                != CompilerBuiltins::BuildRustOnly
+                || build.config.rust_std_features.contains("compiler-builtins-c"))
+        {
+            let cc_tool = build.cc_tool(*target);
+            if !cc_tool.is_like_clang() && !cc_tool.path().ends_with("emcc") {
+                // emcc works as well
+                panic!(
+                    "Clang is required to build C code for Wasm targets, got `{}` instead\n\
+                    this is because compiler-builtins is configured to build C source. Either \
+                    ensure Clang is used, or adjust this configuration.",
+                    cc_tool.path().display()
+                );
+            }
+        }
 
         if (target.contains("-none-") || target.contains("nvptx"))
             && build.no_std(*target) == Some(false)
@@ -375,6 +398,16 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 "
                 );
             }
+        }
+
+        // For testing `wasm32-wasip2`-and-beyond it's required to have
+        // `wasm-component-ld`. This is enabled by default via `tool_enabled`
+        // but if it's disabled then double-check it's present on the system.
+        if target.contains("wasip")
+            && !target.contains("wasip1")
+            && !build.tool_enabled("wasm-component-ld")
+        {
+            cmd_finder.must_have("wasm-component-ld");
         }
     }
 

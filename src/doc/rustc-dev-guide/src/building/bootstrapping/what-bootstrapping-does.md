@@ -1,7 +1,5 @@
 # What Bootstrapping does
 
-<!-- toc -->
-
 [*Bootstrapping*][boot] is the process of using a compiler to compile itself.
 More accurately, it means using an older compiler to compile a newer version of
 the same compiler.
@@ -25,7 +23,7 @@ Note that this documentation mostly covers user-facing information. See
 
 ### Overview
 
-- Stage 0: the pre-compiled compiler
+- Stage 0: the pre-compiled compiler and standard library
 - Stage 1: from current code, by an earlier compiler
 - Stage 2: the truly current compiler
 - Stage 3: the same-result test
@@ -194,7 +192,7 @@ include, but are not limited to:
   artifacts'). If you're working on the standard library, this is normally the
   test command you want.
 - `./x build --stage 0` means to build with the stage0 `rustc`.
-- `./x doc --stage 0` means to document using the stage0 `rustdoc`.
+- `./x doc --stage 1` means to document using the stage0 `rustdoc`.
 
 #### Examples of what *not* to do
 
@@ -213,7 +211,7 @@ include, but are not limited to:
 In short, _stage 0 uses the `stage0` compiler to create `stage0` artifacts which
 will later be uplifted to be the stage1 compiler_.
 
-In each stage, two major steps are performed:
+In each stage besides 0, two major steps are performed:
 
 1. `std` is compiled by the stage N compiler.
 2. That `std` is linked to programs built by the stage N compiler, including the

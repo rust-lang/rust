@@ -77,38 +77,38 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
         return;
     }
 
-    if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
-        if !(p.at(T!['}']) || (semicolon != Semicolon::Required && p.at(EOF))) {
-            // test no_semi_after_block
-            // fn foo() {
-            //     if true {}
-            //     loop {}
-            //     match () {}
-            //     while true {}
-            //     for _ in () {}
-            //     {}
-            //     {}
-            //     macro_rules! test {
-            //          () => {}
-            //     }
-            //     test!{}
-            // }
-            let m = cm.precede(p);
-            match semicolon {
-                Semicolon::Required => {
-                    if blocklike.is_block() {
-                        p.eat(T![;]);
-                    } else {
-                        p.expect(T![;]);
-                    }
-                }
-                Semicolon::Optional => {
+    if let Some((cm, blocklike)) = expr_stmt(p, Some(m))
+        && !(p.at(T!['}']) || (semicolon != Semicolon::Required && p.at(EOF)))
+    {
+        // test no_semi_after_block
+        // fn foo() {
+        //     if true {}
+        //     loop {}
+        //     match () {}
+        //     while true {}
+        //     for _ in () {}
+        //     {}
+        //     {}
+        //     macro_rules! test {
+        //          () => {}
+        //     }
+        //     test!{}
+        // }
+        let m = cm.precede(p);
+        match semicolon {
+            Semicolon::Required => {
+                if blocklike.is_block() {
                     p.eat(T![;]);
+                } else {
+                    p.expect(T![;]);
                 }
-                Semicolon::Forbidden => (),
             }
-            m.complete(p, EXPR_STMT);
+            Semicolon::Optional => {
+                p.eat(T![;]);
+            }
+            Semicolon::Forbidden => (),
         }
+        m.complete(p, EXPR_STMT);
     }
 }
 
@@ -134,14 +134,11 @@ pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
     if p.at(T![else]) {
         // test_err let_else_right_curly_brace
         // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
-        if let Some(expr) = expr_after_eq {
-            if let Some(token) = expr.last_token(p) {
-                if token == T!['}'] {
-                    p.error(
-                        "right curly brace `}` before `else` in a `let...else` statement not allowed"
-                    )
-                }
-            }
+        if let Some(expr) = expr_after_eq
+            && let Some(token) = expr.last_token(p)
+            && token == T!['}']
+        {
+            p.error("right curly brace `}` before `else` in a `let...else` statement not allowed")
         }
 
         // test let_else

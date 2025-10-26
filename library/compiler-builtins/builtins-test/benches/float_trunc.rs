@@ -121,9 +121,7 @@ float_bench! {
 pub fn float_trunc() {
     let mut criterion = Criterion::default().configure_from_args();
 
-    // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
     #[cfg(f16_enabled)]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     {
         trunc_f32_f16(&mut criterion);
         trunc_f64_f16(&mut criterion);
@@ -133,11 +131,8 @@ pub fn float_trunc() {
 
     #[cfg(f128_enabled)]
     {
-        // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
         #[cfg(f16_enabled)]
-        #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
         trunc_f128_f16(&mut criterion);
-
         trunc_f128_f32(&mut criterion);
         trunc_f128_f64(&mut criterion);
     }

@@ -5,8 +5,9 @@
 //@ revisions:allow_regparm_mismatch allow_no_value error_generated
 //@[allow_regparm_mismatch] compile-flags: -Cunsafe-allow-abi-mismatch=regparm
 //@[allow_no_value] compile-flags: -Cunsafe-allow-abi-mismatch
-//@[error_generated] compile-flags:
+// [error_generated] no extra compile-flags
 //@[allow_regparm_mismatch] check-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 //[error_generated]~^ ERROR mixing `-Zregparm` will cause an ABI mismatch in crate `incompatible_regparm`

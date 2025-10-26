@@ -135,7 +135,7 @@ error: equality checks against true are unnecessary
   --> tests/ui/needless_bool/fixable.rs:157:8
    |
 LL |     if x == true {};
-   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+   |        ^^^^^^^^^ help: try: `x`
    |
    = note: `-D clippy::bool-comparison` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
@@ -144,19 +144,19 @@ error: equality checks against false can be replaced by a negation
   --> tests/ui/needless_bool/fixable.rs:162:8
    |
 LL |     if x == false {};
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+   |        ^^^^^^^^^^ help: try: `!x`
 
 error: equality checks against true are unnecessary
   --> tests/ui/needless_bool/fixable.rs:173:8
    |
 LL |     if x == true {};
-   |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+   |        ^^^^^^^^^ help: try: `x`
 
 error: equality checks against false can be replaced by a negation
   --> tests/ui/needless_bool/fixable.rs:175:8
    |
 LL |     if x == false {};
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+   |        ^^^^^^^^^^ help: try: `!x`
 
 error: this if-then-else expression returns a bool literal
   --> tests/ui/needless_bool/fixable.rs:185:12

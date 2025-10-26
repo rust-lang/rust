@@ -42,8 +42,6 @@ fn main() -> anyhow::Result<()> {
         flags::XtaskCmd::Install(cmd) => cmd.run(sh),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(sh),
         flags::XtaskCmd::Release(cmd) => cmd.run(sh),
-        flags::XtaskCmd::RustcPull(cmd) => cmd.run(sh),
-        flags::XtaskCmd::RustcPush(cmd) => cmd.run(sh),
         flags::XtaskCmd::Dist(cmd) => cmd.run(sh),
         flags::XtaskCmd::PublishReleaseNotes(cmd) => cmd.run(sh),
         flags::XtaskCmd::Metrics(cmd) => cmd.run(sh),

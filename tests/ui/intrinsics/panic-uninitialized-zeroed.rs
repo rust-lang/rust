@@ -5,15 +5,19 @@
 //@ [strict]compile-flags: -Zstrict-init-checks
 //@ needs-subprocess
 //@ ignore-backends: gcc
+//@ edition:2024
 
-#![allow(deprecated, invalid_value)]
-#![feature(never_type)]
+#![allow(deprecated, invalid_value, unreachable_code)]
+#![feature(never_type, rustc_private)]
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},
     ptr::NonNull,
     num,
 };
+
+#[cfg(target_os = "linux")]
+extern crate libc;
 
 #[allow(dead_code)]
 struct Foo {
@@ -108,6 +112,17 @@ fn test_panic_msg_only_if_strict<T>(op: impl (FnOnce() -> T) + 'static, msg: &st
 
 fn main() {
     unsafe {
+        #[cfg(target_os = "linux")]
+        {
+            // This test causes a large amount of crashes. If a system
+            // has a /proc/sys/kernel/core_pattern that uploads core dumps enabled,
+            // it will take a long time to complete. Set dumpable to 0 to avoid that.
+            if libc::prctl(libc::PR_SET_DUMPABLE, 0) < 0 {
+                let err = std::io::Error::last_os_error();
+                panic!("failed to disable core dumps {err:?}");
+            }
+        }
+
         // Uninhabited types
         test_panic_msg(
             || mem::uninitialized::<!>(),

@@ -1,0 +1,46 @@
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls_derive_const.rs:11:5
+   |
+LL | /     impl const Default for Foo {
+LL | |
+LL | |         fn default() -> Self {
+LL | |             Self(0)
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
+help: replace the manual implementation with a derive attribute
+   |
+LL ~     #[derive_const(Default)]
+LL ~     struct Foo(u64);
+LL |
+LL ~     
+   |
+
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls_derive_const.rs:24:5
+   |
+LL | /     impl const Default for Bar {
+LL | |
+LL | |         fn default() -> Self {
+LL | |             Bar::A
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+LL ~     #[derive_const(Default)]
+LL ~     enum Bar {
+LL ~         #[default]
+LL ~         A,
+LL |         B,
+LL |     }
+LL |
+LL ~     
+   |
+
+error: aborting due to 2 previous errors
+

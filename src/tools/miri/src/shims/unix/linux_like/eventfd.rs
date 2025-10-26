@@ -199,7 +199,7 @@ fn eventfd_write<'tcx>(
             // Future `read` calls will synchronize with this write, so update the FD clock.
             ecx.release_clock(|clock| {
                 eventfd.clock.borrow_mut().join(clock);
-            });
+            })?;
 
             // Store new counter value.
             eventfd.counter.set(new_count);
@@ -294,7 +294,7 @@ fn eventfd_read<'tcx>(
         );
     } else {
         // Synchronize with all prior `write` calls to this FD.
-        ecx.acquire_clock(&eventfd.clock.borrow());
+        ecx.acquire_clock(&eventfd.clock.borrow())?;
 
         // Return old counter value into user-space buffer.
         ecx.write_int(counter, &buf_place)?;

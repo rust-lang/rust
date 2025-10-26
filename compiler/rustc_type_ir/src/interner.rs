@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -8,9 +9,9 @@ use rustc_index::bit_set::DenseBitSet;
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::lang_items::TraitSolverLangItem;
+use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
+use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -38,6 +39,21 @@ pub trait Interner:
 
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
+    // Various more specific `DefId`s.
+    //
+    // rustc just defines them all to be `DefId`, but rust-analyzer uses different types so this is convenient for it.
+    //
+    // Note: The `TryFrom<DefId>` always succeeds (in rustc), so don't use it to check if some `DefId`
+    // is of some specific type!
+    type TraitId: SpecificDefId<Self>;
+    type ForeignId: SpecificDefId<Self>;
+    type FunctionId: SpecificDefId<Self>;
+    type ClosureId: SpecificDefId<Self>;
+    type CoroutineClosureId: SpecificDefId<Self>;
+    type CoroutineId: SpecificDefId<Self>;
+    type AdtId: SpecificDefId<Self>;
+    type ImplId: SpecificDefId<Self>;
+    type UnevaluatedConstId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -53,10 +69,10 @@ pub trait Interner:
         + Hash
         + Eq
         + TypeFoldable<Self>
-        + Deref<Target = PredefinedOpaquesData<Self>>;
+        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Self::Ty)>;
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
     ) -> Self::PredefinedOpaques;
 
     type LocalDefIds: Copy
@@ -168,7 +184,9 @@ pub trait Interner:
         from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R;
 
-    fn evaluation_is_concurrent(&self) -> bool;
+    /// Useful for testing. If a cache entry is replaced, this should
+    /// (in theory) only happen when concurrent.
+    fn assert_evaluation_is_concurrent(&self);
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -189,7 +207,7 @@ pub trait Interner:
     -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
-    fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
+    fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
 
@@ -230,17 +248,17 @@ pub trait Interner:
 
     fn coroutine_hidden_types(
         self,
-        def_id: Self::DefId,
+        def_id: Self::CoroutineId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::CoroutineWitnessTypes<Self>>>;
 
     fn fn_sig(
         self,
-        def_id: Self::DefId,
+        def_id: Self::FunctionId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::FnSig<Self>>>;
 
-    fn coroutine_movability(self, def_id: Self::DefId) -> Movability;
+    fn coroutine_movability(self, def_id: Self::CoroutineId) -> Movability;
 
-    fn coroutine_for_closure(self, def_id: Self::DefId) -> Self::DefId;
+    fn coroutine_for_closure(self, def_id: Self::CoroutineClosureId) -> Self::CoroutineId;
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool;
 
@@ -271,7 +289,7 @@ pub trait Interner:
 
     fn explicit_super_predicates_of(
         self,
-        def_id: Self::DefId,
+        def_id: Self::TraitId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
     fn explicit_implied_predicates_of(
@@ -283,11 +301,11 @@ pub trait Interner:
     /// and filtering them to the outlives predicates. This is purely for performance.
     fn impl_super_outlives(
         self,
-        impl_def_id: Self::DefId,
+        impl_def_id: Self::ImplId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
-    fn impl_is_const(self, def_id: Self::DefId) -> bool;
-    fn fn_is_const(self, def_id: Self::DefId) -> bool;
+    fn impl_is_const(self, def_id: Self::ImplId) -> bool;
+    fn fn_is_const(self, def_id: Self::FunctionId) -> bool;
     fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,
@@ -298,63 +316,82 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
 
-    fn impl_self_is_guaranteed_unsized(self, def_id: Self::DefId) -> bool;
+    fn impl_self_is_guaranteed_unsized(self, def_id: Self::ImplId) -> bool;
 
-    fn has_target_features(self, def_id: Self::DefId) -> bool;
+    fn has_target_features(self, def_id: Self::FunctionId) -> bool;
 
-    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
+    fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId;
 
-    fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+    fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> Self::TraitId;
 
-    fn is_default_trait(self, def_id: Self::DefId) -> bool;
+    fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> Self::AdtId;
 
-    fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
+    fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool;
 
-    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
+    fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
+
+    fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool;
+
+    fn is_default_trait(self, def_id: Self::TraitId) -> bool;
+
+    fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
+
+    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
+
+    fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
+
+    fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem>;
+
+    fn associated_type_def_ids(
+        self,
+        def_id: Self::TraitId,
+    ) -> impl IntoIterator<Item = Self::DefId>;
 
     fn for_each_relevant_impl(
         self,
-        trait_def_id: Self::DefId,
+        trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        f: impl FnMut(Self::DefId),
+        f: impl FnMut(Self::ImplId),
     );
+    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
 
-    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool;
+    fn impl_specializes(self, impl_def_id: Self::ImplId, victim_def_id: Self::ImplId) -> bool;
 
-    fn impl_is_default(self, impl_def_id: Self::DefId) -> bool;
+    fn impl_is_default(self, impl_def_id: Self::ImplId) -> bool;
 
-    fn impl_trait_ref(self, impl_def_id: Self::DefId) -> ty::EarlyBinder<Self, ty::TraitRef<Self>>;
+    fn impl_trait_ref(self, impl_def_id: Self::ImplId)
+    -> ty::EarlyBinder<Self, ty::TraitRef<Self>>;
 
-    fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
+    fn impl_polarity(self, impl_def_id: Self::ImplId) -> ty::ImplPolarity;
 
-    fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_alias(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_dyn_compatible(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
+    fn trait_is_fundamental(self, def_id: Self::TraitId) -> bool;
 
-    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::TraitId) -> bool;
 
     /// Returns `true` if this is an `unsafe trait`.
-    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 
-    fn is_general_coroutine(self, coroutine_def_id: Self::DefId) -> bool;
-    fn coroutine_is_async(self, coroutine_def_id: Self::DefId) -> bool;
-    fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
-    fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
+    fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
+    fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
+    fn coroutine_is_gen(self, coroutine_def_id: Self::CoroutineId) -> bool;
+    fn coroutine_is_async_gen(self, coroutine_def_id: Self::CoroutineId) -> bool;
 
     type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
-    fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
+    fn unsizing_params_for_adt(self, adt_def_id: Self::AdtId) -> Self::UnsizingParams;
 
     fn anonymize_bound_vars<T: TypeFoldable<Self>>(
         self,
@@ -367,6 +404,13 @@ pub trait Interner:
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds;
+
+    type Probe: Debug + Hash + Eq + Borrow<inspect::Probe<Self>>;
+    fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
+    fn evaluate_root_goal_for_proof_tree_raw(
+        self,
+        canonical_goal: CanonicalInput<Self>,
+    ) -> (QueryResult<Self>, Self::Probe);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
@@ -512,6 +556,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
+    type AmbiguityInfo = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;
     type Tracked<T: Debug + Clone> = I::Tracked<T>;
@@ -531,7 +576,7 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         I::with_global_cache(self, f)
     }
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.evaluation_is_concurrent()
+    fn assert_evaluation_is_concurrent(&self) {
+        self.assert_evaluation_is_concurrent()
     }
 }

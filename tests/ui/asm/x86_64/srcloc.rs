@@ -1,6 +1,7 @@
 //@ only-x86_64
 //@ build-fail
 //@ compile-flags: -Ccodegen-units=1
+//@ ignore-backends: gcc
 
 use std::arch::asm;
 

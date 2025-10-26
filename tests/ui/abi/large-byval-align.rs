@@ -1,6 +1,7 @@
 //@ compile-flags: -Copt-level=0
 //@ only-x86_64
 //@ build-pass
+//@ ignore-backends: gcc
 
 #[repr(align(536870912))]
 pub struct A(i64);

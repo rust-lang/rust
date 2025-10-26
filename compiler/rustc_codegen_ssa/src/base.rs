@@ -6,17 +6,20 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_attr_data_structures::OptimizeAttr;
+use rustc_ast::expand::allocator::{
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
+use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
@@ -138,7 +141,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 ) else {
                     return false;
                 };
-                if !ocx.select_all_or_error().is_empty() {
+                if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                     return false;
                 }
                 infcx.leak_check(universe, None).is_ok()
@@ -167,9 +170,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
         ),
-        (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
-            if src_dyn_kind == target_dyn_kind =>
-        {
+        (&ty::Dynamic(data_a, _), &ty::Dynamic(data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             let b_principal_def_id = data_b.principal_def_id();
@@ -207,7 +208,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(
+        (_, ty::Dynamic(data, _)) => meth::get_vtable(
             cx,
             source,
             data.principal()
@@ -227,6 +228,7 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
+        (&ty::Pat(a, _), &ty::Pat(b, _)) => unsize_ptr(bx, src, a, b, old_info),
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
         | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
@@ -630,14 +632,51 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
     // If the crate doesn't have an `allocator_kind` set then there's definitely
     // no shim to generate. Otherwise we also check our dependency graph for all
     // our output crate types. If anything there looks like its a `Dynamic`
-    // linkage, then it's already got an allocator shim and we'll be using that
-    // one instead. If nothing exists then it's our job to generate the
-    // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
+    // linkage for all crate types we may link as, then it's already got an
+    // allocator shim and we'll be using that one instead. If nothing exists
+    // then it's our job to generate the allocator! If crate types disagree
+    // about whether an allocator shim is necessary or not, we generate one
+    // and let needs_allocator_shim_for_linking decide at link time whether or
+    // not to use it for any particular linker invocation.
+    let all_crate_types_any_dynamic_crate = tcx.dependency_formats(()).iter().all(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
-    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+    if all_crate_types_any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+}
+
+/// Decide if this particular crate type needs an allocator shim linked in.
+/// This may return true even when allocator_kind_for_codegen returns false. In
+/// this case no allocator shim shall be linked.
+pub(crate) fn needs_allocator_shim_for_linking(
+    dependency_formats: &Dependencies,
+    crate_type: CrateType,
+) -> bool {
+    use rustc_middle::middle::dependency_format::Linkage;
+    let any_dynamic_crate =
+        dependency_formats[&crate_type].iter().any(|&linkage| linkage == Linkage::Dynamic);
+    !any_dynamic_crate
+}
+
+pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<AllocatorMethod> {
+    let mut methods = Vec::new();
+
+    if kind == AllocatorKind::Default {
+        methods.extend(ALLOCATOR_METHODS.into_iter().copied());
+    }
+
+    // If the return value of allocator_kind_for_codegen is Some then
+    // alloc_error_handler_kind must also be Some.
+    if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
+        methods.push(AllocatorMethod {
+            name: ALLOC_ERROR_HANDLER,
+            special: None,
+            inputs: &[],
+            output: AllocatorTy::Never,
+        });
+    }
+
+    methods
 }
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
@@ -647,7 +686,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, &[]);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, None);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -665,8 +704,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let MonoItemPartitions { codegen_units, autodiff_items, .. } =
-        tcx.collect_and_partition_mono_items(());
+    let MonoItemPartitions { codegen_units, .. } = tcx.collect_and_partition_mono_items(());
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -679,35 +717,21 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, autodiff_items);
-
     // Codegen an allocator shim, if necessary.
-    if let Some(kind) = allocator_kind_for_codegen(tcx) {
+    let allocator_module = if let Some(kind) = allocator_kind_for_codegen(tcx) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let module_llvm = tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(
-                tcx,
-                &llmod_id,
-                kind,
-                // If allocator_kind is Some then alloc_error_handler_kind must
-                // also be Some.
-                tcx.alloc_error_handler_kind(()).unwrap(),
-            )
-        });
 
-        ongoing_codegen.wait_for_signal_to_codegen_item();
-        ongoing_codegen.check_for_errors(tcx.sess);
+        tcx.sess.time("write_allocator_module", || {
+            let module =
+                backend.codegen_allocator(tcx, &llmod_id, &allocator_shim_contents(tcx, kind));
+            Some(ModuleCodegen::new_allocator(llmod_id, module))
+        })
+    } else {
+        None
+    };
 
-        // These modules are generally cheap and won't throw off scheduling.
-        let cost = 0;
-        submit_codegened_module_to_llvm(
-            &backend,
-            &ongoing_codegen.coordinator.sender,
-            ModuleCodegen::new_allocator(llmod_id, module_llvm),
-            cost,
-        );
-    }
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, allocator_module);
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -800,18 +824,12 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 // compilation hang on post-monomorphization errors.
                 tcx.dcx().abort_if_errors();
 
-                submit_codegened_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
-                    module,
-                    cost,
-                );
+                submit_codegened_module_to_llvm(&ongoing_codegen.coordinator, module, cost);
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
-                    &backend,
                     tcx,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -820,8 +838,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator.sender,
+                    &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -865,7 +882,7 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     instance: Instance<'tcx>,
 ) -> bool {
     fn is_llvm_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        if let Some(name) = tcx.codegen_fn_attrs(def_id).link_name {
+        if let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name {
             name.as_str().starts_with("llvm.")
         } else {
             false

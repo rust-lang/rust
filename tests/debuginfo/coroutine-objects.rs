@@ -5,6 +5,8 @@
 // ensure that LLDB won't crash at least (like #57822).
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -53,8 +55,7 @@
 // cdb-check: b                : Returned [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
-#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait, stmt_expr_attributes)]
-#![omit_gdb_pretty_printer_section]
+#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;

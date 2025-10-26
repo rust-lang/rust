@@ -181,5 +181,11 @@ error: replacing an `Option` with `Some(..)`
 LL |     let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `(if b { &mut opt1 } else { &mut opt2 }).replace(1)`
 
-error: aborting due to 29 previous errors
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> tests/ui/mem_replace.rs:185:20
+   |
+LL |     let replaced = std::mem::replace(dbg!(&mut text), String::default());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(dbg!(&mut text))`
+
+error: aborting due to 30 previous errors
 

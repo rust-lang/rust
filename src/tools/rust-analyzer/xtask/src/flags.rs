@@ -59,20 +59,6 @@ xflags::xflags! {
             optional --dry-run
         }
 
-        cmd rustc-pull {
-            /// rustc commit to pull.
-            optional --commit refspec: String
-        }
-
-        cmd rustc-push {
-            /// rust local path, e.g. `../rust-rust-analyzer`.
-            required --rust-path rust_path: String
-            /// rust fork name, e.g.  `matklad/rust`.
-            required --rust-fork rust_fork: String
-            /// branch name.
-            optional --branch branch: String
-        }
-
         cmd dist {
             /// Use mimalloc allocator for server
             optional --mimalloc
@@ -121,8 +107,6 @@ pub enum XtaskCmd {
     Install(Install),
     FuzzTests(FuzzTests),
     Release(Release),
-    RustcPull(RustcPull),
-    RustcPush(RustcPush),
     Dist(Dist),
     PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
@@ -149,18 +133,6 @@ pub struct FuzzTests;
 #[derive(Debug)]
 pub struct Release {
     pub dry_run: bool,
-}
-
-#[derive(Debug)]
-pub struct RustcPull {
-    pub commit: Option<String>,
-}
-
-#[derive(Debug)]
-pub struct RustcPush {
-    pub rust_path: String,
-    pub rust_fork: String,
-    pub branch: Option<String>,
 }
 
 #[derive(Debug)]

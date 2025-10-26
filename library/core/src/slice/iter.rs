@@ -2203,16 +2203,13 @@ unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 #[unstable(feature = "array_windows", issue = "75027")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
-    slice_head: *const T,
-    num: usize,
-    marker: PhantomData<&'a [T; N]>,
+    v: &'a [T],
 }
 
 impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
     #[inline]
     pub(super) const fn new(slice: &'a [T]) -> Self {
-        let num_windows = slice.len().saturating_sub(N - 1);
-        Self { slice_head: slice.as_ptr(), num: num_windows, marker: PhantomData }
+        Self { v: slice }
     }
 }
 
@@ -2222,49 +2219,34 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.num == 0 {
-            return None;
+        let ret = self.v.first_chunk();
+        if ret.is_some() {
+            self.v = &self.v[1..];
         }
-        // SAFETY:
-        // This is safe because it's indexing into a slice guaranteed to be length > N.
-        let ret = unsafe { &*self.slice_head.cast::<[T; N]>() };
-        // SAFETY: Guaranteed that there are at least 1 item remaining otherwise
-        // earlier branch would've been hit
-        self.slice_head = unsafe { self.slice_head.add(1) };
-
-        self.num -= 1;
-        Some(ret)
+        ret
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.num, Some(self.num))
+        let size = self.v.len().saturating_sub(N - 1);
+        (size, Some(size))
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.num
+        self.len()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if self.num <= n {
-            self.num = 0;
-            return None;
-        }
-        // SAFETY:
-        // This is safe because it's indexing into a slice guaranteed to be length > N.
-        let ret = unsafe { &*self.slice_head.add(n).cast::<[T; N]>() };
-        // SAFETY: Guaranteed that there are at least n items remaining
-        self.slice_head = unsafe { self.slice_head.add(n + 1) };
-
-        self.num -= n + 1;
-        Some(ret)
+        let idx = n.min(self.v.len());
+        self.v = &self.v[idx..];
+        self.next()
     }
 
     #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.nth(self.num.checked_sub(1)?)
+    fn last(self) -> Option<Self::Item> {
+        self.v.last_chunk()
     }
 }
 
@@ -2272,282 +2254,26 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
 impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T; N]> {
-        if self.num == 0 {
-            return None;
+        let ret = self.v.last_chunk();
+        if ret.is_some() {
+            self.v = &self.v[..self.v.len() - 1];
         }
-        // SAFETY: Guaranteed that there are n items remaining, n-1 for 0-indexing.
-        let ret = unsafe { &*self.slice_head.add(self.num - 1).cast::<[T; N]>() };
-        self.num -= 1;
-        Some(ret)
+        ret
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<&'a [T; N]> {
-        if self.num <= n {
-            self.num = 0;
-            return None;
-        }
-        // SAFETY: Guaranteed that there are n items remaining, n-1 for 0-indexing.
-        let ret = unsafe { &*self.slice_head.add(self.num - (n + 1)).cast::<[T; N]>() };
-        self.num -= n + 1;
-        Some(ret)
+        let idx = self.v.len().saturating_sub(n);
+        self.v = &self.v[..idx];
+        self.next_back()
     }
 }
 
 #[unstable(feature = "array_windows", issue = "75027")]
 impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
     fn is_empty(&self) -> bool {
-        self.num == 0
+        self.v.len() < N
     }
-}
-
-/// An iterator over a slice in (non-overlapping) chunks (`N` elements at a
-/// time), starting at the beginning of the slice.
-///
-/// When the slice len is not evenly divided by the chunk size, the last
-/// up to `N-1` elements will be omitted but can be retrieved from
-/// the [`remainder`] function from the iterator.
-///
-/// This struct is created by the [`array_chunks`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// #![feature(array_chunks)]
-///
-/// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let mut iter = slice.array_chunks::<2>();
-/// assert_eq!(iter.next(), Some(&['l', 'o']));
-/// assert_eq!(iter.next(), Some(&['r', 'e']));
-/// assert_eq!(iter.next(), None);
-/// ```
-///
-/// [`array_chunks`]: slice::array_chunks
-/// [`remainder`]: ArrayChunks::remainder
-/// [slices]: slice
-#[derive(Debug)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct ArrayChunks<'a, T: 'a, const N: usize> {
-    iter: Iter<'a, [T; N]>,
-    rem: &'a [T],
-}
-
-impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    pub(super) const fn new(slice: &'a [T]) -> Self {
-        let (array_slice, rem) = slice.as_chunks();
-        Self { iter: array_slice.iter(), rem }
-    }
-
-    /// Returns the remainder of the original slice that is not going to be
-    /// returned by the iterator. The returned slice has at most `N-1`
-    /// elements.
-    #[must_use]
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    pub fn remainder(&self) -> &'a [T] {
-        self.rem
-    }
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<T, const N: usize> Clone for ArrayChunks<'_, T, N> {
-    fn clone(&self) -> Self {
-        ArrayChunks { iter: self.iter.clone(), rem: self.rem }
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
-    type Item = &'a [T; N];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a [T; N]> {
-        self.iter.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.iter.count()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.iter.nth(n)
-    }
-
-    #[inline]
-    fn last(self) -> Option<Self::Item> {
-        self.iter.last()
-    }
-
-    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> &'a [T; N] {
-        // SAFETY: The safety guarantees of `__iterator_get_unchecked` are
-        // transferred to the caller.
-        unsafe { self.iter.__iterator_get_unchecked(i) }
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunks<'a, T, N> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a [T; N]> {
-        self.iter.next_back()
-    }
-
-    #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.iter.nth_back(n)
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<T, const N: usize> ExactSizeIterator for ArrayChunks<'_, T, N> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, const N: usize> TrustedLen for ArrayChunks<'_, T, N> {}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
-
-#[doc(hidden)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {}
-
-#[doc(hidden)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunks<'a, T, N> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
-}
-
-/// An iterator over a slice in (non-overlapping) mutable chunks (`N` elements
-/// at a time), starting at the beginning of the slice.
-///
-/// When the slice len is not evenly divided by the chunk size, the last
-/// up to `N-1` elements will be omitted but can be retrieved from
-/// the [`into_remainder`] function from the iterator.
-///
-/// This struct is created by the [`array_chunks_mut`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// #![feature(array_chunks)]
-///
-/// let mut slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.array_chunks_mut::<2>();
-/// ```
-///
-/// [`array_chunks_mut`]: slice::array_chunks_mut
-/// [`into_remainder`]: ../../std/slice/struct.ArrayChunksMut.html#method.into_remainder
-/// [slices]: slice
-#[derive(Debug)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
-    iter: IterMut<'a, [T; N]>,
-    rem: &'a mut [T],
-}
-
-impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
-    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    #[inline]
-    pub(super) const fn new(slice: &'a mut [T]) -> Self {
-        let (array_slice, rem) = slice.as_chunks_mut();
-        Self { iter: array_slice.iter_mut(), rem }
-    }
-
-    /// Returns the remainder of the original slice that is not going to be
-    /// returned by the iterator. The returned slice has at most `N-1`
-    /// elements.
-    #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "array_chunks", issue = "74985")]
-    pub fn into_remainder(self) -> &'a mut [T] {
-        self.rem
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<'a, T, const N: usize> Iterator for ArrayChunksMut<'a, T, N> {
-    type Item = &'a mut [T; N];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut [T; N]> {
-        self.iter.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        self.iter.count()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.iter.nth(n)
-    }
-
-    #[inline]
-    fn last(self) -> Option<Self::Item> {
-        self.iter.last()
-    }
-
-    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> &'a mut [T; N] {
-        // SAFETY: The safety guarantees of `__iterator_get_unchecked` are transferred to
-        // the caller.
-        unsafe { self.iter.__iterator_get_unchecked(i) }
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunksMut<'a, T, N> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut [T; N]> {
-        self.iter.next_back()
-    }
-
-    #[inline]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.iter.nth_back(n)
-    }
-}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<T, const N: usize> ExactSizeIterator for ArrayChunksMut<'_, T, N> {
-    fn is_empty(&self) -> bool {
-        self.iter.is_empty()
-    }
-}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, const N: usize> TrustedLen for ArrayChunksMut<'_, T, N> {}
-
-#[unstable(feature = "array_chunks", issue = "74985")]
-impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
-
-#[doc(hidden)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {}
-
-#[doc(hidden)]
-#[unstable(feature = "array_chunks", issue = "74985")]
-unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunksMut<'a, T, N> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a

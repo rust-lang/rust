@@ -7,7 +7,14 @@ mod libc {
     #[link(name = "c")]
     extern "C" {
         pub fn sigaction(signum: i32, act: *const sigaction, oldact: *mut sigaction) -> i32;
-        pub fn mmap(addr: *mut (), len: usize, prot: i32, flags: i32, fd: i32, offset: i64) -> *mut ();
+        pub fn mmap(
+            addr: *mut (),
+            len: usize,
+            prot: i32,
+            flags: i32,
+            fd: i32,
+            offset: i64,
+        ) -> *mut ();
         pub fn mprotect(addr: *mut (), len: usize, prot: i32) -> i32;
     }
 
@@ -54,7 +61,8 @@ fn main() {
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
             -1,
             0,
-        ).cast();
+        )
+        .cast();
         if STORAGE == libc::MAP_FAILED {
             panic!("error: mmap failed");
         }

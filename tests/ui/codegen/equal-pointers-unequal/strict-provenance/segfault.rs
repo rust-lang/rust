@@ -58,6 +58,7 @@ fn main() {
     // The `Box` has been deallocated by now, so this is a dangling reference!
     let r: &u8 = &*r;
     println!("{:p}", r);
+    println!("{}", i);
 
     // The following might segfault. Or it might not.
     // Depends on the platform semantics

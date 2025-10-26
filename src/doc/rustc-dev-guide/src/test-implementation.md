@@ -1,7 +1,5 @@
 # The `#[test]` attribute
 
-<!-- toc -->
-
 
 
 Many Rust programmers rely on a built-in attribute called `#[test]`. All

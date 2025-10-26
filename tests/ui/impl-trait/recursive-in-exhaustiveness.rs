@@ -17,8 +17,8 @@
 fn build<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
     let (x,) = (build(x),);
+    //[next]~^ ERROR type annotations needed
     build(x)
-    //[next]~^ ERROR type annotations needed: cannot normalize `build<_>::{opaque#0}`
 }
 
 // Opaque<T> = (Opaque<T>,)
@@ -27,10 +27,8 @@ fn build<T>(x: T) -> impl Sized {
 fn build2<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
     let (x,) = (build2(x),);
+    //[next]~^ ERROR type annotations needed
     (build2(x),)
-    //[next]~^ ERROR type mismatch resolving
-    //[next]~| ERROR type mismatch resolving
-    //[next]~| ERROR the size for values of type
 }
 
 // Opaque<T> = Opaque<(T,)>
@@ -39,13 +37,8 @@ fn build2<T>(x: T) -> impl Sized {
 fn build3<T>(x: T) -> impl Sized {
     //[current]~^ ERROR cannot resolve opaque type
     let (x,) = (build3((x,)),);
-    //[next]~^ ERROR type mismatch resolving
-    //[next]~| ERROR type mismatch resolving
-    //[next]~| ERROR type mismatch resolving
-    //[next]~| ERROR type mismatch resolving
-    //[next]~| ERROR the size for values of type
-    //[next]~| ERROR mismatched types
     build3(x)
+    //[next]~^ ERROR type annotations needed
 }
 
 fn main() {}

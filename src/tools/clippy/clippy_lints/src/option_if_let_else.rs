@@ -1,11 +1,12 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, eager_or_lazy, expr_requires_coercion, higher, is_else_clause,
-    is_in_const_context, is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
+    is_in_const_context, peel_blocks, peel_hir_expr_while,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -127,7 +128,8 @@ fn try_get_option_occurrence<'tcx>(
     if_else: &'tcx Expr<'_>,
 ) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
-        ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::Unary(UnOp::Deref, inner_expr) if !cx.typeck_results().expr_ty(inner_expr).is_raw_ptr() => inner_expr,
         _ => expr,
     };
     let (inner_pat, is_result) = try_get_inner_pat_and_is_result(cx, pat)?;
@@ -223,8 +225,8 @@ fn try_get_option_occurrence<'tcx>(
 
         let mut app = Applicability::Unspecified;
 
-        let (none_body, is_argless_call) = match none_body.kind {
-            ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() => (call_expr, true),
+        let (none_body, can_omit_arg) = match none_body.kind {
+            ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() && !is_result => (call_expr, true),
             _ => (none_body, false),
         };
 
@@ -241,7 +243,7 @@ fn try_get_option_occurrence<'tcx>(
             ),
             none_expr: format!(
                 "{}{}",
-                if method_sugg == "map_or" || is_argless_call {
+                if method_sugg == "map_or" || can_omit_arg {
                     ""
                 } else if is_result {
                     "|_| "
@@ -313,9 +315,9 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
     if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
         let res = cx.qpath_res(qpath, pat.hir_id);
-        if is_res_lang_ctor(cx, res, OptionSome) {
+        if res.ctor_parent(cx).is_lang_item(cx, OptionSome) {
             return Some((inner_pat, false));
-        } else if is_res_lang_ctor(cx, res, ResultOk) {
+        } else if res.ctor_parent(cx).is_lang_item(cx, ResultOk) {
             return Some((inner_pat, true));
         }
     }
@@ -378,9 +380,14 @@ fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
             kind: PatExprKind::Path(qpath),
             hir_id,
             ..
-        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
+        }) => cx
+            .qpath_res(qpath, *hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, OptionNone),
         PatKind::TupleStruct(ref qpath, [first_pat], _) => {
-            is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)
+            cx.qpath_res(qpath, arm.pat.hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, ResultErr)
                 && matches!(first_pat.kind, PatKind::Wild)
         },
         PatKind::Wild => true,

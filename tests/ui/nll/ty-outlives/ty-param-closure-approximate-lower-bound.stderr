@@ -9,6 +9,8 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
                (),
            ]
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
    = note: number of external vids: 2
    = note: where T: '?1
 
@@ -31,6 +33,8 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'?1 &'^0 ()>>, &'^1 T)),
                (),
            ]
+   = note: late-bound region is '?3
+   = note: late-bound region is '?4
    = note: late-bound region is '?2
    = note: number of external vids: 3
    = note: where T: '?1

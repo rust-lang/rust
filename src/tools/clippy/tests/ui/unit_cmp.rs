@@ -68,3 +68,20 @@ fn main() {
         }
     );
 }
+
+fn issue15559() {
+    fn foo() {}
+    assert_eq!(
+        //~^ unit_cmp
+        {
+            1;
+        },
+        foo()
+    );
+    assert_eq!(foo(), foo());
+    //~^ unit_cmp
+
+    // don't lint on explicitly written unit expr
+    assert_eq!(foo(), ());
+    assert_ne!((), ContainsUnit(()).0);
+}

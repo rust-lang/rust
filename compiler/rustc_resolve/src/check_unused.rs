@@ -33,7 +33,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_span::{DUMMY_SP, Ident, Span, kw};
+use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, kw};
 
 use crate::imports::{Import, ImportKind};
 use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
@@ -169,7 +169,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        BuiltinLintDiag::UnusedExternCrate {
+                        crate::errors::UnusedExternCrate {
                             span: extern_crate.span,
                             removal_span: extern_crate.span_with_attributes,
                         },
@@ -203,8 +203,8 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             if self
                 .r
                 .extern_prelude
-                .get(&extern_crate.ident)
-                .is_none_or(|entry| entry.introduced_by_item)
+                .get(&Macros20NormalizedIdent::new(extern_crate.ident))
+                .is_none_or(|entry| entry.introduced_by_item())
             {
                 continue;
             }
@@ -406,7 +406,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                BuiltinLintDiag::MacroUseDeprecated,
+                                crate::errors::MacroUseDeprecated,
                             );
                         }
                     }
@@ -427,7 +427,7 @@ impl Resolver<'_, '_> {
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
-                        BuiltinLintDiag::UnusedMacroUse,
+                        crate::errors::UnusedMacroUse,
                     );
                 }
                 _ => {}
@@ -507,11 +507,9 @@ impl Resolver<'_, '_> {
 
         let unused_imports = visitor.unused_imports;
         let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
-                let resolution = resolution.borrow();
-
-                if let Some(binding) = resolution.best_binding()
+                if let Some(binding) = resolution.borrow().best_binding()
                     && let NameBindingKind::Import { import, .. } = binding.kind
                     && let ImportKind::Single { id, .. } = import.kind
                 {

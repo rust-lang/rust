@@ -32,16 +32,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
         let mut rval_ty = rvalue.ty(self.local_decls, self.tcx);
         // Not erasing this causes `Free Regions` errors in validator,
         // when rval is `ReStatic`.
-        rval_ty = self.tcx.erase_regions(rval_ty);
-        place_ty = self.tcx.erase_regions(place_ty);
+        rval_ty = self.tcx.erase_and_anonymize_regions(rval_ty);
+        place_ty = self.tcx.erase_and_anonymize_regions(place_ty);
         if place_ty != rval_ty {
             let temp = self
                 .patcher
                 .new_temp(rval_ty, self.local_decls[place.as_ref().local].source_info.span);
             let new_place = Place::from(temp);
             self.patcher.add_assign(location, new_place, rvalue.clone());
-            let subtyped = new_place.project_deeper(&[ProjectionElem::Subtype(place_ty)], self.tcx);
-            *rvalue = Rvalue::Use(Operand::Move(subtyped));
+            *rvalue = Rvalue::Cast(CastKind::Subtype, Operand::Move(new_place), place_ty);
         }
     }
 }

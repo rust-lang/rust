@@ -124,7 +124,7 @@ pub unsafe trait GlobalAlloc {
     ///
     /// # Safety
     ///
-    /// `layout` must have non-zero size. Attempting to allocate for a zero-sized `layout` may
+    /// `layout` must have non-zero size. Attempting to allocate for a zero-sized `layout` will
     /// result in undefined behavior.
     ///
     /// (Extension subtraits might provide more specific bounds on
@@ -163,7 +163,7 @@ pub unsafe trait GlobalAlloc {
     /// * `layout` is the same layout that was used to allocate that block of
     ///   memory.
     ///
-    /// Otherwise undefined behavior can result.
+    /// Otherwise the behavior is undefined.
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -173,7 +173,7 @@ pub unsafe trait GlobalAlloc {
     /// # Safety
     ///
     /// The caller has to ensure that `layout` has non-zero size. Like `alloc`
-    /// zero sized `layout` can result in undefined behavior.
+    /// zero sized `layout` will result in undefined behavior.
     /// However the allocated block of memory is guaranteed to be initialized.
     ///
     /// # Errors
@@ -234,7 +234,7 @@ pub unsafe trait GlobalAlloc {
     ///   does not overflow `isize` (i.e., the rounded value must be less than or
     ///   equal to `isize::MAX`).
     ///
-    /// If these are not followed, undefined behavior can result.
+    /// If these are not followed, the behavior is undefined.
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer

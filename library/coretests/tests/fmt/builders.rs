@@ -173,6 +173,21 @@ mod debug_struct {
             format!("{Bar:#?}")
         );
     }
+
+    #[test]
+    fn test_field_with() {
+        struct Foo;
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt.debug_struct("Foo")
+                    .field_with("bar", |f| f.write_str("true"))
+                    .field_with("baz", |f| f.write_str("false"))
+                    .finish()
+            }
+        }
+
+        assert_eq!("Foo {\n    bar: true,\n    baz: false,\n}", format!("{Foo:#?}"))
+    }
 }
 
 mod debug_tuple {

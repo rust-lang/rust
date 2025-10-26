@@ -1,6 +1,6 @@
 use std::ffi::OsString;
-use std::fs;
 use std::path::PathBuf;
+use std::{fs, io};
 
 use super::miri_extern;
 

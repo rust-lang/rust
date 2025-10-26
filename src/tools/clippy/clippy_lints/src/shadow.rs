@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::path_to_local_id;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use rustc_data_structures::fx::FxHashMap;
@@ -202,7 +202,7 @@ pub fn is_local_used_except<'tcx>(
     for_each_expr(cx, visitable, |e| {
         if except.is_some_and(|it| it == e.hir_id) {
             ControlFlow::Continue(Descend::No)
-        } else if path_to_local_id(e, id) {
+        } else if e.res_local_id() == Some(id) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(Descend::Yes)

@@ -1,7 +1,5 @@
 # How Salsa works
 
-<!-- toc -->
-
 This chapter is based on the explanation given by Niko Matsakis in this
 [video](https://www.youtube.com/watch?v=_muY4HjSqVw) about
 [Salsa](https://github.com/salsa-rs/salsa). To find out more you may

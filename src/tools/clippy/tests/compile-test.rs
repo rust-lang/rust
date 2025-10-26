@@ -73,8 +73,7 @@ fn internal_extern_flags() -> Vec<String> {
             && INTERNAL_TEST_DEPENDENCIES.contains(&name)
         {
             // A dependency may be listed twice if it is available in sysroot,
-            // and the sysroot dependencies are listed first. As of the writing,
-            // this only seems to apply to if_chain.
+            // and the sysroot dependencies are listed first.
             crates.insert(name, path);
         }
     }
@@ -292,7 +291,6 @@ fn run_ui_toml(cx: &TestContext) {
 }
 
 // Allow `Default::default` as `OptWithSpan` is not nameable
-#[allow(clippy::default_trait_access)]
 fn run_ui_cargo(cx: &TestContext) {
     if IS_RUSTC_TEST_SUITE {
         return;
@@ -406,11 +404,18 @@ fn ui_cargo_toml_metadata() {
             continue;
         }
 
-        let toml = fs::read_to_string(path).unwrap().parse::<toml::Value>().unwrap();
+        let toml = fs::read_to_string(path).unwrap();
+        let toml = toml::de::DeTable::parse(&toml).unwrap();
 
-        let package = toml.as_table().unwrap().get("package").unwrap().as_table().unwrap();
+        let package = toml.get_ref().get("package").unwrap().get_ref().as_table().unwrap();
 
-        let name = package.get("name").unwrap().as_str().unwrap().replace('-', "_");
+        let name = package
+            .get("name")
+            .unwrap()
+            .as_ref()
+            .as_str()
+            .unwrap()
+            .replace('-', "_");
         assert!(
             path.parent()
                 .unwrap()
@@ -422,7 +427,10 @@ fn ui_cargo_toml_metadata() {
             path.display(),
         );
 
-        let publish = package.get("publish").and_then(toml::Value::as_bool).unwrap_or(true);
+        let publish = package
+            .get("publish")
+            .and_then(|x| x.get_ref().as_bool())
+            .unwrap_or(true);
         assert!(
             !publish || publish_exceptions.contains(&path.parent().unwrap().to_path_buf()),
             "`{}` lacks `publish = false`",
@@ -434,6 +442,7 @@ fn ui_cargo_toml_metadata() {
 #[derive(Template)]
 #[template(path = "index_template.html")]
 struct Renderer<'a> {
+    count: usize,
     lints: &'a Vec<LintMetadata>,
 }
 
@@ -463,7 +472,7 @@ struct DiagnosticCollector {
 }
 
 impl DiagnosticCollector {
-    #[allow(clippy::assertions_on_constants)]
+    #[expect(clippy::assertions_on_constants)]
     fn spawn() -> (Self, thread::JoinHandle<()>) {
         assert!(!IS_RUSTC_TEST_SUITE && !RUN_INTERNAL_TESTS);
 
@@ -513,7 +522,12 @@ impl DiagnosticCollector {
 
             fs::write(
                 "util/gh-pages/index.html",
-                Renderer { lints: &metadata }.render().unwrap(),
+                Renderer {
+                    count: LINTS.len(),
+                    lints: &metadata,
+                }
+                .render()
+                .unwrap(),
             )
             .unwrap();
         });

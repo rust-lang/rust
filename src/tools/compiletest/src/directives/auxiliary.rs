@@ -5,6 +5,7 @@ use std::iter;
 
 use super::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 use crate::common::Config;
+use crate::directives::DirectiveLine;
 
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
@@ -41,10 +42,16 @@ impl AuxProps {
 
 /// If the given test directive line contains an `aux-*` directive, parse it
 /// and update [`AuxProps`] accordingly.
-pub(super) fn parse_and_update_aux(config: &Config, ln: &str, aux: &mut AuxProps) {
-    if !(ln.starts_with("aux-") || ln.starts_with("proc-macro")) {
+pub(super) fn parse_and_update_aux(
+    config: &Config,
+    directive_line: &DirectiveLine<'_>,
+    aux: &mut AuxProps,
+) {
+    if !(directive_line.name.starts_with("aux-") || directive_line.name == "proc-macro") {
         return;
     }
+
+    let ln = directive_line;
 
     config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());

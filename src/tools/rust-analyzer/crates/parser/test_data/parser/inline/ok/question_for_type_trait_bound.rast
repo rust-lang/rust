@@ -27,18 +27,18 @@ SOURCE_FILE
         WHITESPACE " "
         TYPE_BOUND_LIST
           TYPE_BOUND
-            QUESTION "?"
-            FOR_TYPE
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"
                 R_ANGLE ">"
-              WHITESPACE " "
-              PATH_TYPE
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "Sized"
+            WHITESPACE " "
+            QUESTION "?"
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Sized"
     WHITESPACE " "
     BLOCK_EXPR
       STMT_LIST

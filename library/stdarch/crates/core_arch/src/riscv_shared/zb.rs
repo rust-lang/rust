@@ -68,7 +68,7 @@ pub fn orc_b(rs: usize) -> usize {
 ///
 /// Section: 2.11
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-#[target_feature(enable = "zbc")]
+#[target_feature(enable = "zbkc")]
 #[cfg_attr(test, assert_instr(clmul))]
 #[inline]
 pub fn clmul(rs1: usize, rs2: usize) -> usize {
@@ -93,7 +93,7 @@ pub fn clmul(rs1: usize, rs2: usize) -> usize {
 ///
 /// Section: 2.12
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-#[target_feature(enable = "zbc")]
+#[target_feature(enable = "zbkc")]
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
 pub fn clmulh(rs1: usize, rs2: usize) -> usize {

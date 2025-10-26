@@ -9,6 +9,7 @@ LL |     foo(cell, |cell_a, cell_x| {
                for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),
            ]
+   = note: late-bound region is '?2
 
 error[E0521]: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:22:9
@@ -43,6 +44,7 @@ LL |     foo(cell, |cell_a, cell_x| {
                for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
                (),
            ]
+   = note: late-bound region is '?2
    = note: number of external vids: 2
    = note: where '?1: '?0
 
@@ -67,6 +69,12 @@ LL |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static ->
 LL |     })
 LL | }
    | - `a` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:13:8
+   |
+LL |     F: for<'x> FnOnce(Cell<&'a u32>, Cell<&'x u32>),
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

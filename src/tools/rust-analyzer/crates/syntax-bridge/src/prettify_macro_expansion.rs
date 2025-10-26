@@ -61,10 +61,11 @@ pub fn prettify_macro_expansion(
             }
             _ => continue,
         };
-        if token.kind() == SyntaxKind::IDENT && token.text() == "$crate" {
-            if let Some(replacement) = dollar_crate_replacement(&token) {
-                dollar_crate_replacements.push((token.clone(), replacement));
-            }
+        if token.kind() == SyntaxKind::IDENT
+            && token.text() == "$crate"
+            && let Some(replacement) = dollar_crate_replacement(&token)
+        {
+            dollar_crate_replacements.push((token.clone(), replacement));
         }
         let tok = &token;
 

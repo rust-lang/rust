@@ -52,7 +52,7 @@ LL |         <$from>::$method(8, /* u8 */)
    |                           ++++++++++
 
 error[E0061]: this function takes 4 arguments but 3 arguments were supplied
-  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:50:5
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:52:5
    |
 LL |     foo(1, 2, 3);
    |     ^^^--------- argument #4 of type `isize` is missing
@@ -68,7 +68,7 @@ LL |     foo(1, 2, 3, /* isize */);
    |                +++++++++++++
 
 error[E0061]: this function takes 6 arguments but 3 arguments were supplied
-  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:52:5
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:54:5
    |
 LL |     bar(1, 2, 3);
    |     ^^^--------- three arguments of type `i32`, `i32`, and `i32` are missing
@@ -83,6 +83,28 @@ help: provide the arguments
 LL |     bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
    |                +++++++++++++++++++++++++++++++++
 
-error: aborting due to 5 previous errors
+error[E0061]: this function takes 6 arguments but 5 arguments were supplied
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:58:5
+   |
+LL |     function_with_lots_of_arguments(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         variable_name,
+LL |         variable_name,
+   |         ------------- argument #2 of type `char` is missing
+   |
+note: function defined here
+  --> $DIR/fn-arg-count-mismatch-diagnostics.rs:49:4
+   |
+LL | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32, f: i32) {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^         -------
+help: provide the argument
+   |
+LL |     function_with_lots_of_arguments(
+LL |         variable_name,
+LL ~         /* char */,
+LL ~         variable_name,
+   |
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0061`.

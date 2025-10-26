@@ -1,3 +1,4 @@
+//@ normalize-stderr: "[[:xdigit:]]{2} __ ([[:xdigit:]]{2}\s){2}" -> "HEX_DUMP"
 #![feature(core_intrinsics)]
 
 const RAW_EQ_PADDING: bool = unsafe {

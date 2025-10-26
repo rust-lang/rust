@@ -25,5 +25,5 @@ unicode-width = "0.2.0"
 # tidy-alphabetical-end
 
 [dev-dependencies]
-termcolor = "1.2"
-
+# tidy-alphabetical-start
+# tidy-alphabetical-end

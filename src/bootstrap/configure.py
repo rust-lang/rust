@@ -340,6 +340,11 @@ o(
     "don't truncate options when printing them in this configure script",
 )
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
+v(
+    "parallel-frontend-threads",
+    "rust.parallel-frontend-threads",
+    "number of parallel threads for rustc compilation",
+)
 
 
 def p(msg):

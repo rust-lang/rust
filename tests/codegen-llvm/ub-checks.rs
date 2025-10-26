@@ -6,7 +6,7 @@
 // but ub-checks are explicitly disabled.
 
 //@ revisions: DEBUG NOCHECKS
-//@ [DEBUG] compile-flags:
+// [DEBUG] no extra compile-flags
 //@ [NOCHECKS] compile-flags: -Zub-checks=no
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=yes
 

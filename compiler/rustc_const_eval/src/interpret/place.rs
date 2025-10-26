@@ -9,6 +9,7 @@ use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug};
+use tracing::field::Empty;
 use tracing::{instrument, trace};
 
 use super::{
@@ -16,6 +17,7 @@ use super::{
     InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
     Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
 };
+use crate::enter_trace_span;
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
@@ -232,6 +234,12 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     }
 
     /// A place is either an mplace or some local.
+    ///
+    /// Note that the return value can be different even for logically identical places!
+    /// Specifically, if a local is stored in-memory, this may return `Local` or `MPlaceTy`
+    /// depending on how the place was constructed. In other words, seeing `Local` here does *not*
+    /// imply that this place does not point to memory. Every caller must therefore always handle
+    /// both cases.
     #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
@@ -524,6 +532,9 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
+        let _trace =
+            enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
+
         let mut place = self.local_to_place(mir_place.local)?;
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
@@ -700,7 +711,7 @@ where
 
         match value {
             Immediate::Scalar(scalar) => {
-                alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)
+                alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)?;
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
@@ -720,10 +731,10 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, a_val.size()), a_val)?;
                 alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
                 // We don't have to reset padding here, `write_immediate` will anyway do a validation run.
-                interp_ok(())
             }
             Immediate::Uninit => alloc.write_uninit_full(),
         }
+        interp_ok(())
     }
 
     pub fn write_uninit(
@@ -743,7 +754,7 @@ where
                     // Zero-sized access
                     return interp_ok(());
                 };
-                alloc.write_uninit_full()?;
+                alloc.write_uninit_full();
             }
         }
         interp_ok(())
@@ -754,6 +765,13 @@ where
         &mut self,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
+        // If this is an efficiently represented local variable without provenance, skip the
+        // `as_mplace_or_mutable_local` that would otherwise force this local into memory.
+        if let Right(imm) = dest.to_op(self)?.as_mplace_or_imm() {
+            if !imm.has_provenance() {
+                return interp_ok(());
+            }
+        }
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
             Right((local_val, _local_layout, local)) => {
                 local_val.clear_provenance()?;
@@ -767,7 +785,7 @@ where
                     // Zero-sized access
                     return interp_ok(());
                 };
-                alloc.clear_provenance()?;
+                alloc.clear_provenance();
             }
         }
         interp_ok(())
@@ -840,7 +858,7 @@ where
     /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
     #[instrument(skip(self), level = "trace")]
-    fn copy_op_no_validate(
+    pub(super) fn copy_op_no_validate(
         &mut self,
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,

@@ -38,7 +38,7 @@ impl SyntaxFactory {
         self.mappings.as_ref().map(|mappings| mappings.take()).unwrap_or_default()
     }
 
-    fn mappings(&self) -> Option<RefMut<'_, SyntaxMapping>> {
+    pub(crate) fn mappings(&self) -> Option<RefMut<'_, SyntaxMapping>> {
         self.mappings.as_ref().map(|it| it.borrow_mut())
     }
 }

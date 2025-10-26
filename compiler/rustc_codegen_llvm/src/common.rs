@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
 use tracing::debug;
@@ -20,9 +20,7 @@ use tracing::debug;
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, True};
-use crate::type_::Type;
-use crate::value::Value;
+use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -108,6 +106,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         bytes_in_context(self.llcx(), bytes)
     }
 
+    pub(crate) fn null_terminate_const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+        null_terminate_bytes_in_context(self.llcx(), bytes)
+    }
+
     pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
@@ -158,7 +160,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_int"
         );
-        unsafe { llvm::LLVMConstInt(t, i as u64, True) }
+        unsafe { llvm::LLVMConstInt(t, i as u64, TRUE) }
     }
 
     fn const_u8(&self, i: u8) -> &'ll Value {
@@ -192,7 +194,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_uint"
         );
-        unsafe { llvm::LLVMConstInt(t, i, False) }
+        unsafe { llvm::LLVMConstInt(t, i, FALSE) }
     }
 
     fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
@@ -279,8 +281,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset.bytes(), 0);
-                            let llval = self.const_usize(alloc.inner().align.bytes());
+                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
+                            let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                             } else {
@@ -377,7 +379,17 @@ pub(crate) fn val_ty(v: &Value) -> &Type {
 pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
+        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), TRUE)
+    }
+}
+
+pub(crate) fn null_terminate_bytes_in_context<'ll>(
+    llcx: &'ll llvm::Context,
+    bytes: &[u8],
+) -> &'ll Value {
+    unsafe {
+        let ptr = bytes.as_ptr() as *const c_char;
+        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), FALSE)
     }
 }
 
@@ -392,7 +404,7 @@ fn struct_in_context<'ll>(
     packed: bool,
 ) -> &'ll Value {
     let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
-    unsafe { llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), len, packed as Bool) }
+    unsafe { llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), len, packed.to_llvm_bool()) }
 }
 
 #[inline]

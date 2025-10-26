@@ -1,3 +1,4 @@
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 // Fixes #110131
 //
 // The issue is that we were constructing an `ImplDerived` cause code for the

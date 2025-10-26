@@ -22,7 +22,8 @@ pub union Foo2 {
 }
 
 //@ has 'foo/type.Bar2.html'
-//@ matches - '//*[@class="rust item-decl"]' '#\[repr\(C\)\]\npub union Bar2 \{*'
+//@ matches - '//*[@class="code-attribute"]' '#\[repr\(C\)\]'
+//@ matches - '//*[@class="rust item-decl"]' 'pub union Bar2 \{*'
 // Ensures that we see the doc comment of the type alias and not of the aliased type.
 //@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]' 'bar'
 /// bar

@@ -51,6 +51,7 @@ extern "C" fn(i32, (), i32);
 //@ revisions: x86_64-pc-windows-gnu
 //@[x86_64-pc-windows-gnu] compile-flags: --target x86_64-pc-windows-gnu
 //@[x86_64-pc-windows-gnu] needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 
 #![feature(no_core, rustc_attrs)]

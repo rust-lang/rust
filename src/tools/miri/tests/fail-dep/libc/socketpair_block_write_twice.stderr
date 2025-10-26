@@ -1,11 +1,11 @@
 error: the evaluated program deadlocked
-  --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+  --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    |                                                                  ^ this thread got stuck here
    |
    = note: BACKTRACE:
-   = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
 note: inside `main`
@@ -23,8 +23,8 @@ error: the evaluated program deadlocked
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/socketpair_block_write_twice.rs:LL:CC
    |
-LL |         let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 3) };
-   |                                                                              ^ this thread got stuck here
+LL |         let res = unsafe { libc::write(fds[0], data.as_ptr() as *const libc::c_void, data.len()) };
+   |                                                                                                ^ this thread got stuck here
    |
    = note: BACKTRACE on thread `unnamed-ID`:
    = note: inside closure at tests/fail-dep/libc/socketpair_block_write_twice.rs:LL:CC

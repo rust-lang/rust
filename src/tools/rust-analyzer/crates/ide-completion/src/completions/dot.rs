@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir::{Complete, HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -237,7 +237,10 @@ fn complete_methods(
     struct Callback<'a, F> {
         ctx: &'a CompletionContext<'a>,
         f: F,
-        seen_methods: FxHashSet<Name>,
+        // We deliberately deduplicate by function ID and not name, because while inherent methods cannot be
+        // duplicated, trait methods can. And it is still useful to show all of them (even when there
+        // is also an inherent method, especially considering that it may be private, and filtered later).
+        seen_methods: FxHashSet<Function>,
     }
 
     impl<F> MethodCandidateCallback for Callback<'_, F>
@@ -247,9 +250,7 @@ fn complete_methods(
         // We don't want to exclude inherent trait methods - that is, methods of traits available from
         // `where` clauses or `dyn Trait`.
         fn on_inherent_method(&mut self, func: hir::Function) -> ControlFlow<()> {
-            if func.self_param(self.ctx.db).is_some()
-                && self.seen_methods.insert(func.name(self.ctx.db))
-            {
+            if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
                 (self.f)(func);
             }
             ControlFlow::Continue(())
@@ -258,17 +259,14 @@ fn complete_methods(
         fn on_trait_method(&mut self, func: hir::Function) -> ControlFlow<()> {
             // This needs to come before the `seen_methods` test, so that if we see the same method twice,
             // once as inherent and once not, we will include it.
-            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db) {
-                if self.ctx.exclude_traits.contains(&trait_)
-                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods
-                {
-                    return ControlFlow::Continue(());
-                }
+            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db)
+                && (self.ctx.exclude_traits.contains(&trait_)
+                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods)
+            {
+                return ControlFlow::Continue(());
             }
 
-            if func.self_param(self.ctx.db).is_some()
-                && self.seen_methods.insert(func.name(self.ctx.db))
-            {
+            if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
                 (self.f)(func);
             }
 
@@ -796,8 +794,7 @@ struct T(S);
 
 impl T {
     fn foo(&self) {
-        // FIXME: This doesn't work without the trailing `a` as `0.` is a float
-        self.0.a$0
+        self.0.$0
     }
 }
 "#,
@@ -1385,14 +1382,15 @@ fn baz() {
     fn skip_iter() {
         check_no_kw(
             r#"
-        //- minicore: iterator
+        //- minicore: iterator, clone, builtin_impls
         fn foo() {
             [].$0
         }
         "#,
             expect![[r#"
-                me clone() (as Clone)                                       fn(&self) -> Self
-                me into_iter() (as IntoIterator) fn(self) -> <Self as IntoIterator>::IntoIter
+                me clone() (as Clone)                                             fn(&self) -> Self
+                me fmt(…) (use core::fmt::Debug) fn(&self, &mut Formatter<'_>) -> Result<(), Error>
+                me into_iter() (as IntoIterator)       fn(self) -> <Self as IntoIterator>::IntoIter
             "#]],
         );
         check_no_kw(
@@ -1502,7 +1500,9 @@ fn main() {
     bar.$0
 }
 "#,
-            expect![[r#""#]],
+            expect![[r#"
+                me foo() fn(self: Bar)
+            "#]],
         );
     }
 

@@ -6,20 +6,20 @@ use crate::ty::{
 };
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_regions_ty, ..*providers };
+    *providers = Providers { erase_and_anonymize_regions_ty, ..*providers };
 }
 
-fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+fn erase_and_anonymize_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     // N.B., use `super_fold_with` here. If we used `fold_with`, it
-    // could invoke the `erase_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+    // could invoke the `erase_and_anonymize_regions_ty` query recursively.
+    ty.super_fold_with(&mut RegionEraserAndAnonymizerVisitor { tcx })
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns an equivalent value with all free regions removed (note
-    /// that late-bound regions remain, because they are important for
-    /// subtyping, but they are anonymized and normalized as well)..
-    pub fn erase_regions<T>(self, value: T) -> T
+    /// Returns an equivalent value with all free regions removed and
+    /// bound regions anonymized. (note that bound regions are important
+    /// for subtyping and generally type equality so *cannot* be removed)
+    pub fn erase_and_anonymize_regions<T>(self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -27,18 +27,18 @@ impl<'tcx> TyCtxt<'tcx> {
         if !value.has_type_flags(TypeFlags::HAS_BINDER_VARS | TypeFlags::HAS_FREE_REGIONS) {
             return value;
         }
-        debug!("erase_regions({:?})", value);
-        let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self });
-        debug!("erase_regions = {:?}", value1);
+        debug!("erase_and_anonymize_regions({:?})", value);
+        let value1 = value.fold_with(&mut RegionEraserAndAnonymizerVisitor { tcx: self });
+        debug!("erase_and_anonymize_regions = {:?}", value1);
         value1
     }
 }
 
-struct RegionEraserVisitor<'tcx> {
+struct RegionEraserAndAnonymizerVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserAndAnonymizerVisitor<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -49,7 +49,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
         } else if ty.has_infer() {
             ty.super_fold_with(self)
         } else {
-            self.tcx.erase_regions_ty(ty)
+            self.tcx.erase_and_anonymize_regions_ty(ty)
         }
     }
 

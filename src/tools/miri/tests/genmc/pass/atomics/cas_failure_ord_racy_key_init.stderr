@@ -1,0 +1,22 @@
+Running GenMC Verification...
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Success ordering 'Release' was upgraded to 'AcqRel' to match failure ordering 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC
+   |
+LL |     match KEY.compare_exchange(KEY_SENTVAL, key, Release, Acquire) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE on thread `unnamed-ID`:
+   = note: inside `get_or_init` at tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC
+note: inside closure
+  --> tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC
+   |
+LL |                 let key = get_or_init(0);
+   |                           ^^^^^^^^^^^^^^
+   = note: inside `<std::boxed::Box<{closure@tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC}> as std::ops::FnOnce<()>>::call_once` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+note: inside `genmc::spawn_pthread_closure::thread_func::<{closure@tests/genmc/pass/atomics/cas_failure_ord_racy_key_init.rs:LL:CC}>`
+  --> tests/genmc/pass/atomics/../../../utils/genmc.rs:LL:CC
+   |
+LL |         f();
+   |         ^^^
+
+Verification complete with 2 executions. No errors found.

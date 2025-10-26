@@ -1,5 +1,6 @@
-#![allow(unused_macros)]
+#![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
+#![allow(unused_macros)]
 
 use builtins_test::*;
 
@@ -113,9 +114,14 @@ macro_rules! float_mul {
     };
 }
 
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 mod float_mul {
     use super::*;
+
+    #[cfg(f16_enabled)]
+    float_mul! {
+        f16, __mulhf3, Half, all();
+    }
 
     // FIXME(#616): Stop ignoring arches that don't have native support once fix for builtins is in
     // nightly.
@@ -126,7 +132,7 @@ mod float_mul {
 }
 
 #[cfg(f128_enabled)]
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
+#[cfg(not(x86_no_sse))]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod float_mul_f128 {
     use super::*;

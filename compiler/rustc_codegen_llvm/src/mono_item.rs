@@ -1,8 +1,9 @@
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
@@ -132,7 +133,7 @@ impl CodegenCx<'_, '_> {
 
         // Thread-local variables generally don't support copy relocations.
         let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
-            .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
+            .is_some_and(|v| llvm::LLVMIsThreadLocal(v).is_true());
         if is_thread_local_var {
             return false;
         }

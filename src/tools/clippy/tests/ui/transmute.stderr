@@ -1,5 +1,5 @@
 error: transmute from a reference to a pointer
-  --> tests/ui/transmute.rs:33:27
+  --> tests/ui/transmute.rs:34:27
    |
 LL |         let _: *const T = core::mem::transmute(t);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
@@ -8,61 +8,49 @@ LL |         let _: *const T = core::mem::transmute(t);
    = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
 
 error: transmute from a reference to a pointer
-  --> tests/ui/transmute.rs:36:25
+  --> tests/ui/transmute.rs:37:25
    |
 LL |         let _: *mut T = core::mem::transmute(t);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
 
 error: transmute from a reference to a pointer
-  --> tests/ui/transmute.rs:39:27
+  --> tests/ui/transmute.rs:40:27
    |
 LL |         let _: *const U = core::mem::transmute(t);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> tests/ui/transmute.rs:47:27
+  --> tests/ui/transmute.rs:48:27
    |
 LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> tests/ui/transmute.rs:50:27
+  --> tests/ui/transmute.rs:51:27
    |
 LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> tests/ui/transmute.rs:53:27
+  --> tests/ui/transmute.rs:54:27
    |
 LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> tests/ui/transmute.rs:56:27
+  --> tests/ui/transmute.rs:57:27
    |
 LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
-  --> tests/ui/transmute.rs:59:27
+  --> tests/ui/transmute.rs:60:27
    |
 LL |         let _: Vec<i32> = my_transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: transmute from an integer to a pointer
-  --> tests/ui/transmute.rs:62:31
-   |
-LL |         let _: *const usize = std::mem::transmute(5_isize);
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
-
-error: transmute from an integer to a pointer
-  --> tests/ui/transmute.rs:67:31
-   |
-LL |         let _: *const usize = std::mem::transmute(1 + 1usize);
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1 + 1usize) as *const usize`
-
 error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
-  --> tests/ui/transmute.rs:99:24
+  --> tests/ui/transmute.rs:98:24
    |
 LL |         let _: Usize = core::mem::transmute(int_const_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,25 +59,25 @@ LL |         let _: Usize = core::mem::transmute(int_const_ptr);
    = help: to override `-D warnings` add `#[allow(clippy::crosspointer_transmute)]`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
-  --> tests/ui/transmute.rs:102:24
+  --> tests/ui/transmute.rs:101:24
    |
 LL |         let _: Usize = core::mem::transmute(int_mut_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
-  --> tests/ui/transmute.rs:105:31
+  --> tests/ui/transmute.rs:104:31
    |
 LL |         let _: *const Usize = core::mem::transmute(my_int());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
-  --> tests/ui/transmute.rs:108:29
+  --> tests/ui/transmute.rs:107:29
    |
 LL |         let _: *mut Usize = core::mem::transmute(my_int());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a `u8` to a `bool`
-  --> tests/ui/transmute.rs:115:28
+  --> tests/ui/transmute.rs:114:28
    |
 LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
@@ -98,7 +86,7 @@ LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_bool)]`
 
 error: transmute from a `&[u8]` to a `&str`
-  --> tests/ui/transmute.rs:122:28
+  --> tests/ui/transmute.rs:121:28
    |
 LL |     let _: &str = unsafe { std::mem::transmute(B) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(B).unwrap()`
@@ -107,16 +95,16 @@ LL |     let _: &str = unsafe { std::mem::transmute(B) };
    = help: to override `-D warnings` add `#[allow(clippy::transmute_bytes_to_str)]`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
-  --> tests/ui/transmute.rs:125:32
+  --> tests/ui/transmute.rs:124:32
    |
 LL |     let _: &mut str = unsafe { std::mem::transmute(mb) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
 error: transmute from a `&[u8]` to a `&str`
-  --> tests/ui/transmute.rs:128:30
+  --> tests/ui/transmute.rs:127:30
    |
 LL |     const _: &str = unsafe { std::mem::transmute(B) };
    |                              ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_unchecked(B)`
 
-error: aborting due to 18 previous errors
+error: aborting due to 16 previous errors
 

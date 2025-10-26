@@ -85,7 +85,7 @@ pub fn generate_load_store_tests(
         TokenStream::from_str(&PREAMBLE).map_err(|e| format!("Preamble is invalid: {e}"))?;
     // Only output manual tests for the SVE set
     let manual_tests = match &load_intrinsics[0].target_features[..] {
-        [s] if s == "sve" => TokenStream::from_str(&MANUAL_TESTS)
+        [s] if s == "sve" => TokenStream::from_str(MANUAL_TESTS)
             .map_err(|e| format!("Manual tests are invalid: {e}"))?,
         _ => quote!(),
     };

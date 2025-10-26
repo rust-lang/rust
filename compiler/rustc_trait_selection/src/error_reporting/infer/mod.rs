@@ -91,7 +91,6 @@ mod suggest;
 pub mod need_type_info;
 pub mod nice_region_error;
 pub mod region;
-pub mod sub_relations;
 
 /// Makes a valid string literal from a string by escaping special characters (" and \),
 /// unless they are already escaped.
@@ -224,40 +223,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         use ty::GenericArg;
         use ty::print::Printer;
 
-        struct AbsolutePathPrinter<'tcx> {
+        struct ConflictingPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             segments: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for ConflictingPathPrinter<'tcx> {
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                Err(fmt::Error)
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
-            fn path_qualified(
+
+            fn print_path_with_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -265,16 +265,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
-            fn path_append(
+
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -283,7 +283,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.segments.push(disambiguated_data.as_sym(true));
                 Ok(())
             }
-            fn path_generic_args(
+
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
@@ -298,28 +299,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut printer = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
-                    printer.print_def_path(def_id, &[]).map(|_| printer.segments)
+                    let mut p = ConflictingPathPrinter { tcx: self.tcx, segments: vec![] };
+                    p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
+                // We compare strings because DefPath can be different for imported and
+                // non-imported crates.
                 let expected_str = self.tcx.def_path_str(did1);
                 let found_str = self.tcx.def_path_str(did2);
                 let Ok(expected_abs) = abs_path(did1) else { return false };
                 let Ok(found_abs) = abs_path(did2) else { return false };
-                let same_path = || -> Result<_, PrintError> {
-                    Ok(expected_str == found_str || expected_abs == found_abs)
-                };
-                // We want to use as unique a type path as possible. If both types are "locally
-                // known" by the same name, we use the "absolute path" which uses the original
-                // crate name instead.
-                let (expected, found) = if expected_str == found_str {
-                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
-                } else {
-                    (expected_str.clone(), found_str.clone())
-                };
-                if same_path().unwrap_or(false) {
+                let same_path = expected_str == found_str || expected_abs == found_abs;
+                if same_path {
+                    // We want to use as unique a type path as possible. If both types are "locally
+                    // known" by the same name, we use the "absolute path" which uses the original
+                    // crate name instead.
+                    let (expected, found) = if expected_str == found_str {
+                        (join_path_syms(&expected_abs), join_path_syms(&found_abs))
+                    } else {
+                        (expected_str, found_str)
+                    };
+
                     // We've displayed "expected `a::b`, found `a::b`". We add context to
                     // differentiate the different cases where that might happen.
                     let expected_crate_name = self.tcx.crate_name(did1.krate);
@@ -457,7 +457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
-                    } else {
+                    } else if !span.overlaps(cause.span) {
                         let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
@@ -1616,8 +1616,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some((e, f)) = values.ty()
             && let TypeError::ArgumentSorts(..) | TypeError::Sorts(_) = terr
         {
-            let e = self.tcx.erase_regions(e);
-            let f = self.tcx.erase_regions(f);
+            let e = self.tcx.erase_and_anonymize_regions(e);
+            let f = self.tcx.erase_and_anonymize_regions(f);
             let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
             let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
             if expected == found {
@@ -1928,7 +1928,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-        path: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
         let span = trace.cause.span;
@@ -2007,7 +2007,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty)) = self.values_str(trace.values, &trace.cause, path)
+            && let Some((expected_ty, found_ty)) =
+                self.values_str(trace.values, &trace.cause, long_ty_path)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -2137,11 +2138,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         values: ValuePairs<'tcx>,
         cause: &ObligationCause<'tcx>,
-        file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, file),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, long_ty_path),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2181,7 +2182,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-        path: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
@@ -2198,11 +2199,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
                 if exp_s.len() > len {
-                    let exp_s = self.tcx.short_string(expected, path);
+                    let exp_s = self.tcx.short_string(expected, long_ty_path);
                     exp = DiagStyledString::highlighted(exp_s);
                 }
                 if fnd_s.len() > len {
-                    let fnd_s = self.tcx.short_string(found, path);
+                    let fnd_s = self.tcx.short_string(found, long_ty_path);
                     fnd = DiagStyledString::highlighted(fnd_s);
                 }
                 (exp, fnd)

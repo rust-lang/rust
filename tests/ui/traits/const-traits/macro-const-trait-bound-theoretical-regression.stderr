@@ -1,7 +1,7 @@
 error: ty
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); };
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
    |                   ^^^^^^^^^^^^^^^^^^^^
 ...
 LL | demo! { impl const Trait }
@@ -10,9 +10,9 @@ LL | demo! { impl const Trait }
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: ty
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:8:19
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
    |
-LL |     ($ty:ty) => { compile_error!("ty"); };
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
    |                   ^^^^^^^^^^^^^^^^^^^^
 ...
 LL | demo! { dyn const Trait }
@@ -20,8 +20,30 @@ LL | demo! { dyn const Trait }
    |
    = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: ty
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
+   |
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   |                   ^^^^^^^^^^^^^^^^^^^^
+...
+LL | demo! { impl [const] Trait }
+   | ---------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: ty
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:11:19
+   |
+LL |     ($ty:ty) => { compile_error!("ty"); }; // KEEP THIS RULE FIRST AND AS IS!
+   |                   ^^^^^^^^^^^^^^^^^^^^
+...
+LL | demo! { dyn [const] Trait }
+   | --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0658]: const trait impls are experimental
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:15:14
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:26:14
    |
 LL | demo! { impl const Trait }
    |              ^^^^^
@@ -31,7 +53,7 @@ LL | demo! { impl const Trait }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:18:13
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:27:13
    |
 LL | demo! { dyn const Trait }
    |             ^^^^^
@@ -40,6 +62,26 @@ LL | demo! { dyn const Trait }
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors
+error[E0658]: const trait impls are experimental
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:29:14
+   |
+LL | demo! { impl [const] Trait }
+   |              ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/macro-const-trait-bound-theoretical-regression.rs:30:13
+   |
+LL | demo! { dyn [const] Trait }
+   |             ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

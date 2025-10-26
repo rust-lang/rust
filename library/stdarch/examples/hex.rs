@@ -22,7 +22,6 @@
 #![allow(
     clippy::unwrap_used,
     clippy::print_stdout,
-    clippy::unwrap_used,
     clippy::shadow_reuse,
     clippy::cast_possible_wrap,
     clippy::cast_ptr_alignment,

@@ -1,9 +1,9 @@
 use std::ops::Not;
 
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_hir as hir;
-use rustc_hir::Node;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Node, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
@@ -138,7 +138,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
         let norm_return_ty = ocx.normalize(&cause, param_env, return_ty);
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             error = true;

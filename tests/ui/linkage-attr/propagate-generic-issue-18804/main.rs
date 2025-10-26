@@ -4,6 +4,7 @@
 
 //@ ignore-emscripten no weak symbol support
 //@ ignore-apple no extern_weak linkage
+//@ ignore-aix no extern_weak linkage
 
 //@ aux-build:lib.rs
 

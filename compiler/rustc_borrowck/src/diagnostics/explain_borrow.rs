@@ -341,7 +341,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 }
                             }
                         } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
-                            let sp = info.span.find_oldest_ancestor_in_same_ctxt();
+                            let sp = info.span.find_ancestor_not_from_macro().unwrap_or(info.span);
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
@@ -416,6 +416,26 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
+
+                let mut preds = path
+                    .iter()
+                    .filter_map(|constraint| match constraint.category {
+                        ConstraintCategory::Predicate(pred) if !pred.is_dummy() => Some(pred),
+                        _ => None,
+                    })
+                    .collect::<Vec<Span>>();
+                preds.sort();
+                preds.dedup();
+                if !preds.is_empty() {
+                    let s = if preds.len() == 1 { "" } else { "s" };
+                    err.span_note(
+                        preds,
+                        format!(
+                            "requirement{s} that the value outlives `{region_name}` introduced here"
+                        ),
+                    );
+                }
+
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}
@@ -438,7 +458,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
             let elaborated_args =
                 std::iter::zip(*args, &generics.own_params).map(|(arg, param)| {
-                    if let Some(ty::Dynamic(obj, _, ty::Dyn)) = arg.as_type().map(Ty::kind) {
+                    if let Some(ty::Dynamic(obj, _)) = arg.as_type().map(Ty::kind) {
                         let default = tcx.object_lifetime_default(param.def_id);
 
                         let re_static = tcx.lifetimes.re_static;
@@ -464,7 +484,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                         has_dyn = true;
 
-                        Ty::new_dynamic(tcx, obj, implied_region, ty::Dyn).into()
+                        Ty::new_dynamic(tcx, obj, implied_region).into()
                     } else {
                         arg
                     }
@@ -565,7 +585,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let (blame_constraint, path) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
-            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
+            outlived_region,
         );
         let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
 
@@ -667,7 +687,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
-            Some(Cause::DropVar(local, location)) => {
+            Some(Cause::DropVar(local, location)) if !is_local_boring(local) => {
                 let mut should_note_order = false;
                 if self.local_name(local).is_some()
                     && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
@@ -685,7 +705,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
-            Some(Cause::LiveVar(..)) | None => {
+            Some(Cause::LiveVar(..) | Cause::DropVar(..)) | None => {
                 // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
                 // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
@@ -917,30 +937,29 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
                 if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
+                    && let Some(dest) = destination.as_local()
                 {
-                    if let Some(dest) = destination.as_local() {
-                        debug!(
-                            "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
-                            target, dest, args
-                        );
-                        // Check if one of the arguments to this function is the target place.
-                        let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg.node {
-                                if let Some(potential) = place.as_local() {
-                                    potential == target
-                                } else {
-                                    false
-                                }
+                    debug!(
+                        "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
+                        target, dest, args
+                    );
+                    // Check if one of the arguments to this function is the target place.
+                    let found_target = args.iter().any(|arg| {
+                        if let Operand::Move(place) = arg.node {
+                            if let Some(potential) = place.as_local() {
+                                potential == target
                             } else {
                                 false
                             }
-                        });
-
-                        // If it is, follow this to the next block and update the target.
-                        if found_target {
-                            target = dest;
-                            queue.push(block.start_location());
+                        } else {
+                            false
                         }
+                    });
+
+                    // If it is, follow this to the next block and update the target.
+                    if found_target {
+                        target = dest;
+                        queue.push(block.start_location());
                     }
                 }
             }

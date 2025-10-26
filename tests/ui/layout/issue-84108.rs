@@ -14,5 +14,3 @@ const BAR: (&Path, [u8], usize) = ("hello", [], 42);
 
 static BAZ: ([u8], usize) = ([], 0);
 //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
-//~| ERROR the size for values of type `[u8]` cannot be known at compilation time
-//~| ERROR mismatched types

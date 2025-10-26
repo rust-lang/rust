@@ -89,8 +89,13 @@ error[E0277]: the trait bound `S2: Trait` is not satisfied
   --> $DIR/explicit-paths.rs:76:16
    |
 LL |         reuse <S2 as Trait>::foo1;
-   |                ^^ the trait `Trait` is not implemented for `S2`
+   |                ^^ unsatisfied trait bound
    |
+help: the trait `Trait` is not implemented for `S2`
+  --> $DIR/explicit-paths.rs:73:5
+   |
+LL |     struct S2;
+   |     ^^^^^^^^^
    = help: the following other types implement trait `Trait`:
              F
              S

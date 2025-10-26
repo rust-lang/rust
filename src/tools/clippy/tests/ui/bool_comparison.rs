@@ -1,97 +1,41 @@
 #![allow(non_local_definitions, clippy::needless_if)]
 #![warn(clippy::bool_comparison)]
-#![allow(clippy::non_canonical_partial_ord_impl, clippy::nonminimal_bool)]
+#![allow(clippy::non_canonical_partial_ord_impl)]
 
 fn main() {
     let x = true;
-    if x == true {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x == false {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if true == x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if false == x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x != true {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x != false {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if true != x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if false != x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x < true {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if false < x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x > false {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if true > x {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
+    let _ = if x == true { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x == false { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if true == x { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if false == x { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x != true { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x != false { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if true != x { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if false != x { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x < true { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if false < x { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x > false { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if true > x { "yes" } else { "no" };
+    //~^ bool_comparison
+
     let y = true;
-    if x < y {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
-    if x > y {
-        //~^ bool_comparison
-        "yes"
-    } else {
-        "no"
-    };
+    let _ = if x < y { "yes" } else { "no" };
+    //~^ bool_comparison
+    let _ = if x > y { "yes" } else { "no" };
+    //~^ bool_comparison
 }
 
-#[allow(dead_code)]
 fn issue3703() {
     struct Foo;
     impl PartialEq<bool> for Foo {
@@ -127,26 +71,6 @@ fn issue3703() {
     if false < Foo {}
 }
 
-#[allow(dead_code)]
-fn issue4983() {
-    let a = true;
-    let b = false;
-
-    if a == !b {};
-    //~^ bool_comparison
-    if !a == b {};
-    //~^ bool_comparison
-    if a == b {};
-    if !a == !b {};
-
-    if b == !a {};
-    //~^ bool_comparison
-    if !b == a {};
-    //~^ bool_comparison
-    if b == a {};
-    if !b == !a {};
-}
-
 macro_rules! m {
     ($func:ident) => {
         $func()
@@ -157,7 +81,6 @@ fn func() -> bool {
     true
 }
 
-#[allow(dead_code)]
 fn issue3973() {
     // ok, don't lint on `cfg` invocation
     if false == cfg!(feature = "debugging") {}
@@ -196,6 +119,34 @@ fn issue9907() {
     //~^ bool_comparison
     // This is not part of the issue, but an unexpected found when fixing the issue,
     // the provided span was inside of macro rather than the macro callsite.
-    let _ = ((1 < 2) == !m!(func)) as usize;
+    let _ = ((1 < 2) > m!(func)) as usize;
     //~^ bool_comparison
+}
+
+#[allow(clippy::nonminimal_bool)]
+fn issue15367() {
+    let a = true;
+    let b = false;
+
+    // these cases are handled by `nonminimal_bool`, so don't double-lint
+    if a == !b {};
+    if !a == b {};
+    if b == !a {};
+    if !b == a {};
+}
+
+fn issue15497() {
+    fn func() -> bool {
+        true
+    }
+
+    fn foo(x: bool) -> bool {
+        x > m!(func)
+        //~^ bool_comparison
+    }
+
+    fn bar(x: bool) -> bool {
+        x < m!(func)
+        //~^ bool_comparison
+    }
 }

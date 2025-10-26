@@ -8,8 +8,8 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub unsafe fn new() -> Handler {
-        make_handler(false)
+    pub unsafe fn new(thread_name: Option<Box<str>>) -> Handler {
+        make_handler(false, thread_name)
     }
 
     fn null() -> Handler {
@@ -69,11 +69,9 @@ mod imp {
     use super::Handler;
     use super::thread_info::{delete_current_info, set_current_info, with_current_info};
     use crate::ops::Range;
-    use crate::sync::OnceLock;
     use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr, AtomicUsize, Ordering};
     use crate::sys::pal::unix::os;
-    use crate::thread::with_current_name;
-    use crate::{io, mem, panic, ptr};
+    use crate::{io, mem, ptr};
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
     // (unmapped pages) at the end of every thread's stack, so if a thread ends
@@ -120,7 +118,8 @@ mod imp {
                     && thread_info.guard_page_range.contains(&fault_addr)
                 {
                     let name = thread_info.thread_name.as_deref().unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                     rtabort!("stack overflow");
                 }
             })
@@ -148,6 +147,13 @@ mod imp {
 
         let mut guard_page_range = unsafe { install_main_guard() };
 
+        // Even for panic=immediate-abort, installing the guard pages is important for soundness.
+        // That said, we do not care about giving nice stackoverflow messages via our custom
+        // signal handler, just exit early and let the user enjoy the segfault.
+        if cfg!(panic = "immediate-abort") {
+            return;
+        }
+
         // SAFETY: assuming all platforms define struct sigaction as "zero-initializable"
         let mut action: sigaction = unsafe { mem::zeroed() };
         for &signal in &[SIGSEGV, SIGBUS] {
@@ -158,13 +164,12 @@ mod imp {
                 if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                     // haven't set up our sigaltstack yet
                     NEED_ALTSTACK.store(true, Ordering::Release);
-                    let handler = unsafe { make_handler(true) };
+                    let handler = unsafe { make_handler(true, None) };
                     MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                     mem::forget(handler);
 
                     if let Some(guard_page_range) = guard_page_range.take() {
-                        let thread_name = with_current_name(|name| name.map(Box::from));
-                        set_current_info(guard_page_range, thread_name);
+                        set_current_info(guard_page_range, Some(Box::from("main")));
                     }
                 }
 
@@ -180,6 +185,9 @@ mod imp {
     /// Must be called only once
     #[forbid(unsafe_op_in_unsafe_fn)]
     pub unsafe fn cleanup() {
+        if cfg!(panic = "immediate-abort") {
+            return;
+        }
         // FIXME: I probably cause more bugs than I'm worth!
         // see https://github.com/rust-lang/rust/issues/111272
         unsafe { drop_handler(MAIN_ALTSTACK.load(Ordering::Relaxed)) };
@@ -230,14 +238,13 @@ mod imp {
     /// # Safety
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn make_handler(main_thread: bool) -> Handler {
-        if !NEED_ALTSTACK.load(Ordering::Acquire) {
+    pub unsafe fn make_handler(main_thread: bool, thread_name: Option<Box<str>>) -> Handler {
+        if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
             if let Some(guard_page_range) = unsafe { current_guard() } {
-                let thread_name = with_current_name(|name| name.map(Box::from));
                 set_current_info(guard_page_range, thread_name);
             }
         }
@@ -398,6 +405,10 @@ mod imp {
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 install_main_guard_linux_musl(page_size)
             } else if cfg!(target_os = "freebsd") {
+                #[cfg(not(target_os = "freebsd"))]
+                return None;
+                // The FreeBSD code cannot be checked on non-BSDs.
+                #[cfg(target_os = "freebsd")]
                 install_main_guard_freebsd(page_size)
             } else if cfg!(any(target_os = "netbsd", target_os = "openbsd")) {
                 install_main_guard_bsds(page_size)
@@ -434,6 +445,7 @@ mod imp {
     }
 
     #[forbid(unsafe_op_in_unsafe_fn)]
+    #[cfg(target_os = "freebsd")]
     unsafe fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
         // FreeBSD's stack autogrows, and optionally includes a guard page
         // at the bottom. If we try to remap the bottom of the stack
@@ -445,38 +457,23 @@ mod imp {
         // by the security.bsd.stack_guard_page sysctl.
         // By default it is 1, checking once is enough since it is
         // a boot time config value.
-        static PAGES: OnceLock<usize> = OnceLock::new();
+        static PAGES: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 
         let pages = PAGES.get_or_init(|| {
-            use crate::sys::weak::dlsym;
-            dlsym!(
-                fn sysctlbyname(
-                    name: *const libc::c_char,
-                    oldp: *mut libc::c_void,
-                    oldlenp: *mut libc::size_t,
-                    newp: *const libc::c_void,
-                    newlen: libc::size_t,
-                ) -> libc::c_int;
-            );
             let mut guard: usize = 0;
             let mut size = size_of_val(&guard);
             let oid = c"security.bsd.stack_guard_page";
-            match sysctlbyname.get() {
-                Some(fcn)
-                    if unsafe {
-                        fcn(
-                            oid.as_ptr(),
-                            (&raw mut guard).cast(),
-                            &raw mut size,
-                            ptr::null_mut(),
-                            0,
-                        ) == 0
-                    } =>
-                {
-                    guard
-                }
-                _ => 1,
-            }
+
+            let r = unsafe {
+                libc::sysctlbyname(
+                    oid.as_ptr(),
+                    (&raw mut guard).cast(),
+                    &raw mut size,
+                    ptr::null_mut(),
+                    0,
+                )
+            };
+            if r == 0 { guard } else { 1 }
         });
         Some(guardaddr..guardaddr + pages * page_size)
     }
@@ -634,7 +631,10 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(_main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        _main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         super::Handler::null()
     }
 
@@ -696,7 +696,8 @@ mod imp {
             if code == c::EXCEPTION_STACK_OVERFLOW {
                 crate::thread::with_current_name(|name| {
                     let name = name.unwrap_or("<unknown>");
-                    rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                    let tid = crate::thread::current_os_id();
+                    rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                 });
             }
             c::EXCEPTION_CONTINUE_SEARCH
@@ -717,7 +718,10 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(main_thread: bool) -> super::Handler {
+    pub unsafe fn make_handler(
+        main_thread: bool,
+        _thread_name: Option<Box<str>>,
+    ) -> super::Handler {
         if !main_thread {
             reserve_stack();
         }

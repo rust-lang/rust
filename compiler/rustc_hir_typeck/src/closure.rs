@@ -161,8 +161,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
-                let interior = Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args);
-
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
                 // later during upvar analysis. Regular coroutines always have the kind
@@ -182,7 +180,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         resume_ty,
                         yield_ty,
                         return_ty: liberated_sig.output(),
-                        witness: interior,
                         tupled_upvars_ty,
                     },
                 );
@@ -210,7 +207,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 // Compute all of the variables that will be used to populate the coroutine.
                 let resume_ty = self.next_ty_var(expr_span);
-                let interior = self.next_ty_var(expr_span);
 
                 let closure_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_closure_kind(tcx, kind),
@@ -243,7 +239,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         tupled_upvars_ty,
                         coroutine_captures_by_ref_ty,
-                        coroutine_witness_ty: interior,
                     },
                 );
 

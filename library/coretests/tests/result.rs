@@ -421,3 +421,86 @@ fn result_try_trait_v2_branch() {
     assert_eq!(Ok::<NonZero<u32>, ()>(one).branch(), Continue(one));
     assert_eq!(Err::<NonZero<u32>, ()>(()).branch(), Break(Err(())));
 }
+
+// helper functions for const contexts
+const fn eq10(x: u8) -> bool {
+    x == 10
+}
+const fn eq20(e: u8) -> bool {
+    e == 20
+}
+const fn double_u16(x: u8) -> u16 {
+    x as u16 * 2
+}
+const fn to_u16(x: u8) -> u16 {
+    x as u16
+}
+const fn err_to_u16_plus1(e: u8) -> u16 {
+    e as u16 + 1
+}
+const fn inc_u8(x: u8) -> u8 {
+    x + 1
+}
+const fn noop_u8_ref(_x: &u8) {}
+const fn add1_result(x: u8) -> Result<u8, u8> {
+    Ok(x + 1)
+}
+const fn add5_result(e: u8) -> Result<u8, u8> {
+    Ok(e + 5)
+}
+const fn plus7_u8(e: u8) -> u8 {
+    e + 7
+}
+
+#[test]
+fn test_const_result() {
+    const {
+        let r_ok: Result<u8, u8> = Ok(10);
+        let r_err: Result<u8, u8> = Err(20);
+        assert!(r_ok.is_ok());
+        assert!(r_err.is_err());
+
+        let ok_and = r_ok.is_ok_and(eq10);
+        let err_and = r_err.is_err_and(eq20);
+        assert!(ok_and);
+        assert!(err_and);
+
+        let opt_ok: Option<u8> = r_ok.ok();
+        let opt_err: Option<u8> = r_err.err();
+        assert!(opt_ok.unwrap() == 10);
+        assert!(opt_err.unwrap() == 20);
+
+        let mapped: Result<u16, u8> = r_ok.map(double_u16);
+        let map_or: u16 = r_ok.map_or(0, to_u16);
+        let map_or_else: u16 = r_err.map_or_else(err_to_u16_plus1, to_u16);
+        let map_or_default: u8 = r_err.map_or_default(inc_u8);
+        assert!(mapped.unwrap_or_default() == 20);
+        assert!(map_or == 10);
+        assert!(map_or_else == 21);
+        assert!(map_or_default == 0);
+
+        let _map_err: Result<u8, u16> = r_err.map_err(to_u16);
+        //FIXME: currently can't unwrap const error
+        // assert!(map_err.unwrap_err() == 20);
+
+        let inspected_ok: Result<u8, u8> = r_ok.inspect(noop_u8_ref);
+        let inspected_err: Result<u8, u8> = r_err.inspect_err(noop_u8_ref);
+        assert!(inspected_ok.is_ok());
+        assert!(inspected_err.is_err());
+
+        let unwrapped_default: u8 = r_err.unwrap_or_default();
+        assert!(unwrapped_default == 0);
+
+        let and_then: Result<u8, u8> = r_ok.and_then(add1_result);
+        let or: Result<u8, u8> = r_err.or(Ok(5));
+        let or_else: Result<u8, u8> = r_err.or_else(add5_result);
+        assert!(and_then.unwrap_or_default() == 11);
+        assert!(or.unwrap_or_default() == 5);
+        assert!(or_else.unwrap_or_default() == 25);
+
+        let u_or: u8 = r_err.unwrap_or(7);
+        let u_or_else: u8 = r_err.unwrap_or_else(plus7_u8);
+        assert!(u_or == 7);
+        assert!(u_or_else == 27);
+    };
+}

@@ -1,13 +1,15 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_in_const_context;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{is_in_const_context, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -58,13 +60,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && add_lhs.span.ctxt() == ctxt
             && add_rhs.span.ctxt() == ctxt
             && !expr.span.in_external_macro(cx.sess().source_map())
-            && let Some(const1) = check_for_unsigned_int_constant(cx, rem_rhs)
-            && let Some((const2, add_other)) = check_for_either_unsigned_int_constant(cx, add_lhs, add_rhs)
+            && let Some(const1) = check_for_unsigned_int_constant(cx, ctxt, rem_rhs)
+            && let Some((const2, add_other)) = check_for_either_unsigned_int_constant(cx, ctxt, add_lhs, add_rhs)
             && let ExprKind::Binary(rem2_op, rem2_lhs, rem2_rhs) = add_other.kind
             && rem2_op.node == BinOpKind::Rem
             && const1 == const2
-            && let Some(hir_id) = path_to_local(rem2_lhs)
-            && let Some(const3) = check_for_unsigned_int_constant(cx, rem2_rhs)
+            && let Some(hir_id) = rem2_lhs.res_local_id()
+            && let Some(const3) = check_for_unsigned_int_constant(cx, ctxt, rem2_rhs)
             // Also ensures the const is nonzero since zero can't be a divisor
             && const2 == const3
             && rem2_lhs.span.ctxt() == ctxt
@@ -103,16 +105,21 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
 // constant along with the other expression unchanged if so
 fn check_for_either_unsigned_int_constant<'a>(
     cx: &'a LateContext<'_>,
+    ctxt: SyntaxContext,
     left: &'a Expr<'_>,
     right: &'a Expr<'_>,
 ) -> Option<(u128, &'a Expr<'a>)> {
-    check_for_unsigned_int_constant(cx, left)
+    check_for_unsigned_int_constant(cx, ctxt, left)
         .map(|int_const| (int_const, right))
-        .or_else(|| check_for_unsigned_int_constant(cx, right).map(|int_const| (int_const, left)))
+        .or_else(|| check_for_unsigned_int_constant(cx, ctxt, right).map(|int_const| (int_const, left)))
 }
 
-fn check_for_unsigned_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<u128> {
-    let int_const = ConstEvalCtxt::new(cx).eval_full_int(expr)?;
+fn check_for_unsigned_int_constant<'a>(
+    cx: &'a LateContext<'_>,
+    ctxt: SyntaxContext,
+    expr: &'a Expr<'_>,
+) -> Option<u128> {
+    let int_const = ConstEvalCtxt::new(cx).eval_full_int(expr, ctxt)?;
     match int_const {
         FullInt::S(s) => s.try_into().ok(),
         FullInt::U(u) => Some(u),

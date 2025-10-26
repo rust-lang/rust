@@ -208,6 +208,7 @@ const LEVEL_FILTERS_DEFAULT = {
     allow: true,
     warn: true,
     deny: true,
+    none: true,
 };
 const APPLICABILITIES_FILTER_DEFAULT = {
     Unspecified: true,
@@ -592,20 +593,8 @@ disableShortcutsButton.checked = disableShortcuts;
 
 addListeners();
 highlightLazily();
-
-function updateLintCount() {
-    const allLints = filters.getAllLints().filter(lint => lint.group != "deprecated");
-    const totalLints = allLints.length;
-
-    const countElement = document.getElementById("lint-count");
-    if (countElement) {
-        countElement.innerText = `Total number: ${totalLints}`;
-    }
-}
-
 generateSettings();
 generateSearch();
 parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();
-updateLintCount();

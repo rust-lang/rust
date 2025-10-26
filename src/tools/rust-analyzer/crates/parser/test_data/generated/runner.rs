@@ -253,6 +253,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_pointer_unnamed_arg.rs");
     }
     #[test]
+    fn for_binder_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/for_binder_bound.rs");
+    }
+    #[test]
     fn for_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/for_expr.rs"); }
     #[test]
     fn for_range_from() {
@@ -401,6 +405,10 @@ mod ok {
     fn match_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/match_expr.rs"); }
     #[test]
     fn match_guard() { run_and_expect_no_errors("test_data/parser/inline/ok/match_guard.rs"); }
+    #[test]
+    fn maybe_const_trait_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/maybe_const_trait_bound.rs");
+    }
     #[test]
     fn metas() { run_and_expect_no_errors("test_data/parser/inline/ok/metas.rs"); }
     #[test]
@@ -788,6 +796,12 @@ mod err {
     #[test]
     fn impl_type() { run_and_expect_errors("test_data/parser/inline/err/impl_type.rs"); }
     #[test]
+    fn invalid_question_for_type_trait_bound() {
+        run_and_expect_errors(
+            "test_data/parser/inline/err/invalid_question_for_type_trait_bound.rs",
+        );
+    }
+    #[test]
     fn let_else_right_curly_brace() {
         run_and_expect_errors("test_data/parser/inline/err/let_else_right_curly_brace.rs");
     }
@@ -810,8 +824,16 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/misplaced_label_err.rs");
     }
     #[test]
+    fn missing_const_type() {
+        run_and_expect_errors("test_data/parser/inline/err/missing_const_type.rs");
+    }
+    #[test]
     fn missing_fn_param_type() {
         run_and_expect_errors("test_data/parser/inline/err/missing_fn_param_type.rs");
+    }
+    #[test]
+    fn missing_static_type() {
+        run_and_expect_errors("test_data/parser/inline/err/missing_static_type.rs");
     }
     #[test]
     fn path_item_without_excl() {

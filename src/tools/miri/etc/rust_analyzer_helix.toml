@@ -5,6 +5,7 @@ source = "discover"
 linkedProjects = [
     "Cargo.toml",
     "cargo-miri/Cargo.toml",
+    "genmc-sys/Cargo.toml",
     "miri-script/Cargo.toml",
 ]
 

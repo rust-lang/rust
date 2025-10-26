@@ -1,0 +1,60 @@
+- // MIR for `dereference_indexing` before GVN
++ // MIR for `dereference_indexing` after GVN
+  
+  fn dereference_indexing(_1: [u8; 2], _2: usize) -> () {
+      debug array => _1;
+      debug index => _2;
+      let mut _0: ();
+      let _3: &u8;
+      let _4: usize;
+      let mut _5: usize;
+      let _6: usize;
+      let mut _7: bool;
+      let _8: ();
+      let mut _9: u8;
+      scope 1 {
+          debug a => _3;
+      }
+      scope 2 {
+          debug i => _4;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+-         StorageLive(_4);
++         nop;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _4 = Add(move _5, const 1_usize);
++         _4 = Add(copy _2, const 1_usize);
+          StorageDead(_5);
+          StorageLive(_6);
+          _6 = copy _4;
+-         _7 = Lt(copy _6, const 2_usize);
+-         assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb1, unwind unreachable];
++         _7 = Lt(copy _4, const 2_usize);
++         assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _4) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _3 = &_1[_6];
+-         StorageDead(_4);
++         _3 = &_1[_4];
++         nop;
+          StorageLive(_8);
+          StorageLive(_9);
+-         _9 = copy (*_3);
++         _9 = copy _1[_4];
+          _8 = opaque::<u8>(move _9) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_9);
+          StorageDead(_8);
+          _0 = const ();
+          StorageDead(_6);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

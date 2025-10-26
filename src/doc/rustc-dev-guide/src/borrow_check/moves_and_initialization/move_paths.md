@@ -1,7 +1,5 @@
 # Move paths
 
-<!-- toc -->
-
 In reality, it's not enough to track initialization at the granularity
 of local variables. Rust also allows us to do moves and initialization
 at the field granularity:
@@ -69,8 +67,6 @@ We don't actually create a move-path for **every** [`Place`] that gets
 used.  In particular, if it is illegal to move from a [`Place`], then
 there is no need for a [`MovePathIndex`]. Some examples:
 
-- You cannot move from a static variable, so we do not create a [`MovePathIndex`]
-  for static variables.
 - You cannot move an individual element of an array, so if we have e.g. `foo: [String; 3]`,
   there would be no move-path for `foo[1]`.
 - You cannot move from inside of a borrowed reference, so if we have e.g. `foo: &String`,
@@ -83,6 +79,18 @@ means we don't have to bother tracking whether those places are
 initialized (which lowers overhead).
 
 [`move_path_for`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.MoveDataBuilder.html#method.move_path_for
+
+## Projections
+
+Instead of using [`PlaceElem`], projections in move paths are stored as [`MoveSubPath`]s.
+Projections that can't be moved out of and projections that can be skipped are not represented.
+
+Subslice projections of arrays (produced by slice patterns) are special; they're turned into
+multiple [`ConstantIndex`] subpaths, one for each element in the subslice.
+
+[`PlaceElem`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/type.PlaceElem.html
+[`MoveSubPath`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/enum.MoveSubPath.html
+[`ConstantIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/enum.MoveSubPath.html#variant.ConstantIndex
 
 ## Looking up a move-path
 

@@ -505,3 +505,10 @@ fn test_escape_ascii_iter() {
     let _ = it.advance_back_by(4);
     assert_eq!(it.to_string(), r#"fastpath\xffremainder"#);
 }
+
+#[test]
+fn test_invalid_u8() {
+    for c in 128..=255 {
+        assert_eq!(core::ascii::Char::from_u8(c), None);
+    }
+}

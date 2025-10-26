@@ -1,0 +1,21 @@
+warning: rule #3 of macro `local_attr` is never used
+  --> $DIR/macro-rules-attr.rs:43:9
+   |
+LL |     attr() {} => {
+   |         ^^ ^^
+   |
+note: the lint level is defined here
+  --> $DIR/macro-rules-attr.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_macro_rules)]` implied by `#[warn(unused)]`
+
+warning: rule #5 of macro `local_attr` is never used
+  --> $DIR/macro-rules-attr.rs:49:5
+   |
+LL |     {} => {
+   |     ^^
+
+warning: 2 warnings emitted
+

@@ -14,38 +14,6 @@ LL |    let object2 = Object;
 LL ~    *object = object2;
    |
 
-error: value assigned to `object` is never read
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:14:4
-   |
-LL |    object = &object2;
-   |    ^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:9
-   |
-LL | #![deny(unused_assignments, unused_variables)]
-   |         ^^^^^^^^^^^^^^^^^^
-help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
-   |
-LL ~ fn change_object2(object: &mut Object) {
-LL |
-LL |    let object2 = Object;
-LL ~    *object = object2;
-   |
-
-error: variable `object` is assigned to, but never used
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:11:23
-   |
-LL | fn change_object2(mut object: &Object) {
-   |                       ^^^^^^
-   |
-   = note: consider using `_object` instead
-note: the lint level is defined here
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:29
-   |
-LL | #![deny(unused_assignments, unused_variables)]
-   |                             ^^^^^^^^^^^^^^^^
-
 error[E0597]: `object2` does not live long enough
   --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:14:13
    |
@@ -64,26 +32,23 @@ LL | }
    | - `object2` dropped here while still borrowed
 
 error: value assigned to `object` is never read
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:5
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:14:4
    |
-LL |     object = &mut object2;
-   |     ^^^^^^
+LL |    object = &object2;
+   |    ^^^^^^^^^^^^^^^^^
    |
+note: the lint level is defined here
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:9
+   |
+LL | #![deny(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
 help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
    |
-LL ~ fn change_object3(object: &mut Object) {
+LL ~ fn change_object2(object: &mut Object) {
 LL |
-LL |     let object2 = Object;
-LL ~     *object = object2;
+LL |    let object2 = Object;
+LL ~    *object = object2;
    |
-
-error: variable `object` is assigned to, but never used
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:19:23
-   |
-LL | fn change_object3(mut object: &mut Object) {
-   |                       ^^^^^^
-   |
-   = note: consider using `_object` instead
 
 error[E0596]: cannot borrow `object2` as mutable, as it is not declared as mutable
   --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:14
@@ -96,7 +61,21 @@ help: consider changing this to be mutable
 LL |     let mut object2 = Object;
    |         +++
 
-error: aborting due to 7 previous errors
+error: value assigned to `object` is never read
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:5
+   |
+LL |     object = &mut object2;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+   |
+LL ~ fn change_object3(object: &mut Object) {
+LL |
+LL |     let object2 = Object;
+LL ~     *object = object2;
+   |
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0596, E0597.
 For more information about an error, try `rustc --explain E0308`.

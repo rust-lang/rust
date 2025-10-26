@@ -287,7 +287,7 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
-        RegionKind::ReBound(debruijn, r) => {
+        RegionKind::ReBound(ty::BoundVarIndexKind::Bound(debruijn), r) => {
             s.push_str("u6regionI");
             // Debruijn index, which identifies the binder, as region disambiguator
             let num = debruijn.index() as u64;
@@ -303,7 +303,8 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReEarlyParam(..)
+        RegionKind::ReBound(ty::BoundVarIndexKind::Canonical, _)
+        | RegionKind::ReEarlyParam(..)
         | RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
@@ -626,12 +627,10 @@ pub(crate) fn encode_ty<'tcx>(
         }
 
         // Trait types
-        ty::Dynamic(predicates, region, kind) => {
+        ty::Dynamic(predicates, region) => {
             // u3dynI<element-type1[..element-typeN]>E, where <element-type> is <predicate>, as
             // vendor extended type.
-            let mut s = String::from(match kind {
-                ty::Dyn => "u3dynI",
-            });
+            let mut s = String::from("u3dynI");
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
             s.push_str(&encode_region(*region, dict));
             s.push('E');
@@ -713,7 +712,8 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::ValueNs(..) => "v",
             hir::definitions::DefPathData::Closure => "C",
             hir::definitions::DefPathData::Ctor => "c",
-            hir::definitions::DefPathData::AnonConst => "k",
+            hir::definitions::DefPathData::AnonConst => "K",
+            hir::definitions::DefPathData::LateAnonConst => "k",
             hir::definitions::DefPathData::OpaqueTy => "i",
             hir::definitions::DefPathData::SyntheticCoroutineBody => "s",
             hir::definitions::DefPathData::NestedStatic => "n",
@@ -723,6 +723,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::MacroNs(..)
             | hir::definitions::DefPathData::OpaqueLifetime(..)
             | hir::definitions::DefPathData::LifetimeNs(..)
+            | hir::definitions::DefPathData::DesugaredAnonymousLifetime
             | hir::definitions::DefPathData::AnonAssocTy(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }

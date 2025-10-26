@@ -5,6 +5,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
+use crate::diagnostics::TidyCtx;
 use crate::walk::{filter_not_rust, walk};
 
 const TARGET_DEFINITIONS_PATH: &str = "compiler/rustc_target/src/spec/targets/";
@@ -23,7 +24,9 @@ const EXCEPTIONS: &[&str] = &[
     "xtensa_esp32s3_espidf",
 ];
 
-pub fn check(root_path: &Path, bad: &mut bool) {
+pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("target_policy");
+
     let mut targets_to_find = HashSet::new();
 
     let definitions_path = root_path.join(TARGET_DEFINITIONS_PATH);
@@ -55,7 +58,7 @@ pub fn check(root_path: &Path, bad: &mut bool) {
 
     for target in targets_to_find {
         if !EXCEPTIONS.contains(&target.as_str()) {
-            tidy_error!(bad, "{ASSEMBLY_LLVM_TEST_PATH}: missing assembly test for {target}")
+            check.error(format!("{ASSEMBLY_LLVM_TEST_PATH}: missing assembly test for {target}"));
         }
     }
 }

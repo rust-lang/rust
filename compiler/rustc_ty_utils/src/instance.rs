@@ -21,7 +21,7 @@ fn resolve_instance_raw<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
 
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_assoc(def_id) {
         debug!(" => associated item, attempting to find impl in typing_env {:#?}", typing_env);
         resolve_associated_item(
             tcx,
@@ -109,7 +109,7 @@ fn resolve_associated_item<'tcx>(
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     debug!(?trait_item_id, ?typing_env, ?trait_id, ?rcvr_args, "resolve_associated_item");
 
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
+    let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
     let input = typing_env.as_query_input(trait_ref);
     let vtbl = match tcx.codegen_select_candidate(input) {
@@ -131,7 +131,7 @@ fn resolve_associated_item<'tcx>(
             assert!(!rcvr_args.has_infer());
             assert!(!trait_ref.has_infer());
 
-            let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
+            let trait_def_id = tcx.impl_trait_id(impl_data.impl_def_id);
             let trait_def = tcx.trait_def(trait_def_id);
             let leaf_def = trait_def
                 .ancestors(tcx, impl_data.impl_def_id)?
@@ -176,7 +176,7 @@ fn resolve_associated_item<'tcx>(
                 args,
                 leaf_def.defining_node,
             );
-            let args = infcx.tcx.erase_regions(args);
+            let args = infcx.tcx.erase_and_anonymize_regions(args);
 
             // HACK: We may have overlapping `dyn Trait` built-in impls and
             // user-provided blanket impls. Detect that case here, and return
@@ -222,7 +222,7 @@ fn resolve_associated_item<'tcx>(
                 return Err(guar);
             }
 
-            let args = tcx.erase_regions(args);
+            let args = tcx.erase_and_anonymize_regions(args);
 
             // We check that the impl item is compatible with the trait item
             // because otherwise we may ICE in const eval due to type mismatches,
@@ -238,7 +238,7 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new_raw(leaf_def.item.def_id, args))
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
-            let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
+            let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
             if trait_ref.has_non_region_infer() || trait_ref.has_non_region_param() {
                 // We only resolve totally substituted vtable entries.
                 None
@@ -279,7 +279,7 @@ fn resolve_associated_item<'tcx>(
                     assert_eq!(name, sym::clone_from);
 
                     // Use the default `fn clone_from` from `trait Clone`.
-                    let args = tcx.erase_regions(rcvr_args);
+                    let args = tcx.erase_and_anonymize_regions(rcvr_args);
                     Some(ty::Instance::new_raw(trait_item_id, args))
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
@@ -380,7 +380,7 @@ fn resolve_associated_item<'tcx>(
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::TransmuteTrait) {
                 let name = tcx.item_name(trait_item_id);
                 assert_eq!(name, sym::transmute);
-                let args = tcx.erase_regions(rcvr_args);
+                let args = tcx.erase_and_anonymize_regions(rcvr_args);
                 Some(ty::Instance::new_raw(trait_item_id, args))
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)

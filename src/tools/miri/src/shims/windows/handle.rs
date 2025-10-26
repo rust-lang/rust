@@ -289,9 +289,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if this.ptr_is_null(target_handle_ptr)? {
-            throw_unsup_format!(
-                "`DuplicateHandle` `lpTargetHandle` parameter is null, which is unsupported"
-            );
+            throw_machine_stop!(TerminationInfo::Abort(
+                "`DuplicateHandle` `lpTargetHandle` parameter must not be null, as otherwise the \
+                newly created handle is leaked"
+                    .to_string()
+            ));
         }
 
         if options != this.eval_windows("c", "DUPLICATE_SAME_ACCESS") {

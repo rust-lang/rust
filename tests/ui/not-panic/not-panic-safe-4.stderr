@@ -1,8 +1,8 @@
-error[E0277]: the type `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+error[E0277]: the type `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
   --> $DIR/not-panic-safe-4.rs:9:14
    |
 LL |     assert::<&RefCell<i32>>();
-   |              ^^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |              ^^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
    |
    = help: within `RefCell<i32>`, the trait `RefUnwindSafe` is not implemented for `UnsafeCell<i32>`
 note: required because it appears within the type `RefCell<i32>`
@@ -19,11 +19,11 @@ LL -     assert::<&RefCell<i32>>();
 LL +     assert::<RefCell<i32>>();
    |
 
-error[E0277]: the type `UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+error[E0277]: the type `UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
   --> $DIR/not-panic-safe-4.rs:9:14
    |
 LL |     assert::<&RefCell<i32>>();
-   |              ^^^^^^^^^^^^^ `UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |              ^^^^^^^^^^^^^ `UnsafeCell<isize>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
    |
    = help: within `RefCell<i32>`, the trait `RefUnwindSafe` is not implemented for `UnsafeCell<isize>`
 note: required because it appears within the type `Cell<isize>`

@@ -9,6 +9,7 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
 use crate::path::Path;
+use crate::process::StdioPipes;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
@@ -20,12 +21,14 @@ use crate::{fmt, io};
 
 mod cstring_array;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "fuchsia")] {
+cfg_select! {
+    target_os = "fuchsia" => {
         // fuchsia doesn't have /dev/null
-    } else if #[cfg(target_os = "vxworks")] {
+    }
+    target_os = "vxworks" => {
         const DEV_NULL: &CStr = c"/null";
-    } else {
+    }
+    _ => {
         const DEV_NULL: &CStr = c"/dev/null";
     }
 }
@@ -35,8 +38,8 @@ cfg_if::cfg_if! {
 // to support older Android version (independent of libc version).
 // The following implementations are based on
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "android")] {
+cfg_select! {
+    target_os = "android" => {
         #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
@@ -69,7 +72,8 @@ cfg_if::cfg_if! {
             raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
             return 0;
         }
-    } else {
+    }
+    _ => {
         #[allow(unused_imports)]
         pub use libc::{sigemptyset, sigaddset};
     }
@@ -99,14 +103,6 @@ pub struct Command {
     create_pidfd: bool,
     pgroup: Option<pid_t>,
     setsid: bool,
-}
-
-// passed back to std::process with the pipes connected to the child, if any
-// were requested
-pub struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
 }
 
 // passed to do_exec() with configuration of what the child stdio should look

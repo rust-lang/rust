@@ -259,10 +259,10 @@ impl ExprCollector<'_> {
                                     }
                                 };
 
-                                if let Some(operand_idx) = operand_idx {
-                                    if let Some(position_span) = to_span(arg.position_span) {
-                                        mappings.push((position_span, operand_idx));
-                                    }
+                                if let Some(operand_idx) = operand_idx
+                                    && let Some(position_span) = to_span(arg.position_span)
+                                {
+                                    mappings.push((position_span, operand_idx));
                                 }
                             }
                         }

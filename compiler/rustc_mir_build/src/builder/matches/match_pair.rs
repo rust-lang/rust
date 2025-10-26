@@ -43,13 +43,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
-            match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (
-                    length
-                        .try_to_target_usize(tcx)
-                        .expect("expected len of array pat to be definite"),
-                    true,
-                ),
+            let place_ty = place_resolved.ty(&self.local_decls, tcx).ty;
+            match place_ty.kind() {
+                ty::Array(_, length) => {
+                    if let Some(length) = length.try_to_target_usize(tcx) {
+                        (length, true)
+                    } else {
+                        // This can happen when the array length is a generic const
+                        // expression that couldn't be evaluated (e.g., due to an error).
+                        // Since there's already a compilation error, we use a fallback
+                        // to avoid an ICE.
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(self.def_id),
+                            "array length in pattern couldn't be evaluated",
+                        );
+                        ((prefix.len() + suffix.len()).try_into().unwrap(), false)
+                    }
+                }
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {
@@ -124,9 +134,19 @@ impl<'tcx> MatchPairTree<'tcx> {
         let test_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
-            PatKind::Or { ref pats } => Some(TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
-            }),
+            PatKind::Or { ref pats } => {
+                let pats: Box<[FlatPat<'tcx>]> =
+                    pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect();
+                if !pats[0].extra_data.bindings.is_empty() {
+                    // Hold a place for any bindings established in (possibly-nested) or-patterns.
+                    // By only holding a place when bindings are present, we skip over any
+                    // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
+                    // other words, we can assume this expands into subcandidates.
+                    // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
+                    extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
+                }
+                Some(TestCase::Or { pats })
+            }
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
@@ -160,7 +180,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::Binding { mode, var, ref subpattern, .. } => {
+            PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
                 // In order to please the borrow checker, when lowering a pattern
                 // like `x @ subpat` we must establish any bindings in `subpat`
                 // before establishing the binding for `x`.
@@ -194,12 +214,13 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 // Then push this binding, after any bindings in the subpattern.
                 if let Some(source) = place {
-                    extra_data.bindings.push(super::Binding {
+                    extra_data.bindings.push(super::SubpatternBindings::One(super::Binding {
                         span: pattern.span,
                         source,
                         var_id: var,
                         binding_mode: mode,
-                    });
+                        is_shorthand,
+                    }));
                 }
 
                 None

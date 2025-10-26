@@ -1,7 +1,9 @@
-FROM ubuntu:22.04
+FROM ubuntu:25.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
+  # FIXME(#147556): Use GNU coreutils to work around a libffi-sys build failure.
+  coreutils-from-gnu coreutils-from-uutils- --allow-remove-essential \
   g++ \
   make \
   ninja-build \

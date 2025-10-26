@@ -1,14 +1,21 @@
-cfg_if::cfg_if! {
-    if #[cfg(target_family = "unix")] {
+cfg_select! {
+    target_family = "unix" => {
         mod unix;
         use unix as imp;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         use windows as imp;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
-    } else {
+    }
+    target_os = "motor" => {
+        mod motor;
+        use motor as imp;
+    }
+    _ => {
         mod unsupported;
         use unsupported as imp;
     }
@@ -21,7 +28,7 @@ mod env;
 
 pub use env::CommandEnvs;
 pub use imp::{
-    Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio, StdioPipes,
+    Command, CommandArgs, EnvKey, ExitCode, ExitStatus, ExitStatusError, Process, Stdio,
 };
 
 #[cfg(any(
@@ -35,6 +42,7 @@ pub use imp::{
         ))
     ),
     target_os = "windows",
+    target_os = "motor"
 ))]
 pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
     use crate::sys::pipe::read2;
@@ -74,5 +82,6 @@ pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<
         ))
     ),
     target_os = "windows",
+    target_os = "motor"
 )))]
 pub use imp::output;

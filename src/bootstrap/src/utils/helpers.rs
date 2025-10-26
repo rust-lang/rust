@@ -12,7 +12,7 @@ use std::{env, fs, io, panic, str};
 
 use object::read::archive::ArchiveFile;
 
-use crate::LldMode;
+use crate::BootstrapOverrideLld;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -357,15 +357,19 @@ pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> 
 /// Returns a flag that configures LLD to use only a single thread.
 /// If we use an external LLD, we need to find out which version is it to know which flag should we
 /// pass to it (LLD older than version 10 had a different flag).
-fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: bool) -> &'static str {
+fn lld_flag_no_threads(
+    builder: &Builder<'_>,
+    bootstrap_override_lld: BootstrapOverrideLld,
+    is_windows: bool,
+) -> &'static str {
     static LLD_NO_THREADS: OnceLock<(&'static str, &'static str)> = OnceLock::new();
 
     let new_flags = ("/threads:1", "--threads=1");
     let old_flags = ("/no-threads", "--no-threads");
 
     let (windows_flag, other_flag) = LLD_NO_THREADS.get_or_init(|| {
-        let newer_version = match lld_mode {
-            LldMode::External => {
+        let newer_version = match bootstrap_override_lld {
+            BootstrapOverrideLld::External => {
                 let mut cmd = command("lld");
                 cmd.arg("-flavor").arg("ld").arg("--version");
                 let out = cmd.run_capture_stdout(builder).stdout();
@@ -404,9 +408,8 @@ pub fn linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
-    stage: u32,
 ) -> Vec<String> {
-    let mut args = linker_flags(builder, target, lld_threads, stage);
+    let mut args = linker_flags(builder, target, lld_threads);
 
     if let Some(linker) = builder.linker(target) {
         args.push(format!("-Clinker={}", linker.display()));
@@ -421,39 +424,30 @@ pub fn linker_flags(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
-    stage: u32,
 ) -> Vec<String> {
     let mut args = vec![];
-    if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        match builder.config.lld_mode {
-            LldMode::External => {
-                // cfg(bootstrap) - remove the stage 0 check after updating the bootstrap compiler:
-                // `-Clinker-features` has been stabilized.
-                if stage == 0 {
-                    args.push("-Zlinker-features=+lld".to_string());
-                } else {
-                    args.push("-Clinker-features=+lld".to_string());
-                }
+    if !builder.is_lld_direct_linker(target) && builder.config.bootstrap_override_lld.is_used() {
+        match builder.config.bootstrap_override_lld {
+            BootstrapOverrideLld::External => {
+                args.push("-Clinker-features=+lld".to_string());
                 args.push("-Zunstable-options".to_string());
             }
-            LldMode::SelfContained => {
-                // cfg(bootstrap) - remove the stage 0 check after updating the bootstrap compiler:
-                // `-Clinker-features` has been stabilized.
-                if stage == 0 {
-                    args.push("-Zlinker-features=+lld".to_string());
-                } else {
-                    args.push("-Clinker-features=+lld".to_string());
-                }
+            BootstrapOverrideLld::SelfContained => {
+                args.push("-Clinker-features=+lld".to_string());
                 args.push("-Clink-self-contained=+linker".to_string());
                 args.push("-Zunstable-options".to_string());
             }
-            LldMode::Unused => unreachable!(),
+            BootstrapOverrideLld::None => unreachable!(),
         };
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(
                 "-Clink-arg=-Wl,{}",
-                lld_flag_no_threads(builder, builder.config.lld_mode, target.is_windows())
+                lld_flag_no_threads(
+                    builder,
+                    builder.config.bootstrap_override_lld,
+                    target.is_windows()
+                )
             ));
         }
     }
@@ -465,9 +459,8 @@ pub fn add_rustdoc_cargo_linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
-    stage: u32,
 ) {
-    let args = linker_args(builder, target, lld_threads, stage);
+    let args = linker_args(builder, target, lld_threads);
     let mut flags = cmd
         .get_envs()
         .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })
@@ -525,6 +518,8 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 #[track_caller]
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     let mut git = command("git");
+    // git commands are almost always read-only, so cache them by default
+    git.cached();
 
     if let Some(source_dir) = source_dir {
         git.current_dir(source_dir);

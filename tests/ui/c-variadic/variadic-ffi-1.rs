@@ -1,6 +1,7 @@
 //@ add-core-stubs
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items)]
 
@@ -10,6 +11,11 @@ use minicore::*;
 extern "stdcall" {
     fn printf(_: *const u8, ...);
     //~^ ERROR: C-variadic functions with the "stdcall" calling convention are not supported
+}
+
+fn baz(f: extern "Rust" fn(usize, ...)) {
+    //~^ ERROR: C-variadic functions with the "Rust" calling convention are not supported
+    f(22, 44);
 }
 
 extern "C" {

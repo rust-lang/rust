@@ -71,6 +71,14 @@ fn expand_contract_clause(
             .span_err(attr_span, "contract annotations can only be used on functions"));
     }
 
+    // Contracts are not yet supported on async/gen functions
+    if new_tts.iter().any(|tt| is_kw(tt, kw::Async) || is_kw(tt, kw::Gen)) {
+        return Err(ecx.sess.dcx().span_err(
+            attr_span,
+            "contract annotations are not yet supported on async or gen functions",
+        ));
+    }
+
     // Found the `fn` keyword, now find either the `where` token or the function body.
     let next_tt = loop {
         let Some(tt) = cursor.next() else {
@@ -141,7 +149,7 @@ fn expand_requires_tts(
         new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
-            token::Delimiter::Parenthesis,
+            token::Delimiter::Brace,
             annotation,
         ));
         Ok(())
@@ -163,7 +171,7 @@ fn expand_ensures_tts(
         new_tts.push_tree(TokenTree::Delimited(
             DelimSpan::from_single(attr_span),
             DelimSpacing::new(Spacing::JointHidden, Spacing::JointHidden),
-            token::Delimiter::Parenthesis,
+            token::Delimiter::Brace,
             annotation,
         ));
         Ok(())

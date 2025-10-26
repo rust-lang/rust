@@ -1,6 +1,8 @@
 //@ ignore-lldb: FIXME(#27089)
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run
@@ -57,8 +59,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 // This test case makes sure that we get correct type descriptions for the enum
 // discriminant of different instantiations of the same generic enum type where,

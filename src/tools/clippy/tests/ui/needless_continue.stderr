@@ -220,5 +220,21 @@ LL | |             }
                            do_something();
                        }
 
-error: aborting due to 15 previous errors
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:339:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |
+LL | |             continue;
+LL | |         }
+   | |_________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                   if todo!() {
+           // merged code follows:
+           
+                   }
+
+error: aborting due to 16 previous errors
 

@@ -44,11 +44,10 @@ fn foo() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "lang_item",
                 "crate_lang_items",
-                "lang_item",
             ]
         "#]],
     );
@@ -132,20 +131,19 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "lang_item",
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "lang_item",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
                 "infer_shim",
                 "function_signature_shim",
@@ -153,7 +151,7 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "return_type_impl_traits_ns_shim",
                 "expr_scopes_shim",
             ]
         "#]],
@@ -513,12 +511,12 @@ impl SomeStruct {
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
                 "attrs_shim",
-                "type_for_adt_tracked",
             ]
         "#]],
     );
 }
 
+// FIXME(next-solver): does this test make sense with fast path?
 #[test]
 fn add_struct_invalidates_trait_solve() {
     let (mut db, file_id) = TestDB::with_single_file(
@@ -559,7 +557,7 @@ fn main() {
                 let _inference_result = db.infer(def);
             }
         },
-        &[("trait_solve_shim", 2)],
+        &[("trait_solve_shim", 0)],
         expect_test::expect![[r#"
             [
                 "source_root_crates_shim",
@@ -587,7 +585,8 @@ fn main() {
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "return_type_impl_traits_shim",
+                "generic_predicates_ns_shim",
+                "return_type_impl_traits_ns_shim",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
@@ -595,33 +594,23 @@ fn main() {
                 "expr_scopes_shim",
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
+                "generic_predicates_ns_shim",
                 "value_ty_shim",
                 "VariantFields::firewall_",
                 "VariantFields::query_",
+                "lang_item",
                 "lang_item",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_shim",
                 "impl_signature_with_source_map_shim",
                 "callable_item_signature_shim",
-                "adt_variance_shim",
-                "variances_of_shim",
-                "trait_solve_shim",
-                "trait_datum_shim",
-                "generic_predicates_shim",
-                "adt_datum_shim",
                 "trait_impls_in_deps_shim",
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "type_for_adt_tracked",
-                "impl_datum_shim",
-                "generic_predicates_shim",
-                "program_clauses_for_chalk_env_shim",
+                "generic_predicates_ns_shim",
                 "value_ty_shim",
-                "generic_predicates_shim",
-                "trait_solve_shim",
-                "lang_item",
+                "generic_predicates_ns_shim",
             ]
         "#]],
     );
@@ -693,21 +682,23 @@ fn main() {
                 "attrs_shim",
                 "attrs_shim",
                 "attrs_shim",
-                "return_type_impl_traits_shim",
+                "generic_predicates_ns_shim",
+                "return_type_impl_traits_ns_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
+                "generic_predicates_ns_shim",
                 "VariantFields::query_",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_with_source_map_shim",
                 "impl_signature_shim",
                 "callable_item_signature_shim",
-                "generic_predicates_shim",
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "generic_predicates_shim",
+                "generic_predicates_ns_shim",
+                "generic_predicates_ns_shim",
             ]
         "#]],
     );
@@ -719,8 +710,8 @@ fn execute_assert_events(
     required: &[(&str, usize)],
     expect: Expect,
 ) {
-    let (executed, events) = db.log_executed(f);
-    salsa::attach(db, || {
+    crate::attach_db(db, || {
+        let (executed, events) = db.log_executed(f);
         for (event, count) in required {
             let n = executed.iter().filter(|it| it.contains(event)).count();
             assert_eq!(

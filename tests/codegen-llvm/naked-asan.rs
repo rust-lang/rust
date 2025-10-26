@@ -18,10 +18,10 @@ pub fn caller() {
     unsafe { asm!("call {}", sym page_fault_handler) }
 }
 
-// CHECK: declare x86_intrcc void @page_fault_handler(){{.*}}#[[ATTRS:[0-9]+]]
+// CHECK: declare x86_intrcc void @page_fault_handler(ptr {{.*}}, i64{{.*}}){{.*}}#[[ATTRS:[0-9]+]]
 #[unsafe(naked)]
 #[no_mangle]
-pub extern "x86-interrupt" fn page_fault_handler() {
+pub extern "x86-interrupt" fn page_fault_handler(_: u64, _: u64) {
     naked_asm!("ud2")
 }
 

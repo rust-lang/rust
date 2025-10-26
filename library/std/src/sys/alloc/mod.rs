@@ -68,29 +68,43 @@ unsafe fn realloc_fallback(
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         target_family = "unix",
         target_os = "wasi",
         target_os = "teeos",
         target_os = "trusty",
-    ))] {
+    ) => {
         mod unix;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         mod hermit;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+    }
+    target_os = "motor" => {
+        mod motor;
+    }
+    all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "solid_asp3" => {
         mod solid;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
-    } else if #[cfg(target_family = "wasm")] {
+    }
+    target_os = "vexos" => {
+        mod vexos;
+    }
+    target_family = "wasm" => {
         mod wasm;
-    } else if #[cfg(target_os = "xous")] {
+    }
+    target_os = "xous" => {
         mod xous;
-    } else if #[cfg(target_os = "zkvm")] {
+    }
+    target_os = "zkvm" => {
         mod zkvm;
     }
 }

@@ -4,7 +4,7 @@ use crate::collections::HashMap;
 #[test]
 fn no_lookup_host_duplicates() {
     let mut addrs = HashMap::new();
-    let lh = match LookupHost::try_from(("localhost", 0)) {
+    let lh = match lookup_host("localhost", 0) {
         Ok(lh) => lh,
         Err(e) => panic!("couldn't resolve `localhost`: {e}"),
     };

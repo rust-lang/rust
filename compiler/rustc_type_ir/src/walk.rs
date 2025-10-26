@@ -109,7 +109,7 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             ty::Alias(_, data) => {
                 stack.extend(data.args.iter().rev());
             }
-            ty::Dynamic(obj, lt, _) => {
+            ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
                 stack.extend(
                     obj.iter()
@@ -178,5 +178,6 @@ fn push_ty_pat<I: Interner>(stack: &mut TypeWalkerStack<I>, pat: I::Pat) {
                 push_ty_pat::<I>(stack, pat)
             }
         }
+        ty::PatternKind::NotNull => {}
     }
 }

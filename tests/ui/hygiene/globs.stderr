@@ -48,7 +48,10 @@ error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:61:12
    |
 LL | n!(f);
-   | ----- in this macro invocation
+   | -----
+   | |  |
+   | |  you might have meant to refer to this function
+   | in this macro invocation
 ...
 LL |                     $j();
    |                     -- due to this macro variable
@@ -56,15 +59,16 @@ LL |                     $j();
 LL |         n!(f);
    |            ^ not found in this scope
    |
-   = help: consider importing this function:
-           foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:65:17
    |
 LL | n!(f);
-   | ----- in this macro invocation
+   | -----
+   | |  |
+   | |  you might have meant to refer to this function
+   | in this macro invocation
 ...
 LL |                     $j();
    |                     -- due to this macro variable
@@ -72,8 +76,6 @@ LL |                     $j();
 LL |                 f
    |                 ^ not found in this scope
    |
-   = help: consider importing this function:
-           foo::f
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors

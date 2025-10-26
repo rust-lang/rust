@@ -8,6 +8,8 @@
 //@ min-lldb-version: 1800
 //@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
 // SingleUseConsts shouldn't need to be disabled, see #128945
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -214,8 +216,6 @@
 
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 fn immediate_args(a: isize, b: bool, c: f64) {
     zzz(); // #break

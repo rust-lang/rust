@@ -268,10 +268,10 @@ LL |     fn barbar(_x: &mut Vec<u32>, y: &mut String) {
    |                                     ^^^^^^^^^^^ help: change this to: `&mut str`
 
 error: eliding a lifetime that's named elsewhere is confusing
-  --> tests/ui/ptr_arg.rs:314:36
+  --> tests/ui/ptr_arg.rs:314:56
    |
 LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
-   |                                    ^^     ^^           ---- the same lifetime is elided here
+   |                                    --     --           ^^^^ the same lifetime is elided here
    |                                    |      |
    |                                    |      the lifetime is named here
    |                                    the lifetime is named here

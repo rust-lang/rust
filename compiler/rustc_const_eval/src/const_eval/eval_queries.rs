@@ -117,6 +117,13 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
                 ecx.tcx.dcx().emit_err(errors::ConstHeapPtrInFinal { span: ecx.tcx.span }),
             )));
         }
+        Err(InternError::PartialPointer) => {
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+                ecx.tcx
+                    .dcx()
+                    .emit_err(errors::PartialPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+            )));
+        }
     }
 
     interp_ok(R::make_result(ret, ecx))
@@ -407,8 +414,6 @@ fn report_eval_error<'tcx>(
     let (error, backtrace) = error.into_parts();
     backtrace.print_backtrace();
 
-    let instance = with_no_trimmed_paths!(cid.instance.to_string());
-
     super::report(
         ecx,
         error,
@@ -423,7 +428,7 @@ fn report_eval_error<'tcx>(
                 diag.subdiagnostic(frame);
             }
             // Add after the frame rendering above, as it adds its own `instance` args.
-            diag.arg("instance", instance);
+            diag.arg("instance", with_no_trimmed_paths!(cid.instance.to_string()));
             diag.arg("num_frames", num_frames);
         },
     )

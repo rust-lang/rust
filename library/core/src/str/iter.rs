@@ -52,7 +52,7 @@ impl<'a> Iterator for Chars<'a> {
         const CHUNK_SIZE: usize = 32;
 
         if remainder >= CHUNK_SIZE {
-            let mut chunks = self.iter.as_slice().array_chunks::<CHUNK_SIZE>();
+            let mut chunks = self.iter.as_slice().as_chunks::<CHUNK_SIZE>().0.iter();
             let mut bytes_skipped: usize = 0;
 
             while remainder > CHUNK_SIZE

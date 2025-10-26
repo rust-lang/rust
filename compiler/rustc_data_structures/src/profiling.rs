@@ -551,6 +551,11 @@ impl SelfProfilerRef {
     pub fn get_self_profiler(&self) -> Option<Arc<SelfProfiler>> {
         self.profiler.clone()
     }
+
+    /// Is expensive recording of query keys and/or function arguments enabled?
+    pub fn is_args_recording_enabled(&self) -> bool {
+        self.enabled() && self.event_filter_mask.intersects(EventFilter::ARGS)
+    }
 }
 
 /// A helper for recording costly arguments to self-profiling events. Used with

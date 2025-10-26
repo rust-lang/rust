@@ -56,7 +56,7 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// mostly opaque; the `Machine` trait extends it with some more operations that also have access to
 /// some global state.
 /// The `Debug` rendering is used to display bare provenance, and for the default impl of `fmt`.
-pub trait Provenance: Copy + fmt::Debug + 'static {
+pub trait Provenance: Copy + PartialEq + fmt::Debug + 'static {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
     /// - If `false`, the offset *must* be relative. This means the bytes representing a pointer are
     ///   different from what the Abstract Machine prescribes, so the interpreter must prevent any
@@ -79,7 +79,7 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     fn get_alloc_id(self) -> Option<AllocId>;
 
     /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
-    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
+    fn join(left: Self, right: Self) -> Option<Self>;
 }
 
 /// The type of provenance in the compile-time interpreter.
@@ -167,7 +167,7 @@ impl CtfeProvenance {
 }
 
 impl Provenance for CtfeProvenance {
-    // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
+    // With the `CtfeProvenance` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
 
@@ -192,8 +192,8 @@ impl Provenance for CtfeProvenance {
         Some(self.alloc_id())
     }
 
-    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
-        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
+    fn join(left: Self, right: Self) -> Option<Self> {
+        if left == right { Some(left) } else { None }
     }
 }
 
@@ -224,8 +224,8 @@ impl Provenance for AllocId {
         Some(self)
     }
 
-    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
-        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
+    fn join(_left: Self, _right: Self) -> Option<Self> {
+        unreachable!()
     }
 }
 

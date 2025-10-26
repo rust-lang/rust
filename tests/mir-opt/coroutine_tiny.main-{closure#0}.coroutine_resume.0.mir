@@ -1,7 +1,7 @@
 // MIR for `main::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
-        _0: CoroutineSavedTy {
+        _s0: CoroutineSavedTy {
             ty: HasDrop,
             source_info: SourceInfo {
                 span: $DIR/coroutine_tiny.rs:22:13: 22:15 (#0),
@@ -14,15 +14,15 @@
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
-        Suspend0 (3): [_0],
+        Suspend0 (3): [_s0],
     },
     storage_conflicts: BitMatrix(1x1) {
-        (_0, _0),
+        (_s0, _s0),
     },
 } */
 
 fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}>, _2: u8) -> CoroutineState<(), ()> {
-    debug _x => _10;
+    debug _x => _2;
     let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: HasDrop;
     let mut _4: !;
@@ -31,21 +31,21 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
     let mut _7: ();
     let _8: ();
     let mut _9: ();
-    let _10: u8;
-    let mut _11: u32;
+    let mut _10: u32;
+    let mut _11: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13};
     scope 1 {
-        debug _d => (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})) as variant#3).0: HasDrop);
+        debug _d => (((*_11) as variant#3).0: HasDrop);
     }
 
     bb0: {
-        _11 = discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})));
-        switchInt(move _11) -> [0: bb1, 3: bb5, otherwise: bb6];
+        _11 = copy (_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13});
+        _10 = discriminant((*_11));
+        switchInt(move _10) -> [0: bb1, 3: bb5, otherwise: bb6];
     }
 
     bb1: {
-        _10 = move _2;
         nop;
-        (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13})) as variant#3).0: HasDrop) = HasDrop;
+        (((*_11) as variant#3).0: HasDrop) = HasDrop;
         StorageLive(_4);
         goto -> bb2;
     }
@@ -58,7 +58,7 @@ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}
         StorageDead(_4);
         StorageDead(_6);
         StorageDead(_7);
-        discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}))) = 3;
+        discriminant((*_11)) = 3;
         return;
     }
 

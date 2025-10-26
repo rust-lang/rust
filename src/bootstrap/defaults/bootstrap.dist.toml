@@ -7,12 +7,14 @@ test-stage = 2
 doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
-# Use libtest built from the source tree instead of the precompiled one from stage 0.
-compiletest-use-stage0-libtest = false
 
 # Most users installing from source want to build all parts of the project from source.
 [llvm]
 download-ci-llvm = false
+
+# Most users installing from source want to build all parts of the project from source.
+[gcc]
+download-ci-gcc = false
 
 [rust]
 # We have several defaults in bootstrap that depend on whether the channel is `dev` (e.g. `omit-git-hash` and `download-ci-llvm`).

@@ -1,5 +1,4 @@
 target
-/doc
 tex/*/out
 *.dot
 *.out

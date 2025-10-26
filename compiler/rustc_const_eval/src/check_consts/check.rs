@@ -6,7 +6,6 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr_data_structures as attrs;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -416,7 +415,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             )
         }));
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {
             Some(ConstConditionsHold::Yes)
         } else {
@@ -466,7 +465,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// Check the const stability of the given item (fn or trait).
     fn check_callee_stability(&mut self, def_id: DefId) {
         match self.tcx.lookup_const_stability(def_id) {
-            Some(attrs::ConstStability { level: attrs::StabilityLevel::Stable { .. }, .. }) => {
+            Some(hir::ConstStability { level: hir::StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
             None => {
@@ -482,8 +481,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
-            Some(attrs::ConstStability {
-                level: attrs::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+            Some(hir::ConstStability {
+                level: hir::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                 feature,
                 ..
             }) => {
@@ -574,8 +573,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(_) => {}
+            | Rvalue::Discriminant(..) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -648,11 +646,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Cast(_, _, _) => {}
 
             Rvalue::NullaryOp(
-                NullOp::SizeOf
-                | NullOp::AlignOf
-                | NullOp::OffsetOf(_)
-                | NullOp::UbChecks
-                | NullOp::ContractChecks,
+                NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
                 _,
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
@@ -714,10 +708,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
-            }
+        if let Operand::Constant(c) = op
+            && let Some(def_id) = c.check_static_ptr(self.tcx)
+        {
+            self.check_static(def_id, self.span);
         }
     }
 
@@ -734,7 +728,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
-            | StatementKind::Deinit(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
@@ -784,7 +777,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.revalidate_conditional_constness(callee, fn_args, *fn_span);
 
                 // Attempting to call a trait method?
-                if let Some(trait_did) = tcx.trait_of_item(callee) {
+                if let Some(trait_did) = tcx.trait_of_assoc(callee) {
                     // We can't determine the actual callee here, so we have to do different checks
                     // than usual.
 
@@ -828,7 +821,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
+                // `begin_panic` and `panic_display` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
@@ -842,8 +835,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
-                if tcx.has_attr(callee, sym::rustc_const_panic_str) {
+                // const-eval of `panic_display` assumes the argument is `&&str`
+                if tcx.is_lang_item(callee, LangItem::PanicDisplay) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                             {}
@@ -891,8 +884,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 });
                             }
                         }
-                        Some(attrs::ConstStability {
-                            level: attrs::StabilityLevel::Unstable { .. },
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Unstable { .. },
                             feature,
                             ..
                         }) => {
@@ -902,8 +895,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 const_stable_indirect: is_const_stable,
                             });
                         }
-                        Some(attrs::ConstStability {
-                            level: attrs::StabilityLevel::Stable { .. },
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Stable { .. },
                             ..
                         }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it

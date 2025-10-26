@@ -18,3 +18,10 @@ pub fn stem_outer() -> String {
     // CHECK: call {{.*}}stem_fn
     leaf::stem_fn()
 }
+
+// Check that we inline functions that call intrinsics
+#[no_mangle]
+pub fn leaf_with_intrinsic_outer(a: &[u64; 2], b: &[u64; 2]) -> bool {
+    // CHECK-NOT: call {{.*}}leaf_with_intrinsic
+    leaf::leaf_with_intrinsic(a, b)
+}

@@ -4,10 +4,10 @@
 
 #![feature(pin_ergonomics)]
 #![allow(dead_code, incomplete_features)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[attr = MacroUse {arguments: UseAll}]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 use std::pin::Pin;
 

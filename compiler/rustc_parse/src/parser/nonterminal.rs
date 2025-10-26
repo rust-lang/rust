@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
@@ -129,7 +128,7 @@ impl<'a> Parser<'a> {
                 Ok(ParseNtResult::Block(self.collect_tokens_no_attrs(|this| this.parse_block())?))
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(stmt) => Ok(ParseNtResult::Stmt(P(stmt))),
+                Some(stmt) => Ok(ParseNtResult::Stmt(Box::new(stmt))),
                 None => {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span)))
                 }
@@ -143,7 +142,8 @@ impl<'a> Parser<'a> {
                         RecoverColon::No,
                         CommaRecoveryMode::EitherTupleOrPipe,
                     ),
-                })?,
+                })
+                .map(Box::new)?,
                 pat_kind,
             )),
             NonterminalKind::Expr(expr_kind) => {
@@ -170,16 +170,15 @@ impl<'a> Parser<'a> {
                     }))
                 }
             }
-            NonterminalKind::Path => Ok(ParseNtResult::Path(P(
-                self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?
+            NonterminalKind::Path => Ok(ParseNtResult::Path(Box::new(
+                self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?,
             ))),
             NonterminalKind::Meta => {
-                Ok(ParseNtResult::Meta(P(self.parse_attr_item(ForceCollect::Yes)?)))
+                Ok(ParseNtResult::Meta(Box::new(self.parse_attr_item(ForceCollect::Yes)?)))
             }
-            NonterminalKind::Vis => {
-                Ok(ParseNtResult::Vis(P(self
-                    .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?)))
-            }
+            NonterminalKind::Vis => Ok(ParseNtResult::Vis(Box::new(
+                self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?,
+            ))),
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
                 // an ident for nonterminal purposes.

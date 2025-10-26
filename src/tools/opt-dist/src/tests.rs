@@ -36,6 +36,16 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     let cargo_dir = extract_dist_dir(&format!("cargo-{version}-{host_triple}"))?.join("cargo");
     let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
+    // If we have a Cranelift archive, copy it to the rustc sysroot
+    if let Ok(_) = find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.xz") {
+        let extracted_codegen_dir =
+            extract_dist_dir(&format!("rustc-codegen-cranelift-{version}-{host_triple}"))?
+                .join("rustc-codegen-cranelift-preview");
+        let rel_path =
+            Utf8Path::new("lib").join("rustlib").join(host_triple).join("codegen-backends");
+        copy_directory(&extracted_codegen_dir.join(&rel_path), &rustc_dir.join(&rel_path))?;
+    }
+
     // We need to manually copy libstd to the extracted rustc sysroot
     copy_directory(
         &libstd_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
@@ -79,6 +89,7 @@ lld = false
 rustc = "{rustc}"
 cargo = "{cargo}"
 local-rebuild = true
+compiletest-allow-stage0=true
 
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
@@ -117,7 +128,6 @@ llvm-config = "{llvm_config}"
             args.extend(["--skip", test_path]);
         }
         cmd(&args)
-            .env("COMPILETEST_FORCE_STAGE0", "1")
             // Also run dist-only tests
             .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
             .run()

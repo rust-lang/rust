@@ -13,7 +13,7 @@ LL +         val if val == x.y => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.y;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x => (),
 LL ~         VAL => (),
    |
@@ -33,7 +33,7 @@ LL +         val if val == x.0 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x => (),
 LL |         x.y => (),
 LL ~         VAL => (),
@@ -54,7 +54,7 @@ LL +         val if val == x._0 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._0;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x => (),
 LL |         x.y => (),
 LL |         x.0 => (),
@@ -76,7 +76,7 @@ LL +         val if val == x.0.1 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0.1;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x => (),
 ...
 LL |         x._0 => (),
@@ -98,7 +98,7 @@ LL +         val if val == x.4.y.17.__z => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.4.y.17.__z;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x => (),
 ...
 LL |         x.0.1 => (),
@@ -150,7 +150,7 @@ LL +         val if val == x[0] => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[0];
-LL ~     match 0 {
+LL |     match 0 {
 LL ~         VAL => (),
    |
 
@@ -169,7 +169,7 @@ LL +         val if val == x[..] => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[..];
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x[0] => (),
 LL ~         VAL => (),
    |
@@ -216,7 +216,7 @@ LL +         val if val == x.f() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f();
-LL ~     match 0 {
+LL |     match 0 {
 LL ~         VAL => (),
    |
 
@@ -235,7 +235,7 @@ LL +         val if val == x._f() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._f();
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 LL ~         VAL => (),
    |
@@ -255,7 +255,7 @@ LL +         val if val == x? => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x?;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 LL |         x._f() => (),
 LL ~         VAL => (),
@@ -276,7 +276,7 @@ LL +         val if val == ().f() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = ().f();
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 LL |         x._f() => (),
 LL |         x? => (),
@@ -298,7 +298,7 @@ LL +         val if val == (0, x)?.f() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (0, x)?.f();
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 ...
 LL |         ().f() => (),
@@ -320,7 +320,7 @@ LL +         val if val == x.f().g() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().g();
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 ...
 LL |         (0, x)?.f() => (),
@@ -342,7 +342,7 @@ LL +         val if val == 0.f()?.g()?? => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.f()?.g()??;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x.f() => (),
 ...
 LL |         x.f().g() => (),
@@ -364,7 +364,7 @@ LL +         val if val == x as usize => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x as usize;
-LL ~     match 0 {
+LL |     match 0 {
 LL ~         VAL => (),
    |
 
@@ -383,7 +383,7 @@ LL +         val if val == 0 as usize => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0 as usize;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x as usize => (),
 LL ~         VAL => (),
    |
@@ -403,7 +403,7 @@ LL +         val if val == x.f().0.4 as f32 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().0.4 as f32;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         x as usize => (),
 LL |         0 as usize => (),
 LL ~         VAL => (),
@@ -424,7 +424,7 @@ LL +         val if val == 1 + 1 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
-LL ~     match 0 {
+LL |     match 0 {
 LL ~         VAL => (),
    |
 
@@ -443,7 +443,7 @@ LL +         val if val == (1 + 2) * 3 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (1 + 2) * 3;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         1 + 1 => (),
 LL ~         VAL => (),
    |
@@ -463,7 +463,7 @@ LL +         val if val == (x.0 > 2) => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 > 2;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         1 + 1 => (),
 ...
 LL |
@@ -485,7 +485,7 @@ LL +         val if val == (x.0 == 2) => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 == 2;
-LL ~     match 0 {
+LL |     match 0 {
 LL |         1 + 1 => (),
 ...
 LL |         x.0 > 2 => (),
@@ -507,7 +507,7 @@ LL +         (x, val) if x != 0 && val == (y.0 > 2) => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
-LL ~     match (0, 0) {
+LL |     match (0, 0) {
 LL ~         (x, VAL) if x != 0 => (),
    |
 
@@ -526,7 +526,7 @@ LL +         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
-LL ~     match (0, 0) {
+LL |     match (0, 0) {
 LL |         (x, y.0 > 2) if x != 0 => (),
 LL ~         (x, VAL) if x != 0 || x != 1 => (),
    |
@@ -563,7 +563,7 @@ LL +         val if val == u8::MAX.abs() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = u8::MAX.abs();
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL ~         VAL => (),
    |
 
@@ -582,7 +582,7 @@ LL +         z @ w @ val if val == v.u() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = v.u();
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL |         u8::MAX.abs() => (),
 ...
 LL |
@@ -604,7 +604,7 @@ LL +         val if val == y.ilog(3) => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.ilog(3);
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL |         u8::MAX.abs() => (),
 ...
 LL |
@@ -626,7 +626,7 @@ LL +         val if val == n + 1 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = n + 1;
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL |         u8::MAX.abs() => (),
 ...
 LL |
@@ -648,7 +648,7 @@ LL +         (val) if val == "".f() + 14 * 8 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "".f() + 14 * 8;
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL |         u8::MAX.abs() => (),
 ...
 LL |
@@ -670,7 +670,7 @@ LL +         val if val == f?() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = f?();
-LL ~     match u8::MAX {
+LL |     match u8::MAX {
 LL |         u8::MAX.abs() => (),
 ...
 LL |         0 | ((1) | 2) | 3 => (),
@@ -690,6 +690,7 @@ error: expected one of `)`, `,`, `@`, `if`, or `|`, found `*`
    |
 LL |     let b = matches!(x, (x * x | x.f()) | x[0]);
    |                            ^ expected one of `)`, `,`, `@`, `if`, or `|`
+   |
   --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
    = note: while parsing argument for this `pat` macro fragment

@@ -1,6 +1,8 @@
 #[doc(keyword = "as")]
 //
-/// Cast between types, or rename an import.
+/// Cast between types, rename an import, or qualify paths to associated items.
+///
+/// # Type casting
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -30,6 +32,8 @@
 /// `as *mut _` though the [`cast`][const-cast] method is recommended over `as *const _` and it is
 /// [the same][mut-cast] for `as *mut _`: those methods make the intent clearer.
 ///
+/// # Renaming imports
+///
 /// `as` is also used to rename imports in [`use`] and [`extern crate`][`crate`] statements:
 ///
 /// ```
@@ -37,9 +41,34 @@
 /// use std::{mem as memory, net as network};
 /// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
 /// ```
-/// For more information on what `as` is capable of, see the [Reference].
 ///
-/// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// # Qualifying paths
+///
+/// You'll also find with `From` and `Into`, and indeed all traits, that `as` is used for the
+/// _fully qualified path_, a means of disambiguating associated items, i.e. functions,
+/// constants, and types.  For example, if you have a type which implements two traits with identical
+/// method names (e.g. `Into::<u32>::into` and `Into::<u64>::into`), you can clarify which method
+/// you'll use with `<MyThing as Into<u32>>::into(my_thing)`[^as-use-from].  This is quite verbose,
+/// but fortunately, Rust's type inference usually saves you from needing this, although it is
+/// occasionally necessary, especially with methods that return a generic type like `Into::into` or
+/// methods that don't take `self`.  It's more common to use in macros where it can provide necessary
+/// hygiene.
+///
+/// [^as-use-from]: You should probably never use this syntax with `Into` and instead write
+/// `T::from(my_thing)`.  It just happens that there aren't any great examples for this syntax in
+/// the standard library.  Also, at time of writing, the compiler tends to suggest fully-qualified
+/// paths to fix ambiguous `Into::into` calls, so the example should hopefully be familiar.
+///
+/// # Further reading
+///
+/// For more information on what `as` is capable of, see the Reference on [type cast expressions],
+/// [renaming imported entities], [renaming `extern` crates]
+/// and [qualified paths].
+///
+/// [type cast expressions]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// [renaming imported entities]: https://doc.rust-lang.org/reference/items/use-declarations.html#as-renames
+/// [renaming `extern` crates]: https://doc.rust-lang.org/reference/items/extern-crates.html#r-items.extern-crate.as
+/// [qualified paths]: ../reference/paths.html#qualified-paths
 /// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
 /// [const-cast]: pointer::cast
@@ -1256,6 +1285,108 @@ mod ref_keyword {}
 /// [closures]: ../book/ch13-01-closures.html
 /// [`async`]: ../std/keyword.async.html
 mod return_keyword {}
+
+#[doc(keyword = "become")]
+//
+/// Perform a tail-call of a function.
+///
+/// <div class="warning">
+///
+/// `feature(explicit_tail_calls)` is currently incomplete and may not work properly.
+/// </div>
+///
+/// When tail calling a function, instead of its stack frame being added to the
+/// stack, the stack frame of the caller is directly replaced with the callee's.
+/// This means that as long as a loop in a call graph only uses tail calls, the
+/// stack growth will be bounded.
+///
+/// This is useful for writing functional-style code (since it prevents recursion
+/// from exhausting resources) or for code optimization (since a tail call
+/// *might* be cheaper than a normal call, tail calls can be used in a similar
+/// manner to computed goto).
+///
+/// Example of using `become` to implement functional-style `fold`:
+/// ```
+/// #![feature(explicit_tail_calls)]
+/// #![expect(incomplete_features)]
+///
+/// fn fold<T: Copy, S>(slice: &[T], init: S, f: impl Fn(S, T) -> S) -> S {
+///     match slice {
+///         // without `become`, on big inputs this could easily overflow the
+///         // stack. using a tail call guarantees that the stack will not grow unboundedly
+///         [first, rest @ ..] => become fold(rest, f(init, *first), f),
+///         [] => init,
+///     }
+/// }
+/// ```
+///
+/// Compilers can already perform "tail call optimization" -- they can replace normal
+/// calls with tail calls, although there are no guarantees that this will be done.
+/// However, to perform TCO, the call needs to be the last thing that happens
+/// in the functions and be returned from it. This requirement is often broken
+/// by drop code for locals, which is run after computing the return expression:
+///
+/// ```
+/// fn example() {
+///     let string = "meow".to_owned();
+///     println!("{string}");
+///     return help(); // this is *not* the last thing that happens in `example`...
+/// }
+///
+/// // ... because it is desugared to this:
+/// fn example_desugared() {
+///     let string = "meow".to_owned();
+///     println!("{string}");
+///     let tmp = help();
+///     drop(string);
+///     return tmp;
+/// }
+///
+/// fn help() {}
+/// ```
+///
+/// For this reason, `become` also changes the drop order, such that locals are
+/// dropped *before* evaluating the call.
+///
+/// In order to guarantee that the compiler can perform a tail call, `become`
+/// currently has these requirements:
+/// 1. callee and caller must have the same ABI, arguments, and return type
+/// 2. callee and caller must not have varargs
+/// 3. caller must not be marked with `#[track_caller]`
+///    - callee is allowed to be marked with `#[track_caller]` as otherwise
+///      adding `#[track_caller]` would be a breaking change. if callee is
+///      marked with `#[track_caller]` a tail call is not guaranteed.
+/// 4. callee and caller cannot be a closure
+///    (unless it's coerced to a function pointer)
+///
+/// It is possible to tail-call a function pointer:
+/// ```
+/// #![feature(explicit_tail_calls)]
+/// #![expect(incomplete_features)]
+///
+/// #[derive(Copy, Clone)]
+/// enum Inst { Inc, Dec }
+///
+/// fn dispatch(stream: &[Inst], state: u32) -> u32 {
+///     const TABLE: &[fn(&[Inst], u32) -> u32] = &[increment, decrement];
+///     match stream {
+///         [inst, rest @ ..] => become TABLE[*inst as usize](rest, state),
+///         [] => state,
+///     }
+/// }
+///
+/// fn increment(stream: &[Inst], state: u32) -> u32 {
+///     become dispatch(stream, state + 1)
+/// }
+///
+/// fn decrement(stream: &[Inst], state: u32) -> u32 {
+///     become dispatch(stream, state - 1)
+/// }
+///
+/// let program = &[Inst::Inc, Inst::Inc, Inst::Dec, Inst::Inc];
+/// assert_eq!(dispatch(program, 0), 2);
+/// ```
+mod become_keyword {}
 
 #[doc(keyword = "self")]
 //

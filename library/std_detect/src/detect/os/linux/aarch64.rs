@@ -140,7 +140,7 @@ struct AtHwcap {
 impl From<auxvec::AuxVec> for AtHwcap {
     /// Reads AtHwcap from the auxiliary vector.
     fn from(auxv: auxvec::AuxVec) -> Self {
-        AtHwcap {
+        let mut cap = AtHwcap {
             fp: bit::test(auxv.hwcap, 0),
             asimd: bit::test(auxv.hwcap, 1),
             // evtstrm: bit::test(auxv.hwcap, 2),
@@ -207,39 +207,50 @@ impl From<auxvec::AuxVec> for AtHwcap {
             // smef32f32: bit::test(auxv.hwcap2, 29),
             smefa64: bit::test(auxv.hwcap2, 30),
             wfxt: bit::test(auxv.hwcap2, 31),
-            // ebf16: bit::test(auxv.hwcap2, 32),
-            // sveebf16: bit::test(auxv.hwcap2, 33),
-            cssc: bit::test(auxv.hwcap2, 34),
-            // rprfm: bit::test(auxv.hwcap2, 35),
-            sve2p1: bit::test(auxv.hwcap2, 36),
-            sme2: bit::test(auxv.hwcap2, 37),
-            sme2p1: bit::test(auxv.hwcap2, 38),
-            // smei16i32: bit::test(auxv.hwcap2, 39),
-            // smebi32i32: bit::test(auxv.hwcap2, 40),
-            smeb16b16: bit::test(auxv.hwcap2, 41),
-            smef16f16: bit::test(auxv.hwcap2, 42),
-            mops: bit::test(auxv.hwcap2, 43),
-            hbc: bit::test(auxv.hwcap2, 44),
-            sveb16b16: bit::test(auxv.hwcap2, 45),
-            lrcpc3: bit::test(auxv.hwcap2, 46),
-            lse128: bit::test(auxv.hwcap2, 47),
-            fpmr: bit::test(auxv.hwcap2, 48),
-            lut: bit::test(auxv.hwcap2, 49),
-            faminmax: bit::test(auxv.hwcap2, 50),
-            f8cvt: bit::test(auxv.hwcap2, 51),
-            f8fma: bit::test(auxv.hwcap2, 52),
-            f8dp4: bit::test(auxv.hwcap2, 53),
-            f8dp2: bit::test(auxv.hwcap2, 54),
-            f8e4m3: bit::test(auxv.hwcap2, 55),
-            f8e5m2: bit::test(auxv.hwcap2, 56),
-            smelutv2: bit::test(auxv.hwcap2, 57),
-            smef8f16: bit::test(auxv.hwcap2, 58),
-            smef8f32: bit::test(auxv.hwcap2, 59),
-            smesf8fma: bit::test(auxv.hwcap2, 60),
-            smesf8dp4: bit::test(auxv.hwcap2, 61),
-            smesf8dp2: bit::test(auxv.hwcap2, 62),
-            // pauthlr: bit::test(auxv.hwcap2, ??),
+            ..Default::default()
+        };
+
+        // Hardware capabilities from bits 32 to 63 should only
+        // be tested on LP64 targets with 64 bits `usize`.
+        // On ILP32 targets like `aarch64-unknown-linux-gnu_ilp32`,
+        // these hardware capabilities will default to `false`.
+        // https://github.com/rust-lang/rust/issues/146230
+        #[cfg(target_pointer_width = "64")]
+        {
+            // cap.ebf16: bit::test(auxv.hwcap2, 32);
+            // cap.sveebf16: bit::test(auxv.hwcap2, 33);
+            cap.cssc = bit::test(auxv.hwcap2, 34);
+            // cap.rprfm: bit::test(auxv.hwcap2, 35);
+            cap.sve2p1 = bit::test(auxv.hwcap2, 36);
+            cap.sme2 = bit::test(auxv.hwcap2, 37);
+            cap.sme2p1 = bit::test(auxv.hwcap2, 38);
+            // cap.smei16i32 = bit::test(auxv.hwcap2, 39);
+            // cap.smebi32i32 = bit::test(auxv.hwcap2, 40);
+            cap.smeb16b16 = bit::test(auxv.hwcap2, 41);
+            cap.smef16f16 = bit::test(auxv.hwcap2, 42);
+            cap.mops = bit::test(auxv.hwcap2, 43);
+            cap.hbc = bit::test(auxv.hwcap2, 44);
+            cap.sveb16b16 = bit::test(auxv.hwcap2, 45);
+            cap.lrcpc3 = bit::test(auxv.hwcap2, 46);
+            cap.lse128 = bit::test(auxv.hwcap2, 47);
+            cap.fpmr = bit::test(auxv.hwcap2, 48);
+            cap.lut = bit::test(auxv.hwcap2, 49);
+            cap.faminmax = bit::test(auxv.hwcap2, 50);
+            cap.f8cvt = bit::test(auxv.hwcap2, 51);
+            cap.f8fma = bit::test(auxv.hwcap2, 52);
+            cap.f8dp4 = bit::test(auxv.hwcap2, 53);
+            cap.f8dp2 = bit::test(auxv.hwcap2, 54);
+            cap.f8e4m3 = bit::test(auxv.hwcap2, 55);
+            cap.f8e5m2 = bit::test(auxv.hwcap2, 56);
+            cap.smelutv2 = bit::test(auxv.hwcap2, 57);
+            cap.smef8f16 = bit::test(auxv.hwcap2, 58);
+            cap.smef8f32 = bit::test(auxv.hwcap2, 59);
+            cap.smesf8fma = bit::test(auxv.hwcap2, 60);
+            cap.smesf8dp4 = bit::test(auxv.hwcap2, 61);
+            cap.smesf8dp2 = bit::test(auxv.hwcap2, 62);
+            // cap.pauthlr = bit::test(auxv.hwcap2, ??);
         }
+        cap
     }
 }
 

@@ -1,3 +1,4 @@
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 use std::cell::Cell;
 use std::rc::Rc;
 

@@ -6,7 +6,7 @@
 // Tests that we cfg-strip all targets before invoking
 // a derive macro
 // FIXME: We currently lose spans here (see issue #43081)
-
+#![warn(legacy_derive_helpers)]
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
 

@@ -5,6 +5,8 @@ LL | unsafe impl SomeStruct {
    | ------      ^^^^^^^^^^ inherent impl for this type
    | |
    | unsafe because of this
+   |
+   = note: only trait implementations may be annotated with `unsafe`
 
 error: aborting due to 1 previous error
 

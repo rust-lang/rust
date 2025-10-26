@@ -183,11 +183,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_doc!(
                     "experimental" {
                         cfg => doc_cfg
-                        cfg_hide => doc_cfg_hide
+                        auto_cfg => doc_cfg
                         masked => doc_masked
                         notable_trait => doc_notable_trait
                     }
                     "meant for internal use only" {
+                        attribute => rustdoc_internals
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
                         search_unbox => rustdoc_internals
@@ -217,18 +218,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
-                if let &ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) => {
+                if let ast::ImplPolarity::Negative(span) = of_trait.polarity {
                     gate!(
                         &self,
                         negative_impls,
-                        span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
+                        span.to(of_trait.trait_ref.path.span),
                         "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
 
-                if let ast::Defaultness::Default(_) = defaultness {
+                if let ast::Defaultness::Default(_) = of_trait.defaultness {
                     gate!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
@@ -524,6 +525,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(coroutines, "coroutine syntax is experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -620,26 +622,17 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
 }
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
-    let enabled_lang_features =
-        features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
-    let enabled_lib_features =
-        features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
-    let enabled_features = enabled_lang_features.chain(enabled_lib_features);
+    let enabled_features = features.enabled_features_iter_stable_order();
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()
         .filter(|(f1, f2)| features.enabled(*f1) && features.enabled(*f2))
     {
-        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
-            {
-                let spans = vec![f1_span, f2_span];
-                sess.dcx().emit_err(errors::IncompatibleFeatures {
-                    spans,
-                    f1: f1_name,
-                    f2: f2_name,
-                });
-            }
+        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1)
+            && let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
+        {
+            let spans = vec![f1_span, f2_span];
+            sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
         }
     }
 }

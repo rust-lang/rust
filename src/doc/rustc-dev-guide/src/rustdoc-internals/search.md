@@ -7,8 +7,6 @@ in the crates in the doc bundle, and the second reads
 it, turns it into some in-memory structures, and
 scans them linearly to search.
 
-<!-- toc -->
-
 ## Search index format
 
 `search.js` calls this Raw, because it turns it into

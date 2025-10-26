@@ -56,11 +56,11 @@ fn main() {
     // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
     // We also declare that the flag is expected, which we need to do to not
     // get warnings about it being unexpected.
-    if stage == "0" {
+    if stage == 0 {
         cmd.arg("--cfg=bootstrap");
     }
 
-    maybe_dump(format!("stage{stage}-rustdoc"), &cmd);
+    maybe_dump(format!("stage{}-rustdoc", stage + 1), &cmd);
 
     if verbose > 1 {
         eprintln!(

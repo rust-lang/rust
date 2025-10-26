@@ -10,6 +10,7 @@ Target triplets available so far:
 
 - `x86_64-unknown-hermit`
 - `aarch64-unknown-hermit`
+- `aarch64_be-unknown-hermit`
 - `riscv64gc-unknown-hermit`
 
 ## Target maintainers
@@ -42,6 +43,7 @@ target = [
     "<HOST_TARGET>",
     "x86_64-unknown-hermit",
     "aarch64-unknown-hermit",
+    "aarch64_be-unknown-hermit",
     "riscv64gc-unknown-hermit",
 ]
 

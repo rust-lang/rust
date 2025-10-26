@@ -10,9 +10,10 @@
 //!
 //! Added in <https://github.com/rust-lang/rust/pull/34216>.
 
-#[cfg_attr(all(), cfg_attr(all(), cfg(false)))]
-fn f() {}
+#[cfg_attr(all(), cfg_attr(all(), cfg(false)))] //~ NOTE the item is gated here
+fn f() {} //~ NOTE found an item that was configured out
 
 fn main() {
     f() //~ ERROR cannot find function `f` in this scope
+    //~^ NOTE not found in this scope
 }

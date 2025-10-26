@@ -83,11 +83,11 @@ impl<'a> ProgressReport<'a> {
         output.extend(text.chars().skip(common_prefix_length));
 
         // If the new text is shorter than the old one: delete overlapping characters
-        if let Some(overlap_count) = self.text.len().checked_sub(text.len()) {
-            if overlap_count > 0 {
-                output += &" ".repeat(overlap_count);
-                output += &"\x08".repeat(overlap_count);
-            }
+        if let Some(overlap_count) = self.text.len().checked_sub(text.len())
+            && overlap_count > 0
+        {
+            output += &" ".repeat(overlap_count);
+            output += &"\x08".repeat(overlap_count);
         }
 
         let _ = io::stdout().write(output.as_bytes());

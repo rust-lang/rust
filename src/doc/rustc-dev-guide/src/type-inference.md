@@ -1,7 +1,5 @@
 # Type inference
 
-<!-- toc -->
-
 Type inference is the process of automatic detection of the type of an
 expression.
 
@@ -241,13 +239,13 @@ differently. It uses canonical queries for trait solving which use
 [`take_and_reset_region_constraints`] at the end. This extracts all of the
 outlives constraints added during the canonical query. This is required
 as the NLL solver must not only know *what* regions outlive each other,
-but also *where*. Finally, the NLL solver invokes [`take_region_var_origins`],
+but also *where*. Finally, the NLL solver invokes [`get_region_var_infos`],
 providing all region variables to the solver.
 
-[`resolve_regions_and_report_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.resolve_regions_and_report_errors
+[`resolve_regions_and_report_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html#method.resolve_regions_and_report_errors
 [`lexical_region_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/lexical_region_resolve/index.html
 [`take_and_reset_region_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.take_and_reset_region_constraints
-[`take_region_var_origins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.take_region_var_origins
+[`get_region_var_infos`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.get_region_var_infos
 
 ## Lexical region resolution
 

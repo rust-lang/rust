@@ -48,7 +48,8 @@ impl ToTokens for TrackedQuery {
                 quote!(#(#options),*)
             })
             .into_iter()
-            .chain(self.lru.map(|lru| quote!(lru = #lru)));
+            .chain(self.lru.map(|lru| quote!(lru = #lru)))
+            .chain(Some(quote!(unsafe(non_update_return_type))));
         let annotation = quote!(#[salsa_macros::tracked( #(#options),* )]);
 
         let pat_and_tys = &self.pat_and_tys;
@@ -326,7 +327,8 @@ impl ToTokens for Lookup {
         let wrapper_struct = self.interned_struct_path.to_token_stream();
         let method = quote! {
             #sig {
-                #wrapper_struct::ingredient(self).data(self.as_dyn_database(), id.as_id()).0.clone()
+                let zalsa = self.zalsa();
+                #wrapper_struct::ingredient(zalsa).data(zalsa, id.as_id()).0.clone()
             }
         };
 

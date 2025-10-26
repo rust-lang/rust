@@ -208,9 +208,9 @@ pub fn completions(
     // when the user types a bare `_` (that is it does not belong to an identifier)
     // the user might just wanted to type a `_` for type inference or pattern discarding
     // so try to suppress completions in those cases
-    if trigger_character == Some('_') && ctx.original_token.kind() == syntax::SyntaxKind::UNDERSCORE
-    {
-        if let CompletionAnalysis::NameRef(NameRefContext {
+    if trigger_character == Some('_')
+        && ctx.original_token.kind() == syntax::SyntaxKind::UNDERSCORE
+        && let CompletionAnalysis::NameRef(NameRefContext {
             kind:
                 NameRefKind::Path(
                     path_ctx @ PathCompletionCtx {
@@ -220,11 +220,9 @@ pub fn completions(
                 ),
             ..
         }) = analysis
-        {
-            if path_ctx.is_trivial_path() {
-                return None;
-            }
-        }
+        && path_ctx.is_trivial_path()
+    {
+        return None;
     }
 
     {

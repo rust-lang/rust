@@ -39,6 +39,7 @@ fn f3b() {
     //~^ ERROR variable `z` is assigned to, but never used
     loop {
         z += 4;
+        //~^ ERROR value assigned to `z` is never read
     }
 }
 
@@ -46,6 +47,7 @@ fn f3b() {
 fn f3c() {
     let mut z = 3;
     loop { z += 4; }
+    //~^ ERROR value assigned to `z` is never read
 }
 
 #[allow(unused_variables)]
@@ -53,6 +55,16 @@ fn f3c() {
 fn f3d() {
     let mut x = 3;
     x += 4;
+}
+
+fn f3e() {
+    let a = 13;
+    let mut z = 3;
+    //~^ ERROR variable `z` is assigned to, but never used
+    loop {
+        z += a;
+        //~^ ERROR value assigned to `z` is never read
+    }
 }
 
 fn f4() {
@@ -68,11 +80,26 @@ enum tri {
     a(isize), b(isize), c(isize)
 }
 
-fn f4b() -> isize {
+fn f4b() {
+    match tri::a(3) {
+      tri::a(i) | tri::b(i) | tri::c(i) => {
+          //~^ ERROR unused variable: `i`
+      }
+    }
+}
+
+fn f4c() -> isize {
     match tri::a(3) {
       tri::a(i) | tri::b(i) | tri::c(i) => {
         i
       }
+    }
+}
+
+fn f4d() {
+    match tri::a(3) {
+      tri::a(i) | tri::b(i) | tri::c(i) if i == 0 => {}
+      _ => {}
     }
 }
 
@@ -138,10 +165,92 @@ fn f7() {
     drop(a);
 }
 
+fn f8(a: u32) {
+    let _ = a;
+}
+
+fn f9() {
+    let mut a = 10;
+    //~^ ERROR variable `a` is assigned to, but never used
+    let b = 13;
+    let c = 13;
+    let d = 13;
+    let e = 13;
+    let f = 13;
+    let g = 13;
+    let h = 13;
+
+    a += b;
+    //~^ ERROR value assigned to `a` is never read
+    a -= c;
+    //~^ ERROR value assigned to `a` is never read
+    a *= d;
+    //~^ ERROR value assigned to `a` is never read
+    a /= e;
+    //~^ ERROR value assigned to `a` is never read
+    a |= f;
+    //~^ ERROR value assigned to `a` is never read
+    a &= g;
+    //~^ ERROR value assigned to `a` is never read
+    a %= h;
+    //~^ ERROR value assigned to `a` is never read
+}
+
+fn f9b() {
+    let mut a = 10;
+    let b = 13;
+    let c = 13;
+    let d = 13;
+    let e = 13;
+    let f = 13;
+    let g = 13;
+    let h = 13;
+
+    a += b;
+    a -= c;
+    a *= d;
+    a /= e;
+    a |= f;
+    a &= g;
+    a %= h;
+
+    let _ = a;
+}
+
+fn f9c() {
+    let mut a = 10.;
+    //~^ ERROR variable `a` is assigned to, but never used
+    let b = 13.;
+    let c = 13.;
+    let d = 13.;
+    let e = 13.;
+    let f = 13.;
+
+    a += b;
+    //~^ ERROR value assigned to `a` is never read
+    a -= c;
+    //~^ ERROR value assigned to `a` is never read
+    a *= d;
+    //~^ ERROR value assigned to `a` is never read
+    a /= e;
+    //~^ ERROR value assigned to `a` is never read
+    a %= f;
+    //~^ ERROR value assigned to `a` is never read
+}
+
+fn f10<T>(mut a: T, b: T) {
+    //~^ ERROR variable `a` is assigned to, but never used
+    a = b;
+    //~^ ERROR value assigned to `a` is never read
+}
+
+fn f10b<T>(mut a: Box<T>, b: Box<T>) {
+    a = b;
+}
+
 // unused params warnings are not needed for intrinsic functions without bodies
 #[rustc_intrinsic]
 unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-
 
 fn main() {
 }

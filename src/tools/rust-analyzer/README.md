@@ -4,8 +4,21 @@
     alt="rust-analyzer logo">
 </p>
 
-rust-analyzer is a modular compiler frontend for the Rust language.
-It is a part of a larger rls-2.0 effort to create excellent IDE support for Rust.
+rust-analyzer is a language server that provides IDE functionality for
+writing Rust programs. You can use it with any editor that supports
+the [Language Server
+Protocol](https://microsoft.github.io/language-server-protocol/) (VS
+Code, Vim, Emacs, Zed, etc).
+
+rust-analyzer features include go-to-definition, find-all-references,
+refactorings and code completion. rust-analyzer also supports
+integrated formatting (with rustfmt) and integrated diagnostics (with
+rustc and clippy).
+
+Internally, rust-analyzer is structured as a set of libraries for
+analyzing Rust code. See
+[Architecture](https://rust-analyzer.github.io/book/contributing/architecture.html)
+in the manual.
 
 ## Quick Start
 
@@ -48,4 +61,4 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 rust-analyzer is primarily distributed under the terms of both the MIT
 license and the Apache License (Version 2.0).
 
-See LICENSE-APACHE and LICENSE-MIT for details.
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.

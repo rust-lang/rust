@@ -12,6 +12,7 @@ jobs:
     if: github.repository == 'rust-lang/stdarch'
     uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
+      github-app-id: ${{ vars.APP_CLIENT_ID }}
       # https://rust-lang.zulipchat.com/#narrow/channel/208962-t-libs.2Fstdarch/topic/Subtree.20sync.20automation/with/528461782
       zulip-stream-id: 208962
       zulip-bot-email:  "stdarch-ci-bot@rust-lang.zulipchat.com"
@@ -19,4 +20,4 @@ jobs:
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
-      token: ${{ secrets.GITHUB_TOKEN }}
+      github-app-secret: ${{ secrets.APP_PRIVATE_KEY }}

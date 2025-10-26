@@ -77,7 +77,7 @@ llvm-ir`). `--build-type=debug` emits code for debug builds. There are also
 other useful options. Also, debug info in LLVM IR can clutter the output a lot:
 `RUSTFLAGS="-C debuginfo=0"` is really useful.
 
-`RUSTFLAGS="-C save-temps"` outputs LLVM bitcode (not the same as IR) at
+`RUSTFLAGS="-C save-temps"` outputs LLVM bitcode at
 different stages during compilation, which is sometimes useful. The output LLVM
 bitcode will be in `.bc` files in the compiler's output directory, set via the
 `--out-dir DIR` argument to `rustc`.
@@ -183,7 +183,7 @@ The quick summary is:
 ### Getting help and asking questions
 
 If you have some questions, head over to the [rust-lang Zulip] and
-specifically the `#t-compiler/wg-llvm` stream.
+specifically the `#t-compiler/wg-llvm` channel.
 
 [rust-lang Zulip]: https://rust-lang.zulipchat.com/
 

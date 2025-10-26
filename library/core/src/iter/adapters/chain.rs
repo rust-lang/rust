@@ -45,8 +45,6 @@ impl<A, B> Chain<A, B> {
 /// # Examples
 ///
 /// ```
-/// #![feature(iter_chain)]
-///
 /// use std::iter::chain;
 ///
 /// let a = [1, 2, 3];
@@ -62,7 +60,7 @@ impl<A, B> Chain<A, B> {
 /// assert_eq!(iter.next(), Some(6));
 /// assert_eq!(iter.next(), None);
 /// ```
-#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+#[stable(feature = "iter_chain", since = "1.91.0")]
 pub fn chain<A, B>(a: A, b: B) -> Chain<A::IntoIter, B::IntoIter>
 where
     A: IntoIterator,
@@ -323,6 +321,7 @@ impl<A: Default, B: Default> Default for Chain<A, B> {
     ///
     /// // take requires `Default`
     /// let _: Chain<_, _> = mem::take(&mut foo.0);
+    /// ```
     fn default() -> Self {
         Chain::new(Default::default(), Default::default())
     }

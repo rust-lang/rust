@@ -1,12 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{
-    is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core,
-};
+use clippy_utils::{is_default_equivalent, is_expr_used_or_unified, peel_ref_operators, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
@@ -129,7 +128,7 @@ impl_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_OPTION_WITH_SOME, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) -> bool {
-    if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
+    if src.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone) {
         // Since this is a late pass (already type-checked),
         // and we already know that the second argument is an
         // `Option`, we do not need to check the first
@@ -163,7 +162,7 @@ fn check_replace_option_with_some(
     msrv: Msrv,
 ) -> bool {
     if let ExprKind::Call(src_func, [src_arg]) = src.kind
-        && is_res_lang_ctor(cx, path_res(cx, src_func), OptionSome)
+        && src_func.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
         && msrv.meets(cx, msrvs::OPTION_REPLACE)
     {
         // We do not have to check for a `const` context here, because `core::mem::replace()` and
@@ -215,7 +214,8 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
         && let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
     {
-        if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
+        let repl_name = cx.tcx.get_diagnostic_name(repl_def_id);
+        if repl_name == Some(sym::mem_uninitialized) {
             let Some(top_crate) = std_or_core(cx) else { return };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -230,9 +230,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 ),
                 applicability,
             );
-        } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id)
-            && !cx.typeck_results().expr_ty(src).is_primitive()
-        {
+        } else if repl_name == Some(sym::mem_zeroed) && !cx.typeck_results().expr_ty(src).is_primitive() {
             span_lint_and_help(
                 cx,
                 MEM_REPLACE_WITH_UNINIT,
@@ -270,14 +268,11 @@ fn check_replace_with_default(
             ),
             |diag| {
                 if !expr.span.from_expansion() {
-                    let suggestion = format!("{top_crate}::mem::take({})", snippet(cx, dest.span, ""));
+                    let mut applicability = Applicability::MachineApplicable;
+                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(
-                        expr.span,
-                        "consider using",
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
+                    diag.span_suggestion(expr.span, "consider using", suggestion, applicability);
                 }
             },
         );

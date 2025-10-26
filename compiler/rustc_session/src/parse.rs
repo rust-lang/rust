@@ -11,8 +11,8 @@ use rustc_data_structures::sync::{AppendOnlyVec, Lock};
 use rustc_errors::emitter::{FatalOnlyEmitter, HumanEmitter, stderr_destination};
 use rustc_errors::translation::Translator;
 use rustc_errors::{
-    ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    BufferedEarlyLint, ColorConfig, DecorateDiagCompat, Diag, DiagCtxt, DiagCtxtHandle,
+    DiagMessage, EmissionGuarantee, MultiSpan, StashKey,
 };
 use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
@@ -27,7 +27,7 @@ use crate::errors::{
     FeatureDiagnosticSuggestion, FeatureGateError, SuggestUpgradeCompiler,
 };
 use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
-use crate::lint::{BufferedEarlyLint, BuiltinLintDiag, Lint, LintId};
+use crate::lint::{Lint, LintId};
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -107,10 +107,10 @@ pub fn feature_err_issue(
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
-    if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning) {
-            err.cancel()
-        }
+    if let Some(span) = span.primary_span()
+        && let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning)
+    {
+        err.cancel()
     }
 
     let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
@@ -342,17 +342,17 @@ impl ParseSess {
         lint: &'static Lint,
         span: impl Into<MultiSpan>,
         node_id: NodeId,
-        diagnostic: BuiltinLintDiag,
+        diagnostic: impl Into<DecorateDiagCompat>,
     ) {
-        self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic)
+        self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic.into())
     }
 
-    pub fn opt_span_buffer_lint(
+    pub(crate) fn opt_span_buffer_lint(
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
         node_id: NodeId,
-        diagnostic: BuiltinLintDiag,
+        diagnostic: DecorateDiagCompat,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {

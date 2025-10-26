@@ -2,11 +2,9 @@ warning: unused variable: `bar`
   --> $DIR/try-removing-the-field.rs:12:20
    |
 LL |     let Foo { foo, bar, .. } = x;
-   |                    ^^^-
-   |                    |
-   |                    help: try removing the field
+   |                    ^^^ help: try ignoring the field: `bar: _`
    |
-   = note: `#[warn(unused_variables)]` on by default
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `unused`
   --> $DIR/try-removing-the-field.rs:20:20
@@ -18,9 +16,7 @@ warning: unused variable: `foo`
   --> $DIR/try-removing-the-field.rs:26:15
    |
 LL |         Foo { foo, .. } => {
-   |               ^^^-
-   |               |
-   |               help: try removing the field
+   |               ^^^ help: try ignoring the field: `foo: _`
 
 warning: 3 warnings emitted
 

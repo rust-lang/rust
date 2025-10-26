@@ -7,25 +7,24 @@ use std::fmt::Display;
 use std::mem;
 use std::ops::Range;
 
-use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{DefKind, Namespace, PerNS};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
+use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
+    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
@@ -115,9 +114,11 @@ impl Res {
 
         let prefix = match kind {
             DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
-            DefKind::Macro(MacroKind::Bang) => return Suggestion::Macro,
+            // FIXME: handle macros with multiple kinds, and attribute/derive macros that aren't
+            // proc macros
+            DefKind::Macro(MacroKinds::BANG) => return Suggestion::Macro,
 
-            DefKind::Macro(MacroKind::Derive) => "derive",
+            DefKind::Macro(MacroKinds::DERIVE) => "derive",
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
             DefKind::Trait => "trait",
@@ -129,6 +130,7 @@ impl Res {
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
+            DefKind::TyAlias => "tyalias",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -209,7 +211,7 @@ impl UrlFragment {
             &UrlFragment::Item(def_id) => {
                 let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
-                        if tcx.defaultness(def_id).has_value() {
+                        if tcx.associated_item(def_id).defaultness(tcx).has_value() {
                             "method."
                         } else {
                             "tymethod."
@@ -845,7 +847,7 @@ fn trait_impls_for<'a>(
 
     for &trait_ in tcx.doc_link_traits_in_scope(module) {
         tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+            let trait_ref = tcx.impl_trait_ref(impl_);
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
             trace!(
@@ -881,9 +883,12 @@ fn trait_impls_for<'a>(
 fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailure<'_>>>) -> bool {
     if let (Ok(type_ns), Ok(macro_ns)) = (&ns.type_ns, &ns.macro_ns) {
         type_ns.iter().any(|(res, _)| matches!(res, Res::Def(DefKind::Trait, _)))
-            && macro_ns
-                .iter()
-                .any(|(res, _)| matches!(res, Res::Def(DefKind::Macro(MacroKind::Derive), _)))
+            && macro_ns.iter().any(|(res, _)| {
+                matches!(
+                    res,
+                    Res::Def(DefKind::Macro(kinds), _) if kinds.contains(MacroKinds::DERIVE)
+                )
+            })
     } else {
         false
     }
@@ -941,13 +946,21 @@ fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
+    // certain link kinds cannot have their path be urls,
+    // so they should not be ignored, no matter how much they look like urls.
+    // e.g. [https://example.com/] is not a link to example.com.
+    let can_be_url = !matches!(
+        ori_link.kind,
+        LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown
+    );
+
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
         return None;
     }
 
     // Bail early for real links.
-    if ori_link.link.contains('/') {
+    if can_be_url && ori_link.link.contains('/') {
         return None;
     }
 
@@ -972,7 +985,7 @@ fn preprocess_link(
         Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
-            if !should_ignore_link_with_disambiguators(link) {
+            if !(can_be_url && should_ignore_link_with_disambiguators(link)) {
                 let disambiguator_range = match range_between_backticks(&ori_link.range, dox) {
                     MarkdownLinkRange::Destination(no_backticks_range) => {
                         MarkdownLinkRange::Destination(
@@ -989,7 +1002,37 @@ fn preprocess_link(
         }
     };
 
-    if should_ignore_link(path_str) {
+    let is_shortcut_style = ori_link.kind == LinkType::ShortcutUnknown;
+    // If there's no backticks, be lenient and revert to the old behavior.
+    // This is to prevent churn by linting on stuff that isn't meant to be a link.
+    // only shortcut links have simple enough syntax that they
+    // are likely to be written accidentally, collapsed and reference links
+    // need 4 metachars, and reference links will not usually use
+    // backticks in the reference name.
+    // therefore, only shortcut syntax gets the lenient behavior.
+    //
+    // here's a truth table for how link kinds that cannot be urls are handled:
+    //
+    // |-------------------------------------------------------|
+    // |              |  is shortcut link  | not shortcut link |
+    // |--------------|--------------------|-------------------|
+    // | has backtick |    never ignore    |    never ignore   |
+    // | no backtick  | ignore if url-like |    never ignore   |
+    // |-------------------------------------------------------|
+    let ignore_urllike = can_be_url || (is_shortcut_style && !ori_link.link.contains('`'));
+    if ignore_urllike && should_ignore_link(path_str) {
+        return None;
+    }
+    // If we have an intra-doc link starting with `!` (which isn't `[!]` because this is the never type), we ignore it
+    // as it is never valid.
+    //
+    // The case is common enough because of cases like `#[doc = include_str!("../README.md")]` which often
+    // uses GitHub-flavored Markdown (GFM) admonitions, such as `[!NOTE]`.
+    if is_shortcut_style
+        && let Some(suffix) = ori_link.link.strip_prefix('!')
+        && !suffix.is_empty()
+        && suffix.chars().all(|c| c.is_ascii_alphabetic())
+    {
         return None;
     }
 
@@ -1031,7 +1074,7 @@ impl LinkCollector<'_, '_> {
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs)
+            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
         {
             // Skip link resolution for non-exported items.
             return;
@@ -1056,7 +1099,12 @@ impl LinkCollector<'_, '_> {
             for md_link in preprocessed_markdown_links(&doc) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.item_id).or_default().insert(link);
+                    self.cx
+                        .cache
+                        .intra_doc_links
+                        .entry(item.item_or_reexport_id())
+                        .or_default()
+                        .insert(link);
                 }
             }
         }
@@ -1631,11 +1679,11 @@ impl Disambiguator {
 
         let suffixes = [
             // If you update this list, please also update the relevant rustdoc book section!
-            ("!()", DefKind::Macro(MacroKind::Bang)),
-            ("!{}", DefKind::Macro(MacroKind::Bang)),
-            ("![]", DefKind::Macro(MacroKind::Bang)),
+            ("!()", DefKind::Macro(MacroKinds::BANG)),
+            ("!{}", DefKind::Macro(MacroKinds::BANG)),
+            ("![]", DefKind::Macro(MacroKinds::BANG)),
             ("()", DefKind::Fn),
-            ("!", DefKind::Macro(MacroKind::Bang)),
+            ("!", DefKind::Macro(MacroKinds::BANG)),
         ];
 
         if let Some(idx) = link.find('@') {
@@ -1654,13 +1702,14 @@ impl Disambiguator {
                     safety: Safety::Safe,
                 }),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
-                "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
+                "derive" => Kind(DefKind::Macro(MacroKinds::DERIVE)),
                 "field" => Kind(DefKind::Field),
                 "variant" => Kind(DefKind::Variant),
                 "type" => NS(Namespace::TypeNS),
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
+                "tyalias" | "typealias" => Kind(DefKind::TyAlias),
                 _ => return Err((format!("unknown disambiguator `{prefix}`"), 0..idx)),
             };
 

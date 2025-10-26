@@ -1,5 +1,3 @@
-use lint::BuiltinLintDiag;
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -19,7 +17,7 @@ use crate::{errors, fluent_generated as fluent};
 
 /// Validated assembly arguments, ready for macro expansion.
 struct ValidatedAsmArgs {
-    pub templates: Vec<P<ast::Expr>>,
+    pub templates: Vec<Box<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
     reg_args: GrowableBitSet<usize>,
@@ -353,7 +351,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::AvoidUsingIntelSyntax,
+                    errors::AvoidIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
@@ -361,7 +359,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::AvoidUsingAttSyntax,
+                    errors::AvoidAttSyntax,
                 );
             }
         }
@@ -370,7 +368,7 @@ fn expand_preparsed_asm(
         if args.options.contains(ast::InlineAsmOptions::RAW) {
             template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string().into()));
             let template_num_lines = 1 + template_str.matches('\n').count();
-            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
+            line_spans.extend(std::iter::repeat_n(template_sp, template_num_lines));
             continue;
         }
 
@@ -525,7 +523,7 @@ fn expand_preparsed_asm(
 
         if parser.line_spans.is_empty() {
             let template_num_lines = 1 + template_str.matches('\n').count();
-            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
+            line_spans.extend(std::iter::repeat_n(template_sp, template_num_lines));
         } else {
             line_spans.extend(
                 parser
@@ -600,9 +598,9 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => P(ast::Expr {
+                Ok(inline_asm) => Box::new(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(P(inline_asm)),
+                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
@@ -630,9 +628,9 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => P(ast::Expr {
+                Ok(inline_asm) => Box::new(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(P(inline_asm)),
+                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
@@ -660,7 +658,7 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => MacEager::items(smallvec![P(ast::Item {
+                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
                     attrs: ast::AttrVec::new(),
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),

@@ -612,190 +612,6 @@ fn test_chunks_exact_mut_zip() {
 }
 
 #[test]
-fn test_array_chunks_infer() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, -4];
-    let c = v.array_chunks();
-    for &[a, b, c] in c {
-        assert_eq!(a + b + c, 3);
-    }
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
-    let total = v2.array_chunks().map(|&[a, b]| a * b).sum::<i32>();
-    assert_eq!(total, 2 * 3 + 4 * 5);
-}
-
-#[test]
-fn test_array_chunks_count() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.array_chunks::<3>();
-    assert_eq!(c.count(), 2);
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.array_chunks::<2>();
-    assert_eq!(c2.count(), 2);
-
-    let v3: &[i32] = &[];
-    let c3 = v3.array_chunks::<2>();
-    assert_eq!(c3.count(), 0);
-}
-
-#[test]
-fn test_array_chunks_nth() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let mut c = v.array_chunks::<2>();
-    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
-    assert_eq!(c.next().unwrap(), &[4, 5]);
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.array_chunks::<3>();
-    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
-    assert_eq!(c2.next(), None);
-}
-
-#[test]
-fn test_array_chunks_nth_back() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let mut c = v.array_chunks::<2>();
-    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
-    assert_eq!(c.next().unwrap(), &[0, 1]);
-    assert_eq!(c.next(), None);
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let mut c2 = v2.array_chunks::<3>();
-    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
-    assert_eq!(c2.next(), None);
-    assert_eq!(c2.next_back(), None);
-
-    let v3: &[i32] = &[0, 1, 2, 3, 4];
-    let mut c3 = v3.array_chunks::<10>();
-    assert_eq!(c3.nth_back(0), None);
-}
-
-#[test]
-fn test_array_chunks_last() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let c = v.array_chunks::<2>();
-    assert_eq!(c.last().unwrap(), &[4, 5]);
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let c2 = v2.array_chunks::<2>();
-    assert_eq!(c2.last().unwrap(), &[2, 3]);
-}
-
-#[test]
-fn test_array_chunks_remainder() {
-    let v: &[i32] = &[0, 1, 2, 3, 4];
-    let c = v.array_chunks::<2>();
-    assert_eq!(c.remainder(), &[4]);
-}
-
-#[test]
-fn test_array_chunks_zip() {
-    let v1: &[i32] = &[0, 1, 2, 3, 4];
-    let v2: &[i32] = &[6, 7, 8, 9, 10];
-
-    let res = v1
-        .array_chunks::<2>()
-        .zip(v2.array_chunks::<2>())
-        .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
-        .collect::<Vec<_>>();
-    assert_eq!(res, vec![14, 22]);
-}
-
-#[test]
-fn test_array_chunks_mut_infer() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
-    for a in v.array_chunks_mut() {
-        let sum = a.iter().sum::<i32>();
-        *a = [sum; 3];
-    }
-    assert_eq!(v, &[3, 3, 3, 12, 12, 12, 6]);
-
-    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
-    v2.array_chunks_mut().for_each(|[a, b]| core::mem::swap(a, b));
-    assert_eq!(v2, &[1, 0, 3, 2, 5, 4, 6]);
-}
-
-#[test]
-fn test_array_chunks_mut_count() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.array_chunks_mut::<3>();
-    assert_eq!(c.count(), 2);
-
-    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.array_chunks_mut::<2>();
-    assert_eq!(c2.count(), 2);
-
-    let v3: &mut [i32] = &mut [];
-    let c3 = v3.array_chunks_mut::<2>();
-    assert_eq!(c3.count(), 0);
-}
-
-#[test]
-fn test_array_chunks_mut_nth() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let mut c = v.array_chunks_mut::<2>();
-    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
-    assert_eq!(c.next().unwrap(), &[4, 5]);
-
-    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
-    let mut c2 = v2.array_chunks_mut::<3>();
-    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
-    assert_eq!(c2.next(), None);
-}
-
-#[test]
-fn test_array_chunks_mut_nth_back() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let mut c = v.array_chunks_mut::<2>();
-    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
-    assert_eq!(c.next().unwrap(), &[0, 1]);
-    assert_eq!(c.next(), None);
-
-    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let mut c2 = v2.array_chunks_mut::<3>();
-    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
-    assert_eq!(c2.next(), None);
-    assert_eq!(c2.next_back(), None);
-
-    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let mut c3 = v3.array_chunks_mut::<10>();
-    assert_eq!(c3.nth_back(0), None);
-}
-
-#[test]
-fn test_array_chunks_mut_last() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    let c = v.array_chunks_mut::<2>();
-    assert_eq!(c.last().unwrap(), &[4, 5]);
-
-    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c2 = v2.array_chunks_mut::<2>();
-    assert_eq!(c2.last().unwrap(), &[2, 3]);
-}
-
-#[test]
-fn test_array_chunks_mut_remainder() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let c = v.array_chunks_mut::<2>();
-    assert_eq!(c.into_remainder(), &[4]);
-}
-
-#[test]
-fn test_array_chunks_mut_zip() {
-    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
-    let v2: &[i32] = &[6, 7, 8, 9, 10];
-
-    for (a, b) in v1.array_chunks_mut::<2>().zip(v2.array_chunks::<2>()) {
-        let sum = b.iter().sum::<i32>();
-        for v in a {
-            *v += sum;
-        }
-    }
-    assert_eq!(v1, [13, 14, 19, 20, 4]);
-}
-
-#[test]
 fn test_array_windows_infer() {
     let v: &[i32] = &[0, 1, 0, 1];
     assert_eq!(v.array_windows::<2>().count(), 3);
@@ -1676,28 +1492,28 @@ mod slice_index {
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
             //       so that `get` doesn't simply return None for the wrong reason.
             bad: data[0 ..= usize::MAX];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod rangetoinclusive_overflow {
             data: [0, 1];
 
             bad: data[..= usize::MAX];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod boundpair_overflow_end {
             data: [0; 1];
 
             bad: data[(Bound::Unbounded, Bound::Included(usize::MAX))];
-            message: "maximum usize";
+            message: "out of range";
         }
 
         in mod boundpair_overflow_start {
             data: [0; 1];
 
             bad: data[(Bound::Excluded(usize::MAX), Bound::Unbounded)];
-            message: "maximum usize";
+            message: "out of range";
         }
     } // panic_cases!
 }
@@ -2192,7 +2008,7 @@ fn test_copy_within_panics_src_inverted() {
     bytes.copy_within(2..1, 0);
 }
 #[test]
-#[should_panic(expected = "attempted to index slice up to maximum usize")]
+#[should_panic(expected = "out of range")]
 fn test_copy_within_panics_src_out_of_bounds() {
     let mut bytes = *b"Hello, World!";
     // an inclusive range ending at usize::MAX would make src_end overflow

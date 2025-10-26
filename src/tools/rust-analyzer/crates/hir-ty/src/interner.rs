@@ -2,11 +2,10 @@
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
 use crate::{
-    AliasTy, CanonicalVarKind, CanonicalVarKinds, ClosureId, Const, ConstData, ConstScalar,
-    Constraint, Constraints, FnAbi, FnDefId, GenericArg, GenericArgData, Goal, GoalData, Goals,
-    InEnvironment, Lifetime, LifetimeData, OpaqueTy, OpaqueTyId, ProgramClause, ProgramClauseData,
-    ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, Ty,
-    TyData, TyKind, VariableKind, VariableKinds, chalk_db, tls,
+    AliasTy, CanonicalVarKind, CanonicalVarKinds, ClosureId, Const, ConstData, ConstScalar, FnAbi,
+    FnDefId, GenericArg, GenericArgData, Goal, GoalData, InEnvironment, Lifetime, LifetimeData,
+    OpaqueTy, OpaqueTyId, ProgramClause, ProjectionTy, QuantifiedWhereClause,
+    QuantifiedWhereClauses, Substitution, Ty, TyKind, VariableKind, chalk_db, tls,
 };
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variance};
 use hir_def::TypeAliasId;
@@ -15,17 +14,28 @@ use smallvec::SmallVec;
 use std::fmt;
 use triomphe::Arc;
 
+type TyData = chalk_ir::TyData<Interner>;
+type VariableKinds = chalk_ir::VariableKinds<Interner>;
+type Goals = chalk_ir::Goals<Interner>;
+type ProgramClauseData = chalk_ir::ProgramClauseData<Interner>;
+type Constraint = chalk_ir::Constraint<Interner>;
+type Constraints = chalk_ir::Constraints<Interner>;
+type ProgramClauses = chalk_ir::ProgramClauses<Interner>;
+
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;
 
-#[derive(PartialEq, Eq, Hash)]
-pub struct InternedWrapper<T>(T);
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
+pub struct InternedWrapper<T>(pub(crate) T);
 
 impl<T: fmt::Debug> fmt::Debug for InternedWrapper<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.0, f)
     }
 }
+
+#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
+pub struct InternedWrapperNoDebug<T>(pub(crate) T);
 
 impl<T> std::ops::Deref for InternedWrapper<T> {
     type Target = T;
@@ -124,6 +134,7 @@ impl chalk_ir::interner::Interner for Interner {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_projection_ty(proj, fmt)))
+            .or_else(|| Some(fmt.write_str("ProjectionTy")))
     }
 
     fn debug_opaque_ty(opaque_ty: &OpaqueTy, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {

@@ -36,7 +36,7 @@ SOURCE_FILE
           PLUS "+"
           WHITESPACE " "
           TYPE_BOUND
-            FOR_TYPE
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"
@@ -44,18 +44,18 @@ SOURCE_FILE
                   LIFETIME
                     LIFETIME_IDENT "'de"
                 R_ANGLE ">"
-              WHITESPACE " "
-              PATH_TYPE
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "Deserialize"
-                    GENERIC_ARG_LIST
-                      L_ANGLE "<"
-                      LIFETIME_ARG
-                        LIFETIME
-                          LIFETIME_IDENT "'de"
-                      R_ANGLE ">"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Deserialize"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    LIFETIME_ARG
+                      LIFETIME
+                        LIFETIME_IDENT "'de"
+                    R_ANGLE ">"
           WHITESPACE " "
           PLUS "+"
           WHITESPACE " "

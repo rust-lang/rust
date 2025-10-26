@@ -19,5 +19,8 @@ pub(crate) mod tracing;
 #[cfg(feature = "build-metrics")]
 pub(crate) mod metrics;
 
+#[cfg(feature = "tracing")]
+pub(crate) mod step_graph;
+
 #[cfg(test)]
 pub(crate) mod tests;

@@ -2,9 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local, sym};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -71,7 +72,7 @@ impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
 impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(IfLet { let_pat, if_then, .. }) = IfLet::hir(cx, expr)
-            && (!expr.span.from_expansion() || is_expn_of(expr.span, sym::if_chain).is_some())
+            && !expr.span.from_expansion()
             && !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id)
             && let found_slices = find_slice_values(cx, let_pat)
             && !found_slices.is_empty()
@@ -225,7 +226,7 @@ impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let Some(local_id) = path_to_local(expr) {
+        if let Some(local_id) = expr.res_local_id() {
             let Self {
                 cx,
                 ref mut slice_lint_info,

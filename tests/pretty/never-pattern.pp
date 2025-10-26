@@ -7,10 +7,10 @@
 #![allow(incomplete_features)]
 #![feature(never_patterns)]
 #![feature(never_type)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 fn f(x: Result<u32, !>) { _ = match x { Ok(x) => x, Err(!) , }; }
 

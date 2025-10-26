@@ -16,3 +16,12 @@ pub fn ref_of_local(f: fn(&i32)) {
     let i = 0;
     f(&i);
 }
+
+// CHECK-LABEL: @ref_of_global
+// CHECK: addrspacecast (ptr addrspace(1) @I to ptr)
+#[no_mangle]
+pub fn ref_of_global(f: fn(&i32)) {
+    #[no_mangle]
+    static I: i32 = 0;
+    f(&I);
+}

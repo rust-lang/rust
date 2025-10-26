@@ -199,6 +199,11 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 
     resolve_pat(visitor, arm.pat);
     if let Some(guard) = arm.guard {
+        // We introduce a new scope to contain bindings and temporaries from `if let` guards, to
+        // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
+        // the arm body and is the scope of its locals as well.
+        visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
+        visitor.cx.var_parent = visitor.cx.parent;
         resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
@@ -462,8 +467,12 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
-    if let_kind == LetKind::Super {
-        if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
+    let extend_initializer = match let_kind {
+        LetKind::Regular => true,
+        LetKind::Super
+            if let Some(scope) =
+                visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) =>
+        {
             // This expression was lifetime-extended by a parent let binding. E.g.
             //
             //     let a = {
@@ -476,7 +485,10 @@ fn resolve_local<'tcx>(
             // Processing of `let a` will have already decided to extend the lifetime of this
             // `super let` to its own var_scope. We use that scope.
             visitor.cx.var_parent = scope;
-        } else {
+            // Extend temporaries to live in the same scope as the parent `let`'s bindings.
+            true
+        }
+        LetKind::Super => {
             // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
             //
             //     identity({ super let x = temp(); &x }).method();
@@ -485,17 +497,21 @@ fn resolve_local<'tcx>(
             //
             // Iterate up to the enclosing destruction scope to find the same scope that will also
             // be used for the result of the block itself.
-            while let Some(s) = visitor.cx.var_parent {
-                let parent = visitor.scope_tree.parent_map.get(&s).cloned();
-                if let Some(Scope { data: ScopeData::Destruction, .. }) = parent {
-                    break;
-                }
-                visitor.cx.var_parent = parent;
+            if let Some(inner_scope) = visitor.cx.var_parent {
+                visitor.cx.var_parent =
+                    Some(visitor.scope_tree.default_temporary_scope(inner_scope).0)
             }
+            // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
+            // the initializer when this `super let` is not itself extended by a parent `let`
+            // (#145784). Block tail expressions are temporary drop scopes in Editions 2024 and
+            // later, their temps shouldn't outlive the block in e.g. `f(pin!({ &temp() }))`.
+            false
         }
-    }
+    };
 
-    if let Some(expr) = init {
+    if let Some(expr) = init
+        && extend_initializer
+    {
         record_rvalue_scope_if_borrow_expr(visitor, expr, visitor.cx.var_parent);
 
         if let Some(pat) = pat {
@@ -737,10 +753,10 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
                 // The body of the every fn is a root scope.
                 resolve_expr(this, body.value, true);
             } else {
-                // Only functions have an outer terminating (drop) scope, while
-                // temporaries in constant initializers may be 'static, but only
-                // according to rvalue lifetime semantics, using the same
-                // syntactical rules used for let initializers.
+                // All bodies have an outer temporary drop scope, but temporaries
+                // and `super let` bindings in constant initializers may be extended
+                // to have 'static lifetimes, using the same syntactical rules used
+                // for `let` initializers.
                 //
                 // e.g., in `let x = &f();`, the temporary holding the result from
                 // the `f()` call lives for the entirety of the surrounding block.

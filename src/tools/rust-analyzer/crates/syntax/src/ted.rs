@@ -90,15 +90,15 @@ pub fn insert_raw(position: Position, elem: impl Element) {
     insert_all_raw(position, vec![elem.syntax_element()]);
 }
 pub fn insert_all(position: Position, mut elements: Vec<SyntaxElement>) {
-    if let Some(first) = elements.first() {
-        if let Some(ws) = ws_before(&position, first) {
-            elements.insert(0, ws.into());
-        }
+    if let Some(first) = elements.first()
+        && let Some(ws) = ws_before(&position, first)
+    {
+        elements.insert(0, ws.into());
     }
-    if let Some(last) = elements.last() {
-        if let Some(ws) = ws_after(&position, last) {
-            elements.push(ws.into());
-        }
+    if let Some(last) = elements.last()
+        && let Some(ws) = ws_after(&position, last)
+    {
+        elements.push(ws.into());
     }
     insert_all_raw(position, elements);
 }
@@ -165,20 +165,22 @@ fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
         PositionRepr::After(it) => it,
     };
 
-    if prev.kind() == T!['{'] && new.kind() == SyntaxKind::USE {
-        if let Some(item_list) = prev.parent().and_then(ast::ItemList::cast) {
-            let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
-            indent.0 += 1;
-            return Some(make::tokens::whitespace(&format!("\n{indent}")));
-        }
+    if prev.kind() == T!['{']
+        && new.kind() == SyntaxKind::USE
+        && let Some(item_list) = prev.parent().and_then(ast::ItemList::cast)
+    {
+        let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
+        indent.0 += 1;
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
     }
 
-    if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
-        if let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast) {
-            let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
-            indent.0 += 1;
-            return Some(make::tokens::whitespace(&format!("\n{indent}")));
-        }
+    if prev.kind() == T!['{']
+        && ast::Stmt::can_cast(new.kind())
+        && let Some(stmt_list) = prev.parent().and_then(ast::StmtList::cast)
+    {
+        let mut indent = IndentLevel::from_element(&stmt_list.syntax().clone().into());
+        indent.0 += 1;
+        return Some(make::tokens::whitespace(&format!("\n{indent}")));
     }
 
     ws_between(prev, new)

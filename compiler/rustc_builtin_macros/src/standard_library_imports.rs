@@ -47,8 +47,6 @@ pub fn inject(
         ast::ItemKind::ExternCrate(None, Ident::new(name, ident_span)),
     );
 
-    krate.items.insert(0, item);
-
     let root = (edition == Edition2015).then_some(kw::PathRoot);
 
     let import_path = root
@@ -75,6 +73,6 @@ pub fn inject(
         }),
     );
 
-    krate.items.insert(0, use_item);
+    krate.items.splice(0..0, [item, use_item]);
     krate.items.len() - orig_num_items
 }

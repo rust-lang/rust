@@ -1,7 +1,5 @@
 # Using Git
 
-<!-- toc -->
-
 The Rust project uses [Git] to manage its source code. In order to
 contribute, you'll need some familiarity with its features so that your changes
 can be incorporated into the compiler.
@@ -340,13 +338,13 @@ your fork with `git push --force-with-lease`.
 
 ### Keeping things up to date
 
-The above section on [Rebasing](#rebasing) is a specific
+The [above section](#rebasing) is a specific
 guide on rebasing work and dealing with merge conflicts.
 Here is some general advice about how to keep your local repo
 up-to-date with upstream changes:
 
 Using `git pull upstream master` while on your local master branch regularly
-will keep it up-to-date. You will also want to rebase your feature branches
+will keep it up-to-date. You will also want to keep your feature branches
 up-to-date as well. After pulling, you can checkout the feature branches
 and rebase them:
 

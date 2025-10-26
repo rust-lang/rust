@@ -45,6 +45,7 @@ fn main() {
     assert_panicked(move || { small[1]; });
     assert_panicked(move || { small.index_mut(1); });
     assert_panicked(move || { small[1] += 1; });
+    //~^ WARN value assigned to `small` is never read
 
     let sorted: BTreeMap<bool, bool> = Default::default();
     assert_panicked(|| { sorted.index(&false); });

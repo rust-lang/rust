@@ -970,17 +970,14 @@ impl Default for Rc<CStr> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        let rc = Rc::<[u8]>::from(*b"\0");
-        // `[u8]` has the same layout as `CStr`, and it is `NUL` terminated.
-        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+        Rc::from(c"")
     }
 }
 
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {
     fn default() -> Box<CStr> {
-        let boxed: Box<[u8]> = Box::from([0]);
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+        Box::from(c"")
     }
 }
 
@@ -1061,17 +1058,10 @@ impl IntoStringError {
     }
 }
 
-impl IntoStringError {
-    fn description(&self) -> &str {
-        "C string contained non-utf8 bytes"
-    }
-}
-
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl fmt::Display for IntoStringError {
-    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+        "C string contained non-utf8 bytes".fmt(f)
     }
 }
 
@@ -1099,7 +1089,7 @@ impl From<&CStr> for CString {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CStr> for CString {
     #[inline]
     fn eq(&self, other: &CStr) -> bool {
@@ -1112,7 +1102,7 @@ impl PartialEq<CStr> for CString {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<&CStr> for CString {
     #[inline]
     fn eq(&self, other: &&CStr) -> bool {
@@ -1126,7 +1116,7 @@ impl PartialEq<&CStr> for CString {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<Cow<'_, CStr>> for CString {
     #[inline]
     fn eq(&self, other: &Cow<'_, CStr>) -> bool {
@@ -1221,7 +1211,7 @@ impl CStr {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CString> for CStr {
     #[inline]
     fn eq(&self, other: &CString) -> bool {
@@ -1235,7 +1225,7 @@ impl PartialEq<CString> for CStr {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<Cow<'_, Self>> for CStr {
     #[inline]
     fn eq(&self, other: &Cow<'_, Self>) -> bool {
@@ -1249,7 +1239,7 @@ impl PartialEq<Cow<'_, Self>> for CStr {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CStr> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &CStr) -> bool {
@@ -1263,7 +1253,7 @@ impl PartialEq<CStr> for Cow<'_, CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<&CStr> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &&CStr) -> bool {
@@ -1277,7 +1267,7 @@ impl PartialEq<&CStr> for Cow<'_, CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CString> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &CString) -> bool {
@@ -1291,23 +1281,13 @@ impl PartialEq<CString> for Cow<'_, CStr> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl core::error::Error for NulError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "nul byte found in data"
-    }
-}
+impl core::error::Error for NulError {}
 
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl core::error::Error for FromVecWithNulError {}
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl core::error::Error for IntoStringError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "C string contained non-utf8 bytes"
-    }
-
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         Some(&self.error)
     }

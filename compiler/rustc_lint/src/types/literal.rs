@@ -1,11 +1,11 @@
 use hir::{ExprKind, Node, is_range_literal};
 use rustc_abi::{Integer, Size};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, attrs};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::LateContext;
 use crate::context::LintContext;
@@ -272,7 +272,7 @@ fn lint_int_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attrs::IntType::SignedInt(ty::ast_int_ty(t)),
+                attrs::IntType::SignedInt(t),
                 Integer::from_int_ty(cx, t).size(),
                 repr_str,
                 v,
@@ -358,7 +358,7 @@ fn lint_uint_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attrs::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                attrs::IntType::UnsignedInt(t),
                 Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,

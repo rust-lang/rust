@@ -15,7 +15,8 @@ define-function: (
         focus: ".search-input"
         press-key: "Enter"
 
-        wait-for: "#search-tabs"
+        wait-for: "#search-tabs .count"
+        wait-for-false: "#search-tabs .count.loading"
         assert-css: ("#search-tabs > button:not(.selected)", {
             "background-color": |background|,
             "border-bottom": |border_bottom|,
@@ -78,7 +79,7 @@ call-function: ("check-colors", {
 set-window-size: (851, 600)
 
 // Check the size and count in tabs
-assert-text: ("#search-tabs > button:nth-child(1) > .count", " (27) ")
+assert-text: ("#search-tabs > button:nth-child(1) > .count", " (25) ")
 assert-text: ("#search-tabs > button:nth-child(2) > .count", " (7)  ")
 assert-text: ("#search-tabs > button:nth-child(3) > .count", " (0)  ")
 store-property: ("#search-tabs > button:nth-child(1)", {"offsetWidth": buttonWidth})

@@ -100,9 +100,8 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
             writeln!(writer, "{INDENT}FakeRead({cause:?}, {place:?});")
         }
         StatementKind::SetDiscriminant { place, variant_index } => {
-            writeln!(writer, "{INDENT}discriminant({place:?} = {};", variant_index.to_index())
+            writeln!(writer, "{INDENT}discriminant({place:?}) = {};", variant_index.to_index())
         }
-        StatementKind::Deinit(place) => writeln!(writer, "Deinit({place:?};"),
         StatementKind::StorageLive(local) => {
             writeln!(writer, "{INDENT}StorageLive(_{local});")
         }

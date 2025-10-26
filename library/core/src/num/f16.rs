@@ -20,6 +20,7 @@ use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f16", issue = "116909")]
+#[rustc_diagnostic_item = "f16_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -35,12 +36,12 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const PHI: f16 = 1.618033988749894848204586834365638118_f16;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const EGAMMA: f16 = 0.577215664901532860606512090082402431_f16;
 
     /// π/2
@@ -69,13 +70,13 @@ pub mod consts {
 
     /// 1/sqrt(π)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_PI: f16 = 0.564189583547756286948079451560772586_f16;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_2PI: f16 = 0.398942280401432677939946059934381868_f16;
 
     /// 2/π
@@ -96,12 +97,12 @@ pub mod consts {
 
     /// sqrt(3)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const SQRT_3: f16 = 1.732050807568877293527446341505872367_f16;
 
     /// 1/sqrt(3)
     #[unstable(feature = "f16", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f16 = 0.577350269189625764509148780501957456_f16;
 
     /// Euler's number (e)
@@ -625,6 +626,13 @@ impl f16 {
 
     /// Converts radians to degrees.
     ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(f16)]
     /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
@@ -640,12 +648,20 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_degrees(self) -> Self {
-        // Use a literal for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const PIS_IN_180: f16 = 57.2957795130823208767981548141051703_f16;
         self * PIS_IN_180
     }
 
     /// Converts degrees to radians.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(f16)]
@@ -663,7 +679,8 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_radians(self) -> f16 {
-        // Use a literal for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const RADS_PER_DEG: f16 = 0.017453292519943295769236907684886_f16;
         self * RADS_PER_DEG
     }
@@ -804,7 +821,6 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn midpoint(self, other: f16) -> f16 {
-        const LO: f16 = f16::MIN_POSITIVE * 2.;
         const HI: f16 = f16::MAX / 2.;
 
         let (a, b) = (self, other);
@@ -814,14 +830,7 @@ impl f16 {
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
             (a + b) / 2.
-        } else if abs_a < LO {
-            // Not safe to halve `a` (would underflow)
-            a + (b / 2.)
-        } else if abs_b < LO {
-            // Not safe to halve `b` (would underflow)
-            (a / 2.) + b
         } else {
-            // Safe to halve `a` and `b`
             (a / 2.) + (b / 2.)
         }
     }
@@ -1167,7 +1176,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i16;
         let mut right = other.to_bits() as i16;
 
@@ -1335,8 +1345,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f16) -> f16 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf16(self, sign) }
+        intrinsics::copysignf16(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1426,8 +1435,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf16(self) }
+        intrinsics::floorf16(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1455,8 +1463,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf16(self) }
+        intrinsics::ceilf16(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1490,8 +1497,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf16(self) }
+        intrinsics::roundf16(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1554,8 +1560,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf16(self) }
+        intrinsics::truncf16(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -1630,9 +1635,9 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub fn mul_add(self, a: f16, b: f16) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf16(self, a, b) }
+    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    pub const fn mul_add(self, a: f16, b: f16) -> f16 {
+        intrinsics::fmaf16(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -1747,8 +1752,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif16(self, n) }
+        intrinsics::powif16(self, n)
     }
 
     /// Returns the square root of a number.
@@ -1783,8 +1787,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f16 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf16(self) }
+        intrinsics::sqrtf16(self)
     }
 
     /// Returns the cube root of a number.

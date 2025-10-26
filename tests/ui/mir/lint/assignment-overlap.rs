@@ -13,7 +13,7 @@ pub fn main() {
         let a: [u8; 1024];
         {
             a = a; //~ ERROR broken MIR
-                   //~^ ERROR encountered `Assign` statement with overlapping memory
+                   //~^ ERROR encountered `_1 = copy _1` statement with overlapping memory
             Return()
         }
     }

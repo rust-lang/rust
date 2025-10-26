@@ -3,6 +3,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, layout};
+use rustc_span::sym;
 use rustc_target::spec::PanicStrategy;
 
 /// A pass that runs which is targeted at ensuring that codegen guarantees about
@@ -33,6 +34,19 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
             return;
         }
 
+        // Represent whether this compilation target fundamentally doesn't
+        // support unwinding at all at an ABI level. If this the target has no
+        // support for unwinding then cleanup actions, for example, are all
+        // unnecessary and can be considered unreachable.
+        //
+        // Currently this is only true for wasm targets on panic=abort when the
+        // `exception-handling` target feature is disabled. In such a
+        // configuration it's illegal to emit exception-related instructions so
+        // it's not possible to unwind.
+        let target_supports_unwinding = !(tcx.sess.target.is_like_wasm
+            && tcx.sess.panic_strategy() == PanicStrategy::Abort
+            && !tcx.asm_target_features(def_id).contains(&sym::exception_handling));
+
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
         let body_ty = tcx.type_of(def_id).skip_binder();
@@ -54,12 +68,18 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
             let Some(terminator) = &mut block.terminator else { continue };
             let span = terminator.source_info.span;
 
-            // If we see an `UnwindResume` terminator inside a function that cannot unwind, we need
-            // to replace it with `UnwindTerminate`.
-            if let TerminatorKind::UnwindResume = &terminator.kind
-                && !body_can_unwind
-            {
-                terminator.kind = TerminatorKind::UnwindTerminate(UnwindTerminateReason::Abi);
+            // If we see an `UnwindResume` terminator inside a function then:
+            //
+            // * If the target doesn't support unwinding at all, then this is an
+            //   unreachable block.
+            // * If the body cannot unwind, we need to replace it with
+            //   `UnwindTerminate`.
+            if let TerminatorKind::UnwindResume = &terminator.kind {
+                if !target_supports_unwinding {
+                    terminator.kind = TerminatorKind::Unreachable;
+                } else if !body_can_unwind {
+                    terminator.kind = TerminatorKind::UnwindTerminate(UnwindTerminateReason::Abi);
+                }
             }
 
             if block.is_cleanup {
@@ -93,8 +113,9 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
                 _ => continue,
             };
 
-            if !call_can_unwind {
-                // If this function call can't unwind, then there's no need for it
+            if !call_can_unwind || !target_supports_unwinding {
+                // If this function call can't unwind, or if the target doesn't
+                // support unwinding at all, then there's no need for it
                 // to have a landing pad. This means that we can remove any cleanup
                 // registered for it (and turn it into `UnwindAction::Unreachable`).
                 let cleanup = block.terminator_mut().unwind_mut().unwrap();

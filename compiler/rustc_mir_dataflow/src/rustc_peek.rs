@@ -1,7 +1,7 @@
 use rustc_ast::MetaItem;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
@@ -135,12 +135,11 @@ fn value_assigned_to_local<'a, 'tcx>(
     stmt: &'a mir::Statement<'tcx>,
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
-    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-        if let Some(l) = place.as_local() {
-            if local == l {
-                return Some(&*rvalue);
-            }
-        }
+    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+        && let Some(l) = place.as_local()
+        && local == l
+    {
+        return Some(&*rvalue);
     }
 
     None
@@ -178,31 +177,30 @@ impl PeekCall {
         let span = terminator.source_info.span;
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
             &terminator.kind
+            && let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind()
         {
-            if let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind() {
-                if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
-                    return None;
-                }
+            if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
+                return None;
+            }
 
-                assert_eq!(fn_args.len(), 1);
-                let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
-                let arg = match &args[0].node {
-                    Operand::Copy(place) | Operand::Move(place) => {
-                        if let Some(local) = place.as_local() {
-                            local
-                        } else {
-                            tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
-                            return None;
-                        }
-                    }
-                    _ => {
+            assert_eq!(fn_args.len(), 1);
+            let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
+            let arg = match &args[0].node {
+                Operand::Copy(place) | Operand::Move(place) => {
+                    if let Some(local) = place.as_local() {
+                        local
+                    } else {
                         tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
                         return None;
                     }
-                };
+                }
+                _ => {
+                    tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
+                    return None;
+                }
+            };
 
-                return Some(PeekCall { arg, kind, span });
-            }
+            return Some(PeekCall { arg, kind, span });
         }
 
         None

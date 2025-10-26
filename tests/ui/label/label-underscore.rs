@@ -1,5 +1,5 @@
 fn main() {
-    '_: loop { //~ ERROR invalid label name `'_`
-        break '_ //~ ERROR invalid label name `'_`
+    '_: loop { //~ ERROR labels cannot use keyword names
+        break '_ //~ ERROR labels cannot use keyword names
     }
 }

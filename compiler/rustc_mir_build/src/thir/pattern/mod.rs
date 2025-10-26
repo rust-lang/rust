@@ -161,8 +161,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
             return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
         };
-
-        Ok(Some(PatRangeBoundary::Finite(value)))
+        Ok(Some(PatRangeBoundary::Finite(value.valtree)))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
@@ -235,7 +234,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
 
-        let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
+        let cmp = lo.compare_with(hi, ty, self.tcx);
         let mut kind = PatKind::Range(Arc::new(PatRange { lo, hi, end, ty }));
         match (end, cmp) {
             // `x..y` where `x < y`.
@@ -244,7 +243,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
+                let value = ty::Value { ty, valtree: lo.as_finite().unwrap() };
+                kind = PatKind::Constant { value };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
@@ -369,6 +369,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,
+                    is_shorthand: false,
                 }
             }
 
@@ -386,9 +387,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
-                    .map(|field| FieldPat {
-                        field: self.typeck_results.field_index(field.hir_id),
-                        pattern: *self.lower_pattern(field.pat),
+                    .map(|field| {
+                        let mut pattern = *self.lower_pattern(field.pat);
+                        if let PatKind::Binding { ref mut is_shorthand, .. } = pattern.kind {
+                            *is_shorthand = field.is_shorthand;
+                        }
+                        let field = self.typeck_results.field_index(field.hir_id);
+                        FieldPat { field, pattern }
                     })
                     .collect();
 

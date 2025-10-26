@@ -12,5 +12,5 @@ fn main() {
     let fnptr: fn(S2) = callee;
     let fnptr: fn(S1) = unsafe { std::mem::transmute(fnptr) };
     fnptr(S1(NonZero::new(1).unwrap()));
-    //~^ ERROR: calling a function with argument of type S2 passing data of type S1
+    //~^ ERROR: type S2 passing argument of type S1
 }

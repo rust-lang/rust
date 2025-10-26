@@ -92,6 +92,9 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
 ///
 /// Queries a handle to determine if it supports a specified protocol. If the protocol is
 /// supported by the handle, it opens the protocol on behalf of the calling agent.
+///
+/// The protocol is opened with the attribute GET_PROTOCOL, which means the caller is not required
+/// to close the protocol interface with `EFI_BOOT_SERVICES.CloseProtocol()`
 pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
@@ -444,17 +447,17 @@ impl<'a> DevicePathNode<'a> {
 
 impl<'a> PartialEq for DevicePathNode<'a> {
     fn eq(&self, other: &Self) -> bool {
-        let self_len = self.length();
-        let other_len = other.length();
-
-        self_len == other_len
-            && unsafe {
-                compiler_builtins::mem::memcmp(
-                    self.protocol.as_ptr().cast(),
-                    other.protocol.as_ptr().cast(),
-                    usize::from(self_len),
-                ) == 0
-            }
+        // Compare as a single buffer rather than by field since it optimizes better.
+        //
+        // SAFETY: `Protocol` is followed by a buffer of `length - sizeof::<Protocol>()`. `Protocol`
+        // has no padding so it is sound to interpret as a slice.
+        unsafe {
+            let s1 =
+                slice::from_raw_parts(self.protocol.as_ptr().cast::<u8>(), self.length().into());
+            let s2 =
+                slice::from_raw_parts(other.protocol.as_ptr().cast::<u8>(), other.length().into());
+            s1 == s2
+        }
     }
 }
 
@@ -473,6 +476,7 @@ impl<'a> crate::fmt::Debug for DevicePathNode<'a> {
     }
 }
 
+/// Protocols installed by Rust side on a handle.
 pub(crate) struct OwnedProtocol<T> {
     guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,

@@ -70,10 +70,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let TargetInfo { target_module, adt_info, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
-    if let Some(m) = target_module {
-        if !is_editable_crate(m.krate(), ctx.db()) {
-            return None;
-        }
+    if let Some(m) = target_module
+        && !is_editable_crate(m.krate(), ctx.db())
+    {
+        return None;
     }
 
     let function_builder =
@@ -189,7 +189,7 @@ fn add_func_to_accumulator(
             )));
 
             // FIXME: adt may have generic params.
-            let impl_ = make::impl_(None, None, name, None, None).clone_for_update();
+            let impl_ = make::impl_(None, None, None, name, None, None).clone_for_update();
 
             func.indent(IndentLevel(1));
             impl_.get_or_create_assoc_item_list().add_item(func.into());
@@ -316,7 +316,7 @@ impl FunctionBuilder {
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
 
-        let fn_name = make::name(&name.text());
+        let fn_name = make::name(name.ident_token()?.text());
         let mut necessary_generic_params = FxHashSet::default();
         necessary_generic_params.extend(receiver_ty.generic_params(ctx.db()));
         let params = fn_args(
@@ -364,10 +364,13 @@ impl FunctionBuilder {
             Visibility::Crate => Some(make::visibility_pub_crate()),
             Visibility::Pub => Some(make::visibility_pub()),
         };
+        let type_params =
+            self.generic_param_list.filter(|list| list.generic_params().next().is_some());
         let fn_def = make::fn_(
+            None,
             visibility,
             self.fn_name,
-            self.generic_param_list,
+            type_params,
             self.where_clause,
             self.params,
             self.fn_body,
@@ -743,17 +746,30 @@ fn fn_generic_params(
     let where_preds: Vec<ast::WherePred> =
         where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
 
-    // 4. Rewrite paths
-    if let Some(param) = generic_params.first() {
-        let source_scope = ctx.sema.scope(param.syntax())?;
-        let target_scope = ctx.sema.scope(&target.parent())?;
-        if source_scope.module() != target_scope.module() {
+    let (generic_params, where_preds): (Vec<ast::GenericParam>, Vec<ast::WherePred>) =
+        if let Some(param) = generic_params.first()
+            && let source_scope = ctx.sema.scope(param.syntax())?
+            && let target_scope = ctx.sema.scope(&target.parent())?
+            && source_scope.module() != target_scope.module()
+        {
+            // 4. Rewrite paths
             let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
             let generic_params = generic_params.iter().map(|it| it.syntax());
             let where_preds = where_preds.iter().map(|it| it.syntax());
-            transform.apply_all(generic_params.chain(where_preds));
-        }
-    }
+            transform
+                .apply_all(generic_params.chain(where_preds))
+                .into_iter()
+                .filter_map(|it| {
+                    if let Some(it) = ast::GenericParam::cast(it.clone()) {
+                        Some(either::Either::Left(it))
+                    } else {
+                        ast::WherePred::cast(it).map(either::Either::Right)
+                    }
+                })
+                .partition_map(|it| it)
+        } else {
+            (generic_params, where_preds)
+        };
 
     let generic_param_list = make::generic_param_list(generic_params);
     let where_clause =
@@ -2402,6 +2418,33 @@ impl Foo {
     }
 
     #[test]
+    fn create_method_with_unused_generics() {
+        check_assist(
+            generate_function,
+            r#"
+struct Foo<S>(S);
+impl<S> Foo<S> {
+    fn foo(&self) {
+        self.bar()$0;
+    }
+}
+"#,
+            r#"
+struct Foo<S>(S);
+impl<S> Foo<S> {
+    fn foo(&self) {
+        self.bar();
+    }
+
+    fn bar(&self) ${0:-> _} {
+        todo!()
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn create_function_with_async() {
         check_assist(
             generate_function,
@@ -3116,5 +3159,33 @@ fn main() {
 }
         "#,
         )
+    }
+
+    #[test]
+    fn no_generate_method_by_keyword() {
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.super$0();
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.Self$0();
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            generate_function,
+            r#"
+fn main() {
+    s.self$0();
+}
+        "#,
+        );
     }
 }

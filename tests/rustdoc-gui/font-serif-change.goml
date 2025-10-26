@@ -8,7 +8,7 @@ assert-css: ("body", {"font-family": |serif_font|})
 assert-css: ("p code", {"font-family": |serif_code_font|})
 
 // We now switch to the sans serif font
-click: "#settings-menu"
+click: "main .settings-menu"
 wait-for: "#sans-serif-fonts"
 click: "#sans-serif-fonts"
 
@@ -23,7 +23,7 @@ assert-css: ("body", {"font-family": |font|})
 assert-css: ("p code", {"font-family": |code_font|})
 
 // We switch back to the serif font
-click: "#settings-menu"
+click: "main .settings-menu"
 wait-for: "#sans-serif-fonts"
 click: "#sans-serif-fonts"
 

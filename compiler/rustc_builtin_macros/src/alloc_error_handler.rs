@@ -1,4 +1,4 @@
-use rustc_ast::ptr::P;
+use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, global_fn_name};
 use rustc_ast::{
     self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
 };
@@ -46,7 +46,7 @@ pub(crate) fn expand(
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
         Annotatable::Item(const_item)
     };
@@ -56,7 +56,7 @@ pub(crate) fn expand(
 }
 
 // #[rustc_std_internal_symbol]
-// unsafe fn __rg_oom(size: usize, align: usize) -> ! {
+// unsafe fn __rust_alloc_error_handler(size: usize, align: usize) -> ! {
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
@@ -85,7 +85,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let kind = ItemKind::Fn(Box::new(Fn {
         defaultness: ast::Defaultness::Final,
         sig,
-        ident: Ident::from_str_and_span("__rg_oom", span),
+        ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
         generics: Generics::default(),
         contract: None,
         body,

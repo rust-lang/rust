@@ -12,7 +12,7 @@ and features. The RfL maintainers should then ideally provide support
 for resolving the breakage or decide to temporarily accept the breakage
 and unblock CI by temporarily removing the RfL CI jobs.
 
-The group also has an associated Zulip stream ([`#rust-for-linux`])
+The group also has an associated Zulip channel ([`#rust-for-linux`])
 where people can go to ask questions and discuss topics related to Rust
 for Linux.
 

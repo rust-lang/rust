@@ -132,10 +132,10 @@ fn render(
             super::path_ref_match(completion, path_ctx, &ret_type, &mut item);
         }
         FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
-                if let Some(ref_mode) = compute_ref_match(completion, &ret_type) {
-                    item.ref_match(ref_mode, original_expr.syntax().text_range().start());
-                }
+            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone())
+                && let Some(ref_mode) = compute_ref_match(completion, &ret_type)
+            {
+                item.ref_match(ref_mode, original_expr.syntax().text_range().start());
             }
         }
         _ => (),
@@ -169,12 +169,10 @@ fn render(
             item.add_import(import_to_add);
         }
         None => {
-            if let Some(actm) = assoc_item {
-                if let Some(trt) = actm.container_or_implemented_trait(db) {
-                    item.trait_name(
-                        trt.name(db).display_no_db(ctx.completion.edition).to_smolstr(),
-                    );
-                }
+            if let Some(actm) = assoc_item
+                && let Some(trt) = actm.container_or_implemented_trait(db)
+            {
+                item.trait_name(trt.name(db).display_no_db(ctx.completion.edition).to_smolstr());
             }
         }
     }
@@ -378,15 +376,13 @@ fn params<'db>(
     ctx.config.callable.as_ref()?;
 
     // Don't add parentheses if the expected type is a function reference with the same signature.
-    if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn()) {
-        if let Some(expected) = expected.as_callable(ctx.db) {
-            if let Some(completed) = func.ty(ctx.db).as_callable(ctx.db) {
-                if expected.sig() == completed.sig() {
-                    cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
-                    return None;
-                }
-            }
-        }
+    if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn())
+        && let Some(expected) = expected.as_callable(ctx.db)
+        && let Some(completed) = func.ty(ctx.db).as_callable(ctx.db)
+        && expected.sig() == completed.sig()
+    {
+        cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
+        return None;
     }
 
     let self_param = if has_dot_receiver || matches!(func_kind, FuncKind::Method(_, Some(_))) {

@@ -131,4 +131,28 @@ fn foo(v: Enum<()>) {
         "#,
         );
     }
+
+    #[test]
+    fn regression_20259() {
+        check_diagnostics(
+            r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct Foo<T>(T);
+
+impl<T> Deref for Foo<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn test(x: Foo<(i32, bool)>) {
+    let (_a, _b): &(i32, bool) = &x;
+}
+"#,
+        );
+    }
 }

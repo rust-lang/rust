@@ -6,8 +6,9 @@ use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_errors::emitter::HumanEmitter;
-use rustc_errors::{Diag, DiagCtxt};
+use rustc_errors::{AutoStream, Diag, DiagCtxt};
 use rustc_lint::LateContext;
+use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
@@ -43,19 +44,20 @@ pub fn check(
                 let filename = FileName::anon_source_code(&code);
 
                 let translator = rustc_driver::default_translator();
-                let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
+                let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
                 let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
                 #[expect(clippy::arc_with_non_send_sync)] // `Arc` is expected by with_dcx
                 let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
                 let psess = ParseSess::with_dcx(dcx, sm);
 
-                let mut parser = match new_parser_from_source_str(&psess, filename, code) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        errs.into_iter().for_each(Diag::cancel);
-                        return (false, test_attr_spans);
-                    },
-                };
+                let mut parser =
+                    match new_parser_from_source_str(&psess, filename, code, StripTokens::ShebangAndFrontmatter) {
+                        Ok(p) => p,
+                        Err(errs) => {
+                            errs.into_iter().for_each(Diag::cancel);
+                            return (false, test_attr_spans);
+                        },
+                    };
 
                 let mut relevant_main_found = false;
                 let mut eligible = true;

@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value at [0]: encountered uninitialized memor
 LL | const UNINIT_INT_0: [u32; 3] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
                __ __ __ __ 11 11 11 11 22 22 22 22             │ ░░░░....""""
            }
@@ -15,7 +15,7 @@ error[E0080]: constructing invalid value at [1]: encountered uninitialized memor
 LL | const UNINIT_INT_1: [u32; 3] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
                00 00 00 00 01 __ 01 01 02 02 __ 02             │ .....░....░.
            }
@@ -26,7 +26,7 @@ error[E0080]: constructing invalid value at [2]: encountered uninitialized memor
 LL | const UNINIT_INT_2: [u32; 3] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
                00 00 00 00 01 01 01 01 02 02 02 __             │ ...........░
            }

@@ -137,16 +137,16 @@ pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
         build.cxx.insert(target, compiler);
     }
 
-    build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
-    build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
+    build.do_if_verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
+    build.do_if_verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
         let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
         cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
-        build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
-        build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
+        build.do_if_verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
+        build.do_if_verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
     if let Some(ar) = ar {
-        build.verbose(|| println!("AR_{} = {ar:?}", target.triple));
+        build.do_if_verbose(|| println!("AR_{} = {ar:?}", target.triple));
         build.ar.insert(target, ar);
     }
 

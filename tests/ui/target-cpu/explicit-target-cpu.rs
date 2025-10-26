@@ -21,6 +21,7 @@
 //@[avr_cpu] needs-llvm-components: avr
 //@[avr_cpu] compile-flags: -Ctarget-cpu=atmega328p
 //@[avr_cpu] build-pass
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 

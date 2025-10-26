@@ -1,10 +1,10 @@
-error: invalid label name `'static`
+error: labels cannot use keyword names
   --> $DIR/label-static.rs:2:5
    |
 LL |     'static: loop {
    |     ^^^^^^^
 
-error: invalid label name `'static`
+error: labels cannot use keyword names
   --> $DIR/label-static.rs:3:15
    |
 LL |         break 'static

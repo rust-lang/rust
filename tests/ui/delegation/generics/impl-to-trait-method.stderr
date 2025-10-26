@@ -2,8 +2,13 @@ error[E0277]: the trait bound `bounds::S: Trait0` is not satisfied
   --> $DIR/impl-to-trait-method.rs:12:19
    |
 LL |             Self: Trait0,
-   |                   ^^^^^^ the trait `Trait0` is not implemented for `bounds::S`
+   |                   ^^^^^^ unsatisfied trait bound
    |
+help: the trait `Trait0` is not implemented for `bounds::S`
+  --> $DIR/impl-to-trait-method.rs:21:5
+   |
+LL |     struct S(F);
+   |     ^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/impl-to-trait-method.rs:5:5
    |
@@ -19,10 +24,15 @@ error[E0277]: the trait bound `bounds::F: Trait0` is not satisfied
   --> $DIR/impl-to-trait-method.rs:24:34
    |
 LL |         reuse Trait1::<T>::foo { &self.0 }
-   |                            ---   ^^^^^^^ the trait `Trait0` is not implemented for `bounds::F`
+   |                            ---   ^^^^^^^ unsatisfied trait bound
    |                            |
    |                            required by a bound introduced by this call
    |
+help: the trait `Trait0` is not implemented for `bounds::F`
+  --> $DIR/impl-to-trait-method.rs:18:5
+   |
+LL |     struct F;
+   |     ^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/impl-to-trait-method.rs:5:5
    |

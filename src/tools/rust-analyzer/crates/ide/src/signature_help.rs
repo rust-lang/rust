@@ -146,12 +146,11 @@ pub(crate) fn signature_help(
 
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if !matches!(expr, ast::Expr::RecordExpr(..))
-                && expr.syntax().text().contains_char('\n')
-            {
-                break;
-            }
+        if let Some(expr) = ast::Expr::cast(node.clone())
+            && !matches!(expr, ast::Expr::RecordExpr(..))
+            && expr.syntax().text().contains_char('\n')
+        {
+            break;
         }
     }
 
@@ -267,12 +266,12 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (p.ty().contains_unknown(), fn_params.as_deref()) {
+            hir::attach_db(db, || match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => {
                     format_to!(buf, "{}", fn_params[idx].ty().display(db, display_target))
                 }
                 _ => format_to!(buf, "{}", p.ty().display(db, display_target)),
-            }
+            });
             res.push_call_param(&buf);
         }
     }
@@ -340,10 +339,6 @@ fn signature_help_for_generics(
             res.doc = it.docs(db);
             format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
         }
-        hir::GenericDef::TraitAlias(it) => {
-            res.doc = it.docs(db);
-            format_to!(res.signature, "trait {}", it.name(db).display(db, edition));
-        }
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));
@@ -366,10 +361,10 @@ fn signature_help_for_generics(
     res.signature.push('<');
     let mut buf = String::new();
     for param in params {
-        if let hir::GenericParam::TypeParam(ty) = param {
-            if ty.is_implicit(db) {
-                continue;
-            }
+        if let hir::GenericParam::TypeParam(ty) = param
+            && ty.is_implicit(db)
+        {
+            continue;
         }
 
         buf.clear();
@@ -530,7 +525,7 @@ fn signature_help_for_tuple_struct_pat(
         pat.syntax(),
         token,
         pat.fields(),
-        fields.into_iter().map(|it| it.ty(db)),
+        fields.into_iter().map(|it| it.ty(db).to_type(db)),
         display_target,
     ))
 }
@@ -763,7 +758,7 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let sig_help = crate::signature_help::signature_help(&db, position);
+        let sig_help = hir::attach_db(&db, || crate::signature_help::signature_help(&db, position));
         let actual = match sig_help {
             Some(sig_help) => {
                 let mut rendered = String::new();

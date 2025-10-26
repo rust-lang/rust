@@ -1,7 +1,7 @@
+use rustc_hir::limit::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::Limit;
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -68,7 +68,14 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return None;
         }
 
-        if self.state.cur_ty.is_ty_var() {
+        // We want to support method and function calls for `impl Deref<Target = ..>`.
+        //
+        // To do so we don't eagerly bail if the current type is the hidden type of an
+        // opaque type and instead return `None` in `fn overloaded_deref_ty` if the
+        // opaque does not have a `Deref` item-bound.
+        if let &ty::Infer(ty::TyVar(vid)) = self.state.cur_ty.kind()
+            && !self.infcx.has_opaques_with_sub_unified_hidden_type(vid)
+        {
             return None;
         }
 
@@ -160,7 +167,11 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty::Binder::dummy(trait_ref),
         );
-        if !self.infcx.next_trait_solver() && !self.infcx.predicate_may_hold(&obligation) {
+        // We detect whether the self type implements `Deref` before trying to
+        // structurally normalize. We use `predicate_may_hold_opaque_types_jank`
+        // to support not-yet-defined opaque types. It will succeed for `impl Deref`
+        // but fail for `impl OtherTrait`.
+        if !self.infcx.predicate_may_hold_opaque_types_jank(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }
@@ -188,7 +199,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             return None;
         };
-        let errors = ocx.select_where_possible();
+        let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
             if self.infcx.next_trait_solver() {
                 unreachable!();
@@ -202,14 +213,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         Some((normalized_ty, ocx.into_pending_obligations()))
     }
 
-    /// Returns the final type we ended up with, which may be an inference
-    /// variable (we will resolve it first, if we want).
-    pub fn final_ty(&self, resolve: bool) -> Ty<'tcx> {
-        if resolve {
-            self.infcx.resolve_vars_if_possible(self.state.cur_ty)
-        } else {
-            self.state.cur_ty
-        }
+    /// Returns the final type we ended up with, which may be an unresolved
+    /// inference variable.
+    pub fn final_ty(&self) -> Ty<'tcx> {
+        self.state.cur_ty
     }
 
     pub fn step_count(&self) -> usize {

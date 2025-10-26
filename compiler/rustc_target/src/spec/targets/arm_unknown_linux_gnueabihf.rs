@@ -19,6 +19,11 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
+            // The default on linux is to have `default_uwtable=true`, but on
+            // this target we get an "`__aeabi_unwind_cpp_pr0` not defined"
+            // linker error, so set it to `true` here.
+            // FIXME(#146996): Remove this override once #146996 has been fixed.
+            default_uwtable: false,
             ..base::linux_gnu::opts()
         },
     }

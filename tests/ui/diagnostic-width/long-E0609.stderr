@@ -4,6 +4,7 @@ error[E0609]: no field `field` on type `(..., ..., ..., ...)`
 LL |     x.field;
    |       ^^^^^ unknown field
    |
+   = note: available fields are: `0`, `1`, `2`, `3`
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0609.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 

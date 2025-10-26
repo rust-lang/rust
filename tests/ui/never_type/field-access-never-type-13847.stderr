@@ -1,0 +1,9 @@
+error[E0609]: no field `is_failure` on type `!`
+  --> $DIR/field-access-never-type-13847.rs:4:12
+   |
+LL |     return.is_failure
+   |            ^^^^^^^^^^ unknown field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

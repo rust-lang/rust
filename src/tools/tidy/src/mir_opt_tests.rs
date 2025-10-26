@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 
 use miropt_test_tools::PanicStrategy;
 
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::walk_no_read;
 
-fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
+fn check_unused_files(path: &Path, bless: bool, check: &mut RunningCheck) {
     let mut rs_files = Vec::<PathBuf>::new();
     let mut output_files = HashSet::<PathBuf>::new();
 
@@ -37,18 +38,17 @@ fn check_unused_files(path: &Path, bless: bool, bad: &mut bool) {
 
     for extra in output_files {
         if !bless {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "the following output file is not associated with any mir-opt test, you can remove it: {}",
                 extra.display()
-            );
+            ));
         } else {
             let _ = std::fs::remove_file(extra);
         }
     }
 }
 
-fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
+fn check_dash_files(path: &Path, bless: bool, check: &mut RunningCheck) {
     for file in walkdir::WalkDir::new(path.join("mir-opt"))
         .into_iter()
         .filter_map(Result::ok)
@@ -60,11 +60,10 @@ fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
             && name.contains('-')
         {
             if !bless {
-                tidy_error!(
-                    bad,
+                check.error(format!(
                     "mir-opt test files should not have dashes in them: {}",
                     path.display()
-                );
+                ));
             } else {
                 let new_name = name.replace('-', "_");
                 let mut new_path = path.to_owned();
@@ -75,7 +74,10 @@ fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
     }
 }
 
-pub fn check(path: &Path, bless: bool, bad: &mut bool) {
-    check_unused_files(path, bless, bad);
-    check_dash_files(path, bless, bad);
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("mir_opt_tests").path(path));
+    let bless = tidy_ctx.is_bless_enabled();
+
+    check_unused_files(path, bless, &mut check);
+    check_dash_files(path, bless, &mut check);
 }

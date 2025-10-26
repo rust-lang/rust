@@ -289,10 +289,10 @@ where
     F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
-    if let Some(parent) = query.parent(query_map) {
-        if let Some(cycle) = visit(query.span(query_map), parent) {
-            return Some(cycle);
-        }
+    if let Some(parent) = query.parent(query_map)
+        && let Some(cycle) = visit(query.span(query_map), parent)
+    {
+        return Some(cycle);
     }
 
     // Visit the explicit waiters which use condvars and are resumable

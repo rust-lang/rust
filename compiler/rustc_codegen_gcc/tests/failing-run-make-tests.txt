@@ -6,8 +6,6 @@ tests/run-make/doctests-keep-binaries/
 tests/run-make/doctests-runtool/
 tests/run-make/emit-shared-files/
 tests/run-make/exit-code/
-tests/run-make/issue-22131/
-tests/run-make/issue-64153/
 tests/run-make/llvm-ident/
 tests/run-make/native-link-modifier-bundle/
 tests/run-make/remap-path-prefix-dwarf/
@@ -35,8 +33,6 @@ tests/run-make/c-link-to-rust-staticlib/
 tests/run-make/foreign-double-unwind/
 tests/run-make/foreign-exceptions/
 tests/run-make/glibc-staticlib-args/
-tests/run-make/issue-36710/
-tests/run-make/issue-68794-textrel-on-minimal-lib/
 tests/run-make/lto-smoke-c/
 tests/run-make/return-non-c-like-enum/
 

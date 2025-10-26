@@ -16,5 +16,7 @@ cc = { git = "https://github.com/SupernaviX/cc-rs.git", tag = "1.2.30-v810" }
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 # Used by ./x.py check --compile-time-deps to skip building C++ code
 check_only = []
+# tidy-alphabetical-end

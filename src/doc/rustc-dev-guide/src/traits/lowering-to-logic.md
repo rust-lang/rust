@@ -1,7 +1,5 @@
 # Lowering to logic
 
-<!-- toc -->
-
 The key observation here is that the Rust trait system is basically a
 kind of logic, and it can be mapped onto standard logical inference
 rules. We can then look for solutions to those inference rules in a

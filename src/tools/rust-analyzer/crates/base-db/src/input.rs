@@ -30,6 +30,7 @@ pub type ProcMacroPaths =
 pub enum ProcMacroLoadingError {
     Disabled,
     FailedToBuild,
+    ExpectedProcMacroArtifact,
     MissingDylibPath,
     NotYetBuilt,
     NoProcMacros,
@@ -39,7 +40,8 @@ impl ProcMacroLoadingError {
     pub fn is_hard_error(&self) -> bool {
         match self {
             ProcMacroLoadingError::Disabled | ProcMacroLoadingError::NotYetBuilt => false,
-            ProcMacroLoadingError::FailedToBuild
+            ProcMacroLoadingError::ExpectedProcMacroArtifact
+            | ProcMacroLoadingError::FailedToBuild
             | ProcMacroLoadingError::MissingDylibPath
             | ProcMacroLoadingError::NoProcMacros
             | ProcMacroLoadingError::ProcMacroSrvError(_) => true,
@@ -51,10 +53,16 @@ impl Error for ProcMacroLoadingError {}
 impl fmt::Display for ProcMacroLoadingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            ProcMacroLoadingError::ExpectedProcMacroArtifact => {
+                write!(f, "proc-macro crate did not build proc-macro artifact")
+            }
             ProcMacroLoadingError::Disabled => write!(f, "proc-macro expansion is disabled"),
             ProcMacroLoadingError::FailedToBuild => write!(f, "proc-macro failed to build"),
             ProcMacroLoadingError::MissingDylibPath => {
-                write!(f, "proc-macro crate build data is missing a dylib path")
+                write!(
+                    f,
+                    "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system."
+                )
             }
             ProcMacroLoadingError::NotYetBuilt => write!(f, "proc-macro not yet built"),
             ProcMacroLoadingError::NoProcMacros => {
@@ -286,8 +294,6 @@ impl CrateDisplayName {
         CrateDisplayName { crate_name, canonical_name: Symbol::intern(canonical_name) }
     }
 }
-
-pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
@@ -921,7 +927,7 @@ mod tests {
     use super::{CrateGraphBuilder, CrateName, CrateOrigin, Edition::Edition2018, Env, FileId};
 
     fn empty_ws_data() -> Arc<CrateWorkspaceData> {
-        Arc::new(CrateWorkspaceData { data_layout: Err("".into()), toolchain: None })
+        Arc::new(CrateWorkspaceData { target: Err("".into()), toolchain: None })
     }
 
     #[test]

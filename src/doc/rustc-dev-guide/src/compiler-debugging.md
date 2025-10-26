@@ -1,7 +1,5 @@
 # Debugging the compiler
 
-<!-- toc -->
-
 This chapter contains a few tips to debug the compiler. These tips aim to be
 useful no matter what you are working on.  Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
@@ -369,7 +367,7 @@ error: layout_of(&'a u32) = Layout {
 error: aborting due to previous error
 ```
 
-[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/stable_mir/abi/struct.Layout.html
+[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_public/abi/struct.Layout.html
 
 
 ## Configuring CodeLLDB for debugging `rustc`

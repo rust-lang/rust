@@ -5,8 +5,8 @@ use crate::path::{Path, PathBuf};
 
 pub mod common;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_family = "unix")] {
+cfg_select! {
+    target_family = "unix" => {
         mod unix;
         use unix as imp;
         pub use unix::{chown, fchown, lchown, mkfifo};
@@ -16,24 +16,38 @@ cfg_if::cfg_if! {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(crate) use unix::CachedFileMetadata;
         use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         use windows as imp;
         pub use windows::{symlink_inner, junction_point};
         use crate::sys::path::with_native_path;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         mod hermit;
         use hermit as imp;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "motor" => {
+        mod motor;
+        use motor as imp;
+    }
+    target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
-    } else if #[cfg(target_os = "wasi")] {
+    }
+    target_os = "vexos" => {
+        mod vexos;
+        use vexos as imp;
+    }
+    target_os = "wasi" => {
         mod wasi;
         use wasi as imp;
-    } else {
+    }
+    _ => {
         mod unsupported;
         use unsupported as imp;
     }
@@ -108,6 +122,30 @@ pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
     with_native_path(path, &|path| imp::set_perm(path, perm.clone()))
 }
 
+#[cfg(unix)]
+pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
+    use crate::fs::OpenOptions;
+
+    let mut options = OpenOptions::new();
+
+    // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+    // Their filesystems do not have symbolic links, so no special handling is required.
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+    {
+        use crate::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+
+    options.open(path)?.set_permissions(perm)
+}
+
+#[cfg(not(unix))]
+pub fn set_permissions_nofollow(_path: &Path, _perm: crate::fs::Permissions) -> io::Result<()> {
+    crate::unimplemented!(
+        "`set_permissions_nofollow` is currently only implemented on Unix platforms"
+    )
+}
+
 pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {
     with_native_path(path, &imp::canonicalize)
 }
@@ -126,4 +164,12 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     return imp::exists(path);
     #[cfg(windows)]
     with_native_path(path, &imp::exists)
+}
+
+pub fn set_times(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times(path, times.clone()))
+}
+
+pub fn set_times_nofollow(path: &Path, times: FileTimes) -> io::Result<()> {
+    with_native_path(path, &|path| imp::set_times_nofollow(path, times.clone()))
 }

@@ -1,13 +1,11 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use crate::mir::mono::Linkage;
 use crate::ty::{InstanceKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -15,6 +13,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         instance_kind: InstanceKind<'_>,
     ) -> Cow<'tcx, CodegenFnAttrs> {
+        // NOTE: we try to not clone the `CodegenFnAttrs` when that is not needed.
+        // The `to_mut` method used below clones the inner value.
         let mut attrs = Cow::Borrowed(self.codegen_fn_attrs(instance_kind.def_id()));
 
         // Drop the `#[naked]` attribute on non-item `InstanceKind`s, like the shims that
@@ -22,6 +22,28 @@ impl<'tcx> TyCtxt<'tcx> {
         if !matches!(instance_kind, InstanceKind::Item(_)) {
             if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                 attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            }
+        }
+
+        // A shim created by `#[track_caller]` should not inherit any attributes
+        // that modify the symbol name. Failing to remove these attributes from
+        // the shim leads to errors like `symbol `foo` is already defined`.
+        //
+        // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
+        // and therefore can be skipped here.
+        if let InstanceKind::ReifyShim(_, _) = instance_kind
+            && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+        {
+            if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NO_MANGLE);
+            }
+
+            if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+            }
+
+            if attrs.symbol_name.is_some() {
+                attrs.to_mut().symbol_name = None;
             }
         }
 
@@ -36,14 +58,10 @@ pub struct CodegenFnAttrs {
     pub inline: InlineAttr,
     /// Parsed representation of the `#[optimize]` attribute
     pub optimize: OptimizeAttr,
-    /// The `#[export_name = "..."]` attribute, indicating a custom symbol a
-    /// function should be exported under
-    pub export_name: Option<Symbol>,
-    /// The `#[link_name = "..."]` attribute, indicating a custom symbol an
-    /// imported function should be imported as. Note that `export_name`
-    /// probably isn't set when this is set, this is for foreign items while
-    /// `#[export_name]` is for Rust-defined functions.
-    pub link_name: Option<Symbol>,
+    /// The name this function will be imported/exported under. This can be set
+    /// using the `#[export_name = "..."]` or `#[link_name = "..."]` attribute
+    /// depending on if this is a function definition or foreign function.
+    pub symbol_name: Option<Symbol>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the
@@ -62,8 +80,8 @@ pub struct CodegenFnAttrs {
     /// The `#[link_section = "..."]` attribute, or what executable section this
     /// should be placed in.
     pub link_section: Option<Symbol>,
-    /// The `#[no_sanitize(...)]` attribute. Indicates sanitizers for which
-    /// instrumentation should be disabled inside the annotated function.
+    /// The `#[sanitize(xyz = "off")]` attribute. Indicates sanitizers for which
+    /// instrumentation should be disabled inside the function.
     pub no_sanitize: SanitizerSet,
     /// The `#[instruction_set(set)]` attribute. Indicates if the generated code should
     /// be generated against a specific instruction set. Only usable on architectures which allow
@@ -75,17 +93,29 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
-    /// For the `#[autodiff]` macros.
-    pub autodiff_item: Option<AutoDiffAttrs>,
+    /// The `#[rustc_objc_class = "..."]` attribute.
+    pub objc_class: Option<Symbol>,
+    /// The `#[rustc_objc_selector = "..."]` attribute.
+    pub objc_selector: Option<Symbol>,
 }
 
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, PartialEq, Eq)]
+pub enum TargetFeatureKind {
+    /// The feature is implied by another feature, rather than explicitly added by the
+    /// `#[target_feature]` attribute
+    Implied,
+    /// The feature is added by the regular `target_feature` attribute.
+    Enabled,
+    /// The feature is added by the unsafe `force_target_feature` attribute.
+    Forced,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, HashStable)]
 pub struct TargetFeature {
     /// The name of the target feature (e.g. "avx")
     pub name: Symbol,
-    /// The feature is implied by another feature, rather than explicitly added by the
-    /// `#[target_feature]` attribute
-    pub implied: bool,
+    /// The way this feature was enabled.
+    pub kind: TargetFeatureKind,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -158,8 +188,10 @@ bitflags::bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 14;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 15;
+        /// Marks foreign items, to make `contains_extern_indicator` cheaper.
+        const FOREIGN_ITEM              = 1 << 16;
         /// `#[interrupt]`: this function is meant to serve as a platform-specific interrupt
-        const INTERRUPT                 = 1 << 16;
+        const INTERRUPT                 = 1 << 17;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
@@ -172,8 +204,7 @@ impl CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
             optimize: OptimizeAttr::Default,
-            export_name: None,
-            link_name: None,
+            symbol_name: None,
             link_ordinal: None,
             target_features: vec![],
             safe_target_features: false,
@@ -184,7 +215,8 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
-            autodiff_item: None,
+            objc_class: None,
+            objc_selector: None,
         }
     }
 
@@ -196,9 +228,13 @@ impl CodegenFnAttrs {
     ///
     /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
     pub fn contains_extern_indicator(&self) -> bool {
+        if self.flags.contains(CodegenFnAttrFlags::FOREIGN_ITEM) {
+            return false;
+        }
+
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
             || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-            || self.export_name.is_some()
+            || self.symbol_name.is_some()
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.

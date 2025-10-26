@@ -7,6 +7,7 @@
 //@ aux-build:debuginfo-lto-aux.rs
 //@ compile-flags: -C lto -g
 //@ no-prefer-dynamic
+//@ ignore-backends: gcc
 
 extern crate debuginfo_lto_aux;
 

@@ -1,7 +1,5 @@
 # Profile-guided optimization
 
-<!-- toc -->
-
 `rustc` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is and how the support for it is
 implemented in `rustc`.

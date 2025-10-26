@@ -16,10 +16,13 @@ use crate::fmt;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 
+// FIXME(inference): const bounds removed due to inference regressions found by crater;
+//   see https://github.com/rust-lang/rust/issues/147964
+// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
-where
-    B: ToOwned,
+impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
+// where
+//     B::Owned: [const] Borrow<B>,
 {
     fn borrow(&self) -> &B {
         &**self
@@ -325,10 +328,13 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     }
 }
 
+// FIXME(inference): const bounds removed due to inference regressions found by crater;
+//   see https://github.com/rust-lang/rust/issues/147964
+// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
-where
-    B::Owned: Borrow<B>,
+// where
+//     B::Owned: [const] Borrow<B>,
 {
     type Target = B;
 
@@ -438,8 +444,14 @@ where
     }
 }
 
+// FIXME(inference): const bounds removed due to inference regressions found by crater;
+//   see https://github.com/rust-lang/rust/issues/147964
+// #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
+impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T>
+// where
+//     T::Owned: [const] Borrow<T>,
+{
     fn as_ref(&self) -> &T {
         self
     }

@@ -2,7 +2,7 @@ error[E0567]: auto traits cannot have generic parameters
   --> $DIR/has-arguments.rs:3:18
    |
 LL | auto trait Trait1<'outer> {}
-   |            ------^^^^^^^^ help: remove the parameters
+   |            ------^^^^^^^^
    |            |
    |            auto trait cannot have generic parameters
 

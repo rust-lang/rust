@@ -1,6 +1,8 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-memory
 //
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//
 //@ revisions: unoptimized optimized
 //
 //@ [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
@@ -10,6 +12,7 @@
 //@ error-pattern: MemorySanitizer: use-of-uninitialized-value
 //@ [optimized]error-pattern: Uninitialized value was created by an allocation
 //@ [optimized]error-pattern: in the stack frame
+//@ ignore-backends: gcc
 //
 // FIXME the unoptimized case actually has that text in the output too, per
 // <https://github.com/rust-lang/rust/pull/138759#issuecomment-3037186707>
