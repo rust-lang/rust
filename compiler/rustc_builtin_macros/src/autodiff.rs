@@ -49,7 +49,7 @@ mod llvm_enzyme {
             match l.kind {
                 ast::LitKind::Int(val, _) => {
                     // get an Ident from a lit
-                    return rustc_span::Ident::from_str(val.get().to_string().as_str());
+                    return rustc_span::Ident::from_str(&val.get().to_string());
                 }
                 _ => {}
             }
