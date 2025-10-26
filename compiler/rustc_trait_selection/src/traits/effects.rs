@@ -368,19 +368,24 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
 
         // only when `coroutine_clone` is enabled and the coroutine is movable
         // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
-        ty::Coroutine(def_id, args) => match tcx.coroutine_movability(def_id) {
-            ty::Movability::Static => Err(EvaluationFailure::NoSolution),
-            ty::Movability::Movable => {
-                if tcx.features().coroutine_clone() {
-                    Ok(ty::Binder::dummy(vec![
-                        args.as_coroutine().tupled_upvars_ty(),
-                        Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args),
-                    ]))
-                } else {
-                    Err(EvaluationFailure::NoSolution)
+        ty::Coroutine(def_id, args) => {
+            if selcx.should_stall_coroutine(def_id) {
+                return Err(EvaluationFailure::Ambiguous);
+            }
+            match tcx.coroutine_movability(def_id) {
+                ty::Movability::Static => Err(EvaluationFailure::NoSolution),
+                ty::Movability::Movable => {
+                    if tcx.features().coroutine_clone() {
+                        Ok(ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args),
+                        ]))
+                    } else {
+                        Err(EvaluationFailure::NoSolution)
+                    }
                 }
             }
-        },
+        }
 
         ty::UnsafeBinder(_) => Err(EvaluationFailure::NoSolution),
 
