@@ -504,11 +504,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::INTERRUPT) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "interrupt"));
     }
-    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
-    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
-    if let Some(align) =
-        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
-    {
+    if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx, sess) {
