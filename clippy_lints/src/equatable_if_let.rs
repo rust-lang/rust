@@ -106,6 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
         if let ExprKind::Let(let_expr) = expr.kind
             && is_unary_pattern(let_expr.pat)
             && !expr.span.in_external_macro(cx.sess().source_map())
+            && !let_expr.pat.span.from_expansion()
+            && !let_expr.init.span.from_expansion()
         {
             let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
             let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
