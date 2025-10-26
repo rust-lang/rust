@@ -48,8 +48,12 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .expect("Error parsing input file");
 
         intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
+        intrinsics.dedup();
 
-        let mut intrinsics = intrinsics
+        let sample_percentage: usize = cli_options.sample_percentage as usize;
+        let sample_size = (intrinsics.len() * sample_percentage) / 100;
+
+        let intrinsics = intrinsics
             .into_iter()
             // Not sure how we would compare intrinsic that returns void.
             .filter(|i| i.results.kind() != TypeKind::Void)
@@ -61,8 +65,8 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
             .filter(|i| !cli_options.skip.contains(&i.name))
             .filter(|i| !(a32 && i.arch_tags == vec!["A64".to_string()]))
+            .take(sample_size)
             .collect::<Vec<_>>();
-        intrinsics.dedup();
 
         Self {
             intrinsics,

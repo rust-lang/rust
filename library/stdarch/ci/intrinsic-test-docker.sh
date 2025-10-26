@@ -36,6 +36,7 @@ run() {
       --env NORUN \
       --env RUSTFLAGS \
       --env CARGO_UNSTABLE_BUILD_STD \
+      --env TEST_SAMPLE_INTRINSICS_PERCENTAGE \
       --volume "${HOME}/.cargo":/cargo \
       --volume "$(rustc --print sysroot)":/rust:ro \
       --volume "$(pwd)":/checkout:ro \

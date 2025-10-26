@@ -51,6 +51,7 @@ case ${TARGET} in
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
+        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=100}"
         ;;
 
     aarch64_be-unknown-linux-gnu*)
@@ -58,6 +59,7 @@ case ${TARGET} in
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
+        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=100}"
         ;;
 
     armv7-unknown-linux-gnueabihf*)
@@ -65,6 +67,7 @@ case ${TARGET} in
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
+        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=100}"
         ;;
 
     x86_64-unknown-linux-gnu*)
@@ -72,7 +75,7 @@ case ${TARGET} in
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
-        TEST_SAMPLE_INTRINSICS_PERCENTAGE=5
+        : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=5}"
         ;;
     *)
         ;;
@@ -88,7 +91,8 @@ case "${TARGET}" in
             --runner "${TEST_RUNNER}" \
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
-            --target "${TARGET}"
+            --target "${TARGET}" \
+            --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}"
         ;;
 
     aarch64_be-unknown-linux-gnu*)
@@ -99,6 +103,7 @@ case "${TARGET}" in
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
             --target "${TARGET}" \
+            --sample-percentage "${TEST_SAMPLE_INTRINSICS_PERCENTAGE}" \
             --linker "${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_LINKER}" \
             --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}"
         ;;
