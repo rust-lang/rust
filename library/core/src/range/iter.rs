@@ -322,8 +322,9 @@ impl<A: Step> Iterator for IterRangeFrom<A> {
     }
 }
 
+// Safety: RangeFrom::next() cannot return None
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: TrustedStep> TrustedLen for IterRangeFrom<A> {}
+unsafe impl<A: Step> TrustedLen for IterRangeFrom<A> {}
 
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<A: Step> FusedIterator for IterRangeFrom<A> {}
