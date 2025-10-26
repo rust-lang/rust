@@ -74,5 +74,17 @@ error: this `if` branch is empty
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`
 
-error: aborting due to 7 previous errors
+error: this `if` branch is empty
+  --> tests/ui/needless_if.rs:110:5
+   |
+LL |     if matches!(2, 3) {}
+   |     ^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `matches!(2, 3);`
+
+error: this `if` branch is empty
+  --> tests/ui/needless_if.rs:112:5
+   |
+LL |     if matches!(2, 3) == (2 * 2 == 5) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `matches!(2, 3) == (2 * 2 == 5);`
+
+error: aborting due to 9 previous errors
 
