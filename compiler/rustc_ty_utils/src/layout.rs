@@ -528,7 +528,7 @@ fn layout_of_uncached<'tcx>(
 
             let prefix_layouts = args
                 .as_coroutine()
-                .prefix_tys()
+                .upvar_tys()
                 .iter()
                 .map(|ty| cx.layout_of(ty))
                 .try_collect::<IndexVec<_, _>>()?;
