@@ -233,22 +233,6 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_import_can_only_appear_once_in_the_list, code = E0430)]
-pub(crate) struct SelfImportCanOnlyAppearOnceInTheList {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(resolve_self_import_only_in_import_list_with_non_empty_prefix, code = E0431)]
-pub(crate) struct SelfImportOnlyInImportListWithNonEmptyPrefix {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_cannot_capture_dynamic_environment_in_fn_item, code = E0434)]
 #[help]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
@@ -924,6 +908,27 @@ pub(crate) struct ArgumentsMacroUseNotAllowed {
 pub(crate) struct UnnamedCrateRootImport {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_unnamed_super_or_self_sugg_import,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnnamedSuperOrSelfImportSugg {
+    #[suggestion_part(code = "{ident} as name")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_unnamed_super_or_self_import)]
+pub(crate) struct UnnamedSuperOrSelfImport {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) sugg: Option<UnnamedSuperOrSelfImportSugg>,
 }
 
 #[derive(Diagnostic)]

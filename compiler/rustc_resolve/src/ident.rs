@@ -829,7 +829,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let module = match module {
-            ModuleOrUniformRoot::Module(module) => module,
+            ModuleOrUniformRoot::Module(module) => {
+                if ns == TypeNS {
+                    if ident.name == kw::Super {
+                        if let Some(parent) = module.parent {
+                            return Ok(parent.self_binding.unwrap());
+                        }
+                    }
+                }
+
+                module
+            }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 let binding = self.resolve_ident_in_scope_set(
@@ -866,10 +876,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_binding.unwrap());
-                    } else if ident.name == kw::Super || ident.name == kw::SelfLower {
-                        // FIXME: Implement these with renaming requirements so that e.g.
-                        // `use super;` doesn't work, but `use super as name;` does.
-                        // Fall through here to get an error from `early_resolve_...`.
+                    } else if ident.name == kw::Super {
+                        if let Some(parent) = parent_scope.module.parent {
+                            return Ok(parent.self_binding.unwrap());
+                        }
+                    } else if ident.name == kw::SelfLower {
+                        return Ok(parent_scope.module.self_binding.unwrap());
                     }
                 }
 

@@ -267,10 +267,6 @@ enum ResolutionError<'ra> {
     UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
-    /// Error E0430: `self` import can only appear once in the list.
-    SelfImportCanOnlyAppearOnceInTheList,
-    /// Error E0431: `self` import can only appear in an import list with a non-empty prefix.
-    SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
         segment: Option<Symbol>,
