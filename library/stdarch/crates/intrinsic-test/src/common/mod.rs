@@ -49,7 +49,7 @@ pub trait SupportedArchitectureTest {
     fn cpp_compilation(&self) -> Option<CppCompilation>;
 
     fn build_c_file(&self) -> bool {
-        let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
+        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len(), 400);
 
         let cpp_compiler_wrapped = self.cpp_compilation();
 
@@ -60,34 +60,42 @@ pub trait SupportedArchitectureTest {
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/mod_{i}.cpp");
                 let mut file = File::create(&c_filename).unwrap();
-                write_mod_cpp(
+                let mod_file_write_result = write_mod_cpp(
                     &mut file,
                     Self::NOTICE,
                     Self::PLATFORM_C_HEADERS,
                     Self::PLATFORM_C_FORWARD_DECLARATIONS,
                     chunk,
-                )
-                .unwrap();
+                );
+
+                if let Err(error) = mod_file_write_result {
+                    return Err(format!("Error writing to mod_{i}.cpp: {error:?}"));
+                }
 
                 // compile this cpp file into a .o file.
                 //
                 // This is done because `cpp_compiler_wrapped` is None when
                 // the --generate-only flag is passed
+                trace!("compiling mod_{i}.cpp");
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
-                    let output = cpp_compiler
-                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))?;
-                    assert!(output.status.success(), "{output:?}");
-                }
+                    let compile_output = cpp_compiler
+                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"));
 
+                    trace!("finished compiling mod_{i}.cpp");
+                    if let Err(compile_error) = compile_output {
+                        return Err(format!("Error compiling mod_{i}.cpp: {compile_error:?}"));
+                    }
+                }
                 Ok(())
             })
-            .collect::<Result<(), std::io::Error>>()
+            .collect::<Result<(), String>>()
             .unwrap();
 
         let mut file = File::create("c_programs/main.cpp").unwrap();
         write_main_cpp(
             &mut file,
             Self::PLATFORM_C_DEFINITIONS,
+            Self::PLATFORM_C_HEADERS,
             self.intrinsics().iter().map(|i| i.name.as_str()),
         )
         .unwrap();
@@ -96,7 +104,7 @@ pub trait SupportedArchitectureTest {
         // the --generate-only flag is passed
         if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
             // compile this cpp file into a .o file
-            info!("compiling main.cpp");
+            trace!("compiling main.cpp");
             let output = cpp_compiler
                 .compile_object_file("main.cpp", "intrinsic-test-programs.o")
                 .unwrap();
@@ -118,7 +126,7 @@ pub trait SupportedArchitectureTest {
     fn build_rust_file(&self) -> bool {
         std::fs::create_dir_all("rust_programs/src").unwrap();
 
-        let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
+        let (chunk_size, chunk_count) = manual_chunk(self.intrinsics().len(), 400);
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
         write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
@@ -188,9 +196,13 @@ pub trait SupportedArchitectureTest {
     }
 }
 
-pub fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
-    let available_parallelism = std::thread::available_parallelism().unwrap().get();
-    let chunk_size = intrinsic_count.div_ceil(Ord::min(available_parallelism, intrinsic_count));
+// pub fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
+//     let available_parallelism = std::thread::available_parallelism().unwrap().get();
+//     let chunk_size = intrinsic_count.div_ceil(Ord::min(available_parallelism, intrinsic_count));
 
+//     (chunk_size, intrinsic_count.div_ceil(chunk_size))
+// }
+
+pub fn manual_chunk(intrinsic_count: usize, chunk_size: usize) -> (usize, usize) {
     (chunk_size, intrinsic_count.div_ceil(chunk_size))
 }

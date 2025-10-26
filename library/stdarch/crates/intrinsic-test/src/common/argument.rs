@@ -30,7 +30,12 @@ where
     }
 
     pub fn to_c_type(&self) -> String {
-        self.ty.c_type()
+        let prefix = if self.ty.constant { "const " } else { "" };
+        format!("{prefix}{}", self.ty.c_type())
+    }
+
+    pub fn generate_name(&self) -> String {
+        format!("{}_val", self.name)
     }
 
     pub fn is_simd(&self) -> bool {
@@ -64,7 +69,7 @@ where
     }
 
     fn as_call_param_c(&self) -> String {
-        self.ty.as_call_param_c(&self.name)
+        self.ty.as_call_param_c(&self.generate_name())
     }
 }
 
@@ -91,7 +96,7 @@ where
     pub fn as_call_param_rust(&self) -> String {
         self.iter()
             .filter(|a| !a.has_constraint())
-            .map(|arg| arg.name.clone())
+            .map(|arg| arg.generate_name() + " as _")
             .collect::<Vec<String>>()
             .join(", ")
     }
@@ -106,11 +111,13 @@ where
         loads: u32,
     ) -> std::io::Result<()> {
         for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
+            // Setting the variables on an aligned boundary to make it easier to pick
+            // functions (of a specific architecture) that would help load the values.
             writeln!(
                 w,
-                "{indentation}const {ty} {name}_vals[] = {values};",
+                "{indentation}alignas(64) const {ty} {name}_vals[] = {values};",
                 ty = arg.ty.c_scalar_type(),
-                name = arg.name,
+                name = arg.generate_name(),
                 values = arg.ty.populate_random(indentation, loads, &Language::C)
             )?
         }
@@ -153,7 +160,7 @@ where
                 format!(
                     "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i]));\n",
                     ty = arg.to_c_type(),
-                    name = arg.name,
+                    name = arg.generate_name(),
                     load = if arg.is_simd() {
                         arg.ty.get_load_function(Language::C)
                     } else {
@@ -171,15 +178,16 @@ where
         self.iter()
             .filter(|&arg| !arg.has_constraint())
             .map(|arg| {
+                let load = if arg.is_simd() {
+                    arg.ty.get_load_function(Language::Rust)
+                } else {
+                    "*".to_string()
+                };
+                let typecast = if load.len() > 2 { "as _" } else { "" };
                 format!(
-                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i));\n",
-                    name = arg.name,
+                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i){typecast});\n",
+                    name = arg.generate_name(),
                     vals_name = arg.rust_vals_array_name(),
-                    load = if arg.is_simd() {
-                        arg.ty.get_load_function(Language::Rust)
-                    } else {
-                        "*".to_string()
-                    },
                 )
             })
             .collect()
