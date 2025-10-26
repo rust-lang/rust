@@ -132,6 +132,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
+        | sym::init_box_via_move
         | sym::is_val_statically_known
         | sym::log2f16
         | sym::log2f32
@@ -552,6 +553,12 @@ pub(crate) fn check_intrinsic_type(
         sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
         sym::write_via_move => {
             (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
+        }
+        sym::init_box_via_move => {
+            let t = param(0);
+            let maybe_uninit_t = Ty::new_maybe_uninit(tcx, t);
+
+            (1, 0, vec![Ty::new_box(tcx, maybe_uninit_t), param(0)], Ty::new_box(tcx, t))
         }
 
         sym::typed_swap_nonoverlapping => {

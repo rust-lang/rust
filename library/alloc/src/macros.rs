@@ -48,8 +48,6 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         <[_]>::into_vec(
-            // Using the intrinsic produces a dramatic improvement in stack usage for
-            // unoptimized programs using this code path to construct large Vecs.
             $crate::boxed::box_new([$($x),+])
         )
     );
