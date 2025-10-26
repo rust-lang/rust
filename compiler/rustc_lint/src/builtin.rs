@@ -2716,7 +2716,7 @@ declare_lint! {
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub DEREF_NULLPTR,
-    Warn,
+    Deny,
     "detects when an null pointer is dereferenced"
 }
 
