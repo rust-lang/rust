@@ -462,7 +462,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop(true);
+                stmt.kind = StatementKind::Nop;
             }
             _ => {}
         }

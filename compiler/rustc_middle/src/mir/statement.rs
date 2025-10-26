@@ -24,15 +24,12 @@ pub struct Statement<'tcx> {
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+    pub fn make_nop(&mut self) {
         if self.kind == StatementKind::Nop {
             return;
         }
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
-        if !drop_debuginfo {
-            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
-                bug!("debuginfo is not yet supported.")
-            };
+        if let Some(debuginfo) = replaced_stmt.as_debuginfo() {
             self.debuginfos.push(debuginfo);
         }
     }
@@ -1103,4 +1100,13 @@ pub enum StmtDebugInfo<'tcx> {
     AssignRef(Local, Place<'tcx>),
     InvalidAssign(Local),
     Nop,
+}
+
+impl StmtDebugInfo<'_> {
+    pub fn lhs(&self) -> Option<Local> {
+        match *self {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => Some(local),
+            StmtDebugInfo::Nop => None,
+        }
+    }
 }
