@@ -1,16 +1,17 @@
 //@ compile-flags: -Zmir-opt-level=0
 // skip-filecheck
-#![feature(liballoc_internals, rustc_attrs)]
 
-// EMIT_MIR uniform_array_move_out.move_out_from_end.built.after.mir
+// Can't emit `built.after` here as that contains user type annotations which contain DefId that
+// change all the time.
+// EMIT_MIR uniform_array_move_out.move_out_from_end.CleanupPostBorrowck.after.mir
 fn move_out_from_end() {
-    let a = [std::boxed::box_new(1), std::boxed::box_new(2)];
+    let a = [Box::new(1), Box::new(2)];
     let [.., _y] = a;
 }
 
-// EMIT_MIR uniform_array_move_out.move_out_by_subslice.built.after.mir
+// EMIT_MIR uniform_array_move_out.move_out_by_subslice.CleanupPostBorrowck.after.mir
 fn move_out_by_subslice() {
-    let a = [std::boxed::box_new(1), std::boxed::box_new(2)];
+    let a = [Box::new(1), Box::new(2)];
     let [_y @ ..] = a;
 }
 
