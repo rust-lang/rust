@@ -173,8 +173,11 @@ removeUnusedFilesAndDirs() {
         fi
     done
 
-    # Remove all files and directories at once to save time.
-    sudo rm -rf "${to_remove[@]}"
+    # GHA has high read latencies for uncached data
+    # so we traverse directories in parallel and feed the output to rm
+    printf '%s\n' "${to_remove[@]}" | \
+        (xargs -P 6 -I{} -- find {} -type f -printf '%p\n\c' || true) | \
+        sudo xargs -r -P 8 -n 100 -- rm -rf
 }
 
 execAndMeasureSpaceChange() {
