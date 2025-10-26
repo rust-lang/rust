@@ -246,20 +246,25 @@ fn early_expression(
 
 fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
     let mut chains = vec![];
+    let mut reduce_cond = |rhs| {
+        if !matches!(rhs, ast::Expr::LetExpr(_))
+            && let Some(last) = chains.pop_if(|last| !matches!(last, ast::Expr::LetExpr(_)))
+        {
+            chains.push(make::expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
+        } else {
+            chains.push(rhs);
+        }
+    };
 
     while let ast::Expr::BinExpr(bin_expr) = &expr
         && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
         && let (Some(lhs), Some(rhs)) = (bin_expr.lhs(), bin_expr.rhs())
     {
-        if let Some(last) = chains.pop_if(|last| !matches!(last, ast::Expr::LetExpr(_))) {
-            chains.push(make::expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
-        } else {
-            chains.push(rhs);
-        }
+        reduce_cond(rhs);
         expr = lhs;
     }
 
-    chains.push(expr);
+    reduce_cond(expr);
     chains.reverse();
     chains
 }
@@ -549,6 +554,93 @@ fn main() {
 fn main() {
     let Ok(x) = Err(92) else { return };
     if !(x < 30 && y < 20) {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 cond
+        && let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    if !cond {
+        return;
+    }
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 cond
+        && foo()
+        && let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    if !(cond && foo()) {
+        return;
+    }
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
         return;
     }
     let Some(y) = Some(8) else { return };
