@@ -472,3 +472,55 @@ where
 "#,
     );
 }
+
+#[test]
+fn regression_16282() {
+    check_infer(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn
+trait MapLookup<Q> {
+    type MapValue;
+}
+
+impl<K> MapLookup<K> for K {
+    type MapValue = K;
+}
+
+trait Map: MapLookup<<Self as Map>::Key> {
+    type Key;
+}
+
+impl<K> Map for K {
+    type Key = K;
+}
+
+
+fn main() {
+    let _ = &()
+        as &dyn Map<Key=u32,MapValue=u32>;
+}
+"#,
+        expect![[r#"
+            210..272 '{     ...32>; }': ()
+            220..221 '_': &'? (dyn Map<MapValue = u32, Key = u32> + '?)
+            224..227 '&()': &'? ()
+            224..269 '&()   ...e=u32>': &'? (dyn Map<MapValue = u32, Key = u32> + 'static)
+            225..227 '()': ()
+        "#]],
+    );
+}
+
+#[test]
+fn regression_18692() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn, send
+trait Trait: Send {}
+
+fn f(_: *const (dyn Trait + Send)) {}
+fn g(it: *const (dyn Trait)) {
+    f(it);
+}
+"#,
+    );
+}

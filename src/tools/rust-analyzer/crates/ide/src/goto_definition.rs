@@ -4015,4 +4015,68 @@ fn bar() {
         "##,
         );
     }
+
+    #[test]
+    fn regression_20038() {
+        check(
+            r#"
+//- minicore: clone, fn
+struct Map<Fut, F>(Fut, F);
+
+struct InspectFn<F>(F);
+
+trait FnOnce1<A> {
+    type Output;
+}
+
+trait Future1 {
+    type Output;
+}
+
+trait FusedFuture1: Future1 {
+    fn is_terminated(&self) -> bool;
+     //^^^^^^^^^^^^^
+}
+
+impl<T, A, R> FnOnce1<A> for T
+where
+    T: FnOnce(A) -> R,
+{
+    type Output = R;
+}
+
+impl<F, A> FnOnce1<A> for InspectFn<F>
+where
+    F: for<'a> FnOnce1<&'a A, Output = ()>,
+{
+    type Output = A;
+}
+
+impl<Fut, F, T> Future1 for Map<Fut, F>
+where
+    Fut: Future1,
+    F: FnOnce1<Fut::Output, Output = T>,
+{
+    type Output = T;
+}
+
+impl<Fut, F, T> FusedFuture1 for Map<Fut, F>
+where
+    Fut: Future1,
+    F: FnOnce1<Fut::Output, Output = T>,
+{
+    fn is_terminated(&self) -> bool {
+        false
+    }
+}
+
+fn overflows<Fut, F>(inner: &Map<Fut, InspectFn<F>>)
+where
+    Map<Fut, InspectFn<F>>: FusedFuture1
+{
+    let _x = inner.is_terminated$0();
+}
+"#,
+        )
+    }
 }
