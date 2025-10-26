@@ -20,27 +20,20 @@ LL | m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `$crate` may not be imported
-  --> $DIR/dollar-crate-is-keyword.rs:9:9
+error: imports need to be explicitly named
+  --> $DIR/dollar-crate-is-keyword.rs:9:13
    |
 LL |         use $crate;
-   |         ^^^^^^^^^^^
+   |             ^^^^^^
 ...
 LL | m!();
    | ---- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: `$crate` may not be imported
-  --> $DIR/dollar-crate-is-keyword.rs:10:9
+help: try renaming it with a name
    |
-LL |         use $crate as $crate;
-   |         ^^^^^^^^^^^^^^^^^^^^^
-...
-LL | m!();
-   | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |         use $crate as name;
+   |                    +++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
