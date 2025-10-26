@@ -1,14 +1,6 @@
 //@aux-build:proc_macros.rs
-
-#![allow(
-    unused_variables,
-    dead_code,
-    clippy::derive_partial_eq_without_eq,
-    clippy::needless_ifs
-)]
+#![allow(clippy::derive_partial_eq_without_eq, clippy::needless_ifs)]
 #![warn(clippy::equatable_if_let)]
-
-extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
 use std::cmp::Ordering;
