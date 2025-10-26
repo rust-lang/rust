@@ -90,11 +90,6 @@ fi
 # Test targets compiled with extra features.
 case ${TARGET} in
     x86_64-unknown-linux-gnu)
-        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/include/x86_64-linux-gnu/"
-        TEST_CXX_COMPILER="clang++"
-        TEST_RUNNER="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER}"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_x86.txt
-        TEST_SAMPLE_INTRINSICS_PERCENTAGE=5
         export STDARCH_DISABLE_ASSERT_INSTR=1
 
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
