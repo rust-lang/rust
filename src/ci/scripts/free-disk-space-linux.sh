@@ -247,12 +247,58 @@ cleanSwap() {
     free -h
 }
 
+# Try to find a different drive to put our data on so we don't need to run cleanup.
+# The availability of the disks we're probing isn't guaranteed,
+# so this is opportunistic.
+checkAlternative() {
+    local gha_alt_disk="/mnt"
+
+    # we need ~50GB of space
+    local space_target_kb=$((50 * 1024 * 1024))
+    local available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
+
+    # ignore-tidy-linelength
+    local mntopts="defaults,discard,journal_async_commit,barrier=0,noauto_da_alloc,lazytime,data=writeback"
+
+    # GHA has a 2nd disk mounted at /mnt that is almost empty.
+    if mountpoint "$gha_alt_disk" && [ "$available_space_kb" -ge "$space_target_kb" ]; then
+        local blkdev=$(df -k "$gha_alt_disk" --output=source | tail -n 1)
+        echo "Sufficient space available on $blkdev mounted at $gha_alt_disk"
+        sudo swapoff -a || true
+        sudo umount "$gha_alt_disk"
+        mkdir ./obj
+        # remount with O_EATMYDATA while we're at it
+        sudo mount $blkdev ./obj -o $mntopts || (sudo dmesg | tail -n 20 ; exit 1)
+        sudo chown -R "$USER":"$USER" ./obj
+
+        exit 0
+    fi
+
+    # ephemeral NVMe drives on AWS
+    for dev in /dev/nvme*n1; do
+        if [ -b "$dev" ] && [ "$(mount | grep "$dev" | wc -l)" -eq 0 ]; then
+            echo "Found unused block device $dev, creating filesystem"
+            sudo mkfs.ext4 -E lazy_itable_init=1,lazy_journal_init=1 "$dev"
+            mkdir ./obj
+            sudo mount "$dev" ./obj -o $mntopts
+            sudo chown -R "$USER":"$USER" ./obj
+
+            exit 0
+        fi
+    done
+}
+
+
+
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
 
 printDF "BEFORE CLEAN-UP:"
 echo ""
+
+checkAlternative
+
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
