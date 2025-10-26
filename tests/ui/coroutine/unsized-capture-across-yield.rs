@@ -4,7 +4,8 @@
 use std::ops::Coroutine;
 
 fn capture() -> impl Coroutine {
-    let b: [u8] = *(Box::new([]) as Box<[u8]>); //~ERROR he size for values of type `[u8]` cannot be known at compilation time
+    let b: [u8] = *(Box::new([]) as Box<[u8]>);
+    //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
     #[coroutine]
     move || {
         println!("{:?}", &b);
