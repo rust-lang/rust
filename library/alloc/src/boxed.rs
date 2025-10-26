@@ -192,7 +192,7 @@ use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::marker::{Tuple, Unsize};
-use core::mem::{self, SizedTypeProperties};
+use core::mem::{self, MaybeUninit, SizedTypeProperties};
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
     DerefPure, DispatchFromDyn, LegacyReceiver,
@@ -203,7 +203,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{AllocError, Allocator, Global, Layout, exchange_malloc};
+use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
@@ -233,14 +233,39 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
-/// Constructs a `Box<T>` by calling the `exchange_malloc` lang item and moving the argument into
-/// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
+/// Monomorphic function for allocating an uninit `Box`.
 ///
-/// This is the surface syntax for `box <expr>` expressions.
-#[doc(hidden)]
+/// # Safety
+///
+/// size and align need to be safe for `Layout::from_size_align_unchecked`.
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+unsafe fn box_new_uninit(size: usize, align: usize) -> *mut u8 {
+    let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
+    match Global.allocate(layout) {
+        Ok(ptr) => ptr.as_mut_ptr(),
+        Err(_) => handle_alloc_error(layout),
+    }
+}
+
+/// Writes `x` into `b`, then returns `b` at its new type`.
+///
+/// This is needed for `vec!`, which can't afford any extra copies of the argument (or else debug
+/// builds regress), has to be written fully as a call chain without `let` (or else the temporary
+/// lifetimes of the arguments change), and can't use an `unsafe` block as that would then also
+/// include the user-provided `$x`.
 #[rustc_intrinsic]
 #[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(x: T) -> Box<T>;
+pub fn init_box_via_move<T>(b: Box<MaybeUninit<T>>, x: T) -> Box<T>;
+
+/// Helper for `vec!` to ensure type inferences work correctly (which it wouldn't if we
+/// inlined the `as` cast).
+#[doc(hidden)]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[inline(always)]
+pub fn box_array_into_vec<T, const N: usize>(b: Box<[T; N]>) -> crate::vec::Vec<T> {
+    (b as Box<[T]>).into_vec()
+}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -259,9 +284,10 @@ impl<T> Box<T> {
     #[rustc_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        // SAFETY: the size and align of a valid type `T` are always valid for `Layout`.
+        // This is `Box::new_uninit` but inlined to avoid build time regressions.
+        // SAFETY: The size and align of a valid type `T` are always valid for `Layout`.
         let ptr = unsafe {
-            exchange_malloc(<T as SizedTypeProperties>::SIZE, <T as SizedTypeProperties>::ALIGN)
+            box_new_uninit(<T as SizedTypeProperties>::SIZE, <T as SizedTypeProperties>::ALIGN)
         } as *mut T;
         // Nothing below can panic so we do not have to worry about deallocating `ptr`.
         // SAFETY: we just allocated the box to store `x`.
@@ -285,9 +311,21 @@ impl<T> Box<T> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        Self::new_uninit_in(Global)
+        // This is the same as `Self::new_uninit_in(Global)`, but manually inlined (just like
+        // `Box::new`).
+
+        // SAFETY:
+        // - The size and align of a valid type `T` are always valid for `Layout`.
+        // - If `allocate` succeeds, the returned pointer exactly matches what `Box` needs.
+        unsafe {
+            mem::transmute(box_new_uninit(
+                <T as SizedTypeProperties>::SIZE,
+                <T as SizedTypeProperties>::ALIGN,
+            ))
+        }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory

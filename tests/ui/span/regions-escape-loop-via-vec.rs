@@ -2,11 +2,11 @@
 fn broken() {
     let mut x = 3;
     let mut _y = vec![&mut x];
-    while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
-        let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
+    while x < 10 {
+        let mut z = x;
         _y.push(&mut z);
         //~^ ERROR `z` does not live long enough
-        x += 1; //~ ERROR cannot use `x` because it was mutably borrowed
+        x += 1;
     }
 }
 

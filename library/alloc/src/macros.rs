@@ -47,10 +47,15 @@ macro_rules! vec {
         $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),+ $(,)?) => (
-        <[_]>::into_vec(
-            // Using the intrinsic produces a dramatic improvement in stack usage for
+        $crate::boxed::box_array_into_vec(
+            // Using `init_box_via_move` produces a dramatic improvement in stack usage for
             // unoptimized programs using this code path to construct large Vecs.
-            $crate::boxed::box_new([$($x),+])
+            // We can't use `write_via_move` because this entire invocation has to remain a call
+            // chain without `let` bindings, or else the temporary scopes change and things break;
+            // it also has to all be safe since `safe { ... }` blocks sadly are not a thing and we
+            // must not wrap `$x` in `unsafe` (also, wrapping `$x` in a safe block has a good chance
+            // of introducing extra moves so might not be a good call either).
+            $crate::boxed::init_box_via_move($crate::boxed::Box::new_uninit(), [$($x),+])
         )
     );
 }

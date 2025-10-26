@@ -7,7 +7,8 @@
 
 // EMIT_MIR issue_62289.test.ElaborateDrops.before.mir
 fn test() -> Option<Box<u32>> {
-    Some(std::boxed::box_new(None?))
+    let b = Box::new_uninit();
+    Some(std::boxed::init_box_via_move(b, None?))
 }
 
 fn main() {

@@ -1233,6 +1233,7 @@ symbols! {
         infer_static_outlives_requirements,
         inherent_associated_types,
         inherit,
+        init_box_via_move,
         initial,
         inlateout,
         inline,
