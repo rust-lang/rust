@@ -253,10 +253,15 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 
 printDF "BEFORE CLEAN-UP:"
 echo ""
+
+iostat -x 20 &
+
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 execAndMeasureSpaceChange removeUnusedFilesAndDirs "Unused files and directories"
+
+kill %1
 
 # Output saved space statistic
 echo ""
