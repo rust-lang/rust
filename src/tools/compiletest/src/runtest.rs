@@ -999,8 +999,15 @@ impl<'test> TestCx<'test> {
 
     /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
-    fn document(&self, root_out_dir: &Utf8Path, root_testpaths: &TestPaths) -> ProcRes {
+    fn document(
+        &self,
+        root_out_dir: &Utf8Path,
+        root_testpaths: &TestPaths,
+        kind: DocKind,
+    ) -> ProcRes {
         if self.props.build_aux_docs {
+            assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
+
             for rel_ab in &self.props.aux.builds {
                 let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
                 let props_for_aux =
@@ -1017,7 +1024,7 @@ impl<'test> TestCx<'test> {
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
                 // use root_testpaths here, because aux-builds should have the
                 // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document(&root_out_dir, root_testpaths);
+                let auxres = aux_cx.document(&root_out_dir, root_testpaths, kind);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1062,8 +1069,11 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
-        if self.config.mode == TestMode::RustdocJson {
-            rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+        match kind {
+            DocKind::Html => {}
+            DocKind::Json => {
+                rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+            }
         }
 
         if let Some(ref linker) = self.config.target_linker {
@@ -2202,7 +2212,7 @@ impl<'test> TestCx<'test> {
         let aux_dir = new_rustdoc.aux_output_dir();
         new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
+        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths, DocKind::Html);
         if !proc_res.status.success() {
             writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
@@ -3118,6 +3128,12 @@ enum CompareOutcome {
     Blessed,
     /// Outputs differed and an error should be emitted
     Differed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DocKind {
+    Html,
+    Json,
 }
 
 impl CompareOutcome {
