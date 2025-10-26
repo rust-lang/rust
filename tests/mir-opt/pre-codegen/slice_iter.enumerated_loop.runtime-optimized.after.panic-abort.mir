@@ -215,6 +215,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb7: {
         StorageDead(_15);
+        // DBG: _27 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_18);
         goto -> bb10;
     }
@@ -226,6 +227,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb9: {
+        // DBG: _27 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_20);
         goto -> bb10;
     }
@@ -241,6 +243,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _21 = discriminant(_22);
         _23 = Eq(copy _21, const 0_isize);
         assume(move _23);
+        // DBG: _32 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: Option<(usize, &T)>;
         StorageDead(_23);
         StorageDead(_21);
         StorageDead(_30);
@@ -307,4 +310,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_32);
         goto -> bb4;
     }
+}
+
+ALLOC0 (size: 16, align: 8) {
+    __ __ __ __ __ __ __ __ 00 00 00 00 00 00 00 00 │ ░░░░░░░░........
 }

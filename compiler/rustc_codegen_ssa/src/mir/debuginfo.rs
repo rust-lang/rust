@@ -258,14 +258,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         spill_slot
     }
 
-    // Indicates that local is set to a new value. The `layout` and `projection` are used to
-    // calculate the offset.
+    /// Indicates that local is set to a new value.
     fn debug_new_val_to_local(
         &self,
         bx: &mut Bx,
         local: mir::Local,
-        base: PlaceRef<'tcx, Bx::Value>,
-        projection: &[mir::PlaceElem<'tcx>],
+        llval: Bx::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
     ) {
         let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
         if !full_debug_info {
@@ -277,8 +277,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => return,
         };
 
-        let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
-            calculate_debuginfo_offset(bx, projection, base.layout);
         for var in vars.iter() {
             let Some(dbg_var) = var.dbg_var else {
                 continue;
@@ -289,9 +287,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_value(
                 dbg_var,
                 dbg_loc,
-                base.val.llval,
+                llval,
                 direct_offset,
-                &indirect_offsets,
+                indirect_offsets,
                 &var.fragment,
             );
         }
@@ -301,8 +299,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let ty = self.monomorphize(self.mir.local_decls[local].ty);
         let layout = bx.cx().layout_of(ty);
         let to_backend_ty = bx.cx().immediate_backend_type(layout);
-        let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
-        self.debug_new_val_to_local(bx, local, place_ref, &[]);
+        let llval = bx.cx().const_poison(to_backend_ty);
+        self.debug_new_val_to_local(bx, local, llval, Size::ZERO, &[]);
     }
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
@@ -696,6 +694,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debuginfo: &mir::StmtDebugInfo<'tcx>,
     ) {
         match debuginfo {
+            mir::StmtDebugInfo::AssignConst(dest, cnst) => {
+                let operand = self.eval_mir_constant_to_operand(bx, &cnst);
+                let (llval, indirect_offsets) = match operand.val {
+                    OperandValue::Ref(place) => (place.llval, true),
+                    OperandValue::Immediate(value) => (value, false),
+                    OperandValue::Pair(..) => {
+                        let place = FunctionCx::spill_operand_to_stack(operand, None, bx);
+                        (place.val.llval, true)
+                    }
+                    OperandValue::ZeroSized => {
+                        let to_backend_ty = bx.cx().immediate_backend_type(operand.layout);
+                        let llval = bx.cx().const_poison(to_backend_ty);
+                        (llval, false)
+                    }
+                };
+                let indirect_offsets: &[Size] = if indirect_offsets { &[Size::ZERO] } else { &[] };
+                self.debug_new_val_to_local(bx, *dest, llval, Size::ZERO, indirect_offsets);
+            }
             mir::StmtDebugInfo::AssignRef(dest, place) => {
                 let local_ref = match self.locals[place.local] {
                     // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
@@ -717,7 +733,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     projection.iter().all(|p| p.can_use_in_debuginfo())
                 });
                 if let Some((base, projection)) = local_ref {
-                    self.debug_new_val_to_local(bx, *dest, base, projection);
+                    let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+                        calculate_debuginfo_offset(bx, projection, base.layout);
+                    self.debug_new_val_to_local(
+                        bx,
+                        *dest,
+                        base.val.llval,
+                        direct_offset,
+                        &indirect_offsets,
+                    );
                 } else {
                     // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
                     self.debug_poison_to_local(bx, *dest);

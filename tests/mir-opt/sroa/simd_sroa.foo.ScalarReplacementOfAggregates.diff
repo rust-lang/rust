@@ -25,6 +25,7 @@
       bb1: {
           _3 = copy (*_1)[_4];
           StorageDead(_4);
+          // DBG: _0 = const ();
           StorageDead(_3);
           return;
       }

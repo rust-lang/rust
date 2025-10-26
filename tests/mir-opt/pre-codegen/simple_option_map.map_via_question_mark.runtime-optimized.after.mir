@@ -37,6 +37,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     }
 
     bb1: {
+        // DBG: _7 = const ControlFlow::<Option<Infallible>, i32>::Break(Option::<Infallible>::None);
         StorageDead(_2);
         StorageLive(_3);
         StorageLive(_5);
@@ -76,4 +77,8 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
 
 ALLOC0 (size: 8, align: 4) {
     00 00 00 00 __ __ __ __                         │ ....░░░░
+}
+
+ALLOC1 (size: 8, align: 4) {
+    01 00 00 00 __ __ __ __                         │ ....░░░░
 }

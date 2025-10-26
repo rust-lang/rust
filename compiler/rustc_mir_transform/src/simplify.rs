@@ -675,7 +675,9 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
                     *stmt_debuginfo = StmtDebugInfo::InvalidAssign(*local);
                 }
             }
-            StmtDebugInfo::InvalidAssign(_) | StmtDebugInfo::Nop => {}
+            StmtDebugInfo::AssignConst(_, _)
+            | StmtDebugInfo::InvalidAssign(_)
+            | StmtDebugInfo::Nop => {}
         }
         if let Some(lhs) = stmt_debuginfo.lhs()
             && self.map[lhs].is_none()

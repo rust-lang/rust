@@ -59,6 +59,7 @@
 +         StorageDead(_9);
 +         StorageDead(_10);
 +         nop;
+          // DBG: _0 = const ();
           StorageDead(_7);
           StorageDead(_3);
           StorageDead(_1);

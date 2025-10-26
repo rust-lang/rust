@@ -54,6 +54,7 @@
 -         _7 = copy _8;
 +         _7 = const 42_u32;
           StorageDead(_8);
+          // DBG: _0 = const ();
           StorageDead(_7);
           StorageDead(_3);
           StorageDead(_1);

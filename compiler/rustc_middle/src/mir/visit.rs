@@ -385,6 +385,14 @@ macro_rules! make_mir_visitor {
                 location: Location
             ) {
                 match stmt_debuginfo {
+                    StmtDebugInfo::AssignConst(local, cst) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                        self.visit_const_operand(cst, location);
+                    },
                     StmtDebugInfo::AssignRef(local, place) => {
                         self.visit_local(
                             $(& $mutability)? *local,

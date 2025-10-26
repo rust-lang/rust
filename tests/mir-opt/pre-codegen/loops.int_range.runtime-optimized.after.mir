@@ -73,6 +73,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb2: {
+        // DBG: _9 = const Option::<usize>::None;
         StorageDead(_6);
         StorageDead(_9);
         return;
@@ -98,4 +99,8 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageDead(_9);
         goto -> bb1;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

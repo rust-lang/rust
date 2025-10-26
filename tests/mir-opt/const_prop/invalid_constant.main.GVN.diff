@@ -54,6 +54,7 @@
           nop;
           StorageDead(_8);
           nop;
+          // DBG: _0 = const ();
           nop;
           nop;
           nop;

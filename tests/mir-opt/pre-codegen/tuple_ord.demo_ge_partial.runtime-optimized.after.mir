@@ -48,6 +48,7 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
     }
 
     bb2: {
+        // DBG: _7 = const ControlFlow::<bool>::Continue(());
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
