@@ -1,5 +1,4 @@
-use std::fmt::{self, self}; //~ ERROR E0430
-                            //~^ ERROR E0252
+use std::fmt::{self, self}; //~ ERROR the name `fmt` is defined multiple times
 
 fn main () {
 }
