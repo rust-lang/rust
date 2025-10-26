@@ -24,24 +24,30 @@ pub(crate) fn non_exhaustive_let(
     .stable()
     .with_fixes(fixes(&ctx.sema, d))
 }
+
 fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::NonExhaustiveLet) -> Option<Vec<Assist>> {
     let root = sema.parse_or_expand(d.pat.file_id);
     let pat = d.pat.value.to_node(&root);
     let let_stmt = ast::LetStmt::cast(pat.syntax().parent()?)?;
-    let early_node = let_stmt.syntax().ancestors().find_map(AstNode::cast)?;
+    let early_node =
+        sema.ancestors_with_macros(let_stmt.syntax().clone()).find_map(AstNode::cast)?;
     let early_text = early_text(sema, &early_node);
 
     if let_stmt.let_else().is_some() {
         return None;
     }
-
-    let file_id = d.pat.file_id.file_id()?.file_id(sema.db);
+    let hir::FileRangeWrapper { file_id, range } = sema.original_range_opt(let_stmt.syntax())?;
+    let insert_offset = if let Some(semicolon) = let_stmt.semicolon_token()
+        && let Some(token) = sema.parse(file_id).syntax().token_at_offset(range.end()).left_biased()
+        && token.kind() == semicolon.kind()
+    {
+        token.text_range().start()
+    } else {
+        range.end()
+    };
     let semicolon = if let_stmt.semicolon_token().is_none() { ";" } else { "" };
     let else_block = format!(" else {{ {early_text} }}{semicolon}");
-    let insert_offset = let_stmt
-        .semicolon_token()
-        .map(|it| it.text_range().start())
-        .unwrap_or_else(|| let_stmt.syntax().text_range().end());
+    let file_id = file_id.file_id(sema.db);
 
     let source_change =
         SourceChange::from_text_edit(file_id, TextEdit::insert(insert_offset, else_block));
@@ -229,6 +235,29 @@ fn foo() {
             r#"
 fn foo() {
     let None = Some(5) else { return };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fix_return_in_macro_expanded() {
+        check_fix(
+            r#"
+//- minicore: option
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+fn foo() {
+    identity! {
+        let None$0 = Some(5);
+    }
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+fn foo() {
+    identity! {
+        let None = Some(5) else { return };
+    }
 }
 "#,
         );
