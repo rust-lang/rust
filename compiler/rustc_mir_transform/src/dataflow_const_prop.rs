@@ -61,13 +61,13 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let map = Map::new(tcx, body, place_limit);
 
         // Perform the actual dataflow analysis.
-        let mut const_ = debug_span!("analyze")
+        let const_ = debug_span!("analyze")
             .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
         debug_span!("collect").in_scope(|| {
-            visit_reachable_results(body, &mut const_.analysis, &const_.results, &mut visitor)
+            visit_reachable_results(body, &const_.analysis, &const_.results, &mut visitor)
         });
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
@@ -112,7 +112,7 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         _location: Location,
@@ -123,7 +123,7 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _location: Location,
@@ -136,7 +136,7 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,

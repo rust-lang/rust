@@ -1,7 +1,6 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -33,7 +32,7 @@ use crate::errors::{
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    analysis: &mut A,
+    analysis: &A,
     results: &Results<A::Domain>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
@@ -206,11 +205,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir Body<'tcx>,
-    // The `RefCell` is used because `<Formatter as Labeller>::node_label`
-    // takes `&self`, but it needs to modify the analysis. This is also the
-    // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
-    // the operations that involve the mutation, i.e. within the `borrow_mut`.
-    analysis: RefCell<&'mir mut A>,
+    analysis: &'mir A,
     results: &'mir Results<A::Domain>,
     style: OutputStyle,
     reachable: DenseBitSet<BasicBlock>,
@@ -222,12 +217,12 @@ where
 {
     fn new(
         body: &'mir Body<'tcx>,
-        analysis: &'mir mut A,
+        analysis: &'mir A,
         results: &'mir Results<A::Domain>,
         style: OutputStyle,
     ) -> Self {
         let reachable = traversal::reachable_as_bitset(body);
-        Formatter { body, analysis: analysis.into(), results, style, reachable }
+        Formatter { body, analysis, results, style, reachable }
     }
 }
 
@@ -265,12 +260,11 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let analysis = &mut **self.analysis.borrow_mut();
-
-        let diffs = StateDiffCollector::run(self.body, *block, analysis, self.results, self.style);
+        let diffs =
+            StateDiffCollector::run(self.body, *block, self.analysis, self.results, self.style);
 
         let mut fmt = BlockFormatter {
-            cursor: ResultsCursor::new_borrowing(self.body, analysis, self.results),
+            cursor: ResultsCursor::new_borrowing(self.body, self.analysis, self.results),
             style: self.style,
             bg: Background::Light,
         };
@@ -698,7 +692,7 @@ impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &Body<'tcx>,
         block: BasicBlock,
-        analysis: &mut A,
+        analysis: &A,
         results: &Results<A::Domain>,
         style: OutputStyle,
     ) -> Self

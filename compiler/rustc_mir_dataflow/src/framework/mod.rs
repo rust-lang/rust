@@ -136,7 +136,7 @@ pub trait Analysis<'tcx> {
     /// analyses should not implement this without also implementing
     /// `apply_primary_statement_effect`.
     fn apply_early_statement_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -145,7 +145,7 @@ pub trait Analysis<'tcx> {
 
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -159,7 +159,7 @@ pub trait Analysis<'tcx> {
     /// analyses should not implement this without also implementing
     /// `apply_primary_terminator_effect`.
     fn apply_early_terminator_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -173,7 +173,7 @@ pub trait Analysis<'tcx> {
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
@@ -189,7 +189,7 @@ pub trait Analysis<'tcx> {
     /// This is separate from `apply_primary_terminator_effect` to properly track state across
     /// unwind edges.
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -211,7 +211,7 @@ pub trait Analysis<'tcx> {
     /// engine doesn't need to clone the exit state for a block unless
     /// `get_switch_int_data` is actually called.
     fn get_switch_int_data(
-        &mut self,
+        &self,
         _block: mir::BasicBlock,
         _discr: &mir::Operand<'tcx>,
     ) -> Option<Self::SwitchIntData> {
@@ -220,7 +220,7 @@ pub trait Analysis<'tcx> {
 
     /// See comments on `get_switch_int_data`.
     fn apply_switch_int_edge_effect(
-        &mut self,
+        &self,
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
         _value: SwitchTargetValue,
@@ -245,7 +245,7 @@ pub trait Analysis<'tcx> {
     /// Without a `pass_name` to differentiates them, only the results for the latest run will be
     /// saved.
     fn iterate_to_fixpoint<'mir>(
-        mut self,
+        self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
@@ -285,7 +285,7 @@ pub trait Analysis<'tcx> {
             state.clone_from(&results[bb]);
 
             Self::Direction::apply_effects_in_block(
-                &mut self,
+                &self,
                 body,
                 &mut state,
                 bb,
@@ -300,7 +300,7 @@ pub trait Analysis<'tcx> {
         }
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &mut self, &results, pass_name);
+            let res = write_graphviz_results(tcx, body, &self, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }

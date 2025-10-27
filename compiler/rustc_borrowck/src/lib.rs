@@ -537,13 +537,13 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let (mut flow_analysis, flow_entry_states) =
+    let (flow_analysis, flow_results) =
         get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut flow_analysis,
-        &flow_entry_states,
+        &flow_analysis,
+        &flow_results,
         &mut mbcx,
     );
 

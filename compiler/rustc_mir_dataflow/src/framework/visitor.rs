@@ -7,7 +7,7 @@ use super::{Analysis, Direction, Results};
 pub fn visit_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
-    analysis: &mut A,
+    analysis: &A,
     results: &Results<A::Domain>,
     vis: &mut impl ResultsVisitor<'tcx, A>,
 ) where
@@ -31,7 +31,7 @@ pub fn visit_results<'mir, 'tcx, A>(
 /// Like `visit_results`, but only for reachable blocks.
 pub fn visit_reachable_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
-    analysis: &mut A,
+    analysis: &A,
     results: &Results<A::Domain>,
     vis: &mut impl ResultsVisitor<'tcx, A>,
 ) where

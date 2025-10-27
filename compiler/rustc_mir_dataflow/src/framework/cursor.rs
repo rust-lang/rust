@@ -1,8 +1,7 @@
 //! Random access inspection of the results of a dataflow analysis.
 
-use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::DenseBitSet;
@@ -10,30 +9,20 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
-/// Some `ResultsCursor`s want to own an `Analysis`, and some want to borrow an `Analysis`, either
-/// mutable or immutably. This type allows all of the above. It's similar to `Cow`, but `Cow`
-/// doesn't allow mutable borrowing.
-enum CowMut<'a, T> {
-    BorrowedMut(&'a mut T),
+/// This is like `Cow`, but it lacks the `T: ToOwned` bound and doesn't support
+/// `to_owned`/`into_owned`.
+enum SimpleCow<'a, T> {
+    Borrowed(&'a T),
     Owned(T),
 }
 
-impl<T> Deref for CowMut<'_, T> {
+impl<T> Deref for SimpleCow<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
         match self {
-            CowMut::BorrowedMut(borrowed) => borrowed,
-            CowMut::Owned(owned) => owned,
-        }
-    }
-}
-
-impl<T> DerefMut for CowMut<'_, T> {
-    fn deref_mut(&mut self) -> &mut T {
-        match self {
-            CowMut::BorrowedMut(borrowed) => borrowed,
-            CowMut::Owned(owned) => owned,
+            SimpleCow::Borrowed(borrowed) => borrowed,
+            SimpleCow::Owned(owned) => owned,
         }
     }
 }
@@ -53,8 +42,8 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    analysis: CowMut<'mir, A>,
-    results: Cow<'mir, Results<A::Domain>>,
+    analysis: SimpleCow<'mir, A>,
+    results: SimpleCow<'mir, Results<A::Domain>>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -84,8 +73,8 @@ where
 
     fn new(
         body: &'mir mir::Body<'tcx>,
-        analysis: CowMut<'mir, A>,
-        results: Cow<'mir, Results<A::Domain>>,
+        analysis: SimpleCow<'mir, A>,
+        results: SimpleCow<'mir, Results<A::Domain>>,
     ) -> Self {
         let bottom_value = analysis.bottom_value(body);
         ResultsCursor {
@@ -111,16 +100,16 @@ where
         analysis: A,
         results: Results<A::Domain>,
     ) -> Self {
-        Self::new(body, CowMut::Owned(analysis), Cow::Owned(results))
+        Self::new(body, SimpleCow::Owned(analysis), SimpleCow::Owned(results))
     }
 
     /// Returns a new cursor that borrows and inspects analysis results.
     pub fn new_borrowing(
         body: &'mir mir::Body<'tcx>,
-        analysis: &'mir mut A,
+        analysis: &'mir A,
         results: &'mir Results<A::Domain>,
     ) -> Self {
-        Self::new(body, CowMut::BorrowedMut(analysis), Cow::Borrowed(results))
+        Self::new(body, SimpleCow::Borrowed(analysis), SimpleCow::Borrowed(results))
     }
 
     /// Allows inspection of unreachable basic blocks even with `debug_assertions` enabled.
@@ -236,7 +225,7 @@ where
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            &mut *self.analysis,
+            &*self.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -251,8 +240,8 @@ where
     ///
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
-    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&mut A, &mut A::Domain)) {
-        f(&mut self.analysis, &mut self.state);
+    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
+        f(&self.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }
