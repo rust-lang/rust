@@ -567,7 +567,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
-            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]",
+            "[toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(

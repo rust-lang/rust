@@ -68,7 +68,7 @@ fn main() {
 
     rustdoc()
         .arg("-Zunstable-options")
-        .arg("--emit=toolchain-shared-resources,unversioned-shared-resources")
+        .arg("--emit=toolchain-shared-resources")
         .out_dir("all-shared")
         .arg("--resource-suffix=-xxx")
         .args(&["--extend-css", "z.css"])
