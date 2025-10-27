@@ -23,11 +23,11 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
-    AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, ConstValue,
-    LocalDecl, MirPhase, Operand, Place, ProjectionElem, Promoted, RETURN_PLACE, RuntimePhase,
-    Rvalue, START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind,
+    AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
+    SourceInfo, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_mir_build::builder::build_mir;
@@ -55,6 +55,7 @@ mod liveness;
 mod patch;
 mod shim;
 mod ssa;
+mod trivial_const;
 
 /// We import passes via this macro so that we can have a static list of pass names
 /// (used to verify CLI arguments). It takes a list of modules, followed by the passes
@@ -226,7 +227,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
-        trivial_const: trivial_const_provider,
+        trivial_const: trivial_const::trivial_const_provider,
         ..providers.queries
     };
 }
@@ -377,66 +378,14 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
-fn def_kind_compatible_with_trivial_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> bool {
-    // Static and InlineConst are the obvious additions, but
-    // * Statics need additional type-checking to taint `static A: _ = 0;`, currently we'd ICE.
-    // * The MIR for InlineConst is used by the borrow checker, and not easy to skip over.
-    matches!(tcx.def_kind(def), DefKind::AssocConst | DefKind::Const | DefKind::AnonConst)
-}
-
-fn trivial_const_provider<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: LocalDefId,
-) -> Option<(ConstValue, Ty<'tcx>)> {
-    if def_kind_compatible_with_trivial_mir(tcx, def) {
-        trivial_const(&tcx.mir_built(def).borrow())
-    } else {
-        None
-    }
-}
-
-fn trivial_const<'tcx>(body: &Body<'tcx>) -> Option<(ConstValue, Ty<'tcx>)> {
-    if body.has_opaque_types() {
-        return None;
-    }
-
-    if body.basic_blocks.len() != 1 {
-        return None;
-    }
-
-    let block = &body.basic_blocks[START_BLOCK];
-    if block.statements.len() != 1 {
-        return None;
-    }
-
-    if block.terminator().kind != TerminatorKind::Return {
-        return None;
-    }
-
-    let StatementKind::Assign(box (place, rvalue)) = &block.statements[0].kind else {
-        return None;
-    };
-
-    if *place != Place::from(RETURN_PLACE) {
-        return None;
-    }
-
-    if let Rvalue::Use(Operand::Constant(c)) = rvalue {
-        if let rustc_middle::mir::Const::Val(v, ty) = c.const_ {
-            return Some((v, ty));
-        }
-    }
-
-    return None;
-}
-
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     let mut body = build_mir(tcx, def);
 
     // Identifying trivial consts based on their mir_built is easy, but a little wasteful.
     // Trying to push this logic earlier in the compiler and never even produce the Body would
     // probably improve compile time.
-    if def_kind_compatible_with_trivial_mir(tcx, def) && trivial_const(&body).is_some() {
+    if trivial_const::trivial_const(tcx, def, || &body).is_some() {
+        // Skip all the passes below for trivial consts.
         let body = tcx.alloc_steal_mir(body);
         pass_manager::dump_mir_for_phase_change(tcx, &body.borrow());
         return body;
