@@ -22,6 +22,8 @@ struct Cli {
 static REGEX_IGNORE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
 static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
+static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)\s+").unwrap());
 
 fn main() -> Result<()> {
@@ -94,6 +96,7 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
         || line.starts_with('#')
         || line.trim().is_empty()
         || REGEX_IGNORE.is_match(line)
+        || REGEX_IGNORE_LINK_TARGETS.is_match(line)
 }
 
 fn comply(content: &str) -> String {
@@ -219,6 +222,15 @@ fn test_prettify_prefix_spaces() {
  do not split short sentences
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
+}
+
+#[test]
+fn test_prettify_ignore_link_targets() {
+    let original = "\
+[a target]: https://example.com
+[another target]: https://example.com
+";
+    assert_eq!(original, lengthen_lines(original, 100));
 }
 
 #[test]
