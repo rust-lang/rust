@@ -55,7 +55,7 @@
 #![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
-use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
 mod bounds;
@@ -477,11 +477,15 @@ pub const fn unlikely(b: bool) -> bool {
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
 #[inline]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+pub const fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
     if b { true_val } else { false_val }
 }
 

@@ -798,7 +798,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 } else {
                     let predicate = self.tcx().erase_and_anonymize_regions(predicate);
                     if cause.has_infer() || cause.has_placeholders() {
-                        // We can't use the the obligation cause as it references
+                        // We can't use the obligation cause as it references
                         // information local to this query.
                         cause = self.fcx.misc(cause.span);
                     }
