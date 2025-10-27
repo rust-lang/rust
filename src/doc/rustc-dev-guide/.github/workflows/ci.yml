@@ -87,4 +87,4 @@ jobs:
         continue-on-error: true
         run: |
           # using split_inclusive that uses regex feature that uses an unstable feature
-          RUSTC_BOOTSTRAP=true cargo run --manifest-path ci/sembr/Cargo.toml src
+          RUSTC_BOOTSTRAP=1 cargo run --manifest-path ci/sembr/Cargo.toml src
