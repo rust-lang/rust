@@ -83,6 +83,10 @@ where
     return None;
 }
 
+// The query provider is based on calling the free function trivial_const, which calls mir_built,
+// which internally has a fast-path for trivial consts so it too calls trivial_const. This isn't
+// recursive, but we are checking if the const is trivial twice. A better design might detect
+// trivial consts before getting to MIR, which would hopefully straighten this out.
 pub(crate) fn trivial_const_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: LocalDefId,
