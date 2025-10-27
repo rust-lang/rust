@@ -302,6 +302,10 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
+    /// A constant expression created during AST->HIR lowering..
+    LateAnonConst,
+    /// A fresh anonymous lifetime created by desugaring elided lifetimes.
+    DesugaredAnonymousLifetime,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
@@ -454,6 +458,8 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
             | OpaqueLifetime(name) => Some(name),
 
+            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
+
             Impl
             | ForeignMod
             | CrateRoot
@@ -462,6 +468,7 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
+            | LateAnonConst
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
@@ -475,6 +482,8 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
             | OpaqueLifetime(name) => Some(name),
 
+            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
+
             Impl
             | ForeignMod
             | CrateRoot
@@ -483,6 +492,7 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
+            | LateAnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
             | NestedStatic => None,
@@ -502,7 +512,8 @@ impl DefPathData {
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
             Closure => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
-            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
+            AnonConst | LateAnonConst => DefPathDataName::Anon { namespace: sym::constant },
+            DesugaredAnonymousLifetime => DefPathDataName::Named(kw::UnderscoreLifetime),
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },

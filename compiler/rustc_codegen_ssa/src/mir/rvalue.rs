@@ -611,16 +611,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = self.monomorphize(ty);
                 let layout = bx.cx().layout_of(ty);
                 let val = match null_op {
-                    mir::NullOp::SizeOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.size.bytes();
-                        bx.cx().const_usize(val)
-                    }
-                    mir::NullOp::AlignOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.align.bytes();
-                        bx.cx().const_usize(val)
-                    }
                     mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()
@@ -724,15 +714,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
-                let operand = self.codegen_operand(bx, operand);
-                let val = operand.immediate();
-
-                let content_ty = self.monomorphize(content_ty);
-                let box_layout = bx.cx().layout_of(Ty::new_box(bx.tcx(), content_ty));
-
-                OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
-            }
             mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
                 let operand = self.codegen_operand(bx, operand);
                 let binder_ty = self.monomorphize(binder_ty);
@@ -740,6 +721,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandRef { val: operand.val, layout }
             }
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
+            mir::Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
         }
     }
 

@@ -1,4 +1,3 @@
-use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -7,7 +6,7 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::PolyTraitRef;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -18,11 +17,10 @@ use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use super::errors::GenericsArgsErrExtend;
 use crate::errors;
 use crate::hir_ty_lowering::{
-    AssocItemQSelf, FeedConstTy, HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter,
-    RegionInferReason,
+    AssocItemQSelf, FeedConstTy, GenericsArgsErrExtend, HirTyLowerer, ImpliedBoundsContext,
+    OverlappingAsssocItemConstraints, PredicateFilter, RegionInferReason,
 };
 
 #[derive(Debug, Default)]
@@ -62,7 +60,7 @@ impl CollectedSizednessBounds {
 
 fn search_bounds_for<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    context: ImpliedBoundsContext<'tcx>,
     mut f: impl FnMut(&'tcx PolyTraitRef<'tcx>),
 ) {
     let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
@@ -76,7 +74,7 @@ fn search_bounds_for<'tcx>(
     };
 
     search_bounds(hir_bounds);
-    if let Some((self_ty, where_clause)) = self_ty_where_predicates {
+    if let ImpliedBoundsContext::TyParam(self_ty, where_clause) = context {
         for clause in where_clause {
             if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
                 && pred.is_param_bound(self_ty.to_def_id())
@@ -89,10 +87,10 @@ fn search_bounds_for<'tcx>(
 
 fn collect_relaxed_bounds<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    context: ImpliedBoundsContext<'tcx>,
 ) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
     let mut relaxed_bounds: SmallVec<[_; 1]> = SmallVec::new();
-    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
+    search_bounds_for(hir_bounds, context, |ptr| {
         if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
             relaxed_bounds.push(ptr);
         }
@@ -102,11 +100,11 @@ fn collect_relaxed_bounds<'tcx>(
 
 fn collect_bounds<'a, 'tcx>(
     hir_bounds: &'a [hir::GenericBound<'tcx>],
-    self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    context: ImpliedBoundsContext<'tcx>,
     target_did: DefId,
 ) -> CollectedBound {
     let mut collect_into = CollectedBound::default();
-    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
+    search_bounds_for(hir_bounds, context, |ptr| {
         if !matches!(ptr.trait_ref.path.res, Res::Def(DefKind::Trait, did) if did == target_did) {
             return;
         }
@@ -123,17 +121,17 @@ fn collect_bounds<'a, 'tcx>(
 fn collect_sizedness_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-    self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    context: ImpliedBoundsContext<'tcx>,
     span: Span,
 ) -> CollectedSizednessBounds {
     let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
-    let sized = collect_bounds(hir_bounds, self_ty_where_predicates, sized_did);
+    let sized = collect_bounds(hir_bounds, context, sized_did);
 
     let meta_sized_did = tcx.require_lang_item(hir::LangItem::MetaSized, span);
-    let meta_sized = collect_bounds(hir_bounds, self_ty_where_predicates, meta_sized_did);
+    let meta_sized = collect_bounds(hir_bounds, context, meta_sized_did);
 
     let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
-    let pointee_sized = collect_bounds(hir_bounds, self_ty_where_predicates, pointee_sized_did);
+    let pointee_sized = collect_bounds(hir_bounds, context, pointee_sized_did);
 
     CollectedSizednessBounds { sized, meta_sized, pointee_sized }
 }
@@ -161,13 +159,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///   bounds are present.
     /// - On parameters, opaque type, associated types and trait aliases, add a `MetaSized` bound if
     ///   a `?Sized` bound is present.
-    pub(crate) fn add_sizedness_bounds(
+    pub(crate) fn add_implicit_sizedness_bounds(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
-        trait_did: Option<LocalDefId>,
+        context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -181,33 +178,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let pointee_sized_did = tcx.require_lang_item(hir::LangItem::PointeeSized, span);
 
         // If adding sizedness bounds to a trait, then there are some relevant early exits
-        if let Some(trait_did) = trait_did {
-            let trait_did = trait_did.to_def_id();
-            // Never add a default supertrait to `PointeeSized`.
-            if trait_did == pointee_sized_did {
-                return;
+        match context {
+            ImpliedBoundsContext::TraitDef(trait_did) => {
+                let trait_did = trait_did.to_def_id();
+                // Never add a default supertrait to `PointeeSized`.
+                if trait_did == pointee_sized_did {
+                    return;
+                }
+                // Don't add default sizedness supertraits to auto traits because it isn't possible to
+                // relax an automatically added supertrait on the defn itself.
+                if tcx.trait_is_auto(trait_did) {
+                    return;
+                }
             }
-            // Don't add default sizedness supertraits to auto traits because it isn't possible to
-            // relax an automatically added supertrait on the defn itself.
-            if tcx.trait_is_auto(trait_did) {
-                return;
+            ImpliedBoundsContext::TyParam(..) | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
+                // Report invalid relaxed bounds.
+                // FIXME: Since we only call this validation function here in this function, we only
+                //        fully validate relaxed bounds in contexts where we perform
+                //        "sized elaboration". In most cases that doesn't matter because we *usually*
+                //        reject such relaxed bounds outright during AST lowering.
+                //        However, this can easily get out of sync! Ideally, we would perform this step
+                //        where we are guaranteed to catch *all* bounds like in
+                //        `Self::lower_poly_trait_ref`. List of concrete issues:
+                //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
+                //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
+                let bounds = collect_relaxed_bounds(hir_bounds, context);
+                self.reject_duplicate_relaxed_bounds(bounds);
             }
-        } else {
-            // Report invalid relaxed bounds.
-            // FIXME: Since we only call this validation function here in this function, we only
-            //        fully validate relaxed bounds in contexts where we perform
-            //        "sized elaboration". In most cases that doesn't matter because we *usually*
-            //        reject such relaxed bounds outright during AST lowering.
-            //        However, this can easily get out of sync! Ideally, we would perform this step
-            //        where we are guaranteed to catch *all* bounds like in
-            //        `Self::lower_poly_trait_ref`. List of concrete issues:
-            //        FIXME(more_maybe_bounds): We don't call this for trait object tys, supertrait
-            //                                  bounds, trait alias bounds, assoc type bounds (ATB)!
-            let bounds = collect_relaxed_bounds(hir_bounds, self_ty_where_predicates);
-            self.reject_duplicate_relaxed_bounds(bounds);
         }
 
-        let collected = collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);
+        let collected = collect_sizedness_bounds(tcx, hir_bounds, context, span);
         if (collected.sized.maybe || collected.sized.negative)
             && !collected.sized.positive
             && !collected.meta_sized.any()
@@ -217,43 +217,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // other explicit ones) - this can happen for trait aliases as well as bounds.
             add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
         } else if !collected.any() {
-            if trait_did.is_some() {
-                // If there are no explicit sizedness bounds on a trait then add a default
-                // `MetaSized` supertrait.
-                add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
-            } else {
-                // If there are no explicit sizedness bounds on a parameter then add a default
-                // `Sized` bound.
-                let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
-                add_trait_bound(tcx, bounds, self_ty, sized_did, span);
+            match context {
+                ImpliedBoundsContext::TraitDef(..) => {
+                    // If there are no explicit sizedness bounds on a trait then add a default
+                    // `MetaSized` supertrait.
+                    add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+                }
+                ImpliedBoundsContext::TyParam(..)
+                | ImpliedBoundsContext::AssociatedTypeOrImplTrait => {
+                    // If there are no explicit sizedness bounds on a parameter then add a default
+                    // `Sized` bound.
+                    let sized_did = tcx.require_lang_item(hir::LangItem::Sized, span);
+                    add_trait_bound(tcx, bounds, self_ty, sized_did, span);
+                }
             }
         }
-    }
-
-    /// Adds `experimental_default_bounds` bounds to the supertrait bounds.
-    pub(crate) fn add_default_super_traits(
-        &self,
-        trait_def_id: LocalDefId,
-        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
-        hir_generics: &'tcx hir::Generics<'tcx>,
-        span: Span,
-    ) {
-        assert_matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias);
-
-        // Supertraits for auto trait are unsound according to the unstable book:
-        // https://doc.rust-lang.org/beta/unstable-book/language-features/auto-traits.html#supertraits
-        if self.tcx().trait_is_auto(trait_def_id.to_def_id()) {
-            return;
-        }
-
-        self.add_default_traits(
-            bounds,
-            self.tcx().types.self_param,
-            hir_bounds,
-            Some((trait_def_id, hir_generics.predicates)),
-            span,
-        );
     }
 
     pub(crate) fn add_default_traits(
@@ -261,18 +239,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &[hir::GenericBound<'tcx>],
-        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+        context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
         self.tcx().default_traits().iter().for_each(|default_trait| {
-            self.add_default_trait(
-                *default_trait,
-                bounds,
-                self_ty,
-                hir_bounds,
-                self_ty_where_predicates,
-                span,
-            );
+            self.add_default_trait(*default_trait, bounds, self_ty, hir_bounds, context, span);
         });
     }
 
@@ -285,15 +256,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &[hir::GenericBound<'tcx>],
-        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+        context: ImpliedBoundsContext<'tcx>,
         span: Span,
     ) {
         let tcx = self.tcx();
-        let trait_id = tcx.lang_items().get(trait_);
-        if let Some(trait_id) = trait_id
-            && self.should_add_default_traits(trait_id, hir_bounds, self_ty_where_predicates)
+
+        // Supertraits for auto trait are unsound according to the unstable book:
+        // https://doc.rust-lang.org/beta/unstable-book/language-features/auto-traits.html#supertraits
+        if let ImpliedBoundsContext::TraitDef(trait_did) = context
+            && self.tcx().trait_is_auto(trait_did.into())
         {
-            add_trait_bound(tcx, bounds, self_ty, trait_id, span);
+            return;
+        }
+
+        if let Some(trait_did) = tcx.lang_items().get(trait_)
+            && self.should_add_default_traits(trait_did, hir_bounds, context)
+        {
+            add_trait_bound(tcx, bounds, self_ty, trait_did, span);
         }
     }
 
@@ -302,9 +281,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_def_id: DefId,
         hir_bounds: &'a [hir::GenericBound<'tcx>],
-        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+        context: ImpliedBoundsContext<'tcx>,
     ) -> bool {
-        let collected = collect_bounds(hir_bounds, self_ty_where_predicates, trait_def_id);
+        let collected = collect_bounds(hir_bounds, context, trait_def_id);
         !self.tcx().has_attr(CRATE_DEF_ID, sym::rustc_no_implicit_bounds) && !collected.any()
     }
 

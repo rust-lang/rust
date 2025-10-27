@@ -670,14 +670,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             NullaryOp(null_op, arg_ty) => {
                 let arg_layout = self.ecx.layout_of(arg_ty).ok()?;
-                if let NullOp::SizeOf | NullOp::AlignOf = null_op
-                    && arg_layout.is_unsized()
-                {
-                    return None;
-                }
                 let val = match null_op {
-                    NullOp::SizeOf => arg_layout.size.bytes(),
-                    NullOp::AlignOf => arg_layout.align.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .tcx
                         .offset_of_subfield(self.typing_env(), arg_layout, fields.iter())
@@ -1073,8 +1066,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
 
             // Unsupported values.
-            Rvalue::ThreadLocalRef(..) | Rvalue::ShallowInitBox(..) => return None,
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+            Rvalue::ThreadLocalRef(..) => return None,
+            Rvalue::CopyForDeref(_) | Rvalue::ShallowInitBox(..) => {
+                bug!("forbidden in runtime MIR: {rvalue:?}")
+            }
         };
         let ty = rvalue.ty(self.local_decls, self.tcx);
         Some(self.insert(ty, value))

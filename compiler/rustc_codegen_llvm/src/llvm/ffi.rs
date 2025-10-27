@@ -289,6 +289,7 @@ pub(crate) enum AttributeKind {
     DeadOnUnwind = 43,
     DeadOnReturn = 44,
     CapturesReadOnly = 45,
+    CapturesNone = 46,
 }
 
 /// LLVMIntPredicate
@@ -2330,10 +2331,6 @@ unsafe extern "C" {
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         UseEmulatedTls: bool,
-        Argv0: *const c_uchar, // See "PTR_LEN_STR".
-        Argv0Len: size_t,
-        CommandLineArgs: *const c_uchar, // See "PTR_LEN_STR".
-        CommandLineArgsLen: size_t,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
 

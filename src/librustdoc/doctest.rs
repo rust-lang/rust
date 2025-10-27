@@ -191,7 +191,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
-        expanded_args: options.expanded_args.clone(),
     };
 
     let externs = options.externs.clone();
@@ -1017,9 +1016,6 @@ impl CreateRunnableDocTests {
             .span(scraped_test.span)
             .build(dcx);
         let is_standalone = !doctest.can_be_merged
-            || scraped_test.langstr.compile_fail
-            || scraped_test.langstr.test_harness
-            || scraped_test.langstr.standalone_crate
             || self.rustdoc_options.nocapture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
         if is_standalone {

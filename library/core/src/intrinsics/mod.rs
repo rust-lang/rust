@@ -2728,6 +2728,11 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 /// More specifically, this is the offset in bytes between successive
 /// items of the same type, including alignment padding.
 ///
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
+///
 /// The stabilized version of this intrinsic is [`core::mem::size_of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -2741,6 +2746,11 @@ pub const fn size_of<T>() -> usize;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
+///
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::mem::align_of`].
 #[rustc_nounwind]

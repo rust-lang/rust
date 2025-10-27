@@ -1,6 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::{self as ast, AttrStyle, Path};
+use rustc_ast::{self as ast, Path};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -613,10 +613,10 @@ pub(crate) enum AttributeParseErrorReason<'a> {
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
     pub(crate) attr_span: Span,
-    pub(crate) attr_style: AttrStyle,
     pub(crate) template: AttributeTemplate,
     pub(crate) attribute: AttrPath,
     pub(crate) reason: AttributeParseErrorReason<'a>,
+    pub(crate) suggestions: Vec<String>,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
@@ -752,16 +752,15 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         if let Some(link) = self.template.docs {
             diag.note(format!("for more information, visit <{link}>"));
         }
-        let suggestions = self.template.suggestions(self.attr_style, &name);
 
         diag.span_suggestions(
             self.attr_span,
-            if suggestions.len() == 1 {
+            if self.suggestions.len() == 1 {
                 "must be of the form"
             } else {
                 "try changing it to one of the following valid forms of the attribute"
             },
-            suggestions,
+            self.suggestions,
             Applicability::HasPlaceholders,
         );
 

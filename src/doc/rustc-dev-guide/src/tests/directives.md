@@ -163,8 +163,10 @@ Some examples of `X` in `ignore-X` or `only-X`:
 The following directives will check rustc build settings and target
 settings:
 
-- `needs-asm-support` — ignores if it is running on a target that doesn't have
-  stable support for `asm!`
+- `needs-asm-support` — ignores if the **host** architecture doesn't have
+  stable support for `asm!`. For tests that cross-compile to explicit targets
+  via `--target`, use `needs-llvm-components` instead to ensure the appropriate
+  backend is available.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target
   (`build.profiler = true` in rustc's `bootstrap.toml`)

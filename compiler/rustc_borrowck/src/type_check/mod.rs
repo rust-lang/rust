@@ -1046,16 +1046,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [ty]);
-
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::SizedBound,
-                );
-            }
             &Rvalue::NullaryOp(NullOp::ContractChecks, _) => {}
             &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
 

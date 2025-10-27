@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
@@ -143,7 +144,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     // return inner to be processed in next loop
                     PatKind::Paren(inner) => pattern = inner,
-                    PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
+                    PatKind::MacCall(_) => {
+                        panic!("{pattern:#?} shouldn't exist here")
+                    }
                     PatKind::Err(guar) => break hir::PatKind::Err(*guar),
                 }
             };
@@ -460,6 +463,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }),
             ),
+            TyPatKind::NotNull => hir::TyPatKind::NotNull,
             TyPatKind::Or(variants) => {
                 hir::TyPatKind::Or(self.arena.alloc_from_iter(
                     variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),
@@ -524,7 +528,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
+        let def_id =
+            self.create_def(node_id, None, DefKind::AnonConst, DefPathData::LateAnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(

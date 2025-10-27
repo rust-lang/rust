@@ -31,7 +31,6 @@ use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
-use crate::back::command_line_args::quote_command_line_args;
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -253,19 +252,6 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    // Command-line information to be included in the target machine.
-    // This seems to only be used for embedding in PDB debuginfo files.
-    // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
-    // Self-profile counter for the number of bytes produced by command-line quoting.
-    // Values are summed, so the summary result is cumulative across all TM factories.
-    sess.prof.artifact_size("quoted_command_line_args", "-", command_line_args.len() as u64);
-
     let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
     match sess.opts.debuginfo_compression {
         rustc_session::config::DebugInfoCompression::Zlib => {
@@ -326,8 +312,6 @@ pub(crate) fn target_machine_factory(
             &output_obj_file,
             &debuginfo_compression,
             use_emulated_tls,
-            &argv0,
-            &command_line_args,
             use_wasm_eh,
         )
     })
@@ -358,7 +342,7 @@ fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
     }
 }
 
-/// In what context is a dignostic handler being attached to a codegen unit?
+/// In what context is a diagnostic handler being attached to a codegen unit?
 pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,

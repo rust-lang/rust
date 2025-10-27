@@ -12,7 +12,9 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
-use crate::hir_ty_lowering::{HirTyLowerer, OverlappingAsssocItemConstraints, PredicateFilter};
+use crate::hir_ty_lowering::{
+    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
+};
 
 /// For associated types we include both bounds written on the type
 /// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
@@ -52,15 +54,20 @@ fn associated_type_bounds<'tcx>(
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 // Implicit bounds are added to associated types unless a `?Trait` bound is found.
-                icx.lowerer().add_sizedness_bounds(
+                icx.lowerer().add_implicit_sizedness_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    None,
-                    None,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
-                icx.lowerer().add_default_traits(&mut bounds, item_ty, hir_bounds, None, span);
+                icx.lowerer().add_default_traits(
+                    &mut bounds,
+                    item_ty,
+                    hir_bounds,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+                    span,
+                );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
                 let trait_def_id = tcx.local_parent(assoc_item_def_id);
@@ -372,15 +379,20 @@ fn opaque_type_bounds<'tcx>(
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                icx.lowerer().add_sizedness_bounds(
+                icx.lowerer().add_implicit_sizedness_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
-                    None,
-                    None,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
                 );
-                icx.lowerer().add_default_traits(&mut bounds, item_ty, hir_bounds, None, span);
+                icx.lowerer().add_default_traits(
+                    &mut bounds,
+                    item_ty,
+                    hir_bounds,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+                    span,
+                );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.
             PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}

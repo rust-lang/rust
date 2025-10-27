@@ -13,6 +13,6 @@ struct P2 {
 }
 
 static CHECK: () = assert!(align_of::<P2>() == 1);
-//~^ ERROR the type `MySlice<[bool]>` has an unknown layout
+//~? ERROR the type `MySlice<[bool]>` has an unknown layout
 
 fn main() {}

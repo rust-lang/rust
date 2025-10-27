@@ -839,9 +839,13 @@ where
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
-                | ty::Pat(_, _)
                 | ty::Dynamic(_, _) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
+
+                ty::Pat(base, _) => {
+                    assert_eq!(i, 0);
+                    TyMaybeWithLayout::Ty(base)
                 }
 
                 ty::UnsafeBinder(bound_ty) => {

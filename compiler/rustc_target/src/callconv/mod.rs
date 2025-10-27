@@ -113,13 +113,14 @@ mod attr_impl {
     pub struct ArgAttribute(u8);
     bitflags::bitflags! {
         impl ArgAttribute: u8 {
-            const NoAlias   = 1 << 1;
-            const CapturesAddress = 1 << 2;
-            const NonNull   = 1 << 3;
-            const ReadOnly  = 1 << 4;
-            const InReg     = 1 << 5;
-            const NoUndef = 1 << 6;
-            const CapturesReadOnly = 1 << 7;
+            const CapturesNone     = 0b111;
+            const CapturesAddress  = 0b110;
+            const CapturesReadOnly = 0b100;
+            const NoAlias  = 1 << 3;
+            const NonNull  = 1 << 4;
+            const ReadOnly = 1 << 5;
+            const InReg    = 1 << 6;
+            const NoUndef  = 1 << 7;
         }
     }
     rustc_data_structures::external_bitflags_debug! { ArgAttribute }

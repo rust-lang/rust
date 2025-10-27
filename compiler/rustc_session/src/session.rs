@@ -148,12 +148,6 @@ pub struct Session {
     /// None signifies that this is not tracked.
     pub using_internal_features: &'static AtomicBool,
 
-    /// All commandline args used to invoke the compiler, with @file args fully expanded.
-    /// This will only be used within debug info, e.g. in the pdb file on windows
-    /// This is mainly useful for other tools that reads that debuginfo to figure out
-    /// how to call the compiler with the same arguments.
-    pub expanded_args: Vec<String>,
-
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
 
@@ -961,7 +955,24 @@ fn default_emitter(
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter =
-                    AnnotateSnippetEmitter::new(source_map, translator, short, macro_backtrace);
+                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                        .sm(source_map)
+                        .short_message(short)
+                        .diagnostic_width(sopts.diagnostic_width)
+                        .macro_backtrace(macro_backtrace)
+                        .track_diagnostics(track_diagnostics)
+                        .terminal_url(terminal_url)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .ignored_directories_in_source_blocks(
+                            sopts
+                                .unstable_opts
+                                .ignore_directory_in_diagnostics_source_blocks
+                                .clone(),
+                        );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
                 let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
@@ -1017,7 +1028,6 @@ pub fn build_session(
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: &'static AtomicBool,
-    expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1134,7 +1144,6 @@ pub fn build_session(
         unstable_target_features: Default::default(),
         cfg_version,
         using_internal_features,
-        expanded_args,
         target_filesearch,
         host_filesearch,
         invocation_temp,

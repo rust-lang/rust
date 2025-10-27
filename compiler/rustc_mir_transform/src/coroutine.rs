@@ -67,7 +67,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::Discr;
@@ -132,8 +132,8 @@ struct SelfArgVisitor<'tcx> {
 }
 
 impl<'tcx> SelfArgVisitor<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, elem: ProjectionElem<Local, Ty<'tcx>>) -> Self {
-        Self { tcx, new_base: Place { local: SELF_ARG, projection: tcx.mk_place_elems(&[elem]) } }
+    fn new(tcx: TyCtxt<'tcx>, new_base: Place<'tcx>) -> Self {
+        Self { tcx, new_base }
     }
 }
 
@@ -146,16 +146,14 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
         assert_ne!(*local, SELF_ARG);
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
         if place.local == SELF_ARG {
             replace_base(place, self.new_base, self.tcx);
-        } else {
-            self.visit_local(&mut place.local, context, location);
+        }
 
-            for elem in place.projection.iter() {
-                if let PlaceElem::Index(local) = elem {
-                    assert_ne!(local, SELF_ARG);
-                }
+        for elem in place.projection.iter() {
+            if let PlaceElem::Index(local) = elem {
+                assert_ne!(local, SELF_ARG);
             }
         }
     }
@@ -289,7 +287,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
                 let args = self.tcx.mk_args(&[self.old_ret_ty.into()]);
                 let (variant_idx, operands) = if is_return {
-                    (ZERO, IndexVec::from_raw(vec![val])) // Poll::Ready(val)
+                    (ZERO, indexvec![val]) // Poll::Ready(val)
                 } else {
                     (ONE, IndexVec::new()) // Poll::Pending
                 };
@@ -301,7 +299,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 let (variant_idx, operands) = if is_return {
                     (ZERO, IndexVec::new()) // None
                 } else {
-                    (ONE, IndexVec::from_raw(vec![val])) // Some(val)
+                    (ONE, indexvec![val]) // Some(val)
                 };
                 make_aggregate_adt(option_def_id, variant_idx, args, operands)
             }
@@ -337,12 +335,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                 } else {
                     ZERO // CoroutineState::Yielded(val)
                 };
-                make_aggregate_adt(
-                    coroutine_state_def_id,
-                    variant_idx,
-                    args,
-                    IndexVec::from_raw(vec![val]),
-                )
+                make_aggregate_adt(coroutine_state_def_id, variant_idx, args, indexvec![val])
             }
         };
 
@@ -520,20 +513,22 @@ fn make_aggregate_adt<'tcx>(
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
 
     let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(SELF_ARG.into())).visit_body(body);
 }
 
 #[tracing::instrument(level = "trace", skip(tcx, body))]
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_coroutine_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls[SELF_ARG].ty;
+
+    let ref_coroutine_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty);
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, body.span);
     let pin_adt_ref = tcx.adt_def(pin_did);
@@ -541,11 +536,33 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
+    body.local_decls[SELF_ARG].ty = pin_ref_coroutine_ty;
+
+    let unpinned_local = body.local_decls.push(LocalDecl::new(ref_coroutine_ty, body.span));
 
     // Add the Pin field access to accesses of the coroutine state
-    SelfArgVisitor::new(tcx, ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty))
-        .visit_body(body);
+    SelfArgVisitor::new(tcx, tcx.mk_place_deref(unpinned_local.into())).visit_body(body);
+
+    let source_info = SourceInfo::outermost(body.span);
+    let pin_field = tcx.mk_place_field(SELF_ARG.into(), FieldIdx::ZERO, ref_coroutine_ty);
+
+    let statements = &mut body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK].statements;
+    // Miri requires retags to be the very first thing in the body.
+    // We insert this assignment just after.
+    let insert_point = statements
+        .iter()
+        .position(|stmt| !matches!(stmt.kind, StatementKind::Retag(..)))
+        .unwrap_or(statements.len());
+    statements.insert(
+        insert_point,
+        Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                unpinned_local.into(),
+                Rvalue::Use(Operand::Copy(pin_field)),
+            ))),
+        ),
+    );
 }
 
 /// Transforms the `body` of the coroutine applying the following transforms:
@@ -1122,7 +1139,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
     }));
     let ready_val = Rvalue::Aggregate(
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
-        IndexVec::from_raw(vec![val]),
+        indexvec![val],
     );
     Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
 }
@@ -1297,8 +1314,6 @@ fn create_coroutine_resume_function<'tcx>(
     let default_block = insert_term_block(body, TerminatorKind::Unreachable);
     insert_switch(body, cases, &transform, default_block);
 
-    make_coroutine_state_argument_indirect(tcx, body);
-
     match transform.coroutine_kind {
         CoroutineKind::Coroutine(_)
         | CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _) =>
@@ -1307,7 +1322,9 @@ fn create_coroutine_resume_function<'tcx>(
         }
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+            make_coroutine_state_argument_indirect(tcx, body);
+        }
     }
 
     // Make sure we remove dead blocks to remove

@@ -156,6 +156,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let b_ty = self.read_type_id(&args[1])?;
                 self.write_scalar(Scalar::from_bool(a_ty == b_ty), dest)?;
             }
+            sym::size_of => {
+                let tp_ty = instance.args.type_at(0);
+                let layout = self.layout_of(tp_ty)?;
+                if !layout.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `size_of`");
+                }
+                let val = layout.size.bytes();
+                self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
+            }
+            sym::align_of => {
+                let tp_ty = instance.args.type_at(0);
+                let layout = self.layout_of(tp_ty)?;
+                if !layout.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `align_of`");
+                }
+                let val = layout.align.bytes();
+                self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
+            }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
                 let ty = match tp_ty.kind() {
