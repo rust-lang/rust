@@ -640,7 +640,7 @@ mod propagation_optimization_checks {
     impl Exhaustive for AccessRelatedness {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
             use AccessRelatedness::*;
-            Box::new(vec![This, StrictChildAccess, AncestorAccess, CousinAccess].into_iter())
+            Box::new(vec![ForeignAccess, LocalAccess].into_iter())
         }
     }
 
@@ -716,13 +716,11 @@ mod propagation_optimization_checks {
                 // We now assert it is idempotent, and never causes UB.
                 // First, if the SIFA includes foreign reads, assert it is idempotent under foreign reads.
                 if access >= IdempotentForeignAccess::Read {
-                    // We use `CousinAccess` here. We could also use `AncestorAccess`, since `transition::perform_access` treats these the same.
-                    // The only place they are treated differently is in protector end accesses, but these are not handled here.
-                    assert_eq!(perm, transition::perform_access(AccessKind::Read, AccessRelatedness::CousinAccess, perm, prot).unwrap());
+                    assert_eq!(perm, transition::perform_access(AccessKind::Read, AccessRelatedness::ForeignAccess, perm, prot).unwrap());
                 }
                 // Then, if the SIFA includes foreign writes, assert it is idempotent under foreign writes.
                 if access >= IdempotentForeignAccess::Write {
-                    assert_eq!(perm, transition::perform_access(AccessKind::Write, AccessRelatedness::CousinAccess, perm, prot).unwrap());
+                    assert_eq!(perm, transition::perform_access(AccessKind::Write, AccessRelatedness::ForeignAccess, perm, prot).unwrap());
                 }
             }
         }
