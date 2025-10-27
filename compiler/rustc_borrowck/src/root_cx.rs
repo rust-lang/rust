@@ -17,9 +17,8 @@ use crate::region_infer::opaque_types::{
 };
 use crate::type_check::{Locations, constraint_conversion};
 use crate::{
-    ClosureRegionRequirements, CollectRegionConstraintsResult, DefinitionSiteHiddenTypes,
-    PropagatedBorrowCheckResults, borrowck_check_region_constraints,
-    borrowck_collect_region_constraints,
+    ClosureRegionRequirements, CollectRegionConstraintsResult, PropagatedBorrowCheckResults,
+    borrowck_check_region_constraints, borrowck_collect_region_constraints,
 };
 
 /// The shared context used by both the root as well as all its nested
@@ -27,7 +26,7 @@ use crate::{
 pub(super) struct BorrowCheckRootCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     root_def_id: LocalDefId,
-    hidden_types: DefinitionSiteHiddenTypes<'tcx>,
+    hidden_types: FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     /// The region constraints computed by [borrowck_collect_region_constraints]. This uses
     /// an [FxIndexMap] to guarantee that iterating over it visits nested bodies before
     /// their parents.
@@ -72,7 +71,10 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         &self.propagated_borrowck_results[&nested_body_def_id].used_mut_upvars
     }
 
-    pub(super) fn finalize(self) -> Result<&'tcx DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
+    pub(super) fn finalize(
+        self,
+    ) -> Result<&'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>, ErrorGuaranteed>
+    {
         if let Some(guar) = self.tainted_by_errors {
             Err(guar)
         } else {

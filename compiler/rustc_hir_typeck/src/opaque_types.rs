@@ -1,8 +1,8 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, DefiningScopeKind, EarlyBinder, OpaqueHiddenType, OpaqueTypeKey, TypeVisitableExt,
-    TypingMode,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueHiddenType, OpaqueTypeKey,
+    TypeVisitableExt, TypingMode,
 };
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
@@ -59,7 +59,7 @@ enum UsageKind<'tcx> {
     None,
     NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
     UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
-    HasDefiningUse(OpaqueHiddenType<'tcx>),
+    HasDefiningUse(DefinitionSiteHiddenType<'tcx>),
 }
 
 impl<'tcx> UsageKind<'tcx> {
@@ -131,7 +131,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         continue;
                     }
 
-                    let expected = EarlyBinder::bind(ty.ty).instantiate(tcx, opaque_type_key.args);
+                    let expected = ty.ty.instantiate(tcx, opaque_type_key.args);
                     self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
                 }
 
@@ -191,7 +191,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.typeck_results
                 .borrow_mut()
                 .hidden_types
-                .insert(def_id, OpaqueHiddenType::new_error(tcx, guar));
+                .insert(def_id, DefinitionSiteHiddenType::new_error(tcx, guar));
             self.set_tainted_by_errors(guar);
         }
     }
@@ -210,7 +210,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         ) {
             match err {
                 NonDefiningUseReason::Tainted(guar) => {
-                    return UsageKind::HasDefiningUse(OpaqueHiddenType::new_error(self.tcx, guar));
+                    return UsageKind::HasDefiningUse(DefinitionSiteHiddenType::new_error(
+                        self.tcx, guar,
+                    ));
                 }
                 _ => return UsageKind::NonDefiningUse(opaque_type_key, hidden_type),
             };

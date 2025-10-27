@@ -430,7 +430,7 @@ fn best_definition_site_of_opaque<'tcx>(
                 .tcx
                 .mir_borrowck(item_def_id)
                 .ok()
-                .and_then(|opaque_types| opaque_types.0.get(&self.opaque_def_id))
+                .and_then(|opaque_types| opaque_types.get(&self.opaque_def_id))
             {
                 ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
