@@ -40,10 +40,10 @@ pub trait Direction {
     /// all locations in a basic block (starting from `entry_state` and to
     /// visit them with `vis`.
     fn visit_results_in_block<'mir, 'tcx, A>(
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>;
@@ -206,10 +206,10 @@ impl Direction for Backward {
     }
 
     fn visit_results_in_block<'mir, 'tcx, A>(
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,
@@ -386,10 +386,10 @@ impl Direction for Forward {
     }
 
     fn visit_results_in_block<'mir, 'tcx, A>(
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,

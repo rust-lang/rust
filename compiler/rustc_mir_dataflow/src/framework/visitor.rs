@@ -24,7 +24,7 @@ pub fn visit_results<'mir, 'tcx, A>(
 
         let block_data = &body[block];
         state.clone_from(&results[block]);
-        A::Direction::visit_results_in_block(&mut state, block, block_data, analysis, vis);
+        A::Direction::visit_results_in_block(analysis, &mut state, block, block_data, vis);
     }
 }
 
