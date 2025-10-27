@@ -2460,6 +2460,12 @@ impl Expr<'_> {
         }
     }
 
+    /// If this is a desugared range expression,
+    /// returns the span of the range without desugaring context.
+    pub fn range_span(&self) -> Option<Span> {
+        is_range_literal(self).then(|| self.span.parent_callsite().unwrap())
+    }
+
     /// Check if expression is an integer literal that can be used
     /// where `usize` is expected.
     pub fn is_size_lit(&self) -> bool {

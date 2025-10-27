@@ -63,7 +63,7 @@ pub(super) fn check(
     receiver: &Expr<'_>,
     arg: &Expr<'_>,
     msrv: Msrv,
-    method_call_span: Span,
+    method_name_span: Span,
 ) {
     let mut applicability = Applicability::MaybeIncorrect;
     if let Some(range) = higher::Range::hir(receiver)
@@ -105,7 +105,7 @@ pub(super) fn check(
         // collate all our parts here and then remove those that are empty.
         let mut parts = vec![
             (
-                receiver.span.to(method_call_span),
+                ex.span.with_hi(method_name_span.hi()),
                 format!("{exec_context}::iter::{method_to_use_name}"),
             ),
             new_span,
