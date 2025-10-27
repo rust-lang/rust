@@ -3,6 +3,7 @@
 //! Currently, this pass only propagates scalar values.
 
 use std::assert_matches::assert_matches;
+use std::cell::RefCell;
 use std::fmt::Formatter;
 
 use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
@@ -85,7 +86,7 @@ struct ConstAnalysis<'a, 'tcx> {
     map: Map<'tcx>,
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
-    ecx: InterpCx<'tcx, DummyMachine>,
+    ecx: RefCell<InterpCx<'tcx, DummyMachine>>,
     typing_env: ty::TypingEnv<'tcx>,
 }
 
@@ -153,7 +154,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             map,
             tcx,
             local_decls: &body.local_decls,
-            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
+            ecx: RefCell::new(InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine)),
             typing_env,
         }
     }
@@ -410,6 +411,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
+                        .borrow()
                         .int_to_int_or_float(&op, layout)
                         .discard_err()
                         .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
@@ -424,6 +426,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self
                         .ecx
+                        .borrow()
                         .float_to_float_or_int(&op, layout)
                         .discard_err()
                         .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
@@ -454,6 +457,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(value) => self
                         .ecx
+                        .borrow()
                         .unary_op(*op, &value)
                         .discard_err()
                         .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
@@ -468,6 +472,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let val = match null_op {
                     NullOp::OffsetOf(fields) => self
                         .ecx
+                        .borrow()
                         .tcx
                         .offset_of_subfield(self.typing_env, layout, fields.iter())
                         .bytes(),
@@ -556,8 +561,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Operand::Constant(box constant) => {
-                if let Some(constant) =
-                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).discard_err()
+                if let Some(constant) = self
+                    .ecx
+                    .borrow()
+                    .eval_mir_constant(&constant.const_, constant.span, None)
+                    .discard_err()
                 {
                     self.assign_constant(state, place, constant, &[]);
                 }
@@ -587,7 +595,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     return;
                 }
             }
-            operand = if let Some(operand) = self.ecx.project(&operand, proj_elem).discard_err() {
+            operand = if let Some(operand) =
+                self.ecx.borrow().project(&operand, proj_elem).discard_err()
+            {
                 operand
             } else {
                 return;
@@ -598,17 +608,22 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             place,
             operand,
             &mut |elem, op| match elem {
-                TrackElem::Field(idx) => self.ecx.project_field(op, idx).discard_err(),
-                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).discard_err(),
+                TrackElem::Field(idx) => self.ecx.borrow().project_field(op, idx).discard_err(),
+                TrackElem::Variant(idx) => {
+                    self.ecx.borrow().project_downcast(op, idx).discard_err()
+                }
                 TrackElem::Discriminant => {
-                    let variant = self.ecx.read_discriminant(op).discard_err()?;
-                    let discr_value =
-                        self.ecx.discriminant_for_variant(op.layout.ty, variant).discard_err()?;
+                    let variant = self.ecx.borrow().read_discriminant(op).discard_err()?;
+                    let discr_value = self
+                        .ecx
+                        .borrow()
+                        .discriminant_for_variant(op.layout.ty, variant)
+                        .discard_err()?;
                     Some(discr_value.into())
                 }
                 TrackElem::DerefLen => {
-                    let op: OpTy<'_> = self.ecx.deref_pointer(op).discard_err()?.into();
-                    let len_usize = op.len(&self.ecx).discard_err()?;
+                    let op: OpTy<'_> = self.ecx.borrow().deref_pointer(op).discard_err()?.into();
+                    let len_usize = op.len(&self.ecx.borrow()).discard_err()?;
                     let layout = self
                         .tcx
                         .layout_of(self.typing_env.as_query_input(self.tcx.types.usize))
@@ -617,7 +632,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             },
             &mut |place, op| {
-                if let Some(imm) = self.ecx.read_immediate_raw(op).discard_err()
+                if let Some(imm) = self.ecx.borrow().read_immediate_raw(op).discard_err()
                     && let Some(imm) = imm.right()
                 {
                     let elem = self.wrap_immediate(*imm);
@@ -641,7 +656,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             (FlatSet::Bottom, _) | (_, FlatSet::Bottom) => (FlatSet::Bottom, FlatSet::Bottom),
             // Both sides are known, do the actual computation.
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
-                match self.ecx.binary_op(op, &left, &right).discard_err() {
+                match self.ecx.borrow().binary_op(op, &left, &right).discard_err() {
                     // Ideally this would return an Immediate, since it's sometimes
                     // a pair and sometimes not. But as a hack we always return a pair
                     // and just make the 2nd component `Bottom` when it does not exist.
@@ -714,8 +729,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             return None;
         }
         let enum_ty_layout = self.tcx.layout_of(self.typing_env.as_query_input(enum_ty)).ok()?;
-        let discr_value =
-            self.ecx.discriminant_for_variant(enum_ty_layout.ty, variant_index).discard_err()?;
+        let discr_value = self
+            .ecx
+            .borrow()
+            .discriminant_for_variant(enum_ty_layout.ty, variant_index)
+            .discard_err()?;
         Some(discr_value.to_scalar())
     }
 
@@ -956,7 +974,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 OperandCollector {
                     state,
                     visitor: self,
-                    ecx: &mut analysis.ecx,
+                    ecx: &mut analysis.ecx.borrow_mut(),
                     map: &analysis.map,
                 }
                 .visit_rvalue(rvalue, location);
@@ -978,9 +996,12 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign(box (place, _)) => {
-                if let Some(value) =
-                    self.try_make_constant(&mut analysis.ecx, place, state, &analysis.map)
-                {
+                if let Some(value) = self.try_make_constant(
+                    &mut analysis.ecx.borrow_mut(),
+                    place,
+                    state,
+                    &analysis.map,
+                ) {
                     self.patch.assignments.insert(location, value);
                 }
             }
@@ -995,8 +1016,13 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector { state, visitor: self, ecx: &mut analysis.ecx, map: &analysis.map }
-            .visit_terminator(terminator, location);
+        OperandCollector {
+            state,
+            visitor: self,
+            ecx: &mut analysis.ecx.borrow_mut(),
+            map: &analysis.map,
+        }
+        .visit_terminator(terminator, location);
     }
 }
 
