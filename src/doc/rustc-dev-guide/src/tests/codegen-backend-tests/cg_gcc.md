@@ -49,7 +49,8 @@ For example:
 ```
 
 The first backend in the `codegen-backends` array will determine which backend will be used as the
-*default backend* of the built `rustc`. This also determines which backend will be used to compile the
+*default backend* of the built `rustc`.
+This also determines which backend will be used to compile the
 stage 1 standard library (or anything built in stage 2+).
 To produce `rustc` that uses the GCC backend
 by default, you can thus put `"gcc"` as the first element of this array:
