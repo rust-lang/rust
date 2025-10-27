@@ -3545,6 +3545,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 
+    pub fn is_trivial_const<P>(self, def_id: P) -> bool
+    where
+        P: IntoQueryParam<DefId>,
+    {
+        self.trivial_const(def_id).is_some()
+    }
+
     /// Whether this def is one of the special bin crate entrypoint functions that must have a
     /// monomorphization and also not be internalized in the bin crate.
     pub fn is_entrypoint(self, def_id: DefId) -> bool {
