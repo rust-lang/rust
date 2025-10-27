@@ -18,7 +18,6 @@ use crate::common::{
     CompareMode, Config, Debugger, FailMode, PassMode, RunFailMode, RunResult, TestMode, TestPaths,
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
-    output_testname_unique,
 };
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
@@ -1005,26 +1004,38 @@ impl<'test> TestCx<'test> {
         root_testpaths: &TestPaths,
         kind: DocKind,
     ) -> ProcRes {
+        self.document_inner(&self.testpaths.file, root_out_dir, root_testpaths, kind)
+    }
+
+    /// Like `document`, but takes an explicit `file_to_doc` argument so that
+    /// it can also be used for documenting auxiliaries, in addition to
+    /// documenting the main test file.
+    fn document_inner(
+        &self,
+        file_to_doc: &Utf8Path,
+        root_out_dir: &Utf8Path,
+        root_testpaths: &TestPaths,
+        kind: DocKind,
+    ) -> ProcRes {
         if self.props.build_aux_docs {
             assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
 
             for rel_ab in &self.props.aux.builds {
-                let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
-                let props_for_aux =
-                    self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+                let aux_path = self.compute_aux_test_paths(root_testpaths, rel_ab);
+                let props_for_aux = self.props.from_aux_file(&aux_path, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
                     stdout: self.stdout,
                     stderr: self.stderr,
                     props: &props_for_aux,
-                    testpaths: &aux_testpaths,
+                    testpaths: self.testpaths,
                     revision: self.revision,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
                 // use root_testpaths here, because aux-builds should have the
                 // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document(&root_out_dir, root_testpaths, kind);
+                let auxres = aux_cx.document_inner(&aux_path, &root_out_dir, root_testpaths, kind);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1038,7 +1049,7 @@ impl<'test> TestCx<'test> {
         // actual --out-dir given to the auxiliary or test, as opposed to the root out dir for the entire
         // test
         let out_dir: Cow<'_, Utf8Path> = if self.props.unique_doc_out_dir {
-            let file_name = self.testpaths.file.file_stem().expect("file name should not be empty");
+            let file_name = file_to_doc.file_stem().expect("file name should not be empty");
             let out_dir = Utf8PathBuf::from_iter([
                 root_out_dir,
                 Utf8Path::new("docs"),
@@ -1063,7 +1074,7 @@ impl<'test> TestCx<'test> {
             .arg(out_dir.as_ref())
             .arg("--deny")
             .arg("warnings")
-            .arg(&self.testpaths.file)
+            .arg(file_to_doc)
             .arg("-A")
             .arg("internal_features")
             .args(&self.props.compile_flags)
@@ -1195,24 +1206,14 @@ impl<'test> TestCx<'test> {
 
     /// For each `aux-build: foo/bar` annotation, we check to find the file in an `auxiliary`
     /// directory relative to the test itself (not any intermediate auxiliaries).
-    fn compute_aux_test_paths(&self, of: &TestPaths, rel_ab: &str) -> TestPaths {
+    fn compute_aux_test_paths(&self, of: &TestPaths, rel_ab: &str) -> Utf8PathBuf {
         let test_ab =
             of.file.parent().expect("test file path has no parent").join("auxiliary").join(rel_ab);
         if !test_ab.exists() {
             self.fatal(&format!("aux-build `{}` source not found", test_ab))
         }
 
-        TestPaths {
-            file: test_ab,
-            relative_dir: of
-                .relative_dir
-                .join(self.output_testname_unique())
-                .join("auxiliary")
-                .join(rel_ab)
-                .parent()
-                .expect("aux-build path has no parent")
-                .to_path_buf(),
-        }
+        test_ab
     }
 
     fn is_vxworks_pure_static(&self) -> bool {
@@ -1369,9 +1370,8 @@ impl<'test> TestCx<'test> {
         aux_dir: &Utf8Path,
         aux_type: Option<AuxType>,
     ) -> AuxType {
-        let aux_testpaths = self.compute_aux_test_paths(of, source_path);
-        let mut aux_props =
-            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let aux_path = self.compute_aux_test_paths(of, source_path);
+        let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
         if aux_type == Some(AuxType::ProcMacro) {
             aux_props.force_host = true;
         }
@@ -1388,14 +1388,13 @@ impl<'test> TestCx<'test> {
             stdout: self.stdout,
             stderr: self.stderr,
             props: &aux_props,
-            testpaths: &aux_testpaths,
+            testpaths: self.testpaths,
             revision: self.revision,
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
-        let input_file = &aux_testpaths.file;
         let mut aux_rustc = aux_cx.make_compile_args(
-            input_file,
+            &aux_path,
             aux_output,
             Emit::None,
             AllowUnused::No,
@@ -1471,7 +1470,7 @@ impl<'test> TestCx<'test> {
         );
         if !auxres.status.success() {
             self.fatal_proc_rec(
-                &format!("auxiliary build of {} failed to compile: ", aux_testpaths.file),
+                &format!("auxiliary build of {aux_path} failed to compile: "),
                 &auxres,
             );
         }
@@ -2031,11 +2030,6 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../testname.revision.mode/auxiliary/bin`.
     fn aux_bin_output_dir_name(&self) -> Utf8PathBuf {
         self.aux_output_dir_name().join("bin")
-    }
-
-    /// Generates a unique name for the test, such as `testname.revision.mode`.
-    fn output_testname_unique(&self) -> Utf8PathBuf {
-        output_testname_unique(self.config, self.testpaths, self.safe_revision())
     }
 
     /// The revision, ignored for incremental compilation since it wants all revisions in
