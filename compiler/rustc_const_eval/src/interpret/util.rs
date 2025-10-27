@@ -121,7 +121,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// ### `tracing_separate_thread` parameter
 ///
 /// This macro was introduced to obtain better traces of Miri without impacting release performance.
-/// Miri saves traces using the the `tracing_chrome` `tracing::Layer` so that they can be visualized
+/// Miri saves traces using the `tracing_chrome` `tracing::Layer` so that they can be visualized
 /// in <https://ui.perfetto.dev>. To instruct `tracing_chrome` to put some spans on a separate trace
 /// thread/line than other spans when viewed in <https://ui.perfetto.dev>, you can pass
 /// `tracing_separate_thread = tracing::field::Empty` to the tracing macros. This is useful to
