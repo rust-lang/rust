@@ -284,7 +284,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[stable(feature = "btree_entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "btree_entry_insert", since = "1.92.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, A> {
         match self {
             Occupied(mut entry) => {
@@ -394,7 +394,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```
-    #[stable(feature = "btree_entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "btree_entry_insert", since = "1.92.0")]
     pub fn insert_entry(mut self, value: V) -> OccupiedEntry<'a, K, V, A> {
         let handle = match self.handle {
             None => {
