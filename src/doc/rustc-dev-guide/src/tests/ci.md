@@ -210,7 +210,8 @@ a single try build running on a single PR at any given time.
 
 Note that try builds are handled using the [new bors] implementation.
 
-[rustc-perf]: https://github.com/rust-lang/rustc-perf [new bors]: https://github.com/rust-lang/bors
+[rustc-perf]: https://github.com/rust-lang/rustc-perf
+[new bors]: https://github.com/rust-lang/bors
 
 ### Modifying CI jobs
 
@@ -476,7 +477,8 @@ To do this:
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
 [`src/ci/citool`]: https://github.com/rust-lang/rust/blob/master/src/ci/citool
-[bors]: https://github.com/bors [homu]: https://github.com/rust-lang/homu
+[bors]: https://github.com/bors
+[homu]: https://github.com/rust-lang/homu
 [merge queue]: https://bors.rust-lang.org/queue/rust
 [dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
 [the GitHub Actions workflows page]: https://github.com/rust-lang/rust/actions
