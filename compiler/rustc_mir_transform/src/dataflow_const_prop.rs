@@ -964,7 +964,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
     #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
-        analysis: &mut ConstAnalysis<'_, 'tcx>,
+        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -986,7 +986,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
     #[instrument(level = "trace", skip(self, analysis, statement))]
     fn visit_after_primary_statement_effect(
         &mut self,
-        analysis: &mut ConstAnalysis<'_, 'tcx>,
+        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -1011,7 +1011,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        analysis: &mut ConstAnalysis<'_, 'tcx>,
+        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         terminator: &Terminator<'tcx>,
         location: Location,

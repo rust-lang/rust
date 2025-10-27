@@ -942,7 +942,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
 {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &mut MaybeRequiresStorage<'a, 'tcx>,
+        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
         loc: Location,
@@ -952,7 +952,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &mut MaybeRequiresStorage<'a, 'tcx>,
+        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
         loc: Location,
