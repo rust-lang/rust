@@ -126,7 +126,7 @@ pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
-    CreatedAlloc(AllocId, Size, Align, MemoryKind),
+    TrackingAlloc(AllocId, Size, Align),
     FreedAlloc(AllocId),
     AccessedAlloc(AllocId, AccessKind),
     RejectedIsolatedOp(String),
@@ -656,7 +656,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
-            | CreatedAlloc(..)
+            | TrackingAlloc(..)
             | AccessedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
@@ -673,9 +673,9 @@ impl<'tcx> MiriMachine<'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedAlloc(AllocId(id), size, align, kind) =>
+            TrackingAlloc(AllocId(id), size, align) =>
                 format!(
-                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    "now tracking allocation of {size} bytes (alignment {align} bytes) with id {id}",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),

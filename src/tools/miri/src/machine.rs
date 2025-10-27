@@ -595,7 +595,7 @@ pub struct MiriMachine<'tcx> {
 
     /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
-    tracked_alloc_ids: FxHashSet<AllocId>,
+    pub(crate) tracked_alloc_ids: FxHashSet<AllocId>,
     /// For the tracked alloc ids, also report read/write accesses.
     track_alloc_accesses: bool,
 
@@ -951,7 +951,7 @@ impl<'tcx> MiriMachine<'tcx> {
         align: Align,
     ) -> InterpResult<'tcx, AllocExtra<'tcx>> {
         if ecx.machine.tracked_alloc_ids.contains(&id) {
-            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id, size, align, kind));
+            ecx.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(id, size, align));
         }
 
         let borrow_tracker = ecx
