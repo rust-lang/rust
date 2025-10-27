@@ -371,6 +371,7 @@ pub(crate) fn gen_call_handling<'ll>(
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
     llfn: &'ll Value,
+    metadata: Vec<OffloadMetadata>,
 ) {
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
@@ -441,7 +442,7 @@ pub(crate) fn gen_call_handling<'ll>(
         // As mentioned above, we don't use Rust type information yet. So for now we will just
         // assume that we have 1024 bytes, 256 f32 values.
         // FIXME(offload): write an offload frontend and handle arbitrary types.
-        builder.store(cx.get_const_i64(1024), gep3, Align::EIGHT);
+        builder.store(cx.get_const_i64(metadata[i].payload_size), gep3, Align::EIGHT);
     }
 
     // For now we have a very simplistic indexing scheme into our

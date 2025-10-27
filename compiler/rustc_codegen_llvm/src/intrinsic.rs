@@ -1299,6 +1299,7 @@ fn codegen_offload<'ll, 'tcx>(
         &[memtransfer_type],
         &[region_id],
         llfn,
+        metadata,
     );
 }
 
