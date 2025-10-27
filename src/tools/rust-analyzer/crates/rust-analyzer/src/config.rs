@@ -23,7 +23,7 @@ use itertools::{Either, Itertools};
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
-    ProjectManifest, RustLibSource,
+    ProjectManifest, RustLibSource, TargetDirectoryConfig,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -2285,7 +2285,7 @@ impl Config {
             run_build_script_command: self.cargo_buildScripts_overrideCommand(source_root).clone(),
             extra_args: self.cargo_extraArgs(source_root).clone(),
             extra_env: self.cargo_extraEnv(source_root).clone(),
-            target_dir: self.target_dir_from_config(source_root),
+            target_dir_config: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
         }
@@ -2373,7 +2373,7 @@ impl Config {
             extra_args: self.extra_args(source_root).clone(),
             extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             extra_env: self.extra_env(source_root).clone(),
-            target_dir: self.target_dir_from_config(source_root),
+            target_dir_config: self.target_dir_from_config(source_root),
             set_test: true,
         }
     }
@@ -2431,7 +2431,7 @@ impl Config {
                     extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
-                    target_dir: self.target_dir_from_config(source_root),
+                    target_dir_config: self.target_dir_from_config(source_root),
                     set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
@@ -2439,17 +2439,12 @@ impl Config {
         }
     }
 
-    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
-            TargetDirectory::UseSubdirectory(true) => {
-                let env_var = env::var("CARGO_TARGET_DIR").ok();
-                let mut path = Utf8PathBuf::from(env_var.as_deref().unwrap_or("target"));
-                path.push("rust-analyzer");
-                Some(path)
-            }
-            TargetDirectory::UseSubdirectory(false) => None,
-            TargetDirectory::Directory(dir) => Some(dir.clone()),
-        })
+    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> TargetDirectoryConfig {
+        match &self.cargo_targetDir(source_root) {
+            Some(TargetDirectory::UseSubdirectory(true)) => TargetDirectoryConfig::UseSubdirectory,
+            Some(TargetDirectory::UseSubdirectory(false)) | None => TargetDirectoryConfig::None,
+            Some(TargetDirectory::Directory(dir)) => TargetDirectoryConfig::Directory(dir.clone()),
+        }
     }
 
     pub fn check_on_save(&self, source_root: Option<SourceRootId>) -> bool {
@@ -3966,7 +3961,7 @@ fn doc_comment_to_string(doc: &[&str]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{borrow::Cow, fs};
 
     use test_utils::{ensure_file_contents, project_root};
 
@@ -4101,9 +4096,13 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
         assert_eq!(config.cargo_targetDir(None), &None);
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config: TargetDirectoryConfig::None, .. },
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -4119,11 +4118,16 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
-        let target =
+        let ws_target_dir =
             Utf8PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned()));
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(target.join("rust-analyzer")))
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config, .. },
+                ..
+            } if target_dir_config.target_dir(Some(&ws_target_dir)).map(Cow::into_owned)
+                == Some(ws_target_dir.join("rust-analyzer"))
+        ));
     }
 
     #[test]
@@ -4142,8 +4146,13 @@ mod tests {
             config.cargo_targetDir(None),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config, .. },
+                ..
+            } if target_dir_config.target_dir(None).map(Cow::into_owned)
+                == Some(Utf8PathBuf::from("other_folder"))
+        ));
     }
 }
