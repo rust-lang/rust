@@ -391,6 +391,13 @@ Just a few things to keep in mind:
 - Please try to avoid overly long lines and use semantic line breaks (where you break the line after each sentence).
   There is no strict limit on line lengths; let the sentence or part of the sentence flow to its proper end on the same line.
 
+  You can use a tool in ci/sembr to help with this.
+  Its help output can be seen with this command:
+
+  ```console
+  cargo run --manifest-path ci/sembr/Cargo.toml -- --help
+  ```
+
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust the information.
   Aim to provide a reasonable amount of context, possibly including but not limited to:
