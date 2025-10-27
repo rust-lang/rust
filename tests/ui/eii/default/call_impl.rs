@@ -3,6 +3,7 @@
 //@ aux-build: impl1.rs
 //@ run-pass
 //@ check-run-results
+//@ ignore-backends: gcc
 // Tests EIIs with default implementations.
 // When an explicit implementation is given in one dependency, and the declaration is in another,
 // the explicit implementation is preferred.

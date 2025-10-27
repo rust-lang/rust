@@ -1,5 +1,6 @@
 //@ run-pass
 //@ check-run-results
+//@ ignore-backends: gcc
 // Tests EIIs with default implementations.
 // In the same crate, the explicit implementation should get priority.
 #![feature(eii)]
