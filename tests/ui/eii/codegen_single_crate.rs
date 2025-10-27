@@ -1,5 +1,6 @@
 //@ run-pass
 //@ check-run-results
+//@ ignore-backends: gcc
 // Tests whether calling EIIs works with the declaration in the same crate.
 #![feature(eii)]
 

@@ -1,5 +1,6 @@
 //@ run-pass
 //@ check-run-results
+//@ ignore-backends: gcc
 // Tests EIIs with default implementations.
 // In the same crate, when there's no explicit declaration, the default should be called.
 #![feature(eii)]
