@@ -373,6 +373,12 @@ environment variable. We first document the most relevant and most commonly used
   ensure alignment.  (The standard library `align_to` method works fine in both modes; under
   symbolic alignment it only fills the middle slice when the allocation guarantees sufficient
   alignment.)
+* `-Zmiri-user-relevant-crates=<crate>,<crate>,...` extends the list of crates that Miri considers
+  "user-relevant". This affects the rendering of backtraces (for user-relevant crates, Miri shows
+  not just the function name but the actual code) and it affects the spans collected for data races
+  and aliasing violations (where Miri will show the span of the topmost non-`#[track_caller]` frame
+  in a user-relevant crate). When using `cargo miri`, the crates in the local workspace are always
+  considered user-relevant.
 
 The remaining flags are for advanced use only, and more likely to change or be removed.
 Some of these are **unsound**, which means they can lead
