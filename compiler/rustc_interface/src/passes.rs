@@ -925,7 +925,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
     let crate_name = get_crate_name(sess, &pre_configured_attrs);
-    let crate_types = collect_crate_types(sess, &pre_configured_attrs);
+    let crate_types = collect_crate_types(
+        sess,
+        &compiler.codegen_backend.supported_crate_types(sess),
+        &pre_configured_attrs,
+    );
     let stable_crate_id = StableCrateId::new(
         crate_name,
         crate_types.contains(&CrateType::Executable),
