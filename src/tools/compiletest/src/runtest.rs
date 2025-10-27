@@ -1015,7 +1015,7 @@ impl<'test> TestCx<'test> {
             assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
 
             for rel_ab in &self.props.aux.builds {
-                let aux_path = self.compute_aux_test_paths(rel_ab);
+                let aux_path = self.resolve_aux_path(rel_ab);
                 let props_for_aux = self.props.from_aux_file(&aux_path, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
@@ -1198,19 +1198,21 @@ impl<'test> TestCx<'test> {
 
     /// For each `aux-build: foo/bar` annotation, we check to find the file in an `auxiliary`
     /// directory relative to the test itself (not any intermediate auxiliaries).
-    fn compute_aux_test_paths(&self, rel_ab: &str) -> Utf8PathBuf {
-        let test_ab = self
+    fn resolve_aux_path(&self, relative_aux_path: &str) -> Utf8PathBuf {
+        let aux_path = self
             .testpaths
             .file
             .parent()
             .expect("test file path has no parent")
             .join("auxiliary")
-            .join(rel_ab);
-        if !test_ab.exists() {
-            self.fatal(&format!("aux-build `{}` source not found", test_ab))
+            .join(relative_aux_path);
+        if !aux_path.exists() {
+            self.fatal(&format!(
+                "auxiliary source file `{relative_aux_path}` not found at `{aux_path}`"
+            ));
         }
 
-        test_ab
+        aux_path
     }
 
     fn is_vxworks_pure_static(&self) -> bool {
@@ -1361,7 +1363,7 @@ impl<'test> TestCx<'test> {
         aux_dir: &Utf8Path,
         aux_type: Option<AuxType>,
     ) -> AuxType {
-        let aux_path = self.compute_aux_test_paths(source_path);
+        let aux_path = self.resolve_aux_path(source_path);
         let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
         if aux_type == Some(AuxType::ProcMacro) {
             aux_props.force_host = true;
