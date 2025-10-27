@@ -10,9 +10,12 @@ use regex::Regex;
 
 #[derive(Parser)]
 struct Cli {
-    root_dir: PathBuf,
+    /// File or directory to check
+    path: PathBuf,
     #[arg(long)]
+    /// Modify files that do not comply
     overwrite: bool,
+    /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
     #[arg(long)]
@@ -31,7 +34,7 @@ fn main() -> Result<()> {
     let mut compliant = Vec::new();
     let mut not_compliant = Vec::new();
     let mut made_compliant = Vec::new();
-    for result in Walk::new(cli.root_dir) {
+    for result in Walk::new(cli.path) {
         let entry = result?;
         if entry.file_type().expect("no stdin").is_dir() {
             continue;
