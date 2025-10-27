@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target aarch64-unknown-linux-gnu -Zinline-mir=no -C no-prepopulate-passes
 //@ needs-llvm-components: aarch64
 
@@ -34,4 +34,4 @@ pub fn inherits_from_global() -> i32 {
     }
 }
 
-// CHECK: attributes #3 = { nounwind }
+// CHECK: attributes #3 = { alwaysinline nounwind }
