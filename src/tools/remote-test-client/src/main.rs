@@ -15,8 +15,10 @@ use std::time::Duration;
 use std::{env, thread};
 
 const REMOTE_ADDR_ENV: &str = "TEST_DEVICE_ADDR";
-const CONNECT_TIMEOUT: &str = "TEST_DEVICE_CONNECT_TIMEOUT";
 const DEFAULT_ADDR: &str = "127.0.0.1:12345";
+
+const CONNECT_TIMEOUT_ENV: &str = "TEST_DEVICE_CONNECT_TIMEOUT_SECONDS";
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_mins(30);
 
 macro_rules! t {
     ($e:expr) => {
@@ -71,19 +73,14 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
 
     // Wait for the emulator to come online
     let mut total_dur = Duration::from_secs(0);
-    let timeout = env::var(CONNECT_TIMEOUT)
-        .ok()
-        .and_then(|timeout| {
-            match timeout.parse::<u64>() {
-                Ok(n) => Some(n),
-                Err(_) => {
-                    println!("The {CONNECT_TIMEOUT} env variable is not a valid integer, using default timeout");
-                    None
-                }
-            }
-        })
-        .map(Duration::from_secs)
-        .unwrap_or_else(|| Duration::from_secs(300));
+    let timeout = env::var(CONNECT_TIMEOUT_ENV).ok().map_or(DEFAULT_CONNECT_TIMEOUT, |timeout| {
+        let seconds = timeout.parse::<u64>().unwrap_or_else(|_| {
+            panic!("The {CONNECT_TIMEOUT_ENV} env variable is not a valid integer");
+        });
+        Duration::from_secs(seconds)
+    });
+
+    let mut timed_out = true;
 
     while total_dur < timeout {
         let dur = Duration::from_millis(2000);
@@ -93,7 +90,8 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
             if client.write_all(b"ping").is_ok() {
                 let mut b = [0; 4];
                 if client.read_exact(&mut b).is_ok() {
-                    return;
+                    timed_out = false;
+                    break;
                 }
             }
         }
@@ -101,7 +99,12 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
         total_dur += dur;
     }
 
-    panic!("Test device at {device_address} timed out");
+    if timed_out {
+        panic!(
+            "Gave up trying to connect to test device at {device_address} after {} seconds",
+            total_dur.as_secs()
+        );
+    }
 }
 
 fn start_android_emulator(server: &Path) {
