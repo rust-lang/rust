@@ -29,13 +29,13 @@ declare_clippy_lint! {
     /// really_expensive_condition_with_side_effects(&mut i);
     /// ```
     #[clippy::version = "1.72.0"]
-    pub NEEDLESS_IF,
+    pub NEEDLESS_IFS,
     complexity,
     "checks for empty if branches"
 }
-declare_lint_pass!(NeedlessIf => [NEEDLESS_IF]);
+declare_lint_pass!(NeedlessIfs => [NEEDLESS_IFS]);
 
-impl LateLintPass<'_> for NeedlessIf {
+impl LateLintPass<'_> for NeedlessIfs {
     fn check_stmt<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) {
         if let StmtKind::Expr(expr) = stmt.kind
             && let Some(If {
@@ -62,7 +62,7 @@ impl LateLintPass<'_> for NeedlessIf {
         {
             span_lint_and_sugg(
                 cx,
-                NEEDLESS_IF,
+                NEEDLESS_IFS,
                 stmt.span,
                 "this `if` branch is empty",
                 "you can remove it",

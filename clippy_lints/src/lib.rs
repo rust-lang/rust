@@ -253,7 +253,7 @@ mod needless_borrows_for_generic_args;
 mod needless_continue;
 mod needless_else;
 mod needless_for_each;
-mod needless_if;
+mod needless_ifs;
 mod needless_late_init;
 mod needless_maybe_sized;
 mod needless_parens_on_range_literals;
@@ -752,7 +752,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(endian_bytes::EndianBytes));
     store.register_late_pass(|_| Box::new(redundant_type_annotations::RedundantTypeAnnotations));
     store.register_late_pass(|_| Box::new(arc_with_non_send_sync::ArcWithNonSendSync));
-    store.register_late_pass(|_| Box::new(needless_if::NeedlessIf));
+    store.register_late_pass(|_| Box::new(needless_ifs::NeedlessIfs));
     store.register_late_pass(move |_| Box::new(min_ident_chars::MinIdentChars::new(conf)));
     store.register_late_pass(move |_| Box::new(large_stack_frames::LargeStackFrames::new(conf)));
     store.register_late_pass(|_| Box::new(single_range_in_vec_init::SingleRangeInVecInit));
