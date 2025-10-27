@@ -3,7 +3,7 @@ use crate::hint;
 use crate::ptr::{self, drop_in_place};
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum State {
     Initial,
     Alive,
@@ -33,13 +33,14 @@ impl<T> Storage<T> {
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get(&self) -> *const T {
-        match self.state.get() {
-            State::Alive => self.val.get(),
-            State::Destroyed => {
-                hint::cold_path();
-                ptr::null()
-            }
-            State::Initial => unsafe { self.initialize() },
+        let state = self.state.get();
+        if state == State::Alive {
+            self.val.get()
+        } else {
+            // This uses an `if`/`else` structure instead of a match to make
+            // sure that these two cases are outlined.
+            hint::cold_path();
+            if state == State::Initial { unsafe { self.initialize() } } else { ptr::null() }
         }
     }
 

@@ -182,17 +182,21 @@ impl<T: 'static, const ALIGN: usize> Storage<T, ALIGN> {
     pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
         let key = self.key.force();
         let ptr = unsafe { get(key) as *mut Value<T> };
-        match ptr.addr() {
+        if ptr.addr() > 1 {
             // SAFETY: the check ensured the pointer is safe (its destructor
             // is not running) + it is coming from a trusted source (self).
-            2.. => unsafe { &(*ptr).value },
-            // destructor is running
-            1 => {
-                hint::cold_path();
+            unsafe { &(*ptr).value }
+        } else {
+            // This uses an `if`/`else` structure instead of a match to make
+            // sure that these two cases are outlined.
+            hint::cold_path();
+            if ptr.addr() == 0 {
+                // SAFETY: trivially correct.
+                unsafe { Self::try_initialize(key, i, f) }
+            } else {
+                // destructor is running
                 ptr::null()
             }
-            // SAFETY: trivially correct.
-            0 => unsafe { Self::try_initialize(key, i, f) },
         }
     }
 
