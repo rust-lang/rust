@@ -34,4 +34,8 @@ pub fn inherits_from_global() -> i32 {
     }
 }
 
+// Attribute #3 requires the alwaysinline attribute, the alwaysinline attribute is not emitted on a
+// function definition when target features are present, rather it will be moved onto the function
+// call, if the features match up.
+//
 // CHECK: attributes #3 = { alwaysinline nounwind }
