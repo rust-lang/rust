@@ -34,4 +34,4 @@ pub fn inherits_from_global() -> i32 {
     }
 }
 
-// CHECK: attributes #3 = { nounwind }
+// CHECK: attributes #3 = { alwaysinline nounwind }
