@@ -859,7 +859,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// # let final_check = rw.read().unwrap();
     /// # assert_eq!(*final_check, 3);
     /// ```
-    #[stable(feature = "rwlock_downgrade", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "rwlock_downgrade", since = "1.92.0")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'rwlock, T> {
         let lock = s.lock;
 
