@@ -1,4 +1,4 @@
-pub use rustc_next_trait_solver::solve::inspect::*;
+pub(crate) use rustc_next_trait_solver::solve::inspect::*;
 
 use rustc_ast_ir::try_visit;
 use rustc_next_trait_solver::{
@@ -23,11 +23,11 @@ use crate::next_solver::{
     obligation_ctxt::ObligationCtxt,
 };
 
-pub struct InspectConfig {
-    pub max_depth: usize,
+pub(crate) struct InspectConfig {
+    pub(crate) max_depth: usize,
 }
 
-pub struct InspectGoal<'a, 'db> {
+pub(crate) struct InspectGoal<'a, 'db> {
     infcx: &'a SolverContext<'db>,
     depth: usize,
     orig_values: Vec<GenericArg<'db>>,
@@ -103,7 +103,7 @@ impl<'db> NormalizesToTermHack<'db> {
     }
 }
 
-pub struct InspectCandidate<'a, 'db> {
+pub(crate) struct InspectCandidate<'a, 'db> {
     goal: &'a InspectGoal<'a, 'db>,
     kind: inspect::ProbeKind<DbInterner<'db>>,
     steps: Vec<&'a inspect::ProbeStep<DbInterner<'db>>>,
@@ -113,15 +113,15 @@ pub struct InspectCandidate<'a, 'db> {
 }
 
 impl<'a, 'db> InspectCandidate<'a, 'db> {
-    pub fn kind(&self) -> inspect::ProbeKind<DbInterner<'db>> {
+    pub(crate) fn kind(&self) -> inspect::ProbeKind<DbInterner<'db>> {
         self.kind
     }
 
-    pub fn result(&self) -> Result<Certainty, NoSolution> {
+    pub(crate) fn result(&self) -> Result<Certainty, NoSolution> {
         self.result.map(|c| c.value.certainty)
     }
 
-    pub fn goal(&self) -> &'a InspectGoal<'a, 'db> {
+    pub(crate) fn goal(&self) -> &'a InspectGoal<'a, 'db> {
         self.goal
     }
 
@@ -133,14 +133,17 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     ///
     /// This is *not* the certainty of the candidate's full nested evaluation, which
     /// can be accessed with [`Self::result`] instead.
-    pub fn shallow_certainty(&self) -> Certainty {
+    pub(crate) fn shallow_certainty(&self) -> Certainty {
         self.shallow_certainty
     }
 
     /// Visit all nested goals of this candidate without rolling
     /// back their inference constraints. This function modifies
     /// the state of the `infcx`.
-    pub fn visit_nested_no_probe<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
+    pub(crate) fn visit_nested_no_probe<V: ProofTreeVisitor<'db>>(
+        &self,
+        visitor: &mut V,
+    ) -> V::Result {
         for goal in self.instantiate_nested_goals() {
             try_visit!(goal.visit_with(visitor));
         }
@@ -152,7 +155,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// inference constraints. This function modifies the state of the `infcx`.
     ///
     /// See [`Self::instantiate_impl_args`] if you need the impl args too.
-    pub fn instantiate_nested_goals(&self) -> Vec<InspectGoal<'a, 'db>> {
+    pub(crate) fn instantiate_nested_goals(&self) -> Vec<InspectGoal<'a, 'db>> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
@@ -200,7 +203,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// Instantiate the args of an impl if this candidate came from a
     /// `CandidateSource::Impl`. This function modifies the state of the
     /// `infcx`.
-    pub fn instantiate_impl_args(&self) -> GenericArgs<'db> {
+    pub(crate) fn instantiate_impl_args(&self) -> GenericArgs<'db> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
@@ -241,7 +244,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
         panic!("expected impl args probe step for `instantiate_impl_args`");
     }
 
-    pub fn instantiate_proof_tree_for_nested_goal(
+    pub(crate) fn instantiate_proof_tree_for_nested_goal(
         &self,
         source: GoalSource,
         goal: Goal<'db, Predicate<'db>>,
@@ -307,29 +310,33 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
 
     /// Visit all nested goals of this candidate, rolling back
     /// all inference constraints.
-    pub fn visit_nested_in_probe<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
+    #[expect(dead_code, reason = "used in rustc")]
+    pub(crate) fn visit_nested_in_probe<V: ProofTreeVisitor<'db>>(
+        &self,
+        visitor: &mut V,
+    ) -> V::Result {
         self.goal.infcx.probe(|_| self.visit_nested_no_probe(visitor))
     }
 }
 
 impl<'a, 'db> InspectGoal<'a, 'db> {
-    pub fn infcx(&self) -> &'a InferCtxt<'db> {
+    pub(crate) fn infcx(&self) -> &'a InferCtxt<'db> {
         self.infcx
     }
 
-    pub fn goal(&self) -> Goal<'db, Predicate<'db>> {
+    pub(crate) fn goal(&self) -> Goal<'db, Predicate<'db>> {
         self.goal
     }
 
-    pub fn result(&self) -> Result<Certainty, NoSolution> {
+    pub(crate) fn result(&self) -> Result<Certainty, NoSolution> {
         self.result
     }
 
-    pub fn source(&self) -> GoalSource {
+    pub(crate) fn source(&self) -> GoalSource {
         self.source
     }
 
-    pub fn depth(&self) -> usize {
+    pub(crate) fn depth(&self) -> usize {
         self.depth
     }
 
@@ -405,7 +412,7 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
         }
     }
 
-    pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'db>> {
+    pub(crate) fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'db>> {
         let mut candidates = vec![];
         let mut nested_goals = vec![];
         self.candidates_recur(&mut candidates, &mut nested_goals, &self.final_revision);
@@ -415,7 +422,7 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
     /// Returns the single candidate applicable for the current goal, if it exists.
     ///
     /// Returns `None` if there are either no or multiple applicable candidates.
-    pub fn unique_applicable_candidate(&'a self) -> Option<InspectCandidate<'a, 'db>> {
+    pub(crate) fn unique_applicable_candidate(&'a self) -> Option<InspectCandidate<'a, 'db>> {
         // FIXME(-Znext-solver): This does not handle impl candidates
         // hidden by env candidates.
         let mut candidates = self.candidates();
@@ -467,7 +474,7 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
 }
 
 /// The public API to interact with proof trees.
-pub trait ProofTreeVisitor<'db> {
+pub(crate) trait ProofTreeVisitor<'db> {
     type Result: VisitorResult;
 
     fn config(&self) -> InspectConfig {

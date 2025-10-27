@@ -1696,7 +1696,7 @@ impl<'db> Evaluator<'db> {
         if let TyKind::Adt(adt_ef, subst) = kind
             && let AdtId::StructId(struct_id) = adt_ef.def_id().0
         {
-            let field_types = self.db.field_types_ns(struct_id.into());
+            let field_types = self.db.field_types(struct_id.into());
             if let Some(ty) =
                 field_types.iter().last().map(|it| it.1.instantiate(self.interner(), subst))
             {
@@ -1775,9 +1775,9 @@ impl<'db> Evaluator<'db> {
                     else {
                         not_supported!("unsizing struct without field");
                     };
-                    let target_last_field = self.db.field_types_ns(id.into())[last_field]
+                    let target_last_field = self.db.field_types(id.into())[last_field]
                         .instantiate(self.interner(), target_subst);
-                    let current_last_field = self.db.field_types_ns(id.into())[last_field]
+                    let current_last_field = self.db.field_types(id.into())[last_field]
                         .instantiate(self.interner(), current_subst);
                     return self.unsizing_ptr_from_addr(
                         target_last_field,
@@ -2268,7 +2268,7 @@ impl<'db> Evaluator<'db> {
                     AdtId::StructId(s) => {
                         let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
-                        let field_types = this.db.field_types_ns(s.into());
+                        let field_types = this.db.field_types(s.into());
                         for (f, _) in data.fields().iter() {
                             let offset = layout
                                 .fields
@@ -2296,7 +2296,7 @@ impl<'db> Evaluator<'db> {
                             e,
                         ) {
                             let data = v.fields(this.db);
-                            let field_types = this.db.field_types_ns(v.into());
+                            let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
@@ -2373,7 +2373,7 @@ impl<'db> Evaluator<'db> {
             }
             TyKind::Adt(id, args) => match id.def_id().0 {
                 AdtId::StructId(s) => {
-                    for (i, (_, ty)) in self.db.field_types_ns(s.into()).iter().enumerate() {
+                    for (i, (_, ty)) in self.db.field_types(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
                         let ty = ty.instantiate(self.interner(), args);
                         self.patch_addresses(
@@ -2394,7 +2394,7 @@ impl<'db> Evaluator<'db> {
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
-                        for (i, (_, ty)) in self.db.field_types_ns(ev.into()).iter().enumerate() {
+                        for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
                             let ty = ty.instantiate(self.interner(), args);
                             self.patch_addresses(
@@ -2895,7 +2895,7 @@ impl<'db> Evaluator<'db> {
                         let variant_fields = s.fields(self.db);
                         match variant_fields.shape {
                             FieldsShape::Record | FieldsShape::Tuple => {
-                                let field_types = self.db.field_types_ns(s.into());
+                                let field_types = self.db.field_types(s.into());
                                 for (field, _) in variant_fields.fields().iter() {
                                     let offset = layout
                                         .fields

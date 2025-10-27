@@ -1,7 +1,5 @@
 //! Snapshotting in the infer ctxt of the next-trait-solver.
 
-use std::marker::PhantomData;
-
 use ena::snapshot_vec as sv;
 use ena::undo_log::{Rollback, UndoLogs};
 use ena::unify as ut;
@@ -14,7 +12,6 @@ use crate::next_solver::infer::opaque_types::OpaqueHiddenType;
 use crate::next_solver::infer::unify_key::ConstVidKey;
 use crate::next_solver::infer::unify_key::RegionVidKey;
 use crate::next_solver::infer::{InferCtxtInner, region_constraints, type_variable};
-use crate::traits;
 
 pub struct Snapshot {
     pub(crate) undo_len: usize,
@@ -31,6 +28,7 @@ pub(crate) enum UndoLog<'db> {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'db>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'db>>>),
+    #[expect(dead_code, reason = "this is used in rustc")]
     PushRegionObligation,
 }
 

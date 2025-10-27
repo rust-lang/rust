@@ -279,6 +279,7 @@ pub(crate) struct PatternContext {
     pub(crate) param_ctx: Option<ParamContext>,
     pub(crate) has_type_ascription: bool,
     pub(crate) should_suggest_name: bool,
+    pub(crate) after_if_expr: bool,
     pub(crate) parent_pat: Option<ast::Pat>,
     pub(crate) ref_token: Option<SyntaxToken>,
     pub(crate) mut_token: Option<SyntaxToken>,
@@ -405,9 +406,7 @@ pub(crate) enum DotAccessKind {
         /// like `0.$0`
         receiver_is_ambiguous_float_literal: bool,
     },
-    Method {
-        has_parens: bool,
-    },
+    Method,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -440,6 +439,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
+    pub(crate) trigger_character: Option<char>,
     /// The token before the cursor, in the original file.
     pub(crate) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -703,6 +703,7 @@ impl<'db> CompletionContext<'db> {
         db: &'db RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'db CompletionConfig<'db>,
+        trigger_character: Option<char>,
     ) -> Option<(CompletionContext<'db>, CompletionAnalysis<'db>)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -871,6 +872,7 @@ impl<'db> CompletionContext<'db> {
             db,
             config,
             position,
+            trigger_character,
             original_token,
             token,
             krate,

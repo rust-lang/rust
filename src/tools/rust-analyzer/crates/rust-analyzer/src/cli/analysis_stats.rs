@@ -25,7 +25,7 @@ use ide::{
     InlayHintsConfig, LineCol, RootDatabase,
 };
 use ide_db::{
-    EditionedFileId, LineIndexDatabase, SnippetCap,
+    EditionedFileId, LineIndexDatabase, MiniCore, SnippetCap,
     base_db::{SourceDatabase, salsa::Database},
 };
 use itertools::Itertools;
@@ -344,6 +344,8 @@ impl flags::AnalysisStats {
         if self.run_term_search {
             self.run_term_search(&workspace, db, &vfs, &file_ids, verbosity);
         }
+
+        hir::clear_tls_solver_cache();
 
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
@@ -1194,6 +1196,7 @@ impl flags::AnalysisStats {
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
+                    minicore: MiniCore::default(),
                 },
                 analysis.editioned_file_id_to_vfs(file_id),
                 None,
@@ -1203,26 +1206,25 @@ impl flags::AnalysisStats {
         bar.finish_and_clear();
 
         let mut bar = create_bar();
+        let annotation_config = AnnotationConfig {
+            binary_target: true,
+            annotate_runnables: true,
+            annotate_impls: true,
+            annotate_references: false,
+            annotate_method_references: false,
+            annotate_enum_variant_references: false,
+            location: ide::AnnotationLocation::AboveName,
+            minicore: MiniCore::default(),
+        };
         for &file_id in file_ids {
             let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));
             bar.set_message(move || msg.clone());
             analysis
-                .annotations(
-                    &AnnotationConfig {
-                        binary_target: true,
-                        annotate_runnables: true,
-                        annotate_impls: true,
-                        annotate_references: false,
-                        annotate_method_references: false,
-                        annotate_enum_variant_references: false,
-                        location: ide::AnnotationLocation::AboveName,
-                    },
-                    analysis.editioned_file_id_to_vfs(file_id),
-                )
+                .annotations(&annotation_config, analysis.editioned_file_id_to_vfs(file_id))
                 .unwrap()
                 .into_iter()
                 .for_each(|annotation| {
-                    _ = analysis.resolve_annotation(annotation);
+                    _ = analysis.resolve_annotation(&annotation_config, annotation);
                 });
             bar.inc(1);
         }

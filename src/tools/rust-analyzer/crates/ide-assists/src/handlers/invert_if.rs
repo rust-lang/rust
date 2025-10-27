@@ -27,7 +27,9 @@ use crate::{
 // }
 // ```
 pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let if_keyword = ctx.find_token_syntax_at_offset(T![if])?;
+    let if_keyword = ctx
+        .find_token_syntax_at_offset(T![if])
+        .or_else(|| ctx.find_token_syntax_at_offset(T![else]))?;
     let expr = ast::IfExpr::cast(if_keyword.parent()?)?;
     let if_range = if_keyword.text_range();
     let cursor_in_range = if_range.contains_range(ctx.selection_trimmed());
@@ -107,6 +109,15 @@ mod tests {
         check_assist(
             invert_if,
             "fn f() { i$0f cond { 3 * 2 } else { 1 } }",
+            "fn f() { if !cond { 1 } else { 3 * 2 } }",
+        )
+    }
+
+    #[test]
+    fn invert_if_on_else_keyword() {
+        check_assist(
+            invert_if,
+            "fn f() { if cond { 3 * 2 } e$0lse { 1 } }",
             "fn f() { if !cond { 1 } else { 3 * 2 } }",
         )
     }

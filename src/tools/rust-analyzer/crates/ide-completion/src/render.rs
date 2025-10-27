@@ -171,8 +171,7 @@ pub(crate) fn render_field(
             builder.insert(receiver.syntax().text_range().start(), "(".to_owned());
             builder.insert(ctx.source_range().end(), ")".to_owned());
 
-            let is_parens_needed =
-                !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+            let is_parens_needed = !matches!(dot_access.kind, DotAccessKind::Method);
 
             if is_parens_needed {
                 builder.insert(ctx.source_range().end(), "()".to_owned());

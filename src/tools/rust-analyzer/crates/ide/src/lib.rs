@@ -62,7 +62,7 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, db::HirDatabase, sym};
+use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
@@ -71,7 +71,9 @@ use ide_db::{
     },
     prime_caches, symbol_index,
 };
-use syntax::SourceFile;
+use ide_db::{MiniCore, ra_fixture::RaFixtureAnalysis};
+use macros::UpmapFromRaFixture;
+use syntax::{SourceFile, ast};
 use triomphe::Arc;
 use view_memory_layout::{RecursiveMemoryLayout, view_memory_layout};
 
@@ -83,6 +85,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{FileStructureConfig, StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
+    goto_definition::GotoDefinitionConfig,
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
         HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
@@ -102,7 +105,7 @@ pub use crate::{
     },
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
-    references::ReferenceSearchResult,
+    references::{FindAllRefsConfig, ReferenceSearchResult},
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId, UpdateTest},
     signature_help::SignatureHelp,
@@ -144,7 +147,7 @@ pub use syntax::{TextRange, TextSize};
 pub type Cancellable<T> = Result<T, Cancelled>;
 
 /// Info associated with a text range.
-#[derive(Debug)]
+#[derive(Debug, UpmapFromRaFixture)]
 pub struct RangeInfo<T> {
     pub range: TextRange,
     pub info: T,
@@ -272,6 +275,28 @@ impl Analysis {
 
         host.apply_change(change);
         (host.analysis(), file_id)
+    }
+
+    pub(crate) fn from_ra_fixture(
+        sema: &Semantics<'_, RootDatabase>,
+        literal: ast::String,
+        expanded: &ast::String,
+        minicore: MiniCore<'_>,
+    ) -> Option<(Analysis, RaFixtureAnalysis)> {
+        Self::from_ra_fixture_with_on_cursor(sema, literal, expanded, minicore, &mut |_| {})
+    }
+
+    /// Like [`Analysis::from_ra_fixture()`], but also calls `on_cursor` with the cursor position.
+    pub(crate) fn from_ra_fixture_with_on_cursor(
+        sema: &Semantics<'_, RootDatabase>,
+        literal: ast::String,
+        expanded: &ast::String,
+        minicore: MiniCore<'_>,
+        on_cursor: &mut dyn FnMut(TextRange),
+    ) -> Option<(Analysis, RaFixtureAnalysis)> {
+        let analysis =
+            RaFixtureAnalysis::analyze_ra_fixture(sema, literal, expanded, minicore, on_cursor)?;
+        Some((Analysis { db: analysis.db.clone() }, analysis))
     }
 
     /// Debug info about the current state of the analysis.
@@ -446,7 +471,7 @@ impl Analysis {
     /// Returns a list of the places in the file where type hints can be displayed.
     pub fn inlay_hints(
         &self,
-        config: &InlayHintsConfig,
+        config: &InlayHintsConfig<'_>,
         file_id: FileId,
         range: Option<TextRange>,
     ) -> Cancellable<Vec<InlayHint>> {
@@ -454,7 +479,7 @@ impl Analysis {
     }
     pub fn inlay_hints_resolve(
         &self,
-        config: &InlayHintsConfig,
+        config: &InlayHintsConfig<'_>,
         file_id: FileId,
         resolve_range: TextRange,
         hash: u64,
@@ -495,16 +520,18 @@ impl Analysis {
     pub fn goto_definition(
         &self,
         position: FilePosition,
+        config: &GotoDefinitionConfig<'_>,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| goto_definition::goto_definition(db, position))
+        self.with_db(|db| goto_definition::goto_definition(db, position, config))
     }
 
     /// Returns the declaration from the symbol at `position`.
     pub fn goto_declaration(
         &self,
         position: FilePosition,
+        config: &GotoDefinitionConfig<'_>,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| goto_declaration::goto_declaration(db, position))
+        self.with_db(|db| goto_declaration::goto_declaration(db, position, config))
     }
 
     /// Returns the impls from the symbol at `position`.
@@ -526,19 +553,16 @@ impl Analysis {
     pub fn find_all_refs(
         &self,
         position: FilePosition,
-        search_scope: Option<SearchScope>,
+        config: &FindAllRefsConfig<'_>,
     ) -> Cancellable<Option<Vec<ReferenceSearchResult>>> {
-        let search_scope = AssertUnwindSafe(search_scope);
-        self.with_db(|db| {
-            let _ = &search_scope;
-            references::find_all_refs(&Semantics::new(db), position, search_scope.0)
-        })
+        let config = AssertUnwindSafe(config);
+        self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, &config))
     }
 
     /// Returns a short text describing element at position.
     pub fn hover(
         &self,
-        config: &HoverConfig,
+        config: &HoverConfig<'_>,
         range: FileRange,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
         self.with_db(|db| hover::hover(db, range, config))
@@ -576,14 +600,15 @@ impl Analysis {
     pub fn call_hierarchy(
         &self,
         position: FilePosition,
+        config: &CallHierarchyConfig<'_>,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| call_hierarchy::call_hierarchy(db, position))
+        self.with_db(|db| call_hierarchy::call_hierarchy(db, position, config))
     }
 
     /// Computes incoming calls for the given file position.
     pub fn incoming_calls(
         &self,
-        config: CallHierarchyConfig,
+        config: &CallHierarchyConfig<'_>,
         position: FilePosition,
     ) -> Cancellable<Option<Vec<CallItem>>> {
         self.with_db(|db| call_hierarchy::incoming_calls(db, config, position))
@@ -592,7 +617,7 @@ impl Analysis {
     /// Computes outgoing calls for the given file position.
     pub fn outgoing_calls(
         &self,
-        config: CallHierarchyConfig,
+        config: &CallHierarchyConfig<'_>,
         position: FilePosition,
     ) -> Cancellable<Option<Vec<CallItem>>> {
         self.with_db(|db| call_hierarchy::outgoing_calls(db, config, position))
@@ -675,28 +700,22 @@ impl Analysis {
     /// Computes syntax highlighting for the given file
     pub fn highlight(
         &self,
-        highlight_config: HighlightConfig,
+        highlight_config: HighlightConfig<'_>,
         file_id: FileId,
     ) -> Cancellable<Vec<HlRange>> {
-        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
-        // highlighting instead sets up the attach hook where neceesary for the trait solver
-        Cancelled::catch(|| {
-            syntax_highlighting::highlight(&self.db, highlight_config, file_id, None)
-        })
+        self.with_db(|db| syntax_highlighting::highlight(db, &highlight_config, file_id, None))
     }
 
     /// Computes syntax highlighting for the given file range.
     pub fn highlight_range(
         &self,
-        highlight_config: HighlightConfig,
+        highlight_config: HighlightConfig<'_>,
         frange: FileRange,
     ) -> Cancellable<Vec<HlRange>> {
-        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
-        // highlighting instead sets up the attach hook where neceesary for the trait solver
-        Cancelled::catch(|| {
+        self.with_db(|db| {
             syntax_highlighting::highlight(
-                &self.db,
-                highlight_config,
+                db,
+                &highlight_config,
                 frange.file_id,
                 Some(frange.range),
             )
@@ -706,22 +725,18 @@ impl Analysis {
     /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html_with_config(
         &self,
-        config: HighlightConfig,
+        config: HighlightConfig<'_>,
         file_id: FileId,
         rainbow: bool,
     ) -> Cancellable<String> {
-        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
-        // highlighting instead sets up the attach hook where neceesary for the trait solver
-        Cancelled::catch(|| {
-            syntax_highlighting::highlight_as_html_with_config(&self.db, config, file_id, rainbow)
+        self.with_db(|db| {
+            syntax_highlighting::highlight_as_html_with_config(db, &config, file_id, rainbow)
         })
     }
 
     /// Computes syntax highlighting for the given file.
     pub fn highlight_as_html(&self, file_id: FileId, rainbow: bool) -> Cancellable<String> {
-        // highlighting may construct a new database for "speculative" execution, so we can't currently attach the database
-        // highlighting instead sets up the attach hook where neceesary for the trait solver
-        Cancelled::catch(|| syntax_highlighting::highlight_as_html(&self.db, file_id, rainbow))
+        self.with_db(|db| syntax_highlighting::highlight_as_html(db, file_id, rainbow))
     }
 
     /// Computes completions at the given position.
@@ -853,14 +868,18 @@ impl Analysis {
 
     pub fn annotations(
         &self,
-        config: &AnnotationConfig,
+        config: &AnnotationConfig<'_>,
         file_id: FileId,
     ) -> Cancellable<Vec<Annotation>> {
         self.with_db(|db| annotations::annotations(db, config, file_id))
     }
 
-    pub fn resolve_annotation(&self, annotation: Annotation) -> Cancellable<Annotation> {
-        self.with_db(|db| annotations::resolve_annotation(db, annotation))
+    pub fn resolve_annotation(
+        &self,
+        config: &AnnotationConfig<'_>,
+        annotation: Annotation,
+    ) -> Cancellable<Annotation> {
+        self.with_db(|db| annotations::resolve_annotation(db, config, annotation))
     }
 
     pub fn move_item(
@@ -899,12 +918,8 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        hir::attach_db(&self.db, || {
-            // the trait solver code may invoke `as_view<HirDatabase>` outside of queries,
-            // so technically we might run into a panic in salsa if the downcaster has not yet been registered.
-            HirDatabase::zalsa_register_downcaster(&self.db);
-            Cancelled::catch(|| f(&self.db))
-        })
+        // We use `attach_db_allow_change()` and not `attach_db()` because fixture injection can change the database.
+        hir::attach_db_allow_change(&self.db, || Cancelled::catch(|| f(&self.db)))
     }
 }
 

@@ -13,43 +13,45 @@
 //! by the next salsa version. If not, we will likely have to adapt and go with the rustc approach
 //! while installing firewall per item queries to prevent invalidation issues.
 
-use crate::db::HirDatabase;
-use crate::generics::{Generics, generics};
-use crate::next_solver::DbInterner;
-use crate::next_solver::mapping::{ChalkToNextSolver, NextSolverToChalk};
-use crate::{
-    AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
-    LifetimeData, Ty, TyKind,
+use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId, signatures::StructFlags};
+use rustc_ast_ir::Mutability;
+use rustc_type_ir::{
+    Variance,
+    inherent::{AdtDef, IntoKind, SliceLike},
 };
-use chalk_ir::Mutability;
-use hir_def::signatures::StructFlags;
-use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
-use std::fmt;
-use std::ops::Not;
 use stdx::never;
-use triomphe::Arc;
 
-pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Arc<[Variance]>> {
+use crate::{
+    db::HirDatabase,
+    generics::{Generics, generics},
+    next_solver::{
+        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArg, GenericArgs, Region,
+        RegionKind, Term, Ty, TyKind, VariancesOf,
+    },
+};
+
+pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> VariancesOf<'_> {
     tracing::debug!("variances_of(def={:?})", def);
+    let interner = DbInterner::new_with(db, None, None);
     match def {
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
                 let flags = &db.struct_signature(id).flags;
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
-                    return Some(Arc::from_iter(vec![Variance::Invariant; 1]));
+                    return VariancesOf::new_from_iter(interner, [Variance::Invariant]);
                 } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
-                    return Some(Arc::from_iter(vec![Variance::Covariant; 1]));
+                    return VariancesOf::new_from_iter(interner, [Variance::Covariant]);
                 }
             }
         }
-        _ => return None,
+        _ => return VariancesOf::new_from_iter(interner, []),
     }
 
     let generics = generics(db, def);
     let count = generics.len();
     if count == 0 {
-        return None;
+        return VariancesOf::new_from_iter(interner, []);
     }
     let mut variances =
         Context { generics, variances: vec![Variance::Bivariant; count], db }.solve();
@@ -69,7 +71,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
         }
     }
 
-    variances.is_empty().not().then(|| Arc::from_iter(variances))
+    VariancesOf::new_from_iter(interner, variances)
 }
 
 // pub(crate) fn variances_of_cycle_fn(
@@ -81,130 +83,36 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
 //     salsa::CycleRecoveryAction::Iterate
 // }
 
+fn glb(v1: Variance, v2: Variance) -> Variance {
+    // Greatest lower bound of the variance lattice as defined in The Paper:
+    //
+    //       *
+    //    -     +
+    //       o
+    match (v1, v2) {
+        (Variance::Invariant, _) | (_, Variance::Invariant) => Variance::Invariant,
+
+        (Variance::Covariant, Variance::Contravariant) => Variance::Invariant,
+        (Variance::Contravariant, Variance::Covariant) => Variance::Invariant,
+
+        (Variance::Covariant, Variance::Covariant) => Variance::Covariant,
+
+        (Variance::Contravariant, Variance::Contravariant) => Variance::Contravariant,
+
+        (x, Variance::Bivariant) | (Variance::Bivariant, x) => x,
+    }
+}
+
 pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Option<Arc<[Variance]>> {
+) -> VariancesOf<'_> {
+    let interner = DbInterner::new_with(db, None, None);
     let generics = generics(db, def);
     let count = generics.len();
 
-    if count == 0 {
-        return None;
-    }
     // FIXME(next-solver): Returns `Invariance` and not `Bivariance` here, see the comment in the main query.
-    Some(Arc::from(vec![Variance::Invariant; count]))
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Variance {
-    Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
-    Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
-    Contravariant, // T<A> <: T<B> iff B <: A -- e.g., function param type
-    Bivariant,     // T<A> <: T<B>            -- e.g., unused type parameter
-}
-
-impl fmt::Display for Variance {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Variance::Covariant => write!(f, "covariant"),
-            Variance::Invariant => write!(f, "invariant"),
-            Variance::Contravariant => write!(f, "contravariant"),
-            Variance::Bivariant => write!(f, "bivariant"),
-        }
-    }
-}
-
-impl Variance {
-    /// `a.xform(b)` combines the variance of a context with the
-    /// variance of a type with the following meaning. If we are in a
-    /// context with variance `a`, and we encounter a type argument in
-    /// a position with variance `b`, then `a.xform(b)` is the new
-    /// variance with which the argument appears.
-    ///
-    /// Example 1:
-    /// ```ignore (illustrative)
-    /// *mut Vec<i32>
-    /// ```
-    /// Here, the "ambient" variance starts as covariant. `*mut T` is
-    /// invariant with respect to `T`, so the variance in which the
-    /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
-    /// yields `Invariant`. Now, the type `Vec<T>` is covariant with
-    /// respect to its type argument `T`, and hence the variance of
-    /// the `i32` here is `Invariant.xform(Covariant)`, which results
-    /// (again) in `Invariant`.
-    ///
-    /// Example 2:
-    /// ```ignore (illustrative)
-    /// fn(*const Vec<i32>, *mut Vec<i32)
-    /// ```
-    /// The ambient variance is covariant. A `fn` type is
-    /// contravariant with respect to its parameters, so the variance
-    /// within which both pointer types appear is
-    /// `Covariant.xform(Contravariant)`, or `Contravariant`. `*const
-    /// T` is covariant with respect to `T`, so the variance within
-    /// which the first `Vec<i32>` appears is
-    /// `Contravariant.xform(Covariant)` or `Contravariant`. The same
-    /// is true for its `i32` argument. In the `*mut T` case, the
-    /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
-    /// and hence the outermost type is `Invariant` with respect to
-    /// `Vec<i32>` (and its `i32` argument).
-    ///
-    /// Source: Figure 1 of "Taming the Wildcards:
-    /// Combining Definition- and Use-Site Variance" published in PLDI'11.
-    fn xform(self, v: Variance) -> Variance {
-        match (self, v) {
-            // Figure 1, column 1.
-            (Variance::Covariant, Variance::Covariant) => Variance::Covariant,
-            (Variance::Covariant, Variance::Contravariant) => Variance::Contravariant,
-            (Variance::Covariant, Variance::Invariant) => Variance::Invariant,
-            (Variance::Covariant, Variance::Bivariant) => Variance::Bivariant,
-
-            // Figure 1, column 2.
-            (Variance::Contravariant, Variance::Covariant) => Variance::Contravariant,
-            (Variance::Contravariant, Variance::Contravariant) => Variance::Covariant,
-            (Variance::Contravariant, Variance::Invariant) => Variance::Invariant,
-            (Variance::Contravariant, Variance::Bivariant) => Variance::Bivariant,
-
-            // Figure 1, column 3.
-            (Variance::Invariant, _) => Variance::Invariant,
-
-            // Figure 1, column 4.
-            (Variance::Bivariant, _) => Variance::Bivariant,
-        }
-    }
-
-    fn glb(self, v: Variance) -> Variance {
-        // Greatest lower bound of the variance lattice as
-        // defined in The Paper:
-        //
-        //       *
-        //    -     +
-        //       o
-        match (self, v) {
-            (Variance::Invariant, _) | (_, Variance::Invariant) => Variance::Invariant,
-
-            (Variance::Covariant, Variance::Contravariant) => Variance::Invariant,
-            (Variance::Contravariant, Variance::Covariant) => Variance::Invariant,
-
-            (Variance::Covariant, Variance::Covariant) => Variance::Covariant,
-
-            (Variance::Contravariant, Variance::Contravariant) => Variance::Contravariant,
-
-            (x, Variance::Bivariant) | (Variance::Bivariant, x) => x,
-        }
-    }
-
-    pub fn invariant(self) -> Self {
-        self.xform(Variance::Invariant)
-    }
-
-    pub fn covariant(self) -> Self {
-        self.xform(Variance::Covariant)
-    }
-
-    pub fn contravariant(self) -> Self {
-        self.xform(Variance::Contravariant)
-    }
+    VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Invariant, count))
 }
 
 struct Context<'db> {
@@ -213,17 +121,16 @@ struct Context<'db> {
     variances: Vec<Variance>,
 }
 
-impl Context<'_> {
+impl<'db> Context<'db> {
     fn solve(mut self) -> Vec<Variance> {
         tracing::debug!("solve(generics={:?})", self.generics);
         match self.generics.def() {
             GenericDefId::AdtId(adt) => {
                 let db = self.db;
                 let mut add_constraints_from_variant = |variant| {
-                    let subst = self.generics.placeholder_subst(db);
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            &field.clone().substitute(Interner, &subst),
+                            field.instantiate_identity(),
                             Variance::Covariant,
                         );
                     }
@@ -239,16 +146,9 @@ impl Context<'_> {
                 }
             }
             GenericDefId::FunctionId(f) => {
-                let subst = self.generics.placeholder_subst(self.db);
-                let interner = DbInterner::new_with(self.db, None, None);
-                let args: crate::next_solver::GenericArgs<'_> = subst.to_nextsolver(interner);
-                let sig = self
-                    .db
-                    .callable_item_signature(f.into())
-                    .instantiate(interner, args)
-                    .skip_binder()
-                    .to_chalk(interner);
-                self.add_constraints_from_sig(sig.params_and_return.iter(), Variance::Covariant);
+                let sig =
+                    self.db.callable_item_signature(f.into()).instantiate_identity().skip_binder();
+                self.add_constraints_from_sig(sig.inputs_and_output.iter(), Variance::Covariant);
             }
             _ => {}
         }
@@ -276,122 +176,102 @@ impl Context<'_> {
     /// Adds constraints appropriate for an instance of `ty` appearing
     /// in a context with the generics defined in `generics` and
     /// ambient variance `variance`
-    fn add_constraints_from_ty(&mut self, ty: &Ty, variance: Variance) {
+    fn add_constraints_from_ty(&mut self, ty: Ty<'db>, variance: Variance) {
         tracing::debug!("add_constraints_from_ty(ty={:?}, variance={:?})", ty, variance);
-        match ty.kind(Interner) {
-            TyKind::Scalar(_) | TyKind::Never | TyKind::Str | TyKind::Foreign(..) => {
+        match ty.kind() {
+            TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Char
+            | TyKind::Bool
+            | TyKind::Never
+            | TyKind::Str
+            | TyKind::Foreign(..) => {
                 // leaf type -- noop
             }
-            TyKind::FnDef(..) | TyKind::Coroutine(..) | TyKind::Closure(..) => {
+            TyKind::FnDef(..)
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineClosure(..)
+            | TyKind::Closure(..) => {
                 never!("Unexpected unnameable type in variance computation: {:?}", ty);
             }
-            TyKind::Ref(mutbl, lifetime, ty) => {
+            TyKind::Ref(lifetime, ty, mutbl) => {
                 self.add_constraints_from_region(lifetime, variance);
-                self.add_constraints_from_mt(ty, *mutbl, variance);
+                self.add_constraints_from_mt(ty, mutbl, variance);
             }
             TyKind::Array(typ, len) => {
-                self.add_constraints_from_const(len, variance);
+                self.add_constraints_from_const(len);
                 self.add_constraints_from_ty(typ, variance);
             }
             TyKind::Slice(typ) => {
                 self.add_constraints_from_ty(typ, variance);
             }
-            TyKind::Raw(mutbl, ty) => {
-                self.add_constraints_from_mt(ty, *mutbl, variance);
+            TyKind::RawPtr(ty, mutbl) => {
+                self.add_constraints_from_mt(ty, mutbl, variance);
             }
-            TyKind::Tuple(_, subtys) => {
-                for subty in subtys.type_parameters(Interner) {
-                    self.add_constraints_from_ty(&subty, variance);
+            TyKind::Tuple(subtys) => {
+                for subty in subtys {
+                    self.add_constraints_from_ty(subty, variance);
                 }
             }
             TyKind::Adt(def, args) => {
-                self.add_constraints_from_args(def.0.into(), args.as_slice(Interner), variance);
+                self.add_constraints_from_args(def.def_id().0.into(), args, variance);
             }
-            TyKind::Alias(AliasTy::Opaque(opaque)) => {
-                self.add_constraints_from_invariant_args(
-                    opaque.substitution.as_slice(Interner),
-                    variance,
-                );
+            TyKind::Alias(_, alias) => {
+                // FIXME: Probably not correct wrt. opaques.
+                self.add_constraints_from_invariant_args(alias.args);
             }
-            TyKind::Alias(AliasTy::Projection(proj)) => {
-                self.add_constraints_from_invariant_args(
-                    proj.substitution.as_slice(Interner),
-                    variance,
-                );
-            }
-            // FIXME: check this
-            TyKind::AssociatedType(_, subst) => {
-                self.add_constraints_from_invariant_args(subst.as_slice(Interner), variance);
-            }
-            // FIXME: check this
-            TyKind::OpaqueType(_, subst) => {
-                self.add_constraints_from_invariant_args(subst.as_slice(Interner), variance);
-            }
-            TyKind::Dyn(it) => {
+            TyKind::Dynamic(bounds, region) => {
                 // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
-                self.add_constraints_from_region(&it.lifetime, variance);
+                self.add_constraints_from_region(region, variance);
 
-                if let Some(trait_ref) = it.principal() {
-                    // Trait are always invariant so we can take advantage of that.
-                    self.add_constraints_from_invariant_args(
-                        trait_ref
-                            .map(|it| it.map(|it| it.substitution.clone()))
-                            .substitute(
-                                Interner,
-                                &[GenericArg::new(
-                                    Interner,
-                                    chalk_ir::GenericArgData::Ty(TyKind::Error.intern(Interner)),
-                                )],
-                            )
-                            .skip_binders()
-                            .as_slice(Interner),
-                        variance,
-                    );
+                for bound in bounds {
+                    match bound.skip_binder() {
+                        ExistentialPredicate::Trait(trait_ref) => {
+                            self.add_constraints_from_invariant_args(trait_ref.args)
+                        }
+                        ExistentialPredicate::Projection(projection) => {
+                            self.add_constraints_from_invariant_args(projection.args);
+                            match projection.term {
+                                Term::Ty(ty) => {
+                                    self.add_constraints_from_ty(ty, Variance::Invariant)
+                                }
+                                Term::Const(konst) => self.add_constraints_from_const(konst),
+                            }
+                        }
+                        ExistentialPredicate::AutoTrait(_) => {}
+                    }
                 }
-
-                // FIXME
-                // for projection in data.projection_bounds() {
-                //     match projection.skip_binder().term.unpack() {
-                //         TyKind::TermKind::Ty(ty) => {
-                //             self.add_constraints_from_ty( ty, self.invariant);
-                //         }
-                //         TyKind::TermKind::Const(c) => {
-                //             self.add_constraints_from_const( c, self.invariant)
-                //         }
-                //     }
-                // }
             }
 
             // Chalk has no params, so use placeholders for now?
-            TyKind::Placeholder(index) => {
-                let idx = crate::from_placeholder_idx(self.db, *index).0;
-                let index = self.generics.type_or_const_param_idx(idx).unwrap();
-                self.constrain(index, variance);
+            TyKind::Param(param) => self.constrain(param.index as usize, variance),
+            TyKind::FnPtr(sig, _) => {
+                self.add_constraints_from_sig(sig.skip_binder().inputs_and_output.iter(), variance);
             }
-            TyKind::Function(f) => {
-                self.add_constraints_from_sig(
-                    f.substitution.0.iter(Interner).filter_map(move |p| p.ty(Interner)),
-                    variance,
-                );
-            }
-            TyKind::Error => {
+            TyKind::Error(_) => {
                 // we encounter this when walking the trait references for object
                 // types, where we use Error as the Self type
             }
-            TyKind::CoroutineWitness(..) | TyKind::BoundVar(..) | TyKind::InferenceVar(..) => {
+            TyKind::Bound(..) => {}
+            TyKind::CoroutineWitness(..)
+            | TyKind::Placeholder(..)
+            | TyKind::Infer(..)
+            | TyKind::UnsafeBinder(..)
+            | TyKind::Pat(..) => {
                 never!("unexpected type encountered in variance inference: {:?}", ty)
             }
         }
     }
 
-    fn add_constraints_from_invariant_args(&mut self, args: &[GenericArg], variance: Variance) {
-        let variance_i = variance.invariant();
-
-        for k in args {
-            match k.data(Interner) {
-                GenericArgData::Lifetime(lt) => self.add_constraints_from_region(lt, variance_i),
-                GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, variance_i),
-                GenericArgData::Const(val) => self.add_constraints_from_const(val, variance_i),
+    fn add_constraints_from_invariant_args(&mut self, args: GenericArgs<'db>) {
+        for k in args.iter() {
+            match k {
+                GenericArg::Lifetime(lt) => {
+                    self.add_constraints_from_region(lt, Variance::Invariant)
+                }
+                GenericArg::Ty(ty) => self.add_constraints_from_ty(ty, Variance::Invariant),
+                GenericArg::Const(val) => self.add_constraints_from_const(val),
             }
         }
     }
@@ -401,51 +281,40 @@ impl Context<'_> {
     fn add_constraints_from_args(
         &mut self,
         def_id: GenericDefId,
-        args: &[GenericArg],
+        args: GenericArgs<'db>,
         variance: Variance,
     ) {
-        // We don't record `inferred_starts` entries for empty generics.
         if args.is_empty() {
             return;
         }
-        let Some(variances) = self.db.variances_of(def_id) else {
-            return;
-        };
+        let variances = self.db.variances_of(def_id);
 
-        for (i, k) in args.iter().enumerate() {
-            match k.data(Interner) {
-                GenericArgData::Lifetime(lt) => {
-                    self.add_constraints_from_region(lt, variance.xform(variances[i]))
-                }
-                GenericArgData::Ty(ty) => {
-                    self.add_constraints_from_ty(ty, variance.xform(variances[i]))
-                }
-                GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
+        for (k, v) in args.iter().zip(variances) {
+            match k {
+                GenericArg::Lifetime(lt) => self.add_constraints_from_region(lt, variance.xform(v)),
+                GenericArg::Ty(ty) => self.add_constraints_from_ty(ty, variance.xform(v)),
+                GenericArg::Const(val) => self.add_constraints_from_const(val),
             }
         }
     }
 
     /// Adds constraints appropriate for a const expression `val`
     /// in a context with ambient variance `variance`
-    fn add_constraints_from_const(&mut self, c: &Const, variance: Variance) {
-        match &c.data(Interner).value {
-            chalk_ir::ConstValue::Concrete(c) => {
-                if let ConstScalar::UnevaluatedConst(_, subst) = &c.interned {
-                    self.add_constraints_from_invariant_args(subst.as_slice(Interner), variance);
-                }
-            }
+    fn add_constraints_from_const(&mut self, c: Const<'db>) {
+        match c.kind() {
+            ConstKind::Unevaluated(c) => self.add_constraints_from_invariant_args(c.args),
             _ => {}
         }
     }
 
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
-    fn add_constraints_from_sig<'a>(
+    fn add_constraints_from_sig(
         &mut self,
-        mut sig_tys: impl DoubleEndedIterator<Item = &'a Ty>,
+        mut sig_tys: impl DoubleEndedIterator<Item = Ty<'db>>,
         variance: Variance,
     ) {
-        let contra = variance.contravariant();
+        let contra = variance.xform(Variance::Contravariant);
         let Some(output) = sig_tys.next_back() else {
             return never!("function signature has no return type");
         };
@@ -457,27 +326,26 @@ impl Context<'_> {
 
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
-    fn add_constraints_from_region(&mut self, region: &Lifetime, variance: Variance) {
+    fn add_constraints_from_region(&mut self, region: Region<'db>, variance: Variance) {
         tracing::debug!(
             "add_constraints_from_region(region={:?}, variance={:?})",
             region,
             variance
         );
-        match region.data(Interner) {
-            LifetimeData::Placeholder(index) => {
-                let idx = crate::lt_from_placeholder_idx(self.db, *index).0;
-                let inferred = self.generics.lifetime_idx(idx).unwrap();
-                self.constrain(inferred, variance);
-            }
-            LifetimeData::Static => {}
-            LifetimeData::BoundVar(..) => {
+        match region.kind() {
+            RegionKind::ReEarlyParam(param) => self.constrain(param.index as usize, variance),
+            RegionKind::ReStatic => {}
+            RegionKind::ReBound(..) => {
                 // Either a higher-ranked region inside of a type or a
                 // late-bound function parameter.
                 //
                 // We do not compute constraints for either of these.
             }
-            LifetimeData::Error => {}
-            LifetimeData::Phantom(..) | LifetimeData::InferenceVar(..) | LifetimeData::Erased => {
+            RegionKind::ReError(_) => {}
+            RegionKind::ReLateParam(..)
+            | RegionKind::RePlaceholder(..)
+            | RegionKind::ReVar(..)
+            | RegionKind::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 never!(
@@ -491,11 +359,11 @@ impl Context<'_> {
 
     /// Adds constraints appropriate for a mutability-type pair
     /// appearing in a context with ambient variance `variance`
-    fn add_constraints_from_mt(&mut self, ty: &Ty, mt: Mutability, variance: Variance) {
+    fn add_constraints_from_mt(&mut self, ty: Ty<'db>, mt: Mutability, variance: Variance) {
         self.add_constraints_from_ty(
             ty,
             match mt {
-                Mutability::Mut => variance.invariant(),
+                Mutability::Mut => Variance::Invariant,
                 Mutability::Not => variance,
             },
         );
@@ -508,7 +376,7 @@ impl Context<'_> {
             self.variances[index],
             variance
         );
-        self.variances[index] = self.variances[index].glb(variance);
+        self.variances[index] = glb(self.variances[index], variance);
     }
 }
 
@@ -519,6 +387,7 @@ mod tests {
         AdtId, GenericDefId, ModuleDefId, hir::generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
+    use rustc_type_ir::{Variance, inherent::SliceLike};
     use stdx::format_to;
     use syntax::{AstNode, ast::HasName};
     use test_fixture::WithFixture;
@@ -1037,26 +906,21 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                                 let loc = it.lookup(&db);
                                 loc.source(&db).value.name().unwrap()
                             }
-                            GenericDefId::TraitId(it) => {
-                                let loc = it.lookup(&db);
-                                loc.source(&db).value.name().unwrap()
-                            }
-                            GenericDefId::TypeAliasId(it) => {
-                                let loc = it.lookup(&db);
-                                loc.source(&db).value.name().unwrap()
-                            }
-                            GenericDefId::ImplId(_) => return None,
-                            GenericDefId::ConstId(_) => return None,
-                            GenericDefId::StaticId(_) => return None,
+                            GenericDefId::TraitId(_)
+                            | GenericDefId::TypeAliasId(_)
+                            | GenericDefId::ImplId(_)
+                            | GenericDefId::ConstId(_)
+                            | GenericDefId::StaticId(_) => return None,
                         },
                     ))
                 })
                 .sorted_by_key(|(_, n)| n.syntax().text_range().start());
             let mut res = String::new();
             for (def, name) in defs {
-                let Some(variances) = db.variances_of(def) else {
+                let variances = db.variances_of(def);
+                if variances.is_empty() {
                     continue;
-                };
+                }
                 format_to!(
                     res,
                     "{name}[{}]\n",
@@ -1072,10 +936,16 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                                 &lifetime_param_data.name
                             }
                         })
-                        .zip_eq(&*variances)
+                        .zip_eq(variances)
                         .format_with(", ", |(name, var), f| f(&format_args!(
-                            "{}: {var}",
-                            name.as_str()
+                            "{}: {}",
+                            name.as_str(),
+                            match var {
+                                Variance::Covariant => "covariant",
+                                Variance::Invariant => "invariant",
+                                Variance::Contravariant => "contravariant",
+                                Variance::Bivariant => "bivariant",
+                            },
                         )))
                 );
             }

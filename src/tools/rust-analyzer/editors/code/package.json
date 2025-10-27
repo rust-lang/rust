@@ -58,6 +58,7 @@
         "@stylistic/eslint-plugin": "^4.1.0",
         "@stylistic/eslint-plugin-js": "^4.1.0",
         "@tsconfig/strictest": "^2.0.5",
+        "@types/lodash": "^4.17.20",
         "@types/node": "~22.13.4",
         "@types/vscode": "~1.93.0",
         "@typescript-eslint/eslint-plugin": "^8.25.0",

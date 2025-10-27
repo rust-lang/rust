@@ -12,7 +12,7 @@ use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
 use itertools::Itertools;
-use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
@@ -432,8 +432,10 @@ impl FlycheckActor {
                                 options
                                     .target_dir
                                     .as_deref()
-                                    .unwrap_or("target".as_ref())
-                                    .join(format!("rust-analyzer/flycheck{}", self.id)),
+                                    .unwrap_or(
+                                        Utf8Path::new("target").join("rust-analyzer").as_path(),
+                                    )
+                                    .join(format!("flycheck{}", self.id)),
                             ),
                             _ => None,
                         },

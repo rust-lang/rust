@@ -19,14 +19,17 @@
 
 use hir::{PathResolution, Semantics};
 use ide_db::{
-    FileId, RootDatabase,
+    FileId, MiniCore, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
+    ra_fixture::UpmapFromRaFixture,
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
 };
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use nohash_hasher::IntMap;
 use span::Edition;
+use syntax::AstToken;
 use syntax::{
     AstNode,
     SyntaxKind::*,
@@ -35,10 +38,12 @@ use syntax::{
     match_ast,
 };
 
-use crate::{FilePosition, HighlightedRange, NavigationTarget, TryToNav, highlight_related};
+use crate::{
+    Analysis, FilePosition, HighlightedRange, NavigationTarget, TryToNav, highlight_related,
+};
 
 /// Result of a reference search operation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, UpmapFromRaFixture)]
 pub struct ReferenceSearchResult {
     /// Information about the declaration site of the searched item.
     /// For ADTs (structs/enums), this points to the type definition.
@@ -54,7 +59,7 @@ pub struct ReferenceSearchResult {
 }
 
 /// Information about the declaration site of a searched item.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, UpmapFromRaFixture)]
 pub struct Declaration {
     /// Navigation information to jump to the declaration
     pub nav: NavigationTarget,
@@ -81,6 +86,12 @@ pub struct Declaration {
 // | VS Code | <kbd>Shift+Alt+F12</kbd> |
 //
 // ![Find All References](https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif)
+
+#[derive(Debug)]
+pub struct FindAllRefsConfig<'a> {
+    pub search_scope: Option<SearchScope>,
+    pub minicore: MiniCore<'a>,
+}
 
 /// Find all references to the item at the given position.
 ///
@@ -110,14 +121,14 @@ pub struct Declaration {
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
-    search_scope: Option<SearchScope>,
+    config: &FindAllRefsConfig<'_>,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = tracing::info_span!("find_all_refs").entered();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
             let mut usages =
-                def.usages(sema).set_scope(search_scope.as_ref()).include_self_refs().all();
+                def.usages(sema).set_scope(config.search_scope.as_ref()).include_self_refs().all();
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
@@ -163,6 +174,20 @@ pub(crate) fn find_all_refs(
     // Find references for control-flow keywords.
     if let Some(res) = handle_control_flow_keywords(sema, position) {
         return Some(vec![res]);
+    }
+
+    if let Some(token) = syntax.token_at_offset(position.offset).left_biased()
+        && let Some(token) = ast::String::cast(token.clone())
+        && let Some((analysis, fixture_analysis)) =
+            Analysis::from_ra_fixture(sema, token.clone(), &token, config.minicore)
+        && let Some((virtual_file_id, file_offset)) =
+            fixture_analysis.map_offset_down(position.offset)
+    {
+        return analysis
+            .find_all_refs(FilePosition { file_id: virtual_file_id, offset: file_offset }, config)
+            .ok()??
+            .upmap_from_ra_fixture(&fixture_analysis, virtual_file_id, position.file_id)
+            .ok();
     }
 
     match name_for_constructor_search(&syntax, position) {
@@ -433,10 +458,10 @@ fn handle_control_flow_keywords(
 mod tests {
     use expect_test::{Expect, expect};
     use hir::EditionedFileId;
-    use ide_db::{FileId, RootDatabase};
+    use ide_db::{FileId, MiniCore, RootDatabase};
     use stdx::format_to;
 
-    use crate::{SearchScope, fixture};
+    use crate::{SearchScope, fixture, references::FindAllRefsConfig};
 
     #[test]
     fn exclude_tests() {
@@ -1513,8 +1538,11 @@ fn main() {
         expect: Expect,
     ) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs =
-            analysis.find_all_refs(pos, search_scope.map(|it| it(&analysis.db))).unwrap().unwrap();
+        let config = FindAllRefsConfig {
+            search_scope: search_scope.map(|it| it(&analysis.db)),
+            minicore: MiniCore::default(),
+        };
+        let refs = analysis.find_all_refs(pos, &config).unwrap().unwrap();
 
         let mut actual = String::new();
         for mut refs in refs {

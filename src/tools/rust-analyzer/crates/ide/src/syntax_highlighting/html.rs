@@ -1,6 +1,7 @@
 //! Renders a bit of code as HTML.
 
 use hir::{EditionedFileId, Semantics};
+use ide_db::MiniCore;
 use oorandom::Rand32;
 use stdx::format_to;
 use syntax::AstNode;
@@ -12,7 +13,7 @@ use crate::{
 
 pub(crate) fn highlight_as_html_with_config(
     db: &RootDatabase,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: FileId,
     rainbow: bool,
 ) -> String {
@@ -60,7 +61,7 @@ pub(crate) fn highlight_as_html_with_config(
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
     highlight_as_html_with_config(
         db,
-        HighlightConfig {
+        &HighlightConfig {
             strings: true,
             comments: true,
             punctuation: true,
@@ -70,6 +71,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             inject_doc_comment: true,
             macro_bang: true,
             syntactic_name_ref_highlighting: false,
+            minicore: MiniCore::default(),
         },
         file_id,
         rainbow,

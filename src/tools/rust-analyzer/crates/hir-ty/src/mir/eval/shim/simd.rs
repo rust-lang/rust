@@ -34,7 +34,7 @@ impl<'db> Evaluator<'db> {
                             let Some((first_field, _)) = fields.iter().next() else {
                                 not_supported!("simd type with no field");
                             };
-                            let field_ty = self.db.field_types_ns(id.into())[first_field]
+                            let field_ty = self.db.field_types(id.into())[first_field]
                                 .instantiate(self.interner(), subst);
                             return Ok((fields.len(), field_ty));
                         }

@@ -1,14 +1,15 @@
 use hir_def::TraitId;
-use rustc_type_ir::relate::Relate;
 use rustc_type_ir::{TypeFoldable, Upcast, Variance};
 
-use crate::next_solver::fulfill::{FulfillmentCtxt, NextSolverError};
-use crate::next_solver::infer::at::ToTrace;
-use crate::next_solver::infer::traits::{
-    Obligation, ObligationCause, PredicateObligation, PredicateObligations,
+use crate::next_solver::{
+    Const, DbInterner, ParamEnv, Term, TraitRef, Ty, TypeError,
+    fulfill::{FulfillmentCtxt, NextSolverError},
+    infer::{
+        InferCtxt, InferOk,
+        at::ToTrace,
+        traits::{Obligation, ObligationCause, PredicateObligation, PredicateObligations},
+    },
 };
-use crate::next_solver::infer::{DefineOpaqueTypes, InferCtxt, InferOk, TypeTrace};
-use crate::next_solver::{Const, DbInterner, ParamEnv, Term, TraitRef, Ty, TypeError};
 
 /// Used if you want to have pleasant experience when dealing
 /// with obligations outside of hir or mir typeck.
@@ -69,21 +70,7 @@ impl<'a, 'db> ObligationCtxt<'a, 'db> {
     ) -> Result<(), TypeError<'db>> {
         self.infcx
             .at(cause, param_env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
-            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-    }
-
-    pub fn eq_trace<T: Relate<DbInterner<'db>>>(
-        &mut self,
-        cause: &ObligationCause,
-        param_env: ParamEnv<'db>,
-        trace: TypeTrace<'db>,
-        expected: T,
-        actual: T,
-    ) -> Result<(), TypeError<'db>> {
-        self.infcx
-            .at(cause, param_env)
-            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
+            .eq(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -97,7 +84,7 @@ impl<'a, 'db> ObligationCtxt<'a, 'db> {
     ) -> Result<(), TypeError<'db>> {
         self.infcx
             .at(cause, param_env)
-            .sub(DefineOpaqueTypes::Yes, expected, actual)
+            .sub(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -111,7 +98,7 @@ impl<'a, 'db> ObligationCtxt<'a, 'db> {
     ) -> Result<(), TypeError<'db>> {
         self.infcx
             .at(cause, param_env)
-            .relate(DefineOpaqueTypes::Yes, expected, variance, actual)
+            .relate(expected, variance, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -125,7 +112,7 @@ impl<'a, 'db> ObligationCtxt<'a, 'db> {
     ) -> Result<(), TypeError<'db>> {
         self.infcx
             .at(cause, param_env)
-            .sup(DefineOpaqueTypes::Yes, expected, actual)
+            .sup(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 

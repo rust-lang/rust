@@ -22,26 +22,13 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::next_solver::{
-    AliasTy, Binder, Canonical, CanonicalVarValues, CanonicalVars, Const, DbInterner, GenericArg,
-    Goal, ParamEnv, PlaceholderConst, PlaceholderRegion, PlaceholderTy, Predicate, PredicateKind,
-    Region, Ty, TyKind,
-    infer::{
-        DefineOpaqueTypes, InferCtxt, TypeTrace,
-        traits::{Obligation, PredicateObligations},
-    },
+    Canonical, CanonicalVarValues, Const, DbInterner, GenericArg, PlaceholderConst,
+    PlaceholderRegion, PlaceholderTy, Region, Ty, TyKind, infer::InferCtxt,
 };
 use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::IntoKind;
-use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex,
-    Upcast, Variance,
-    inherent::{SliceLike, Ty as _},
-    relate::{
-        Relate, TypeRelation, VarianceDiagInfo,
-        combine::{super_combine_consts, super_combine_tys},
-    },
-};
+use rustc_type_ir::{CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex, inherent::Ty as _};
 
 pub mod canonicalizer;
 pub mod instantiate;

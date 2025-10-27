@@ -231,7 +231,7 @@ const fn attr(
 macro_rules! attrs {
     // attributes applicable to all items
     [@ { item $($tt:tt)* } {$($acc:tt)*}] => {
-        attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "must_use", "no_mangle" })
+        attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "docinclude", "must_use", "no_mangle" })
     };
     // attributes applicable to all adts
     [@ { adt $($tt:tt)* } {$($acc:tt)*}] => {
@@ -345,6 +345,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
+    attr(r#"doc = include_str!("…")"#, Some("docinclude"), Some(r#"doc = include_str!("$0")"#)),
     attr("expect(…)", Some("expect"), Some("expect(${0:lint})")),
     attr(
         r#"export_name = "…""#,

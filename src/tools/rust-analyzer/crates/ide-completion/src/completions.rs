@@ -16,6 +16,7 @@ pub(crate) mod lifetime;
 pub(crate) mod mod_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;
+pub(crate) mod ra_fixture;
 pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod r#type;
@@ -74,6 +75,10 @@ impl Completions {
         self.buf.push(item)
     }
 
+    fn add_many(&mut self, items: impl IntoIterator<Item = CompletionItem>) {
+        self.buf.extend(items)
+    }
+
     fn add_opt(&mut self, item: Option<CompletionItem>) {
         if let Some(item) = item {
             self.buf.push(item)
@@ -104,6 +109,13 @@ impl Completions {
         if ctx.depth_from_crate_root > 0 {
             self.add_keyword(ctx, "super");
         }
+    }
+
+    pub(crate) fn add_type_keywords(&mut self, ctx: &CompletionContext<'_>) {
+        self.add_keyword_snippet(ctx, "fn", "fn($1)");
+        self.add_keyword_snippet(ctx, "dyn", "dyn $0");
+        self.add_keyword_snippet(ctx, "impl", "impl $0");
+        self.add_keyword_snippet(ctx, "for", "for<$1>");
     }
 
     pub(crate) fn add_super_keyword(

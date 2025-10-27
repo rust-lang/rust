@@ -37,10 +37,17 @@ impl<'a> LexedStr<'a> {
     pub fn new(edition: Edition, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(edition, text);
-        if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            conv.res.push(SHEBANG, conv.offset);
-            conv.offset = shebang_len;
-        };
+        if let Ok(script) = crate::frontmatter::ScriptSource::parse(text) {
+            if let Some(shebang) = script.shebang_span() {
+                conv.push(SHEBANG, shebang.end - shebang.start, Vec::new());
+            }
+            if script.frontmatter().is_some() {
+                conv.push(FRONTMATTER, script.content_span().start - conv.offset, Vec::new());
+            }
+        } else if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
+            // Leave error reporting to `rustc_lexer`
+            conv.push(SHEBANG, shebang_len, Vec::new());
+        }
 
         // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
         // but we want to split it to two in edition <2024.
