@@ -9,6 +9,7 @@ LL |     println!("{:?}{:?}", { &temp() }, ());
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
    = note: `#[warn(macro_extended_temporary_scopes)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: temporary lifetime will be shortened in Rust 1.92
@@ -22,6 +23,7 @@ LL |     println!("{:?}{:?}", (), if cond() { &format!("") } else { "" });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
    = note: this warning originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: temporary lifetime will be shortened in Rust 1.92
@@ -35,6 +37,7 @@ LL |     println!("{:?}{:?}", (), if cond() { &"".to_string() } else { "" });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:39:43
@@ -47,6 +50,7 @@ LL |     println!("{:?}{:?}", (), if cond() { &("string".to_owned() + "string") 
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:58:17
@@ -60,6 +64,7 @@ LL |         }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:54:14
@@ -73,6 +78,7 @@ LL |         } else {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:50:14
@@ -86,6 +92,7 @@ LL |         } else if cond() {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:46:14
@@ -99,6 +106,7 @@ LL |         } else if cond() {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:65:18
@@ -111,6 +119,7 @@ LL |     pin!(pin!({ &temp() }));
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:96:13
@@ -123,6 +132,7 @@ LL |     pin!({ &(1 / 0) });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:99:17
@@ -135,6 +145,7 @@ LL |     pin!({ &mut [()] });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:102:13
@@ -147,6 +158,7 @@ LL |     pin!({ &Some(String::new()) });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:105:13
@@ -159,6 +171,7 @@ LL |     pin!({ &(|| ())() });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:108:13
@@ -171,6 +184,7 @@ LL |     pin!({ &|| &local });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/macro-extended-temporary-scopes.rs:111:13
@@ -183,6 +197,7 @@ LL |     pin!({ &CONST_STRING });
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: 15 warnings emitted
 
