@@ -1091,7 +1091,7 @@ impl<'tcx> MiriMachine<'tcx> {
     /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
     pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
         let def_id = frame.instance().def_id();
-        (def_id.is_local() || self.local_crates.contains(&def_id.krate))
+        (def_id.is_local() || self.user_relevant_crates.contains(&def_id.krate))
             && !frame.instance().def.requires_caller_location(self.tcx)
     }
 }
@@ -1100,25 +1100,6 @@ pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
         "{name} not available when isolation is enabled",
     )))
-}
-
-/// Retrieve the list of local crates that should have been passed by cargo-miri in
-/// MIRI_LOCAL_CRATES and turn them into `CrateNum`s.
-pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
-    // Convert the local crate names from the passed-in config into CrateNums so that they can
-    // be looked up quickly during execution
-    let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
-        .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
-        .unwrap_or_default();
-    let mut local_crates = Vec::new();
-    for &crate_num in tcx.crates(()) {
-        let name = tcx.crate_name(crate_num);
-        let name = name.as_str();
-        if local_crate_names.iter().any(|local_name| local_name == name) {
-            local_crates.push(crate_num);
-        }
-    }
-    local_crates
 }
 
 pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {

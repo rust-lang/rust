@@ -580,8 +580,8 @@ pub struct MiriMachine<'tcx> {
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
 
-    /// Crates which are considered local for the purposes of error reporting.
-    pub(crate) local_crates: Vec<CrateNum>,
+    /// Crates which are considered user-relevant for the purposes of error reporting.
+    pub(crate) user_relevant_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their pointer.
     extern_statics: FxHashMap<Symbol, StrictPointer>,
@@ -684,7 +684,7 @@ impl<'tcx> MiriMachine<'tcx> {
         genmc_ctx: Option<Rc<GenmcCtx>>,
     ) -> Self {
         let tcx = layout_cx.tcx();
-        let local_crates = helpers::get_local_crates(tcx);
+        let user_relevant_crates = Self::get_user_relevant_crates(tcx, config);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
@@ -774,7 +774,7 @@ impl<'tcx> MiriMachine<'tcx> {
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
             backtrace_style: config.backtrace_style,
-            local_crates,
+            user_relevant_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             allocator: (!config.native_lib.is_empty())
@@ -865,6 +865,29 @@ impl<'tcx> MiriMachine<'tcx> {
         symbols
     }
 
+    /// Retrieve the list of user-relevant crates based on MIRI_LOCAL_CRATES as set by cargo-miri,
+    /// and extra crates set in the config.
+    fn get_user_relevant_crates(tcx: TyCtxt<'_>, config: &MiriConfig) -> Vec<CrateNum> {
+        // Convert the local crate names from the passed-in config into CrateNums so that they can
+        // be looked up quickly during execution
+        let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
+            .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default();
+        let mut local_crates = Vec::new();
+        for &crate_num in tcx.crates(()) {
+            let name = tcx.crate_name(crate_num);
+            let name = name.as_str();
+            if local_crate_names
+                .iter()
+                .chain(&config.user_relevant_crates)
+                .any(|local_name| local_name == name)
+            {
+                local_crates.push(crate_num);
+            }
+        }
+        local_crates
+    }
+
     pub(crate) fn late_init(
         ecx: &mut MiriInterpCx<'tcx>,
         config: &MiriConfig,
@@ -889,7 +912,7 @@ impl<'tcx> MiriMachine<'tcx> {
     /// Check whether the stack frame that this `FrameInfo` refers to is part of a local crate.
     pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
         let def_id = frame.instance.def_id();
-        def_id.is_local() || self.local_crates.contains(&def_id.krate)
+        def_id.is_local() || self.user_relevant_crates.contains(&def_id.krate)
     }
 
     /// Called when the interpreter is going to shut down abnormally, such as due to a Ctrl-C.
@@ -1006,7 +1029,7 @@ impl VisitProvenance for MiriMachine<'_> {
             string_cache: _,
             exported_symbols_cache: _,
             backtrace_style: _,
-            local_crates: _,
+            user_relevant_crates: _,
             rng: _,
             allocator: _,
             tracked_alloc_ids: _,
