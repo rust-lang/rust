@@ -270,19 +270,17 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     let types = cx.func_params_types(cx.get_type_of_global(kernel));
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
-    let num_ptr_types = types
-        .iter()
-        .filter(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer))
-        .count();
-
-    let ptr_sizes = types
+    let ptr_meta = types
         .iter()
         .zip(metadata)
         .filter_map(|(&x, meta)| match cx.type_kind(x) {
-            rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta.payload_size),
+            rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
             _ => None,
         })
-        .collect::<Vec<u64>>();
+        .collect::<Vec<OffloadMetadata>>();
+
+    let ptr_sizes = ptr_meta.iter().map(|m| m.payload_size).collect::<Vec<_>>();
+    let ptr_transfer = ptr_meta.iter().map(|m| m.mode as u64 | 0x20).collect::<Vec<_>>();
 
     // We do not know their size anymore at this level, so hardcode a placeholder.
     // A follow-up pr will track these from the frontend, where we still have Rust types.
@@ -294,11 +292,8 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
     // will be 2. For now, everything is 3, until we have our frontend set up.
     // 1+2+32: 1 (MapTo), 2 (MapFrom), 32 (Add one extra input ptr per function, to be used later).
-    let memtransfer_types = add_priv_unnamed_arr(
-        &cx,
-        &format!(".offload_maptypes.{symbol}"),
-        &vec![1 + 2 + 32; num_ptr_types],
-    );
+    let memtransfer_types =
+        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}"), &ptr_transfer);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value

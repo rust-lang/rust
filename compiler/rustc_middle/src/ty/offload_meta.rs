@@ -6,10 +6,13 @@ pub struct OffloadMetadata {
     pub mode: TransferKind,
 }
 
+// TODO(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` flag only when needed
+#[repr(u64)]
+#[derive(Debug, Copy, Clone)]
 pub enum TransferKind {
     FromGpu = 1,
     ToGpu = 2,
-    Both = 3,
+    Both = 1 + 2,
 }
 
 impl OffloadMetadata {
@@ -18,7 +21,10 @@ impl OffloadMetadata {
     }
 
     pub fn from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        OffloadMetadata { payload_size: get_payload_size(tcx, ty), mode: TransferKind::Both }
+        OffloadMetadata {
+            payload_size: get_payload_size(tcx, ty),
+            mode: TransferKind::from_ty(tcx, ty),
+        }
     }
 }
 
@@ -66,5 +72,51 @@ fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u64 {
             .unwrap()
             .size
             .bytes(),
+    }
+}
+
+impl TransferKind {
+    pub fn from_ty<'tcx>(_tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+        // TODO(Sa4dUs): this logic is probs not fully correct, but it works for now
+        match ty.kind() {
+            rustc_type_ir::TyKind::Bool
+            | rustc_type_ir::TyKind::Char
+            | rustc_type_ir::TyKind::Int(_)
+            | rustc_type_ir::TyKind::Uint(_)
+            | rustc_type_ir::TyKind::Float(_) => TransferKind::ToGpu,
+
+            rustc_type_ir::TyKind::Adt(_, _)
+            | rustc_type_ir::TyKind::Tuple(_)
+            | rustc_type_ir::TyKind::Array(_, _) => TransferKind::ToGpu,
+
+            rustc_type_ir::TyKind::RawPtr(_, rustc_ast::Mutability::Not)
+            | rustc_type_ir::TyKind::Ref(_, _, rustc_ast::Mutability::Not) => TransferKind::ToGpu,
+
+            rustc_type_ir::TyKind::RawPtr(_, rustc_ast::Mutability::Mut)
+            | rustc_type_ir::TyKind::Ref(_, _, rustc_ast::Mutability::Mut) => TransferKind::Both,
+
+            rustc_type_ir::TyKind::Slice(_)
+            | rustc_type_ir::TyKind::Str
+            | rustc_type_ir::TyKind::Dynamic(_, _) => TransferKind::Both,
+
+            rustc_type_ir::TyKind::FnDef(_, _)
+            | rustc_type_ir::TyKind::FnPtr(_, _)
+            | rustc_type_ir::TyKind::Closure(_, _)
+            | rustc_type_ir::TyKind::CoroutineClosure(_, _)
+            | rustc_type_ir::TyKind::Coroutine(_, _)
+            | rustc_type_ir::TyKind::CoroutineWitness(_, _) => TransferKind::ToGpu,
+
+            rustc_type_ir::TyKind::Alias(_, _)
+            | rustc_type_ir::TyKind::Param(_)
+            | rustc_type_ir::TyKind::Bound(_, _)
+            | rustc_type_ir::TyKind::Placeholder(_)
+            | rustc_type_ir::TyKind::Infer(_)
+            | rustc_type_ir::TyKind::Error(_) => TransferKind::ToGpu,
+
+            rustc_type_ir::TyKind::Never => TransferKind::ToGpu,
+            rustc_type_ir::TyKind::Foreign(_) => TransferKind::Both,
+            rustc_type_ir::TyKind::Pat(_, _) => TransferKind::Both,
+            rustc_type_ir::TyKind::UnsafeBinder(_) => TransferKind::Both,
+        }
     }
 }
