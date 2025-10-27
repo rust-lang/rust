@@ -1953,3 +1953,25 @@ fn foo() {
         expect![""],
     );
 }
+
+#[test]
+fn multiple_matches_with_qualifier() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+pub mod env {
+    pub fn var() {}
+    pub fn _var() {}
+}
+
+//- /bar.rs crate:bar deps:foo
+fn main() {
+    env::var$0
+}
+    "#,
+        expect![[r#"
+            fn _var() (use foo::env) fn()
+            fn var() (use foo::env)  fn()
+        "#]],
+    );
+}
