@@ -5217,7 +5217,7 @@ impl Methods {
                 },
                 (sym::filter_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FilterMap);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
                     lines_filter_map_ok::check_filter_or_flat_map(
@@ -5232,7 +5232,7 @@ impl Methods {
                 },
                 (sym::find_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FindMap);
                 },
                 (sym::flat_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
