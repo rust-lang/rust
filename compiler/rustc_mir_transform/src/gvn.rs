@@ -243,7 +243,13 @@ enum Value<'a, 'tcx> {
 
     // Extractions.
     /// This is the *value* obtained by projecting another value.
-    Projection(VnIndex, ProjectionElem<VnIndex, ()>),
+    Projection {
+        base: VnIndex,
+        elem: ProjectionElem<VnIndex, ()>,
+        /// Some values may be a borrow or pointer.
+        /// Give them a different provenance, so we don't merge them.
+        provenance: Option<VnOpaque>,
+    },
     /// Discriminant of the given value.
     Discriminant(VnIndex),
 
@@ -292,6 +298,7 @@ impl<'a, 'tcx> ValueSet<'a, 'tcx> {
         debug_assert!(match value {
             Value::Opaque(_) | Value::Address { .. } => true,
             Value::Constant { disambiguator, .. } => disambiguator.is_some(),
+            Value::Projection { provenance, .. } => provenance.is_some(),
             _ => false,
         });
 
@@ -545,7 +552,24 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 
     fn insert_deref(&mut self, ty: Ty<'tcx>, value: VnIndex) -> VnIndex {
-        let value = self.insert(ty, Value::Projection(value, ProjectionElem::Deref));
+        let value = if ty.is_any_ptr() {
+            // Give each borrow and pointer a different provenance, so we don't merge them.
+            let index = self.values.insert_unique(ty, |provenance| Value::Projection {
+                base: value,
+                elem: ProjectionElem::Deref,
+                provenance: Some(provenance),
+            });
+            let _index = self.evaluated.push(Some(None));
+            debug_assert_eq!(index, _index);
+            let _index = self.rev_locals.push(SmallVec::new());
+            debug_assert_eq!(index, _index);
+            index
+        } else {
+            self.insert(
+                ty,
+                Value::Projection { base: value, elem: ProjectionElem::Deref, provenance: None },
+            )
+        };
         self.derefs.push(value);
         value
     }
@@ -649,7 +673,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 ImmTy::from_immediate(ptr_imm, ty).into()
             }
 
-            Projection(base, elem) => {
+            Projection { base, elem, .. } => {
                 let base = self.eval_to_const(base)?;
                 // `Index` by constants should have been replaced by `ConstantIndex` by
                 // `simplify_place_projection`.
@@ -829,8 +853,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             ProjectionElem::Field(f, _) => match self.get(value) {
                 Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),
                 Value::Union(active, field) if active == f => return Some((projection_ty, field)),
-                Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant))
-                    if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
+                Value::Projection {
+                    base, elem: ProjectionElem::Downcast(_, read_variant), ..
+                } if let Value::Aggregate(written_variant, fields) = self.get(base)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -883,7 +908,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
         };
 
-        let value = self.insert(projection_ty.ty, Value::Projection(value, proj));
+        let value = self.insert(
+            projection_ty.ty,
+            Value::Projection { base: value, elem: proj, provenance: None },
+        );
         Some((projection_ty, value))
     }
 
@@ -1112,11 +1140,17 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         fields: &[VnIndex],
     ) -> Option<VnIndex> {
         let Some(&first_field) = fields.first() else { return None };
-        let Value::Projection(copy_from_value, _) = self.get(first_field) else { return None };
+        let Value::Projection { base: copy_from_value, .. } = self.get(first_field) else {
+            return None;
+        };
 
         // All fields must correspond one-to-one and come from the same aggregate value.
         if fields.iter().enumerate().any(|(index, &v)| {
-            if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = self.get(v)
+            if let Value::Projection {
+                base: pointer,
+                elem: ProjectionElem::Field(from_index, _),
+                ..
+            } = self.get(v)
                 && copy_from_value == pointer
                 && from_index.index() == index
             {
@@ -1128,7 +1162,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
 
         let mut copy_from_local_value = copy_from_value;
-        if let Value::Projection(pointer, proj) = self.get(copy_from_value)
+        if let Value::Projection { base: pointer, elem: proj, .. } = self.get(copy_from_value)
             && let ProjectionElem::Downcast(_, read_variant) = proj
         {
             if variant_index == read_variant {
@@ -1839,7 +1873,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
                 // If we are here, we failed to find a local, and we already have a `Deref`.
                 // Trying to add projections will only result in an ill-formed place.
                 return None;
-            } else if let Value::Projection(pointer, proj) = self.get(index)
+            } else if let Value::Projection { base: pointer, elem: proj, .. } = self.get(index)
                 && (allow_complex_projection || proj.is_stable_offset())
                 && let Some(proj) = self.try_as_place_elem(self.ty(index), proj, loc)
             {
