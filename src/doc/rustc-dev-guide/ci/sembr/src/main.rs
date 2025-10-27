@@ -19,7 +19,8 @@ struct Cli {
     show_diff: bool,
 }
 
-static REGEX_IGNORE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d\.|\-|\*)\s+").unwrap());
+static REGEX_IGNORE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
 static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)\s+").unwrap());
 
@@ -173,7 +174,7 @@ ignore e.g. and i.e.
 ```
 some code. block
 ```
-some more text.
+sentence with *italics* should not be ignored. truly.
 ";
     let expected = "\
 # some. heading
@@ -190,7 +191,8 @@ ignore e.g. and i.e.
 ```
 some code. block
 ```
-some more text.
+sentence with *italics* should not be ignored.
+truly.
 ";
     assert_eq!(expected, comply(original));
 }
