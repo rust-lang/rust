@@ -8,6 +8,7 @@ use std::{env, fs, iter};
 use rustc_ast as ast;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
@@ -1244,7 +1245,21 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || codegen_backend.codegen_crate(tcx));
+    let codegen = tcx.sess.time("codegen_crate", move || {
+        if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+            // Skip crate items and just output metadata in -Z no-codegen mode.
+            tcx.sess.dcx().abort_if_errors();
+
+            // Linker::link will skip join_codegen in case of a CodegenResults Any value.
+            Box::new(CodegenResults {
+                modules: vec![],
+                allocator_module: None,
+                crate_info: CrateInfo::new(tcx, "<dummy cpu>".to_owned()),
+            })
+        } else {
+            codegen_backend.codegen_crate(tcx)
+        }
+    });
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
