@@ -10,6 +10,7 @@ LL |             wrap!(String::new())
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
    = note: `#[warn(macro_extended_temporary_scopes)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: temporary lifetime will be shortened in Rust 1.92
@@ -27,6 +28,7 @@ LL |     print_with_internal_wrap!();
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
    = note: this warning originates in the macro `print_with_internal_wrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: temporary lifetime will be shortened in Rust 1.92
@@ -41,6 +43,7 @@ LL |         external_macros::wrap!(String::new())
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
 
 warning: temporary lifetime will be shortened in Rust 1.92
   --> $DIR/user-defined-macros.rs:52:5
@@ -54,6 +57,7 @@ LL |     external_macros::print_with_internal_wrap!();
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see <https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#macro-extended-temporary-scopes>
    = note: consider using a `let` binding to create a longer lived value
+   = note: some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`
    = note: this warning originates in the macro `external_macros::print_with_internal_wrap` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 4 warnings emitted

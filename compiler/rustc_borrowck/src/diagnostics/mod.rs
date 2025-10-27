@@ -1607,6 +1607,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         tcx.node_span_lint(MACRO_EXTENDED_TEMPORARY_SCOPES, lint_root, labels, |diag| {
             diag.primary_message("temporary lifetime will be shortened in Rust 1.92");
             diag.note("consider using a `let` binding to create a longer lived value");
+            diag.note("some temporaries were previously incorrectly lifetime-extended since Rust 1.89 in formatting macros, and since Rust 1.88 in `pin!()`");
         });
     }
 }

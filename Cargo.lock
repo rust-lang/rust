@@ -5216,9 +5216,9 @@ dependencies = [
 
 [[package]]
 name = "stringdex"
-version = "0.0.1-alpha9"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7081029913fd7d591c0112182aba8c98ae886b4f12edb208130496cd17dc3c15"
+checksum = "18b3bd4f10d15ef859c40291769f0d85209de6b0f1c30713ff9cdf45ac43ea36"
 dependencies = [
  "stacker",
 ]
