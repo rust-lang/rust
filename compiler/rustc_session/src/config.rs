@@ -826,7 +826,7 @@ pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
     #[default]
     HumanReadable {
-        kind: HumanReadableErrorType = HumanReadableErrorType::Default,
+        kind: HumanReadableErrorType = HumanReadableErrorType::Default { short: false },
         color_config: ColorConfig = ColorConfig::Auto,
     },
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
@@ -2042,7 +2042,7 @@ impl JsonUnusedExterns {
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
 pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
-    let mut json_rendered = HumanReadableErrorType::Default;
+    let mut json_rendered = HumanReadableErrorType::Default { short: false };
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -2058,9 +2058,12 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
 
         for sub_option in option.split(',') {
             match sub_option {
-                "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
+                "diagnostic-short" => {
+                    json_rendered = HumanReadableErrorType::Default { short: true }
+                }
                 "diagnostic-unicode" => {
-                    json_rendered = HumanReadableErrorType::AnnotateSnippet { unicode: true };
+                    json_rendered =
+                        HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true };
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
@@ -2099,7 +2102,7 @@ pub fn parse_error_format(
         match matches.opt_str("error-format").as_deref() {
             None | Some("human") => ErrorOutputType::HumanReadable { color_config, .. },
             Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { unicode: false },
+                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: false },
                 color_config,
             },
             Some("json") => {
@@ -2108,11 +2111,12 @@ pub fn parse_error_format(
             Some("pretty-json") => {
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
-            Some("short") => {
-                ErrorOutputType::HumanReadable { kind: HumanReadableErrorType::Short, color_config }
-            }
+            Some("short") => ErrorOutputType::HumanReadable {
+                kind: HumanReadableErrorType::Default { short: true },
+                color_config,
+            },
             Some("human-unicode") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType::AnnotateSnippet { unicode: true },
+                kind: HumanReadableErrorType::AnnotateSnippet { short: false, unicode: true },
                 color_config,
             },
             Some(arg) => {
@@ -2180,8 +2184,8 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
-            HumanReadableErrorType::AnnotateSnippet { unicode: false } => "human-annotate-rs",
-            HumanReadableErrorType::AnnotateSnippet { unicode: true } => "human-unicode",
+            HumanReadableErrorType::AnnotateSnippet { unicode: false, .. } => "human-annotate-rs",
+            HumanReadableErrorType::AnnotateSnippet { unicode: true, .. } => "human-unicode",
             _ => return,
         },
         _ => return,

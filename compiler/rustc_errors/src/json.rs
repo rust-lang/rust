@@ -371,7 +371,6 @@ impl Diagnostic {
                 .insert(0, Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &args, je));
         }
         let buf = BufWriter(Arc::new(Mutex::new(Vec::new())));
-        let short = je.json_rendered.short();
         let dst: Destination = AutoStream::new(
             Box::new(buf.clone()),
             match je.color_config.to_color_choice() {
@@ -379,34 +378,37 @@ impl Diagnostic {
                 choice => choice,
             },
         );
-        if let HumanReadableErrorType::AnnotateSnippet { unicode } = je.json_rendered {
-            AnnotateSnippetEmitter::new(dst, je.translator.clone())
-                .short_message(short)
-                .sm(je.sm.clone())
-                .diagnostic_width(je.diagnostic_width)
-                .macro_backtrace(je.macro_backtrace)
-                .track_diagnostics(je.track_diagnostics)
-                .terminal_url(je.terminal_url)
-                .ui_testing(je.ui_testing)
-                .ignored_directories_in_source_blocks(
-                    je.ignored_directories_in_source_blocks.clone(),
-                )
-                .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                .emit_diagnostic(diag, registry)
-        } else {
-            HumanEmitter::new(dst, je.translator.clone())
-                .short_message(short)
-                .sm(je.sm.clone())
-                .diagnostic_width(je.diagnostic_width)
-                .macro_backtrace(je.macro_backtrace)
-                .track_diagnostics(je.track_diagnostics)
-                .terminal_url(je.terminal_url)
-                .ui_testing(je.ui_testing)
-                .ignored_directories_in_source_blocks(
-                    je.ignored_directories_in_source_blocks.clone(),
-                )
-                .theme(OutputTheme::Ascii)
-                .emit_diagnostic(diag, registry)
+        match je.json_rendered {
+            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
+                AnnotateSnippetEmitter::new(dst, je.translator.clone())
+                    .short_message(short)
+                    .sm(je.sm.clone())
+                    .diagnostic_width(je.diagnostic_width)
+                    .macro_backtrace(je.macro_backtrace)
+                    .track_diagnostics(je.track_diagnostics)
+                    .terminal_url(je.terminal_url)
+                    .ui_testing(je.ui_testing)
+                    .ignored_directories_in_source_blocks(
+                        je.ignored_directories_in_source_blocks.clone(),
+                    )
+                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+                    .emit_diagnostic(diag, registry)
+            }
+            HumanReadableErrorType::Default { short } => {
+                HumanEmitter::new(dst, je.translator.clone())
+                    .short_message(short)
+                    .sm(je.sm.clone())
+                    .diagnostic_width(je.diagnostic_width)
+                    .macro_backtrace(je.macro_backtrace)
+                    .track_diagnostics(je.track_diagnostics)
+                    .terminal_url(je.terminal_url)
+                    .ui_testing(je.ui_testing)
+                    .ignored_directories_in_source_blocks(
+                        je.ignored_directories_in_source_blocks.clone(),
+                    )
+                    .theme(OutputTheme::Ascii)
+                    .emit_diagnostic(diag, registry)
+            }
         }
 
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
