@@ -1,6 +1,7 @@
 //@ no-prefer-dynamic
 //@ aux-build: impl1.rs
 //@ aux-build: impl2.rs
+//@ ignore-backends: gcc
 // tests that EIIs error properly, even if the conflicting implementations live in another crate.
 #![feature(eii)]
 

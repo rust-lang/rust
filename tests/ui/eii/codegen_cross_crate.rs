@@ -2,6 +2,7 @@
 //@ check-run-results
 //@ aux-build: codegen2.rs
 //@ compile-flags: -O
+//@ ignore-backends: gcc
 // Tests whether calling EIIs works with the declaration in another crate.
 #![feature(eii)]
 

@@ -1,6 +1,7 @@
 //@ run-pass
 //@ check-run-results
 //@ aux-build: codegen1.rs
+//@ ignore-backends: gcc
 // Tests whether re-exports work.
 #![feature(eii)]
 

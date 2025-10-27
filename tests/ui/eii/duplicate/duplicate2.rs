@@ -2,6 +2,7 @@
 //@ aux-build: impl1.rs
 //@ aux-build: impl2.rs
 //@ aux-build: impl3.rs
+//@ ignore-backends: gcc
 // Tests the error message when there are multiple implementations of an EII in many crates.
 #![feature(eii)]
 
