@@ -18,7 +18,9 @@ impl TestCx<'_> {
                     .arg("--crate-name")
                     .arg(file_stem.replace("-", "_"))
                     .arg("--test-file")
-                    .arg(self.testpaths.file.with_extension("js")),
+                    .arg(self.testpaths.file.with_extension("js"))
+                    .arg("--revision")
+                    .arg(self.revision.unwrap_or_default()),
             );
             if !res.status.success() {
                 self.fatal_proc_rec("rustdoc-js test failed!", &res);
