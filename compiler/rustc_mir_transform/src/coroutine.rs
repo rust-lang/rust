@@ -720,16 +720,13 @@ fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals that have been previously borrowed (even if they are still active).
     let borrowed_locals = MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
-    let borrowed_locals_cursor1 =
-        ResultsCursor::new_borrowing(body, &MaybeBorrowedLocals, &borrowed_locals.results);
-    let mut borrowed_locals_cursor2 =
-        ResultsCursor::new_borrowing(body, &MaybeBorrowedLocals, &borrowed_locals.results);
+    let borrowed_locals_cursor1 = ResultsCursor::new_borrowing(body, &borrowed_locals);
+    let mut borrowed_locals_cursor2 = ResultsCursor::new_borrowing(body, &borrowed_locals);
 
     // Calculate the MIR locals that we need to keep storage around for.
     let requires_storage =
         MaybeRequiresStorage::new(borrowed_locals_cursor1).iterate_to_fixpoint(tcx, body, None);
-    let mut requires_storage_cursor =
-        ResultsCursor::new_borrowing(body, &requires_storage.analysis, &requires_storage.results);
+    let mut requires_storage_cursor = ResultsCursor::new_borrowing(body, &requires_storage);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
@@ -801,8 +798,7 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        &requires_storage.analysis,
-        &requires_storage.results,
+        &requires_storage,
     );
 
     LivenessInfo {
@@ -867,8 +863,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: DenseBitSet<Local>,
-    analysis: &MaybeRequiresStorage<'mir, 'tcx>,
-    results: &Results<DenseBitSet<Local>>,
+    results: &Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -888,7 +883,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
-    visit_reachable_results(body, analysis, results, &mut visitor);
+    visit_reachable_results(body, results, &mut visitor);
 
     let local_conflicts = visitor.local_conflicts;
 

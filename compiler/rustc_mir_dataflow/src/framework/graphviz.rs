@@ -32,8 +32,7 @@ use crate::errors::{
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    analysis: &A,
-    results: &Results<A::Domain>,
+    results: &Results<'tcx, A>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where
@@ -80,7 +79,7 @@ where
 
     let mut buf = Vec::new();
 
-    let graphviz = Formatter::new(body, analysis, results, style);
+    let graphviz = Formatter::new(body, results, style);
     let mut render_opts =
         vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
@@ -205,8 +204,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir Body<'tcx>,
-    analysis: &'mir A,
-    results: &'mir Results<A::Domain>,
+    results: &'mir Results<'tcx, A>,
     style: OutputStyle,
     reachable: DenseBitSet<BasicBlock>,
 }
@@ -215,14 +213,9 @@ impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    fn new(
-        body: &'mir Body<'tcx>,
-        analysis: &'mir A,
-        results: &'mir Results<A::Domain>,
-        style: OutputStyle,
-    ) -> Self {
+    fn new(body: &'mir Body<'tcx>, results: &'mir Results<'tcx, A>, style: OutputStyle) -> Self {
         let reachable = traversal::reachable_as_bitset(body);
-        Formatter { body, analysis, results, style, reachable }
+        Formatter { body, results, style, reachable }
     }
 }
 
@@ -260,11 +253,10 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let diffs =
-            StateDiffCollector::run(self.body, *block, self.analysis, self.results, self.style);
+        let diffs = StateDiffCollector::run(self.body, *block, self.results, self.style);
 
         let mut fmt = BlockFormatter {
-            cursor: ResultsCursor::new_borrowing(self.body, self.analysis, self.results),
+            cursor: ResultsCursor::new_borrowing(self.body, self.results),
             style: self.style,
             bg: Background::Light,
         };
@@ -692,8 +684,7 @@ impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &Body<'tcx>,
         block: BasicBlock,
-        analysis: &A,
-        results: &Results<A::Domain>,
+        results: &Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self
     where
@@ -701,12 +692,12 @@ impl<D> StateDiffCollector<D> {
         D: DebugWithContext<A>,
     {
         let mut collector = StateDiffCollector {
-            prev_state: analysis.bottom_value(body),
+            prev_state: results.analysis.bottom_value(body),
             after: vec![],
             before: (style == OutputStyle::BeforeAndAfter).then_some(vec![]),
         };
 
-        visit_results(body, std::iter::once(block), analysis, results, &mut collector);
+        visit_results(body, std::iter::once(block), results, &mut collector);
         collector
     }
 }

@@ -66,9 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
-        debug_span!("collect").in_scope(|| {
-            visit_reachable_results(body, &const_.analysis, &const_.results, &mut visitor)
-        });
+        debug_span!("collect").in_scope(|| visit_reachable_results(body, &const_, &mut visitor));
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }

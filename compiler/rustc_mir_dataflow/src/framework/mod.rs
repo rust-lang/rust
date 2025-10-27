@@ -58,8 +58,7 @@ mod visitor;
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
-pub(crate) use self::results::AnalysisAndResults;
-pub use self::results::Results;
+pub use self::results::{EntryStates, Results};
 pub use self::visitor::{ResultsVisitor, visit_reachable_results, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -249,15 +248,17 @@ pub trait Analysis<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
         pass_name: Option<&'static str>,
-    ) -> AnalysisAndResults<'tcx, Self>
+    ) -> Results<'tcx, Self>
     where
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
-        let mut results = IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
-        self.initialize_start_block(body, &mut results[mir::START_BLOCK]);
+        let mut entry_states =
+            IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut entry_states[mir::START_BLOCK]);
 
-        if Self::Direction::IS_BACKWARD && results[mir::START_BLOCK] != self.bottom_value(body) {
+        if Self::Direction::IS_BACKWARD && entry_states[mir::START_BLOCK] != self.bottom_value(body)
+        {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
@@ -281,8 +282,8 @@ pub trait Analysis<'tcx> {
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
             // Set the state to the entry state of the block. This is equivalent to `state =
-            // results[bb].clone()`, but it saves an allocation, thus improving compile times.
-            state.clone_from(&results[bb]);
+            // entry_states[bb].clone()`, but it saves an allocation, thus improving compile times.
+            state.clone_from(&entry_states[bb]);
 
             Self::Direction::apply_effects_in_block(
                 &self,
@@ -291,7 +292,7 @@ pub trait Analysis<'tcx> {
                 bb,
                 &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
-                    let set_changed = results[target].join(state);
+                    let set_changed = entry_states[target].join(state);
                     if set_changed {
                         dirty_queue.insert(target);
                     }
@@ -299,14 +300,16 @@ pub trait Analysis<'tcx> {
             );
         }
 
+        let results = Results { analysis: self, entry_states };
+
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &self, &results, pass_name);
+            let res = write_graphviz_results(tcx, body, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
         }
 
-        AnalysisAndResults { analysis: self, results }
+        results
     }
 }
 

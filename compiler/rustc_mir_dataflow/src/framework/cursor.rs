@@ -42,8 +42,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    analysis: SimpleCow<'mir, A>,
-    results: SimpleCow<'mir, Results<A::Domain>>,
+    results: SimpleCow<'mir, Results<'tcx, A>>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -71,15 +70,10 @@ where
         self.body
     }
 
-    fn new(
-        body: &'mir mir::Body<'tcx>,
-        analysis: SimpleCow<'mir, A>,
-        results: SimpleCow<'mir, Results<A::Domain>>,
-    ) -> Self {
-        let bottom_value = analysis.bottom_value(body);
+    fn new(body: &'mir mir::Body<'tcx>, results: SimpleCow<'mir, Results<'tcx, A>>) -> Self {
+        let bottom_value = results.analysis.bottom_value(body);
         ResultsCursor {
             body,
-            analysis,
             results,
 
             // Initialize to the `bottom_value` and set `state_needs_reset` to tell the cursor that
@@ -95,21 +89,13 @@ where
     }
 
     /// Returns a new cursor that takes ownership of and inspects analysis results.
-    pub fn new_owning(
-        body: &'mir mir::Body<'tcx>,
-        analysis: A,
-        results: Results<A::Domain>,
-    ) -> Self {
-        Self::new(body, SimpleCow::Owned(analysis), SimpleCow::Owned(results))
+    pub fn new_owning(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+        Self::new(body, SimpleCow::Owned(results))
     }
 
     /// Returns a new cursor that borrows and inspects analysis results.
-    pub fn new_borrowing(
-        body: &'mir mir::Body<'tcx>,
-        analysis: &'mir A,
-        results: &'mir Results<A::Domain>,
-    ) -> Self {
-        Self::new(body, SimpleCow::Borrowed(analysis), SimpleCow::Borrowed(results))
+    pub fn new_borrowing(body: &'mir mir::Body<'tcx>, results: &'mir Results<'tcx, A>) -> Self {
+        Self::new(body, SimpleCow::Borrowed(results))
     }
 
     /// Allows inspection of unreachable basic blocks even with `debug_assertions` enabled.
@@ -121,7 +107,7 @@ where
 
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
-        &self.analysis
+        &self.results.analysis
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.
@@ -133,7 +119,7 @@ where
         #[cfg(debug_assertions)]
         assert!(self.reachable_blocks.contains(block));
 
-        self.state.clone_from(&self.results[block]);
+        self.state.clone_from(&self.results.entry_states[block]);
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
     }
@@ -225,7 +211,7 @@ where
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            &*self.analysis,
+            &self.results.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -241,7 +227,7 @@ where
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
     pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
-        f(&self.analysis, &mut self.state);
+        f(&self.results.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }
