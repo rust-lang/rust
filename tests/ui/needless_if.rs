@@ -105,3 +105,12 @@ fn main() {
 
     let () = if maybe_side_effect() {};
 }
+
+fn issue15960() -> i32 {
+    if matches!(2, 3) {}
+    //~^ needless_if
+    if matches!(2, 3) == (2 * 2 == 5) {}
+    //~^ needless_if
+
+    1 // put something here so that `if` is a statement not an expression
+}
