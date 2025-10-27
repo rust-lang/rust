@@ -33,7 +33,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
-    config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
+    config::{
+        ClientCommandsConfig, Config, HoverActionsConfig, RustfmtConfig, WorkspaceSymbolConfig,
+    },
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
@@ -1463,13 +1465,14 @@ pub(crate) fn handle_code_action(
         resolve,
         frange,
     )?;
+    let client_commands = snap.config.client_commands();
     for (index, assist) in assists.into_iter().enumerate() {
         let resolve_data = if code_action_resolve_cap {
             Some((index, params.clone(), snap.file_version(file_id)))
         } else {
             None
         };
-        let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
+        let code_action = to_proto::code_action(&snap, &client_commands, assist, resolve_data)?;
 
         // Check if the client supports the necessary `ResourceOperation`s.
         let changes = code_action.edit.as_ref().and_then(|it| it.document_changes.as_ref());
@@ -1570,7 +1573,7 @@ pub(crate) fn handle_code_action_resolve(
         ))
         .into());
     }
-    let ca = to_proto::code_action(&snap, assist.clone(), None)?;
+    let ca = to_proto::code_action(&snap, &snap.config.client_commands(), assist.clone(), None)?;
     code_action.edit = ca.edit;
     code_action.command = ca.command;
 
@@ -2134,9 +2137,11 @@ fn to_command_link(command: lsp_types::Command, tooltip: String) -> lsp_ext::Com
 fn show_impl_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
+    implementations: bool,
+    show_references: bool,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().implementations
-        && snap.config.client_commands().show_reference
+    if implementations
+        && show_references
         && let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None)
     {
         let uri = to_proto::url(snap, position.file_id);
@@ -2161,9 +2166,11 @@ fn show_impl_command_link(
 fn show_ref_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
+    references: bool,
+    show_reference: bool,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().references
-        && snap.config.client_commands().show_reference
+    if references
+        && show_reference
         && let Some(ref_search_res) = snap
             .analysis
             .find_all_refs(
@@ -2198,8 +2205,9 @@ fn show_ref_command_link(
 fn runnable_action_links(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
+    hover_actions_config: &HoverActionsConfig,
+    client_commands_config: &ClientCommandsConfig,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    let hover_actions_config = snap.config.hover_actions();
     if !hover_actions_config.runnable() {
         return None;
     }
@@ -2209,7 +2217,6 @@ fn runnable_action_links(
         return None;
     }
 
-    let client_commands_config = snap.config.client_commands();
     if !(client_commands_config.run_single || client_commands_config.debug_single) {
         return None;
     }
@@ -2244,11 +2251,10 @@ fn runnable_action_links(
 fn goto_type_action_links(
     snap: &GlobalStateSnapshot,
     nav_targets: &[HoverGotoTypeData],
+    hover_actions: &HoverActionsConfig,
+    client_commands: &ClientCommandsConfig,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if !snap.config.hover_actions().goto_type_def
-        || nav_targets.is_empty()
-        || !snap.config.client_commands().goto_location
-    {
+    if !hover_actions.goto_type_def || nav_targets.is_empty() || !client_commands.goto_location {
         return None;
     }
 
@@ -2268,13 +2274,29 @@ fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
+    let hover_actions = snap.config.hover_actions();
+    let client_commands = snap.config.client_commands();
     actions
         .iter()
         .filter_map(|it| match it {
-            HoverAction::Implementation(position) => show_impl_command_link(snap, position),
-            HoverAction::Reference(position) => show_ref_command_link(snap, position),
-            HoverAction::Runnable(r) => runnable_action_links(snap, r.clone()),
-            HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
+            HoverAction::Implementation(position) => show_impl_command_link(
+                snap,
+                position,
+                hover_actions.implementations,
+                client_commands.show_reference,
+            ),
+            HoverAction::Reference(position) => show_ref_command_link(
+                snap,
+                position,
+                hover_actions.references,
+                client_commands.show_reference,
+            ),
+            HoverAction::Runnable(r) => {
+                runnable_action_links(snap, r.clone(), &hover_actions, &client_commands)
+            }
+            HoverAction::GoToType(targets) => {
+                goto_type_action_links(snap, targets, &hover_actions, &client_commands)
+            }
         })
         .collect()
 }
