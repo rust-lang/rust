@@ -1030,7 +1030,7 @@ impl fmt::Debug for File {
 
         if let Ok(file_attr) = self.file_attr() {
             b.field("read", &true);
-            b.field("write", file_attr.perm().readonly());
+            b.field("write", &file_attr.perm().readonly());
 
             // Getting analogue of file mode (unix) using file attributes
             // See https://learn.microsoft.com/windows/win32/fileio/file-attribute-constants
