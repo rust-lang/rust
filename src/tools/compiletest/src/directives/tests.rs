@@ -7,7 +7,7 @@ use crate::directives::{
     extract_llvm_version, extract_version_range, iter_directives, line_directive, parse_edition,
     parse_normalize_rule,
 };
-use crate::executor::{CollectedTestDesc, ShouldPanic};
+use crate::executor::{CollectedTestDesc, ShouldFail};
 
 fn make_test_description(
     config: &Config,
@@ -247,9 +247,9 @@ fn should_fail() {
     let p = Utf8Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, p, "", None);
-    assert_eq!(d.should_panic, ShouldPanic::No);
+    assert_eq!(d.should_fail, ShouldFail::No);
     let d = make_test_description(&config, tn, p, p, "//@ should-fail", None);
-    assert_eq!(d.should_panic, ShouldPanic::Yes);
+    assert_eq!(d.should_fail, ShouldFail::Yes);
 }
 
 #[test]
@@ -605,6 +605,8 @@ fn ignore_arch() {
         ("i686-unknown-linux-gnu", "x86"),
         ("nvptx64-nvidia-cuda", "nvptx64"),
         ("thumbv7m-none-eabi", "thumb"),
+        ("i586-unknown-linux-gnu", "x86"),
+        ("i586-unknown-linux-gnu", "i586"),
     ];
     for (target, arch) in archs {
         let config: Config = cfg().target(target).build();

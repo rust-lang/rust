@@ -1107,8 +1107,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // If such resolution is successful and gives the same result
             // (e.g. if the macro is re-imported), then silence the lint.
             let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
+            let ident = path.segments[0].ident;
             let fallback_binding = self.reborrow().resolve_ident_in_scope_set(
-                path.segments[0].ident,
+                ident,
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
                 None,
@@ -1116,7 +1117,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None,
                 None,
             );
-            if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+            if let Ok(fallback_binding) = fallback_binding
+                && fallback_binding.res().opt_def_id() == Some(def_id)
+            {
+                // Silence `unused_imports` on the fallback import as well.
+                self.get_mut().record_use(ident, fallback_binding, Used::Other);
+            } else {
                 let location = match parent_scope.module.kind {
                     ModuleKind::Def(kind, def_id, name) => {
                         if let Some(name) = name {

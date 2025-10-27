@@ -1,5 +1,4 @@
 //@ add-core-stubs
-//@ needs-asm-support
 //@ revisions: riscv32i riscv32imafc riscv32gc riscv32e riscv64imac riscv64gc
 //@[riscv32i] compile-flags: --target riscv32i-unknown-none-elf
 //@[riscv32i] needs-llvm-components: riscv

@@ -2959,7 +2959,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
 
                         for c in chars {
                             // Inside a template format arg, any character is permitted for the
-                            // puproses of label detection because we assume that it can be
+                            // purposes of label detection because we assume that it can be
                             // replaced with some other valid label string later. `options(raw)`
                             // asm blocks cannot have format args, so they are excluded from this
                             // special case.

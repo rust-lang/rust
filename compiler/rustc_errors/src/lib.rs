@@ -39,6 +39,12 @@ use std::path::{Path, PathBuf};
 use std::{fmt, panic};
 
 use Level::*;
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use anstream::{AutoStream, ColorChoice};
+pub use anstyle::{
+    Ansi256Color, AnsiColor, Color, EffectIter, Effects, Reset, RgbColor, Style as Anstyle,
+};
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
@@ -69,9 +75,6 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
-// Used by external projects such as `rust-gpu`.
-// See https://github.com/rust-lang/rust/pull/115393.
-pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
 
 use crate::emitter::TimingEvent;
@@ -397,17 +400,6 @@ impl CodeSuggestion {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
-                // Verify the assumption that all spans are disjoint
-                assert_eq!(
-                    substitution.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
-                    None,
-                    "all spans must be disjoint",
-                );
-
-                // Account for cases where we are suggesting the same code that's already
-                // there. This shouldn't happen often, but in some cases for multipart
-                // suggestions it's much easier to handle it here than in the origin.
-                substitution.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
                 // Find the bounding span.
                 let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
@@ -502,12 +494,16 @@ impl CodeSuggestion {
                             _ => 1,
                         })
                         .sum();
-
-                    line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
-                    });
-
+                    if !is_different(sm, &part.snippet, part.span) {
+                        // Account for cases where we are suggesting the same code that's already
+                        // there. This shouldn't happen often, but in some cases for multipart
+                        // suggestions it's much easier to handle it here than in the origin.
+                    } else {
+                        line_highlight.push(SubstitutionHighlight {
+                            start: (cur_lo.col.0 as isize + acc) as usize,
+                            end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        });
+                    }
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
                     // Account for the difference between the width of the current code and the
@@ -1982,25 +1978,21 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    fn color(self) -> ColorSpec {
-        let mut spec = ColorSpec::new();
+    fn color(self) -> anstyle::Style {
         match self {
-            Bug | Fatal | Error | DelayedBug => {
-                spec.set_fg(Some(Color::Red)).set_intense(true);
-            }
+            Bug | Fatal | Error | DelayedBug => AnsiColor::BrightRed.on_default(),
             ForceWarning | Warning => {
-                spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
+                if cfg!(windows) {
+                    AnsiColor::BrightYellow.on_default()
+                } else {
+                    AnsiColor::Yellow.on_default()
+                }
             }
-            Note | OnceNote => {
-                spec.set_fg(Some(Color::Green)).set_intense(true);
-            }
-            Help | OnceHelp => {
-                spec.set_fg(Some(Color::Cyan)).set_intense(true);
-            }
-            FailureNote => {}
+            Note | OnceNote => AnsiColor::BrightGreen.on_default(),
+            Help | OnceHelp => AnsiColor::BrightCyan.on_default(),
+            FailureNote => anstyle::Style::new(),
             Allow | Expect => unreachable!(),
         }
-        spec
     }
 
     pub fn to_str(self) -> &'static str {

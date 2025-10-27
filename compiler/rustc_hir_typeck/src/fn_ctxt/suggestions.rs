@@ -1953,7 +1953,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.suggest_derive(diag, &[(trait_ref.upcast(self.tcx), None, None)]);
+                self.suggest_derive(diag, &vec![(trait_ref.upcast(self.tcx), None, None)]);
             }
         }
     }

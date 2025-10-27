@@ -2,19 +2,21 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 
 use crate::ty::{Ty, TyCtxt, TypingEnv};
 
-/// Flags that dictate how a parameter is mutated. If the flags are empty, the param is
-/// read-only. If non-empty, it is read-only if *all* flags' conditions are met.
+/// Summarizes how a parameter (a return place or an argument) is used inside a MIR body.
 #[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, HashStable)]
-pub struct DeducedReadOnlyParam(u8);
+pub struct UsageSummary(u8);
 
 bitflags::bitflags! {
-    impl DeducedReadOnlyParam: u8 {
-        /// This parameter is dropped. It is read-only if `!needs_drop`.
-        const IF_NO_DROP = 1 << 0;
-        /// This parameter is borrowed. It is read-only if `Freeze`.
-        const IF_FREEZE   = 1 << 1;
-        /// This parameter is mutated. It is never read-only.
-        const MUTATED     = 1 << 2;
+    impl UsageSummary: u8 {
+        /// This parameter is dropped when it `needs_drop`.
+        const DROP = 1 << 0;
+        /// There is a shared borrow to this parameter.
+        /// It allows for mutation unless parameter is `Freeze`.
+        const SHARED_BORROW = 1 << 1;
+        /// This parameter is mutated (excluding through a drop or a shared borrow).
+        const MUTATE = 1 << 2;
+        /// This parameter is captured (excluding through a drop).
+        const CAPTURE = 1 << 3;
     }
 }
 
@@ -24,43 +26,53 @@ bitflags::bitflags! {
 /// These can be useful for optimization purposes when a function is directly called. We compute
 /// them and store them into the crate metadata so that downstream crates can make use of them.
 ///
-/// Right now, we only have `read_only`, but `no_capture` and `no_alias` might be useful in the
+/// Right now, we have `readonly` and `captures(none)`, but `no_alias` might be useful in the
 /// future.
 #[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, HashStable)]
 pub struct DeducedParamAttrs {
-    /// The parameter is marked immutable in the function.
-    pub read_only: DeducedReadOnlyParam,
-}
-
-// By default, consider the parameters to be mutated.
-impl Default for DeducedParamAttrs {
-    #[inline]
-    fn default() -> DeducedParamAttrs {
-        DeducedParamAttrs { read_only: DeducedReadOnlyParam::MUTATED }
-    }
+    pub usage: UsageSummary,
 }
 
 impl DeducedParamAttrs {
+    /// Returns true if no attributes have been deduced.
     #[inline]
     pub fn is_default(self) -> bool {
-        self.read_only.contains(DeducedReadOnlyParam::MUTATED)
+        self.usage.contains(UsageSummary::MUTATE | UsageSummary::CAPTURE)
     }
 
+    /// For parameters passed indirectly, returns true if pointer is never written through.
     pub fn read_only<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
-        let read_only = self.read_only;
-        // We have to check *all* set bits; only if all checks pass is this truly read-only.
-        if read_only.contains(DeducedReadOnlyParam::MUTATED) {
+        // Only if all checks pass is this truly read-only.
+        if self.usage.contains(UsageSummary::MUTATE) {
             return false;
         }
-        if read_only.contains(DeducedReadOnlyParam::IF_NO_DROP) && ty.needs_drop(tcx, typing_env) {
+        if self.usage.contains(UsageSummary::DROP) && ty.needs_drop(tcx, typing_env) {
             return false;
         }
-        if read_only.contains(DeducedReadOnlyParam::IF_FREEZE) && !ty.is_freeze(tcx, typing_env) {
+        if self.usage.contains(UsageSummary::SHARED_BORROW) && !ty.is_freeze(tcx, typing_env) {
+            return false;
+        }
+        true
+    }
+
+    /// For parameters passed indirectly, returns true if pointer is not captured, i.e., its
+    /// address is not captured, and pointer is used neither for reads nor writes after function
+    /// returns.
+    pub fn captures_none<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        typing_env: TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        if self.usage.contains(UsageSummary::CAPTURE) {
+            return false;
+        }
+        if self.usage.contains(UsageSummary::DROP) && ty.needs_drop(tcx, typing_env) {
             return false;
         }
         true

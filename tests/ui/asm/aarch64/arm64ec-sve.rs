@@ -1,6 +1,5 @@
 //@ add-core-stubs
 //@ compile-flags: --target arm64ec-pc-windows-msvc
-//@ needs-asm-support
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc
 

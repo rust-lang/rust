@@ -40,20 +40,6 @@ pub unsafe fn unchecked(a: i32, b: i32, c: u32) {
     let _l = core::intrinsics::unchecked_shr(a, c);
 }
 
-// EMIT_MIR lower_intrinsics.size_of.LowerIntrinsics.diff
-pub fn size_of<T>() -> usize {
-    // CHECK-LABEL: fn size_of(
-    // CHECK: {{_.*}} = SizeOf(T);
-    core::intrinsics::size_of::<T>()
-}
-
-// EMIT_MIR lower_intrinsics.align_of.LowerIntrinsics.diff
-pub fn align_of<T>() -> usize {
-    // CHECK-LABEL: fn align_of(
-    // CHECK: {{_.*}} = AlignOf(T);
-    core::intrinsics::align_of::<T>()
-}
-
 // EMIT_MIR lower_intrinsics.forget.LowerIntrinsics.diff
 pub fn forget<T>(t: T) {
     // CHECK-LABEL: fn forget(
@@ -73,11 +59,13 @@ pub fn unreachable() -> ! {
 // EMIT_MIR lower_intrinsics.non_const.LowerIntrinsics.diff
 pub fn non_const<T>() -> usize {
     // CHECK-LABEL: fn non_const(
-    // CHECK: SizeOf(T);
+    // CHECK: _1 = std::intrinsics::unreachable;
+    // CHECK: unreachable;
+    // CHECK-NEXT: }
 
     // Check that lowering works with non-const operand as a func.
-    let size_of_t = core::intrinsics::size_of::<T>;
-    size_of_t()
+    let unreachable = core::intrinsics::unreachable;
+    unsafe { unreachable() }
 }
 
 // EMIT_MIR lower_intrinsics.transmute_inhabited.LowerIntrinsics.diff

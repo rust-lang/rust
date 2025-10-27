@@ -216,9 +216,7 @@ fn layout_of_uncached<'tcx>(
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end } => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
-                        &mut layout.backend_repr
-                    {
+                    if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
                         scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
@@ -266,6 +264,25 @@ fn layout_of_uncached<'tcx>(
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }
                 }
+                ty::PatternKind::NotNull => {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
+                        scalar.valid_range_mut().start = 1;
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(cx),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        bug!(
+                            "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
+                        )
+                    }
+                }
+
                 ty::PatternKind::Or(variants) => match *variants[0] {
                     ty::PatternKind::Range { .. } => {
                         if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
@@ -282,7 +299,7 @@ fn layout_of_uncached<'tcx>(
                                             .try_to_bits(tcx, cx.typing_env)
                                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?,
                                     )),
-                                    ty::PatternKind::Or(_) => {
+                                    ty::PatternKind::NotNull | ty::PatternKind::Or(_) => {
                                         unreachable!("mixed or patterns are not allowed")
                                     }
                                 })
@@ -347,9 +364,18 @@ fn layout_of_uncached<'tcx>(
                             )
                         }
                     }
+                    ty::PatternKind::NotNull => bug!("or patterns can't contain `!null` patterns"),
                     ty::PatternKind::Or(..) => bug!("patterns cannot have nested or patterns"),
                 },
             }
+            // Pattern types contain their base as their sole field.
+            // This allows the rest of the compiler to process pattern types just like
+            // single field transparent Adts, and only the parts of the compiler that
+            // specifically care about pattern types will have to handle it.
+            layout.fields = FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into_iter().collect(),
+                memory_index: [0].into_iter().collect(),
+            };
             tcx.mk_layout(layout)
         }
 

@@ -272,8 +272,10 @@ LL |     assert_eq!(a!(), true);
    |
 help: replace it with `assert!(..)`
    |
-LL -     assert_eq!(a!(), true);
-LL +     assert!(a!());
+LL |         true
+...
+LL |
+LL ~     assert!(a!());
    |
 
 error: used `assert_eq!` with a literal bool
@@ -284,8 +286,10 @@ LL |     assert_eq!(true, b!());
    |
 help: replace it with `assert!(..)`
    |
-LL -     assert_eq!(true, b!());
-LL +     assert!(b!());
+LL |         true
+...
+LL |
+LL ~     assert!(b!());
    |
 
 error: used `debug_assert_eq!` with a literal bool

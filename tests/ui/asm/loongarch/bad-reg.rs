@@ -1,5 +1,4 @@
 //@ add-core-stubs
-//@ needs-asm-support
 //@ revisions: loongarch32_ilp32d loongarch32_ilp32s loongarch64_lp64d loongarch64_lp64s
 //@[loongarch32_ilp32d] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32_ilp32d] needs-llvm-components: loongarch

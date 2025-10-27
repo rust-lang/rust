@@ -608,8 +608,8 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
             if cfg!(debug_assertions) {
-                let a_ty = cx.type_of(au.def).instantiate(cx, au.args);
-                let b_ty = cx.type_of(bu.def).instantiate(cx, bu.args);
+                let a_ty = cx.type_of(au.def.into()).instantiate(cx, au.args);
+                let b_ty = cx.type_of(bu.def.into()).instantiate(cx, bu.args);
                 assert_eq!(a_ty, b_ty);
             }
 

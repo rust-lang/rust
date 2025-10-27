@@ -9,8 +9,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, Sysroot, UnstableOptions, get_cmd_lint_options, nightly_options,
-    parse_crate_types_from_list, parse_externs, parse_target_triple,
+    OptionsTargetModifiers, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
+    nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -165,12 +165,6 @@ pub(crate) struct Options {
     /// to have it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
 
-    /// All commandline args used to invoke the compiler, with @file args fully expanded.
-    /// This will only be used within debug info, e.g. in the pdb file on windows
-    /// This is mainly useful for other tools that reads that debuginfo to figure out
-    /// how to call the compiler with the same arguments.
-    pub(crate) expanded_args: Vec<String>,
-
     /// Arguments to be used when compiling doctests.
     pub(crate) doctest_build_args: Vec<String>,
 
@@ -320,7 +314,7 @@ pub(crate) enum EmitType {
     Unversioned,
     Toolchain,
     InvocationSpecific,
-    DepInfo(Option<PathBuf>),
+    DepInfo(Option<OutFileName>),
 }
 
 impl FromStr for EmitType {
@@ -332,13 +326,11 @@ impl FromStr for EmitType {
             "toolchain-shared-resources" => Ok(Self::Toolchain),
             "invocation-specific" => Ok(Self::InvocationSpecific),
             "dep-info" => Ok(Self::DepInfo(None)),
-            option => {
-                if let Some(file) = option.strip_prefix("dep-info=") {
-                    Ok(Self::DepInfo(Some(Path::new(file).into())))
-                } else {
-                    Err(())
-                }
-            }
+            option => match option.strip_prefix("dep-info=") {
+                Some("-") => Ok(Self::DepInfo(Some(OutFileName::Stdout))),
+                Some(f) => Ok(Self::DepInfo(Some(OutFileName::Real(f.into())))),
+                None => Err(()),
+            },
         }
     }
 }
@@ -348,10 +340,10 @@ impl RenderOptions {
         self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
     }
 
-    pub(crate) fn dep_info(&self) -> Option<Option<&Path>> {
+    pub(crate) fn dep_info(&self) -> Option<Option<&OutFileName>> {
         for emit in &self.emit {
             if let EmitType::DepInfo(file) = emit {
-                return Some(file.as_deref());
+                return Some(file.as_ref());
             }
         }
         None
@@ -870,7 +862,6 @@ impl Options {
             json_unused_externs,
             scrape_examples_options,
             unstable_features,
-            expanded_args: args,
             doctest_build_args,
             target_modifiers,
         };

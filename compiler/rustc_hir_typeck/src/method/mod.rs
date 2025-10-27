@@ -26,6 +26,7 @@ use tracing::{debug, instrument};
 pub(crate) use self::MethodError::*;
 use self::probe::{IsSuggestion, ProbeScope};
 use crate::FnCtxt;
+use crate::method::probe::UnsatisfiedPredicates;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct MethodCallee<'tcx> {
@@ -71,8 +72,7 @@ pub(crate) enum MethodError<'tcx> {
 #[derive(Debug)]
 pub(crate) struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
-    pub unsatisfied_predicates:
-        Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
+    pub unsatisfied_predicates: UnsatisfiedPredicates<'tcx>,
     pub out_of_scope_traits: Vec<DefId>,
     pub similar_candidate: Option<ty::AssocItem>,
     pub mode: probe::Mode,

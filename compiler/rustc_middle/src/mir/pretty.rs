@@ -1092,8 +1092,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             NullaryOp(ref op, ref t) => {
                 let t = with_no_trimmed_paths!(format!("{}", t));
                 match op {
-                    NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
-                    NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
                     NullOp::UbChecks => write!(fmt, "UbChecks()"),
                     NullOp::ContractChecks => write!(fmt, "ContractChecks()"),
