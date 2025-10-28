@@ -235,12 +235,6 @@ What this command does is:
 - Build `library` (the standard libraries) with the stage1 compiler that was just built.
 - Assemble a working stage1 sysroot, containing the stage1 compiler and stage1 standard libraries.
 
-To build `rustc` with the in-tree `std`, use this command instead:
-
-```console
-./x build library --stage 2
-```
-
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other Rust programs (unless you use `#![no_std]` or
 `#![no_core]`).
