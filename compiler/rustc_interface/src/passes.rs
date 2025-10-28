@@ -926,7 +926,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
     let crate_name = get_crate_name(sess, &pre_configured_attrs);
-    let crate_types = collect_crate_types(sess, &pre_configured_attrs);
+    let crate_types = collect_crate_types(
+        sess,
+        &compiler.codegen_backend.supported_crate_types(sess),
+        &pre_configured_attrs,
+    );
     let stable_crate_id = StableCrateId::new(
         crate_name,
         crate_types.contains(&CrateType::Executable),
@@ -937,7 +941,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
 
     let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
-    let dep_graph = setup_dep_graph(sess, crate_name, &dep_type);
+    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id, &dep_type);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);

@@ -174,7 +174,11 @@ pub fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
     Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
+pub fn collect_crate_types(
+    session: &Session,
+    backend_crate_types: &[CrateType],
+    attrs: &[ast::Attribute],
+) -> Vec<CrateType> {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
@@ -219,7 +223,12 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     }
 
     base.retain(|crate_type| {
-        if invalid_output_for_target(session, *crate_type) {
+        if invalid_output_for_target(session, *crate_type)
+            || !backend_crate_types.contains(crate_type)
+        {
+            // FIXME provide a better warning for the case where the codegen
+            // backend doesn't support it once cargo doesn't hard code this
+            // warning message.
             session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
