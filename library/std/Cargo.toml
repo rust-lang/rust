@@ -148,10 +148,6 @@ name = "sync"
 path = "tests/sync/lib.rs"
 
 [[test]]
-name = "floats"
-path = "tests/floats/lib.rs"
-
-[[test]]
 name = "thread_local"
 path = "tests/thread_local/lib.rs"
 
