@@ -1,5 +1,4 @@
 #![deny(deprecated)]
-#![allow(unused_imports)]
 
 #[deprecated]
 pub mod a {
@@ -16,20 +15,16 @@ pub mod a {
 
 
 use a::Foo;
-//~^ ERROR use of deprecated struct `a::Foo`
-//~| ERROR use of deprecated unit struct `a::Foo`
+//~^ ERROR use of deprecated unit struct `a::Foo`
 use a::Bar;
-//~^ ERROR use of deprecated struct `a::Bar`
-//~| ERROR use of deprecated tuple struct `a::Bar`
+//~^ ERROR use of deprecated tuple struct `a::Bar`
 use a::Baz;
 //~^ ERROR use of deprecated struct `a::Baz`
 
 use a::Enum::VFoo;
-//~^ ERROR use of deprecated variant `a::Enum::VFoo`
-//~| ERROR use of deprecated unit variant `a::Enum::VFoo`
+//~^ ERROR use of deprecated unit variant `a::Enum::VFoo`
 use a::Enum::VBar;
-//~^ ERROR use of deprecated variant `a::Enum::VBar`
-//~| ERROR use of deprecated tuple variant `a::Enum::VBar`
+//~^ ERROR use of deprecated tuple variant `a::Enum::VBar`
 use a::Enum::VBaz;
 //~^ ERROR use of deprecated variant `a::Enum::VBaz`
 
