@@ -248,16 +248,6 @@ unsafe fn box_new_uninit(size: usize, align: usize) -> *mut u8 {
     }
 }
 
-/// Writes `x` into `b`.
-///
-/// This is needed for `vec!`, which can't afford any extra copies of the argument (or else debug
-/// builds regress), has to be written fully as a call chain without `let` (or else the temporary
-/// lifetimes of the arguments change), and can't use an `unsafe` block as that would then also
-/// include the user-provided `$x`.
-#[rustc_intrinsic]
-#[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn write_box_via_move<T>(b: Box<MaybeUninit<T>>, x: T) -> Box<MaybeUninit<T>>;
-
 /// Helper internally invoked by `write_box_via_move` (since doing the same in pure MIR,
 /// including all the same lifetime effects, seems impossible).
 #[lang = "box_uninit_as_mut_ptr"]

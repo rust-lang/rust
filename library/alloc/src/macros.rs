@@ -54,7 +54,7 @@ macro_rules! vec {
         // This function isn't actually safe but the way we use it here is. We can't use an
         // unsafe block as that would also wrap `$x`.
         $crate::boxed::box_uninit_array_into_vec_unsafe(
-            $crate::boxed::write_box_via_move($crate::boxed::Box::new_uninit(), [$($x),+])
+            $crate::intrinsics::write_box_via_move($crate::boxed::Box::new_uninit(), [$($x),+])
         )
     );
 }
