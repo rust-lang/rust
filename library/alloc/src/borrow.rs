@@ -333,7 +333,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
 // #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized + ToOwned> Deref for Cow<'_, B>
-// where
+where
+    B::Owned: Borrow<B>,
 //     B::Owned: [const] Borrow<B>,
 {
     type Target = B;
