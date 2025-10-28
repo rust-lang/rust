@@ -53,7 +53,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
@@ -291,13 +291,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::FnPtr(a_sig_tys, a_hdr) => {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
-                self.coerce_from_fn_pointer(a_sig_tys.with(a_hdr), b)
+                self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
             }
-            ty::Closure(closure_def_id_a, args_a) => {
+            ty::Closure(..) => {
                 // Non-capturing closures are coercible to
                 // function pointers or unsafe function pointers.
                 // It cannot convert closures that require unsafe.
-                self.coerce_closure_to_fn(a, closure_def_id_a, args_a, b)
+                self.coerce_closure_to_fn(a, b)
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -833,45 +833,23 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), LeakCheck::Default)
     }
 
-    fn coerce_from_safe_fn(
-        &self,
-        fn_ty_a: ty::PolyFnSig<'tcx>,
-        b: Ty<'tcx>,
-        adjustment: Option<Adjust>,
-    ) -> CoerceResult<'tcx> {
-        debug_assert!(self.shallow_resolve(b) == b);
-
-        if let ty::FnPtr(_, hdr_b) = b.kind()
-            && fn_ty_a.safety().is_safe()
-            && hdr_b.safety.is_unsafe()
-        {
-            let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-            self.unify_and(
-                unsafe_a,
-                b,
-                adjustment
-                    .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
-                Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                LeakCheck::Yes,
-            )
-        } else {
-            let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
-            match adjustment {
-                Some(adjust) => self.unify_and(a, b, [], adjust, LeakCheck::Yes),
-                None => self.unify(a, b, LeakCheck::Yes),
-            }
-        }
-    }
-
     fn coerce_from_fn_pointer(
         &self,
-        fn_ty_a: ty::PolyFnSig<'tcx>,
+        a: Ty<'tcx>,
+        a_sig: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
-        debug!(?fn_ty_a, ?b, "coerce_from_fn_pointer");
+        debug!(?a_sig, ?b, "coerce_from_fn_pointer");
         debug_assert!(self.shallow_resolve(b) == b);
 
-        self.coerce_from_safe_fn(fn_ty_a, b, None)
+        match b.kind() {
+            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety.is_unsafe() => {
+                let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
+                let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
+                self.unify_and(a, b, [], adjust, LeakCheck::Yes)
+            }
+            _ => self.unify(a, b, LeakCheck::Yes),
+        }
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -881,45 +859,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let mut a_sig = a.fn_sig(self.tcx);
-                if let ty::FnDef(def_id, _) = *a.kind() {
-                    // Intrinsics are not coercible to function pointers
-                    if self.tcx.intrinsic(def_id).is_some() {
-                        return Err(TypeError::IntrinsicCast);
-                    }
-
-                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
-                        return Err(TypeError::ForceInlineCast);
-                    }
-
-                    if b_hdr.safety.is_safe()
-                        && self.tcx.codegen_fn_attrs(def_id).safe_target_features
-                    {
-                        // Allow the coercion if the current function has all the features that would be
-                        // needed to call the coercee safely.
-                        if let Some(safe_sig) = self.tcx.adjust_target_feature_sig(
-                            def_id,
-                            a_sig,
-                            self.fcx.body_id.into(),
-                        ) {
-                            a_sig = safe_sig;
-                        } else {
-                            return Err(TypeError::TargetFeatureCast(def_id));
-                        }
-                    }
-                }
+                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety))?;
 
                 // FIXME: we shouldn't be normalizing here as coercion is inside of
                 // a probe. This can probably cause ICEs.
                 let InferOk { value: a_sig, mut obligations } =
                     self.at(&self.cause, self.param_env).normalize(a_sig);
+                let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
-                let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
-                    a_sig,
-                    b,
-                    Some(Adjust::Pointer(PointerCoercion::ReifyFnPointer)),
-                )?;
+                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety));
+                let InferOk { value, obligations: o2 } =
+                    self.unify_and(a, b, [], adjust, LeakCheck::Yes)?;
 
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
@@ -930,47 +880,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     /// Attempts to coerce from a closure to a function pointer. Fails
     /// if the closure has any upvars.
-    fn coerce_closure_to_fn(
-        &self,
-        a: Ty<'tcx>,
-        closure_def_id_a: DefId,
-        args_a: GenericArgsRef<'tcx>,
-        b: Ty<'tcx>,
-    ) -> CoerceResult<'tcx> {
+    fn coerce_closure_to_fn(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
         match b.kind() {
-            // At this point we haven't done capture analysis, which means
-            // that the ClosureArgs just contains an inference variable instead
-            // of tuple of captured types.
-            //
-            // All we care here is if any variable is being captured and not the exact paths,
-            // so we check `upvars_mentioned` for root variables being captured.
-            ty::FnPtr(_, hdr)
-                if self
-                    .tcx
-                    .upvars_mentioned(closure_def_id_a.expect_local())
-                    .is_none_or(|u| u.is_empty()) =>
-            {
-                // We coerce the closure, which has fn type
-                //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
-                // to
-                //     `fn(arg0,arg1,...) -> _`
-                // or
-                //     `unsafe fn(arg0,arg1,...) -> _`
-                let closure_sig = args_a.as_closure().sig();
+            ty::FnPtr(_, hdr) => {
                 let safety = hdr.safety;
-                let pointer_ty =
-                    Ty::new_fn_ptr(self.tcx, self.tcx.signature_unclosure(closure_sig, safety));
+                let terr = TypeError::Sorts(ty::error::ExpectedFound::new(a, b));
+                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety), terr)?;
+                let pointer_ty = Ty::new_fn_ptr(self.tcx, closure_sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
-                self.unify_and(
-                    pointer_ty,
-                    b,
-                    [],
-                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety)),
-                    LeakCheck::Default,
-                )
+
+                let adjust = Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety));
+                self.unify_and(pointer_ty, b, [], adjust, LeakCheck::Default)
             }
             _ => self.unify(a, b, LeakCheck::Default),
         }
@@ -1137,6 +1060,94 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
+    fn sig_for_coerce_lub(
+        &self,
+        ty: Ty<'tcx>,
+        closure_upvars_terr: TypeError<'tcx>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        match ty.kind() {
+            ty::FnDef(..) => self.sig_for_fn_def_coercion(ty, None),
+            ty::Closure(..) => self.sig_for_closure_coercion(ty, None, closure_upvars_terr),
+            _ => unreachable!("`sig_for_fn_def_closure_coerce_lub` called with wrong ty: {:?}", ty),
+        }
+    }
+
+    fn sig_for_fn_def_coercion(
+        &self,
+        fndef: Ty<'tcx>,
+        expected_safety: Option<hir::Safety>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        let tcx = self.tcx;
+
+        let &ty::FnDef(def_id, _) = fndef.kind() else {
+            unreachable!("`sig_for_fn_def_coercion` called with non-fndef: {:?}", fndef);
+        };
+
+        // Intrinsics are not coercible to function pointers
+        if tcx.intrinsic(def_id).is_some() {
+            return Err(TypeError::IntrinsicCast);
+        }
+
+        let fn_attrs = tcx.codegen_fn_attrs(def_id);
+        if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+            return Err(TypeError::ForceInlineCast);
+        }
+
+        let sig = fndef.fn_sig(tcx);
+        let sig = if fn_attrs.safe_target_features {
+            // Allow the coercion if the current function has all the features that would be
+            // needed to call the coercee safely.
+            match tcx.adjust_target_feature_sig(def_id, sig, self.body_id.into()) {
+                Some(adjusted_sig) => adjusted_sig,
+                None if matches!(expected_safety, Some(hir::Safety::Safe)) => {
+                    return Err(TypeError::TargetFeatureCast(def_id));
+                }
+                None => sig,
+            }
+        } else {
+            sig
+        };
+
+        if sig.safety().is_safe() && matches!(expected_safety, Some(hir::Safety::Unsafe)) {
+            Ok(tcx.safe_to_unsafe_sig(sig))
+        } else {
+            Ok(sig)
+        }
+    }
+
+    fn sig_for_closure_coercion(
+        &self,
+        closure: Ty<'tcx>,
+        expected_safety: Option<hir::Safety>,
+        closure_upvars_terr: TypeError<'tcx>,
+    ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
+        let tcx = self.tcx;
+
+        let ty::Closure(closure_def, closure_args) = closure.kind() else {
+            unreachable!("`sig_for_closure_coercion` called with non closure ty: {:?}", closure);
+        };
+
+        // At this point we haven't done capture analysis, which means
+        // that the ClosureArgs just contains an inference variable instead
+        // of tuple of captured types.
+        //
+        // All we care here is if any variable is being captured and not the exact paths,
+        // so we check `upvars_mentioned` for root variables being captured.
+        if !tcx.upvars_mentioned(closure_def.expect_local()).is_none_or(|u| u.is_empty()) {
+            return Err(closure_upvars_terr);
+        }
+
+        // We coerce the closure, which has fn type
+        //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
+        // to
+        //     `fn(arg0,arg1,...) -> _`
+        // or
+        //     `unsafe fn(arg0,arg1,...) -> _`
+        let closure_sig = closure_args.as_closure().sig();
+        Ok(tcx.signature_unclosure(closure_sig, expected_safety.unwrap_or(hir::Safety::Safe)))
+    }
+
     /// Given some expressions, their known unified type and another expression,
     /// tries to unify the types, potentially inserting coercions on any of the
     /// provided expressions and returns their LUB (aka "common supertype").
@@ -1170,94 +1181,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(prev_ty);
         }
 
-        let is_force_inline = |ty: Ty<'tcx>| {
-            if let ty::FnDef(did, _) = ty.kind() {
-                matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
-            } else {
-                false
-            }
-        };
-        if is_force_inline(prev_ty) || is_force_inline(new_ty) {
-            return Err(TypeError::ForceInlineCast);
-        }
+        let terr = TypeError::Sorts(ty::error::ExpectedFound::new(prev_ty, new_ty));
+        let opt_sigs = match (prev_ty.kind(), new_ty.kind()) {
+            // Don't coerce pairs of fndefs or pairs of closures to fn ptrs
+            // if they can just be lubbed.
+            //
+            // See #88097 or `lub_closures_before_fnptr_coercion.rs` for where
+            // we would erroneously coerce closures to fnptrs when attempting to
+            // coerce a closure to itself.
+            (ty::FnDef(..), ty::FnDef(..)) | (ty::Closure(..), ty::Closure(..)) => {
+                let lubbed_ty = self.commit_if_ok(|snapshot| {
+                    let outer_universe = self.infcx.universe();
 
-        // Special-case that coercion alone cannot handle:
-        // Function items or non-capturing closures of differing IDs or GenericArgs.
-        let (a_sig, b_sig) = {
-            let is_capturing_closure = |ty: Ty<'tcx>| {
-                if let &ty::Closure(closure_def_id, _args) = ty.kind() {
-                    self.tcx.upvars_mentioned(closure_def_id.expect_local()).is_some()
-                } else {
-                    false
-                }
-            };
-            if is_capturing_closure(prev_ty) || is_capturing_closure(new_ty) {
-                (None, None)
-            } else {
-                let lubbed_tys = || {
-                    self.commit_if_ok(|snapshot| {
-                        let outer_universe = self.infcx.universe();
-
-                        // We need to eagerly handle nested obligations due to lazy norm.
-                        let result = if self.next_trait_solver() {
-                            let ocx = ObligationCtxt::new(self);
-                            let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                            if ocx.try_evaluate_obligations().is_empty() {
-                                Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
-                            } else {
-                                Err(TypeError::Mismatch)
-                            }
+                    // We need to eagerly handle nested obligations due to lazy norm.
+                    let result = if self.next_trait_solver() {
+                        let ocx = ObligationCtxt::new(self);
+                        let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
+                        if ocx.try_evaluate_obligations().is_empty() {
+                            Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                         } else {
-                            self.at(cause, self.param_env).lub(prev_ty, new_ty)
-                        };
-
-                        self.leak_check(outer_universe, Some(snapshot))?;
-                        result
-                    })
-                };
-
-                match (prev_ty.kind(), new_ty.kind()) {
-                    // Don't coerce pairs of fndefs or pairs of closures to fn ptrs
-                    // if they can just be lubbed.
-                    //
-                    // See #88097 or `lub_closures_before_fnptr_coercion.rs` for where
-                    // we would erroneously coerce closures to fnptrs when attempting to
-                    // coerce a closure to itself.
-                    (ty::FnDef(..), ty::FnDef(..)) => match lubbed_tys() {
-                        Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
-                        Err(_) => (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx))),
-                    },
-                    (ty::Closure(_, args_a), ty::Closure(_, args_b)) => match lubbed_tys() {
-                        Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
-                        Err(_) => {
-                            let a_sig = self
-                                .tcx
-                                .signature_unclosure(args_a.as_closure().sig(), hir::Safety::Safe);
-                            let b_sig = self
-                                .tcx
-                                .signature_unclosure(args_b.as_closure().sig(), hir::Safety::Safe);
-                            (Some(a_sig), Some(b_sig))
+                            Err(TypeError::Mismatch)
                         }
-                    },
-                    (ty::Closure(_, args), ty::FnDef(..)) => {
-                        let b_sig = new_ty.fn_sig(self.tcx);
-                        let a_sig =
-                            self.tcx.signature_unclosure(args.as_closure().sig(), b_sig.safety());
-                        (Some(a_sig), Some(b_sig))
+                    } else {
+                        self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                    };
+
+                    self.leak_check(outer_universe, Some(snapshot))?;
+                    result
+                });
+
+                match lubbed_ty {
+                    Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                    Err(_) => {
+                        let a_sig = self.sig_for_coerce_lub(prev_ty, terr)?;
+                        let b_sig = self.sig_for_coerce_lub(new_ty, terr)?;
+                        Some((a_sig, b_sig))
                     }
-                    (ty::FnDef(..), ty::Closure(_, args)) => {
-                        let a_sig = prev_ty.fn_sig(self.tcx);
-                        let b_sig =
-                            self.tcx.signature_unclosure(args.as_closure().sig(), a_sig.safety());
-                        (Some(a_sig), Some(b_sig))
-                    }
-                    // ty::FnPtr x ty::FnPtr is fine to just be handled through a normal `unify`
-                    // call using `lub` which is what will happen on the normal path.
-                    _ => (None, None),
                 }
             }
+
+            (ty::Closure(..), ty::FnDef(..)) | (ty::FnDef(..), ty::Closure(..)) => {
+                let a_sig = self.sig_for_coerce_lub(prev_ty, terr)?;
+                let b_sig = self.sig_for_coerce_lub(new_ty, terr)?;
+                Some((a_sig, b_sig))
+            }
+            // ty::FnPtr x ty::FnPtr is fine to just be handled through a normal `unify`
+            // call using `lub` which is what will happen on the normal path.
+            (ty::FnPtr(..), ty::FnPtr(..)) => None,
+            _ => None,
         };
-        if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+
+        if let Some((mut a_sig, mut b_sig)) = opt_sigs {
+            // Allow coercing safe sigs to unsafe sigs
+            if a_sig.safety().is_safe() && b_sig.safety().is_unsafe() {
+                a_sig = self.tcx.safe_to_unsafe_sig(a_sig);
+            } else if b_sig.safety().is_safe() && a_sig.safety().is_unsafe() {
+                b_sig = self.tcx.safe_to_unsafe_sig(b_sig);
+            };
+
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
@@ -1268,29 +1249,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Reify both sides and return the reified fn pointer type.
             let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
             let prev_adjustment = match prev_ty.kind() {
-                ty::Closure(..) => {
-                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.safety()))
-                }
-                ty::FnDef(def_id, ..) => {
-                    // Intrinsics are not coercible to function pointers
-                    if self.tcx.intrinsic(def_id).is_some() {
-                        return Err(TypeError::IntrinsicCast);
-                    }
-                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
-                }
+                ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
                 _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
-                ty::Closure(..) => {
-                    Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.safety()))
-                }
-                ty::FnDef(def_id, ..) => {
-                    // Intrinsics are not coercible to function pointers
-                    if self.tcx.intrinsic(def_id).is_some() {
-                        return Err(TypeError::IntrinsicCast);
-                    }
-                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
-                }
+                ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
