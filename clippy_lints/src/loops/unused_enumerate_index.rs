@@ -1,148 +1,56 @@
 use super::UNUSED_ENUMERATE_INDEX;
-use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::{expr_or_init, pat_is_wild, sugg};
+use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
+use clippy_utils::{expr_or_init, pat_is_wild};
 use rustc_errors::Applicability;
-use rustc_hir::def::DefKind;
-use rustc_hir::{Expr, ExprKind, FnDecl, Pat, PatKind, TyKind};
+use rustc_hir::{Expr, ExprKind, Pat, PatKind, TyKind};
 use rustc_lint::LateContext;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, SyntaxContext, sym};
 
-/// Checks for the `UNUSED_ENUMERATE_INDEX` lint.
-///
-/// The lint is also partially implemented in `clippy_lints/src/methods/unused_enumerate_index.rs`.
-pub(super) fn check_loop<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, arg: &Expr<'_>, body: &'tcx Expr<'tcx>) {
-    if let PatKind::Tuple([index, elem], _) = pat.kind
-        && let ExprKind::MethodCall(_method, self_arg, [], _) = arg.kind
-        && let ty = cx.typeck_results().expr_ty(arg)
-        && pat_is_wild(cx, &index.kind, body)
-        && ty.is_diag_item(cx, sym::Enumerate)
-        && let Some((DefKind::AssocFn, call_id)) = cx.typeck_results().type_dependent_def(arg.hir_id)
-        && cx.tcx.is_diagnostic_item(sym::enumerate_method, call_id)
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    iter_expr: &'tcx Expr<'tcx>,
+    pat: &Pat<'tcx>,
+    ty_spans: Option<(Span, Span)>,
+    body: &'tcx Expr<'tcx>,
+) {
+    if let PatKind::Tuple([idx_pat, inner_pat], _) = pat.kind
+        && cx.typeck_results().expr_ty(iter_expr).is_diag_item(cx, sym::Enumerate)
+        && pat_is_wild(cx, &idx_pat.kind, body)
+        && let enumerate_call = expr_or_init(cx, iter_expr)
+        && let ExprKind::MethodCall(_, _, [], enumerate_span) = enumerate_call.kind
+        && let Some(enumerate_id) = cx.typeck_results().type_dependent_def_id(enumerate_call.hir_id)
+        && cx.tcx.is_diagnostic_item(sym::enumerate_method, enumerate_id)
+        && !enumerate_call.span.from_expansion()
+        && !pat.span.from_expansion()
+        && !idx_pat.span.from_expansion()
+        && !inner_pat.span.from_expansion()
+        && let Some(enumerate_range) = enumerate_span.map_range(cx, |_, text, range| {
+            text.get(..range.start)?
+                .ends_with('.')
+                .then_some(range.start - 1..range.end)
+        })
     {
-        span_lint_and_then(
-            cx,
-            UNUSED_ENUMERATE_INDEX,
-            arg.span,
-            "you seem to use `.enumerate()` and immediately discard the index",
-            |diag| {
-                let base_iter = sugg::Sugg::hir(cx, self_arg, "base iter");
-                diag.multipart_suggestion(
-                    "remove the `.enumerate()` call",
-                    vec![
-                        (pat.span, snippet(cx, elem.span, "..").into_owned()),
-                        (arg.span, base_iter.to_string()),
-                    ],
-                    Applicability::MachineApplicable,
-                );
-            },
-        );
-    }
-}
-
-/// Check for the `UNUSED_ENUMERATE_INDEX` lint outside of loops.
-///
-/// The lint is declared in `clippy_lints/src/loops/mod.rs`. There, the following pattern is
-/// checked:
-/// ```ignore
-/// for (_, x) in some_iter.enumerate() {
-///     // Index is ignored
-/// }
-/// ```
-///
-/// This `check` function checks for chained method calls constructs where we can detect that the
-/// index is unused. Currently, this checks only for the following patterns:
-/// ```ignore
-/// some_iter.enumerate().map_function(|(_, x)| ..)
-/// let x = some_iter.enumerate();
-/// x.map_function(|(_, x)| ..)
-/// ```
-/// where `map_function` is one of `all`, `any`, `filter_map`, `find_map`, `flat_map`, `for_each` or
-/// `map`.
-///
-/// # Preconditions
-/// This function must be called not on the `enumerate` call expression itself, but on any of the
-/// map functions listed above. It will ensure that `recv` is a `std::iter::Enumerate` instance and
-/// that the method call is one of the `std::iter::Iterator` trait.
-///
-/// * `call_expr`: The map function call expression
-/// * `recv`: The receiver of the call
-/// * `closure_arg`: The argument to the map function call containing the closure/function to apply
-pub(super) fn check_method(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>) {
-    let recv_ty = cx.typeck_results().expr_ty(recv);
-    // If we call a method on a `std::iter::Enumerate` instance
-    if recv_ty.is_diag_item(cx, sym::Enumerate)
-        // If we are calling a method of the `Iterator` trait
-        && cx.ty_based_def(call_expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
-        // And the map argument is a closure
-        && let ExprKind::Closure(closure) = closure_arg.kind
-        && let closure_body = cx.tcx.hir_body(closure.body)
-        // And that closure has one argument ...
-        && let [closure_param] = closure_body.params
-        // .. which is a tuple of 2 elements
-        && let PatKind::Tuple([index, elem], ..) = closure_param.pat.kind
-        // And that the first element (the index) is either `_` or unused in the body
-        && pat_is_wild(cx, &index.kind, closure_body)
-        // Try to find the initializer for `recv`. This is needed in case `recv` is a local_binding. In the
-        // first example below, `expr_or_init` would return `recv`.
-        // ```
-        // iter.enumerate().map(|(_, x)| x)
-        // ^^^^^^^^^^^^^^^^ `recv`, a call to `std::iter::Iterator::enumerate`
-        //
-        // let binding = iter.enumerate();
-        //               ^^^^^^^^^^^^^^^^ `recv_init_expr`
-        // binding.map(|(_, x)| x)
-        // ^^^^^^^ `recv`, not a call to `std::iter::Iterator::enumerate`
-        // ```
-        && let recv_init_expr = expr_or_init(cx, recv)
-        // Make sure the initializer is a method call. It may be that the `Enumerate` comes from something
-        // that we cannot control.
-        // This would for instance happen with:
-        // ```
-        // external_lib::some_function_returning_enumerate().map(|(_, x)| x)
-        // ```
-        && let ExprKind::MethodCall(_, enumerate_recv, _, enumerate_span) = recv_init_expr.kind
-        && let Some(enumerate_defid) = cx.typeck_results().type_dependent_def_id(recv_init_expr.hir_id)
-        // Make sure the method call is `std::iter::Iterator::enumerate`.
-        && cx.tcx.is_diagnostic_item(sym::enumerate_method, enumerate_defid)
-    {
-        // Check if the tuple type was explicit. It may be the type system _needs_ the type of the element
-        // that would be explicitly in the closure.
-        let new_closure_param = match find_elem_explicit_type_span(closure.fn_decl) {
-            // We have an explicit type. Get its snippet, that of the binding name, and do `binding: ty`.
-            // Fallback to `..` if we fail getting either snippet.
-            Some(ty_span) => elem
-                .span
-                .get_source_text(cx)
-                .and_then(|binding_name| {
-                    ty_span
-                        .get_source_text(cx)
-                        .map(|ty_name| format!("{binding_name}: {ty_name}"))
-                })
-                .unwrap_or_else(|| "..".to_string()),
-            // Otherwise, we have no explicit type. We can replace with the binding name of the element.
-            None => snippet(cx, elem.span, "..").into_owned(),
-        };
-
-        // Suggest removing the tuple from the closure and the preceding call to `enumerate`, whose span we
-        // can get from the `MethodCall`.
+        let enumerate_span = Span::new(enumerate_range.start, enumerate_range.end, SyntaxContext::root(), None);
         span_lint_hir_and_then(
             cx,
             UNUSED_ENUMERATE_INDEX,
-            recv_init_expr.hir_id,
+            enumerate_call.hir_id,
             enumerate_span,
             "you seem to use `.enumerate()` and immediately discard the index",
             |diag| {
+                let mut spans = Vec::with_capacity(5);
+                spans.push((enumerate_span, String::new()));
+                spans.push((pat.span.with_hi(inner_pat.span.lo()), String::new()));
+                spans.push((pat.span.with_lo(inner_pat.span.hi()), String::new()));
+                if let Some((outer, inner)) = ty_spans {
+                    spans.push((outer.with_hi(inner.lo()), String::new()));
+                    spans.push((outer.with_lo(inner.hi()), String::new()));
+                }
                 diag.multipart_suggestion(
                     "remove the `.enumerate()` call",
-                    vec![
-                        (closure_param.span, new_closure_param),
-                        (
-                            enumerate_span.with_lo(enumerate_recv.span.source_callsite().hi()),
-                            String::new(),
-                        ),
-                    ],
+                    spans,
                     Applicability::MachineApplicable,
                 );
             },
@@ -150,21 +58,30 @@ pub(super) fn check_method(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Ex
     }
 }
 
-/// Find the span of the explicit type of the element.
-///
-/// # Returns
-/// If the tuple argument:
-/// * Has no explicit type, returns `None`
-/// * Has an explicit tuple type with an implicit element type (`(usize, _)`), returns `None`
-/// * Has an explicit tuple type with an explicit element type (`(_, i32)`), returns the span for
-///   the element type.
-fn find_elem_explicit_type_span(fn_decl: &FnDecl<'_>) -> Option<Span> {
-    if let [tuple_ty] = fn_decl.inputs
-        && let TyKind::Tup([_idx_ty, elem_ty]) = tuple_ty.kind
-        && !matches!(elem_ty.kind, TyKind::Err(..) | TyKind::Infer(()))
+pub(super) fn check_method<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'tcx>,
+    recv: &'tcx Expr<'tcx>,
+    arg: &'tcx Expr<'tcx>,
+) {
+    if let ExprKind::Closure(closure) = arg.kind
+        && let body = cx.tcx.hir_body(closure.body)
+        && let [param] = body.params
+        && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Iterator)
+        && let [input] = closure.fn_decl.inputs
+        && !arg.span.from_expansion()
+        && !input.span.from_expansion()
+        && !recv.span.from_expansion()
+        && !param.span.from_expansion()
     {
-        Some(elem_ty.span)
-    } else {
-        None
+        let ty_spans = if let TyKind::Tup([_, inner]) = input.kind {
+            let Some(inner) = walk_span_to_context(inner.span, SyntaxContext::root()) else {
+                return;
+            };
+            Some((input.span, inner))
+        } else {
+            None
+        };
+        check(cx, recv, param.pat, ty_spans, body.value);
     }
 }
