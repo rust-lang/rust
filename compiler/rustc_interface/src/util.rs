@@ -354,6 +354,14 @@ impl CodegenBackend for DummyCodegenBackend {
         "dummy"
     }
 
+    fn supported_crate_types(&self, _sess: &Session) -> Vec<CrateType> {
+        // This includes bin despite failing on the link step to ensure that you
+        // can still get the frontend handling for binaries. For all library
+        // like crate types cargo will fallback to rlib unless you specifically
+        // say that only a different crate type must be used.
+        vec![CrateType::Rlib, CrateType::Executable]
+    }
+
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         Box::new(CodegenResults {
             modules: vec![],
@@ -380,12 +388,16 @@ impl CodegenBackend for DummyCodegenBackend {
     ) {
         // JUSTIFICATION: TyCtxt no longer available here
         #[allow(rustc::bad_opt_access)]
-        if sess.opts.crate_types.iter().any(|&crate_type| crate_type != CrateType::Rlib) {
+        if let Some(&crate_type) = codegen_results
+            .crate_info
+            .crate_types
+            .iter()
+            .find(|&&crate_type| crate_type != CrateType::Rlib)
+        {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal(format!(
-                "crate type {} not supported by the dummy codegen backend",
-                sess.opts.crate_types[0],
+                "crate type {crate_type} not supported by the dummy codegen backend"
             ));
         }
 
