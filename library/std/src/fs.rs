@@ -3336,22 +3336,27 @@ impl DirBuilder {
         let mut uncreated_dirs = Vec::new();
         let mut current = path;
 
-        while match self.inner.mkdir(current) {
-            Ok(()) => false,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => true,
-            // we check if the err is AlreadyExists for two reasons
-            //    - in case the path exists as a *file*
-            //    - and to avoid calls to .is_dir() in case of other errs
-            //      (i.e. PermissionDenied)
-            Err(e) if e.kind() == io::ErrorKind::AlreadyExists && current.is_dir() => false,
-            Err(e) => return Err(e),
-        } && let Some(parent) = current.parent()
-        {
-            if parent == Path::new("") {
+        loop {
+            match self.inner.mkdir(current) {
+                Ok(()) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                // we check if the err is AlreadyExists for two reasons
+                //    - in case the path exists as a *file*
+                //    - and to avoid calls to .is_dir() in case of other errs
+                //      (i.e. PermissionDenied)
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && current.is_dir() => break,
+                Err(e) => return Err(e),
+            }
+
+            if let Some(parent) = current.parent() {
+                if parent == Path::new("") {
+                    break;
+                }
+                uncreated_dirs.push(current);
+                current = parent;
+            } else {
                 break;
             }
-            uncreated_dirs.push(current);
-            current = parent;
         }
 
         for uncreated_dir in uncreated_dirs.iter().rev() {
