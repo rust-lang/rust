@@ -172,7 +172,6 @@ mod init_numbered_fields;
 mod inline_fn_without_body;
 mod int_plus_one;
 mod integer_division_remainder_used;
-mod invalid_upcast_comparisons;
 mod item_name_repetitions;
 mod items_after_statements;
 mod items_after_test_module;
@@ -541,7 +540,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(conf)));
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|_| Box::new(empty_enums::EmptyEnums));
-    store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
     store.register_late_pass(|_| Box::<regex::Regex>::default());
     store.register_late_pass(move |tcx| Box::new(ifs::CopyAndPaste::new(tcx, conf)));
     store.register_late_pass(|_| Box::new(copy_iterator::CopyIterator));
