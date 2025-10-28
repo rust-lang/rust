@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-annotate-snippets = "0.12.7"
+annotate-snippets = "0.12.8"
 anstream = "0.6.20"
 anstyle = "1.0.13"
 derive_setters = "0.1.6"
