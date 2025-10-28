@@ -2975,8 +2975,7 @@ pub enum LocalSource {
     /// A desugared `<expr>.await`.
     AwaitDesugar,
     /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
-    /// The span is that of the `=` sign.
-    AssignDesugar(Span),
+    AssignDesugar,
     /// A contract `#[ensures(..)]` attribute injects a let binding for the check that runs at point of return.
     Contract,
 }
@@ -5013,7 +5012,7 @@ mod size_asserts {
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);
-    static_assert_size!(LetStmt<'_>, 72);
+    static_assert_size!(LetStmt<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 80);
     static_assert_size!(PatKind<'_>, 56);

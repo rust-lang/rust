@@ -1242,13 +1242,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let rhs = self.lower_expr(rhs);
 
         // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
-        let destructure_let = self.stmt_let_pat(
-            None,
-            whole_span,
-            Some(rhs),
-            pat,
-            hir::LocalSource::AssignDesugar(self.lower_span(eq_sign_span)),
-        );
+        let destructure_let =
+            self.stmt_let_pat(None, whole_span, Some(rhs), pat, hir::LocalSource::AssignDesugar);
 
         // `a = lhs1; b = lhs2;`.
         let stmts = self.arena.alloc_from_iter(std::iter::once(destructure_let).chain(assignments));
