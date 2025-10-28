@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
             .tcx
             .hir_parent_iter(pat.hir_id)
             .find(|(_, node)| !matches!(node, Node::Pat(_) | Node::PatField(_)))
-            && let LocalSource::AssignDesugar(_) = let_stmt.source
+            && let LocalSource::AssignDesugar = let_stmt.source
         {
             return;
         }
