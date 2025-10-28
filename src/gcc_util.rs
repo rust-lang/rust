@@ -67,46 +67,46 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     // cSpell:disable
-    match (sess.target.arch, s) {
+    match (&sess.target.arch, s) {
         // FIXME: seems like x87 does not exist?
-        (Arch::X86 | Arch::X86_64, "x87") => smallvec![],
-        (Arch::X86 | Arch::X86_64, "sse4.2") => smallvec!["sse4.2", "crc32"],
-        (Arch::X86 | Arch::X86_64, "pclmulqdq") => smallvec!["pclmul"],
-        (Arch::X86 | Arch::X86_64, "rdrand") => smallvec!["rdrnd"],
-        (Arch::X86 | Arch::X86_64, "bmi1") => smallvec!["bmi"],
-        (Arch::X86 | Arch::X86_64, "cmpxchg16b") => smallvec!["cx16"],
-        (Arch::X86 | Arch::X86_64, "avx512vaes") => smallvec!["vaes"],
-        (Arch::X86 | Arch::X86_64, "avx512gfni") => smallvec!["gfni"],
-        (Arch::X86 | Arch::X86_64, "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
+        (&Arch::X86 | &Arch::X86_64, "x87") => smallvec![],
+        (&Arch::X86 | &Arch::X86_64, "sse4.2") => smallvec!["sse4.2", "crc32"],
+        (&Arch::X86 | &Arch::X86_64, "pclmulqdq") => smallvec!["pclmul"],
+        (&Arch::X86 | &Arch::X86_64, "rdrand") => smallvec!["rdrnd"],
+        (&Arch::X86 | &Arch::X86_64, "bmi1") => smallvec!["bmi"],
+        (&Arch::X86 | &Arch::X86_64, "cmpxchg16b") => smallvec!["cx16"],
+        (&Arch::X86 | &Arch::X86_64, "avx512vaes") => smallvec!["vaes"],
+        (&Arch::X86 | &Arch::X86_64, "avx512gfni") => smallvec!["gfni"],
+        (&Arch::X86 | &Arch::X86_64, "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
         // NOTE: seems like GCC requires 'avx512bw' for 'avx512vbmi2'.
-        (Arch::X86 | Arch::X86_64, "avx512vbmi2") => {
+        (&Arch::X86 | &Arch::X86_64, "avx512vbmi2") => {
             smallvec!["avx512vbmi2", "avx512bw"]
         }
         // NOTE: seems like GCC requires 'avx512bw' for 'avx512bitalg'.
-        (Arch::X86 | Arch::X86_64, "avx512bitalg") => {
+        (&Arch::X86 | &Arch::X86_64, "avx512bitalg") => {
             smallvec!["avx512bitalg", "avx512bw"]
         }
-        (Arch::AArch64, "rcpc2") => smallvec!["rcpc-immo"],
-        (Arch::AArch64, "dpb") => smallvec!["ccpp"],
-        (Arch::AArch64, "dpb2") => smallvec!["ccdp"],
-        (Arch::AArch64, "frintts") => smallvec!["fptoint"],
-        (Arch::AArch64, "fcma") => smallvec!["complxnum"],
-        (Arch::AArch64, "pmuv3") => smallvec!["perfmon"],
-        (Arch::AArch64, "paca") => smallvec!["pauth"],
-        (Arch::AArch64, "pacg") => smallvec!["pauth"],
+        (&Arch::AArch64, "rcpc2") => smallvec!["rcpc-immo"],
+        (&Arch::AArch64, "dpb") => smallvec!["ccpp"],
+        (&Arch::AArch64, "dpb2") => smallvec!["ccdp"],
+        (&Arch::AArch64, "frintts") => smallvec!["fptoint"],
+        (&Arch::AArch64, "fcma") => smallvec!["complxnum"],
+        (&Arch::AArch64, "pmuv3") => smallvec!["perfmon"],
+        (&Arch::AArch64, "paca") => smallvec!["pauth"],
+        (&Arch::AArch64, "pacg") => smallvec!["pauth"],
         // Rust ties fp and neon together. In GCC neon implicitly enables fp,
         // but we manually enable neon when a feature only implicitly enables fp
-        (Arch::AArch64, "f32mm") => smallvec!["f32mm", "neon"],
-        (Arch::AArch64, "f64mm") => smallvec!["f64mm", "neon"],
-        (Arch::AArch64, "fhm") => smallvec!["fp16fml", "neon"],
-        (Arch::AArch64, "fp16") => smallvec!["fullfp16", "neon"],
-        (Arch::AArch64, "jsconv") => smallvec!["jsconv", "neon"],
-        (Arch::AArch64, "sve") => smallvec!["sve", "neon"],
-        (Arch::AArch64, "sve2") => smallvec!["sve2", "neon"],
-        (Arch::AArch64, "sve2-aes") => smallvec!["sve2-aes", "neon"],
-        (Arch::AArch64, "sve2-sm4") => smallvec!["sve2-sm4", "neon"],
-        (Arch::AArch64, "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
-        (Arch::AArch64, "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
+        (&Arch::AArch64, "f32mm") => smallvec!["f32mm", "neon"],
+        (&Arch::AArch64, "f64mm") => smallvec!["f64mm", "neon"],
+        (&Arch::AArch64, "fhm") => smallvec!["fp16fml", "neon"],
+        (&Arch::AArch64, "fp16") => smallvec!["fullfp16", "neon"],
+        (&Arch::AArch64, "jsconv") => smallvec!["jsconv", "neon"],
+        (&Arch::AArch64, "sve") => smallvec!["sve", "neon"],
+        (&Arch::AArch64, "sve2") => smallvec!["sve2", "neon"],
+        (&Arch::AArch64, "sve2-aes") => smallvec!["sve2-aes", "neon"],
+        (&Arch::AArch64, "sve2-sm4") => smallvec!["sve2-sm4", "neon"],
+        (&Arch::AArch64, "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
+        (&Arch::AArch64, "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
     }
     // cSpell:enable
