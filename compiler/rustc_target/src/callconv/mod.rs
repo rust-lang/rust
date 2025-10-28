@@ -633,7 +633,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
 
         let spec = cx.target_spec();
-        match spec.arch {
+        match &spec.arch {
             Arch::X86 => {
                 let (flavor, regparm) = match abi {
                     ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
@@ -701,7 +701,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             Arch::RiscV32 | Arch::RiscV64 => riscv::compute_abi_info(cx, self),
             Arch::Wasm32 | Arch::Wasm64 => wasm::compute_abi_info(cx, self),
             Arch::Bpf => bpf::compute_abi_info(cx, self),
-            arch @ (Arch::PowerPC64LE | Arch::SpirV) => {
+            arch @ (Arch::PowerPC64LE | Arch::SpirV | Arch::Unknown(_)) => {
                 panic!("no lowering implemented for {arch}")
             }
         }
@@ -713,7 +713,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         C: HasDataLayout + HasTargetSpec,
     {
         let spec = cx.target_spec();
-        match spec.arch {
+        match &spec.arch {
             Arch::X86 => x86::compute_rust_abi_info(cx, self),
             Arch::RiscV32 | Arch::RiscV64 => riscv::compute_rust_abi_info(cx, self),
             Arch::LoongArch32 | Arch::LoongArch64 => loongarch::compute_rust_abi_info(cx, self),

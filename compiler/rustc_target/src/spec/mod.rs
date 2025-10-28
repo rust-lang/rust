@@ -1881,12 +1881,18 @@ crate::target_spec_enum! {
         X86_64 = "x86_64",
         Xtensa = "xtensa",
     }
-
-    parse_error_type = "architecture";
+    /// The vast majority of the time, the compiler deals with a fixed set of
+    /// target architectures, so it is convenient for them to be represented in
+    /// an enum. However, it is possible to have arbitrary values for the "arch"
+    /// field in a target JSON file (which can be parsed when `--target` is
+    /// specified). This might occur, for example, for an out-of-tree codegen
+    /// backend that supports an architecture that rustc currently doesn't know
+    /// about. This variant exists as an escape hatch for such cases.
+    other_variant = Unknown;
 }
 
 impl Arch {
-    pub const fn desc_symbol(&self) -> Symbol {
+    pub fn desc_symbol(&self) -> Symbol {
         match self {
             Self::AArch64 => sym::aarch64,
             Self::AmdGpu => sym::amdgpu,
@@ -1919,6 +1925,7 @@ impl Arch {
             Self::X86 => sym::x86,
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
+            Self::Unknown(name) => rustc_span::Symbol::intern(name),
         }
     }
 }
@@ -3274,7 +3281,8 @@ impl Target {
             | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Wasm32
-            | Arch::Wasm64 => return None,
+            | Arch::Wasm64
+            | Arch::Unknown(_) => return None,
         })
     }
 

@@ -1112,7 +1112,7 @@ pub fn build_session(
         _ => CtfeBacktrace::Disabled,
     });
 
-    let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(target.arch) } else { None };
+    let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
     let target_filesearch =
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);

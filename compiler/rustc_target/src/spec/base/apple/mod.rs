@@ -311,7 +311,7 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, target.arch, &*target.env) {
+        let (major, minor, patch) = match (&*target.os, &target.arch, &*target.env) {
             ("macos", crate::spec::Arch::AArch64, _) => (11, 0, 0),
             ("ios", crate::spec::Arch::AArch64, "macabi") => (14, 0, 0),
             ("ios", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),

@@ -235,12 +235,12 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     #[cfg(feature = "master")]
     fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>> {
-        conv_to_fn_attribute(self.conv, cx.tcx.sess.target.arch)
+        conv_to_fn_attribute(self.conv, &cx.tcx.sess.target.arch)
     }
 }
 
 #[cfg(feature = "master")]
-pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: Arch) -> Option<FnAttribute<'gcc>> {
+pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttribute<'gcc>> {
     let attribute = match conv {
         CanonAbi::C | CanonAbi::Rust => return None,
         CanonAbi::RustCold => FnAttribute::Cold,
@@ -254,8 +254,8 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: Arch) -> Option<FnAttrib
             ArmCall::Aapcs => FnAttribute::ArmPcs("aapcs"),
         },
         CanonAbi::GpuKernel => match arch {
-            Arch::AmdGpu => FnAttribute::GcnAmdGpuHsaKernel,
-            Arch::Nvptx64 => FnAttribute::NvptxKernel,
+            &Arch::AmdGpu => FnAttribute::GcnAmdGpuHsaKernel,
+            &Arch::Nvptx64 => FnAttribute::NvptxKernel,
             arch => panic!("Arch {arch} does not support GpuKernel calling convention"),
         },
         // TODO(antoyo): check if those AVR attributes are mapped correctly.

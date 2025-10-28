@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `library/std/src/sys/alloc/mod.rs` (where this is called `MIN_ALIGN`) and should
         // be kept in sync.
         let os = this.tcx.sess.target.os.as_ref();
-        let max_fundamental_align = match this.tcx.sess.target.arch {
+        let max_fundamental_align = match &this.tcx.sess.target.arch {
             Arch::RiscV32 if matches!(os, "espidf" | "zkvm") => 4,
             Arch::Xtensa if matches!(os, "espidf") => 4,
             Arch::X86
@@ -53,7 +53,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | Arch::Msp430
             | Arch::Nvptx64
             | Arch::PowerPC64LE
-            | Arch::SpirV) => bug!("unsupported target architecture for malloc: `{arch}`"),
+            | Arch::SpirV
+            | Arch::Unknown(_)) => bug!("unsupported target architecture for malloc: `{arch}`"),
         };
         // The C standard only requires sufficient alignment for any *type* with size less than or
         // equal to the size requested. Types one can define in standard C seem to never have an alignment

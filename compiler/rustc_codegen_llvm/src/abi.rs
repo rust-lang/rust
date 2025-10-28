@@ -698,7 +698,7 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
-        CanonAbi::GpuKernel => match sess.target.arch {
+        CanonAbi::GpuKernel => match &sess.target.arch {
             Arch::AmdGpu => llvm::AmdgpuKernel,
             Arch::Nvptx64 => llvm::PtxKernel,
             arch => panic!("Architecture {arch} does not support GpuKernel calling convention"),

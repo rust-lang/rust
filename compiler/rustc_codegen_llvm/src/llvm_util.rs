@@ -342,7 +342,7 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
 
 /// Determine whether or not experimental float types are reliable based on known bugs.
 fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
-    let target_arch = sess.target.arch;
+    let target_arch = &sess.target.arch;
     let target_os = sess.target.options.os.as_ref();
     let target_env = sess.target.options.env.as_ref();
     let target_abi = sess.target.options.abi.as_ref();

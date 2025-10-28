@@ -245,7 +245,7 @@ pub enum InlineAsmArch {
 }
 
 impl InlineAsmArch {
-    pub fn from_arch(arch: Arch) -> Option<Self> {
+    pub fn from_arch(arch: &Arch) -> Option<Self> {
         match arch {
             Arch::X86 => Some(Self::X86),
             Arch::X86_64 => Some(Self::X86_64),
@@ -273,7 +273,7 @@ impl InlineAsmArch {
             Arch::Msp430 => Some(Self::Msp430),
             Arch::M68k => Some(Self::M68k),
             Arch::CSky => Some(Self::CSKY),
-            Arch::AmdGpu | Arch::Xtensa => None,
+            Arch::AmdGpu | Arch::Xtensa | Arch::Unknown(_) => None,
         }
     }
 }

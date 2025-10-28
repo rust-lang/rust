@@ -983,7 +983,7 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let add_prefix = match (target.is_like_windows, target.arch) {
+            let add_prefix = match (target.is_like_windows, &target.arch) {
                 (true, Arch::X86) => |name: String, _: SymbolExportKind| format!("_{name}"),
                 (true, Arch::Arm64EC) => {
                     // Only functions are decorated for arm64ec.

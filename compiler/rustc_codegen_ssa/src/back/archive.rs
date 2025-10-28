@@ -118,7 +118,7 @@ pub trait ArchiveBuilderBuilder {
 
             let exports =
                 items.into_iter().map(|item| item.into_coff_short_export(sess)).collect::<Vec<_>>();
-            let machine = match sess.target.arch {
+            let machine = match &sess.target.arch {
                 Arch::X86_64 => MachineTypes::AMD64,
                 Arch::X86 => MachineTypes::I386,
                 Arch::AArch64 => MachineTypes::ARM64,
@@ -224,7 +224,7 @@ fn create_mingw_dll_import_lib(
     };
     // dlltool target architecture args from:
     // https://github.com/llvm/llvm-project-release-prs/blob/llvmorg-15.0.6/llvm/lib/ToolDrivers/llvm-dlltool/DlltoolDriver.cpp#L69
-    let (dlltool_target_arch, dlltool_target_bitness) = match sess.target.arch {
+    let (dlltool_target_arch, dlltool_target_bitness) = match &sess.target.arch {
         Arch::X86_64 => ("i386:x86-64", "--64"),
         Arch::X86 => ("i386", "--32"),
         Arch::AArch64 => ("arm64", "--64"),

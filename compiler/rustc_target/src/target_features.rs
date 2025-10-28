@@ -955,7 +955,7 @@ pub struct FeatureConstraints {
 
 impl Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
-        match self.arch {
+        match &self.arch {
             Arch::Arm => ARM_FEATURES,
             Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES,
             Arch::X86 | Arch::X86_64 => X86_FEATURES,
@@ -976,12 +976,13 @@ impl Target {
             | Arch::Msp430
             | Arch::PowerPC64LE
             | Arch::SpirV
-            | Arch::Xtensa => &[],
+            | Arch::Xtensa
+            | Arch::Unknown(_) => &[],
         }
     }
 
     pub fn features_for_correct_vector_abi(&self) -> &'static [(u64, &'static str)] {
-        match self.arch {
+        match &self.arch {
             Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_VECTOR_ABI,
             Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
             Arch::Arm => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
@@ -1004,12 +1005,13 @@ impl Target {
             | Arch::Msp430
             | Arch::PowerPC64LE
             | Arch::SpirV
-            | Arch::Xtensa => &[],
+            | Arch::Xtensa
+            | Arch::Unknown(_) => &[],
         }
     }
 
     pub fn tied_target_features(&self) -> &'static [&'static [&'static str]] {
-        match self.arch {
+        match &self.arch {
             Arch::AArch64 | Arch::Arm64EC => AARCH64_TIED_FEATURES,
             _ => &[],
         }
@@ -1050,7 +1052,7 @@ impl Target {
         // defined by target features. When that is the case, those target features must be
         // "forbidden" in the list above to ensure that there is a consistent answer to the
         // questions "which ABI is used".
-        match self.arch {
+        match &self.arch {
             Arch::X86 => {
                 // We use our own ABI indicator here; LLVM does not have anything native.
                 // Every case should require or forbid `soft-float`!
