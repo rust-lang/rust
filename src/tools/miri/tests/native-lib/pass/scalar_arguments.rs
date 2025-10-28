@@ -17,6 +17,7 @@ extern "C" {
     ) -> i32;
     fn add_short_to_long(x: i16, y: i64) -> i64;
     fn get_unsigned_int() -> u32;
+    fn add_float(x: f32) -> f32;
     fn printer();
 }
 
@@ -36,6 +37,9 @@ fn main() {
 
         // test function that returns -10 as an unsigned int
         assert_eq!(get_unsigned_int(), (-10i32) as u32);
+
+        // test function that adds 1.5 to a f32
+        assert_eq!(add_float(1.0f32), 2.5f32);
 
         // test void function that prints from C
         printer();
