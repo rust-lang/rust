@@ -341,7 +341,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         let ty = cx.typeck_results().expr_ty(expr);
 
-        let must_use_result = is_ty_must_use(cx, ty, expr, false);
+        let must_use_result = is_ty_must_use(cx, ty, expr, true);
         let type_lint_emitted_or_trivial = match must_use_result {
             IsTyMustUse::Yes(path) => {
                 emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
