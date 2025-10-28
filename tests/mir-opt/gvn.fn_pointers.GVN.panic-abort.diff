@@ -37,7 +37,7 @@
       bb0: {
 -         StorageLive(_1);
 +         nop;
-          _1 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer, AsCast));
+          _1 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer(Safe), AsCast));
           StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
@@ -50,7 +50,7 @@
           StorageDead(_2);
 -         StorageLive(_4);
 +         nop;
-          _4 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer, AsCast));
+          _4 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer(Safe), AsCast));
           StorageLive(_5);
           StorageLive(_6);
           _6 = copy _4;

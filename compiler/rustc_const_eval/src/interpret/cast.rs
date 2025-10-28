@@ -74,7 +74,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 bug!("{cast_kind:?} casts are for borrowck only, not runtime MIR");
             }
 
-            CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
+            CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _) => {
                 // All reifications must be monomorphic, bail out otherwise.
                 ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
