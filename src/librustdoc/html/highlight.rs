@@ -764,7 +764,8 @@ fn get_real_ident_class(text: &str, allow_path_keywords: bool) -> Option<Class> 
     Some(match text {
         "ref" | "mut" => Class::RefKeyWord,
         "false" | "true" => Class::Bool,
-        _ if Symbol::intern(text).is_reserved(|| Edition::Edition2021) => Class::KeyWord,
+        // FIXME(#148221): Don't hard-code the edition. The classifier should take it as an argument.
+        _ if Symbol::intern(text).is_reserved(|| Edition::Edition2024) => Class::KeyWord,
         _ => return None,
     })
 }
@@ -1201,7 +1202,7 @@ impl<'src> Classifier<'src> {
             },
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
             TokenKind::Ident | TokenKind::RawIdent
-                if self.peek_non_whitespace() == Some(TokenKind::Bang) =>
+                if let Some((TokenKind::Bang, _)) = self.peek_non_trivia() =>
             {
                 self.in_macro = true;
                 let span = new_span(before, text, file_span);
@@ -1209,26 +1210,22 @@ impl<'src> Classifier<'src> {
                 sink(span, Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => {
-                match get_real_ident_class(text, false) {
-                    None => match text {
-                        "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
-                        "Some" | "None" | "Ok" | "Err" => {
-                            Class::PreludeVal(new_span(before, text, file_span))
-                        }
-                        // "union" is a weak keyword and is only considered as a keyword when declaring
-                        // a union type.
-                        "union" if self.check_if_is_union_keyword() => Class::KeyWord,
-                        _ if self.in_macro_nonterminal => {
-                            self.in_macro_nonterminal = false;
-                            Class::MacroNonTerminal
-                        }
-                        "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
-                        _ => Class::Ident(new_span(before, text, file_span)),
-                    },
-                    Some(c) => c,
-                }
-            }
+            TokenKind::Ident => match get_real_ident_class(text, false) {
+                None => match text {
+                    "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
+                    "Some" | "None" | "Ok" | "Err" => {
+                        Class::PreludeVal(new_span(before, text, file_span))
+                    }
+                    _ if self.is_weak_keyword(text) => Class::KeyWord,
+                    _ if self.in_macro_nonterminal => {
+                        self.in_macro_nonterminal = false;
+                        Class::MacroNonTerminal
+                    }
+                    "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
+                    _ => Class::Ident(new_span(before, text, file_span)),
+                },
+                Some(c) => c,
+            },
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
@@ -1249,24 +1246,39 @@ impl<'src> Classifier<'src> {
         }
     }
 
-    fn peek(&mut self) -> Option<TokenKind> {
-        self.tokens.peek().map(|(token_kind, _text)| *token_kind)
+    fn is_weak_keyword(&mut self, text: &str) -> bool {
+        // NOTE: `yeet` (`do yeet $expr`), `catch` (`do catch $block`), `default` (specialization),
+        // `contract_{ensures,requires}`, `builtin` (builtin_syntax) & `reuse` (fn_delegation) are
+        // too difficult or annoying to properly detect under this simple scheme.
+
+        let matches = match text {
+            "auto" => |text| text == "trait", // `auto trait Trait {}` (`auto_traits`)
+            "pin" => |text| text == "const" || text == "mut", // `&pin mut Type` (`pin_ergonomics`)
+            "raw" => |text| text == "const" || text == "mut", // `&raw const local`
+            "safe" => |text| text == "fn" || text == "extern", // `unsafe extern { safe fn f(); }`
+            "union" => |_| true,              // `union Untagged { field: () }`
+            _ => return false,
+        };
+        matches!(self.peek_non_trivia(), Some((TokenKind::Ident, text)) if matches(text))
     }
 
-    fn peek_non_whitespace(&mut self) -> Option<TokenKind> {
-        while let Some((token_kind, _)) = self.tokens.peek_next() {
-            if *token_kind != TokenKind::Whitespace {
-                let token_kind = *token_kind;
-                self.tokens.stop_peeking();
-                return Some(token_kind);
+    fn peek(&mut self) -> Option<TokenKind> {
+        self.tokens.peek().map(|&(kind, _)| kind)
+    }
+
+    fn peek_non_trivia(&mut self) -> Option<(TokenKind, &str)> {
+        while let Some(&token @ (kind, _)) = self.tokens.peek_next() {
+            if let TokenKind::Whitespace
+            | TokenKind::LineComment { doc_style: None }
+            | TokenKind::BlockComment { doc_style: None, .. } = kind
+            {
+                continue;
             }
+            self.tokens.stop_peeking();
+            return Some(token);
         }
         self.tokens.stop_peeking();
         None
-    }
-
-    fn check_if_is_union_keyword(&mut self) -> bool {
-        self.peek_non_whitespace().is_some_and(|kind| kind == TokenKind::Ident)
     }
 }
 
