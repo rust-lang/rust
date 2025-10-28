@@ -3333,26 +3333,36 @@ impl DirBuilder {
             return Ok(());
         }
 
-        match self.inner.mkdir(path) {
-            Ok(()) => return Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
+        let mut uncreated_dirs = Vec::new();
+        let mut current = path;
+
+        while match self.inner.mkdir(current) {
+            Ok(()) => false,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => true,
+            // we check if the err is AlreadyExists for two reasons
+            //    - in case the path exists as a *file*
+            //    - and to avoid calls to .is_dir() in case of other errs
+            //      (i.e. PermissionDenied)
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists && current.is_dir() => false,
             Err(e) => return Err(e),
+        } && let Some(parent) = current.parent()
+        {
+            if parent == Path::new("") {
+                break;
+            }
+            uncreated_dirs.push(current);
+            current = parent;
         }
-        match path.parent() {
-            Some(p) => self.create_dir_all(p)?,
-            None => {
-                return Err(io::const_error!(
-                    io::ErrorKind::Uncategorized,
-                    "failed to create whole tree",
-                ));
+
+        for uncreated_dir in uncreated_dirs.iter().rev() {
+            if let Err(e) = self.inner.mkdir(uncreated_dir) {
+                if !uncreated_dir.is_dir() {
+                    return Err(e);
+                }
             }
         }
-        match self.inner.mkdir(path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
-            Err(e) => Err(e),
-        }
+
+        Ok(())
     }
 }
 
