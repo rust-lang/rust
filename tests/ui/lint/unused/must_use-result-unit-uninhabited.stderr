@@ -15,29 +15,11 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = result_unit_unit();
    |     +++++++
 
-error: unused `Result` that must be used
+error: unused `MustUse` in a `Result` with an uninhabited error that must be used
   --> $DIR/must_use-result-unit-uninhabited.rs:96:5
    |
 LL |     result_must_use_never();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_must_use_never();
-   |     +++++++
-
-error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:97:5
-   |
-LL |     result_struct_never();
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = result_struct_never();
-   |     +++++++
 
 error: unused `Result` that must be used
   --> $DIR/must_use-result-unit-uninhabited.rs:99:5
@@ -98,5 +80,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |         let _ = self.generate();
    |         +++++++
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 

@@ -271,6 +271,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             Opaque(Box<Self>),
             TraitObject(Box<Self>),
             TupleElement(Vec<(usize, Self)>),
+            /// `Result<T, Uninhabited>`
+            Result(Box<Self>),
+            /// `ControlFlow<Uninhabited, T>`
+            ControlFlow(Box<Self>),
             Array(Box<Self>, u64),
             /// The root of the unused_closures lint.
             Closure(Span),
@@ -303,21 +307,23 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
                 }
-                // Suppress warnings on `Result<(), Uninhabited>` (e.g. `Result<(), !>`).
+                // Consider `Result<T, Uninhabited>` (e.g. `Result<(), !>`) equivalent to `T`.
                 ty::Adt(def, args)
                     if cx.tcx.is_diagnostic_item(sym::Result, def.did())
-                        && args.type_at(0).is_unit()
                         && is_uninhabited(args.type_at(1)) =>
                 {
-                    Some(MustUsePath::Suppressed)
+                    let ok_ty = args.type_at(0);
+                    is_ty_must_use(cx, ok_ty, expr, span).map(Box::new).map(MustUsePath::Result)
                 }
-                // Suppress warnings on `ControlFlow<Uninhabited, ()>` (e.g. `ControlFlow<!, ()>`).
+                // Consider `ControlFlow<Uninhabited, T>` (e.g. `ControlFlow<!, ()>`) equivalent to `T`.
                 ty::Adt(def, args)
                     if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
-                        && args.type_at(1).is_unit()
                         && is_uninhabited(args.type_at(0)) =>
                 {
-                    Some(MustUsePath::Suppressed)
+                    let continue_ty = args.type_at(1);
+                    is_ty_must_use(cx, continue_ty, expr, span)
+                        .map(Box::new)
+                        .map(MustUsePath::ControlFlow)
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
@@ -509,6 +515,32 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             expr_is_from_block,
                         );
                     }
+                }
+                MustUsePath::Result(path) => {
+                    let descr_post =
+                        &format!(" in a `Result` with an uninhabited error{descr_post}");
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
+                }
+                MustUsePath::ControlFlow(path) => {
+                    let descr_post =
+                        &format!(" in a `ControlFlow` with an uninhabited break {descr_post}");
+                    emit_must_use_untranslated(
+                        cx,
+                        path,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        true,
+                        expr_is_from_block,
+                    );
                 }
                 MustUsePath::Array(path, len) => {
                     let descr_pre = &format!("{descr_pre}array{plural_suffix} of ");
