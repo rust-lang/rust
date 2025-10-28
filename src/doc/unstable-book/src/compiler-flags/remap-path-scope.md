@@ -10,7 +10,8 @@ This flag accepts a comma-separated list of values and may be specified multiple
 
 - `macro` - apply remappings to the expansion of `std::file!()` macro. This is where paths in embedded panic messages come from
 - `diagnostics` - apply remappings to printed compiler diagnostics
-- `debuginfo` - apply remappings to debug informations
+- `debuginfo` - apply remappings to debug information
+- `coverage` - apply remappings to coverage information
 - `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,debuginfo`.
 - `all` - an alias for all of the above, also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 

@@ -128,7 +128,7 @@ impl GlobalFileTable {
         for file in all_files {
             raw_file_table.entry(file.stable_id).or_insert_with(|| {
                 file.name
-                    .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+                    .for_scope(tcx.sess, RemapPathScopeComponents::COVERAGE)
                     .to_string_lossy()
                     .into_owned()
             });
@@ -147,7 +147,7 @@ impl GlobalFileTable {
             .sess
             .opts
             .working_dir
-            .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+            .for_scope(tcx.sess, RemapPathScopeComponents::COVERAGE)
             .to_string_lossy();
         table.push(base_dir.as_ref());
 
