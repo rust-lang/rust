@@ -3,8 +3,8 @@ use std::ops::Deref;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::{
-    Body, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, StatementKind,
-    TerminatorKind,
+    Body, Const, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, StatementKind,
+    TerminatorKind, UnevaluatedConst,
 };
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
 
@@ -13,7 +13,9 @@ use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
 /// A "trivial const" is a const which can be easily proven to evaluate successfully, and the value
 /// that it evaluates to can be easily found without going through the usual MIR phases for a const.
 ///
-/// Currently the only form of trivial const that is supported is this:
+/// Currently, we support two forms of trivial const.
+///
+/// The base case is this:
 /// ```
 /// const A: usize = 0;
 /// ```
@@ -34,6 +36,13 @@ use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
 /// This scenario meets the required criteria because:
 /// * Control flow cannot panic, we don't have any calls or assert terminators
 /// * The value of the const is already computed, so it cannot fail
+///
+/// In addition to assignment of literals, assignments of trivial consts are also considered
+/// trivial consts. In this case, both `A` and `B` are trivial:
+/// ```
+/// const A: usize = 0;
+/// const B: usize = A;
+/// ```
 pub(crate) fn trivial_const<'a, 'tcx: 'a, F, B>(
     tcx: TyCtxt<'tcx>,
     def: LocalDefId,
@@ -74,13 +83,19 @@ where
         return None;
     }
 
-    if let Rvalue::Use(Operand::Constant(c)) = rvalue {
-        if let rustc_middle::mir::Const::Val(v, ty) = c.const_ {
-            return Some((v, ty));
+    let Rvalue::Use(Operand::Constant(c)) = rvalue else {
+        return None;
+    };
+    match c.const_ {
+        Const::Ty(..) => None,
+        Const::Unevaluated(UnevaluatedConst { def, args, .. }, _ty) => {
+            if !args.is_empty() {
+                return None;
+            }
+            tcx.trivial_const(def)
         }
+        Const::Val(v, ty) => Some((v, ty)),
     }
-
-    return None;
 }
 
 // The query provider is based on calling the free function trivial_const, which calls mir_built,
