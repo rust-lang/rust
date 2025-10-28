@@ -40,6 +40,7 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
             | sym::dump
             | sym::msrv
             | sym::has_significant_drop
+            | sym::may_panic
             | sym::format_args => {},
             _ => {
                 sess.dcx().span_err(path_span, "usage of unknown attribute");

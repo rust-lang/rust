@@ -635,6 +635,10 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds("max-trait-bounds"): u64 = 3,
+    /// List of function/method paths that may panic and should be documented with a `// Panic:` comment
+    /// at call sites.
+    #[lints(undocumented_may_panic_call)]
+    may_panic_functions("may-panic-functions"): Vec<String>,
     /// Whether to lint idents that have too few chars even when following trait declaration.
     #[lints(min_ident_chars)]
     min_ident_chars_lint_trait_impl("min-ident-chars-lint-trait-impl"): bool = false,
