@@ -445,11 +445,19 @@ impl FlycheckActor {
                                 let target_dir = target_dir.as_deref().or(ws_target_dir);
 
                                 Some(
-                                    target_dir
-                                        .unwrap_or(
+                                    // As `CommandHandle::spawn`'s working directory is
+                                    // rust-analyzer's working directory, which might be different
+                                    // from the flycheck's working directory, we should canonicalize
+                                    // the output directory, otherwise we might write it into the
+                                    // wrong target dir.
+                                    // If `target_dir` is an absolute path, it will replace
+                                    // `self.root` and that's an intended behavior.
+                                    self.root
+                                        .join(target_dir.unwrap_or(
                                             Utf8Path::new("target").join("rust-analyzer").as_path(),
-                                        )
-                                        .join(format!("flycheck{}", self.id)),
+                                        ))
+                                        .join(format!("flycheck{}", self.id))
+                                        .into(),
                                 )
                             }
                             _ => None,
