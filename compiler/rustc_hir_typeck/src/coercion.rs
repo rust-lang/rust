@@ -125,7 +125,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     fn unify_raw(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
-        self.commit_if_ok(|_| {
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
             let at = self.at(&self.cause, self.fcx.param_env);
 
             let res = if self.use_lub {
@@ -138,7 +140,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // In the new solver, lazy norm may allow us to shallowly equate
             // more types, but we emit possibly impossible-to-satisfy obligations.
             // Filter these cases out to make sure our coercion is more accurate.
-            match res {
+            let res = match res {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
@@ -149,7 +151,27 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
                 }
                 res => res,
-            }
+            };
+
+            // We leak check here mostly because lub operations are
+            // kind of scuffed around binders. Instead of computing an actual
+            // lub'd binder we instead:
+            // - Equate the binders
+            // - Return the lhs of the lub operation
+            //
+            // In order to actually ensure that equating the binders *does*
+            // result in equal binders, and that the lhs is actually a supertype
+            // of the rhs, we must perform a leak check here.
+            //
+            // Leak checking even when `use_lub` is false causes us to emit some
+            // errors in dead code where borrowck would otherwise not catch the
+            // subtyping errors. This is not soundness critical.
+            //
+            // FIXME: Ideally the actual `eq/sub/lub` would handle leak checks
+            // themselves whenever a binder is entered.
+            self.leak_check(outer_universe, Some(snapshot))?;
+
+            res
         })
     }
 
@@ -805,39 +827,25 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
-        self.commit_if_ok(|snapshot| {
-            let outer_universe = self.infcx.universe();
-
-            let result = if let ty::FnPtr(_, hdr_b) = b.kind()
-                && fn_ty_a.safety().is_safe()
-                && hdr_b.safety.is_unsafe()
-            {
-                let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                self.unify_and(
-                    unsafe_a,
-                    b,
-                    adjustment
-                        .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
-                    Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                )
-            } else {
-                let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
-                match adjustment {
-                    Some(adjust) => self.unify_and(a, b, [], adjust),
-                    None => self.unify(a, b),
-                }
-            };
-
-            // FIXME(#73154): This is a hack. Currently LUB can generate
-            // unsolvable constraints. Additionally, it returns `a`
-            // unconditionally, even when the "LUB" is `b`. In the future, we
-            // want the coerced type to be the actual supertype of these two,
-            // but for now, we want to just error to ensure we don't lock
-            // ourselves into a specific behavior with NLL.
-            self.leak_check(outer_universe, Some(snapshot))?;
-
-            result
-        })
+        if let ty::FnPtr(_, hdr_b) = b.kind()
+            && fn_ty_a.safety().is_safe()
+            && hdr_b.safety.is_unsafe()
+        {
+            let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+            self.unify_and(
+                unsafe_a,
+                b,
+                adjustment
+                    .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
+                Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+            )
+        } else {
+            let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
+            match adjustment {
+                Some(adjust) => self.unify_and(a, b, [], adjust),
+                None => self.unify(a, b),
+            }
+        }
     }
 
     fn coerce_from_fn_pointer(

@@ -55,9 +55,8 @@ macro_rules! check {
             //[bound_a_vs_free_x]~^ ERROR
             //[free_x_vs_free_y]~^^ ERROR
             //[bound_inv_a_b_vs_bound_inv_a]~^^^ ERROR
-            //[bound_inv_a_b_vs_bound_inv_a]~| ERROR
-            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^^ ERROR
-            //[free_inv_x_vs_free_inv_y]~^^^^^^ ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^ ERROR
+            //[free_inv_x_vs_free_inv_y]~^^^^^ ERROR
         }
     };
 }
