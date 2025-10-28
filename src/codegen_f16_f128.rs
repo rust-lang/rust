@@ -75,8 +75,7 @@ pub(crate) fn fcmp(fx: &mut FunctionCx<'_, '_, '_>, cc: FloatCC, lhs: Value, rhs
                 &[lhs, rhs],
             )[0];
             let zero = fx.bcx.ins().iconst(CMP_RESULT_TY, 0);
-            let res = fx.bcx.ins().icmp(int_cc, res, zero);
-            res
+            fx.bcx.ins().icmp(int_cc, res, zero)
         }
         _ => unreachable!("{ty:?}"),
     }

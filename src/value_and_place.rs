@@ -310,13 +310,13 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F16) => {
-                fx.bcx.ins().f16const(Ieee16::with_bits(u16::try_from(const_val).unwrap()))
+                fx.bcx.ins().f16const(Ieee16::with_bits(u16::from(const_val)))
             }
             ty::Float(FloatTy::F32) => {
-                fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
+                fx.bcx.ins().f32const(Ieee32::with_bits(u32::from(const_val)))
             }
             ty::Float(FloatTy::F64) => {
-                fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(const_val).unwrap()))
+                fx.bcx.ins().f64const(Ieee64::with_bits(u64::from(const_val)))
             }
             ty::Float(FloatTy::F128) => {
                 let value = fx
@@ -324,7 +324,7 @@ impl<'tcx> CValue<'tcx> {
                     .func
                     .dfg
                     .constants
-                    .insert(Ieee128::with_bits(u128::try_from(const_val).unwrap()).into());
+                    .insert(Ieee128::with_bits(u128::from(const_val)).into());
                 fx.bcx.ins().f128const(value)
             }
             _ => panic!(

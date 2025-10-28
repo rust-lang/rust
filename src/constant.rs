@@ -65,7 +65,7 @@ pub(crate) fn codegen_tls_ref<'tcx>(
             // For a declaration the stated mutability doesn't matter.
             false,
         );
-        let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+        let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
         if fx.clif_comments.enabled() {
             fx.add_comment(local_data_id, format!("tls {:?}", def_id));
         }
@@ -111,7 +111,7 @@ pub(crate) fn codegen_const_value<'tcx>(
         ConstValue::Scalar(x) => match x {
             Scalar::Int(int) => {
                 if fx.clif_type(layout.ty).is_some() {
-                    return CValue::const_val(fx, layout, int);
+                    CValue::const_val(fx, layout, int)
                 } else {
                     let raw_val = int.size().truncate(int.to_bits(int.size()));
                     let val = match int.size().bytes() {
@@ -150,7 +150,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                                 alloc.inner().mutability,
                             );
                             let local_data_id =
-                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                                fx.module.declare_data_in_func(data_id, fx.bcx.func);
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", alloc_id));
                             }
@@ -159,8 +159,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                     }
                     GlobalAlloc::Function { instance, .. } => {
                         let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
-                        let local_func_id =
-                            fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+                        let local_func_id = fx.module.declare_func_in_func(func_id, fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
                     GlobalAlloc::VTable(ty, dyn_ty) => {
@@ -173,8 +172,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                                 fx.tcx.instantiate_bound_regions_with_erased(principal)
                             }),
                         );
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                        let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
                         fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
                     }
                     GlobalAlloc::TypeId { .. } => {
@@ -191,8 +189,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             // For a declaration the stated mutability doesn't matter.
                             false,
                         );
-                        let local_data_id =
-                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                        let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
                         if fx.clif_comments.enabled() {
                             fx.add_comment(local_data_id, format!("{:?}", def_id));
                         }
@@ -236,7 +233,7 @@ fn pointer_for_allocation<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, alloc_id: All
     let data_id =
         data_id_for_alloc_id(&mut fx.constants_cx, fx.module, alloc_id, alloc.inner().mutability);
 
-    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     }
@@ -354,7 +351,7 @@ fn data_id_for_static(
         Linkage::Import
     };
 
-    let data_id = match module.declare_data(
+    match module.declare_data(
         symbol_name,
         linkage,
         definition_writable,
@@ -365,9 +362,7 @@ fn data_id_for_static(
             "attempt to declare `{symbol_name}` as static, but it was already declared as function"
         )),
         Err(err) => Err::<_, _>(err).unwrap(),
-    };
-
-    data_id
+    }
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut ConstantCx) {

@@ -41,8 +41,7 @@ impl GccExceptTable {
                     + self.call_sites.encoded_size()
                     + self.actions.encoded_size()
                     + type_info_padding)
-                    % 4
-                    == 0
+                    .is_multiple_of(4)
             };
 
             let mut type_info_padding = 0;
@@ -69,9 +68,9 @@ impl GccExceptTable {
             // In this case we calculated the expected padding amount and used it to write the
             // classInfoOffset field. Assert that the expected value matched the actual value to catch
             // any inconsistency.
-            assert!(w.len() % 4 == 0, "type_info must be aligned to 4 bytes");
+            assert!(w.len().is_multiple_of(4), "type_info must be aligned to 4 bytes");
         } else {
-            while w.len() % 4 != 0 {
+            while !w.len().is_multiple_of(4) {
                 w.write_u8(0)?;
             }
         }
@@ -82,7 +81,7 @@ impl GccExceptTable {
         // exception specs (unused for rust)
 
         // align to 4 bytes
-        while w.len() % 4 != 0 {
+        while !w.len().is_multiple_of(4) {
             w.write_u8(0)?;
         }
 

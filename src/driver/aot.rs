@@ -97,8 +97,8 @@ impl OngoingCodegen {
                         sess,
                         &module_regular.name,
                         &[
-                            ("o", &module_regular.object.as_ref().unwrap()),
-                            ("asm.o", &module_global_asm.object.as_ref().unwrap()),
+                            ("o", module_regular.object.as_ref().unwrap()),
+                            ("asm.o", module_global_asm.object.as_ref().unwrap()),
                         ],
                         &[],
                     )
@@ -106,7 +106,7 @@ impl OngoingCodegen {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                         sess,
                         &module_regular.name,
-                        &[("o", &module_regular.object.as_ref().unwrap())],
+                        &[("o", module_regular.object.as_ref().unwrap())],
                         &[],
                     )
                 };
@@ -308,7 +308,7 @@ fn produce_final_output_artifacts(
                 module.for_each_output(|path, ty| {
                     if sess.opts.output_types.contains_key(&ty) {
                         let descr = ty.shorthand();
-                        sess.dcx().emit_artifact_notification(&path, descr);
+                        sess.dcx().emit_artifact_notification(path, descr);
                     }
                 });
             }
@@ -450,8 +450,8 @@ fn reuse_workproduct_for_cgu(
         tcx.sess.invocation_temp.as_deref(),
     );
     let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
-        &tcx.sess,
-        &work_product.saved_files.get("o").expect("no saved object file in work product"),
+        tcx.sess,
+        work_product.saved_files.get("o").expect("no saved object file in work product"),
     );
 
     if let Err(err) = rustc_fs_util::link_or_copy(&source_file_regular, &obj_out_regular) {
@@ -466,7 +466,7 @@ fn reuse_workproduct_for_cgu(
     let obj_out_global_asm =
         crate::global_asm::add_file_stem_postfix(obj_out_regular.clone(), ".asm");
     let source_file_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
-        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, asm_o);
+        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(tcx.sess, asm_o);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
         {
             return Err(format!(
@@ -684,7 +684,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
 
     // Calculate the CGU reuse
     let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, cgu)).collect::<Vec<_>>()
     });
 
     rustc_codegen_ssa::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {
@@ -698,7 +698,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
 
     let disable_incr_cache = disable_incr_cache();
     let (todo_cgus, done_cgus) =
-        cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
+        cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
             _ if disable_incr_cache => true,
             CguReuse::No => true,
             CguReuse::PreLto | CguReuse::PostLto => false,

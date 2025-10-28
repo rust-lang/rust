@@ -257,7 +257,7 @@ pub(crate) fn create_wrapper_function(
             .map(|param| func.dfg.append_block_param(block, param.value_type))
             .collect::<Vec<Value>>();
 
-        let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
+        let callee_func_ref = module.declare_func_in_func(callee_func_id, bcx.func);
         let call_inst = bcx.ins().call(callee_func_ref, &args);
         let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
 
@@ -374,7 +374,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
         assert!(
-            size % align == 0,
+            size.is_multiple_of(align),
             "size must be a multiple of alignment (size={size}, align={align})"
         );
 
@@ -384,7 +384,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 kind: StackSlotKind::ExplicitSlot,
                 // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
                 // a way to specify stack slot alignment.
-                size: (size + abi_align - 1) / abi_align * abi_align,
+                size: size.div_ceil(abi_align) * abi_align,
                 align_shift: 4,
             });
             Pointer::stack_slot(stack_slot)

@@ -3,7 +3,7 @@
 
 macro_rules! intrinsic_args {
     ($fx:expr, $args:expr => ($($arg:tt),*); $intrinsic:expr) => {
-        #[allow(unused_parens)]
+        #[allow(unused_parens, clippy::unused_unit)]
         let ($($arg),*) = if let [$($arg),*] = $args {
             ($(codegen_operand($fx, &($arg).node)),*)
         } else {
@@ -483,7 +483,7 @@ fn codegen_float_intrinsic_call<'tcx>(
             };
             let input_tys: Vec<_> =
                 vec![AbiParam::new(clif_ty), lib_call_arg_param(fx.tcx, types::I32, true)];
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], &args)[0];
+            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
             let ret_val = if intrinsic == sym::powif16 {
                 codegen_f16_f128::f32_to_f16(fx, ret_val)
             } else {
@@ -505,7 +505,7 @@ fn codegen_float_intrinsic_call<'tcx>(
         }
         _ => {
             let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], &args)[0];
+            let ret_val = fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0];
             CValue::by_val(ret_val, fx.layout_of(ty))
         }
     };

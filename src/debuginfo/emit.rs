@@ -222,12 +222,12 @@ impl Writer for WriterRelocate {
                 gimli::DW_EH_PE_absptr => {
                     self.relocs.push(DebugReloc {
                         offset: self.len() as u32,
-                        size: size.into(),
+                        size,
                         name: DebugRelocName::Symbol(symbol),
                         addend,
                         kind: object::RelocationKind::Absolute,
                     });
-                    self.write_udata(0, size.into())
+                    self.write_udata(0, size)
                 }
                 _ => Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe)),
             },

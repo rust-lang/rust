@@ -312,7 +312,7 @@ impl fmt::Debug for FunctionCx<'_, '_, '_> {
         ::cranelift_codegen::write::decorate_function(
             &mut &self.clif_comments,
             &mut clif,
-            &self.bcx.func,
+            self.bcx.func,
         )
         .unwrap();
         writeln!(f, "\n{}", clif)

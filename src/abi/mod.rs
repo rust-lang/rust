@@ -85,7 +85,7 @@ pub(crate) fn get_function_sig<'tcx>(
     clif_sig_from_fn_abi(
         tcx,
         default_call_conv,
-        &FullyMonomorphizedLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
+        FullyMonomorphizedLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
     )
 }
 
@@ -114,7 +114,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, self.module, inst);
-        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_ref = self.module.declare_func_in_func(func_id, self.bcx.func);
 
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", inst));
@@ -185,7 +185,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
-        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_ref = self.module.declare_func_in_func(func_id, self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", name));
@@ -419,7 +419,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
-                &fx.tcx.symbol_name(instance).name,
+                fx.tcx.symbol_name(instance).name,
                 args,
                 ret_place,
                 target,
@@ -534,7 +534,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0].value, idx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, method), Some(ptr.get_addr(fx)))
@@ -554,7 +554,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let func = func.load_scalar(fx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, func), None)
@@ -564,7 +564,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
         let mut call_args = return_ptr
             .into_iter()
-            .chain(first_arg_override.into_iter())
+            .chain(first_arg_override)
             .chain(
                 args.into_iter()
                     .enumerate()
@@ -577,7 +577,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         // FIXME: Find a cleaner way to support varargs.
         if fn_abi.c_variadic {
-            adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
+            adjust_call_for_c_variadic(fx, fn_abi, source_info, func_ref, &mut call_args);
         }
 
         if fx.clif_comments.enabled() {
@@ -739,7 +739,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let fn_abi = FullyMonomorphizedLayoutCx(fx.tcx)
                     .fn_abi_of_instance(virtual_drop, ty::List::empty());
 
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 codegen_call_with_unwind_action(
                     fx,
@@ -767,9 +767,12 @@ pub(crate) fn codegen_drop<'tcx>(
                 if drop_instance.def.requires_caller_location(fx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(source_info);
-                    call_args.extend(
-                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1], false).into_iter(),
-                    );
+                    call_args.extend(adjust_arg_for_abi(
+                        fx,
+                        caller_location,
+                        &fn_abi.args[1],
+                        false,
+                    ));
                 }
 
                 let func_ref = fx.get_function_ref(drop_instance);
@@ -816,9 +819,9 @@ pub(crate) fn codegen_call_with_unwind_action(
     match unwind {
         UnwindAction::Continue | UnwindAction::Unreachable => {
             let call_inst = match func_ref {
-                CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
+                CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, call_args),
                 CallTarget::Indirect(sig, func_ptr) => {
-                    fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
+                    fx.bcx.ins().call_indirect(sig, func_ptr, call_args)
                 }
             };
 
@@ -866,10 +869,10 @@ pub(crate) fn codegen_call_with_unwind_action(
 
             match func_ref {
                 CallTarget::Direct(func_ref) => {
-                    fx.bcx.ins().try_call(func_ref, &call_args, exception_table);
+                    fx.bcx.ins().try_call(func_ref, call_args, exception_table);
                 }
                 CallTarget::Indirect(_sig, func_ptr) => {
-                    fx.bcx.ins().try_call_indirect(func_ptr, &call_args, exception_table);
+                    fx.bcx.ins().try_call_indirect(func_ptr, call_args, exception_table);
                 }
             }
 

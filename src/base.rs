@@ -266,12 +266,12 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
 
     tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
-        match cranelift_codegen::verify_function(&func, &flags) {
+        match cranelift_codegen::verify_function(func, &flags) {
             Ok(_) => {}
             Err(err) => {
                 tcx.dcx().err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
-                    &func,
+                    func,
                     Some(Box::new(writer)),
                     err,
                 );
@@ -554,7 +554,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     template,
                     operands,
                     *options,
-                    targets.get(0).copied(),
+                    targets.first().copied(),
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
@@ -1131,7 +1131,7 @@ fn codegen_panic_inner<'tcx>(
         call_conv: fx.target_config.default_call_conv,
     };
     let func_id = fx.module.declare_function(symbol_name, Linkage::Import, &sig).unwrap();
-    let func_ref = fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+    let func_ref = fx.module.declare_func_in_func(func_id, fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(func_ref, format!("{:?}", symbol_name));
     }
@@ -1141,7 +1141,7 @@ fn codegen_panic_inner<'tcx>(
         fx.add_comment(nop_inst, format!("panic {}", symbol_name));
     }
 
-    codegen_call_with_unwind_action(fx, span, CallTarget::Direct(func_ref), unwind, &args, None);
+    codegen_call_with_unwind_action(fx, span, CallTarget::Direct(func_ref), unwind, args, None);
 
     fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
