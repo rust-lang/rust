@@ -2506,3 +2506,19 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn foo() {
+    check_types(
+        r#"
+fn foo() {
+    mod my_mod {
+        pub type Bool = bool;
+    }
+
+    let _: my_mod::Bool;
+     // ^ bool
+}
+    "#,
+    );
+}
