@@ -93,8 +93,8 @@ fn main() {
     result_unit_unit(); //~ ERROR: unused `Result` that must be used
     result_unit_infallible();
     result_unit_never();
-    result_must_use_never(); //~ ERROR: unused `Result` that must be used
-    result_struct_never(); //~ ERROR: unused `Result` that must be used
+    result_must_use_never(); //~ ERROR: unused `MustUse` in a `Result` with an uninhabited error that must be used
+    result_struct_never();
     result_unit_myuninhabited();
     result_unit_myuninhabited_nonexhaustive(); //~ ERROR: unused `Result` that must be used
     result_unit_assoctype(S1);
