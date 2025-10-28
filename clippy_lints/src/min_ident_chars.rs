@@ -45,6 +45,7 @@ declare_clippy_lint! {
     restriction,
     "disallows idents that are too short"
 }
+
 impl_lint_pass!(MinIdentChars => [MIN_IDENT_CHARS]);
 
 pub struct MinIdentChars {

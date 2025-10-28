@@ -19,29 +19,6 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint warns about unnecessary type repetitions in trait bounds
-    ///
-    /// ### Why is this bad?
-    /// Repeating the type for every bound makes the code
-    /// less readable than combining the bounds
-    ///
-    /// ### Example
-    /// ```no_run
-    /// pub fn foo<T>(t: T) where T: Copy, T: Clone {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// pub fn foo<T>(t: T) where T: Copy + Clone {}
-    /// ```
-    #[clippy::version = "1.38.0"]
-    pub TYPE_REPETITION_IN_BOUNDS,
-    nursery,
-    "types are repeated unnecessarily in trait bounds, use `+` instead of using `T: _, T: _`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for cases where generics or trait objects are being used and multiple
     /// syntax specifications for trait bounds are used simultaneously.
     ///
@@ -86,6 +63,34 @@ declare_clippy_lint! {
     "check if the same trait bounds are specified more than once during a generic declaration"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// This lint warns about unnecessary type repetitions in trait bounds
+    ///
+    /// ### Why is this bad?
+    /// Repeating the type for every bound makes the code
+    /// less readable than combining the bounds
+    ///
+    /// ### Example
+    /// ```no_run
+    /// pub fn foo<T>(t: T) where T: Copy, T: Clone {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// pub fn foo<T>(t: T) where T: Copy + Clone {}
+    /// ```
+    #[clippy::version = "1.38.0"]
+    pub TYPE_REPETITION_IN_BOUNDS,
+    nursery,
+    "types are repeated unnecessarily in trait bounds, use `+` instead of using `T: _, T: _`"
+}
+
+impl_lint_pass!(TraitBounds => [
+    TRAIT_DUPLICATION_IN_BOUNDS,
+    TYPE_REPETITION_IN_BOUNDS,
+]);
+
 pub struct TraitBounds {
     max_trait_bounds: u64,
     msrv: Msrv,
@@ -99,11 +104,6 @@ impl TraitBounds {
         }
     }
 }
-
-impl_lint_pass!(TraitBounds => [
-    TRAIT_DUPLICATION_IN_BOUNDS,
-    TYPE_REPETITION_IN_BOUNDS,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {

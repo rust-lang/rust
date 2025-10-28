@@ -13,25 +13,69 @@ mod with_newline;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint warns when you use `println!("")` to
-    /// print a newline.
+    /// This lint warns about the use of literals as `print!`/`println!` args.
     ///
     /// ### Why is this bad?
-    /// You should use `println!()`, which is simpler.
+    /// Using literals as `println!` args is inefficient
+    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+    /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
     /// ```no_run
-    /// println!("");
+    /// println!("{}", "foo");
     /// ```
-    ///
-    /// Use instead:
+    /// use the literal without formatting:
     /// ```no_run
-    /// println!();
+    /// println!("foo");
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub PRINTLN_EMPTY_STRING,
+    pub PRINT_LITERAL,
     style,
-    "using `println!(\"\")` with an empty string"
+    "printing a literal with a format string"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for printing on *stderr*. The purpose of this lint
+    /// is to catch debugging remnants.
+    ///
+    /// ### Why restrict this?
+    /// People often print on *stderr* while debugging an
+    /// application and might forget to remove those prints afterward.
+    ///
+    /// ### Known problems
+    /// Only catches `eprint!` and `eprintln!` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// eprintln!("Hello world!");
+    /// ```
+    #[clippy::version = "1.50.0"]
+    pub PRINT_STDERR,
+    restriction,
+    "printing on stderr"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for printing on *stdout*. The purpose of this lint
+    /// is to catch debugging remnants.
+    ///
+    /// ### Why restrict this?
+    /// People often print on *stdout* while debugging an
+    /// application and might forget to remove those prints afterward.
+    ///
+    /// ### Known problems
+    /// Only catches `print!` and `println!` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// println!("Hello world!");
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub PRINT_STDOUT,
+    restriction,
+    "printing on stdout"
 }
 
 declare_clippy_lint! {
@@ -61,46 +105,25 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for printing on *stdout*. The purpose of this lint
-    /// is to catch debugging remnants.
+    /// This lint warns when you use `println!("")` to
+    /// print a newline.
     ///
-    /// ### Why restrict this?
-    /// People often print on *stdout* while debugging an
-    /// application and might forget to remove those prints afterward.
-    ///
-    /// ### Known problems
-    /// Only catches `print!` and `println!` calls.
+    /// ### Why is this bad?
+    /// You should use `println!()`, which is simpler.
     ///
     /// ### Example
     /// ```no_run
-    /// println!("Hello world!");
+    /// println!("");
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// println!();
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub PRINT_STDOUT,
-    restriction,
-    "printing on stdout"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for printing on *stderr*. The purpose of this lint
-    /// is to catch debugging remnants.
-    ///
-    /// ### Why restrict this?
-    /// People often print on *stderr* while debugging an
-    /// application and might forget to remove those prints afterward.
-    ///
-    /// ### Known problems
-    /// Only catches `eprint!` and `eprintln!` calls.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// eprintln!("Hello world!");
-    /// ```
-    #[clippy::version = "1.50.0"]
-    pub PRINT_STDERR,
-    restriction,
-    "printing on stderr"
+    pub PRINTLN_EMPTY_STRING,
+    style,
+    "using `println!(\"\")` with an empty string"
 }
 
 declare_clippy_lint! {
@@ -128,52 +151,30 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint warns about the use of literals as `print!`/`println!` args.
+    /// This lint warns about the use of literals as `write!`/`writeln!` args.
     ///
     /// ### Why is this bad?
-    /// Using literals as `println!` args is inefficient
+    /// Using literals as `writeln!` args is inefficient
     /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
     /// ```no_run
-    /// println!("{}", "foo");
-    /// ```
-    /// use the literal without formatting:
-    /// ```no_run
-    /// println!("foo");
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub PRINT_LITERAL,
-    style,
-    "printing a literal with a format string"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// This lint warns when you use `writeln!(buf, "")` to
-    /// print a newline.
-    ///
-    /// ### Why is this bad?
-    /// You should use `writeln!(buf)`, which is simpler.
-    ///
-    /// ### Example
-    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// writeln!(buf, "");
+    /// writeln!(buf, "{}", "foo");
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// writeln!(buf);
+    /// writeln!(buf, "foo");
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub WRITELN_EMPTY_STRING,
+    pub WRITE_LITERAL,
     style,
-    "using `writeln!(buf, \"\")` with an empty string"
+    "writing a literal with a format string"
 }
 
 declare_clippy_lint! {
@@ -209,31 +210,42 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint warns about the use of literals as `write!`/`writeln!` args.
+    /// This lint warns when you use `writeln!(buf, "")` to
+    /// print a newline.
     ///
     /// ### Why is this bad?
-    /// Using literals as `writeln!` args is inefficient
-    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
-    /// (i.e., just put the literal in the format string)
+    /// You should use `writeln!(buf)`, which is simpler.
     ///
     /// ### Example
     /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// writeln!(buf, "{}", "foo");
+    /// writeln!(buf, "");
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// writeln!(buf, "foo");
+    /// writeln!(buf);
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub WRITE_LITERAL,
+    pub WRITELN_EMPTY_STRING,
     style,
-    "writing a literal with a format string"
+    "using `writeln!(buf, \"\")` with an empty string"
 }
+
+impl_lint_pass!(Write => [
+    PRINTLN_EMPTY_STRING,
+    PRINT_LITERAL,
+    PRINT_STDERR,
+    PRINT_STDOUT,
+    PRINT_WITH_NEWLINE,
+    USE_DEBUG,
+    WRITELN_EMPTY_STRING,
+    WRITE_LITERAL,
+    WRITE_WITH_NEWLINE,
+]);
 
 pub struct Write {
     format_args: FormatArgsStorage,
@@ -255,18 +267,6 @@ impl Write {
         self.outermost_debug_impl.is_some()
     }
 }
-
-impl_lint_pass!(Write => [
-    PRINTLN_EMPTY_STRING,
-    PRINT_LITERAL,
-    PRINT_STDERR,
-    PRINT_STDOUT,
-    PRINT_WITH_NEWLINE,
-    USE_DEBUG,
-    WRITELN_EMPTY_STRING,
-    WRITE_LITERAL,
-    WRITE_WITH_NEWLINE,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for Write {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {

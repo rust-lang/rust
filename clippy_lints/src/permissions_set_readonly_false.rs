@@ -26,6 +26,7 @@ declare_clippy_lint! {
     suspicious,
     "Checks for calls to `std::fs::Permissions.set_readonly` with argument `false`"
 }
+
 declare_lint_pass!(PermissionsSetReadonlyFalse => [
     PERMISSIONS_SET_READONLY_FALSE,
 ]);

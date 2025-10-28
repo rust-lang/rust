@@ -41,6 +41,7 @@ declare_clippy_lint! {
     nursery,
     "a collection is never queried"
 }
+
 declare_lint_pass!(CollectionIsNeverRead => [COLLECTION_IS_NEVER_READ]);
 
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {

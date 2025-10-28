@@ -51,6 +51,7 @@ declare_clippy_lint! {
     suspicious,
     "non-canonical implementation of `Clone` on a `Copy` type"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for non-canonical implementations of `PartialOrd` when `Ord` is already implemented.
@@ -108,6 +109,7 @@ declare_clippy_lint! {
     suspicious,
     "non-canonical implementation of `PartialOrd` on an `Ord` type"
 }
+
 impl_lint_pass!(NonCanonicalImpls => [
     NON_CANONICAL_CLONE_IMPL,
     NON_CANONICAL_PARTIAL_ORD_IMPL,

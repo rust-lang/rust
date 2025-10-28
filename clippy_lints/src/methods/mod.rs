@@ -165,495 +165,6 @@ use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `cloned()` on an `Iterator` or `Option` where
-    /// `copied()` could be used instead.
-    ///
-    /// ### Why is this bad?
-    /// `copied()` is better because it guarantees that the type being cloned
-    /// implements `Copy`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// [1, 2, 3].iter().cloned();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// [1, 2, 3].iter().copied();
-    /// ```
-    #[clippy::version = "1.53.0"]
-    pub CLONED_INSTEAD_OF_COPIED,
-    pedantic,
-    "used `cloned` where `copied` could be used instead"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for consecutive calls to `str::replace` (2 or more)
-    /// that can be collapsed into a single call.
-    ///
-    /// ### Why is this bad?
-    /// Consecutive `str::replace` calls scan the string multiple times
-    /// with repetitive code.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let hello = "hesuo worpd"
-    ///     .replace('s', "l")
-    ///     .replace("u", "l")
-    ///     .replace('p', "l");
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let hello = "hesuo worpd".replace(['s', 'u', 'p'], "l");
-    /// ```
-    #[clippy::version = "1.65.0"]
-    pub COLLAPSIBLE_STR_REPLACE,
-    perf,
-    "collapse consecutive calls to str::replace (2 or more) into a single call"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.cloned().<func>()` where call to `.cloned()` can be postponed.
-    ///
-    /// ### Why is this bad?
-    /// It's often inefficient to clone all elements of an iterator, when eventually, only some
-    /// of them will be consumed.
-    ///
-    /// ### Known Problems
-    /// This `lint` removes the side of effect of cloning items in the iterator.
-    /// A code that relies on that side-effect could fail.
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// # let vec = vec!["string".to_string()];
-    /// vec.iter().cloned().take(10);
-    /// vec.iter().cloned().last();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let vec = vec!["string".to_string()];
-    /// vec.iter().take(10).cloned();
-    /// vec.iter().last().cloned();
-    /// ```
-    #[clippy::version = "1.60.0"]
-    pub ITER_OVEREAGER_CLONED,
-    perf,
-    "using `cloned()` early with `Iterator::iter()` can lead to some performance inefficiencies"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `Iterator::flat_map()` where `filter_map()` could be
-    /// used instead.
-    ///
-    /// ### Why is this bad?
-    /// `filter_map()` is known to always produce 0 or 1 output items per input item,
-    /// rather than however many the inner iterator type produces.
-    /// Therefore, it maintains the upper bound in `Iterator::size_hint()`,
-    /// and communicates to the reader that the input items are not being expanded into
-    /// multiple output items without their having to notice that the mapping function
-    /// returns an `Option`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().flat_map(|x| x.parse().ok()).collect();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().filter_map(|x| x.parse().ok()).collect();
-    /// ```
-    #[clippy::version = "1.53.0"]
-    pub FLAT_MAP_OPTION,
-    pedantic,
-    "used `flat_map` where `filter_map` could be used instead"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.unwrap()` or `.unwrap_err()` calls on `Result`s and `.unwrap()` call on `Option`s.
-    ///
-    /// ### Why restrict this?
-    /// It is better to handle the `None` or `Err` case,
-    /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
-    /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
-    /// `Allow` by default.
-    ///
-    /// `result.unwrap()` will let the thread panic on `Err` values.
-    /// Normally, you want to implement more sophisticated error handling,
-    /// and propagate errors upwards with `?` operator.
-    ///
-    /// Even if you want to panic on errors, not all `Error`s implement good
-    /// messages on display. Therefore, it may be beneficial to look at the places
-    /// where they may get displayed. Activate this lint to do just that.
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option.unwrap();
-    /// result.unwrap();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option.expect("more helpful message");
-    /// result.expect("more helpful message");
-    /// ```
-    ///
-    /// If [expect_used](#expect_used) is enabled, instead:
-    /// ```rust,ignore
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option?;
-    ///
-    /// // or
-    ///
-    /// result?;
-    /// ```
-    #[clippy::version = "1.45.0"]
-    pub UNWRAP_USED,
-    restriction,
-    "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.unwrap()` related calls on `Result`s and `Option`s that are constructed.
-    ///
-    /// ### Why is this bad?
-    /// It is better to write the value directly without the indirection.
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// let val1 = Some(1).unwrap();
-    /// let val2 = Ok::<_, ()>(1).unwrap();
-    /// let val3 = Err::<(), _>(1).unwrap_err();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let val1 = 1;
-    /// let val2 = 1;
-    /// let val3 = 1;
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub UNNECESSARY_LITERAL_UNWRAP,
-    complexity,
-    "using `unwrap()` related calls on `Result` and `Option` constructors"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.expect()` or `.expect_err()` calls on `Result`s and `.expect()` call on `Option`s.
-    ///
-    /// ### Why restrict this?
-    /// Usually it is better to handle the `None` or `Err` case.
-    /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
-    /// this lint is `Allow` by default.
-    ///
-    /// `result.expect()` will let the thread panic on `Err`
-    /// values. Normally, you want to implement more sophisticated error handling,
-    /// and propagate errors upwards with `?` operator.
-    ///
-    /// ### Examples
-    /// ```rust,ignore
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option.expect("one");
-    /// result.expect("one");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option?;
-    ///
-    /// // or
-    ///
-    /// result?;
-    /// ```
-    #[clippy::version = "1.45.0"]
-    pub EXPECT_USED,
-    restriction,
-    "using `.expect()` on `Result` or `Option`, which might be better handled"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for methods that should live in a trait
-    /// implementation of a `std` trait (see [llogiq's blog
-    /// post](http://llogiq.github.io/2015/07/30/traits.html) for further
-    /// information) instead of an inherent implementation.
-    ///
-    /// ### Why is this bad?
-    /// Implementing the traits improve ergonomics for users of
-    /// the code, often with very little cost. Also people seeing a `mul(...)`
-    /// method
-    /// may expect `*` to work equally, so you should have good reason to disappoint
-    /// them.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// struct X;
-    /// impl X {
-    ///     fn add(&self, other: &X) -> X {
-    ///         // ..
-    /// # X
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SHOULD_IMPLEMENT_TRAIT,
-    style,
-    "defining a method that should be implementing a std trait"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for methods with certain name prefixes or suffixes, and which
-    /// do not adhere to standard conventions regarding how `self` is taken.
-    /// The actual rules are:
-    ///
-    /// |Prefix |Postfix     |`self` taken                   | `self` type  |
-    /// |-------|------------|-------------------------------|--------------|
-    /// |`as_`  | none       |`&self` or `&mut self`         | any          |
-    /// |`from_`| none       | none                          | any          |
-    /// |`into_`| none       |`self`                         | any          |
-    /// |`is_`  | none       |`&mut self` or `&self` or none | any          |
-    /// |`to_`  | `_mut`     |`&mut self`                    | any          |
-    /// |`to_`  | not `_mut` |`self`                         | `Copy`       |
-    /// |`to_`  | not `_mut` |`&self`                        | not `Copy`   |
-    ///
-    /// Note: Clippy doesn't trigger methods with `to_` prefix in:
-    /// - Traits definition.
-    /// Clippy can not tell if a type that implements a trait is `Copy` or not.
-    /// - Traits implementation, when `&self` is taken.
-    /// The method signature is controlled by the trait and often `&self` is required for all types that implement the trait
-    /// (see e.g. the `std::string::ToString` trait).
-    ///
-    /// Clippy allows `Pin<&Self>` and `Pin<&mut Self>` if `&self` and `&mut self` is required.
-    ///
-    /// Please find more info here:
-    /// https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
-    ///
-    /// ### Why is this bad?
-    /// Consistency breeds readability. If you follow the
-    /// conventions, your users won't be surprised that they, e.g., need to supply a
-    /// mutable reference to a `as_..` function.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # struct X;
-    /// impl X {
-    ///     fn as_str(self) -> &'static str {
-    ///         // ..
-    /// # ""
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # struct X;
-    /// impl X {
-    ///     fn as_str(&self) -> &'static str {
-    ///         // ..
-    /// # ""
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub WRONG_SELF_CONVENTION,
-    style,
-    "defining a method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `ok().expect(..)`.
-    ///
-    /// Note: This lint only triggers for code marked compatible
-    /// with versions of the compiler older than Rust 1.82.0.
-    ///
-    /// ### Why is this bad?
-    /// Because you usually call `expect()` on the `Result`
-    /// directly to get a better error message.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let x = Ok::<_, ()>(());
-    /// x.ok().expect("why did I do this again?");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let x = Ok::<_, ()>(());
-    /// x.expect("why did I do this again?");
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub OK_EXPECT,
-    style,
-    "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.err().expect()` calls on the `Result` type.
-    ///
-    /// ### Why is this bad?
-    /// `.expect_err()` can be called directly to avoid the extra type conversion from `err()`.
-    ///
-    /// ### Example
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.err().expect("Testing err().expect()");
-    /// ```
-    /// Use instead:
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.expect_err("Testing expect_err");
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub ERR_EXPECT,
-    style,
-    r#"using `.err().expect("")` when `.expect_err("")` can be used"#
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usages of the following functions with an argument that constructs a default value
-    /// (e.g., `Default::default` or `String::new`):
-    /// - `unwrap_or`
-    /// - `unwrap_or_else`
-    /// - `or_insert`
-    /// - `or_insert_with`
-    ///
-    /// ### Why is this bad?
-    /// Readability. Using `unwrap_or_default` in place of `unwrap_or`/`unwrap_or_else`, or `or_default`
-    /// in place of `or_insert`/`or_insert_with`, is simpler and more concise.
-    ///
-    /// ### Known problems
-    /// In some cases, the argument of `unwrap_or`, etc. is needed for type inference. The lint uses a
-    /// heuristic to try to identify such cases. However, the heuristic can produce false negatives.
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// # let x = Some(1);
-    /// # let mut map = std::collections::HashMap::<u64, String>::new();
-    /// x.unwrap_or(Default::default());
-    /// map.entry(42).or_insert_with(String::new);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let x = Some(1);
-    /// # let mut map = std::collections::HashMap::<u64, String>::new();
-    /// x.unwrap_or_default();
-    /// map.entry(42).or_default();
-    /// ```
-    #[clippy::version = "1.56.0"]
-    pub UNWRAP_OR_DEFAULT,
-    style,
-    "using `.unwrap_or`, etc. with an argument that constructs a default value"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
-    /// `result.map(_).unwrap_or_else(_)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, these can be written more concisely (resp.) as
-    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
-    ///
-    /// ### Known problems
-    /// The order of the arguments is not in execution order
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// # fn some_function(foo: ()) -> usize { 1 }
-    /// option.map(|a| a + 1).unwrap_or(0);
-    /// option.map(|a| a > 10).unwrap_or(false);
-    /// result.map(|a| a + 1).unwrap_or_else(some_function);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// # fn some_function(foo: ()) -> usize { 1 }
-    /// option.map_or(0, |a| a + 1);
-    /// option.is_some_and(|a| a > 10);
-    /// result.map_or_else(some_function, |a| a + 1);
-    /// ```
-    #[clippy::version = "1.45.0"]
-    pub MAP_UNWRAP_OR,
-    pedantic,
-    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.map_or(None, _)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.and_then(_)`.
-    ///
-    /// ### Known problems
-    /// The order of the arguments is not in execution order.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.map_or(None, |a| Some(a + 1));
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.and_then(|a| Some(a + 1));
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub OPTION_MAP_OR_NONE,
-    style,
-    "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.map_or(None, Some)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ok()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let r: Result<u32, &str> = Ok(1);
-    /// assert_eq!(Some(1), r.map_or(None, Some));
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let r: Result<u32, &str> = Ok(1);
-    /// assert_eq!(Some(1), r.ok());
-    /// ```
-    #[clippy::version = "1.44.0"]
-    pub RESULT_MAP_OR_INTO_OPTION,
-    style,
-    "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))`
     /// or `_.or_else(|x| Err(y))`.
     ///
@@ -686,211 +197,104 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.filter(_).next()`.
+    /// It checks for `str::bytes().count()` and suggests replacing it with
+    /// `str::len()`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.find(_)`.
+    /// `str::bytes().count()` is longer and may not be as performant as using
+    /// `str::len()`.
     ///
     /// ### Example
     /// ```no_run
-    /// # let vec = vec![1];
-    /// vec.iter().filter(|x| **x == 0).next();
+    /// "hello".bytes().count();
+    /// String::from("hello").bytes().count();
     /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// # let vec = vec![1];
-    /// vec.iter().find(|x| **x == 0);
+    /// "hello".len();
+    /// String::from("hello").len();
     /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub FILTER_NEXT,
+    #[clippy::version = "1.62.0"]
+    pub BYTES_COUNT_TO_LEN,
     complexity,
-    "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
+    "Using `bytes().count()` when `len()` performs the same functionality"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.skip_while(condition).next()`.
+    /// Checks for the use of `.bytes().nth()`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.find(!condition)`.
+    /// `.as_bytes().get()` is more efficient and more
+    /// readable.
     ///
     /// ### Example
     /// ```no_run
-    /// # let vec = vec![1];
-    /// vec.iter().skip_while(|x| **x == 0).next();
+    /// "Hello".bytes().nth(3);
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # let vec = vec![1];
-    /// vec.iter().find(|x| **x != 0);
+    /// "Hello".as_bytes().get(3);
     /// ```
-    #[clippy::version = "1.42.0"]
-    pub SKIP_WHILE_NEXT,
-    complexity,
-    "using `skip_while(p).next()`, which is more succinctly expressed as `.find(!p)`"
+    #[clippy::version = "1.52.0"]
+    pub BYTES_NTH,
+    style,
+    "replace `.bytes().nth()` with `.as_bytes().get()`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
+    /// Checks for calls to `ends_with` with possible file extensions
+    /// and suggests to use a case-insensitive approach instead.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
+    /// `ends_with` is case-sensitive and may not detect files with a valid extension.
     ///
     /// ### Example
     /// ```no_run
-    /// let vec = vec![vec![1]];
-    /// let opt = Some(5);
-    ///
-    /// vec.iter().map(|x| x.iter()).flatten();
-    /// opt.map(|x| Some(x * 2)).flatten();
+    /// fn is_rust_file(filename: &str) -> bool {
+    ///     filename.ends_with(".rs")
+    /// }
     /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// # let vec = vec![vec![1]];
-    /// # let opt = Some(5);
-    /// vec.iter().flat_map(|x| x.iter());
-    /// opt.and_then(|x| Some(x * 2));
-    /// ```
-    #[clippy::version = "1.31.0"]
-    pub MAP_FLATTEN,
-    complexity,
-    "using combinations of `flatten` and `map` which can usually be written as a single method call"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.filter(_).map(_)` that can be written more simply
-    /// as `filter_map(_)`.
-    ///
-    /// ### Why is this bad?
-    /// Redundant code in the `filter` and `map` operations is poor style and
-    /// less performant.
-    ///
-     /// ### Example
-    /// ```no_run
-    /// (0_i32..10)
-    ///     .filter(|n| n.checked_add(1).is_some())
-    ///     .map(|n| n.checked_add(1).unwrap());
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// (0_i32..10).filter_map(|n| n.checked_add(1));
+    /// fn is_rust_file(filename: &str) -> bool {
+    ///     let filename = std::path::Path::new(filename);
+    ///     filename.extension()
+    ///         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
+    /// }
     /// ```
     #[clippy::version = "1.51.0"]
-    pub MANUAL_FILTER_MAP,
-    complexity,
-    "using `_.filter(_).map(_)` in a way that can be written more simply as `filter_map(_)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.find(_).map(_)` that can be written more simply
-    /// as `find_map(_)`.
-    ///
-    /// ### Why is this bad?
-    /// Redundant code in the `find` and `map` operations is poor style and
-    /// less performant.
-    ///
-     /// ### Example
-    /// ```no_run
-    /// (0_i32..10)
-    ///     .find(|n| n.checked_add(1).is_some())
-    ///     .map(|n| n.checked_add(1).unwrap());
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// (0_i32..10).find_map(|n| n.checked_add(1));
-    /// ```
-    #[clippy::version = "1.51.0"]
-    pub MANUAL_FIND_MAP,
-    complexity,
-    "using `_.find(_).map(_)` in a way that can be written more simply as `find_map(_)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.filter_map(_).next()`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.find_map(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    ///  (0..3).filter_map(|x| if x == 2 { Some(x) } else { None }).next();
-    /// ```
-    /// Can be written as
-    ///
-    /// ```no_run
-    ///  (0..3).find_map(|x| if x == 2 { Some(x) } else { None });
-    /// ```
-    #[clippy::version = "1.36.0"]
-    pub FILTER_MAP_NEXT,
+    pub CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     pedantic,
-    "using combination of `filter_map` and `next` which can usually be written as a single method call"
+    "Checks for calls to ends_with with case-sensitive file extensions"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `flat_map(|x| x)`.
+    /// Checks for usage of `_.chars().last()` or
+    /// `_.chars().next_back()` on a `str` to check if it ends with a given char.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely by using `flatten`.
+    /// Readability, this can be written more concisely as
+    /// `_.ends_with(_)`.
     ///
     /// ### Example
     /// ```no_run
-    /// # let iter = vec![vec![0]].into_iter();
-    /// iter.flat_map(|x| x);
-    /// ```
-    /// Can be written as
-    /// ```no_run
-    /// # let iter = vec![vec![0]].into_iter();
-    /// iter.flatten();
-    /// ```
-    #[clippy::version = "1.39.0"]
-    pub FLAT_MAP_IDENTITY,
-    complexity,
-    "call to `flat_map` where `flatten` is sufficient"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for an iterator or string search (such as `find()`,
-    /// `position()`, or `rposition()`) followed by a call to `is_some()` or `is_none()`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as:
-    /// * `_.any(_)`, or `_.contains(_)` for `is_some()`,
-    /// * `!_.any(_)`, or `!_.contains(_)` for `is_none()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let vec = vec![1];
-    /// vec.iter().find(|x| **x == 0).is_some();
-    ///
-    /// "hello world".find("world").is_none();
+    /// # let name = "_";
+    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-');
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// let vec = vec![1];
-    /// vec.iter().any(|x| *x == 0);
-    ///
-    /// !"hello world".contains("world");
+    /// # let name = "_";
+    /// name.ends_with('_') || name.ends_with('-');
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub SEARCH_IS_SOME,
-    nursery,
-    "using an iterator or string search followed by `is_some()` or `is_none()`, which is more succinctly expressed as a call to `any()` or `contains()` (with negation in case of `is_none()`)"
+    pub CHARS_LAST_CMP,
+    style,
+    "using `.chars().last()` or `.chars().next_back()` to check if a string ends with a char"
 }
 
 declare_clippy_lint! {
@@ -921,111 +325,27 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
-    /// `.or_insert(foo(..))` etc., and suggests to use `.or_else(|| foo(..))`,
-    /// `.unwrap_or_else(|| foo(..))`, `.unwrap_or_default()` or `.or_default()`
-    /// etc. instead.
+    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a container.
     ///
     /// ### Why is this bad?
-    /// The function will always be called. This is only bad if it allocates or
-    /// does some non-trivial amount of work.
+    /// This creates an unnecessary iterator that is dropped immediately.
     ///
-    /// ### Known problems
-    /// If the function has side-effects, not calling it will change the
-    /// semantic of the program, but you shouldn't rely on that.
-    ///
-    /// The lint also cannot figure out whether the function you call is
-    /// actually expensive to call or not.
+    /// Calling `.clear()` also makes the intent clearer.
     ///
     /// ### Example
     /// ```no_run
-    /// # let foo = Some(String::new());
-    /// foo.unwrap_or(String::from("empty"));
+    /// let mut v = vec![1, 2, 3];
+    /// v.drain(..);
     /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// # let foo = Some(String::new());
-    /// foo.unwrap_or_else(|| String::from("empty"));
+    /// let mut v = vec![1, 2, 3];
+    /// v.clear();
     /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub OR_FUN_CALL,
+    #[clippy::version = "1.70.0"]
+    pub CLEAR_WITH_DRAIN,
     nursery,
-    "using any `*or` method with a function call, which suggests `*or_else`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.or(…).unwrap()` calls to Options and Results.
-    ///
-    /// ### Why is this bad?
-    /// You should use `.unwrap_or(…)` instead for clarity.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let fallback = "fallback";
-    /// // Result
-    /// # type Error = &'static str;
-    /// # let result: Result<&str, Error> = Err("error");
-    /// let value = result.or::<Error>(Ok(fallback)).unwrap();
-    ///
-    /// // Option
-    /// # let option: Option<&str> = None;
-    /// let value = option.or(Some(fallback)).unwrap();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let fallback = "fallback";
-    /// // Result
-    /// # let result: Result<&str, &str> = Err("error");
-    /// let value = result.unwrap_or(fallback);
-    ///
-    /// // Option
-    /// # let option: Option<&str> = None;
-    /// let value = option.unwrap_or(fallback);
-    /// ```
-    #[clippy::version = "1.61.0"]
-    pub OR_THEN_UNWRAP,
-    complexity,
-    "checks for `.or(…).unwrap()` calls to Options and Results."
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
-    /// etc., and suggests to use `unwrap_or_else` instead
-    ///
-    /// ### Why is this bad?
-    /// The function will always be called.
-    ///
-    /// ### Known problems
-    /// If the function has side-effects, not calling it will
-    /// change the semantics of the program, but you shouldn't rely on that anyway.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let foo = Some(String::new());
-    /// # let err_code = "418";
-    /// # let err_msg = "I'm a teapot";
-    /// foo.expect(&format!("Err {}: {}", err_code, err_msg));
-    ///
-    /// // or
-    ///
-    /// # let foo = Some(String::new());
-    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let foo = Some(String::new());
-    /// # let err_code = "418";
-    /// # let err_msg = "I'm a teapot";
-    /// foo.unwrap_or_else(|| panic!("Err {}: {}", err_code, err_msg));
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EXPECT_FUN_CALL,
-    perf,
-    "using any `expect` method with a function call"
+    "calling `drain` in order to `clear` a container"
 }
 
 declare_clippy_lint! {
@@ -1079,237 +399,561 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.to_string()` on an `&&T` where
-    /// `T` implements `ToString` directly (like `&&str` or `&&String`).
+    /// Checks for usage of `cloned()` on an `Iterator` or `Option` where
+    /// `copied()` could be used instead.
     ///
     /// ### Why is this bad?
-    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
-    /// implementation of `ToString` and instead goes through the more expensive string
-    /// formatting facilities.
+    /// `copied()` is better because it guarantees that the type being cloned
+    /// implements `Copy`.
     ///
     /// ### Example
     /// ```no_run
-    /// // Generic implementation for `T: Display` is used (slow)
-    /// ["foo", "bar"].iter().map(|s| s.to_string());
-    ///
-    /// // OK, the specialized impl is used
-    /// ["foo", "bar"].iter().map(|&s| s.to_string());
-    /// ```
-    #[clippy::version = "1.40.0"]
-    pub INEFFICIENT_TO_STRING,
-    pedantic,
-    "using `to_string` on `&&T` where `T: ToString`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `new` not returning a type that contains `Self`.
-    ///
-    /// ### Why is this bad?
-    /// As a convention, `new` methods are used to make a new
-    /// instance of a type.
-    ///
-    /// ### Example
-    /// In an impl block:
-    /// ```no_run
-    /// # struct Foo;
-    /// # struct NotAFoo;
-    /// impl Foo {
-    ///     fn new() -> NotAFoo {
-    /// # NotAFoo
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// ```no_run
-    /// # struct Foo;
-    /// struct Bar(Foo);
-    /// impl Foo {
-    ///     // Bad. The type name must contain `Self`
-    ///     fn new() -> Bar {
-    /// # Bar(Foo)
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// ```no_run
-    /// # struct Foo;
-    /// # struct FooError;
-    /// impl Foo {
-    ///     // Good. Return type contains `Self`
-    ///     fn new() -> Result<Foo, FooError> {
-    /// # Ok(Foo)
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Or in a trait definition:
-    /// ```no_run
-    /// pub trait Trait {
-    ///     // Bad. The type name must contain `Self`
-    ///     fn new();
-    /// }
-    /// ```
-    ///
-    /// ```no_run
-    /// pub trait Trait {
-    ///     // Good. Return type contains `Self`
-    ///     fn new() -> Self;
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub NEW_RET_NO_SELF,
-    style,
-    "not returning type containing `Self` in a `new` method"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calling `.step_by(0)` on iterators which panics.
-    ///
-    /// ### Why is this bad?
-    /// This very much looks like an oversight. Use `panic!()` instead if you
-    /// actually intend to panic.
-    ///
-    /// ### Example
-    /// ```rust,should_panic
-    /// for x in (0..100).step_by(0) {
-    ///     //..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ITERATOR_STEP_BY_ZERO,
-    correctness,
-    "using `Iterator::step_by(0)`, which will panic at runtime"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for iterators of `Option`s using `.filter(Option::is_some).map(Option::unwrap)` that may
-    /// be replaced with a `.flatten()` call.
-    ///
-    /// ### Why is this bad?
-    /// `Option` is like a collection of 0-1 things, so `flatten`
-    /// automatically does this without suspicious-looking `unwrap` calls.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = std::iter::empty::<Option<i32>>().filter(Option::is_some).map(Option::unwrap);
+    /// [1, 2, 3].iter().cloned();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let _ = std::iter::empty::<Option<i32>>().flatten();
+    /// [1, 2, 3].iter().copied();
     /// ```
     #[clippy::version = "1.53.0"]
-    pub OPTION_FILTER_MAP,
-    complexity,
-    "filtering `Option` for `Some` then force-unwrapping, which can be one type-safe operation"
+    pub CLONED_INSTEAD_OF_COPIED,
+    pedantic,
+    "used `cloned` where `copied` could be used instead"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the use of `iter.nth(0)`.
+    /// Checks for consecutive calls to `str::replace` (2 or more)
+    /// that can be collapsed into a single call.
     ///
     /// ### Why is this bad?
-    /// `iter.next()` is equivalent to
-    /// `iter.nth(0)`, as they both consume the next element,
-    ///  but is more readable.
+    /// Consecutive `str::replace` calls scan the string multiple times
+    /// with repetitive code.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::collections::HashSet;
-    /// # let mut s = HashSet::new();
-    /// # s.insert(1);
-    /// let x = s.iter().nth(0);
+    /// let hello = "hesuo worpd"
+    ///     .replace('s', "l")
+    ///     .replace("u", "l")
+    ///     .replace('p', "l");
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let hello = "hesuo worpd".replace(['s', 'u', 'p'], "l");
+    /// ```
+    #[clippy::version = "1.65.0"]
+    pub COLLAPSIBLE_STR_REPLACE,
+    perf,
+    "collapse consecutive calls to str::replace (2 or more) into a single call"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// It identifies calls to `.is_empty()` on constant values.
+    ///
+    /// ### Why is this bad?
+    /// String literals and constant values are known at compile time. Checking if they
+    /// are empty will always return the same value. This might not be the intention of
+    /// the expression.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let value = "";
+    /// if value.is_empty() {
+    ///     println!("the string is empty");
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// println!("the string is empty");
+    /// ```
+    #[clippy::version = "1.79.0"]
+    pub CONST_IS_EMPTY,
+    suspicious,
+    "is_empty() called on strings known at compile time"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
+    /// with `DoubleEndedIterator::next_back`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
+    /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
+    /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').last();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').next_back();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOUBLE_ENDED_ITERATOR_LAST,
+    perf,
+    "using `Iterator::last` on a `DoubleEndedIterator`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `.drain()` that clear the collection, immediately followed by a call to `.collect()`.
+    ///
+    /// > "Collection" in this context refers to any type with a `drain` method:
+    /// > `Vec`, `VecDeque`, `BinaryHeap`, `HashSet`,`HashMap`, `String`
+    ///
+    /// ### Why is this bad?
+    /// Using `mem::take` is faster as it avoids the allocation.
+    /// When using `mem::take`, the old collection is replaced with an empty one and ownership of
+    /// the old collection is returned.
+    ///
+    /// ### Known issues
+    /// `mem::take(&mut vec)` is almost equivalent to `vec.drain(..).collect()`, except that
+    /// it also moves the **capacity**. The user might have explicitly written it this way
+    /// to keep the capacity on the original `Vec`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     v.drain(..).collect()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::mem;
+    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
+    ///     mem::take(v)
+    /// }
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub DRAIN_COLLECT,
+    perf,
+    "calling `.drain(..).collect()` to move all elements into a new collection"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.err().expect()` calls on the `Result` type.
+    ///
+    /// ### Why is this bad?
+    /// `.expect_err()` can be called directly to avoid the extra type conversion from `err()`.
+    ///
+    /// ### Example
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.err().expect("Testing err().expect()");
+    /// ```
+    /// Use instead:
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err");
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub ERR_EXPECT,
+    style,
+    r#"using `.err().expect("")` when `.expect_err("")` can be used"#
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
+    /// etc., and suggests to use `unwrap_or_else` instead
+    ///
+    /// ### Why is this bad?
+    /// The function will always be called.
+    ///
+    /// ### Known problems
+    /// If the function has side-effects, not calling it will
+    /// change the semantics of the program, but you shouldn't rely on that anyway.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.expect(&format!("Err {}: {}", err_code, err_msg));
+    ///
+    /// // or
+    ///
+    /// # let foo = Some(String::new());
+    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # use std::collections::HashSet;
-    /// # let mut s = HashSet::new();
-    /// # s.insert(1);
-    /// let x = s.iter().next();
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.unwrap_or_else(|| panic!("Err {}: {}", err_code, err_msg));
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EXPECT_FUN_CALL,
+    perf,
+    "using any `expect` method with a function call"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.expect()` or `.expect_err()` calls on `Result`s and `.expect()` call on `Option`s.
+    ///
+    /// ### Why restrict this?
+    /// Usually it is better to handle the `None` or `Err` case.
+    /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
+    /// this lint is `Allow` by default.
+    ///
+    /// `result.expect()` will let the thread panic on `Err`
+    /// values. Normally, you want to implement more sophisticated error handling,
+    /// and propagate errors upwards with `?` operator.
+    ///
+    /// ### Examples
+    /// ```rust,ignore
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.expect("one");
+    /// result.expect("one");
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option?;
+    ///
+    /// // or
+    ///
+    /// result?;
+    /// ```
+    #[clippy::version = "1.45.0"]
+    pub EXPECT_USED,
+    restriction,
+    "using `.expect()` on `Result` or `Option`, which might be better handled"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for occurrences where one vector gets extended instead of append
+    ///
+    /// ### Why is this bad?
+    /// Using `append` instead of `extend` is more concise and faster
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut a = vec![1, 2, 3];
+    /// let mut b = vec![4, 5, 6];
+    ///
+    /// a.extend(b.drain(..));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let mut a = vec![1, 2, 3];
+    /// let mut b = vec![4, 5, 6];
+    ///
+    /// a.append(&mut b);
+    /// ```
+    #[clippy::version = "1.55.0"]
+    pub EXTEND_WITH_DRAIN,
+    perf,
+    "using vec.append(&mut vec) to move the full range of a vector to another"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `FileType::is_file()`.
+    ///
+    /// ### Why restrict this?
+    /// When people testing a file type with `FileType::is_file`
+    /// they are testing whether a path is something they can get bytes from. But
+    /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
+    /// symlink in windows. Using `!FileType::is_dir()` is a better way to that intention.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # || {
+    /// let metadata = std::fs::metadata("foo.txt")?;
+    /// let filetype = metadata.file_type();
+    ///
+    /// if filetype.is_file() {
+    ///     // read file
+    /// }
+    /// # Ok::<_, std::io::Error>(())
+    /// # };
+    /// ```
+    ///
+    /// should be written as:
+    ///
+    /// ```no_run
+    /// # || {
+    /// let metadata = std::fs::metadata("foo.txt")?;
+    /// let filetype = metadata.file_type();
+    ///
+    /// if !filetype.is_dir() {
+    ///     // read file
+    /// }
+    /// # Ok::<_, std::io::Error>(())
+    /// # };
     /// ```
     #[clippy::version = "1.42.0"]
-    pub ITER_NTH_ZERO,
-    style,
-    "replace `iter.nth(0)` with `iter.next()`"
+    pub FILETYPE_IS_FILE,
+    restriction,
+    "`FileType::is_file` is not recommended to test for readable file type"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.iter().nth()`/`.iter_mut().nth()` on standard library types that have
-    /// equivalent `.get()`/`.get_mut()` methods.
+    /// Checks for usage of `bool::then` in `Iterator::filter_map`.
     ///
     /// ### Why is this bad?
-    /// `.get()` and `.get_mut()` are equivalent but more concise.
+    /// This can be written with `filter` then `map` instead, which would reduce nesting and
+    /// separates the filtering from the transformation phase. This comes with no cost to
+    /// performance and is just cleaner.
+    ///
+    /// ### Limitations
+    /// Does not lint `bool::then_some`, as it eagerly evaluates its arguments rather than lazily.
+    /// This can create differing behavior, so better safe than sorry.
     ///
     /// ### Example
     /// ```no_run
-    /// let some_vec = vec![0, 1, 2, 3];
-    /// let bad_vec = some_vec.iter().nth(3);
-    /// let bad_slice = &some_vec[..].iter().nth(3);
-    /// ```
-    /// The correct use would be:
-    /// ```no_run
-    /// let some_vec = vec![0, 1, 2, 3];
-    /// let bad_vec = some_vec.get(3);
-    /// let bad_slice = &some_vec[..].get(3);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ITER_NTH,
-    style,
-    "using `.iter().nth()` on a standard library type with O(1) element access"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.skip(x).next()` on iterators.
-    ///
-    /// ### Why is this bad?
-    /// `.nth(x)` is cleaner
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let some_vec = vec![0, 1, 2, 3];
-    /// let bad_vec = some_vec.iter().skip(3).next();
-    /// let bad_slice = &some_vec[..].iter().skip(3).next();
-    /// ```
-    /// The correct use would be:
-    /// ```no_run
-    /// let some_vec = vec![0, 1, 2, 3];
-    /// let bad_vec = some_vec.iter().nth(3);
-    /// let bad_slice = &some_vec[..].iter().nth(3);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ITER_SKIP_NEXT,
-    style,
-    "using `.skip(x).next()` on an iterator"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.drain(..)` on `Vec` and `VecDeque` for iteration.
-    ///
-    /// ### Why is this bad?
-    /// `.into_iter()` is simpler with better performance.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # use std::collections::HashSet;
-    /// let mut foo = vec![0, 1, 2, 3];
-    /// let bar: HashSet<usize> = foo.drain(..).collect();
+    /// # fn really_expensive_fn(i: i32) -> i32 { i }
+    /// # let v = vec![];
+    /// _ = v.into_iter().filter_map(|i| (i % 2 == 0).then(|| really_expensive_fn(i)));
     /// ```
     /// Use instead:
     /// ```no_run
-    /// # use std::collections::HashSet;
-    /// let foo = vec![0, 1, 2, 3];
-    /// let bar: HashSet<usize> = foo.into_iter().collect();
+    /// # fn really_expensive_fn(i: i32) -> i32 { i }
+    /// # let v = vec![];
+    /// _ = v.into_iter().filter(|i| i % 2 == 0).map(|i| really_expensive_fn(i));
     /// ```
-    #[clippy::version = "1.61.0"]
-    pub ITER_WITH_DRAIN,
-    nursery,
-    "replace `.drain(..)` with `.into_iter()`"
+    #[clippy::version = "1.73.0"]
+    pub FILTER_MAP_BOOL_THEN,
+    style,
+    "checks for usage of `bool::then` in `Iterator::filter_map`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `filter_map(|x| x)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely by using `flatten`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.filter_map(|x| x);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.flatten();
+    /// ```
+    #[clippy::version = "1.52.0"]
+    pub FILTER_MAP_IDENTITY,
+    complexity,
+    "call to `filter_map` where `flatten` is sufficient"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.filter_map(_).next()`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.find_map(_)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    ///  (0..3).filter_map(|x| if x == 2 { Some(x) } else { None }).next();
+    /// ```
+    /// Can be written as
+    ///
+    /// ```no_run
+    ///  (0..3).find_map(|x| if x == 2 { Some(x) } else { None });
+    /// ```
+    #[clippy::version = "1.36.0"]
+    pub FILTER_MAP_NEXT,
+    pedantic,
+    "using combination of `filter_map` and `next` which can usually be written as a single method call"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.filter(_).next()`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.find(_)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).next();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub FILTER_NEXT,
+    complexity,
+    "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `flat_map(|x| x)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely by using `flatten`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flat_map(|x| x);
+    /// ```
+    /// Can be written as
+    /// ```no_run
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flatten();
+    /// ```
+    #[clippy::version = "1.39.0"]
+    pub FLAT_MAP_IDENTITY,
+    complexity,
+    "call to `flat_map` where `flatten` is sufficient"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `Iterator::flat_map()` where `filter_map()` could be
+    /// used instead.
+    ///
+    /// ### Why is this bad?
+    /// `filter_map()` is known to always produce 0 or 1 output items per input item,
+    /// rather than however many the inner iterator type produces.
+    /// Therefore, it maintains the upper bound in `Iterator::size_hint()`,
+    /// and communicates to the reader that the input items are not being expanded into
+    /// multiple output items without their having to notice that the mapping function
+    /// returns an `Option`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().flat_map(|x| x.parse().ok()).collect();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().filter_map(|x| x.parse().ok()).collect();
+    /// ```
+    #[clippy::version = "1.53.0"]
+    pub FLAT_MAP_OPTION,
+    pedantic,
+    "used `flat_map` where `filter_map` could be used instead"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.map(|_| format!(..)).collect::<String>()`.
+    ///
+    /// ### Why is this bad?
+    /// This allocates a new string for every element in the iterator.
+    /// This can be done more efficiently by creating the `String` once and appending to it in `Iterator::fold`,
+    /// using either the `write!` macro which supports exactly the same syntax as the `format!` macro,
+    /// or concatenating with `+` in case the iterator yields `&str`/`String`.
+    ///
+    /// Note also that `write!`-ing into a `String` can never fail, despite the return type of `write!` being `std::fmt::Result`,
+    /// so it can be safely ignored or unwrapped.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn hex_encode(bytes: &[u8]) -> String {
+    ///     bytes.iter().map(|b| format!("{b:02X}")).collect()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::fmt::Write;
+    /// fn hex_encode(bytes: &[u8]) -> String {
+    ///     bytes.iter().fold(String::new(), |mut output, b| {
+    ///         let _ = write!(output, "{b:02X}");
+    ///         output
+    ///     })
+    /// }
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub FORMAT_COLLECT,
+    pedantic,
+    "`format!`ing every element in a collection, then collecting the strings into a new `String`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `from_iter()` function calls on types that implement the `FromIterator`
+    /// trait.
+    ///
+    /// ### Why is this bad?
+    /// If it's needed to create a collection from the contents of an iterator, the `Iterator::collect(_)`
+    /// method is preferred. However, when it's needed to specify the container type,
+    /// `Vec::from_iter(_)` can be more readable than using a turbofish (e.g. `_.collect::<Vec<_>>()`). See
+    /// [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let five_fives = std::iter::repeat(5).take(5);
+    ///
+    /// let v = Vec::from_iter(five_fives);
+    ///
+    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let five_fives = std::iter::repeat(5).take(5);
+    ///
+    /// let v: Vec<i32> = five_fives.collect();
+    ///
+    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+    /// ```
+    /// but prefer to use
+    /// ```no_run
+    /// let numbers: Vec<i32> = FromIterator::from_iter(1..=5);
+    /// ```
+    /// instead of
+    /// ```no_run
+    /// let numbers = (1..=5).collect::<Vec<_>>();
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub FROM_ITER_INSTEAD_OF_COLLECT,
+    pedantic,
+    "use `.collect()` instead of `::from_iter()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `x.get(0)` instead of
+    /// `x.first()` or `x.front()`.
+    ///
+    /// ### Why is this bad?
+    /// Using `x.first()` for `Vec`s and slices or `x.front()`
+    /// for `VecDeque`s is easier to read and has the same result.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = vec![2, 3, 5];
+    /// let first_element = x.get(0);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let x = vec![2, 3, 5];
+    /// let first_element = x.first();
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub GET_FIRST,
+    style,
+    "Using `x.get(0)` when `x.first()` or `x.front()` is simpler"
 }
 
 declare_clippy_lint! {
@@ -1384,643 +1028,52 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for occurrences where one vector gets extended instead of append
+    /// Checks for the usage of `_.to_owned()`, `vec.to_vec()`, or similar when calling `_.clone()` would be clearer.
     ///
     /// ### Why is this bad?
-    /// Using `append` instead of `extend` is more concise and faster
+    /// These methods do the same thing as `_.clone()` but may be confusing as
+    /// to why we are calling `to_vec` on something that is already a `Vec` or calling `to_owned` on something that is already owned.
     ///
     /// ### Example
     /// ```no_run
-    /// let mut a = vec![1, 2, 3];
-    /// let mut b = vec![4, 5, 6];
-    ///
-    /// a.extend(b.drain(..));
+    /// let a = vec![1, 2, 3];
+    /// let b = a.to_vec();
+    /// let c = a.to_owned();
     /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// let mut a = vec![1, 2, 3];
-    /// let mut b = vec![4, 5, 6];
-    ///
-    /// a.append(&mut b);
+    /// let a = vec![1, 2, 3];
+    /// let b = a.clone();
+    /// let c = a.clone();
     /// ```
-    #[clippy::version = "1.55.0"]
-    pub EXTEND_WITH_DRAIN,
-    perf,
-    "using vec.append(&mut vec) to move the full range of a vector to another"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the use of `.extend(s.chars())` where s is a
-    /// `&str` or `String`.
-    ///
-    /// ### Why is this bad?
-    /// `.push_str(s)` is clearer
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let abc = "abc";
-    /// let def = String::from("def");
-    /// let mut s = String::new();
-    /// s.extend(abc.chars());
-    /// s.extend(def.chars());
-    /// ```
-    /// The correct use would be:
-    /// ```no_run
-    /// let abc = "abc";
-    /// let def = String::from("def");
-    /// let mut s = String::new();
-    /// s.push_str(abc);
-    /// s.push_str(&def);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub STRING_EXTEND_CHARS,
-    style,
-    "using `x.extend(s.chars())` where s is a `&str` or `String`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the use of `.cloned().collect()` on slice to
-    /// create a `Vec`.
-    ///
-    /// ### Why is this bad?
-    /// `.to_vec()` is clearer
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let s = [1, 2, 3, 4, 5];
-    /// let s2: Vec<isize> = s[..].iter().cloned().collect();
-    /// ```
-    /// The better use would be:
-    /// ```no_run
-    /// let s = [1, 2, 3, 4, 5];
-    /// let s2: Vec<isize> = s.to_vec();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ITER_CLONED_COLLECT,
-    style,
-    "using `.cloned().collect()` on slice to create a `Vec`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.chars().last()` or
-    /// `_.chars().next_back()` on a `str` to check if it ends with a given char.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ends_with(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let name = "_";
-    /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-');
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let name = "_";
-    /// name.ends_with('_') || name.ends_with('-');
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub CHARS_LAST_CMP,
-    style,
-    "using `.chars().last()` or `.chars().next_back()` to check if a string ends with a char"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.as_ref()` or `.as_mut()` where the
-    /// types before and after the call are the same.
-    ///
-    /// ### Why is this bad?
-    /// The call is unnecessary.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # fn do_stuff(x: &[i32]) {}
-    /// let x: &[i32] = &[1, 2, 3, 4, 5];
-    /// do_stuff(x.as_ref());
-    /// ```
-    /// The correct use would be:
-    /// ```no_run
-    /// # fn do_stuff(x: &[i32]) {}
-    /// let x: &[i32] = &[1, 2, 3, 4, 5];
-    /// do_stuff(x);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub USELESS_ASREF,
-    complexity,
-    "using `as_ref` where the types before and after the call are the same"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `fold` when a more succinct alternative exists.
-    /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
-    /// `sum` or `product`.
-    ///
-    /// ### Why is this bad?
-    /// Readability.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// (0..3).fold(false, |acc, x| acc || x > 2);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// (0..3).any(|x| x > 2);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub UNNECESSARY_FOLD,
-    style,
-    "using `fold` when a more succinct alternative exists"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `filter_map` calls that could be replaced by `filter` or `map`.
-    /// More specifically it checks if the closure provided is only performing one of the
-    /// filter or map operations and suggests the appropriate option.
-    ///
-    /// ### Why is this bad?
-    /// Complexity. The intent is also clearer if only a single
-    /// operation is being performed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
-    ///
-    /// // As there is no transformation of the argument this could be written as:
-    /// let _ = (0..3).filter(|&x| x > 2);
-    /// ```
-    ///
-    /// ```no_run
-    /// let _ = (0..4).filter_map(|x| Some(x + 1));
-    ///
-    /// // As there is no conditional check on the argument this could be written as:
-    /// let _ = (0..4).map(|x| x + 1);
-    /// ```
-    #[clippy::version = "1.31.0"]
-    pub UNNECESSARY_FILTER_MAP,
-    complexity,
-    "using `filter_map` when a more succinct alternative exists"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `find_map` calls that could be replaced by `find` or `map`. More
-    /// specifically it checks if the closure provided is only performing one of the
-    /// find or map operations and suggests the appropriate option.
-    ///
-    /// ### Why is this bad?
-    /// Complexity. The intent is also clearer if only a single
-    /// operation is being performed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = (0..3).find_map(|x| if x > 2 { Some(x) } else { None });
-    ///
-    /// // As there is no transformation of the argument this could be written as:
-    /// let _ = (0..3).find(|&x| x > 2);
-    /// ```
-    ///
-    /// ```no_run
-    /// let _ = (0..4).find_map(|x| Some(x + 1));
-    ///
-    /// // As there is no conditional check on the argument this could be written as:
-    /// let _ = (0..4).map(|x| x + 1).next();
-    /// ```
-    #[clippy::version = "1.61.0"]
-    pub UNNECESSARY_FIND_MAP,
-    complexity,
-    "using `find_map` when a more succinct alternative exists"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `into_iter` calls on references which should be replaced by `iter`
-    /// or `iter_mut`.
-    ///
-    /// ### Why is this bad?
-    /// Readability. Calling `into_iter` on a reference will not move out its
-    /// content into the resulting iterator, which is confusing. It is better just call `iter` or
-    /// `iter_mut` directly.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let vec = vec![3, 4, 5];
-    /// (&vec).into_iter();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let vec = vec![3, 4, 5];
-    /// (&vec).iter();
-    /// ```
-    #[clippy::version = "1.32.0"]
-    pub INTO_ITER_ON_REF,
-    style,
-    "using `.into_iter()` on a reference"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls to `map` followed by a `count`.
-    ///
-    /// ### Why is this bad?
-    /// It looks suspicious. Maybe `map` was confused with `filter`.
-    /// If the `map` call is intentional, this should be rewritten
-    /// using `inspect`. Or, if you intend to drive the iterator to
-    /// completion, you can just use `for_each` instead.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = (0..3).map(|x| x + 2).count();
-    /// ```
-    #[clippy::version = "1.39.0"]
-    pub SUSPICIOUS_MAP,
-    suspicious,
-    "suspicious usage of map"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `MaybeUninit::uninit().assume_init()`.
-    ///
-    /// ### Why is this bad?
-    /// For most types, this is undefined behavior.
-    ///
-    /// ### Known problems
-    /// For now, we accept empty tuples and tuples / arrays
-    /// of `MaybeUninit`. There may be other types that allow uninitialized
-    /// data, but those are not yet rigorously defined.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// // Beware the UB
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
-    /// ```
-    ///
-    /// Note that the following is OK:
-    ///
-    /// ```no_run
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let _: [MaybeUninit<bool>; 5] = unsafe {
-    ///     MaybeUninit::uninit().assume_init()
-    /// };
-    /// ```
-    #[clippy::version = "1.39.0"]
-    pub UNINIT_ASSUMED_INIT,
-    correctness,
-    "`MaybeUninit::uninit().assume_init()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.checked_add/sub(x).unwrap_or(MAX/MIN)`.
-    ///
-    /// ### Why is this bad?
-    /// These can be written simply with `saturating_add/sub` methods.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let y: u32 = 0;
-    /// # let x: u32 = 100;
-    /// let add = x.checked_add(y).unwrap_or(u32::MAX);
-    /// let sub = x.checked_sub(y).unwrap_or(u32::MIN);
-    /// ```
-    ///
-    /// can be written using dedicated methods for saturating addition/subtraction as:
-    ///
-    /// ```no_run
-    /// # let y: u32 = 0;
-    /// # let x: u32 = 100;
-    /// let add = x.saturating_add(y);
-    /// let sub = x.saturating_sub(y);
-    /// ```
-    #[clippy::version = "1.39.0"]
-    pub MANUAL_SATURATING_ARITHMETIC,
-    style,
-    "`.checked_add/sub(x).unwrap_or(MAX/MIN)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to
-    /// zero-sized types
-    ///
-    /// ### Why is this bad?
-    /// This is a no-op, and likely unintended
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unsafe { (&() as *const ()).offset(1) };
-    /// ```
-    #[clippy::version = "1.41.0"]
-    pub ZST_OFFSET,
-    correctness,
-    "Check for offset calculations on raw pointers to zero-sized types"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of the `offset` pointer method with an integer
-    /// literal.
-    ///
-    /// ### Why is this bad?
-    /// The `add` and `sub` methods more accurately express the intent.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let vec = vec![b'a', b'b', b'c'];
-    /// let ptr = vec.as_ptr();
-    ///
-    /// unsafe {
-    ///     ptr.offset(-8);
-    /// }
-    /// ```
-    ///
-    /// Could be written:
-    ///
-    /// ```no_run
-    /// let vec = vec![b'a', b'b', b'c'];
-    /// let ptr = vec.as_ptr();
-    ///
-    /// unsafe {
-    ///     ptr.sub(8);
-    /// }
-    /// ```
-    #[clippy::version = "1.92.0"]
-    pub PTR_OFFSET_BY_LITERAL,
+    #[clippy::version = "1.52.0"]
+    pub IMPLICIT_CLONE,
     pedantic,
-    "unneeded pointer offset"
+    "implicitly cloning a value by invoking a function on its dereferenced type"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
-    /// `isize`.
+    /// Checks for usage of `.to_string()` on an `&&T` where
+    /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
     /// ### Why is this bad?
-    /// If we’re always increasing the pointer address, we can avoid the numeric
-    /// cast by using the `add` method instead.
+    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
+    /// implementation of `ToString` and instead goes through the more expensive string
+    /// formatting facilities.
     ///
     /// ### Example
     /// ```no_run
-    /// let vec = vec![b'a', b'b', b'c'];
-    /// let ptr = vec.as_ptr();
-    /// let offset = 1_usize;
+    /// // Generic implementation for `T: Display` is used (slow)
+    /// ["foo", "bar"].iter().map(|s| s.to_string());
     ///
-    /// unsafe {
-    ///     ptr.offset(offset as isize);
-    /// }
+    /// // OK, the specialized impl is used
+    /// ["foo", "bar"].iter().map(|&s| s.to_string());
     /// ```
-    ///
-    /// Could be written:
-    ///
-    /// ```no_run
-    /// let vec = vec![b'a', b'b', b'c'];
-    /// let ptr = vec.as_ptr();
-    /// let offset = 1_usize;
-    ///
-    /// unsafe {
-    ///     ptr.add(offset);
-    /// }
-    /// ```
-    #[clippy::version = "1.30.0"]
-    pub PTR_OFFSET_WITH_CAST,
-    complexity,
-    "unneeded pointer offset cast"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `FileType::is_file()`.
-    ///
-    /// ### Why restrict this?
-    /// When people testing a file type with `FileType::is_file`
-    /// they are testing whether a path is something they can get bytes from. But
-    /// `is_file` doesn't cover special file types in unix-like systems, and doesn't cover
-    /// symlink in windows. Using `!FileType::is_dir()` is a better way to that intention.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # || {
-    /// let metadata = std::fs::metadata("foo.txt")?;
-    /// let filetype = metadata.file_type();
-    ///
-    /// if filetype.is_file() {
-    ///     // read file
-    /// }
-    /// # Ok::<_, std::io::Error>(())
-    /// # };
-    /// ```
-    ///
-    /// should be written as:
-    ///
-    /// ```no_run
-    /// # || {
-    /// let metadata = std::fs::metadata("foo.txt")?;
-    /// let filetype = metadata.file_type();
-    ///
-    /// if !filetype.is_dir() {
-    ///     // read file
-    /// }
-    /// # Ok::<_, std::io::Error>(())
-    /// # };
-    /// ```
-    #[clippy::version = "1.42.0"]
-    pub FILETYPE_IS_FILE,
-    restriction,
-    "`FileType::is_file` is not recommended to test for readable file type"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.as_ref().map(Deref::deref)` or its aliases (such as String::as_str).
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.as_deref()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some("".to_string());
-    /// opt.as_ref().map(String::as_str)
-    /// # ;
-    /// ```
-    /// Can be written as
-    /// ```no_run
-    /// # let opt = Some("".to_string());
-    /// opt.as_deref()
-    /// # ;
-    /// ```
-    #[clippy::version = "1.42.0"]
-    pub OPTION_AS_REF_DEREF,
-    complexity,
-    "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `iter().next()` on a Slice or an Array
-    ///
-    /// ### Why is this bad?
-    /// These can be shortened into `.get()`
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let a = [1, 2, 3];
-    /// # let b = vec![1, 2, 3];
-    /// a[2..].iter().next();
-    /// b.iter().next();
-    /// ```
-    /// should be written as:
-    /// ```no_run
-    /// # let a = [1, 2, 3];
-    /// # let b = vec![1, 2, 3];
-    /// a.get(2);
-    /// b.get(0);
-    /// ```
-    #[clippy::version = "1.46.0"]
-    pub ITER_NEXT_SLICE,
-    style,
-    "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns when using `push_str`/`insert_str` with a single-character string literal
-    /// where `push`/`insert` with a `char` would work fine.
-    ///
-    /// ### Why is this bad?
-    /// It's less clear that we are pushing a single character.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let mut string = String::new();
-    /// string.insert_str(0, "R");
-    /// string.push_str("R");
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let mut string = String::new();
-    /// string.insert(0, 'R');
-    /// string.push('R');
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub SINGLE_CHAR_ADD_STR,
-    style,
-    "`push_str()` or `insert_str()` used with a single-character string literal as parameter"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// As the counterpart to `or_fun_call`, this lint looks for unnecessary
-    /// lazily evaluated closures on `Option` and `Result`.
-    ///
-    /// This lint suggests changing the following functions, when eager evaluation results in
-    /// simpler code:
-    ///  - `unwrap_or_else` to `unwrap_or`
-    ///  - `and_then` to `and`
-    ///  - `or_else` to `or`
-    ///  - `get_or_insert_with` to `get_or_insert`
-    ///  - `ok_or_else` to `ok_or`
-    ///  - `then` to `then_some` (for msrv >= 1.62.0)
-    ///
-    /// ### Why is this bad?
-    /// Using eager evaluation is shorter and simpler in some cases.
-    ///
-    /// ### Known problems
-    /// It is possible, but not recommended for `Deref` and `Index` to have
-    /// side effects. Eagerly evaluating them can change the semantics of the program.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let opt: Option<u32> = None;
-    ///
-    /// opt.unwrap_or_else(|| 42);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let opt: Option<u32> = None;
-    ///
-    /// opt.unwrap_or(42);
-    /// ```
-    #[clippy::version = "1.48.0"]
-    pub UNNECESSARY_LAZY_EVALUATIONS,
-    style,
-    "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `_.map(_).collect::<Result<(), _>()`.
-    ///
-    /// ### Why is this bad?
-    /// Using `try_for_each` instead is more readable and idiomatic.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// (0..3).map(|t| Err(t)).collect::<Result<(), _>>();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// (0..3).try_for_each(|t| Err(t));
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub MAP_COLLECT_RESULT_UNIT,
-    style,
-    "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `from_iter()` function calls on types that implement the `FromIterator`
-    /// trait.
-    ///
-    /// ### Why is this bad?
-    /// If it's needed to create a collection from the contents of an iterator, the `Iterator::collect(_)`
-    /// method is preferred. However, when it's needed to specify the container type,
-    /// `Vec::from_iter(_)` can be more readable than using a turbofish (e.g. `_.collect::<Vec<_>>()`). See
-    /// [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let five_fives = std::iter::repeat(5).take(5);
-    ///
-    /// let v = Vec::from_iter(five_fives);
-    ///
-    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let five_fives = std::iter::repeat(5).take(5);
-    ///
-    /// let v: Vec<i32> = five_fives.collect();
-    ///
-    /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
-    /// ```
-    /// but prefer to use
-    /// ```no_run
-    /// let numbers: Vec<i32> = FromIterator::from_iter(1..=5);
-    /// ```
-    /// instead of
-    /// ```no_run
-    /// let numbers = (1..=5).collect::<Vec<_>>();
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub FROM_ITER_INSTEAD_OF_COLLECT,
+    #[clippy::version = "1.40.0"]
+    pub INEFFICIENT_TO_STRING,
     pedantic,
-    "use `.collect()` instead of `::from_iter()`"
+    "using `to_string` on `&&T` where `T: ToString`"
 }
 
 declare_clippy_lint! {
@@ -2055,97 +1108,138 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `filter_map(|x| x)`.
+    /// Checks for `into_iter` calls on references which should be replaced by `iter`
+    /// or `iter_mut`.
     ///
     /// ### Why is this bad?
-    /// Readability, this can be written more concisely by using `flatten`.
+    /// Readability. Calling `into_iter` on a reference will not move out its
+    /// content into the resulting iterator, which is confusing. It is better just call `iter` or
+    /// `iter_mut` directly.
     ///
     /// ### Example
     /// ```no_run
-    /// # let iter = vec![Some(1)].into_iter();
-    /// iter.filter_map(|x| x);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let iter = vec![Some(1)].into_iter();
-    /// iter.flatten();
-    /// ```
-    #[clippy::version = "1.52.0"]
-    pub FILTER_MAP_IDENTITY,
-    complexity,
-    "call to `filter_map` where `flatten` is sufficient"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for instances of `map(f)` where `f` is the identity function.
-    ///
-    /// ### Why is this bad?
-    /// It can be written more concisely without the call to `map`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = [1, 2, 3];
-    /// let y: Vec<_> = x.iter().map(|x| x).map(|x| 2*x).collect();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = [1, 2, 3];
-    /// let y: Vec<_> = x.iter().map(|x| 2*x).collect();
-    /// ```
-    #[clippy::version = "1.47.0"]
-    pub MAP_IDENTITY,
-    complexity,
-    "using iterator.map(|x| x)"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the use of `.bytes().nth()`.
-    ///
-    /// ### Why is this bad?
-    /// `.as_bytes().get()` is more efficient and more
-    /// readable.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// "Hello".bytes().nth(3);
+    /// # let vec = vec![3, 4, 5];
+    /// (&vec).into_iter();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// "Hello".as_bytes().get(3);
+    /// # let vec = vec![3, 4, 5];
+    /// (&vec).iter();
     /// ```
-    #[clippy::version = "1.52.0"]
-    pub BYTES_NTH,
+    #[clippy::version = "1.32.0"]
+    pub INTO_ITER_ON_REF,
     style,
-    "replace `.bytes().nth()` with `.as_bytes().get()`"
+    "using `.into_iter()` on a reference"
+}
+
+declare_clippy_lint! {
+    /// This lint warns on calling `io::Error::new(..)` with a kind of
+    /// `io::ErrorKind::Other`.
+    ///
+    /// ### Why is this bad?
+    /// Since Rust 1.74, there's the `io::Error::other(_)` shortcut.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io;
+    /// let _ = io::Error::new(io::ErrorKind::Other, "bad".to_string());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::io::Error::other("bad".to_string());
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub IO_OTHER_ERROR,
+    style,
+    "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of `_.to_owned()`, `vec.to_vec()`, or similar when calling `_.clone()` would be clearer.
+    /// Checks for IP addresses that could be replaced with predefined constants such as
+    /// `Ipv4Addr::new(127, 0, 0, 1)` instead of using the appropriate constants.
     ///
     /// ### Why is this bad?
-    /// These methods do the same thing as `_.clone()` but may be confusing as
-    /// to why we are calling `to_vec` on something that is already a `Vec` or calling `to_owned` on something that is already owned.
+    /// Using specific IP addresses like `127.0.0.1` or `::1` is less clear and less maintainable than using the
+    /// predefined constants `Ipv4Addr::LOCALHOST` or `Ipv6Addr::LOCALHOST`. These constants improve code
+    /// readability, make the intent explicit, and are less error-prone.
     ///
     /// ### Example
     /// ```no_run
-    /// let a = vec![1, 2, 3];
-    /// let b = a.to_vec();
-    /// let c = a.to_owned();
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// // IPv4 loopback
+    /// let addr_v4 = Ipv4Addr::new(127, 0, 0, 1);
+    ///
+    /// // IPv6 loopback
+    /// let addr_v6 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let a = vec![1, 2, 3];
-    /// let b = a.clone();
-    /// let c = a.clone();
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// // IPv4 loopback
+    /// let addr_v4 = Ipv4Addr::LOCALHOST;
+    ///
+    /// // IPv6 loopback
+    /// let addr_v6 = Ipv6Addr::LOCALHOST;
     /// ```
-    #[clippy::version = "1.52.0"]
-    pub IMPLICIT_CLONE,
+    #[clippy::version = "1.89.0"]
+    pub IP_CONSTANT,
     pedantic,
-    "implicitly cloning a value by invoking a function on its dereferenced type"
+    "hardcoded localhost IP address"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds usages of [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
+    /// can be replaced with [`is_ascii_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
+    /// [`is_ascii_hexdigit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
+    ///
+    /// ### Why is this bad?
+    /// `is_digit(..)` is slower and requires specifying the radix.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let c: char = '6';
+    /// c.is_digit(10);
+    /// c.is_digit(16);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let c: char = '6';
+    /// c.is_ascii_digit();
+    /// c.is_ascii_hexdigit();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub IS_DIGIT_ASCII_RADIX,
+    style,
+    "use of `char::is_digit(..)` with literal radix of 10 or 16"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the use of `.cloned().collect()` on slice to
+    /// create a `Vec`.
+    ///
+    /// ### Why is this bad?
+    /// `.to_vec()` is clearer
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let s = [1, 2, 3, 4, 5];
+    /// let s2: Vec<isize> = s[..].iter().cloned().collect();
+    /// ```
+    /// The better use would be:
+    /// ```no_run
+    /// let s = [1, 2, 3, 4, 5];
+    /// let s2: Vec<isize> = s.to_vec();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ITER_CLONED_COLLECT,
+    style,
+    "using `.cloned().collect()` on slice to create a `Vec`"
 }
 
 declare_clippy_lint! {
@@ -2179,103 +1273,734 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the usage of `_.to_owned()`, on a `Cow<'_, _>`.
+    /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it affects the type.
     ///
     /// ### Why is this bad?
-    /// Calling `to_owned()` on a `Cow` creates a clone of the `Cow`
-    /// itself, without taking ownership of the `Cow` contents (i.e.
-    /// it's equivalent to calling `Cow::clone`).
-    /// The similarly named `into_owned` method, on the other hand,
-    /// clones the `Cow` contents, effectively turning any `Cow::Borrowed`
-    /// into a `Cow::Owned`.
-    ///
-    /// Given the potential ambiguity, consider replacing `to_owned`
-    /// with `clone` for better readability or, if getting a `Cow::Owned`
-    /// was the original intent, using `into_owned` instead.
+    /// This pattern is often followed by manual unwrapping of `Result`. The simplification
+    /// results in more readable and succinct code without the need for manual unwrapping.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::borrow::Cow;
-    /// let s = "Hello world!";
-    /// let cow = Cow::Borrowed(s);
+    /// vec![Ok::<i32, String>(1)].into_iter().filter(Result::is_ok);
     ///
-    /// let data = cow.to_owned();
-    /// assert!(matches!(data, Cow::Borrowed(_)))
     /// ```
     /// Use instead:
     /// ```no_run
-    /// # use std::borrow::Cow;
-    /// let s = "Hello world!";
-    /// let cow = Cow::Borrowed(s);
-    ///
-    /// let data = cow.clone();
-    /// assert!(matches!(data, Cow::Borrowed(_)))
+    /// vec![Ok::<i32, String>(1)].into_iter().flatten();
     /// ```
-    /// or
+    #[clippy::version = "1.77.0"]
+    pub ITER_FILTER_IS_OK,
+    pedantic,
+    "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it affects the type.
+    ///
+    /// ### Why is this bad?
+    /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
+    /// results in more readable and succinct code without the need for manual unwrapping.
+    ///
+    /// ### Example
     /// ```no_run
-    /// # use std::borrow::Cow;
-    /// let s = "Hello world!";
-    /// let cow = Cow::Borrowed(s);
+    /// vec![Some(1)].into_iter().filter(Option::is_some);
     ///
-    /// let _data: String = cow.into_owned();
     /// ```
+    /// Use instead:
+    /// ```no_run
+    /// vec![Some(1)].into_iter().flatten();
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub ITER_FILTER_IS_SOME,
+    pedantic,
+    "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for iterating a map (`HashMap` or `BTreeMap`) and
+    /// ignoring either the keys or values.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Readability. There are `keys` and `values` methods that
+    /// can be used to express that we only need the keys or the values.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// # use std::collections::HashMap;
+    /// let map: HashMap<u32, u32> = HashMap::new();
+    /// let values = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # use std::collections::HashMap;
+    /// let map: HashMap<u32, u32> = HashMap::new();
+    /// let values = map.values().collect::<Vec<_>>();
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub ITER_KV_MAP,
+    complexity,
+    "iterating on map using `iter` when `keys` or `values` would do"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().next()` on a Slice or an Array
+    ///
+    /// ### Why is this bad?
+    /// These can be shortened into `.get()`
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a[2..].iter().next();
+    /// b.iter().next();
+    /// ```
+    /// should be written as:
+    /// ```no_run
+    /// # let a = [1, 2, 3];
+    /// # let b = vec![1, 2, 3];
+    /// a.get(2);
+    /// b.get(0);
+    /// ```
+    #[clippy::version = "1.46.0"]
+    pub ITER_NEXT_SLICE,
+    style,
+    "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.iter().nth()`/`.iter_mut().nth()` on standard library types that have
+    /// equivalent `.get()`/`.get_mut()` methods.
+    ///
+    /// ### Why is this bad?
+    /// `.get()` and `.get_mut()` are equivalent but more concise.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let bad_vec = some_vec.iter().nth(3);
+    /// let bad_slice = &some_vec[..].iter().nth(3);
+    /// ```
+    /// The correct use would be:
+    /// ```no_run
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let bad_vec = some_vec.get(3);
+    /// let bad_slice = &some_vec[..].get(3);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ITER_NTH,
+    style,
+    "using `.iter().nth()` on a standard library type with O(1) element access"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the use of `iter.nth(0)`.
+    ///
+    /// ### Why is this bad?
+    /// `iter.next()` is equivalent to
+    /// `iter.nth(0)`, as they both consume the next element,
+    ///  but is more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// # let mut s = HashSet::new();
+    /// # s.insert(1);
+    /// let x = s.iter().nth(0);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// # let mut s = HashSet::new();
+    /// # s.insert(1);
+    /// let x = s.iter().next();
+    /// ```
+    #[clippy::version = "1.42.0"]
+    pub ITER_NTH_ZERO,
+    style,
+    "replace `iter.nth(0)` with `iter.next()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on empty collections
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It is simpler to use the empty function from the standard library:
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// use std::{slice, option};
+    /// let a: slice::Iter<i32> = [].iter();
+    /// let f: option::IntoIter<i32> = None.into_iter();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::iter;
+    /// let a: iter::Empty<i32> = iter::empty();
+    /// let b: iter::Empty<i32> = iter::empty();
+    /// ```
+    ///
+    /// ### Known problems
+    ///
+    /// The type of the resulting iterator might become incompatible with its usage
     #[clippy::version = "1.65.0"]
-    pub SUSPICIOUS_TO_OWNED,
+    pub ITER_ON_EMPTY_COLLECTIONS,
+    nursery,
+    "Iterator for empty array"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on collections containing a single item
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It is simpler to use the once function from the standard library:
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// let a = [123].iter();
+    /// let b = Some(123).into_iter();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::iter;
+    /// let a = iter::once(&123);
+    /// let b = iter::once(123);
+    /// ```
+    ///
+    /// ### Known problems
+    ///
+    /// The type of the resulting iterator might become incompatible with its usage
+    #[clippy::version = "1.65.0"]
+    pub ITER_ON_SINGLE_ITEMS,
+    nursery,
+    "Iterator for array of length 1"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for iterator combinator calls such as `.take(x)` or `.skip(x)`
+    /// where `x` is greater than the amount of items that an iterator will produce.
+    ///
+    /// ### Why is this bad?
+    /// Taking or skipping more items than there are in an iterator either creates an iterator
+    /// with all items from the original iterator or an iterator with no items at all.
+    /// This is most likely not what the user intended to do.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// for _ in [1, 2, 3].iter().take(4) {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// for _ in [1, 2, 3].iter() {}
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub ITER_OUT_OF_BOUNDS,
     suspicious,
-    "calls to `to_owned` on a `Cow<'_, _>` might not do what they are expected"
+    "calls to `.take()` or `.skip()` that are out of bounds"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to [`splitn`]
-    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
-    /// related functions with either zero or one splits.
+    /// Checks for usage of `_.cloned().<func>()` where call to `.cloned()` can be postponed.
     ///
     /// ### Why is this bad?
-    /// These calls don't actually split the value and are
-    /// likely to be intended as a different number.
+    /// It's often inefficient to clone all elements of an iterator, when eventually, only some
+    /// of them will be consumed.
     ///
-    /// ### Example
+    /// ### Known Problems
+    /// This `lint` removes the side of effect of cloning items in the iterator.
+    /// A code that relies on that side-effect could fail.
+    ///
+    /// ### Examples
     /// ```no_run
-    /// # let s = "";
-    /// for x in s.splitn(1, ":") {
-    ///     // ..
-    /// }
+    /// # let vec = vec!["string".to_string()];
+    /// vec.iter().cloned().take(10);
+    /// vec.iter().cloned().last();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # let s = "";
-    /// for x in s.splitn(2, ":") {
-    ///     // ..
-    /// }
+    /// # let vec = vec!["string".to_string()];
+    /// vec.iter().take(10).cloned();
+    /// vec.iter().last().cloned();
     /// ```
-    #[clippy::version = "1.54.0"]
-    pub SUSPICIOUS_SPLITN,
-    correctness,
-    "checks for `.splitn(0, ..)` and `.splitn(1, ..)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for manual implementations of `str::repeat`
-    ///
-    /// ### Why is this bad?
-    /// These are both harder to read, as well as less performant.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x: String = std::iter::repeat('x').take(10).collect();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let x: String = "x".repeat(10);
-    /// ```
-    #[clippy::version = "1.54.0"]
-    pub MANUAL_STR_REPEAT,
+    #[clippy::version = "1.60.0"]
+    pub ITER_OVEREAGER_CLONED,
     perf,
-    "manual implementation of `str::repeat`"
+    "using `cloned()` early with `Iterator::iter()` can lead to some performance inefficiencies"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.skip(x).next()` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// `.nth(x)` is cleaner
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let bad_vec = some_vec.iter().skip(3).next();
+    /// let bad_slice = &some_vec[..].iter().skip(3).next();
+    /// ```
+    /// The correct use would be:
+    /// ```no_run
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let bad_vec = some_vec.iter().nth(3);
+    /// let bad_slice = &some_vec[..].iter().nth(3);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ITER_SKIP_NEXT,
+    style,
+    "using `.skip(x).next()` on an iterator"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.skip(0)` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// This was likely intended to be `.skip(1)` to skip the first element, as `.skip(0)` does
+    /// nothing. If not, the call should be removed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// let x = v.iter().skip(0).collect::<Vec<_>>();
+    /// let y = v.iter().collect::<Vec<_>>();
+    /// assert_eq!(x, y);
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub ITER_SKIP_ZERO,
+    correctness,
+    "disallows `.skip(0)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.drain(..)` on `Vec` and `VecDeque` for iteration.
+    ///
+    /// ### Why is this bad?
+    /// `.into_iter()` is simpler with better performance.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let mut foo = vec![0, 1, 2, 3];
+    /// let bar: HashSet<usize> = foo.drain(..).collect();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let foo = vec![0, 1, 2, 3];
+    /// let bar: HashSet<usize> = foo.into_iter().collect();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ITER_WITH_DRAIN,
+    nursery,
+    "replace `.drain(..)` with `.into_iter()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calling `.step_by(0)` on iterators which panics.
+    ///
+    /// ### Why is this bad?
+    /// This very much looks like an oversight. Use `panic!()` instead if you
+    /// actually intend to panic.
+    ///
+    /// ### Example
+    /// ```rust,should_panic
+    /// for x in (0..100).step_by(0) {
+    ///     //..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ITERATOR_STEP_BY_ZERO,
+    correctness,
+    "using `Iterator::step_by(0)`, which will panic at runtime"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Path::join` that start with a path separator (`\\` or `/`).
+    ///
+    /// ### Why is this bad?
+    /// If the argument to `Path::join` starts with a separator, it will overwrite
+    /// the original path. If this is intentional, prefer using `Path::new` instead.
+    ///
+    /// Note the behavior is platform dependent. A leading `\\` will be accepted
+    /// on unix systems as part of the file name
+    ///
+    /// See [`Path::join`](https://doc.rust-lang.org/std/path/struct.Path.html#method.join)
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    /// let joined_path = path.join("/sh");
+    /// assert_eq!(joined_path, PathBuf::from("/sh"));
+    /// ```
+    ///
+    /// Use instead;
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    ///
+    /// // If this was unintentional, remove the leading separator
+    /// let joined_path = path.join("sh");
+    /// assert_eq!(joined_path, PathBuf::from("/bin/sh"));
+    ///
+    /// // If this was intentional, create a new path instead
+    /// let new = Path::new("/sh");
+    /// assert_eq!(new, PathBuf::from("/sh"));
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub JOIN_ABSOLUTE_PATHS,
+    suspicious,
+    "calls to `Path::join` which will overwrite the original path"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
+    /// when `lines` has type `std::io::Lines`.
+    ///
+    /// ### Why is this bad?
+    /// `Lines` instances might produce a never-ending stream of `Err`, in which case
+    /// `filter_map(Result::ok)` will enter an infinite loop while waiting for an
+    /// `Ok` variant. Calling `next()` once is sufficient to enter the infinite loop,
+    /// even in the absence of explicit loops in the user code.
+    ///
+    /// This situation can arise when working with user-provided paths. On some platforms,
+    /// `std::fs::File::open(path)` might return `Ok(fs)` even when `path` is a directory,
+    /// but any later attempt to read from `fs` will return an error.
+    ///
+    /// ### Known problems
+    /// This lint suggests replacing `filter_map()` or `flat_map()` applied to a `Lines`
+    /// instance in all cases. There are two cases where the suggestion might not be
+    /// appropriate or necessary:
+    ///
+    /// - If the `Lines` instance can never produce any error, or if an error is produced
+    ///   only once just before terminating the iterator, using `map_while()` is not
+    ///   necessary but will not do any harm.
+    /// - If the `Lines` instance can produce intermittent errors then recover and produce
+    ///   successful results, using `map_while()` would stop at the first error.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().filter_map(Result::ok);
+    /// // If "some-path" points to a directory, the next statement never terminates:
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().map_while(Result::ok);
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub LINES_FILTER_MAP_OK,
+    suspicious,
+    "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the manual creation of C strings (a string with a `NUL` byte at the end), either
+    /// through one of the `CStr` constructor functions, or more plainly by calling `.as_ptr()`
+    /// on a (byte) string literal with a hardcoded `\0` byte at the end.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely using `c"str"` literals and is also less error-prone,
+    /// because the compiler checks for interior `NUL` bytes and the terminating `NUL` byte is inserted automatically.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::ffi::CStr;
+    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// fn needs_cstr(_: &CStr) {}
+    ///
+    /// needs_cstr(CStr::from_bytes_with_nul(b"Hello\0").unwrap());
+    /// unsafe { libc::puts("World\0".as_ptr().cast()) }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::ffi::CStr;
+    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// fn needs_cstr(_: &CStr) {}
+    ///
+    /// needs_cstr(c"Hello");
+    /// unsafe { libc::puts(c"World".as_ptr()) }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub MANUAL_C_STR_LITERALS,
+    complexity,
+    r#"creating a `CStr` through functions when `c""` literals can be used"#
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
+    ///
+    /// ### Why is this bad?
+    /// `contains()` is more concise and idiomatic, while also being faster in some cases.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///     values.iter().any(|&v| v == 10)
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///     values.contains(&10)
+    /// }
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub MANUAL_CONTAINS,
+    perf,
+    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.filter(_).map(_)` that can be written more simply
+    /// as `filter_map(_)`.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code in the `filter` and `map` operations is poor style and
+    /// less performant.
+    ///
+     /// ### Example
+    /// ```no_run
+    /// (0_i32..10)
+    ///     .filter(|n| n.checked_add(1).is_some())
+    ///     .map(|n| n.checked_add(1).unwrap());
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// (0_i32..10).filter_map(|n| n.checked_add(1));
+    /// ```
+    #[clippy::version = "1.51.0"]
+    pub MANUAL_FILTER_MAP,
+    complexity,
+    "using `_.filter(_).map(_)` in a way that can be written more simply as `filter_map(_)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.find(_).map(_)` that can be written more simply
+    /// as `find_map(_)`.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code in the `find` and `map` operations is poor style and
+    /// less performant.
+    ///
+     /// ### Example
+    /// ```no_run
+    /// (0_i32..10)
+    ///     .find(|n| n.checked_add(1).is_some())
+    ///     .map(|n| n.checked_add(1).unwrap());
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// (0_i32..10).find_map(|n| n.checked_add(1));
+    /// ```
+    #[clippy::version = "1.51.0"]
+    pub MANUAL_FIND_MAP,
+    complexity,
+    "using `_.find(_).map(_)` in a way that can be written more simply as `find_map(_)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for uses of `map` which return the original item.
+    ///
+    /// ### Why is this bad?
+    /// `inspect` is both clearer in intent and shorter.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = Some(0).map(|x| { println!("{x}"); x });
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = Some(0).inspect(|x| println!("{x}"));
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub MANUAL_INSPECT,
+    complexity,
+    "use of `map` returning the original item"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
+    ///
+    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.map(|a| a > 10).unwrap_or_default();
+    /// result.map(|a| a > 10).unwrap_or_default();
+    ///
+    /// option.map(|a| a > 10) == Some(true);
+    /// result.map(|a| a > 10) == Ok(true);
+    /// option.map(|a| a > 10) != Some(true);
+    /// result.map(|a| a > 10) != Ok(true);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.is_some_and(|a| a > 10);
+    /// result.is_ok_and(|a| a > 10);
+    ///
+    /// option.is_some_and(|a| a > 10);
+    /// result.is_ok_and(|a| a > 10);
+    /// option.is_none_or(|a| a > 10);
+    /// !result.is_ok_and(|a| a > 10);
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub MANUAL_IS_VARIANT_AND,
+    pedantic,
+    "using `.map(f).unwrap_or_default()` or `.map(f) == Some/Ok(true)`, which are more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.rev().next()` on a `DoubleEndedIterator`
+    ///
+    /// ### Why is this bad?
+    /// `.next_back()` is cleaner.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let foo = [0; 10];
+    /// foo.iter().rev().next();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let foo = [0; 10];
+    /// foo.iter().next_back();
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub MANUAL_NEXT_BACK,
+    style,
+    "manual reverse iteration of `DoubleEndedIterator`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Finds patterns that reimplement `Option::ok_or`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Concise code helps focusing on behavior instead of boilerplate.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// let foo: Option<i32> = None;
+    /// foo.map_or(Err("error"), |v| Ok(v));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let foo: Option<i32> = None;
+    /// foo.ok_or("error");
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_OK_OR,
+    style,
+    "finds patterns that can be encoded more concisely with `Option::ok_or`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `repeat_n()` is more concise and clearer. Also, `repeat_n()` is sometimes faster than `repeat().take()` when the type of the element is non-trivial to clone because the original value can be reused for the last `.next()` call rather than always cloning.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::repeat(10).take(3);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::repeat_n(10, 3);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_REPEAT_N,
+    style,
+    "detect `repeat().take()` that can be replaced with `repeat_n()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.checked_add/sub(x).unwrap_or(MAX/MIN)`.
+    ///
+    /// ### Why is this bad?
+    /// These can be written simply with `saturating_add/sub` methods.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.checked_add(y).unwrap_or(u32::MAX);
+    /// let sub = x.checked_sub(y).unwrap_or(u32::MIN);
+    /// ```
+    ///
+    /// can be written using dedicated methods for saturating addition/subtraction as:
+    ///
+    /// ```no_run
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.saturating_add(y);
+    /// let sub = x.saturating_sub(y);
+    /// ```
+    #[clippy::version = "1.39.0"]
+    pub MANUAL_SATURATING_ARITHMETIC,
+    style,
+    "`.checked_add/sub(x).unwrap_or(MAX/MIN)`"
 }
 
 declare_clippy_lint! {
@@ -2316,410 +2041,78 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same.
+    /// Checks for manual implementations of `str::repeat`
+    ///
     /// ### Why is this bad?
-    /// The function `split` is simpler and there is no performance difference in these cases, considering
-    /// that both functions return a lazy iterator.
+    /// These are both harder to read, as well as less performant.
+    ///
     /// ### Example
     /// ```no_run
-    /// let str = "key=value=add";
-    /// let _ = str.splitn(3, '=').next().unwrap();
+    /// let x: String = std::iter::repeat('x').take(10).collect();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// let str = "key=value=add";
-    /// let _ = str.split('=').next().unwrap();
+    /// let x: String = "x".repeat(10);
     /// ```
-    #[clippy::version = "1.59.0"]
-    pub NEEDLESS_SPLITN,
-    complexity,
-    "usages of `str::splitn` that can be replaced with `str::split`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for unnecessary calls to [`ToOwned::to_owned`](https://doc.rust-lang.org/std/borrow/trait.ToOwned.html#tymethod.to_owned)
-    /// and other `to_owned`-like functions.
-    ///
-    /// ### Why is this bad?
-    /// The unnecessary calls result in useless allocations.
-    ///
-    /// ### Known problems
-    /// `unnecessary_to_owned` can falsely trigger if `IntoIterator::into_iter` is applied to an
-    /// owned copy of a resource and the resource is later used mutably. See
-    /// [#8148](https://github.com/rust-lang/rust-clippy/issues/8148).
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let path = std::path::Path::new("x");
-    /// foo(&path.to_string_lossy().to_string());
-    /// fn foo(s: &str) {}
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let path = std::path::Path::new("x");
-    /// foo(&path.to_string_lossy());
-    /// fn foo(s: &str) {}
-    /// ```
-    #[clippy::version = "1.59.0"]
-    pub UNNECESSARY_TO_OWNED,
+    #[clippy::version = "1.54.0"]
+    pub MANUAL_STR_REPEAT,
     perf,
-    "unnecessary calls to `to_owned`-like functions"
+    "manual implementation of `str::repeat`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.collect::<Vec<String>>().join("")` on iterators.
+    /// Checks for usage of `Iterator::fold` with a type that implements `Try`.
     ///
     /// ### Why is this bad?
-    /// `.collect::<String>()` is more concise and might be more performant
+    /// The code should use `try_fold` instead, which short-circuits on failure, thus opening the
+    /// door for additional optimizations not possible with `fold` as rustc can guarantee the
+    /// function is never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's
+    /// also slightly more idiomatic.
+    ///
+    /// ### Known issues
+    /// This lint doesn't take into account whether a function does something on the failure case,
+    /// i.e., whether short-circuiting will affect behavior. Refactoring to `try_fold` is not
+    /// desirable in those cases.
     ///
     /// ### Example
     /// ```no_run
-    /// let vector = vec!["hello",  "world"];
-    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<Vec<String>>().join("");
-    /// println!("{}", output);
+    /// vec![1, 2, 3].iter().fold(Some(0i32), |sum, i| sum?.checked_add(*i));
     /// ```
-    /// The correct use would be:
-    /// ```no_run
-    /// let vector = vec!["hello",  "world"];
-    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<String>();
-    /// println!("{}", output);
-    /// ```
-    /// ### Known problems
-    /// While `.collect::<String>()` is sometimes more performant, there are cases where
-    /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
-    /// will prevent loop unrolling and will result in a negative performance impact.
-    ///
-    /// Additionally, differences have been observed between aarch64 and x86_64 assembly output,
-    /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
-    #[clippy::version = "1.61.0"]
-    pub UNNECESSARY_JOIN,
-    pedantic,
-    "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for no-op uses of `Option::{as_deref, as_deref_mut}`,
-    /// for example, `Option<&T>::as_deref()` returns the same type.
-    ///
-    /// ### Why is this bad?
-    /// Redundant code and improving readability.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let a = Some(&1);
-    /// let b = a.as_deref(); // goes from Option<&i32> to Option<&i32>
-    /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// let a = Some(&1);
-    /// let b = a;
+    /// vec![1, 2, 3].iter().try_fold(0i32, |sum, i| sum.checked_add(*i));
     /// ```
-    #[clippy::version = "1.57.0"]
-    pub NEEDLESS_OPTION_AS_DEREF,
+    #[clippy::version = "1.72.0"]
+    pub MANUAL_TRY_FOLD,
+    perf,
+    "checks for usage of `Iterator::fold` with a type that implements `Try`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.map(…)`, followed by `.all(identity)` or `.any(identity)`.
+    ///
+    /// ### Why is this bad?
+    /// The `.all(…)` or `.any(…)` methods can be called directly in place of `.map(…)`.
+    ///
+    /// ### Example
+    /// ```
+    /// # let mut v = [""];
+    /// let e1 = v.iter().map(|s| s.is_empty()).all(|a| a);
+    /// let e2 = v.iter().map(|s| s.is_empty()).any(std::convert::identity);
+    /// ```
+    /// Use instead:
+    /// ```
+    /// # let mut v = [""];
+    /// let e1 = v.iter().all(|s| s.is_empty());
+    /// let e2 = v.iter().any(|s| s.is_empty());
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub MAP_ALL_ANY_IDENTITY,
     complexity,
-    "no-op use of `deref` or `deref_mut` method to `Option`."
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Finds usages of [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
-    /// can be replaced with [`is_ascii_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
-    /// [`is_ascii_hexdigit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
-    ///
-    /// ### Why is this bad?
-    /// `is_digit(..)` is slower and requires specifying the radix.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let c: char = '6';
-    /// c.is_digit(10);
-    /// c.is_digit(16);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let c: char = '6';
-    /// c.is_ascii_digit();
-    /// c.is_ascii_hexdigit();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub IS_DIGIT_ASCII_RADIX,
-    style,
-    "use of `char::is_digit(..)` with literal radix of 10 or 16"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calling `take` function after `as_ref`.
-    ///
-    /// ### Why is this bad?
-    /// Redundant code. `take` writes `None` to its argument.
-    /// In this case the modification is useless as it's a temporary that cannot be read from afterwards.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = Some(3);
-    /// x.as_ref().take();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = Some(3);
-    /// x.as_ref();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub NEEDLESS_OPTION_TAKE,
-    complexity,
-    "using `.as_ref().take()` on a temporary value"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `replace` statements which have no effect.
-    ///
-    /// ### Why is this bad?
-    /// It's either a mistake or confusing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// "1234".replace("12", "12");
-    /// "1234".replacen("12", "12", 1);
-    /// ```
-    #[clippy::version = "1.63.0"]
-    pub NO_EFFECT_REPLACE,
-    suspicious,
-    "replace with no effect"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for unnecessary method chains that can be simplified into `if .. else ..`.
-    ///
-    /// ### Why is this bad?
-    /// This can be written more clearly with `if .. else ..`
-    ///
-    /// ### Limitations
-    /// This lint currently only looks for usages of
-    /// `.{then, then_some}(..).{unwrap_or, unwrap_or_else, unwrap_or_default}(..)`, but will be expanded
-    /// to account for similar patterns.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = true;
-    /// x.then_some("a").unwrap_or("b");
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = true;
-    /// if x { "a" } else { "b" };
-    /// ```
-    #[clippy::version = "1.64.0"]
-    pub OBFUSCATED_IF_ELSE,
-    style,
-    "use of `.then_some(..).unwrap_or(..)` can be written \
-    more clearly with `if .. else ..`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on collections containing a single item
-    ///
-    /// ### Why is this bad?
-    ///
-    /// It is simpler to use the once function from the standard library:
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// let a = [123].iter();
-    /// let b = Some(123).into_iter();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::iter;
-    /// let a = iter::once(&123);
-    /// let b = iter::once(123);
-    /// ```
-    ///
-    /// ### Known problems
-    ///
-    /// The type of the resulting iterator might become incompatible with its usage
-    #[clippy::version = "1.65.0"]
-    pub ITER_ON_SINGLE_ITEMS,
-    nursery,
-    "Iterator for array of length 1"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on empty collections
-    ///
-    /// ### Why is this bad?
-    ///
-    /// It is simpler to use the empty function from the standard library:
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// use std::{slice, option};
-    /// let a: slice::Iter<i32> = [].iter();
-    /// let f: option::IntoIter<i32> = None.into_iter();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::iter;
-    /// let a: iter::Empty<i32> = iter::empty();
-    /// let b: iter::Empty<i32> = iter::empty();
-    /// ```
-    ///
-    /// ### Known problems
-    ///
-    /// The type of the resulting iterator might become incompatible with its usage
-    #[clippy::version = "1.65.0"]
-    pub ITER_ON_EMPTY_COLLECTIONS,
-    nursery,
-    "Iterator for empty array"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for naive byte counts
-    ///
-    /// ### Why is this bad?
-    /// The [`bytecount`](https://crates.io/crates/bytecount)
-    /// crate has methods to count your bytes faster, especially for large slices.
-    ///
-    /// ### Known problems
-    /// If you have predominantly small slices, the
-    /// `bytecount::count(..)` method may actually be slower. However, if you can
-    /// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
-    /// faster in those cases.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let vec = vec![1_u8];
-    /// let count = vec.iter().filter(|x| **x == 0u8).count();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// # let vec = vec![1_u8];
-    /// let count = bytecount::count(&vec, 0u8);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub NAIVE_BYTECOUNT,
-    pedantic,
-    "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// It checks for `str::bytes().count()` and suggests replacing it with
-    /// `str::len()`.
-    ///
-    /// ### Why is this bad?
-    /// `str::bytes().count()` is longer and may not be as performant as using
-    /// `str::len()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// "hello".bytes().count();
-    /// String::from("hello").bytes().count();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// "hello".len();
-    /// String::from("hello").len();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub BYTES_COUNT_TO_LEN,
-    complexity,
-    "Using `bytes().count()` when `len()` performs the same functionality"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls to `ends_with` with possible file extensions
-    /// and suggests to use a case-insensitive approach instead.
-    ///
-    /// ### Why is this bad?
-    /// `ends_with` is case-sensitive and may not detect files with a valid extension.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn is_rust_file(filename: &str) -> bool {
-    ///     filename.ends_with(".rs")
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// fn is_rust_file(filename: &str) -> bool {
-    ///     let filename = std::path::Path::new(filename);
-    ///     filename.extension()
-    ///         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
-    /// }
-    /// ```
-    #[clippy::version = "1.51.0"]
-    pub CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
-    pedantic,
-    "Checks for calls to ends_with with case-sensitive file extensions"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `x.get(0)` instead of
-    /// `x.first()` or `x.front()`.
-    ///
-    /// ### Why is this bad?
-    /// Using `x.first()` for `Vec`s and slices or `x.front()`
-    /// for `VecDeque`s is easier to read and has the same result.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = vec![2, 3, 5];
-    /// let first_element = x.get(0);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let x = vec![2, 3, 5];
-    /// let first_element = x.first();
-    /// ```
-    #[clippy::version = "1.63.0"]
-    pub GET_FIRST,
-    style,
-    "Using `x.get(0)` when `x.first()` or `x.front()` is simpler"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Finds patterns that reimplement `Option::ok_or`.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// Concise code helps focusing on behavior instead of boilerplate.
-    ///
-    /// ### Examples
-    /// ```no_run
-    /// let foo: Option<i32> = None;
-    /// foo.map_or(Err("error"), |v| Ok(v));
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let foo: Option<i32> = None;
-    /// foo.ok_or("error");
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub MANUAL_OK_OR,
-    style,
-    "finds patterns that can be encoded more concisely with `Option::ok_or`"
+    "combine `.map(_)` followed by `.all(identity)`/`.any(identity)` into a single call"
 }
 
 declare_clippy_lint! {
@@ -2749,6 +2142,27 @@ declare_clippy_lint! {
     pub MAP_CLONE,
     style,
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.map(_).collect::<Result<(), _>()`.
+    ///
+    /// ### Why is this bad?
+    /// Using `try_for_each` instead is more readable and idiomatic.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// (0..3).map(|t| Err(t)).collect::<Result<(), _>>();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// (0..3).try_for_each(|t| Err(t));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MAP_COLLECT_RESULT_UNIT,
+    style,
+    "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`"
 }
 
 declare_clippy_lint! {
@@ -2854,6 +2268,130 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![vec![1]];
+    /// let opt = Some(5);
+    ///
+    /// vec.iter().map(|x| x.iter()).flatten();
+    /// opt.map(|x| Some(x * 2)).flatten();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let vec = vec![vec![1]];
+    /// # let opt = Some(5);
+    /// vec.iter().flat_map(|x| x.iter());
+    /// opt.and_then(|x| Some(x * 2));
+    /// ```
+    #[clippy::version = "1.31.0"]
+    pub MAP_FLATTEN,
+    complexity,
+    "using combinations of `flatten` and `map` which can usually be written as a single method call"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for instances of `map(f)` where `f` is the identity function.
+    ///
+    /// ### Why is this bad?
+    /// It can be written more concisely without the call to `map`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| x).map(|x| 2*x).collect();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| 2*x).collect();
+    /// ```
+    #[clippy::version = "1.47.0"]
+    pub MAP_IDENTITY,
+    complexity,
+    "using iterator.map(|x| x)"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
+    /// `result.map(_).unwrap_or_else(_)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, these can be written more concisely (resp.) as
+    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
+    ///
+    /// ### Known problems
+    /// The order of the arguments is not in execution order
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// option.map(|a| a + 1).unwrap_or(0);
+    /// option.map(|a| a > 10).unwrap_or(false);
+    /// result.map(|a| a + 1).unwrap_or_else(some_function);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// option.map_or(0, |a| a + 1);
+    /// option.is_some_and(|a| a > 10);
+    /// result.map_or_else(some_function, |a| a + 1);
+    /// ```
+    #[clippy::version = "1.45.0"]
+    pub MAP_UNWRAP_OR,
+    pedantic,
+    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Iterator::map` over ranges without using the parameter which
+    /// could be more clearly expressed using `std::iter::repeat(...).take(...)`
+    /// or `std::iter::repeat_n`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It expresses the intent more clearly to `take` the correct number of times
+    /// from a generating function than to apply a closure to each number in a
+    /// range only to discard them.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// let random_numbers : Vec<_> = (0..10).map(|_| { 3 + 1 }).collect();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let f : Vec<_> = std::iter::repeat( 3 + 1 ).take(10).collect();
+    /// ```
+    ///
+    /// ### Known Issues
+    ///
+    /// This lint may suggest replacing a `Map<Range>` with a `Take<RepeatWith>`.
+    /// The former implements some traits that the latter does not, such as
+    /// `DoubleEndedIterator`.
+    #[clippy::version = "1.84.0"]
+    pub MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
+    restriction,
+    "map of a trivial closure (not dependent on parameter) over a range"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `&mut Mutex::lock` calls
     ///
     /// ### Why is this bad?
@@ -2890,6 +2428,260 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for naive byte counts
+    ///
+    /// ### Why is this bad?
+    /// The [`bytecount`](https://crates.io/crates/bytecount)
+    /// crate has methods to count your bytes faster, especially for large slices.
+    ///
+    /// ### Known problems
+    /// If you have predominantly small slices, the
+    /// `bytecount::count(..)` method may actually be slower. However, if you can
+    /// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
+    /// faster in those cases.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let vec = vec![1_u8];
+    /// let count = vec.iter().filter(|x| **x == 0u8).count();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// # let vec = vec![1_u8];
+    /// let count = bytecount::count(&vec, 0u8);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NAIVE_BYTECOUNT,
+    pedantic,
+    "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
+}
+
+declare_clippy_lint! {
+   /// ### What it does
+   /// It detects useless calls to `str::as_bytes()` before calling `len()` or `is_empty()`.
+   ///
+   /// ### Why is this bad?
+   /// The `len()` and `is_empty()` methods are also directly available on strings, and they
+   /// return identical results. In particular, `len()` on a string returns the number of
+   /// bytes.
+   ///
+   /// ### Example
+   /// ```
+   /// let len = "some string".as_bytes().len();
+   /// let b = "some string".as_bytes().is_empty();
+   /// ```
+   /// Use instead:
+   /// ```
+   /// let len = "some string".len();
+   /// let b = "some string".is_empty();
+   /// ```
+   #[clippy::version = "1.84.0"]
+   pub NEEDLESS_AS_BYTES,
+   complexity,
+   "detect useless calls to `as_bytes()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if an iterator is used to check if a string is ascii.
+    ///
+    /// ### Why is this bad?
+    /// The `str` type already implements the `is_ascii` method.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "foo".chars().all(|c| c.is_ascii());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "foo".is_ascii();
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub NEEDLESS_CHARACTER_ITERATION,
+    suspicious,
+    "is_ascii() called on a char iterator"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for functions collecting an iterator when collect
+    /// is not needed.
+    ///
+    /// ### Why is this bad?
+    /// `collect` causes the allocation of a new data structure,
+    /// when this allocation may not be needed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let iterator = vec![1].into_iter();
+    /// let len = iterator.collect::<Vec<_>>().len();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let iterator = vec![1].into_iter();
+    /// let len = iterator.count();
+    /// ```
+    #[clippy::version = "1.30.0"]
+    pub NEEDLESS_COLLECT,
+    nursery,
+    "collecting an iterator when collect is not needed"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for no-op uses of `Option::{as_deref, as_deref_mut}`,
+    /// for example, `Option<&T>::as_deref()` returns the same type.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code and improving readability.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let a = Some(&1);
+    /// let b = a.as_deref(); // goes from Option<&i32> to Option<&i32>
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let a = Some(&1);
+    /// let b = a;
+    /// ```
+    #[clippy::version = "1.57.0"]
+    pub NEEDLESS_OPTION_AS_DEREF,
+    complexity,
+    "no-op use of `deref` or `deref_mut` method to `Option`."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calling `take` function after `as_ref`.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code. `take` writes `None` to its argument.
+    /// In this case the modification is useless as it's a temporary that cannot be read from afterwards.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = Some(3);
+    /// x.as_ref().take();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = Some(3);
+    /// x.as_ref();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub NEEDLESS_OPTION_TAKE,
+    complexity,
+    "using `.as_ref().take()` on a temporary value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `str::splitn` (or `str::rsplitn`) where using `str::split` would be the same.
+    /// ### Why is this bad?
+    /// The function `split` is simpler and there is no performance difference in these cases, considering
+    /// that both functions return a lazy iterator.
+    /// ### Example
+    /// ```no_run
+    /// let str = "key=value=add";
+    /// let _ = str.splitn(3, '=').next().unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let str = "key=value=add";
+    /// let _ = str.split('=').next().unwrap();
+    /// ```
+    #[clippy::version = "1.59.0"]
+    pub NEEDLESS_SPLITN,
+    complexity,
+    "usages of `str::splitn` that can be replaced with `str::split`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `new` not returning a type that contains `Self`.
+    ///
+    /// ### Why is this bad?
+    /// As a convention, `new` methods are used to make a new
+    /// instance of a type.
+    ///
+    /// ### Example
+    /// In an impl block:
+    /// ```no_run
+    /// # struct Foo;
+    /// # struct NotAFoo;
+    /// impl Foo {
+    ///     fn new() -> NotAFoo {
+    /// # NotAFoo
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```no_run
+    /// # struct Foo;
+    /// struct Bar(Foo);
+    /// impl Foo {
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new() -> Bar {
+    /// # Bar(Foo)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```no_run
+    /// # struct Foo;
+    /// # struct FooError;
+    /// impl Foo {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    /// # Ok(Foo)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Or in a trait definition:
+    /// ```no_run
+    /// pub trait Trait {
+    ///     // Bad. The type name must contain `Self`
+    ///     fn new();
+    /// }
+    /// ```
+    ///
+    /// ```no_run
+    /// pub trait Trait {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Self;
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NEW_RET_NO_SELF,
+    style,
+    "not returning type containing `Self` in a `new` method"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `replace` statements which have no effect.
+    ///
+    /// ### Why is this bad?
+    /// It's either a mistake or confusing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "1234".replace("12", "12");
+    /// "1234".replacen("12", "12", 1);
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub NO_EFFECT_REPLACE,
+    suspicious,
+    "replace with no effect"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for duplicate open options as well as combinations
     /// that make no sense.
     ///
@@ -2911,40 +2703,232 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the suspicious use of `OpenOptions::create()`
-    /// without an explicit `OpenOptions::truncate()`.
+    /// Checks for unnecessary method chains that can be simplified into `if .. else ..`.
     ///
     /// ### Why is this bad?
-    /// `create()` alone will either create a new file or open an
-    /// existing file. If the file already exists, it will be
-    /// overwritten when written to, but the file will not be
-    /// truncated by default.
-    /// If less data is written to the file
-    /// than it already contains, the remainder of the file will
-    /// remain unchanged, and the end of the file will contain old
-    /// data.
-    /// In most cases, one should either use `create_new` to ensure
-    /// the file is created from scratch, or ensure `truncate` is
-    /// called so that the truncation behaviour is explicit. `truncate(true)`
-    /// will ensure the file is entirely overwritten with new data, whereas
-    /// `truncate(false)` will explicitly keep the default behavior.
+    /// This can be written more clearly with `if .. else ..`
+    ///
+    /// ### Limitations
+    /// This lint currently only looks for usages of
+    /// `.{then, then_some}(..).{unwrap_or, unwrap_or_else, unwrap_or_default}(..)`, but will be expanded
+    /// to account for similar patterns.
     ///
     /// ### Example
-    /// ```rust,no_run
-    /// use std::fs::OpenOptions;
-    ///
-    /// OpenOptions::new().create(true);
+    /// ```no_run
+    /// let x = true;
+    /// x.then_some("a").unwrap_or("b");
     /// ```
     /// Use instead:
-    /// ```rust,no_run
-    /// use std::fs::OpenOptions;
+    /// ```no_run
+    /// let x = true;
+    /// if x { "a" } else { "b" };
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub OBFUSCATED_IF_ELSE,
+    style,
+    "use of `.then_some(..).unwrap_or(..)` can be written \
+    more clearly with `if .. else ..`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `ok().expect(..)`.
     ///
-    /// OpenOptions::new().create(true).truncate(true);
+    /// Note: This lint only triggers for code marked compatible
+    /// with versions of the compiler older than Rust 1.82.0.
+    ///
+    /// ### Why is this bad?
+    /// Because you usually call `expect()` on the `Result`
+    /// directly to get a better error message.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let x = Ok::<_, ()>(());
+    /// x.ok().expect("why did I do this again?");
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let x = Ok::<_, ()>(());
+    /// x.expect("why did I do this again?");
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub OK_EXPECT,
+    style,
+    "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.as_ref().cloned()` and `.as_mut().cloned()` on `Option`s
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by cloning the `Option` directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.as_ref().cloned()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.clone()
+    /// }
     /// ```
     #[clippy::version = "1.77.0"]
-    pub SUSPICIOUS_OPEN_OPTIONS,
-    suspicious,
-    "suspicious combination of options for opening a file"
+    pub OPTION_AS_REF_CLONED,
+    pedantic,
+    "cloning an `Option` via `as_ref().cloned()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.as_ref().map(Deref::deref)` or its aliases (such as String::as_str).
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.as_deref()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let opt = Some("".to_string());
+    /// opt.as_ref().map(String::as_str)
+    /// # ;
+    /// ```
+    /// Can be written as
+    /// ```no_run
+    /// # let opt = Some("".to_string());
+    /// opt.as_deref()
+    /// # ;
+    /// ```
+    #[clippy::version = "1.42.0"]
+    pub OPTION_AS_REF_DEREF,
+    complexity,
+    "using `as_ref().map(Deref::deref)`, which is more succinctly expressed as `as_deref()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for iterators of `Option`s using `.filter(Option::is_some).map(Option::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
+    ///
+    /// ### Why is this bad?
+    /// `Option` is like a collection of 0-1 things, so `flatten`
+    /// automatically does this without suspicious-looking `unwrap` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::empty::<Option<i32>>().filter(Option::is_some).map(Option::unwrap);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::empty::<Option<i32>>().flatten();
+    /// ```
+    #[clippy::version = "1.53.0"]
+    pub OPTION_FILTER_MAP,
+    complexity,
+    "filtering `Option` for `Some` then force-unwrapping, which can be one type-safe operation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.map_or(None, _)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.and_then(_)`.
+    ///
+    /// ### Known problems
+    /// The order of the arguments is not in execution order.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let opt = Some(1);
+    /// opt.map_or(None, |a| Some(a + 1));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let opt = Some(1);
+    /// opt.and_then(|a| Some(a + 1));
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub OPTION_MAP_OR_NONE,
+    style,
+    "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
+    /// `.or_insert(foo(..))` etc., and suggests to use `.or_else(|| foo(..))`,
+    /// `.unwrap_or_else(|| foo(..))`, `.unwrap_or_default()` or `.or_default()`
+    /// etc. instead.
+    ///
+    /// ### Why is this bad?
+    /// The function will always be called. This is only bad if it allocates or
+    /// does some non-trivial amount of work.
+    ///
+    /// ### Known problems
+    /// If the function has side-effects, not calling it will change the
+    /// semantic of the program, but you shouldn't rely on that.
+    ///
+    /// The lint also cannot figure out whether the function you call is
+    /// actually expensive to call or not.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or(String::from("empty"));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or_else(|| String::from("empty"));
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub OR_FUN_CALL,
+    nursery,
+    "using any `*or` method with a function call, which suggests `*or_else`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.or(…).unwrap()` calls to Options and Results.
+    ///
+    /// ### Why is this bad?
+    /// You should use `.unwrap_or(…)` instead for clarity.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let fallback = "fallback";
+    /// // Result
+    /// # type Error = &'static str;
+    /// # let result: Result<&str, Error> = Err("error");
+    /// let value = result.or::<Error>(Ok(fallback)).unwrap();
+    ///
+    /// // Option
+    /// # let option: Option<&str> = None;
+    /// let value = option.or(Some(fallback)).unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let fallback = "fallback";
+    /// // Result
+    /// # let result: Result<&str, &str> = Err("error");
+    /// let value = result.unwrap_or(fallback);
+    ///
+    /// // Option
+    /// # let option: Option<&str> = None;
+    /// let value = option.unwrap_or(fallback);
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub OR_THEN_UNWRAP,
+    complexity,
+    "checks for `.or(…).unwrap()` calls to Options and Results."
 }
 
 declare_clippy_lint! {
@@ -2981,6 +2965,116 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Looks for calls to `Path::ends_with` calls where the argument looks like a file extension.
+    ///
+    /// By default, Clippy has a short list of known filenames that start with a dot
+    /// but aren't necessarily file extensions (e.g. the `.git` folder), which are allowed by default.
+    /// The `allowed-dotfiles` configuration can be used to allow additional
+    /// file extensions that Clippy should not lint.
+    ///
+    /// ### Why is this bad?
+    /// This doesn't actually compare file extensions. Rather, `ends_with` compares the given argument
+    /// to the last **component** of the path and checks if it matches exactly.
+    ///
+    /// ### Known issues
+    /// File extensions are often at most three characters long, so this only lints in those cases
+    /// in an attempt to avoid false positives.
+    /// Any extension names longer than that are assumed to likely be real path components and are
+    /// therefore ignored.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.ends_with(".md")
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::path::Path;
+    /// fn is_markdown(path: &Path) -> bool {
+    ///     path.extension().is_some_and(|ext| ext == "md")
+    /// }
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub PATH_ENDS_WITH_EXT,
+    suspicious,
+    "attempting to compare file extensions using `Path::ends_with`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `offset` pointer method with an integer
+    /// literal.
+    ///
+    /// ### Why is this bad?
+    /// The `add` and `sub` methods more accurately express the intent.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    ///
+    /// unsafe {
+    ///     ptr.offset(-8);
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    ///
+    /// unsafe {
+    ///     ptr.sub(8);
+    /// }
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub PTR_OFFSET_BY_LITERAL,
+    pedantic,
+    "unneeded pointer offset"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// `isize`.
+    ///
+    /// ### Why is this bad?
+    /// If we’re always increasing the pointer address, we can avoid the numeric
+    /// cast by using the `add` method instead.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.offset(offset as isize);
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.add(offset);
+    /// }
+    /// ```
+    #[clippy::version = "1.30.0"]
+    pub PTR_OFFSET_WITH_CAST,
+    complexity,
+    "unneeded pointer offset cast"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for zipping a collection with the range of
     /// `0.._.len()`.
     ///
@@ -3002,6 +3096,119 @@ declare_clippy_lint! {
     pub RANGE_ZIP_WITH_LEN,
     complexity,
     "zipping iterator with a range when `enumerate()` would do"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
+    /// into a string, then later attempting to use that string for an operation that will never
+    /// work for strings with a trailing newline character in it (e.g. parsing into a `i32`).
+    ///
+    /// ### Why is this bad?
+    /// The operation will always fail at runtime no matter what the user enters, thus
+    /// making it a useless operation.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let mut input = String::new();
+    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
+    /// let num: i32 = input.parse().expect("Not a number!");
+    /// assert_eq!(num, 42); // we never even get here!
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let mut input = String::new();
+    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
+    /// let num: i32 = input.trim_end().parse().expect("Not a number!");
+    /// //                  ^^^^^^^^^^^ remove the trailing newline
+    /// assert_eq!(num, 42);
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub READ_LINE_WITHOUT_TRIM,
+    correctness,
+    "calling `Stdin::read_line`, then trying to parse it without first trimming"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for calls to `RwLock::write` where the lock is only used for reading.
+    ///
+    /// ### Why is this bad?
+    /// The write portion of `RwLock` is exclusive, meaning that no other thread
+    /// can access the lock while this writer is active.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::sync::RwLock;
+    /// fn assert_is_zero(lock: &RwLock<i32>) {
+    ///     let num = lock.write().unwrap();
+    ///     assert_eq!(*num, 0);
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// use std::sync::RwLock;
+    /// fn assert_is_zero(lock: &RwLock<i32>) {
+    ///     let num = lock.read().unwrap();
+    ///     assert_eq!(*num, 0);
+    /// }
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub READONLY_WRITE_LOCK,
+    perf,
+    "acquiring a write lock when a read lock would work"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `as_str()` on a `String` chained with a method available on the `String` itself.
+    ///
+    /// ### Why is this bad?
+    /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_str().as_bytes()
+    /// # ;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let owned_string = "This is a string".to_owned();
+    /// owned_string.as_bytes()
+    /// # ;
+    /// ```
+    #[clippy::version = "1.74.0"]
+    pub REDUNDANT_AS_STR,
+    complexity,
+    "`as_str` used to call a method on `str` that is also available on `String`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Iterator::cloned` where the original value could be used
+    /// instead.
+    ///
+    /// ### Why is this bad?
+    /// It is not always possible for the compiler to eliminate useless allocations and
+    /// deallocations generated by redundant `clone()`s.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = vec![String::new()];
+    /// let _ = x.iter().cloned().map(|x| x.len());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = vec![String::new()];
+    /// let _ = x.iter().map(|x| x.len());
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub REDUNDANT_ITER_CLONED,
+    perf,
+    "detects redundant calls to `Iterator::cloned`"
 }
 
 declare_clippy_lint! {
@@ -3038,233 +3245,120 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// When sorting primitive values (integers, bools, chars, as well
-    /// as arrays, slices, and tuples of such items), it is typically better to
-    /// use an unstable sort than a stable sort.
+    /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
     ///
     /// ### Why is this bad?
-    /// Typically, using a stable sort consumes more memory and cpu cycles.
-    /// Because values which compare equal are identical, preserving their
-    /// relative order (the guarantee that a stable sort provides) means
-    /// nothing, while the extra costs still apply.
-    ///
-    /// ### Known problems
-    ///
-    /// As pointed out in
-    /// [issue #8241](https://github.com/rust-lang/rust-clippy/issues/8241),
-    /// a stable sort can instead be significantly faster for certain scenarios
-    /// (eg. when a sorted vector is extended with new data and resorted).
-    ///
-    /// For more information and benchmarking results, please refer to the
-    /// issue linked above.
+    /// `Result` implements `IntoIterator<Item = T>`. This means that `Result` can be flattened
+    /// automatically without suspicious-looking `unwrap` calls.
     ///
     /// ### Example
     /// ```no_run
-    /// let mut vec = vec![2, 1, 3];
-    /// vec.sort();
+    /// let _ = std::iter::empty::<Result<i32, ()>>().filter(Result::is_ok).map(Result::unwrap);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let mut vec = vec![2, 1, 3];
-    /// vec.sort_unstable();
+    /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
     /// ```
-    #[clippy::version = "1.47.0"]
-    pub STABLE_SORT_PRIMITIVE,
-    pedantic,
-    "use of sort() when sort_unstable() is equivalent"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Looks for calls to `.type_id()` on a `Box<dyn _>`.
-    ///
-    /// ### Why is this bad?
-    /// This almost certainly does not do what the user expects and can lead to subtle bugs.
-    /// Calling `.type_id()` on a `Box<dyn Trait>` returns a fixed `TypeId` of the `Box` itself,
-    /// rather than returning the `TypeId` of the underlying type behind the trait object.
-    ///
-    /// For `Box<dyn Any>` specifically (and trait objects that have `Any` as its supertrait),
-    /// this lint will provide a suggestion, which is to dereference the receiver explicitly
-    /// to go from `Box<dyn Any>` to `dyn Any`.
-    /// This makes sure that `.type_id()` resolves to a dynamic call on the trait object
-    /// and not on the box.
-    ///
-    /// If the fixed `TypeId` of the `Box` is the intended behavior, it's better to be explicit about it
-    /// and write `TypeId::of::<Box<dyn Trait>>()`:
-    /// this makes it clear that a fixed `TypeId` is returned and not the `TypeId` of the implementor.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// use std::any::{Any, TypeId};
-    ///
-    /// let any_box: Box<dyn Any> = Box::new(42_i32);
-    /// assert_eq!(any_box.type_id(), TypeId::of::<i32>()); // ⚠️ this fails!
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::any::{Any, TypeId};
-    ///
-    /// let any_box: Box<dyn Any> = Box::new(42_i32);
-    /// assert_eq!((*any_box).type_id(), TypeId::of::<i32>());
-    /// //          ^ dereference first, to call `type_id` on `dyn Any`
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub TYPE_ID_ON_BOX,
-    suspicious,
-    "calling `.type_id()` on a boxed trait object"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects `().hash(_)`.
-    ///
-    /// ### Why is this bad?
-    /// Hashing a unit value doesn't do anything as the implementation of `Hash` for `()` is a no-op.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # use std::hash::Hash;
-    /// # use std::collections::hash_map::DefaultHasher;
-    /// # enum Foo { Empty, WithValue(u8) }
-    /// # use Foo::*;
-    /// # let mut state = DefaultHasher::new();
-    /// # let my_enum = Foo::Empty;
-    /// match my_enum {
-    /// 	Empty => ().hash(&mut state),
-    /// 	WithValue(x) => x.hash(&mut state),
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # use std::hash::Hash;
-    /// # use std::collections::hash_map::DefaultHasher;
-    /// # enum Foo { Empty, WithValue(u8) }
-    /// # use Foo::*;
-    /// # let mut state = DefaultHasher::new();
-    /// # let my_enum = Foo::Empty;
-    /// match my_enum {
-    /// 	Empty => 0_u8.hash(&mut state),
-    /// 	WithValue(x) => x.hash(&mut state),
-    /// }
-    /// ```
-    #[clippy::version = "1.58.0"]
-    pub UNIT_HASH,
-    correctness,
-    "hashing a unit value, which does nothing"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `Vec::sort_by` passing in a closure
-    /// which compares the two arguments, either directly or indirectly.
-    ///
-    /// ### Why is this bad?
-    /// It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
-    /// possible) than to use `Vec::sort_by` and a more complicated
-    /// closure.
-    ///
-    /// ### Known problems
-    /// If the suggested `Vec::sort_by_key` uses Reverse and it isn't already
-    /// imported by a use statement, then it will need to be added manually.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # struct A;
-    /// # impl A { fn foo(&self) {} }
-    /// # let mut vec: Vec<A> = Vec::new();
-    /// vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # struct A;
-    /// # impl A { fn foo(&self) {} }
-    /// # let mut vec: Vec<A> = Vec::new();
-    /// vec.sort_by_key(|a| a.foo());
-    /// ```
-    #[clippy::version = "1.46.0"]
-    pub UNNECESSARY_SORT_BY,
+    #[clippy::version = "1.77.0"]
+    pub RESULT_FILTER_MAP,
     complexity,
-    "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
+    "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds occurrences of `Vec::resize(0, an_int)`
+    /// Checks for usage of `_.map_or(None, Some)`.
     ///
     /// ### Why is this bad?
-    /// This is probably an argument inversion mistake.
+    /// Readability, this can be written more concisely as
+    /// `_.ok()`.
     ///
     /// ### Example
     /// ```no_run
-    /// vec![1, 2, 3, 4, 5].resize(0, 5)
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.map_or(None, Some));
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// vec![1, 2, 3, 4, 5].clear()
-    /// ```
-    #[clippy::version = "1.46.0"]
-    pub VEC_RESIZE_TO_ZERO,
-    correctness,
-    "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of File::read_to_end and File::read_to_string.
-    ///
-    /// ### Why restrict this?
-    /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
-    /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
-    ///
-    /// ### Example
-    /// ```rust,no_run
-    /// # use std::io::Read;
-    /// # use std::fs::File;
-    /// let mut f = File::open("foo.txt").unwrap();
-    /// let mut bytes = Vec::new();
-    /// f.read_to_end(&mut bytes).unwrap();
-    /// ```
-    /// Can be written more concisely as
-    /// ```rust,no_run
-    /// # use std::fs;
-    /// let mut bytes = fs::read("foo.txt").unwrap();
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.ok());
     /// ```
     #[clippy::version = "1.44.0"]
-    pub VERBOSE_FILE_READS,
-    restriction,
-    "use of `File::read_to_end` or `File::read_to_string`"
+    pub RESULT_MAP_OR_INTO_OPTION,
+    style,
+    "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
-    /// Checks for iterating a map (`HashMap` or `BTreeMap`) and
-    /// ignoring either the keys or values.
+    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using
+    /// the `?` operator instead.
     ///
     /// ### Why is this bad?
-    ///
-    /// Readability. There are `keys` and `values` methods that
-    /// can be used to express that we only need the keys or the values.
+    /// The `and_then` method is used to chain a computation that returns an `Option` or a `Result`.
+    /// This can be replaced with the `?` operator, which is more concise and idiomatic.
     ///
     /// ### Example
     ///
     /// ```no_run
-    /// # use std::collections::HashMap;
-    /// let map: HashMap<u32, u32> = HashMap::new();
-    /// let values = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     opt.and_then(|n| {
+    ///         if n > 1 {
+    ///             Some(n + 1)
+    ///         } else {
+    ///             None
+    ///        }
+    ///     })
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     let n = opt?;
+    ///     if n > 1 {
+    ///         Some(n + 1)
+    ///     } else {
+    ///         None
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub RETURN_AND_THEN,
+    restriction,
+    "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for an iterator or string search (such as `find()`,
+    /// `position()`, or `rposition()`) followed by a call to `is_some()` or `is_none()`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as:
+    /// * `_.any(_)`, or `_.contains(_)` for `is_some()`,
+    /// * `!_.any(_)`, or `!_.contains(_)` for `is_none()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0).is_some();
+    ///
+    /// "hello world".find("world").is_none();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # use std::collections::HashMap;
-    /// let map: HashMap<u32, u32> = HashMap::new();
-    /// let values = map.values().collect::<Vec<_>>();
+    /// let vec = vec![1];
+    /// vec.iter().any(|x| *x == 0);
+    ///
+    /// !"hello world".contains("world");
     /// ```
-    #[clippy::version = "1.66.0"]
-    pub ITER_KV_MAP,
-    complexity,
-    "iterating on map using `iter` when `keys` or `values` would do"
+    #[clippy::version = "pre 1.29.0"]
+    pub SEARCH_IS_SOME,
+    nursery,
+    "using an iterator or string search followed by `is_some()` or `is_none()`, which is more succinctly expressed as a call to `any()` or `contains()` (with negation in case of `is_none()`)"
 }
 
 declare_clippy_lint! {
@@ -3343,631 +3437,150 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for functions collecting an iterator when collect
-    /// is not needed.
+    /// Checks for methods that should live in a trait
+    /// implementation of a `std` trait (see [llogiq's blog
+    /// post](http://llogiq.github.io/2015/07/30/traits.html) for further
+    /// information) instead of an inherent implementation.
     ///
     /// ### Why is this bad?
-    /// `collect` causes the allocation of a new data structure,
-    /// when this allocation may not be needed.
+    /// Implementing the traits improve ergonomics for users of
+    /// the code, often with very little cost. Also people seeing a `mul(...)`
+    /// method
+    /// may expect `*` to work equally, so you should have good reason to disappoint
+    /// them.
     ///
     /// ### Example
     /// ```no_run
-    /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.collect::<Vec<_>>().len();
+    /// struct X;
+    /// impl X {
+    ///     fn add(&self, other: &X) -> X {
+    ///         // ..
+    /// # X
+    ///     }
+    /// }
     /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.count();
-    /// ```
-    #[clippy::version = "1.30.0"]
-    pub NEEDLESS_COLLECT,
-    nursery,
-    "collecting an iterator when collect is not needed"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for `Command::arg()` invocations that look like they
-    /// should be multiple arguments instead, such as `arg("-t ext2")`.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// `Command::arg()` does not split arguments by space. An argument like `arg("-t ext2")`
-    /// will be passed as a single argument to the command,
-    /// which is likely not what was intended.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
-    /// ```
-    #[clippy::version = "1.69.0"]
-    pub SUSPICIOUS_COMMAND_ARG_SPACE,
-    suspicious,
-    "single command line argument that looks like it should be multiple arguments"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.drain(..)` for the sole purpose of clearing a container.
-    ///
-    /// ### Why is this bad?
-    /// This creates an unnecessary iterator that is dropped immediately.
-    ///
-    /// Calling `.clear()` also makes the intent clearer.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let mut v = vec![1, 2, 3];
-    /// v.drain(..);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let mut v = vec![1, 2, 3];
-    /// v.clear();
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub CLEAR_WITH_DRAIN,
-    nursery,
-    "calling `drain` in order to `clear` a container"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `.rev().next()` on a `DoubleEndedIterator`
-    ///
-    /// ### Why is this bad?
-    /// `.next_back()` is cleaner.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let foo = [0; 10];
-    /// foo.iter().rev().next();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let foo = [0; 10];
-    /// foo.iter().next_back();
-    /// ```
-    #[clippy::version = "1.71.0"]
-    pub MANUAL_NEXT_BACK,
+    #[clippy::version = "pre 1.29.0"]
+    pub SHOULD_IMPLEMENT_TRAIT,
     style,
-    "manual reverse iteration of `DoubleEndedIterator`"
+    "defining a method that should be implementing a std trait"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `.drain()` that clear the collection, immediately followed by a call to `.collect()`.
-    ///
-    /// > "Collection" in this context refers to any type with a `drain` method:
-    /// > `Vec`, `VecDeque`, `BinaryHeap`, `HashSet`,`HashMap`, `String`
+    /// Warns when using `push_str`/`insert_str` with a single-character string literal
+    /// where `push`/`insert` with a `char` would work fine.
     ///
     /// ### Why is this bad?
-    /// Using `mem::take` is faster as it avoids the allocation.
-    /// When using `mem::take`, the old collection is replaced with an empty one and ownership of
-    /// the old collection is returned.
-    ///
-    /// ### Known issues
-    /// `mem::take(&mut vec)` is almost equivalent to `vec.drain(..).collect()`, except that
-    /// it also moves the **capacity**. The user might have explicitly written it this way
-    /// to keep the capacity on the original `Vec`.
+    /// It's less clear that we are pushing a single character.
     ///
     /// ### Example
     /// ```no_run
-    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
-    ///     v.drain(..).collect()
-    /// }
+    /// # let mut string = String::new();
+    /// string.insert_str(0, "R");
+    /// string.push_str("R");
     /// ```
+    ///
     /// Use instead:
     /// ```no_run
-    /// use std::mem;
-    /// fn remove_all(v: &mut Vec<i32>) -> Vec<i32> {
-    ///     mem::take(v)
-    /// }
+    /// # let mut string = String::new();
+    /// string.insert(0, 'R');
+    /// string.push('R');
     /// ```
-    #[clippy::version = "1.72.0"]
-    pub DRAIN_COLLECT,
-    perf,
-    "calling `.drain(..).collect()` to move all elements into a new collection"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `Iterator::fold` with a type that implements `Try`.
-    ///
-    /// ### Why is this bad?
-    /// The code should use `try_fold` instead, which short-circuits on failure, thus opening the
-    /// door for additional optimizations not possible with `fold` as rustc can guarantee the
-    /// function is never called on `None`, `Err`, etc., alleviating otherwise necessary checks. It's
-    /// also slightly more idiomatic.
-    ///
-    /// ### Known issues
-    /// This lint doesn't take into account whether a function does something on the failure case,
-    /// i.e., whether short-circuiting will affect behavior. Refactoring to `try_fold` is not
-    /// desirable in those cases.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// vec![1, 2, 3].iter().fold(Some(0i32), |sum, i| sum?.checked_add(*i));
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// vec![1, 2, 3].iter().try_fold(0i32, |sum, i| sum.checked_add(*i));
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub MANUAL_TRY_FOLD,
-    perf,
-    "checks for usage of `Iterator::fold` with a type that implements `Try`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Looks for calls to [`Stdin::read_line`] to read a line from the standard input
-    /// into a string, then later attempting to use that string for an operation that will never
-    /// work for strings with a trailing newline character in it (e.g. parsing into a `i32`).
-    ///
-    /// ### Why is this bad?
-    /// The operation will always fail at runtime no matter what the user enters, thus
-    /// making it a useless operation.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// let mut input = String::new();
-    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
-    /// let num: i32 = input.parse().expect("Not a number!");
-    /// assert_eq!(num, 42); // we never even get here!
-    /// ```
-    /// Use instead:
-    /// ```rust,ignore
-    /// let mut input = String::new();
-    /// std::io::stdin().read_line(&mut input).expect("Failed to read a line");
-    /// let num: i32 = input.trim_end().parse().expect("Not a number!");
-    /// //                  ^^^^^^^^^^^ remove the trailing newline
-    /// assert_eq!(num, 42);
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub READ_LINE_WITHOUT_TRIM,
-    correctness,
-    "calling `Stdin::read_line`, then trying to parse it without first trimming"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `<string_lit>.chars().any(|i| i == c)`.
-    ///
-    /// ### Why is this bad?
-    /// It's significantly slower than using a pattern instead, like
-    /// `matches!(c, '\\' | '.' | '+')`.
-    ///
-    /// Despite this being faster, this is not `perf` as this is pretty common, and is a rather nice
-    /// way to check if a `char` is any in a set. In any case, this `restriction` lint is available
-    /// for situations where that additional performance is absolutely necessary.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let c = 'c';
-    /// "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let c = 'c';
-    /// matches!(c, '\\' | '.' | '+' | '*' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub STRING_LIT_CHARS_ANY,
-    restriction,
-    "checks for `<string_lit>.chars().any(|i| i == c)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.map(|_| format!(..)).collect::<String>()`.
-    ///
-    /// ### Why is this bad?
-    /// This allocates a new string for every element in the iterator.
-    /// This can be done more efficiently by creating the `String` once and appending to it in `Iterator::fold`,
-    /// using either the `write!` macro which supports exactly the same syntax as the `format!` macro,
-    /// or concatenating with `+` in case the iterator yields `&str`/`String`.
-    ///
-    /// Note also that `write!`-ing into a `String` can never fail, despite the return type of `write!` being `std::fmt::Result`,
-    /// so it can be safely ignored or unwrapped.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn hex_encode(bytes: &[u8]) -> String {
-    ///     bytes.iter().map(|b| format!("{b:02X}")).collect()
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::fmt::Write;
-    /// fn hex_encode(bytes: &[u8]) -> String {
-    ///     bytes.iter().fold(String::new(), |mut output, b| {
-    ///         let _ = write!(output, "{b:02X}");
-    ///         output
-    ///     })
-    /// }
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub FORMAT_COLLECT,
-    pedantic,
-    "`format!`ing every element in a collection, then collecting the strings into a new `String`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.skip(0)` on iterators.
-    ///
-    /// ### Why is this bad?
-    /// This was likely intended to be `.skip(1)` to skip the first element, as `.skip(0)` does
-    /// nothing. If not, the call should be removed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let v = vec![1, 2, 3];
-    /// let x = v.iter().skip(0).collect::<Vec<_>>();
-    /// let y = v.iter().collect::<Vec<_>>();
-    /// assert_eq!(x, y);
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub ITER_SKIP_ZERO,
-    correctness,
-    "disallows `.skip(0)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `bool::then` in `Iterator::filter_map`.
-    ///
-    /// ### Why is this bad?
-    /// This can be written with `filter` then `map` instead, which would reduce nesting and
-    /// separates the filtering from the transformation phase. This comes with no cost to
-    /// performance and is just cleaner.
-    ///
-    /// ### Limitations
-    /// Does not lint `bool::then_some`, as it eagerly evaluates its arguments rather than lazily.
-    /// This can create differing behavior, so better safe than sorry.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # fn really_expensive_fn(i: i32) -> i32 { i }
-    /// # let v = vec![];
-    /// _ = v.into_iter().filter_map(|i| (i % 2 == 0).then(|| really_expensive_fn(i)));
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # fn really_expensive_fn(i: i32) -> i32 { i }
-    /// # let v = vec![];
-    /// _ = v.into_iter().filter(|i| i % 2 == 0).map(|i| really_expensive_fn(i));
-    /// ```
-    #[clippy::version = "1.73.0"]
-    pub FILTER_MAP_BOOL_THEN,
+    #[clippy::version = "1.49.0"]
+    pub SINGLE_CHAR_ADD_STR,
     style,
-    "checks for usage of `bool::then` in `Iterator::filter_map`"
+    "`push_str()` or `insert_str()` used with a single-character string literal as parameter"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Looks for calls to `RwLock::write` where the lock is only used for reading.
+    /// Checks for usage of `_.skip_while(condition).next()`.
     ///
     /// ### Why is this bad?
-    /// The write portion of `RwLock` is exclusive, meaning that no other thread
-    /// can access the lock while this writer is active.
+    /// Readability, this can be written more concisely as
+    /// `_.find(!condition)`.
     ///
     /// ### Example
     /// ```no_run
-    /// use std::sync::RwLock;
-    /// fn assert_is_zero(lock: &RwLock<i32>) {
-    ///     let num = lock.write().unwrap();
-    ///     assert_eq!(*num, 0);
-    /// }
+    /// # let vec = vec![1];
+    /// vec.iter().skip_while(|x| **x == 0).next();
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// use std::sync::RwLock;
-    /// fn assert_is_zero(lock: &RwLock<i32>) {
-    ///     let num = lock.read().unwrap();
-    ///     assert_eq!(*num, 0);
-    /// }
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x != 0);
     /// ```
-    #[clippy::version = "1.73.0"]
-    pub READONLY_WRITE_LOCK,
-    perf,
-    "acquiring a write lock when a read lock would work"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Looks for iterator combinator calls such as `.take(x)` or `.skip(x)`
-    /// where `x` is greater than the amount of items that an iterator will produce.
-    ///
-    /// ### Why is this bad?
-    /// Taking or skipping more items than there are in an iterator either creates an iterator
-    /// with all items from the original iterator or an iterator with no items at all.
-    /// This is most likely not what the user intended to do.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// for _ in [1, 2, 3].iter().take(4) {}
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// for _ in [1, 2, 3].iter() {}
-    /// ```
-    #[clippy::version = "1.74.0"]
-    pub ITER_OUT_OF_BOUNDS,
-    suspicious,
-    "calls to `.take()` or `.skip()` that are out of bounds"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Looks for calls to `Path::ends_with` calls where the argument looks like a file extension.
-    ///
-    /// By default, Clippy has a short list of known filenames that start with a dot
-    /// but aren't necessarily file extensions (e.g. the `.git` folder), which are allowed by default.
-    /// The `allowed-dotfiles` configuration can be used to allow additional
-    /// file extensions that Clippy should not lint.
-    ///
-    /// ### Why is this bad?
-    /// This doesn't actually compare file extensions. Rather, `ends_with` compares the given argument
-    /// to the last **component** of the path and checks if it matches exactly.
-    ///
-    /// ### Known issues
-    /// File extensions are often at most three characters long, so this only lints in those cases
-    /// in an attempt to avoid false positives.
-    /// Any extension names longer than that are assumed to likely be real path components and are
-    /// therefore ignored.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # use std::path::Path;
-    /// fn is_markdown(path: &Path) -> bool {
-    ///     path.ends_with(".md")
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # use std::path::Path;
-    /// fn is_markdown(path: &Path) -> bool {
-    ///     path.extension().is_some_and(|ext| ext == "md")
-    /// }
-    /// ```
-    #[clippy::version = "1.74.0"]
-    pub PATH_ENDS_WITH_EXT,
-    suspicious,
-    "attempting to compare file extensions using `Path::ends_with`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `as_str()` on a `String` chained with a method available on the `String` itself.
-    ///
-    /// ### Why is this bad?
-    /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_str().as_bytes()
-    /// # ;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_bytes()
-    /// # ;
-    /// ```
-    #[clippy::version = "1.74.0"]
-    pub REDUNDANT_AS_STR,
+    #[clippy::version = "1.42.0"]
+    pub SKIP_WHILE_NEXT,
     complexity,
-    "`as_str` used to call a method on `str` that is also available on `String`"
+    "using `skip_while(p).next()`, which is more succinctly expressed as `.find(!p)`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `waker.clone().wake()`
+    /// Checks for string slices immediately followed by `as_bytes`.
     ///
     /// ### Why is this bad?
-    /// Cloning the waker is not necessary, `wake_by_ref()` enables the same operation
-    /// without extra cloning/dropping.
+    /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
     ///
-    /// ### Example
-    /// ```rust,ignore
-    /// waker.clone().wake();
-    /// ```
-    /// Should be written
-    /// ```rust,ignore
-    /// waker.wake_by_ref();
-    /// ```
-    #[clippy::version = "1.75.0"]
-    pub WAKER_CLONE_WAKE,
-    perf,
-    "cloning a `Waker` only to wake it"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls to `TryInto::try_into` and `TryFrom::try_from` when their infallible counterparts
-    /// could be used.
-    ///
-    /// ### Why is this bad?
-    /// In those cases, the `TryInto` and `TryFrom` trait implementation is a blanket impl that forwards
-    /// to `Into` or `From`, which always succeeds.
-    /// The returned `Result<_, Infallible>` requires error handling to get the contained value
-    /// even though the conversion can never fail.
+    /// ### Known problems
+    /// In some cases, the UTF-8 validation and potential panic from string slicing may be required for
+    /// the code's correctness. If you need to ensure the slice boundaries fall on valid UTF-8 character
+    /// boundaries, the original form (`s[1..5].as_bytes()`) should be preferred.
     ///
     /// ### Example
     /// ```rust
-    /// let _: Result<i64, _> = 1i32.try_into();
-    /// let _: Result<i64, _> = <_>::try_from(1i32);
+    /// let s = "Lorem ipsum";
+    /// s[1..5].as_bytes();
     /// ```
-    /// Use `from`/`into` instead:
+    /// Use instead:
     /// ```rust
-    /// let _: i64 = 1i32.into();
-    /// let _: i64 = <_>::from(1i32);
+    /// let s = "Lorem ipsum";
+    /// &s.as_bytes()[1..5];
     /// ```
-    #[clippy::version = "1.75.0"]
-    pub UNNECESSARY_FALLIBLE_CONVERSIONS,
-    style,
-    "calling the `try_from` and `try_into` trait methods when `From`/`Into` is implemented"
+     #[clippy::version = "1.86.0"]
+     pub SLICED_STRING_AS_BYTES,
+     perf,
+     "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `Path::join` that start with a path separator (`\\` or `/`).
+    /// When sorting primitive values (integers, bools, chars, as well
+    /// as arrays, slices, and tuples of such items), it is typically better to
+    /// use an unstable sort than a stable sort.
     ///
     /// ### Why is this bad?
-    /// If the argument to `Path::join` starts with a separator, it will overwrite
-    /// the original path. If this is intentional, prefer using `Path::new` instead.
+    /// Typically, using a stable sort consumes more memory and cpu cycles.
+    /// Because values which compare equal are identical, preserving their
+    /// relative order (the guarantee that a stable sort provides) means
+    /// nothing, while the extra costs still apply.
     ///
-    /// Note the behavior is platform dependent. A leading `\\` will be accepted
-    /// on unix systems as part of the file name
+    /// ### Known problems
     ///
-    /// See [`Path::join`](https://doc.rust-lang.org/std/path/struct.Path.html#method.join)
+    /// As pointed out in
+    /// [issue #8241](https://github.com/rust-lang/rust-clippy/issues/8241),
+    /// a stable sort can instead be significantly faster for certain scenarios
+    /// (eg. when a sorted vector is extended with new data and resorted).
     ///
-    /// ### Example
-    /// ```rust
-    /// # use std::path::{Path, PathBuf};
-    /// let path = Path::new("/bin");
-    /// let joined_path = path.join("/sh");
-    /// assert_eq!(joined_path, PathBuf::from("/sh"));
-    /// ```
-    ///
-    /// Use instead;
-    /// ```rust
-    /// # use std::path::{Path, PathBuf};
-    /// let path = Path::new("/bin");
-    ///
-    /// // If this was unintentional, remove the leading separator
-    /// let joined_path = path.join("sh");
-    /// assert_eq!(joined_path, PathBuf::from("/bin/sh"));
-    ///
-    /// // If this was intentional, create a new path instead
-    /// let new = Path::new("/sh");
-    /// assert_eq!(new, PathBuf::from("/sh"));
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub JOIN_ABSOLUTE_PATHS,
-    suspicious,
-    "calls to `Path::join` which will overwrite the original path"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
-    /// be replaced with a `.flatten()` call.
-    ///
-    /// ### Why is this bad?
-    /// `Result` implements `IntoIterator<Item = T>`. This means that `Result` can be flattened
-    /// automatically without suspicious-looking `unwrap` calls.
+    /// For more information and benchmarking results, please refer to the
+    /// issue linked above.
     ///
     /// ### Example
     /// ```no_run
-    /// let _ = std::iter::empty::<Result<i32, ()>>().filter(Result::is_ok).map(Result::unwrap);
+    /// let mut vec = vec![2, 1, 3];
+    /// vec.sort();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
+    /// let mut vec = vec![2, 1, 3];
+    /// vec.sort_unstable();
     /// ```
-    #[clippy::version = "1.77.0"]
-    pub RESULT_FILTER_MAP,
-    complexity,
-    "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
-    /// This lint will require additional changes to the follow-up calls as it affects the type.
-    ///
-    /// ### Why is this bad?
-    /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
-    /// results in more readable and succinct code without the need for manual unwrapping.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// vec![Some(1)].into_iter().filter(Option::is_some);
-    ///
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// vec![Some(1)].into_iter().flatten();
-    /// ```
-    #[clippy::version = "1.77.0"]
-    pub ITER_FILTER_IS_SOME,
+    #[clippy::version = "1.47.0"]
+    pub STABLE_SORT_PRIMITIVE,
     pedantic,
-    "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
-    /// This lint will require additional changes to the follow-up calls as it affects the type.
-    ///
-    /// ### Why is this bad?
-    /// This pattern is often followed by manual unwrapping of `Result`. The simplification
-    /// results in more readable and succinct code without the need for manual unwrapping.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// vec![Ok::<i32, String>(1)].into_iter().filter(Result::is_ok);
-    ///
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// vec![Ok::<i32, String>(1)].into_iter().flatten();
-    /// ```
-    #[clippy::version = "1.77.0"]
-    pub ITER_FILTER_IS_OK,
-    pedantic,
-    "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where `f` is a function or closure that returns the `bool` type.
-    ///
-    /// Also checks for equality comparisons like `option.map(f) == Some(true)` and `result.map(f) == Ok(true)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option.map(|a| a > 10).unwrap_or_default();
-    /// result.map(|a| a > 10).unwrap_or_default();
-    ///
-    /// option.map(|a| a > 10) == Some(true);
-    /// result.map(|a| a > 10) == Ok(true);
-    /// option.map(|a| a > 10) != Some(true);
-    /// result.map(|a| a > 10) != Ok(true);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let option = Some(1);
-    /// # let result: Result<usize, ()> = Ok(1);
-    /// option.is_some_and(|a| a > 10);
-    /// result.is_ok_and(|a| a > 10);
-    ///
-    /// option.is_some_and(|a| a > 10);
-    /// result.is_ok_and(|a| a > 10);
-    /// option.is_none_or(|a| a > 10);
-    /// !result.is_ok_and(|a| a > 10);
-    /// ```
-    #[clippy::version = "1.77.0"]
-    pub MANUAL_IS_VARIANT_AND,
-    pedantic,
-    "using `.map(f).unwrap_or_default()` or `.map(f) == Some/Ok(true)`, which are more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
+    "use of sort() when sort_unstable() is equivalent"
 }
 
 declare_clippy_lint! {
@@ -4001,572 +3614,223 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.as_ref().cloned()` and `.as_mut().cloned()` on `Option`s
+    /// Checks for the use of `.extend(s.chars())` where s is a
+    /// `&str` or `String`.
     ///
     /// ### Why is this bad?
-    /// This can be written more concisely by cloning the `Option` directly.
+    /// `.push_str(s)` is clearer
     ///
     /// ### Example
     /// ```no_run
-    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
-    ///     bar.as_ref().cloned()
-    /// }
+    /// let abc = "abc";
+    /// let def = String::from("def");
+    /// let mut s = String::new();
+    /// s.extend(abc.chars());
+    /// s.extend(def.chars());
+    /// ```
+    /// The correct use would be:
+    /// ```no_run
+    /// let abc = "abc";
+    /// let def = String::from("def");
+    /// let mut s = String::new();
+    /// s.push_str(abc);
+    /// s.push_str(&def);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub STRING_EXTEND_CHARS,
+    style,
+    "using `x.extend(s.chars())` where s is a `&str` or `String`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `<string_lit>.chars().any(|i| i == c)`.
+    ///
+    /// ### Why is this bad?
+    /// It's significantly slower than using a pattern instead, like
+    /// `matches!(c, '\\' | '.' | '+')`.
+    ///
+    /// Despite this being faster, this is not `perf` as this is pretty common, and is a rather nice
+    /// way to check if a `char` is any in a set. In any case, this `restriction` lint is available
+    /// for situations where that additional performance is absolutely necessary.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let c = 'c';
+    /// "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
-    ///     bar.clone()
-    /// }
+    /// # let c = 'c';
+    /// matches!(c, '\\' | '.' | '+' | '*' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+    /// ```
+    #[clippy::version = "1.73.0"]
+    pub STRING_LIT_CHARS_ANY,
+    restriction,
+    "checks for `<string_lit>.chars().any(|i| i == c)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Command::arg()` invocations that look like they
+    /// should be multiple arguments instead, such as `arg("-t ext2")`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// `Command::arg()` does not split arguments by space. An argument like `arg("-t ext2")`
+    /// will be passed as a single argument to the command,
+    /// which is likely not what was intended.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub SUSPICIOUS_COMMAND_ARG_SPACE,
+    suspicious,
+    "single command line argument that looks like it should be multiple arguments"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `map` followed by a `count`.
+    ///
+    /// ### Why is this bad?
+    /// It looks suspicious. Maybe `map` was confused with `filter`.
+    /// If the `map` call is intentional, this should be rewritten
+    /// using `inspect`. Or, if you intend to drive the iterator to
+    /// completion, you can just use `for_each` instead.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = (0..3).map(|x| x + 2).count();
+    /// ```
+    #[clippy::version = "1.39.0"]
+    pub SUSPICIOUS_MAP,
+    suspicious,
+    "suspicious usage of map"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the suspicious use of `OpenOptions::create()`
+    /// without an explicit `OpenOptions::truncate()`.
+    ///
+    /// ### Why is this bad?
+    /// `create()` alone will either create a new file or open an
+    /// existing file. If the file already exists, it will be
+    /// overwritten when written to, but the file will not be
+    /// truncated by default.
+    /// If less data is written to the file
+    /// than it already contains, the remainder of the file will
+    /// remain unchanged, and the end of the file will contain old
+    /// data.
+    /// In most cases, one should either use `create_new` to ensure
+    /// the file is created from scratch, or ensure `truncate` is
+    /// called so that the truncation behaviour is explicit. `truncate(true)`
+    /// will ensure the file is entirely overwritten with new data, whereas
+    /// `truncate(false)` will explicitly keep the default behavior.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().create(true);
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().create(true).truncate(true);
     /// ```
     #[clippy::version = "1.77.0"]
-    pub OPTION_AS_REF_CLONED,
-    pedantic,
-    "cloning an `Option` via `as_ref().cloned()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for unnecessary calls to `min()` or `max()` in the following cases
-    /// - Either both side is constant
-    /// - One side is clearly larger than the other, like i32::MIN and an i32 variable
-    ///
-    /// ### Why is this bad?
-    ///
-    /// In the aforementioned cases it is not necessary to call `min()` or `max()`
-    /// to compare values, it may even cause confusion.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = 0.min(7_u32);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let _ = 0;
-    /// ```
-    #[clippy::version = "1.81.0"]
-    pub UNNECESSARY_MIN_OR_MAX,
-    complexity,
-    "using 'min()/max()' when there is no need for it"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.map_or_else()` "map closure" for `Result` type.
-    ///
-    /// ### Why is this bad?
-    /// This can be written more concisely by using `unwrap_or_else()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # fn handle_error(_: ()) -> u32 { 0 }
-    /// let x: Result<u32, ()> = Ok(0);
-    /// let y = x.map_or_else(|err| handle_error(err), |n| n);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # fn handle_error(_: ()) -> u32 { 0 }
-    /// let x: Result<u32, ()> = Ok(0);
-    /// let y = x.unwrap_or_else(|err| handle_error(err));
-    /// ```
-    #[clippy::version = "1.78.0"]
-    pub UNNECESSARY_RESULT_MAP_OR_ELSE,
+    pub SUSPICIOUS_OPEN_OPTIONS,
     suspicious,
-    "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
+    "suspicious combination of options for opening a file"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for the manual creation of C strings (a string with a `NUL` byte at the end), either
-    /// through one of the `CStr` constructor functions, or more plainly by calling `.as_ptr()`
-    /// on a (byte) string literal with a hardcoded `\0` byte at the end.
+    /// Checks for calls to [`splitn`]
+    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
+    /// related functions with either zero or one splits.
     ///
     /// ### Why is this bad?
-    /// This can be written more concisely using `c"str"` literals and is also less error-prone,
-    /// because the compiler checks for interior `NUL` bytes and the terminating `NUL` byte is inserted automatically.
+    /// These calls don't actually split the value and are
+    /// likely to be intended as a different number.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
-    /// fn needs_cstr(_: &CStr) {}
-    ///
-    /// needs_cstr(CStr::from_bytes_with_nul(b"Hello\0").unwrap());
-    /// unsafe { libc::puts("World\0".as_ptr().cast()) }
+    /// # let s = "";
+    /// for x in s.splitn(1, ":") {
+    ///     // ..
+    /// }
     /// ```
+    ///
     /// Use instead:
     /// ```no_run
-    /// # use std::ffi::CStr;
-    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
-    /// fn needs_cstr(_: &CStr) {}
-    ///
-    /// needs_cstr(c"Hello");
-    /// unsafe { libc::puts(c"World".as_ptr()) }
+    /// # let s = "";
+    /// for x in s.splitn(2, ":") {
+    ///     // ..
+    /// }
     /// ```
-    #[clippy::version = "1.78.0"]
-    pub MANUAL_C_STR_LITERALS,
-    complexity,
-    r#"creating a `CStr` through functions when `c""` literals can be used"#
+    #[clippy::version = "1.54.0"]
+    pub SUSPICIOUS_SPLITN,
+    correctness,
+    "checks for `.splitn(0, ..)` and `.splitn(1, ..)`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types.
+    /// Checks for the usage of `_.to_owned()`, on a `Cow<'_, _>`.
     ///
     /// ### Why is this bad?
-    /// It can be done in one call with `.contains()`/`.contains_key()`.
+    /// Calling `to_owned()` on a `Cow` creates a clone of the `Cow`
+    /// itself, without taking ownership of the `Cow` contents (i.e.
+    /// it's equivalent to calling `Cow::clone`).
+    /// The similarly named `into_owned` method, on the other hand,
+    /// clones the `Cow` contents, effectively turning any `Cow::Borrowed`
+    /// into a `Cow::Owned`.
+    ///
+    /// Given the potential ambiguity, consider replacing `to_owned`
+    /// with `clone` for better readability or, if getting a `Cow::Owned`
+    /// was the original intent, using `into_owned` instead.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::collections::HashSet;
-    /// let s: HashSet<String> = HashSet::new();
-    /// if s.get("a").is_some() {
-    ///     // code
-    /// }
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let data = cow.to_owned();
+    /// assert!(matches!(data, Cow::Borrowed(_)))
     /// ```
     /// Use instead:
     /// ```no_run
-    /// # use std::collections::HashSet;
-    /// let s: HashSet<String> = HashSet::new();
-    /// if s.contains("a") {
-    ///     // code
-    /// }
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let data = cow.clone();
+    /// assert!(matches!(data, Cow::Borrowed(_)))
     /// ```
-    #[clippy::version = "1.78.0"]
-    pub UNNECESSARY_GET_THEN_CHECK,
+    /// or
+    /// ```no_run
+    /// # use std::borrow::Cow;
+    /// let s = "Hello world!";
+    /// let cow = Cow::Borrowed(s);
+    ///
+    /// let _data: String = cow.into_owned();
+    /// ```
+    #[clippy::version = "1.65.0"]
+    pub SUSPICIOUS_TO_OWNED,
     suspicious,
-    "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// It identifies calls to `.is_empty()` on constant values.
-    ///
-    /// ### Why is this bad?
-    /// String literals and constant values are known at compile time. Checking if they
-    /// are empty will always return the same value. This might not be the intention of
-    /// the expression.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let value = "";
-    /// if value.is_empty() {
-    ///     println!("the string is empty");
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// println!("the string is empty");
-    /// ```
-    #[clippy::version = "1.79.0"]
-    pub CONST_IS_EMPTY,
-    suspicious,
-    "is_empty() called on strings known at compile time"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Converts some constructs mapping an Enum value for equality comparison.
-    ///
-    /// ### Why is this bad?
-    /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
-    /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
-    /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
-    /// `opt.is_none_or(|val| val == 5)`.
-    /// This lint offers readability and conciseness improvements.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
-    ///     (
-    ///         x.map_or(false, |n| n == 5),
-    ///         x.map_or(true, |n| n > 5),
-    ///     )
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// pub fn a(x: Option<i32>) -> (bool, bool) {
-    ///     (
-    ///         x == Some(5),
-    ///         x.is_none_or(|n| n > 5),
-    ///     )
-    /// }
-    /// ```
-    #[clippy::version = "1.84.0"]
-    pub UNNECESSARY_MAP_OR,
-    style,
-    "reduce unnecessary calls to `.map_or(bool, …)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks if an iterator is used to check if a string is ascii.
-    ///
-    /// ### Why is this bad?
-    /// The `str` type already implements the `is_ascii` method.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// "foo".chars().all(|c| c.is_ascii());
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// "foo".is_ascii();
-    /// ```
-    #[clippy::version = "1.81.0"]
-    pub NEEDLESS_CHARACTER_ITERATION,
-    suspicious,
-    "is_ascii() called on a char iterator"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for uses of `map` which return the original item.
-    ///
-    /// ### Why is this bad?
-    /// `inspect` is both clearer in intent and shorter.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let x = Some(0).map(|x| { println!("{x}"); x });
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = Some(0).inspect(|x| println!("{x}"));
-    /// ```
-    #[clippy::version = "1.81.0"]
-    pub MANUAL_INSPECT,
-    complexity,
-    "use of `map` returning the original item"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks the usage of `.first().is_some()` or `.first().is_none()` to check if a slice is
-    /// empty.
-    ///
-    /// ### Why is this bad?
-    /// Using `.is_empty()` is shorter and better communicates the intention.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let v = vec![1, 2, 3];
-    /// if v.first().is_none() {
-    ///     // The vector is empty...
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let v = vec![1, 2, 3];
-    /// if v.is_empty() {
-    ///     // The vector is empty...
-    /// }
-    /// ```
-    #[clippy::version = "1.83.0"]
-    pub UNNECESSARY_FIRST_THEN_CHECK,
-    complexity,
-    "calling `.first().is_some()` or `.first().is_none()` instead of `.is_empty()`"
-}
-
-declare_clippy_lint! {
-   /// ### What it does
-   /// It detects useless calls to `str::as_bytes()` before calling `len()` or `is_empty()`.
-   ///
-   /// ### Why is this bad?
-   /// The `len()` and `is_empty()` methods are also directly available on strings, and they
-   /// return identical results. In particular, `len()` on a string returns the number of
-   /// bytes.
-   ///
-   /// ### Example
-   /// ```
-   /// let len = "some string".as_bytes().len();
-   /// let b = "some string".as_bytes().is_empty();
-   /// ```
-   /// Use instead:
-   /// ```
-   /// let len = "some string".len();
-   /// let b = "some string".is_empty();
-   /// ```
-   #[clippy::version = "1.84.0"]
-   pub NEEDLESS_AS_BYTES,
-   complexity,
-   "detect useless calls to `as_bytes()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `.map(…)`, followed by `.all(identity)` or `.any(identity)`.
-    ///
-    /// ### Why is this bad?
-    /// The `.all(…)` or `.any(…)` methods can be called directly in place of `.map(…)`.
-    ///
-    /// ### Example
-    /// ```
-    /// # let mut v = [""];
-    /// let e1 = v.iter().map(|s| s.is_empty()).all(|a| a);
-    /// let e2 = v.iter().map(|s| s.is_empty()).any(std::convert::identity);
-    /// ```
-    /// Use instead:
-    /// ```
-    /// # let mut v = [""];
-    /// let e1 = v.iter().all(|s| s.is_empty());
-    /// let e2 = v.iter().any(|s| s.is_empty());
-    /// ```
-    #[clippy::version = "1.84.0"]
-    pub MAP_ALL_ANY_IDENTITY,
-    complexity,
-    "combine `.map(_)` followed by `.all(identity)`/`.any(identity)` into a single call"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for `Iterator::map` over ranges without using the parameter which
-    /// could be more clearly expressed using `std::iter::repeat(...).take(...)`
-    /// or `std::iter::repeat_n`.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// It expresses the intent more clearly to `take` the correct number of times
-    /// from a generating function than to apply a closure to each number in a
-    /// range only to discard them.
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// let random_numbers : Vec<_> = (0..10).map(|_| { 3 + 1 }).collect();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let f : Vec<_> = std::iter::repeat( 3 + 1 ).take(10).collect();
-    /// ```
-    ///
-    /// ### Known Issues
-    ///
-    /// This lint may suggest replacing a `Map<Range>` with a `Take<RepeatWith>`.
-    /// The former implements some traits that the latter does not, such as
-    /// `DoubleEndedIterator`.
-    #[clippy::version = "1.84.0"]
-    pub MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
-    restriction,
-    "map of a trivial closure (not dependent on parameter) over a range"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
-    /// with `DoubleEndedIterator::next_back`.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
-    /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
-    /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let last_arg = "echo hello world".split(' ').last();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let last_arg = "echo hello world".split(' ').next_back();
-    /// ```
-    #[clippy::version = "1.86.0"]
-    pub DOUBLE_ENDED_ITERATOR_LAST,
-    perf,
-    "using `Iterator::last` on a `DoubleEndedIterator`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for `NonZero*::new_unchecked()` being used in a `const` context.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// Using `NonZero*::new_unchecked()` is an `unsafe` function and requires an `unsafe` context. When used in a
-    /// context evaluated at compilation time, `NonZero*::new().unwrap()` will provide the same result with identical
-    /// runtime performances while not requiring `unsafe`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// use std::num::NonZeroUsize;
-    /// const PLAYERS: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::num::NonZeroUsize;
-    /// const PLAYERS: NonZeroUsize = NonZeroUsize::new(3).unwrap();
-    /// ```
-    #[clippy::version = "1.86.0"]
-    pub USELESS_NONZERO_NEW_UNCHECKED,
-    complexity,
-    "using `NonZero::new_unchecked()` in a `const` context"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    ///
-    /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
-    ///
-    /// ### Why is this bad?
-    ///
-    /// Using `repeat_n()` is more concise and clearer. Also, `repeat_n()` is sometimes faster than `repeat().take()` when the type of the element is non-trivial to clone because the original value can be reused for the last `.next()` call rather than always cloning.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let _ = std::iter::repeat(10).take(3);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let _ = std::iter::repeat_n(10, 3);
-    /// ```
-    #[clippy::version = "1.86.0"]
-    pub MANUAL_REPEAT_N,
-    style,
-    "detect `repeat().take()` that can be replaced with `repeat_n()`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for string slices immediately followed by `as_bytes`.
-    ///
-    /// ### Why is this bad?
-    /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
-    ///
-    /// ### Known problems
-    /// In some cases, the UTF-8 validation and potential panic from string slicing may be required for
-    /// the code's correctness. If you need to ensure the slice boundaries fall on valid UTF-8 character
-    /// boundaries, the original form (`s[1..5].as_bytes()`) should be preferred.
-    ///
-    /// ### Example
-    /// ```rust
-    /// let s = "Lorem ipsum";
-    /// s[1..5].as_bytes();
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// let s = "Lorem ipsum";
-    /// &s.as_bytes()[1..5];
-    /// ```
-     #[clippy::version = "1.86.0"]
-     pub SLICED_STRING_AS_BYTES,
-     perf,
-     "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using
-    /// the `?` operator instead.
-    ///
-    /// ### Why is this bad?
-    /// The `and_then` method is used to chain a computation that returns an `Option` or a `Result`.
-    /// This can be replaced with the `?` operator, which is more concise and idiomatic.
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// fn test(opt: Option<i32>) -> Option<i32> {
-    ///     opt.and_then(|n| {
-    ///         if n > 1 {
-    ///             Some(n + 1)
-    ///         } else {
-    ///             None
-    ///        }
-    ///     })
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// fn test(opt: Option<i32>) -> Option<i32> {
-    ///     let n = opt?;
-    ///     if n > 1 {
-    ///         Some(n + 1)
-    ///     } else {
-    ///         None
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "1.86.0"]
-    pub RETURN_AND_THEN,
-    restriction,
-    "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
-    ///
-    /// ### Why is this bad?
-    /// The default implementation calls `read` for each byte, which can be very inefficient for data that's not in memory, such as `File`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// use std::io::Read;
-    /// use std::fs::File;
-    /// let file = File::open("./bytes.txt").unwrap();
-    /// file.bytes();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// use std::io::{BufReader, Read};
-    /// use std::fs::File;
-    /// let file = BufReader::new(File::open("./bytes.txt").unwrap());
-    /// file.bytes();
-    /// ```
-    #[clippy::version = "1.87.0"]
-    pub UNBUFFERED_BYTES,
-    perf,
-    "calling .bytes() is very inefficient when data is not in memory"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
-    ///
-    /// ### Why is this bad?
-    /// `contains()` is more concise and idiomatic, while also being faster in some cases.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn foo(values: &[u8]) -> bool {
-    ///     values.iter().any(|&v| v == 10)
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// fn foo(values: &[u8]) -> bool {
-    ///     values.contains(&10)
-    /// }
-    /// ```
-    #[clippy::version = "1.87.0"]
-    pub MANUAL_CONTAINS,
-    perf,
-    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
-}
-
-declare_clippy_lint! {
-    /// This lint warns on calling `io::Error::new(..)` with a kind of
-    /// `io::ErrorKind::Other`.
-    ///
-    /// ### Why is this bad?
-    /// Since Rust 1.74, there's the `io::Error::other(_)` shortcut.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// use std::io;
-    /// let _ = io::Error::new(io::ErrorKind::Other, "bad".to_string());
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let _ = std::io::Error::other("bad".to_string());
-    /// ```
-    #[clippy::version = "1.87.0"]
-    pub IO_OTHER_ERROR,
-    style,
-    "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
+    "calls to `to_owned` on a `Cow<'_, _>` might not do what they are expected"
 }
 
 declare_clippy_lint! {
@@ -4618,63 +3882,468 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for IP addresses that could be replaced with predefined constants such as
-    /// `Ipv4Addr::new(127, 0, 0, 1)` instead of using the appropriate constants.
+    /// Looks for calls to `.type_id()` on a `Box<dyn _>`.
     ///
     /// ### Why is this bad?
-    /// Using specific IP addresses like `127.0.0.1` or `::1` is less clear and less maintainable than using the
-    /// predefined constants `Ipv4Addr::LOCALHOST` or `Ipv6Addr::LOCALHOST`. These constants improve code
-    /// readability, make the intent explicit, and are less error-prone.
+    /// This almost certainly does not do what the user expects and can lead to subtle bugs.
+    /// Calling `.type_id()` on a `Box<dyn Trait>` returns a fixed `TypeId` of the `Box` itself,
+    /// rather than returning the `TypeId` of the underlying type behind the trait object.
+    ///
+    /// For `Box<dyn Any>` specifically (and trait objects that have `Any` as its supertrait),
+    /// this lint will provide a suggestion, which is to dereference the receiver explicitly
+    /// to go from `Box<dyn Any>` to `dyn Any`.
+    /// This makes sure that `.type_id()` resolves to a dynamic call on the trait object
+    /// and not on the box.
+    ///
+    /// If the fixed `TypeId` of the `Box` is the intended behavior, it's better to be explicit about it
+    /// and write `TypeId::of::<Box<dyn Trait>>()`:
+    /// this makes it clear that a fixed `TypeId` is returned and not the `TypeId` of the implementor.
     ///
     /// ### Example
-    /// ```no_run
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    /// ```rust,ignore
+    /// use std::any::{Any, TypeId};
     ///
-    /// // IPv4 loopback
-    /// let addr_v4 = Ipv4Addr::new(127, 0, 0, 1);
-    ///
-    /// // IPv6 loopback
-    /// let addr_v6 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+    /// let any_box: Box<dyn Any> = Box::new(42_i32);
+    /// assert_eq!(any_box.type_id(), TypeId::of::<i32>()); // ⚠️ this fails!
     /// ```
     /// Use instead:
     /// ```no_run
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    /// use std::any::{Any, TypeId};
     ///
-    /// // IPv4 loopback
-    /// let addr_v4 = Ipv4Addr::LOCALHOST;
-    ///
-    /// // IPv6 loopback
-    /// let addr_v6 = Ipv6Addr::LOCALHOST;
+    /// let any_box: Box<dyn Any> = Box::new(42_i32);
+    /// assert_eq!((*any_box).type_id(), TypeId::of::<i32>());
+    /// //          ^ dereference first, to call `type_id` on `dyn Any`
     /// ```
-    #[clippy::version = "1.89.0"]
-    pub IP_CONSTANT,
-    pedantic,
-    "hardcoded localhost IP address"
+    #[clippy::version = "1.73.0"]
+    pub TYPE_ID_ON_BOX,
+    suspicious,
+    "calling `.type_id()` on a boxed trait object"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `Iterator::cloned` where the original value could be used
-    /// instead.
+    /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
     ///
     /// ### Why is this bad?
-    /// It is not always possible for the compiler to eliminate useless allocations and
-    /// deallocations generated by redundant `clone()`s.
+    /// The default implementation calls `read` for each byte, which can be very inefficient for data that's not in memory, such as `File`.
     ///
     /// ### Example
     /// ```no_run
-    /// let x = vec![String::new()];
-    /// let _ = x.iter().cloned().map(|x| x.len());
+    /// use std::io::Read;
+    /// use std::fs::File;
+    /// let file = File::open("./bytes.txt").unwrap();
+    /// file.bytes();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let x = vec![String::new()];
-    /// let _ = x.iter().map(|x| x.len());
+    /// use std::io::{BufReader, Read};
+    /// use std::fs::File;
+    /// let file = BufReader::new(File::open("./bytes.txt").unwrap());
+    /// file.bytes();
     /// ```
-    #[clippy::version = "1.92.0"]
-    pub REDUNDANT_ITER_CLONED,
+    #[clippy::version = "1.87.0"]
+    pub UNBUFFERED_BYTES,
     perf,
-    "detects redundant calls to `Iterator::cloned`"
+    "calling .bytes() is very inefficient when data is not in memory"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `MaybeUninit::uninit().assume_init()`.
+    ///
+    /// ### Why is this bad?
+    /// For most types, this is undefined behavior.
+    ///
+    /// ### Known problems
+    /// For now, we accept empty tuples and tuples / arrays
+    /// of `MaybeUninit`. There may be other types that allow uninitialized
+    /// data, but those are not yet rigorously defined.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // Beware the UB
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
+    /// ```
+    ///
+    /// Note that the following is OK:
+    ///
+    /// ```no_run
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let _: [MaybeUninit<bool>; 5] = unsafe {
+    ///     MaybeUninit::uninit().assume_init()
+    /// };
+    /// ```
+    #[clippy::version = "1.39.0"]
+    pub UNINIT_ASSUMED_INIT,
+    correctness,
+    "`MaybeUninit::uninit().assume_init()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects `().hash(_)`.
+    ///
+    /// ### Why is this bad?
+    /// Hashing a unit value doesn't do anything as the implementation of `Hash` for `()` is a no-op.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::hash::Hash;
+    /// # use std::collections::hash_map::DefaultHasher;
+    /// # enum Foo { Empty, WithValue(u8) }
+    /// # use Foo::*;
+    /// # let mut state = DefaultHasher::new();
+    /// # let my_enum = Foo::Empty;
+    /// match my_enum {
+    /// 	Empty => ().hash(&mut state),
+    /// 	WithValue(x) => x.hash(&mut state),
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::hash::Hash;
+    /// # use std::collections::hash_map::DefaultHasher;
+    /// # enum Foo { Empty, WithValue(u8) }
+    /// # use Foo::*;
+    /// # let mut state = DefaultHasher::new();
+    /// # let my_enum = Foo::Empty;
+    /// match my_enum {
+    /// 	Empty => 0_u8.hash(&mut state),
+    /// 	WithValue(x) => x.hash(&mut state),
+    /// }
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub UNIT_HASH,
+    correctness,
+    "hashing a unit value, which does nothing"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `TryInto::try_into` and `TryFrom::try_from` when their infallible counterparts
+    /// could be used.
+    ///
+    /// ### Why is this bad?
+    /// In those cases, the `TryInto` and `TryFrom` trait implementation is a blanket impl that forwards
+    /// to `Into` or `From`, which always succeeds.
+    /// The returned `Result<_, Infallible>` requires error handling to get the contained value
+    /// even though the conversion can never fail.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let _: Result<i64, _> = 1i32.try_into();
+    /// let _: Result<i64, _> = <_>::try_from(1i32);
+    /// ```
+    /// Use `from`/`into` instead:
+    /// ```rust
+    /// let _: i64 = 1i32.into();
+    /// let _: i64 = <_>::from(1i32);
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub UNNECESSARY_FALLIBLE_CONVERSIONS,
+    style,
+    "calling the `try_from` and `try_into` trait methods when `From`/`Into` is implemented"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `filter_map` calls that could be replaced by `filter` or `map`.
+    /// More specifically it checks if the closure provided is only performing one of the
+    /// filter or map operations and suggests the appropriate option.
+    ///
+    /// ### Why is this bad?
+    /// Complexity. The intent is also clearer if only a single
+    /// operation is being performed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });
+    ///
+    /// // As there is no transformation of the argument this could be written as:
+    /// let _ = (0..3).filter(|&x| x > 2);
+    /// ```
+    ///
+    /// ```no_run
+    /// let _ = (0..4).filter_map(|x| Some(x + 1));
+    ///
+    /// // As there is no conditional check on the argument this could be written as:
+    /// let _ = (0..4).map(|x| x + 1);
+    /// ```
+    #[clippy::version = "1.31.0"]
+    pub UNNECESSARY_FILTER_MAP,
+    complexity,
+    "using `filter_map` when a more succinct alternative exists"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `find_map` calls that could be replaced by `find` or `map`. More
+    /// specifically it checks if the closure provided is only performing one of the
+    /// find or map operations and suggests the appropriate option.
+    ///
+    /// ### Why is this bad?
+    /// Complexity. The intent is also clearer if only a single
+    /// operation is being performed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = (0..3).find_map(|x| if x > 2 { Some(x) } else { None });
+    ///
+    /// // As there is no transformation of the argument this could be written as:
+    /// let _ = (0..3).find(|&x| x > 2);
+    /// ```
+    ///
+    /// ```no_run
+    /// let _ = (0..4).find_map(|x| Some(x + 1));
+    ///
+    /// // As there is no conditional check on the argument this could be written as:
+    /// let _ = (0..4).map(|x| x + 1).next();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub UNNECESSARY_FIND_MAP,
+    complexity,
+    "using `find_map` when a more succinct alternative exists"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks the usage of `.first().is_some()` or `.first().is_none()` to check if a slice is
+    /// empty.
+    ///
+    /// ### Why is this bad?
+    /// Using `.is_empty()` is shorter and better communicates the intention.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// if v.first().is_none() {
+    ///     // The vector is empty...
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// if v.is_empty() {
+    ///     // The vector is empty...
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub UNNECESSARY_FIRST_THEN_CHECK,
+    complexity,
+    "calling `.first().is_some()` or `.first().is_none()` instead of `.is_empty()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `fold` when a more succinct alternative exists.
+    /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
+    /// `sum` or `product`.
+    ///
+    /// ### Why is this bad?
+    /// Readability.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// (0..3).fold(false, |acc, x| acc || x > 2);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// (0..3).any(|x| x > 2);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub UNNECESSARY_FOLD,
+    style,
+    "using `fold` when a more succinct alternative exists"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types.
+    ///
+    /// ### Why is this bad?
+    /// It can be done in one call with `.contains()`/`.contains_key()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let s: HashSet<String> = HashSet::new();
+    /// if s.get("a").is_some() {
+    ///     // code
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::collections::HashSet;
+    /// let s: HashSet<String> = HashSet::new();
+    /// if s.contains("a") {
+    ///     // code
+    /// }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_GET_THEN_CHECK,
+    suspicious,
+    "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.collect::<Vec<String>>().join("")` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// `.collect::<String>()` is more concise and might be more performant
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<Vec<String>>().join("");
+    /// println!("{}", output);
+    /// ```
+    /// The correct use would be:
+    /// ```no_run
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<String>();
+    /// println!("{}", output);
+    /// ```
+    /// ### Known problems
+    /// While `.collect::<String>()` is sometimes more performant, there are cases where
+    /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
+    /// will prevent loop unrolling and will result in a negative performance impact.
+    ///
+    /// Additionally, differences have been observed between aarch64 and x86_64 assembly output,
+    /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
+    #[clippy::version = "1.61.0"]
+    pub UNNECESSARY_JOIN,
+    pedantic,
+    "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// As the counterpart to `or_fun_call`, this lint looks for unnecessary
+    /// lazily evaluated closures on `Option` and `Result`.
+    ///
+    /// This lint suggests changing the following functions, when eager evaluation results in
+    /// simpler code:
+    ///  - `unwrap_or_else` to `unwrap_or`
+    ///  - `and_then` to `and`
+    ///  - `or_else` to `or`
+    ///  - `get_or_insert_with` to `get_or_insert`
+    ///  - `ok_or_else` to `ok_or`
+    ///  - `then` to `then_some` (for msrv >= 1.62.0)
+    ///
+    /// ### Why is this bad?
+    /// Using eager evaluation is shorter and simpler in some cases.
+    ///
+    /// ### Known problems
+    /// It is possible, but not recommended for `Deref` and `Index` to have
+    /// side effects. Eagerly evaluating them can change the semantics of the program.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or_else(|| 42);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let opt: Option<u32> = None;
+    ///
+    /// opt.unwrap_or(42);
+    /// ```
+    #[clippy::version = "1.48.0"]
+    pub UNNECESSARY_LAZY_EVALUATIONS,
+    style,
+    "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.unwrap()` related calls on `Result`s and `Option`s that are constructed.
+    ///
+    /// ### Why is this bad?
+    /// It is better to write the value directly without the indirection.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// let val1 = Some(1).unwrap();
+    /// let val2 = Ok::<_, ()>(1).unwrap();
+    /// let val3 = Err::<(), _>(1).unwrap_err();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let val1 = 1;
+    /// let val2 = 1;
+    /// let val3 = 1;
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub UNNECESSARY_LITERAL_UNWRAP,
+    complexity,
+    "using `unwrap()` related calls on `Result` and `Option` constructors"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Converts some constructs mapping an Enum value for equality comparison.
+    ///
+    /// ### Why is this bad?
+    /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
+    /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
+    /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
+    /// `opt.is_none_or(|val| val == 5)`.
+    /// This lint offers readability and conciseness improvements.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x.map_or(false, |n| n == 5),
+    ///         x.map_or(true, |n| n > 5),
+    ///     )
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x == Some(5),
+    ///         x.is_none_or(|n| n > 5),
+    ///     )
+    /// }
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub UNNECESSARY_MAP_OR,
+    style,
+    "reduce unnecessary calls to `.map_or(bool, …)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary calls to `min()` or `max()` in the following cases
+    /// - Either both side is constant
+    /// - One side is clearly larger than the other, like i32::MIN and an i32 variable
+    ///
+    /// ### Why is this bad?
+    ///
+    /// In the aforementioned cases it is not necessary to call `min()` or `max()`
+    /// to compare values, it may even cause confusion.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = 0.min(7_u32);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = 0;
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub UNNECESSARY_MIN_OR_MAX,
+    complexity,
+    "using 'min()/max()' when there is no need for it"
 }
 
 declare_clippy_lint! {
@@ -4703,83 +4372,382 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
-    /// when `lines` has type `std::io::Lines`.
+    /// Checks for usage of `.map_or_else()` "map closure" for `Result` type.
     ///
     /// ### Why is this bad?
-    /// `Lines` instances might produce a never-ending stream of `Err`, in which case
-    /// `filter_map(Result::ok)` will enter an infinite loop while waiting for an
-    /// `Ok` variant. Calling `next()` once is sufficient to enter the infinite loop,
-    /// even in the absence of explicit loops in the user code.
-    ///
-    /// This situation can arise when working with user-provided paths. On some platforms,
-    /// `std::fs::File::open(path)` might return `Ok(fs)` even when `path` is a directory,
-    /// but any later attempt to read from `fs` will return an error.
-    ///
-    /// ### Known problems
-    /// This lint suggests replacing `filter_map()` or `flat_map()` applied to a `Lines`
-    /// instance in all cases. There are two cases where the suggestion might not be
-    /// appropriate or necessary:
-    ///
-    /// - If the `Lines` instance can never produce any error, or if an error is produced
-    ///   only once just before terminating the iterator, using `map_while()` is not
-    ///   necessary but will not do any harm.
-    /// - If the `Lines` instance can produce intermittent errors then recover and produce
-    ///   successful results, using `map_while()` would stop at the first error.
+    /// This can be written more concisely by using `unwrap_or_else()`.
     ///
     /// ### Example
     /// ```no_run
-    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
-    /// # let _ = || -> io::Result<()> {
-    /// let mut lines = BufReader::new(File::open("some-path")?).lines().filter_map(Result::ok);
-    /// // If "some-path" points to a directory, the next statement never terminates:
-    /// let first_line: Option<String> = lines.next();
-    /// # Ok(()) };
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.map_or_else(|err| handle_error(err), |n| n);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
-    /// # let _ = || -> io::Result<()> {
-    /// let mut lines = BufReader::new(File::open("some-path")?).lines().map_while(Result::ok);
-    /// let first_line: Option<String> = lines.next();
-    /// # Ok(()) };
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.unwrap_or_else(|err| handle_error(err));
     /// ```
-    #[clippy::version = "1.70.0"]
-    pub LINES_FILTER_MAP_OK,
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_RESULT_MAP_OR_ELSE,
     suspicious,
-    "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
+    "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
 }
 
-#[expect(clippy::struct_excessive_bools)]
-pub struct Methods {
-    avoid_breaking_exported_api: bool,
-    msrv: Msrv,
-    allow_expect_in_tests: bool,
-    allow_unwrap_in_tests: bool,
-    allow_expect_in_consts: bool,
-    allow_unwrap_in_consts: bool,
-    allowed_dotfiles: FxHashSet<&'static str>,
-    format_args: FormatArgsStorage,
-    allow_unwrap_types: Vec<String>,
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `Vec::sort_by` passing in a closure
+    /// which compares the two arguments, either directly or indirectly.
+    ///
+    /// ### Why is this bad?
+    /// It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
+    /// possible) than to use `Vec::sort_by` and a more complicated
+    /// closure.
+    ///
+    /// ### Known problems
+    /// If the suggested `Vec::sort_by_key` uses Reverse and it isn't already
+    /// imported by a use statement, then it will need to be added manually.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
+    /// vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # struct A;
+    /// # impl A { fn foo(&self) {} }
+    /// # let mut vec: Vec<A> = Vec::new();
+    /// vec.sort_by_key(|a| a.foo());
+    /// ```
+    #[clippy::version = "1.46.0"]
+    pub UNNECESSARY_SORT_BY,
+    complexity,
+    "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
 }
 
-impl Methods {
-    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
-        let mut allowed_dotfiles: FxHashSet<_> = conf.allowed_dotfiles.iter().map(|s| &**s).collect();
-        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary calls to [`ToOwned::to_owned`](https://doc.rust-lang.org/std/borrow/trait.ToOwned.html#tymethod.to_owned)
+    /// and other `to_owned`-like functions.
+    ///
+    /// ### Why is this bad?
+    /// The unnecessary calls result in useless allocations.
+    ///
+    /// ### Known problems
+    /// `unnecessary_to_owned` can falsely trigger if `IntoIterator::into_iter` is applied to an
+    /// owned copy of a resource and the resource is later used mutably. See
+    /// [#8148](https://github.com/rust-lang/rust-clippy/issues/8148).
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let path = std::path::Path::new("x");
+    /// foo(&path.to_string_lossy().to_string());
+    /// fn foo(s: &str) {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let path = std::path::Path::new("x");
+    /// foo(&path.to_string_lossy());
+    /// fn foo(s: &str) {}
+    /// ```
+    #[clippy::version = "1.59.0"]
+    pub UNNECESSARY_TO_OWNED,
+    perf,
+    "unnecessary calls to `to_owned`-like functions"
+}
 
-        Self {
-            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
-            msrv: conf.msrv,
-            allow_expect_in_tests: conf.allow_expect_in_tests,
-            allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
-            allow_expect_in_consts: conf.allow_expect_in_consts,
-            allow_unwrap_in_consts: conf.allow_unwrap_in_consts,
-            allowed_dotfiles,
-            format_args,
-            allow_unwrap_types: conf.allow_unwrap_types.clone(),
-        }
-    }
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of the following functions with an argument that constructs a default value
+    /// (e.g., `Default::default` or `String::new`):
+    /// - `unwrap_or`
+    /// - `unwrap_or_else`
+    /// - `or_insert`
+    /// - `or_insert_with`
+    ///
+    /// ### Why is this bad?
+    /// Readability. Using `unwrap_or_default` in place of `unwrap_or`/`unwrap_or_else`, or `or_default`
+    /// in place of `or_insert`/`or_insert_with`, is simpler and more concise.
+    ///
+    /// ### Known problems
+    /// In some cases, the argument of `unwrap_or`, etc. is needed for type inference. The lint uses a
+    /// heuristic to try to identify such cases. However, the heuristic can produce false negatives.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// # let x = Some(1);
+    /// # let mut map = std::collections::HashMap::<u64, String>::new();
+    /// x.unwrap_or(Default::default());
+    /// map.entry(42).or_insert_with(String::new);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let x = Some(1);
+    /// # let mut map = std::collections::HashMap::<u64, String>::new();
+    /// x.unwrap_or_default();
+    /// map.entry(42).or_default();
+    /// ```
+    #[clippy::version = "1.56.0"]
+    pub UNWRAP_OR_DEFAULT,
+    style,
+    "using `.unwrap_or`, etc. with an argument that constructs a default value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.unwrap()` or `.unwrap_err()` calls on `Result`s and `.unwrap()` call on `Option`s.
+    ///
+    /// ### Why restrict this?
+    /// It is better to handle the `None` or `Err` case,
+    /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
+    /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
+    /// `Allow` by default.
+    ///
+    /// `result.unwrap()` will let the thread panic on `Err` values.
+    /// Normally, you want to implement more sophisticated error handling,
+    /// and propagate errors upwards with `?` operator.
+    ///
+    /// Even if you want to panic on errors, not all `Error`s implement good
+    /// messages on display. Therefore, it may be beneficial to look at the places
+    /// where they may get displayed. Activate this lint to do just that.
+    ///
+    /// ### Examples
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.unwrap();
+    /// result.unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.expect("more helpful message");
+    /// result.expect("more helpful message");
+    /// ```
+    ///
+    /// If [expect_used](#expect_used) is enabled, instead:
+    /// ```rust,ignore
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option?;
+    ///
+    /// // or
+    ///
+    /// result?;
+    /// ```
+    #[clippy::version = "1.45.0"]
+    pub UNWRAP_USED,
+    restriction,
+    "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.as_ref()` or `.as_mut()` where the
+    /// types before and after the call are the same.
+    ///
+    /// ### Why is this bad?
+    /// The call is unnecessary.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn do_stuff(x: &[i32]) {}
+    /// let x: &[i32] = &[1, 2, 3, 4, 5];
+    /// do_stuff(x.as_ref());
+    /// ```
+    /// The correct use would be:
+    /// ```no_run
+    /// # fn do_stuff(x: &[i32]) {}
+    /// let x: &[i32] = &[1, 2, 3, 4, 5];
+    /// do_stuff(x);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub USELESS_ASREF,
+    complexity,
+    "using `as_ref` where the types before and after the call are the same"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `NonZero*::new_unchecked()` being used in a `const` context.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `NonZero*::new_unchecked()` is an `unsafe` function and requires an `unsafe` context. When used in a
+    /// context evaluated at compilation time, `NonZero*::new().unwrap()` will provide the same result with identical
+    /// runtime performances while not requiring `unsafe`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = NonZeroUsize::new(3).unwrap();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub USELESS_NONZERO_NEW_UNCHECKED,
+    complexity,
+    "using `NonZero::new_unchecked()` in a `const` context"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds occurrences of `Vec::resize(0, an_int)`
+    ///
+    /// ### Why is this bad?
+    /// This is probably an argument inversion mistake.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// vec![1, 2, 3, 4, 5].resize(0, 5)
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// vec![1, 2, 3, 4, 5].clear()
+    /// ```
+    #[clippy::version = "1.46.0"]
+    pub VEC_RESIZE_TO_ZERO,
+    correctness,
+    "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of File::read_to_end and File::read_to_string.
+    ///
+    /// ### Why restrict this?
+    /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
+    /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// # use std::io::Read;
+    /// # use std::fs::File;
+    /// let mut f = File::open("foo.txt").unwrap();
+    /// let mut bytes = Vec::new();
+    /// f.read_to_end(&mut bytes).unwrap();
+    /// ```
+    /// Can be written more concisely as
+    /// ```rust,no_run
+    /// # use std::fs;
+    /// let mut bytes = fs::read("foo.txt").unwrap();
+    /// ```
+    #[clippy::version = "1.44.0"]
+    pub VERBOSE_FILE_READS,
+    restriction,
+    "use of `File::read_to_end` or `File::read_to_string`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `waker.clone().wake()`
+    ///
+    /// ### Why is this bad?
+    /// Cloning the waker is not necessary, `wake_by_ref()` enables the same operation
+    /// without extra cloning/dropping.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// waker.clone().wake();
+    /// ```
+    /// Should be written
+    /// ```rust,ignore
+    /// waker.wake_by_ref();
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub WAKER_CLONE_WAKE,
+    perf,
+    "cloning a `Waker` only to wake it"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for methods with certain name prefixes or suffixes, and which
+    /// do not adhere to standard conventions regarding how `self` is taken.
+    /// The actual rules are:
+    ///
+    /// |Prefix |Postfix     |`self` taken                   | `self` type  |
+    /// |-------|------------|-------------------------------|--------------|
+    /// |`as_`  | none       |`&self` or `&mut self`         | any          |
+    /// |`from_`| none       | none                          | any          |
+    /// |`into_`| none       |`self`                         | any          |
+    /// |`is_`  | none       |`&mut self` or `&self` or none | any          |
+    /// |`to_`  | `_mut`     |`&mut self`                    | any          |
+    /// |`to_`  | not `_mut` |`self`                         | `Copy`       |
+    /// |`to_`  | not `_mut` |`&self`                        | not `Copy`   |
+    ///
+    /// Note: Clippy doesn't trigger methods with `to_` prefix in:
+    /// - Traits definition.
+    /// Clippy can not tell if a type that implements a trait is `Copy` or not.
+    /// - Traits implementation, when `&self` is taken.
+    /// The method signature is controlled by the trait and often `&self` is required for all types that implement the trait
+    /// (see e.g. the `std::string::ToString` trait).
+    ///
+    /// Clippy allows `Pin<&Self>` and `Pin<&mut Self>` if `&self` and `&mut self` is required.
+    ///
+    /// Please find more info here:
+    /// https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
+    ///
+    /// ### Why is this bad?
+    /// Consistency breeds readability. If you follow the
+    /// conventions, your users won't be surprised that they, e.g., need to supply a
+    /// mutable reference to a `as_..` function.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # struct X;
+    /// impl X {
+    ///     fn as_str(self) -> &'static str {
+    ///         // ..
+    /// # ""
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # struct X;
+    /// impl X {
+    ///     fn as_str(&self) -> &'static str {
+    ///         // ..
+    /// # ""
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub WRONG_SELF_CONVENTION,
+    style,
+    "defining a method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to
+    /// zero-sized types
+    ///
+    /// ### Why is this bad?
+    /// This is a no-op, and likely unintended
+    ///
+    /// ### Example
+    /// ```no_run
+    /// unsafe { (&() as *const ()).offset(1) };
+    /// ```
+    #[clippy::version = "1.41.0"]
+    pub ZST_OFFSET,
+    correctness,
+    "Check for offset calculations on raw pointers to zero-sized types"
 }
 
 impl_lint_pass!(Methods => [
@@ -4937,6 +4905,38 @@ impl_lint_pass!(Methods => [
     WRONG_SELF_CONVENTION,
     ZST_OFFSET,
 ]);
+
+#[expect(clippy::struct_excessive_bools)]
+pub struct Methods {
+    avoid_breaking_exported_api: bool,
+    msrv: Msrv,
+    allow_expect_in_tests: bool,
+    allow_unwrap_in_tests: bool,
+    allow_expect_in_consts: bool,
+    allow_unwrap_in_consts: bool,
+    allowed_dotfiles: FxHashSet<&'static str>,
+    format_args: FormatArgsStorage,
+    allow_unwrap_types: Vec<String>,
+}
+
+impl Methods {
+    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
+        let mut allowed_dotfiles: FxHashSet<_> = conf.allowed_dotfiles.iter().map(|s| &**s).collect();
+        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES);
+
+        Self {
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            msrv: conf.msrv,
+            allow_expect_in_tests: conf.allow_expect_in_tests,
+            allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
+            allow_expect_in_consts: conf.allow_expect_in_consts,
+            allow_unwrap_in_consts: conf.allow_unwrap_in_consts,
+            allowed_dotfiles,
+            format_args,
+            allow_unwrap_types: conf.allow_unwrap_types.clone(),
+        }
+    }
+}
 
 /// Extracts a method call name, args, and `Span` of the method name.
 /// This ensures that neither the receiver nor any of the arguments

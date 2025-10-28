@@ -13,6 +13,30 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for slicing expressions which are equivalent to dereferencing the
+    /// value.
+    ///
+    /// ### Why restrict this?
+    /// Some people may prefer to dereference rather than slice.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![1, 2, 3];
+    /// let slice = &vec[..];
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let vec = vec![1, 2, 3];
+    /// let slice = &*vec;
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub DEREF_BY_SLICING,
+    restriction,
+    "slicing instead of dereferencing"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for redundant slicing expressions which use the full range, and
     /// do not change the type.
     ///
@@ -40,30 +64,6 @@ declare_clippy_lint! {
     pub REDUNDANT_SLICING,
     complexity,
     "redundant slicing of the whole range of a type"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for slicing expressions which are equivalent to dereferencing the
-    /// value.
-    ///
-    /// ### Why restrict this?
-    /// Some people may prefer to dereference rather than slice.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let vec = vec![1, 2, 3];
-    /// let slice = &vec[..];
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let vec = vec![1, 2, 3];
-    /// let slice = &*vec;
-    /// ```
-    #[clippy::version = "1.61.0"]
-    pub DEREF_BY_SLICING,
-    restriction,
-    "slicing instead of dereferencing"
 }
 
 declare_lint_pass!(RedundantSlicing => [DEREF_BY_SLICING, REDUNDANT_SLICING]);

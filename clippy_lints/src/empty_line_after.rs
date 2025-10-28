@@ -14,41 +14,6 @@ use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for empty lines after doc comments.
     ///
     /// ### Why is this bad?
@@ -88,6 +53,46 @@ declare_clippy_lint! {
     "empty line after doc comments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty lines after outer attributes
+    ///
+    /// ### Why is this bad?
+    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
+    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
+    /// should be removed
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// // Good (as inner attribute)
+    /// #![allow(dead_code)]
+    ///
+    /// fn this_is_fine() {}
+    ///
+    /// // or
+    ///
+    /// // Good (as outer attribute)
+    /// #[allow(dead_code)]
+    /// fn this_is_fine_too() {}
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EMPTY_LINE_AFTER_OUTER_ATTR,
+    suspicious,
+    "empty line after outer attribute"
+}
+
+impl_lint_pass!(EmptyLineAfter => [
+    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+]);
+
 #[derive(Debug)]
 struct ItemInfo {
     kind: &'static str,
@@ -99,11 +104,6 @@ struct ItemInfo {
 pub struct EmptyLineAfter {
     items: Vec<ItemInfo>,
 }
-
-impl_lint_pass!(EmptyLineAfter => [
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-]);
 
 impl EmptyLineAfter {
     pub fn new() -> Self {

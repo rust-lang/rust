@@ -29,6 +29,8 @@ declare_clippy_lint! {
     "allocating large arrays on stack may cause stack overflow"
 }
 
+impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
+
 pub struct LargeStackArrays {
     maximum_allowed_size: u64,
     prev_vec_macro_callsite: Option<Span>,
@@ -60,8 +62,6 @@ impl LargeStackArrays {
             }
     }
 }
-
-impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {

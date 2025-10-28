@@ -37,214 +37,45 @@ use utils::{IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for for-loops that manually copy items between
-    /// slices that could be optimized by having a memcpy.
+    /// Checks for usage of a character position yielded by `.chars().enumerate()` in a context where a **byte index** is expected,
+    /// such as an argument to a specific `str` method or indexing into a `str` or `String`.
     ///
     /// ### Why is this bad?
-    /// It is not as fast as a memcpy.
+    /// A character (more specifically, a Unicode scalar value) that is yielded by `str::chars` can take up multiple bytes,
+    /// so a character position does not necessarily have the same byte index at which the character is stored.
+    /// Thus, using the character position where a byte index is expected can unexpectedly return wrong values
+    /// or panic when the string consists of multibyte characters.
+    ///
+    /// For example, the character `a` in `äa` is stored at byte index 2 but has the character position 1.
+    /// Using the character position 1 to index into the string will lead to a panic as it is in the middle of the first character.
+    ///
+    /// Instead of `.chars().enumerate()`, the correct iterator to use is `.char_indices()`, which yields byte indices.
+    ///
+    /// This pattern is technically fine if the strings are known to only use the ASCII subset,
+    /// though in those cases it would be better to use `bytes()` directly to make the intent clearer,
+    /// but there is also no downside to just using `.char_indices()` directly and supporting non-ASCII strings.
+    ///
+    /// You may also want to read the [chapter on strings in the Rust Book](https://doc.rust-lang.org/book/ch08-02-strings.html)
+    /// which goes into this in more detail.
     ///
     /// ### Example
     /// ```no_run
-    /// # let src = vec![1];
-    /// # let mut dst = vec![0; 65];
-    /// for i in 0..src.len() {
-    ///     dst[i + 64] = src[i];
+    /// # let s = "...";
+    /// for (idx, c) in s.chars().enumerate() {
+    ///     let _ = s[idx..]; // ⚠️ Panics for strings consisting of multibyte characters
     /// }
     /// ```
-    ///
     /// Use instead:
     /// ```no_run
-    /// # let src = vec![1];
-    /// # let mut dst = vec![0; 65];
-    /// dst[64..(src.len() + 64)].clone_from_slice(&src[..]);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub MANUAL_MEMCPY,
-    perf,
-    "manually copying items between slices"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for looping over the range of `0..len` of some
-    /// collection just to get the values by index.
-    ///
-    /// ### Why is this bad?
-    /// Just iterating the collection itself makes the intent
-    /// more clear and is probably faster because it eliminates
-    /// the bounds check that is done when indexing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let vec = vec!['a', 'b', 'c'];
-    /// for i in 0..vec.len() {
-    ///     println!("{}", vec[i]);
+    /// # let s = "...";
+    /// for (idx, c) in s.char_indices() {
+    ///     let _ = s[idx..];
     /// }
     /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// let vec = vec!['a', 'b', 'c'];
-    /// for i in vec {
-    ///     println!("{}", i);
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub NEEDLESS_RANGE_LOOP,
-    style,
-    "for-looping over a range of indices where an iterator over items would do"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for loops on `x.iter()` where `&x` will do, and
-    /// suggests the latter.
-    ///
-    /// ### Why is this bad?
-    /// Readability.
-    ///
-    /// ### Known problems
-    /// False negatives. We currently only warn on some known
-    /// types.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// // with `y` a `Vec` or slice:
-    /// # let y = vec![1];
-    /// for x in y.iter() {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let y = vec![1];
-    /// for x in &y {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EXPLICIT_ITER_LOOP,
-    pedantic,
-    "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for loops on `y.into_iter()` where `y` will do, and
-    /// suggests the latter.
-    ///
-    /// ### Why is this bad?
-    /// Readability.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let y = vec![1];
-    /// // with `y` a `Vec` or slice:
-    /// for x in y.into_iter() {
-    ///     // ..
-    /// }
-    /// ```
-    /// can be rewritten to
-    /// ```no_run
-    /// # let y = vec![1];
-    /// for x in y {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EXPLICIT_INTO_ITER_LOOP,
-    pedantic,
-    "for-looping over `_.into_iter()` when `_` would do"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for loops on `x.next()`.
-    ///
-    /// ### Why is this bad?
-    /// `next()` returns either `Some(value)` if there was a
-    /// value, or `None` otherwise. The insidious thing is that `Option<_>`
-    /// implements `IntoIterator`, so that possibly one value will be iterated,
-    /// leading to some hard to find bugs. No one will want to write such code
-    /// [except to win an Underhanded Rust
-    /// Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
-    ///
-    /// ### Example
-    /// ```ignore
-    /// for x in y.next() {
-    ///     ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ITER_NEXT_LOOP,
+    #[clippy::version = "1.88.0"]
+    pub CHAR_INDICES_AS_BYTE_INDICES,
     correctness,
-    "for-looping over `_.next()` which is probably not intended"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects `loop + match` combinations that are easier
-    /// written as a `while let` loop.
-    ///
-    /// ### Why is this bad?
-    /// The `while let` loop is usually shorter and more
-    /// readable.
-    ///
-    /// ### Example
-    /// ```rust,no_run
-    /// let y = Some(1);
-    /// loop {
-    ///     let x = match y {
-    ///         Some(x) => x,
-    ///         None => break,
-    ///     };
-    ///     // ..
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```rust,no_run
-    /// let y = Some(1);
-    /// while let Some(x) = y {
-    ///     // ..
-    /// };
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub WHILE_LET_LOOP,
-    complexity,
-    "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks `for` loops over slices with an explicit counter
-    /// and suggests the use of `.enumerate()`.
-    ///
-    /// ### Why is this bad?
-    /// Using `.enumerate()` makes the intent more clear,
-    /// declutters the code and may be faster in some instances.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let v = vec![1];
-    /// # fn bar(bar: usize, baz: usize) {}
-    /// let mut i = 0;
-    /// for item in &v {
-    ///     bar(i, *item);
-    ///     i += 1;
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let v = vec![1];
-    /// # fn bar(bar: usize, baz: usize) {}
-    /// for (i, item) in v.iter().enumerate() { bar(i, *item); }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EXPLICIT_COUNTER_LOOP,
-    complexity,
-    "for-looping with an explicit counter when `_.enumerate()` would do"
+    "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
 }
 
 declare_clippy_lint! {
@@ -283,29 +114,97 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `while let` expressions on iterators.
+    /// Checks `for` loops over slices with an explicit counter
+    /// and suggests the use of `.enumerate()`.
     ///
     /// ### Why is this bad?
-    /// Readability. A simple `for` loop is shorter and conveys
-    /// the intent better.
+    /// Using `.enumerate()` makes the intent more clear,
+    /// declutters the code and may be faster in some instances.
     ///
     /// ### Example
-    /// ```ignore
-    /// while let Some(val) = iter.next() {
-    ///     ..
+    /// ```no_run
+    /// # let v = vec![1];
+    /// # fn bar(bar: usize, baz: usize) {}
+    /// let mut i = 0;
+    /// for item in &v {
+    ///     bar(i, *item);
+    ///     i += 1;
     /// }
     /// ```
     ///
     /// Use instead:
-    /// ```ignore
-    /// for val in &mut iter {
-    ///     ..
+    /// ```no_run
+    /// # let v = vec![1];
+    /// # fn bar(bar: usize, baz: usize) {}
+    /// for (i, item) in v.iter().enumerate() { bar(i, *item); }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EXPLICIT_COUNTER_LOOP,
+    complexity,
+    "for-looping with an explicit counter when `_.enumerate()` would do"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for loops on `y.into_iter()` where `y` will do, and
+    /// suggests the latter.
+    ///
+    /// ### Why is this bad?
+    /// Readability.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let y = vec![1];
+    /// // with `y` a `Vec` or slice:
+    /// for x in y.into_iter() {
+    ///     // ..
+    /// }
+    /// ```
+    /// can be rewritten to
+    /// ```no_run
+    /// # let y = vec![1];
+    /// for x in y {
+    ///     // ..
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub WHILE_LET_ON_ITERATOR,
-    style,
-    "using a `while let` loop instead of a for loop on an iterator"
+    pub EXPLICIT_INTO_ITER_LOOP,
+    pedantic,
+    "for-looping over `_.into_iter()` when `_` would do"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for loops on `x.iter()` where `&x` will do, and
+    /// suggests the latter.
+    ///
+    /// ### Why is this bad?
+    /// Readability.
+    ///
+    /// ### Known problems
+    /// False negatives. We currently only warn on some known
+    /// types.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // with `y` a `Vec` or slice:
+    /// # let y = vec![1];
+    /// for x in y.iter() {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let y = vec![1];
+    /// for x in &y {
+    ///     // ..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub EXPLICIT_ITER_LOOP,
+    pedantic,
+    "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
 }
 
 declare_clippy_lint! {
@@ -339,24 +238,251 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for loops that will always `break`, `return` or
-    /// `continue` an outer loop.
+    /// Checks for infinite loops in a function where the return type is not `!`
+    /// and lint accordingly.
     ///
-    /// ### Why is this bad?
-    /// This loop never loops, all it does is obfuscating the
-    /// code.
+    /// ### Why restrict this?
+    /// Making the return type `!` serves as documentation that the function does not return.
+    /// If the function is not intended to loop infinitely, then this lint may detect a bug.
     ///
     /// ### Example
-    /// ```no_run
-    /// loop {
-    ///     ..;
-    ///     break;
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// If infinite loops are as intended:
+    /// ```no_run,ignore
+    /// fn run_forever() -> ! {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// Otherwise add a `break` or `return` condition:
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///         if condition {
+    ///             break;
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub INFINITE_LOOP,
+    restriction,
+    "possibly unintended infinite loop"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for loops on `x.next()`.
+    ///
+    /// ### Why is this bad?
+    /// `next()` returns either `Some(value)` if there was a
+    /// value, or `None` otherwise. The insidious thing is that `Option<_>`
+    /// implements `IntoIterator`, so that possibly one value will be iterated,
+    /// leading to some hard to find bugs. No one will want to write such code
+    /// [except to win an Underhanded Rust
+    /// Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
+    ///
+    /// ### Example
+    /// ```ignore
+    /// for x in y.next() {
+    ///     ..
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub NEVER_LOOP,
+    pub ITER_NEXT_LOOP,
     correctness,
-    "any loop that will always `break` or `return`"
+    "for-looping over `_.next()` which is probably not intended"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementations of Iterator::find
+    ///
+    /// ### Why is this bad?
+    /// It doesn't affect performance, but using `find` is shorter and easier to read.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// fn example(arr: Vec<i32>) -> Option<i32> {
+    ///     for el in arr {
+    ///         if el == 1 {
+    ///             return Some(el);
+    ///         }
+    ///     }
+    ///     None
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn example(arr: Vec<i32>) -> Option<i32> {
+    ///     arr.into_iter().find(|&el| el == 1)
+    /// }
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub MANUAL_FIND,
+    complexity,
+    "manual implementation of `Iterator::find`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary `if let` usage in a for loop
+    /// where only the `Some` or `Ok` variant of the iterator element is used.
+    ///
+    /// ### Why is this bad?
+    /// It is verbose and can be simplified
+    /// by first calling the `flatten` method on the `Iterator`.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// let x = vec![Some(1), Some(2), Some(3)];
+    /// for n in x {
+    ///     if let Some(n) = n {
+    ///         println!("{}", n);
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = vec![Some(1), Some(2), Some(3)];
+    /// for n in x.into_iter().flatten() {
+    ///     println!("{}", n);
+    /// }
+    /// ```
+    #[clippy::version = "1.52.0"]
+    pub MANUAL_FLATTEN,
+    complexity,
+    "for loops over `Option`s or `Result`s with a single expression can be simplified"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for for-loops that manually copy items between
+    /// slices that could be optimized by having a memcpy.
+    ///
+    /// ### Why is this bad?
+    /// It is not as fast as a memcpy.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let src = vec![1];
+    /// # let mut dst = vec![0; 65];
+    /// for i in 0..src.len() {
+    ///     dst[i + 64] = src[i];
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let src = vec![1];
+    /// # let mut dst = vec![0; 65];
+    /// dst[64..(src.len() + 64)].clone_from_slice(&src[..]);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MANUAL_MEMCPY,
+    perf,
+    "manually copying items between slices"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manually filling a slice with a value.
+    ///
+    /// ### Why is this bad?
+    /// Using the `fill` method is more idiomatic and concise.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// for i in 0..some_slice.len() {
+    ///     some_slice[i] = 0;
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// some_slice.fill(0);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_SLICE_FILL,
+    style,
+    "manually filling a slice with a value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for loops that check for emptiness of a `Vec` in the condition and pop an element
+    /// in the body as a separate operation.
+    ///
+    /// ### Why is this bad?
+    /// Such loops can be written in a more idiomatic way by using a while-let loop and directly
+    /// pattern matching on the return value of `Vec::pop()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while !numbers.is_empty() {
+    ///     let number = numbers.pop().unwrap();
+    ///     // use `number`
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// while let Some(number) = numbers.pop() {
+    ///     // use `number`
+    /// }
+    /// ```
+    #[clippy::version = "1.71.0"]
+    pub MANUAL_WHILE_LET_SOME,
+    style,
+    "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for empty spin loops
+    ///
+    /// ### Why is this bad?
+    /// The loop body should have something like `thread::park()` or at least
+    /// `std::hint::spin_loop()` to avoid needlessly burning cycles and conserve
+    /// energy. Perhaps even better use an actual lock, if possible.
+    ///
+    /// ### Known problems
+    /// This lint doesn't currently trigger on `while let` or
+    /// `loop { match .. { .. } }` loops, which would be considered idiomatic in
+    /// combination with e.g. `AtomicBool::compare_exchange_weak`.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// use core::sync::atomic::{AtomicBool, Ordering};
+    /// let b = AtomicBool::new(true);
+    /// // give a ref to `b` to another thread,wait for it to become false
+    /// while b.load(Ordering::Acquire) {};
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    ///# use core::sync::atomic::{AtomicBool, Ordering};
+    ///# let b = AtomicBool::new(true);
+    /// while b.load(Ordering::Acquire) {
+    ///     std::hint::spin_loop()
+    /// }
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub MISSING_SPIN_LOOP,
+    perf,
+    "An empty busy waiting loop"
 }
 
 declare_clippy_lint! {
@@ -397,62 +523,55 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks whether variables used within while loop condition
-    /// can be (and are) mutated in the body.
+    /// Checks for looping over the range of `0..len` of some
+    /// collection just to get the values by index.
     ///
     /// ### Why is this bad?
-    /// If the condition is unchanged, entering the body of the loop
-    /// will lead to an infinite loop.
-    ///
-    /// ### Known problems
-    /// If the `while`-loop is in a closure, the check for mutation of the
-    /// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
-    /// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
+    /// Just iterating the collection itself makes the intent
+    /// more clear and is probably faster because it eliminates
+    /// the bounds check that is done when indexing.
     ///
     /// ### Example
     /// ```no_run
-    /// let i = 0;
-    /// while i > 10 {
-    ///     println!("let me loop forever!");
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub WHILE_IMMUTABLE_CONDITION,
-    correctness,
-    "variables used within while expression are not mutated in the body"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for while loops comparing floating point values.
-    ///
-    /// ### Why is this bad?
-    /// If you increment floating point values, errors can compound,
-    /// so, use integers instead if possible.
-    ///
-    /// ### Known problems
-    /// The lint will catch all while loops comparing floating point
-    /// values without regarding the increment.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let mut x = 0.0;
-    /// while x < 42.0 {
-    ///     x += 1.0;
+    /// let vec = vec!['a', 'b', 'c'];
+    /// for i in 0..vec.len() {
+    ///     println!("{}", vec[i]);
     /// }
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// let mut x = 0;
-    /// while x < 42 {
-    ///     x += 1;
+    /// let vec = vec!['a', 'b', 'c'];
+    /// for i in vec {
+    ///     println!("{}", i);
     /// }
     /// ```
-    #[clippy::version = "1.80.0"]
-    pub WHILE_FLOAT,
-    nursery,
-    "while loops comparing floating point values"
+    #[clippy::version = "pre 1.29.0"]
+    pub NEEDLESS_RANGE_LOOP,
+    style,
+    "for-looping over a range of indices where an iterator over items would do"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for loops that will always `break`, `return` or
+    /// `continue` an outer loop.
+    ///
+    /// ### Why is this bad?
+    /// This loop never loops, all it does is obfuscating the
+    /// code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// loop {
+    ///     ..;
+    ///     break;
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NEVER_LOOP,
+    correctness,
+    "any loop that will always `break` or `return`"
 }
 
 declare_clippy_lint! {
@@ -521,105 +640,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for unnecessary `if let` usage in a for loop
-    /// where only the `Some` or `Ok` variant of the iterator element is used.
-    ///
-    /// ### Why is this bad?
-    /// It is verbose and can be simplified
-    /// by first calling the `flatten` method on the `Iterator`.
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// let x = vec![Some(1), Some(2), Some(3)];
-    /// for n in x {
-    ///     if let Some(n) = n {
-    ///         println!("{}", n);
-    ///     }
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let x = vec![Some(1), Some(2), Some(3)];
-    /// for n in x.into_iter().flatten() {
-    ///     println!("{}", n);
-    /// }
-    /// ```
-    #[clippy::version = "1.52.0"]
-    pub MANUAL_FLATTEN,
-    complexity,
-    "for loops over `Option`s or `Result`s with a single expression can be simplified"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty spin loops
-    ///
-    /// ### Why is this bad?
-    /// The loop body should have something like `thread::park()` or at least
-    /// `std::hint::spin_loop()` to avoid needlessly burning cycles and conserve
-    /// energy. Perhaps even better use an actual lock, if possible.
-    ///
-    /// ### Known problems
-    /// This lint doesn't currently trigger on `while let` or
-    /// `loop { match .. { .. } }` loops, which would be considered idiomatic in
-    /// combination with e.g. `AtomicBool::compare_exchange_weak`.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore
-    /// use core::sync::atomic::{AtomicBool, Ordering};
-    /// let b = AtomicBool::new(true);
-    /// // give a ref to `b` to another thread,wait for it to become false
-    /// while b.load(Ordering::Acquire) {};
-    /// ```
-    /// Use instead:
-    /// ```rust,no_run
-    ///# use core::sync::atomic::{AtomicBool, Ordering};
-    ///# let b = AtomicBool::new(true);
-    /// while b.load(Ordering::Acquire) {
-    ///     std::hint::spin_loop()
-    /// }
-    /// ```
-    #[clippy::version = "1.61.0"]
-    pub MISSING_SPIN_LOOP,
-    perf,
-    "An empty busy waiting loop"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for manual implementations of Iterator::find
-    ///
-    /// ### Why is this bad?
-    /// It doesn't affect performance, but using `find` is shorter and easier to read.
-    ///
-    /// ### Example
-    ///
-    /// ```no_run
-    /// fn example(arr: Vec<i32>) -> Option<i32> {
-    ///     for el in arr {
-    ///         if el == 1 {
-    ///             return Some(el);
-    ///         }
-    ///     }
-    ///     None
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// fn example(arr: Vec<i32>) -> Option<i32> {
-    ///     arr.into_iter().find(|&el| el == 1)
-    /// }
-    /// ```
-    #[clippy::version = "1.64.0"]
-    pub MANUAL_FIND,
-    complexity,
-    "manual implementation of `Iterator::find`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for uses of the `enumerate` method where the index is unused (`_`)
     ///
     /// ### Why is this bad?
@@ -647,155 +667,122 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Looks for loops that check for emptiness of a `Vec` in the condition and pop an element
-    /// in the body as a separate operation.
+    /// Checks for while loops comparing floating point values.
     ///
     /// ### Why is this bad?
-    /// Such loops can be written in a more idiomatic way by using a while-let loop and directly
-    /// pattern matching on the return value of `Vec::pop()`.
+    /// If you increment floating point values, errors can compound,
+    /// so, use integers instead if possible.
+    ///
+    /// ### Known problems
+    /// The lint will catch all while loops comparing floating point
+    /// values without regarding the increment.
     ///
     /// ### Example
     /// ```no_run
-    /// let mut numbers = vec![1, 2, 3, 4, 5];
-    /// while !numbers.is_empty() {
-    ///     let number = numbers.pop().unwrap();
-    ///     // use `number`
+    /// let mut x = 0.0;
+    /// while x < 42.0 {
+    ///     x += 1.0;
     /// }
     /// ```
+    ///
     /// Use instead:
     /// ```no_run
-    /// let mut numbers = vec![1, 2, 3, 4, 5];
-    /// while let Some(number) = numbers.pop() {
-    ///     // use `number`
+    /// let mut x = 0;
+    /// while x < 42 {
+    ///     x += 1;
     /// }
     /// ```
-    #[clippy::version = "1.71.0"]
-    pub MANUAL_WHILE_LET_SOME,
-    style,
-    "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
+    #[clippy::version = "1.80.0"]
+    pub WHILE_FLOAT,
+    nursery,
+    "while loops comparing floating point values"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for infinite loops in a function where the return type is not `!`
-    /// and lint accordingly.
-    ///
-    /// ### Why restrict this?
-    /// Making the return type `!` serves as documentation that the function does not return.
-    /// If the function is not intended to loop infinitely, then this lint may detect a bug.
-    ///
-    /// ### Example
-    /// ```no_run,ignore
-    /// fn run_forever() {
-    ///     loop {
-    ///         // do something
-    ///     }
-    /// }
-    /// ```
-    /// If infinite loops are as intended:
-    /// ```no_run,ignore
-    /// fn run_forever() -> ! {
-    ///     loop {
-    ///         // do something
-    ///     }
-    /// }
-    /// ```
-    /// Otherwise add a `break` or `return` condition:
-    /// ```no_run,ignore
-    /// fn run_forever() {
-    ///     loop {
-    ///         // do something
-    ///         if condition {
-    ///             break;
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub INFINITE_LOOP,
-    restriction,
-    "possibly unintended infinite loop"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for manually filling a slice with a value.
+    /// Checks whether variables used within while loop condition
+    /// can be (and are) mutated in the body.
     ///
     /// ### Why is this bad?
-    /// Using the `fill` method is more idiomatic and concise.
+    /// If the condition is unchanged, entering the body of the loop
+    /// will lead to an infinite loop.
+    ///
+    /// ### Known problems
+    /// If the `while`-loop is in a closure, the check for mutation of the
+    /// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
+    /// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
     ///
     /// ### Example
     /// ```no_run
-    /// let mut some_slice = [1, 2, 3, 4, 5];
-    /// for i in 0..some_slice.len() {
-    ///     some_slice[i] = 0;
+    /// let i = 0;
+    /// while i > 10 {
+    ///     println!("let me loop forever!");
     /// }
     /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let mut some_slice = [1, 2, 3, 4, 5];
-    /// some_slice.fill(0);
-    /// ```
-    #[clippy::version = "1.86.0"]
-    pub MANUAL_SLICE_FILL,
-    style,
-    "manually filling a slice with a value"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for usage of a character position yielded by `.chars().enumerate()` in a context where a **byte index** is expected,
-    /// such as an argument to a specific `str` method or indexing into a `str` or `String`.
-    ///
-    /// ### Why is this bad?
-    /// A character (more specifically, a Unicode scalar value) that is yielded by `str::chars` can take up multiple bytes,
-    /// so a character position does not necessarily have the same byte index at which the character is stored.
-    /// Thus, using the character position where a byte index is expected can unexpectedly return wrong values
-    /// or panic when the string consists of multibyte characters.
-    ///
-    /// For example, the character `a` in `äa` is stored at byte index 2 but has the character position 1.
-    /// Using the character position 1 to index into the string will lead to a panic as it is in the middle of the first character.
-    ///
-    /// Instead of `.chars().enumerate()`, the correct iterator to use is `.char_indices()`, which yields byte indices.
-    ///
-    /// This pattern is technically fine if the strings are known to only use the ASCII subset,
-    /// though in those cases it would be better to use `bytes()` directly to make the intent clearer,
-    /// but there is also no downside to just using `.char_indices()` directly and supporting non-ASCII strings.
-    ///
-    /// You may also want to read the [chapter on strings in the Rust Book](https://doc.rust-lang.org/book/ch08-02-strings.html)
-    /// which goes into this in more detail.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let s = "...";
-    /// for (idx, c) in s.chars().enumerate() {
-    ///     let _ = s[idx..]; // ⚠️ Panics for strings consisting of multibyte characters
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// # let s = "...";
-    /// for (idx, c) in s.char_indices() {
-    ///     let _ = s[idx..];
-    /// }
-    /// ```
-    #[clippy::version = "1.88.0"]
-    pub CHAR_INDICES_AS_BYTE_INDICES,
+    #[clippy::version = "pre 1.29.0"]
+    pub WHILE_IMMUTABLE_CONDITION,
     correctness,
-    "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
+    "variables used within while expression are not mutated in the body"
 }
 
-pub struct Loops {
-    msrv: Msrv,
-    enforce_iter_loop_reborrow: bool,
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects `loop + match` combinations that are easier
+    /// written as a `while let` loop.
+    ///
+    /// ### Why is this bad?
+    /// The `while let` loop is usually shorter and more
+    /// readable.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// let y = Some(1);
+    /// loop {
+    ///     let x = match y {
+    ///         Some(x) => x,
+    ///         None => break,
+    ///     };
+    ///     // ..
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// let y = Some(1);
+    /// while let Some(x) = y {
+    ///     // ..
+    /// };
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub WHILE_LET_LOOP,
+    complexity,
+    "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
 }
-impl Loops {
-    pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv,
-            enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
-        }
-    }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `while let` expressions on iterators.
+    ///
+    /// ### Why is this bad?
+    /// Readability. A simple `for` loop is shorter and conveys
+    /// the intent better.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// while let Some(val) = iter.next() {
+    ///     ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// for val in &mut iter {
+    ///     ..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub WHILE_LET_ON_ITERATOR,
+    style,
+    "using a `while let` loop instead of a for loop on an iterator"
 }
 
 impl_lint_pass!(Loops => [
@@ -824,6 +811,19 @@ impl_lint_pass!(Loops => [
     WHILE_LET_LOOP,
     WHILE_LET_ON_ITERATOR,
 ]);
+
+pub struct Loops {
+    msrv: Msrv,
+    enforce_iter_loop_reborrow: bool,
+}
+impl Loops {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv,
+            enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

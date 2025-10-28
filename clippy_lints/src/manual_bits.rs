@@ -34,6 +34,8 @@ declare_clippy_lint! {
     "manual implementation of `size_of::<T>() * 8` can be simplified with `T::BITS`"
 }
 
+impl_lint_pass!(ManualBits => [MANUAL_BITS]);
+
 pub struct ManualBits {
     msrv: Msrv,
 }
@@ -43,8 +45,6 @@ impl ManualBits {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(ManualBits => [MANUAL_BITS]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualBits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

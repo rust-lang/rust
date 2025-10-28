@@ -73,17 +73,17 @@ declare_clippy_lint! {
     "outer expressions with no effect"
 }
 
-#[derive(Default)]
-pub struct NoEffect {
-    underscore_bindings: HirIdMap<Span>,
-    local_bindings: Vec<Vec<HirId>>,
-}
-
 impl_lint_pass!(NoEffect => [
     NO_EFFECT,
     NO_EFFECT_UNDERSCORE_BINDING,
     UNNECESSARY_OPERATION,
 ]);
+
+#[derive(Default)]
+pub struct NoEffect {
+    underscore_bindings: HirIdMap<Span>,
+    local_bindings: Vec<Vec<HirId>>,
+}
 
 impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {

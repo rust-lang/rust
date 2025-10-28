@@ -18,41 +18,6 @@ use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for getting the length of something via `.len()`
-    /// just to compare to zero, and suggests using `.is_empty()` where applicable.
-    ///
-    /// ### Why is this bad?
-    /// Some structures can answer `.is_empty()` much faster
-    /// than calculating their length. So it is good to get into the habit of using
-    /// `.is_empty()`, and having it is cheap.
-    /// Besides, it makes the intent clearer than a manual comparison in some contexts.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// if x.len() == 0 {
-    ///     ..
-    /// }
-    /// if y.len() != 0 {
-    ///     ..
-    /// }
-    /// ```
-    /// instead use
-    /// ```ignore
-    /// if x.is_empty() {
-    ///     ..
-    /// }
-    /// if !y.is_empty() {
-    ///     ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub LEN_ZERO,
-    style,
-    "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for comparing to an empty slice such as `""` or `[]`,
     /// and suggests using `.is_empty()` where applicable.
     ///
@@ -89,11 +54,46 @@ declare_clippy_lint! {
     "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead"
 }
 
-pub struct LenZero {
-    msrv: Msrv,
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for getting the length of something via `.len()`
+    /// just to compare to zero, and suggests using `.is_empty()` where applicable.
+    ///
+    /// ### Why is this bad?
+    /// Some structures can answer `.is_empty()` much faster
+    /// than calculating their length. So it is good to get into the habit of using
+    /// `.is_empty()`, and having it is cheap.
+    /// Besides, it makes the intent clearer than a manual comparison in some contexts.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// if x.len() == 0 {
+    ///     ..
+    /// }
+    /// if y.len() != 0 {
+    ///     ..
+    /// }
+    /// ```
+    /// instead use
+    /// ```ignore
+    /// if x.is_empty() {
+    ///     ..
+    /// }
+    /// if !y.is_empty() {
+    ///     ..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub LEN_ZERO,
+    style,
+    "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead"
 }
 
 impl_lint_pass!(LenZero => [COMPARISON_TO_EMPTY, LEN_ZERO]);
+
+pub struct LenZero {
+    msrv: Msrv,
+}
 
 impl LenZero {
     pub fn new(conf: &'static Conf) -> Self {

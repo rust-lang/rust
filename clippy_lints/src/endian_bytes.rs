@@ -10,6 +10,24 @@ use std::fmt::Write;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the usage of the `to_be_bytes` method and/or the function `from_be_bytes`.
+    ///
+    /// ### Why restrict this?
+    /// To ensure use of little-endian or the target’s endianness rather than big-endian.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _x = 2i32.to_be_bytes();
+    /// let _y = 2i64.to_be_bytes();
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub BIG_ENDIAN_BYTES,
+    restriction,
+    "disallows usage of the `to_be_bytes` method"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the usage of the `to_ne_bytes` method and/or the function `from_ne_bytes`.
     ///
     /// ### Why restrict this?
@@ -43,24 +61,6 @@ declare_clippy_lint! {
     pub LITTLE_ENDIAN_BYTES,
     restriction,
     "disallows usage of the `to_le_bytes` method"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the usage of the `to_be_bytes` method and/or the function `from_be_bytes`.
-    ///
-    /// ### Why restrict this?
-    /// To ensure use of little-endian or the target’s endianness rather than big-endian.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// let _x = 2i32.to_be_bytes();
-    /// let _y = 2i64.to_be_bytes();
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub BIG_ENDIAN_BYTES,
-    restriction,
-    "disallows usage of the `to_be_bytes` method"
 }
 
 declare_lint_pass!(EndianBytes => [

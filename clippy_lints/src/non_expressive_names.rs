@@ -12,25 +12,23 @@ use std::cmp::Ordering;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for names that are very similar and thus confusing.
-    ///
-    /// Note: this lint looks for similar names throughout each
-    /// scope. To allow it, you need to allow it on the scope
-    /// level, not on the name that is reported.
+    /// Checks if you have variables whose name consists of just
+    /// underscores and digits.
     ///
     /// ### Why is this bad?
-    /// It's hard to distinguish between names that differ only
-    /// by a single character.
+    /// It's hard to memorize what a variable means without a
+    /// descriptive name.
     ///
     /// ### Example
-    /// ```ignore
-    /// let checked_exp = something;
-    /// let checked_expr = something_else;
+    /// ```no_run
+    /// let _1 = 1;
+    /// let ___1 = 1;
+    /// let __1___2 = 11;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub SIMILAR_NAMES,
-    pedantic,
-    "similarly named items and bindings"
+    pub JUST_UNDERSCORES_AND_DIGITS,
+    style,
+    "unclear name"
 }
 
 declare_clippy_lint! {
@@ -54,27 +52,25 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks if you have variables whose name consists of just
-    /// underscores and digits.
+    /// Checks for names that are very similar and thus confusing.
+    ///
+    /// Note: this lint looks for similar names throughout each
+    /// scope. To allow it, you need to allow it on the scope
+    /// level, not on the name that is reported.
     ///
     /// ### Why is this bad?
-    /// It's hard to memorize what a variable means without a
-    /// descriptive name.
+    /// It's hard to distinguish between names that differ only
+    /// by a single character.
     ///
     /// ### Example
-    /// ```no_run
-    /// let _1 = 1;
-    /// let ___1 = 1;
-    /// let __1___2 = 11;
+    /// ```ignore
+    /// let checked_exp = something;
+    /// let checked_expr = something_else;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub JUST_UNDERSCORES_AND_DIGITS,
-    style,
-    "unclear name"
-}
-
-pub struct NonExpressiveNames {
-    pub single_char_binding_names_threshold: u64,
+    pub SIMILAR_NAMES,
+    pedantic,
+    "similarly named items and bindings"
 }
 
 impl_lint_pass!(NonExpressiveNames => [
@@ -82,6 +78,10 @@ impl_lint_pass!(NonExpressiveNames => [
     MANY_SINGLE_CHAR_NAMES,
     SIMILAR_NAMES,
 ]);
+
+pub struct NonExpressiveNames {
+    pub single_char_binding_names_threshold: u64,
+}
 
 impl NonExpressiveNames {
     pub fn new(conf: &'static Conf) -> Self {

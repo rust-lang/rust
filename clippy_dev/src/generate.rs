@@ -1,6 +1,7 @@
 use crate::parse::cursor::Cursor;
-use crate::parse::{Lint, LintData, LintPass};
+use crate::parse::{Lint, LintData, LintPass, VecBuf};
 use crate::utils::{FileUpdater, UpdateMode, UpdateStatus, update_text_region_fn};
+use core::range::Range;
 use itertools::Itertools;
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -255,4 +256,61 @@ fn write_list<'a>(
         let _ = write!(dst, "{}", items.format(", "));
         ListFmt::SingleLine
     }
+}
+
+/// Generates the contents of a lint's source file with all the lint and lint pass
+/// declarations sorted.
+pub fn gen_sorted_lints_file(
+    src: &str,
+    dst: &mut String,
+    lints: &mut [(&str, Range<u32>)],
+    passes: &mut [LintPass<'_>],
+    ranges: &mut VecBuf<Range<u32>>,
+) {
+    ranges.with(|ranges| {
+        ranges.extend(lints.iter().map(|&(_, x)| x));
+        ranges.extend(passes.iter().map(|x| x.decl_range));
+        ranges.sort_unstable_by_key(|x| x.start);
+
+        lints.sort_unstable_by_key(|&(x, _)| x);
+        passes.sort_by_key(|x| x.name);
+
+        let mut ranges = ranges.iter();
+        let pos = if let Some(range) = ranges.next() {
+            dst.push_str(&src[..range.start as usize]);
+            for &(_, range) in &*lints {
+                dst.push_str(&src[range.start as usize..range.end as usize]);
+                dst.push_str("\n\n");
+            }
+            for pass in passes {
+                pass.gen_mac(dst);
+                dst.push_str("\n\n");
+            }
+            range.end
+        } else {
+            dst.push_str(src);
+            return;
+        };
+
+        let pos = ranges.fold(pos, |start, range| {
+            let s = &src[start as usize..range.start as usize];
+            dst.push_str(if s.trim_start().is_empty() {
+                // Only whitespace between this and the previous item. No need to keep that.
+                ""
+            } else if src[..pos as usize].ends_with("\n\n")
+                && let Some(s) = s.strip_prefix("\n\n")
+            {
+                // Empty line before and after. Remove one of them.
+                s
+            } else {
+                // Remove only full lines unless something is in the way.
+                s.strip_prefix('\n').unwrap_or(s)
+            });
+            range.end
+        });
+
+        // Since we always generate an empty line at the end, make sure to always skip it.
+        let s = &src[pos as usize..];
+        dst.push_str(s.strip_prefix('\n').map_or(s, |s| s.strip_prefix('\n').unwrap_or(s)));
+    });
 }

@@ -1,7 +1,7 @@
 pub mod cursor;
 
 use self::cursor::{Capture, Cursor};
-use crate::utils::{ErrAction, File, Scoped, expect_action, walk_dir_no_dot_or_target};
+use crate::utils::{ErrAction, File, Scoped, expect_action, slice_groups_mut, walk_dir_no_dot_or_target};
 use core::fmt::{self, Display, Write as _};
 use core::range::Range;
 use rustc_arena::DroplessArena;
@@ -192,6 +192,30 @@ pub struct LintPass<'cx> {
 pub struct LintData<'cx> {
     pub lints: FxHashMap<&'cx str, Lint<'cx>>,
     pub lint_passes: Vec<LintPass<'cx>>,
+}
+impl<'cx> LintData<'cx> {
+    #[expect(clippy::type_complexity)]
+    pub fn split_by_lint_file<'s>(
+        &'s mut self,
+    ) -> (
+        FxHashMap<&'s Path, Vec<(&'s str, Range<u32>)>>,
+        impl Iterator<Item = &'s mut [LintPass<'cx>]>,
+    ) {
+        #[expect(clippy::default_trait_access)]
+        let mut lints = FxHashMap::with_capacity_and_hasher(500, Default::default());
+        for (&name, lint) in &self.lints {
+            if let Lint::Active(lint) = lint {
+                lints
+                    .entry(&*lint.path)
+                    .or_insert_with(|| Vec::with_capacity(8))
+                    .push((name, lint.declaration_range));
+            }
+        }
+        let passes = slice_groups_mut(&mut self.lint_passes, |head, tail| {
+            tail.iter().take_while(|&x| x.path == head.path).count()
+        });
+        (lints, passes)
+    }
 }
 
 impl<'cx> ParseCxImpl<'cx> {

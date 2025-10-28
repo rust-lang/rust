@@ -31,6 +31,7 @@ declare_clippy_lint! {
     complexity,
     "using `map`/`map_err` on `Option` or `Result` constructors"
 }
+
 declare_lint_pass!(UnnecessaryMapOnConstructor => [
     UNNECESSARY_MAP_ON_CONSTRUCTOR,
 ]);

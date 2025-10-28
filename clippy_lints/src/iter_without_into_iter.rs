@@ -11,50 +11,6 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Looks for `iter` and `iter_mut` methods without an associated `IntoIterator for (&|&mut) Type` implementation.
-    ///
-    /// ### Why is this bad?
-    /// It's not bad, but having them is idiomatic and allows the type to be used in for loops directly
-    /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
-    ///
-    /// ### Limitations
-    /// This lint focuses on providing an idiomatic API. Therefore, it will only
-    /// lint on types which are accessible outside of the crate. For internal types,
-    /// the `IntoIterator` trait can be implemented on demand if it is actually needed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// struct MySlice<'a>(&'a [u8]);
-    /// impl<'a> MySlice<'a> {
-    ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
-    ///         self.0.iter()
-    ///     }
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// struct MySlice<'a>(&'a [u8]);
-    /// impl<'a> MySlice<'a> {
-    ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
-    ///         self.0.iter()
-    ///     }
-    /// }
-    /// impl<'a> IntoIterator for &MySlice<'a> {
-    ///     type Item = &'a u8;
-    ///     type IntoIter = std::slice::Iter<'a, u8>;
-    ///     fn into_iter(self) -> Self::IntoIter {
-    ///         self.iter()
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "1.75.0"]
-    pub ITER_WITHOUT_INTO_ITER,
-    pedantic,
-    "implementing `iter(_mut)` without an associated `IntoIterator for (&|&mut) Type` impl"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// This is the opposite of the `iter_without_into_iter` lint.
     /// It looks for `IntoIterator for (&|&mut) Type` implementations without an inherent `iter` or `iter_mut` method
     /// on the type or on any of the types in its `Deref` chain.
@@ -103,6 +59,50 @@ declare_clippy_lint! {
     pub INTO_ITER_WITHOUT_ITER,
     pedantic,
     "implementing `IntoIterator for (&|&mut) Type` without an inherent `iter(_mut)` method"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for `iter` and `iter_mut` methods without an associated `IntoIterator for (&|&mut) Type` implementation.
+    ///
+    /// ### Why is this bad?
+    /// It's not bad, but having them is idiomatic and allows the type to be used in for loops directly
+    /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
+    ///
+    /// ### Limitations
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// the `IntoIterator` trait can be implemented on demand if it is actually needed.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// struct MySlice<'a>(&'a [u8]);
+    /// impl<'a> MySlice<'a> {
+    ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
+    ///         self.0.iter()
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// struct MySlice<'a>(&'a [u8]);
+    /// impl<'a> MySlice<'a> {
+    ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
+    ///         self.0.iter()
+    ///     }
+    /// }
+    /// impl<'a> IntoIterator for &MySlice<'a> {
+    ///     type Item = &'a u8;
+    ///     type IntoIter = std::slice::Iter<'a, u8>;
+    ///     fn into_iter(self) -> Self::IntoIter {
+    ///         self.iter()
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub ITER_WITHOUT_INTO_ITER,
+    pedantic,
+    "implementing `iter(_mut)` without an associated `IntoIterator for (&|&mut) Type` impl"
 }
 
 declare_lint_pass!(IterWithoutIntoIter => [

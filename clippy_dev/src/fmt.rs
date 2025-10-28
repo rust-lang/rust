@@ -1,7 +1,9 @@
+use crate::generate::gen_sorted_lints_file;
 use crate::new_parse_cx;
+use crate::parse::VecBuf;
 use crate::utils::{
-    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, slice_groups,
-    split_args_for_threads, walk_dir_no_dot_or_target,
+    ErrAction, FileUpdater, UpdateMode, UpdateStatus, expect_action, run_with_output, split_args_for_threads,
+    walk_dir_no_dot_or_target,
 };
 use itertools::Itertools;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -334,19 +336,24 @@ pub fn run(update_mode: UpdateMode) {
     }
 
     new_parse_cx(|cx| {
-        let data = cx.parse_lint_decls();
+        let mut data = cx.parse_lint_decls();
+        let (mut lints, passes) = data.split_by_lint_file();
         let mut updater = FileUpdater::default();
+        let mut ranges = VecBuf::with_capacity(256);
 
-        for passes in slice_groups(&data.lint_passes, |head, tail| {
-            tail.iter().take_while(|&x| x.path == head.path).count()
-        }) {
-            updater.update_file_checked("cargo dev fmt", update_mode, &passes[0].path, &mut |_, src, dst| {
-                let pos = passes.iter().fold(0u32, |start, pass| {
-                    dst.push_str(&src[start as usize..pass.decl_range.start as usize]);
-                    pass.gen_mac(dst);
-                    pass.decl_range.end
-                });
-                dst.push_str(&src[pos as usize..]);
+        for passes in passes {
+            let path = passes[0].path.clone();
+            let mut lints = lints.remove(&*path);
+            let lints = lints.as_deref_mut().unwrap_or_default();
+            updater.update_file_checked("cargo dev fmt", update_mode, &path, &mut |_, src, dst| {
+                gen_sorted_lints_file(src, dst, lints, passes, &mut ranges);
+                UpdateStatus::from_changed(src != dst)
+            });
+        }
+
+        for (&path, lints) in &mut lints {
+            updater.update_file_checked("cargo dev fmt", update_mode, path, &mut |_, src, dst| {
+                gen_sorted_lints_file(src, dst, lints, &mut [], &mut ranges);
                 UpdateStatus::from_changed(src != dst)
             });
         }

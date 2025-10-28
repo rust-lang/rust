@@ -18,33 +18,6 @@ use rustc_span::{Span, Symbol};
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for bindings that shadow other bindings already in
-    /// scope, while just changing reference level or mutability.
-    ///
-    /// ### Why restrict this?
-    /// To require that what are formally distinct variables be given distinct names.
-    ///
-    /// See also `shadow_reuse` and `shadow_unrelated` for other restrictions on shadowing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let x = 1;
-    /// let x = &x;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let x = 1;
-    /// let y = &x; // use different variable name
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub SHADOW_SAME,
-    restriction,
-    "rebinding a name to itself, e.g., `let mut x = &mut x`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for bindings that shadow other bindings already in
     /// scope, while reusing the original value.
     ///
     /// ### Why restrict this?
@@ -68,6 +41,33 @@ declare_clippy_lint! {
     pub SHADOW_REUSE,
     restriction,
     "rebinding a name to an expression that reuses the original value, e.g., `let x = x + 1`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for bindings that shadow other bindings already in
+    /// scope, while just changing reference level or mutability.
+    ///
+    /// ### Why restrict this?
+    /// To require that what are formally distinct variables be given distinct names.
+    ///
+    /// See also `shadow_reuse` and `shadow_unrelated` for other restrictions on shadowing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let x = 1;
+    /// let x = &x;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let x = 1;
+    /// let y = &x; // use different variable name
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub SHADOW_SAME,
+    restriction,
+    "rebinding a name to itself, e.g., `let mut x = &mut x`"
 }
 
 declare_clippy_lint! {
@@ -106,12 +106,12 @@ declare_clippy_lint! {
     "rebinding a name without even using the original value"
 }
 
+impl_lint_pass!(Shadow => [SHADOW_REUSE, SHADOW_SAME, SHADOW_UNRELATED]);
+
 #[derive(Default)]
 pub(crate) struct Shadow {
     bindings: Vec<(FxHashMap<Symbol, Vec<ItemLocalId>>, LocalDefId)>,
 }
-
-impl_lint_pass!(Shadow => [SHADOW_REUSE, SHADOW_SAME, SHADOW_UNRELATED]);
 
 impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {

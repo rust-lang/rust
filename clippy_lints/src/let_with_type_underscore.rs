@@ -24,6 +24,7 @@ declare_clippy_lint! {
     complexity,
     "unneeded underscore type (`_`) in a variable declaration"
 }
+
 declare_lint_pass!(UnderscoreTyped => [LET_WITH_TYPE_UNDERSCORE]);
 
 impl EarlyLintPass for UnderscoreTyped {

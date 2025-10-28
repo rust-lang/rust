@@ -39,23 +39,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `unimplemented!`.
-    ///
-    /// ### Why restrict this?
-    /// This macro, or panics in general, may be unwanted in production code.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// unimplemented!();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub UNIMPLEMENTED,
-    restriction,
-    "`unimplemented!` should not be present in production code"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for usage of `todo!`.
     ///
     /// ### Why restrict this?
@@ -74,6 +57,23 @@ declare_clippy_lint! {
     pub TODO,
     restriction,
     "`todo!` should not be present in production code"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `unimplemented!`.
+    ///
+    /// ### Why restrict this?
+    /// This macro, or panics in general, may be unwanted in production code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// unimplemented!();
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub UNIMPLEMENTED,
+    restriction,
+    "`unimplemented!` should not be present in production code"
 }
 
 declare_clippy_lint! {

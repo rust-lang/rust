@@ -39,6 +39,7 @@ declare_clippy_lint! {
     complexity,
     "manual slice size calculation"
 }
+
 impl_lint_pass!(ManualSliceSizeCalculation => [MANUAL_SLICE_SIZE_CALCULATION]);
 
 pub struct ManualSliceSizeCalculation {

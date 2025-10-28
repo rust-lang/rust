@@ -30,6 +30,7 @@ declare_clippy_lint! {
     style,
     "detects cases of references to owned empty strings being passed as an argument to a function expecting `&str`"
 }
+
 declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [
     UNNECESSARY_OWNED_EMPTY_STRINGS,
 ]);

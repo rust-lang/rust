@@ -64,6 +64,10 @@ declare_clippy_lint! {
     "the order of the field init is inconsistent with the order in the struct definition"
 }
 
+impl_lint_pass!(InconsistentStructConstructor => [
+    INCONSISTENT_STRUCT_CONSTRUCTOR,
+]);
+
 pub struct InconsistentStructConstructor {
     check_inconsistent_struct_field_initializers: bool,
 }
@@ -75,10 +79,6 @@ impl InconsistentStructConstructor {
         }
     }
 }
-
-impl_lint_pass!(InconsistentStructConstructor => [
-    INCONSISTENT_STRUCT_CONSTRUCTOR,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {

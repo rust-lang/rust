@@ -16,6 +16,144 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Warns if a generic shadows a built-in type.
+    ///
+    /// ### Why is this bad?
+    /// This gives surprising type errors.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// impl<u32> Foo<u32> {
+    ///     fn impl_func(&self) -> u32 {
+    ///         42
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub BUILTIN_TYPE_SHADOW,
+    style,
+    "shadowing a builtin type"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns on hexadecimal literals with mixed-case letter
+    /// digits.
+    ///
+    /// ### Why is this bad?
+    /// It looks confusing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let _ =
+    /// 0x1a9BAcD
+    /// # ;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let _ =
+    /// 0x1A9BACD
+    /// # ;
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub MIXED_CASE_HEX_LITERALS,
+    style,
+    "hex literals whose letter digits are not consistently upper- or lowercased"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `[all @ ..]` patterns.
+    ///
+    /// ### Why is this bad?
+    /// In all cases, `all` works fine and can often make code simpler, as you possibly won't need
+    /// to convert from say a `Vec` to a slice by dereferencing.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// if let [all @ ..] = &*v {
+    ///     // NOTE: Type is a slice here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// if let all = v {
+    ///     // NOTE: Type is a `Vec` here
+    ///     println!("all elements: {all:#?}");
+    /// }
+    /// // or
+    /// println!("all elements: {v:#?}");
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub REDUNDANT_AT_REST_PATTERN,
+    complexity,
+    "checks for `[all @ ..]` where `all` would suffice"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for patterns in the form `name @ _`.
+    ///
+    /// ### Why is this bad?
+    /// It's almost always more readable to just use direct
+    /// bindings.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let v = Some("abc");
+    /// match v {
+    ///     Some(x) => (),
+    ///     y @ _ => (),
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let v = Some("abc");
+    /// match v {
+    ///     Some(x) => (),
+    ///     y => (),
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub REDUNDANT_PATTERN,
+    style,
+    "using `name @ _` in a pattern"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if literal suffixes are separated by an underscore.
+    /// To enforce separated literal suffix style,
+    /// see the `unseparated_literal_suffix` lint.
+    ///
+    /// ### Why restrict this?
+    /// Suffix style should be consistent.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let _ =
+    /// 123832i32
+    /// # ;
+    /// ```
+    #[clippy::version = "1.58.0"]
+    pub SEPARATED_LITERAL_SUFFIX,
+    restriction,
+    "literals whose suffix is separated by an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for structure field patterns bound to wildcards.
     ///
     /// ### Why restrict this?
@@ -59,182 +197,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns on hexadecimal literals with mixed-case letter
-    /// digits.
-    ///
-    /// ### Why is this bad?
-    /// It looks confusing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let _ =
-    /// 0x1a9BAcD
-    /// # ;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let _ =
-    /// 0x1A9BACD
-    /// # ;
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub MIXED_CASE_HEX_LITERALS,
-    style,
-    "hex literals whose letter digits are not consistently upper- or lowercased"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if literal suffixes are not separated by an
-    /// underscore.
-    /// To enforce unseparated literal suffix style,
-    /// see the `separated_literal_suffix` lint.
-    ///
-    /// ### Why restrict this?
-    /// Suffix style should be consistent.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let _ =
-    /// 123832i32
-    /// # ;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let _ =
-    /// 123832_i32
-    /// # ;
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub UNSEPARATED_LITERAL_SUFFIX,
-    restriction,
-    "literals whose suffix is not separated by an underscore"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if literal suffixes are separated by an underscore.
-    /// To enforce separated literal suffix style,
-    /// see the `unseparated_literal_suffix` lint.
-    ///
-    /// ### Why restrict this?
-    /// Suffix style should be consistent.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let _ =
-    /// 123832_i32
-    /// # ;
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let _ =
-    /// 123832i32
-    /// # ;
-    /// ```
-    #[clippy::version = "1.58.0"]
-    pub SEPARATED_LITERAL_SUFFIX,
-    restriction,
-    "literals whose suffix is separated by an underscore"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if an integral constant literal starts with `0`.
-    ///
-    /// ### Why is this bad?
-    /// In some languages (including the infamous C language
-    /// and most of its
-    /// family), this marks an octal constant. In Rust however, this is a decimal
-    /// constant. This could
-    /// be confusing for both the writer and a reader of the constant.
-    ///
-    /// ### Example
-    ///
-    /// In Rust:
-    /// ```no_run
-    /// fn main() {
-    ///     let a = 0123;
-    ///     println!("{}", a);
-    /// }
-    /// ```
-    ///
-    /// prints `123`, while in C:
-    ///
-    /// ```c
-    /// #include <stdio.h>
-    ///
-    /// int main() {
-    ///     int a = 0123;
-    ///     printf("%d\n", a);
-    /// }
-    /// ```
-    ///
-    /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
-    #[clippy::version = "pre 1.29.0"]
-    pub ZERO_PREFIXED_LITERAL,
-    complexity,
-    "integer literals starting with `0`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns if a generic shadows a built-in type.
-    ///
-    /// ### Why is this bad?
-    /// This gives surprising type errors.
-    ///
-    /// ### Example
-    ///
-    /// ```ignore
-    /// impl<u32> Foo<u32> {
-    ///     fn impl_func(&self) -> u32 {
-    ///         42
-    ///     }
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub BUILTIN_TYPE_SHADOW,
-    style,
-    "shadowing a builtin type"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for patterns in the form `name @ _`.
-    ///
-    /// ### Why is this bad?
-    /// It's almost always more readable to just use direct
-    /// bindings.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let v = Some("abc");
-    /// match v {
-    ///     Some(x) => (),
-    ///     y @ _ => (),
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let v = Some("abc");
-    /// match v {
-    ///     Some(x) => (),
-    ///     y => (),
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub REDUNDANT_PATTERN,
-    style,
-    "using `name @ _` in a pattern"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for tuple patterns with a wildcard
     /// pattern (`_`) is next to a rest pattern (`..`).
     ///
@@ -274,32 +236,70 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `[all @ ..]` patterns.
+    /// Warns if literal suffixes are not separated by an
+    /// underscore.
+    /// To enforce unseparated literal suffix style,
+    /// see the `separated_literal_suffix` lint.
     ///
-    /// ### Why is this bad?
-    /// In all cases, `all` works fine and can often make code simpler, as you possibly won't need
-    /// to convert from say a `Vec` to a slice by dereferencing.
+    /// ### Why restrict this?
+    /// Suffix style should be consistent.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// if let [all @ ..] = &*v {
-    ///     // NOTE: Type is a slice here
-    ///     println!("all elements: {all:#?}");
-    /// }
+    /// ```no_run
+    /// # let _ =
+    /// 123832i32
+    /// # ;
     /// ```
+    ///
     /// Use instead:
-    /// ```rust,ignore
-    /// if let all = v {
-    ///     // NOTE: Type is a `Vec` here
-    ///     println!("all elements: {all:#?}");
-    /// }
-    /// // or
-    /// println!("all elements: {v:#?}");
+    /// ```no_run
+    /// # let _ =
+    /// 123832_i32
+    /// # ;
     /// ```
-    #[clippy::version = "1.72.0"]
-    pub REDUNDANT_AT_REST_PATTERN,
+    #[clippy::version = "pre 1.29.0"]
+    pub UNSEPARATED_LITERAL_SUFFIX,
+    restriction,
+    "literals whose suffix is not separated by an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if an integral constant literal starts with `0`.
+    ///
+    /// ### Why is this bad?
+    /// In some languages (including the infamous C language
+    /// and most of its
+    /// family), this marks an octal constant. In Rust however, this is a decimal
+    /// constant. This could
+    /// be confusing for both the writer and a reader of the constant.
+    ///
+    /// ### Example
+    ///
+    /// In Rust:
+    /// ```no_run
+    /// fn main() {
+    ///     let a = 0123;
+    ///     println!("{}", a);
+    /// }
+    /// ```
+    ///
+    /// prints `123`, while in C:
+    ///
+    /// ```c
+    /// #include <stdio.h>
+    ///
+    /// int main() {
+    ///     int a = 0123;
+    ///     printf("%d\n", a);
+    /// }
+    /// ```
+    ///
+    /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
+    #[clippy::version = "pre 1.29.0"]
+    pub ZERO_PREFIXED_LITERAL,
     complexity,
-    "checks for `[all @ ..]` where `all` would suffice"
+    "integer literals starting with `0`"
 }
 
 declare_lint_pass!(MiscEarlyLints => [

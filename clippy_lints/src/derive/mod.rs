@@ -12,36 +12,6 @@ mod unsafe_derive_deserialize;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints against manual `PartialEq` implementations for types with a derived `Hash`
-    /// implementation.
-    ///
-    /// ### Why is this bad?
-    /// The implementation of these traits must agree (for
-    /// example for use with `HashMap`) so it’s probably a bad idea to use a
-    /// default-generated `Hash` implementation with an explicitly defined
-    /// `PartialEq`. In particular, the following must hold for any type:
-    ///
-    /// ```text
-    /// k1 == k2 ⇒ hash(k1) == hash(k2)
-    /// ```
-    ///
-    /// ### Example
-    /// ```ignore
-    /// #[derive(Hash)]
-    /// struct Foo;
-    ///
-    /// impl PartialEq for Foo {
-    ///     ...
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DERIVED_HASH_WITH_MANUAL_EQ,
-    correctness,
-    "deriving `Hash` but implementing `PartialEq` explicitly"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Lints against manual `PartialOrd` and `Ord` implementations for types with a derived `Ord`
     /// or `PartialOrd` implementation.
     ///
@@ -89,6 +59,68 @@ declare_clippy_lint! {
     pub DERIVE_ORD_XOR_PARTIAL_ORD,
     correctness,
     "deriving `Ord` but implementing `PartialOrd` explicitly"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for types that derive `PartialEq` and could implement `Eq`.
+    ///
+    /// ### Why is this bad?
+    /// If a type `T` derives `PartialEq` and all of its members implement `Eq`,
+    /// then `T` can always implement `Eq`. Implementing `Eq` allows `T` to be used
+    /// in APIs that require `Eq` types. It also allows structs containing `T` to derive
+    /// `Eq` themselves.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[derive(PartialEq)]
+    /// struct Foo {
+    ///     i_am_eq: i32,
+    ///     i_am_eq_too: Vec<String>,
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[derive(PartialEq, Eq)]
+    /// struct Foo {
+    ///     i_am_eq: i32,
+    ///     i_am_eq_too: Vec<String>,
+    /// }
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+    nursery,
+    "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Lints against manual `PartialEq` implementations for types with a derived `Hash`
+    /// implementation.
+    ///
+    /// ### Why is this bad?
+    /// The implementation of these traits must agree (for
+    /// example for use with `HashMap`) so it’s probably a bad idea to use a
+    /// default-generated `Hash` implementation with an explicitly defined
+    /// `PartialEq`. In particular, the following must hold for any type:
+    ///
+    /// ```text
+    /// k1 == k2 ⇒ hash(k1) == hash(k2)
+    /// ```
+    ///
+    /// ### Example
+    /// ```ignore
+    /// #[derive(Hash)]
+    /// struct Foo;
+    ///
+    /// impl PartialEq for Foo {
+    ///     ...
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DERIVED_HASH_WITH_MANUAL_EQ,
+    correctness,
+    "deriving `Hash` but implementing `PartialEq` explicitly"
 }
 
 declare_clippy_lint! {
@@ -150,38 +182,6 @@ declare_clippy_lint! {
     pub UNSAFE_DERIVE_DESERIALIZE,
     pedantic,
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for types that derive `PartialEq` and could implement `Eq`.
-    ///
-    /// ### Why is this bad?
-    /// If a type `T` derives `PartialEq` and all of its members implement `Eq`,
-    /// then `T` can always implement `Eq`. Implementing `Eq` allows `T` to be used
-    /// in APIs that require `Eq` types. It also allows structs containing `T` to derive
-    /// `Eq` themselves.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[derive(PartialEq)]
-    /// struct Foo {
-    ///     i_am_eq: i32,
-    ///     i_am_eq_too: Vec<String>,
-    /// }
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// #[derive(PartialEq, Eq)]
-    /// struct Foo {
-    ///     i_am_eq: i32,
-    ///     i_am_eq_too: Vec<String>,
-    /// }
-    /// ```
-    #[clippy::version = "1.63.0"]
-    pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
-    nursery,
-    "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
 }
 
 declare_lint_pass!(Derive => [

@@ -62,6 +62,8 @@ declare_clippy_lint! {
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"
 }
 
+impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
+
 pub struct ManualNonExhaustive {
     msrv: Msrv,
     constructed_enum_variants: FxHashSet<LocalDefId>,
@@ -77,8 +79,6 @@ impl ManualNonExhaustive {
         }
     }
 }
-
-impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
