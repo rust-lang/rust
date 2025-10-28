@@ -53,6 +53,7 @@ semver.workspace = true
 memchr = "2.7.5"
 cargo_metadata.workspace = true
 process-wrap.workspace = true
+dhat = { version = "0.3.3", optional = true }
 
 cfg.workspace = true
 hir-def.workspace = true
@@ -105,6 +106,7 @@ in-rust-tree = [
   "hir-ty/in-rust-tree",
   "load-cargo/in-rust-tree",
 ]
+dhat = ["dep:dhat"]
 
 [lints]
 workspace = true

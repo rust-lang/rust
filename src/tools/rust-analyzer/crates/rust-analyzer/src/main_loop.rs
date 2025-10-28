@@ -60,6 +60,14 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
+    #[cfg(feature = "dhat")]
+    {
+        if let Some(dhat_output_file) = config.dhat_output_file() {
+            *crate::DHAT_PROFILER.lock().unwrap() =
+                Some(dhat::Profiler::builder().file_name(&dhat_output_file).build());
+        }
+    }
+
     GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 

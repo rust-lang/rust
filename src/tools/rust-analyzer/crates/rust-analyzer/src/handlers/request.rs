@@ -126,17 +126,35 @@ pub(crate) fn handle_analyzer_status(
     Ok(buf)
 }
 
-pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Result<String> {
+pub(crate) fn handle_memory_usage(_state: &mut GlobalState, _: ()) -> anyhow::Result<String> {
     let _p = tracing::info_span!("handle_memory_usage").entered();
-    let mem = state.analysis_host.per_query_memory_usage();
 
-    let mut out = String::new();
-    for (name, bytes, entries) in mem {
-        format_to!(out, "{:>8} {:>6} {}\n", bytes, entries, name);
+    #[cfg(not(feature = "dhat"))]
+    {
+        Err(anyhow::anyhow!(
+            "Memory profiling is not enabled for this build of rust-analyzer.\n\n\
+            To build rust-analyzer with profiling support, pass `--features dhat --profile dev-rel` to `cargo build`
+            when building from source, or pass `--enable-profiling` to `cargo xtask`."
+        ))
     }
-    format_to!(out, "{:>8}        Remaining\n", profile::memory_usage().allocated);
-
-    Ok(out)
+    #[cfg(feature = "dhat")]
+    {
+        if let Some(dhat_output_file) = _state.config.dhat_output_file() {
+            let mutprofiler = crate::DHAT_PROFILER.lock().unwrap();
+            let old_profiler = profiler.take();
+            // Need to drop the old profiler before creating a new one.
+            drop(old_profiler);
+            *profiler = Some(dhat::Profiler::builder().file_name(&dhat_output_file).build());
+            Ok(format!(
+                "Memory profile was saved successfully to {dhat_output_file}.\n\n\
+                See https://docs.rs/dhat/latest/dhat/#viewing for how to inspect the profile."
+            ))
+        } else {
+            Err(anyhow::anyhow!(
+                "Please set `rust-analyzer.profiling.memoryProfile` to the path where you want to save the profile."
+            ))
+        }
+    }
 }
 
 pub(crate) fn handle_view_syntax_tree(

@@ -1289,6 +1289,16 @@ Default: `null`
 Internal config, path to proc-macro server executable.
 
 
+## rust-analyzer.profiling.memoryProfile {#profiling.memoryProfile}
+
+Default: `null`
+
+The path where to save memory profiling output.
+
+**Note:** Memory profiling is not enabled by default in rust-analyzer builds, you need to build
+from source for it.
+
+
 ## rust-analyzer.references.excludeImports {#references.excludeImports}
 
 Default: `false`
