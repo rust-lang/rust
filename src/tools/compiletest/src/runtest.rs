@@ -562,7 +562,7 @@ impl<'test> TestCx<'test> {
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
         rustc.args(&self.props.compile_flags);
 
-        self.compose_and_run_compiler(rustc, Some(src), self.testpaths)
+        self.compose_and_run_compiler(rustc, Some(src))
     }
 
     fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
@@ -993,18 +993,13 @@ impl<'test> TestCx<'test> {
             passes,
         );
 
-        self.compose_and_run_compiler(rustc, None, self.testpaths)
+        self.compose_and_run_compiler(rustc, None)
     }
 
     /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
-    fn document(
-        &self,
-        root_out_dir: &Utf8Path,
-        root_testpaths: &TestPaths,
-        kind: DocKind,
-    ) -> ProcRes {
-        self.document_inner(&self.testpaths.file, root_out_dir, root_testpaths, kind)
+    fn document(&self, root_out_dir: &Utf8Path, kind: DocKind) -> ProcRes {
+        self.document_inner(&self.testpaths.file, root_out_dir, kind)
     }
 
     /// Like `document`, but takes an explicit `file_to_doc` argument so that
@@ -1014,14 +1009,13 @@ impl<'test> TestCx<'test> {
         &self,
         file_to_doc: &Utf8Path,
         root_out_dir: &Utf8Path,
-        root_testpaths: &TestPaths,
         kind: DocKind,
     ) -> ProcRes {
         if self.props.build_aux_docs {
             assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
 
             for rel_ab in &self.props.aux.builds {
-                let aux_path = self.compute_aux_test_paths(root_testpaths, rel_ab);
+                let aux_path = self.compute_aux_test_paths(rel_ab);
                 let props_for_aux = self.props.from_aux_file(&aux_path, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
@@ -1033,9 +1027,7 @@ impl<'test> TestCx<'test> {
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
-                // use root_testpaths here, because aux-builds should have the
-                // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document_inner(&aux_path, &root_out_dir, root_testpaths, kind);
+                let auxres = aux_cx.document_inner(&aux_path, &root_out_dir, kind);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1063,7 +1055,7 @@ impl<'test> TestCx<'test> {
         };
 
         let mut rustdoc = Command::new(rustdoc_path);
-        let current_dir = output_base_dir(self.config, root_testpaths, self.safe_revision());
+        let current_dir = self.output_base_dir();
         rustdoc.current_dir(current_dir);
         rustdoc
             .arg("-L")
@@ -1091,7 +1083,7 @@ impl<'test> TestCx<'test> {
             rustdoc.arg(format!("-Clinker={}", linker));
         }
 
-        self.compose_and_run_compiler(rustdoc, None, root_testpaths)
+        self.compose_and_run_compiler(rustdoc, None)
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
@@ -1206,9 +1198,14 @@ impl<'test> TestCx<'test> {
 
     /// For each `aux-build: foo/bar` annotation, we check to find the file in an `auxiliary`
     /// directory relative to the test itself (not any intermediate auxiliaries).
-    fn compute_aux_test_paths(&self, of: &TestPaths, rel_ab: &str) -> Utf8PathBuf {
-        let test_ab =
-            of.file.parent().expect("test file path has no parent").join("auxiliary").join(rel_ab);
+    fn compute_aux_test_paths(&self, rel_ab: &str) -> Utf8PathBuf {
+        let test_ab = self
+            .testpaths
+            .file
+            .parent()
+            .expect("test file path has no parent")
+            .join("auxiliary")
+            .join(rel_ab);
         if !test_ab.exists() {
             self.fatal(&format!("aux-build `{}` source not found", test_ab))
         }
@@ -1259,13 +1256,13 @@ impl<'test> TestCx<'test> {
         aux_dir
     }
 
-    fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Utf8Path, rustc: &mut Command) {
+    fn build_all_auxiliary(&self, aux_dir: &Utf8Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux.builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir, None);
+            self.build_auxiliary(rel_ab, &aux_dir, None);
         }
 
         for rel_ab in &self.props.aux.bins {
-            self.build_auxiliary(of, rel_ab, &aux_dir, Some(AuxType::Bin));
+            self.build_auxiliary(rel_ab, &aux_dir, Some(AuxType::Bin));
         }
 
         let path_to_crate_name = |path: &str| -> String {
@@ -1284,12 +1281,12 @@ impl<'test> TestCx<'test> {
             };
 
         for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, None);
+            let aux_type = self.build_auxiliary(&aux_path, &aux_dir, None);
             add_extern(rustc, aux_name, aux_path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(of, proc_macro, &aux_dir, Some(AuxType::ProcMacro));
+            self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
             let crate_name = path_to_crate_name(proc_macro);
             add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
         }
@@ -1297,7 +1294,7 @@ impl<'test> TestCx<'test> {
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
         if let Some(aux_file) = &self.props.aux.codegen_backend {
-            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, None);
+            let aux_type = self.build_auxiliary(aux_file, aux_dir, None);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
                 rustc.arg(format!("-Zcodegen-backend={}", lib_path));
@@ -1307,12 +1304,7 @@ impl<'test> TestCx<'test> {
 
     /// `root_testpaths` refers to the path of the original test. the auxiliary and the test with an
     /// aux-build have the same `root_testpaths`.
-    fn compose_and_run_compiler(
-        &self,
-        mut rustc: Command,
-        input: Option<String>,
-        root_testpaths: &TestPaths,
-    ) -> ProcRes {
+    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         if self.props.add_core_stubs {
             let minicore_path = self.build_minicore();
             rustc.arg("--extern");
@@ -1320,7 +1312,7 @@ impl<'test> TestCx<'test> {
         }
 
         let aux_dir = self.aux_output_dir();
-        self.build_all_auxiliary(root_testpaths, &aux_dir, &mut rustc);
+        self.build_all_auxiliary(&aux_dir, &mut rustc);
 
         rustc.envs(self.props.rustc_env.clone());
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
@@ -1365,12 +1357,11 @@ impl<'test> TestCx<'test> {
     /// If `aux_type` is `None`, then this will determine the aux-type automatically.
     fn build_auxiliary(
         &self,
-        of: &TestPaths,
         source_path: &str,
         aux_dir: &Utf8Path,
         aux_type: Option<AuxType>,
     ) -> AuxType {
-        let aux_path = self.compute_aux_test_paths(of, source_path);
+        let aux_path = self.compute_aux_test_paths(source_path);
         let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
         if aux_type == Some(AuxType::ProcMacro) {
             aux_props.force_host = true;
@@ -1401,7 +1392,7 @@ impl<'test> TestCx<'test> {
             LinkToAux::No,
             Vec::new(),
         );
-        aux_cx.build_all_auxiliary(of, &aux_dir, &mut aux_rustc);
+        aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
 
         aux_rustc.envs(aux_props.rustc_env.clone());
         for key in &aux_props.unset_rustc_env {
@@ -2126,7 +2117,7 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
+        let proc_res = self.compose_and_run_compiler(rustc, None);
         (proc_res, output_path)
     }
 
@@ -2204,9 +2195,9 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
         let aux_dir = new_rustdoc.aux_output_dir();
-        new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
+        new_rustdoc.build_all_auxiliary(&aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths, DocKind::Html);
+        let proc_res = new_rustdoc.document(&compare_dir, DocKind::Html);
         if !proc_res.status.success() {
             writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
