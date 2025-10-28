@@ -754,22 +754,6 @@ impl<'a> Iterator for TokenIter<'a> {
     }
 }
 
-/// Classifies into identifier class; returns `None` if this is a non-keyword identifier.
-fn get_real_ident_class(text: &str, allow_path_keywords: bool) -> Option<Class> {
-    let ignore: &[&str] =
-        if allow_path_keywords { &["self", "Self", "super", "crate"] } else { &["self", "Self"] };
-    if ignore.contains(&text) {
-        return None;
-    }
-    Some(match text {
-        "ref" | "mut" => Class::RefKeyWord,
-        "false" | "true" => Class::Bool,
-        // FIXME(#148221): Don't hard-code the edition. The classifier should take it as an argument.
-        _ if Symbol::intern(text).is_reserved(|| Edition::Edition2024) => Class::KeyWord,
-        _ => return None,
-    })
-}
-
 /// This iterator comes from the same idea than "Peekable" except that it allows to "peek" more than
 /// just the next item by using `peek_next`. The `peek` method always returns the next item after
 /// the current one whereas `peek_next` will return the next item after the last one peeked.
@@ -787,16 +771,16 @@ impl<'a> PeekIter<'a> {
         Self { stored: VecDeque::new(), peek_pos: 0, iter }
     }
     /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
-    fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
+    fn peek(&mut self) -> Option<(TokenKind, &'a str)> {
         if self.stored.is_empty()
             && let Some(next) = self.iter.next()
         {
             self.stored.push_back(next);
         }
-        self.stored.front()
+        self.stored.front().copied()
     }
     /// Returns the next item after the last one peeked. It doesn't interfere with `peek` output.
-    fn peek_next(&mut self) -> Option<&(TokenKind, &'a str)> {
+    fn peek_next(&mut self) -> Option<(TokenKind, &'a str)> {
         self.peek_pos += 1;
         if self.peek_pos - 1 < self.stored.len() {
             self.stored.get(self.peek_pos - 1)
@@ -806,6 +790,7 @@ impl<'a> PeekIter<'a> {
         } else {
             None
         }
+        .copied()
     }
 
     fn stop_peeking(&mut self) {
@@ -956,15 +941,10 @@ impl<'src> Classifier<'src> {
                 }
             }
 
-            if let Some((None, text)) = self.tokens.peek().map(|(token, text)| {
-                if *token == TokenKind::Ident {
-                    let class = get_real_ident_class(text, true);
-                    (class, text)
-                } else {
-                    // Doesn't matter which Class we put in here...
-                    (Some(Class::Comment), text)
-                }
-            }) {
+            if let Some((TokenKind::Ident, text)) = self.tokens.peek()
+                && let symbol = Symbol::intern(text)
+                && (symbol.is_path_segment_keyword() || !is_keyword(symbol))
+            {
                 // We only "add" the colon if there is an ident behind.
                 pos += text.len() + nb;
                 has_ident = true;
@@ -1210,22 +1190,7 @@ impl<'src> Classifier<'src> {
                 sink(span, Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => match get_real_ident_class(text, false) {
-                None => match text {
-                    "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
-                    "Some" | "None" | "Ok" | "Err" => {
-                        Class::PreludeVal(new_span(before, text, file_span))
-                    }
-                    _ if self.is_weak_keyword(text) => Class::KeyWord,
-                    _ if self.in_macro_nonterminal => {
-                        self.in_macro_nonterminal = false;
-                        Class::MacroNonTerminal
-                    }
-                    "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
-                    _ => Class::Ident(new_span(before, text, file_span)),
-                },
-                Some(c) => c,
-            },
+            TokenKind::Ident => self.classify_ident(before, text),
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
@@ -1246,6 +1211,27 @@ impl<'src> Classifier<'src> {
         }
     }
 
+    fn classify_ident(&mut self, before: u32, text: &'src str) -> Class {
+        // Macro non-terminals (meta vars) take precedence.
+        if self.in_macro_nonterminal {
+            self.in_macro_nonterminal = false;
+            return Class::MacroNonTerminal;
+        }
+
+        let file_span = self.file_span;
+        let span = || new_span(before, text, file_span);
+
+        match text {
+            "ref" | "mut" => Class::RefKeyWord,
+            "false" | "true" => Class::Bool,
+            "self" | "Self" => Class::Self_(span()),
+            "Option" | "Result" => Class::PreludeTy(span()),
+            "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
+            _ if self.is_weak_keyword(text) || is_keyword(Symbol::intern(text)) => Class::KeyWord,
+            _ => Class::Ident(span()),
+        }
+    }
+
     fn is_weak_keyword(&mut self, text: &str) -> bool {
         // NOTE: `yeet` (`do yeet $expr`), `catch` (`do catch $block`), `default` (specialization),
         // `contract_{ensures,requires}`, `builtin` (builtin_syntax) & `reuse` (fn_delegation) are
@@ -1263,11 +1249,11 @@ impl<'src> Classifier<'src> {
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
-        self.tokens.peek().map(|&(kind, _)| kind)
+        self.tokens.peek().map(|(kind, _)| kind)
     }
 
     fn peek_non_trivia(&mut self) -> Option<(TokenKind, &str)> {
-        while let Some(&token @ (kind, _)) = self.tokens.peek_next() {
+        while let Some(token @ (kind, _)) = self.tokens.peek_next() {
             if let TokenKind::Whitespace
             | TokenKind::LineComment { doc_style: None }
             | TokenKind::BlockComment { doc_style: None, .. } = kind
@@ -1280,6 +1266,11 @@ impl<'src> Classifier<'src> {
         self.tokens.stop_peeking();
         None
     }
+}
+
+fn is_keyword(symbol: Symbol) -> bool {
+    // FIXME(#148221): Don't hard-code the edition. The classifier should take it as an argument.
+    symbol.is_reserved(|| Edition::Edition2024)
 }
 
 fn generate_link_to_def(
