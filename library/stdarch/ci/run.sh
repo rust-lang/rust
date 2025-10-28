@@ -71,6 +71,12 @@ cargo_test() {
         # harness isn't trying to capture output, otherwise we won't get any useful
         # output.
         wasm32*)
+            if [ "$PROFILE" = "release" ]; then
+              dir="release"
+            else
+              dir="debug"
+            fi
+            export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime -Wexceptions --dir /checkout/target/wasm32-wasip1/$dir/deps::."
             cmd="$cmd --nocapture"
             ;;
     esac
