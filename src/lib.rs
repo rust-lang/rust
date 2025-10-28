@@ -39,6 +39,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
+use std::cell::OnceCell;
 use std::env;
 use std::sync::Arc;
 
@@ -124,7 +125,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: Option<BackendConfig>,
+    pub config: OnceCell<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -149,6 +150,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
             sess.dcx()
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
+        }
+
+        let config = self.config.get_or_init(|| {
+            BackendConfig::from_opts(&sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| sess.dcx().fatal(err))
+        });
+
+        if config.jit_mode && !sess.opts.output_types.should_codegen() {
+            sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
     }
 
@@ -211,13 +221,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
-        let config = self.config.clone().unwrap_or_else(|| {
-            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
-        });
+        let config = self.config.get().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, config.jit_args);
+            driver::jit::run_jit(tcx, config.jit_args.clone());
 
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -363,5 +370,5 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: None })
+    Box::new(CraneliftCodegenBackend { config: OnceCell::new() })
 }
