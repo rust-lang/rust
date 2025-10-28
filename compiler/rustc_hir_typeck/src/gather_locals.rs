@@ -135,7 +135,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     /// again during type checking by querying [`FnCtxt::local_ty`] for the same hir_id.
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
-            Some(ref ty) => {
+            Some(ty) => {
                 let o_ty = self.fcx.lower_ty(ty);
 
                 let c_ty = self.fcx.infcx.canonicalize_user_type_annotation(

@@ -20,11 +20,11 @@
 //! parameters, so this filtering serves two purposes:
 //!
 //! 1. We skip evaluating any predicates that we would
-//! never be able prove are unsatisfiable (e.g. `<T as Foo>`
+//!    never be able prove are unsatisfiable (e.g. `<T as Foo>`
 //! 2. We avoid trying to normalize predicates involving generic
-//! parameters (e.g. `<T as Foo>::MyItem`). This can confuse
-//! the normalization code (leading to cycle errors), since
-//! it's usually never invoked in this way.
+//!    parameters (e.g. `<T as Foo>::MyItem`). This can confuse
+//!    the normalization code (leading to cycle errors), since
+//!    it's usually never invoked in this way.
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
 use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt};

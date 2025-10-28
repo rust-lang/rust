@@ -1409,7 +1409,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         BitMatrix {
             num_rows,
             num_columns,
-            words: iter::repeat(&row.words).take(num_rows).flatten().cloned().collect(),
+            words: iter::repeat_n(&row.words, num_rows).flatten().cloned().collect(),
             marker: PhantomData,
         }
     }
