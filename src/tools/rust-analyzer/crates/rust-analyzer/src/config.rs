@@ -10,9 +10,9 @@ use hir::Symbol;
 use ide::{
     AnnotationConfig, AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
     CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
-    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
-    RenameConfig, Snippet, SnippetScope, SourceRootId,
+    GotoImplementationConfig, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
+    InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
+    MemoryLayoutHoverRenderKind, RenameConfig, Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     MiniCore, SnippetCap,
@@ -97,6 +97,9 @@ config_data! {
         /// the workspace root, and globs are not supported. You may also need to add the folders to
         /// Code's `files.watcherExclude`.
         files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+
+        /// If this is `true`, when "Goto Implementations" and in "Implementations" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.
+        gotoImplementations_filterAdjacentDerives: bool = false,
 
         /// Highlight related return values while the cursor is on any `match`, `if`, or match arm
         /// arrow (`=>`).
@@ -1413,6 +1416,7 @@ pub struct LensConfig {
 
     // annotations
     pub location: AnnotationLocation,
+    pub filter_adjacent_derive_implementations: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1469,6 +1473,7 @@ impl LensConfig {
             annotate_enum_variant_references: self.enum_variant_refs,
             location: self.location.into(),
             minicore,
+            filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
         }
     }
 }
@@ -2503,6 +2508,15 @@ impl Config {
             refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
             enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
             location: *self.lens_location(),
+            filter_adjacent_derive_implementations: *self
+                .gotoImplementations_filterAdjacentDerives(),
+        }
+    }
+
+    pub fn goto_implementation(&self) -> GotoImplementationConfig {
+        GotoImplementationConfig {
+            filter_adjacent_derive_implementations: *self
+                .gotoImplementations_filterAdjacentDerives(),
         }
     }
 

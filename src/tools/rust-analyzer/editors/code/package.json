@@ -1628,6 +1628,16 @@
                 }
             },
             {
+                "title": "Goto Implementations",
+                "properties": {
+                    "rust-analyzer.gotoImplementations.filterAdjacentDerives": {
+                        "markdownDescription": "If this is `true`, when \"Goto Implementations\" and in \"Implementations\" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Highlight Related",
                 "properties": {
                     "rust-analyzer.highlightRelated.branchExitPoints.enable": {

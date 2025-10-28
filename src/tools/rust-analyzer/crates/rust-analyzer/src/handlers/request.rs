@@ -849,10 +849,11 @@ pub(crate) fn handle_goto_implementation(
     let _p = tracing::info_span!("handle_goto_implementation").entered();
     let position =
         try_default!(from_proto::file_position(&snap, params.text_document_position_params)?);
-    let nav_info = match snap.analysis.goto_implementation(position)? {
-        None => return Ok(None),
-        Some(it) => it,
-    };
+    let nav_info =
+        match snap.analysis.goto_implementation(&snap.config.goto_implementation(), position)? {
+            None => return Ok(None),
+            Some(it) => it,
+        };
     let src = FileRange { file_id: position.file_id, range: nav_info.range };
     let res = to_proto::goto_definition_response(&snap, Some(src), nav_info.info)?;
     Ok(Some(res))
@@ -2142,7 +2143,10 @@ fn show_impl_command_link(
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if implementations
         && show_references
-        && let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None)
+        && let Some(nav_data) = snap
+            .analysis
+            .goto_implementation(&snap.config.goto_implementation(), *position)
+            .unwrap_or(None)
     {
         let uri = to_proto::url(snap, position.file_id);
         let line_index = snap.file_line_index(position.file_id).ok()?;
