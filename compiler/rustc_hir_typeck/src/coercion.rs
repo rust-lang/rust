@@ -1163,8 +1163,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             exprs.len()
         );
 
-        // The following check fixes #88097, where the compiler erroneously
-        // attempted to coerce a closure type to itself via a function pointer.
+        // Fast Path: don't go through the coercion logic if we're coercing
+        // a type to itself. This is unfortunately quite perf relevant so
+        // we do it even though it may mask bugs in the coercion logic.
         if prev_ty == new_ty {
             return Ok(prev_ty);
         }
@@ -1193,34 +1194,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if is_capturing_closure(prev_ty) || is_capturing_closure(new_ty) {
                 (None, None)
             } else {
-                match (prev_ty.kind(), new_ty.kind()) {
-                    (ty::FnDef(..), ty::FnDef(..)) => {
-                        // Don't reify if the function types have a LUB, i.e., they
-                        // are the same function and their parameters have a LUB.
-                        match self.commit_if_ok(|_| {
-                            // We need to eagerly handle nested obligations due to lazy norm.
-                            if self.next_trait_solver() {
-                                let ocx = ObligationCtxt::new(self);
-                                let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                                if ocx.try_evaluate_obligations().is_empty() {
-                                    Ok(InferOk {
-                                        value,
-                                        obligations: ocx.into_pending_obligations(),
-                                    })
-                                } else {
-                                    Err(TypeError::Mismatch)
-                                }
+                let lubbed_tys = || {
+                    self.commit_if_ok(|snapshot| {
+                        let outer_universe = self.infcx.universe();
+
+                        // We need to eagerly handle nested obligations due to lazy norm.
+                        let result = if self.next_trait_solver() {
+                            let ocx = ObligationCtxt::new(self);
+                            let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
+                            if ocx.try_evaluate_obligations().is_empty() {
+                                Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                             } else {
-                                self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                                Err(TypeError::Mismatch)
                             }
-                        }) {
-                            // We have a LUB of prev_ty and new_ty, just return it.
-                            Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
-                            Err(_) => {
-                                (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
-                            }
+                        } else {
+                            self.at(cause, self.param_env).lub(prev_ty, new_ty)
+                        };
+
+                        self.leak_check(outer_universe, Some(snapshot))?;
+                        result
+                    })
+                };
+
+                match (prev_ty.kind(), new_ty.kind()) {
+                    // Don't coerce pairs of fndefs or pairs of closures to fn ptrs
+                    // if they can just be lubbed.
+                    //
+                    // See #88097 or `lub_closures_before_fnptr_coercion.rs` for where
+                    // we would erroneously coerce closures to fnptrs when attempting to
+                    // coerce a closure to itself.
+                    (ty::FnDef(..), ty::FnDef(..)) => match lubbed_tys() {
+                        Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                        Err(_) => (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx))),
+                    },
+                    (ty::Closure(_, args_a), ty::Closure(_, args_b)) => match lubbed_tys() {
+                        Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                        Err(_) => {
+                            let a_sig = self
+                                .tcx
+                                .signature_unclosure(args_a.as_closure().sig(), hir::Safety::Safe);
+                            let b_sig = self
+                                .tcx
+                                .signature_unclosure(args_b.as_closure().sig(), hir::Safety::Safe);
+                            (Some(a_sig), Some(b_sig))
                         }
-                    }
+                    },
                     (ty::Closure(_, args), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
                         let a_sig =
@@ -1233,16 +1251,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.signature_unclosure(args.as_closure().sig(), a_sig.safety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (ty::Closure(_, args_a), ty::Closure(_, args_b)) => (
-                        Some(
-                            self.tcx
-                                .signature_unclosure(args_a.as_closure().sig(), hir::Safety::Safe),
-                        ),
-                        Some(
-                            self.tcx
-                                .signature_unclosure(args_b.as_closure().sig(), hir::Safety::Safe),
-                        ),
-                    ),
+                    // ty::FnPtr x ty::FnPtr is fine to just be handled through a normal `unify`
+                    // call using `lub` which is what will happen on the normal path.
                     _ => (None, None),
                 }
             }
