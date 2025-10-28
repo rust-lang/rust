@@ -19,7 +19,7 @@ standard library, and documentation.
 [Documentation]: https://www.rust-lang.org/learn#learn-use
 [Contributing]: CONTRIBUTING.md
 
-## Why Rust?
+## Why Rust???
 
 - **Performance:** Fast and memory-efficient, suitable for critical services, embedded devices, and easily integrated with other languages.
 
