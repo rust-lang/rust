@@ -291,11 +291,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
             let is_uninhabited =
                 |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
-            if is_uninhabited(ty) {
-                return Some(MustUsePath::Suppressed);
-            }
 
             match *ty.kind() {
+                _ if is_uninhabited(ty) => Some(MustUsePath::Suppressed),
                 ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
                     is_ty_must_use(cx, boxed, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
