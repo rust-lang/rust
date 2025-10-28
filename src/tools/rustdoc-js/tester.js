@@ -364,10 +364,10 @@ function hasCheck(content, checkName) {
     return content.startsWith(`const ${checkName}`) || content.includes(`\nconst ${checkName}`);
 }
 
-async function runChecks(testFile, doSearch, parseQuery) {
+async function runChecks(testFile, doSearch, parseQuery, revision) {
     let checkExpected = false;
     let checkParsed = false;
-    let testFileContent = readFile(testFile);
+    let testFileContent = `const REVISION = "${revision}";\n${readFile(testFile)}`;
 
     if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
         testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
@@ -548,6 +548,7 @@ function parseOptions(args) {
         "doc_folder": "",
         "test_folder": "",
         "test_file": [],
+        "revision": "",
     };
     const correspondences = {
         "--resource-suffix": "resource_suffix",
@@ -555,6 +556,7 @@ function parseOptions(args) {
         "--test-folder": "test_folder",
         "--test-file": "test_file",
         "--crate-name": "crate_name",
+        "--revision": "revision",
     };
 
     for (let i = 0; i < args.length; ++i) {
@@ -611,7 +613,7 @@ async function main(argv) {
     if (opts["test_file"].length !== 0) {
         for (const file of opts["test_file"]) {
             process.stdout.write(`Testing ${file} ... `);
-            errors += await runChecks(file, doSearch, parseAndSearch.parseQuery);
+            errors += await runChecks(file, doSearch, parseAndSearch.parseQuery, opts.revision);
         }
     } else if (opts["test_folder"].length !== 0) {
         for (const file of fs.readdirSync(opts["test_folder"])) {
@@ -619,7 +621,7 @@ async function main(argv) {
                 continue;
             }
             process.stdout.write(`Testing ${file} ... `);
-            errors += await runChecks(path.join(opts["test_folder"], file), doSearch,
+            errors += await runChecks(path.join(opts["test_folder"], file, ""), doSearch,
                     parseAndSearch.parseQuery);
         }
     }
