@@ -1,3 +1,5 @@
+//@ normalize-stderr: "32 bits" -> "64 bits"
+
 fn foo<T>() {}
 
 fn fndef_lub_leak_check() {
