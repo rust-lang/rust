@@ -17,7 +17,7 @@ use crate::{
     display::DisplayTarget,
     mir::OperandKind,
     next_solver::{
-        DbInterner, GenericArgs, SolverDefIds, Ty, TypingMode,
+        DbInterner, GenericArgs, Ty, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -100,11 +100,11 @@ pub fn borrowck_query<'db>(
     let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
     let env = db.trait_environment_for_body(def);
     let mut res = vec![];
+    // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
+    let typing_mode = TypingMode::borrowck(interner, def.into());
     all_mir_bodies(db, def, |body| {
         // FIXME(next-solver): Opaques.
-        let infcx = interner.infer_ctxt().build(TypingMode::Borrowck {
-            defining_opaque_types: SolverDefIds::new_from_iter(interner, []),
-        });
+        let infcx = interner.infer_ctxt().build(typing_mode);
         res.push(BorrowckResult {
             mutability_of_locals: mutability_of_locals(&infcx, &body),
             moved_out_of_ref: moved_out_of_ref(&infcx, &env, &body),

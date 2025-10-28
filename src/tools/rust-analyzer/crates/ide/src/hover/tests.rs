@@ -10809,7 +10809,7 @@ type Foo$0 = impl Sized;
 
             ---
 
-            needs Drop
+            no Drop
         "#]],
     );
     check(

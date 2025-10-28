@@ -13,27 +13,27 @@ use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 use rustc_pattern_analysis::Captures;
-use rustc_type_ir::TypeFoldable;
-use rustc_type_ir::error::{ExpectedFound, TypeError};
-use rustc_type_ir::inherent::{
-    Const as _, GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _,
-};
 use rustc_type_ir::{
     ClosureKind, ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy,
-    IntVarValue, IntVid, OutlivesPredicate, RegionVid, TyVid, UniverseIndex,
+    IntVarValue, IntVid, OutlivesPredicate, RegionVid, TermKind, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    error::{ExpectedFound, TypeError},
+    inherent::{
+        Const as _, GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _,
+    },
 };
-use rustc_type_ir::{TermKind, TypeVisitableExt};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use traits::{ObligationCause, PredicateObligations};
 use type_variable::TypeVariableOrigin;
 use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
-use crate::next_solver::fold::BoundVarReplacerDelegate;
-use crate::next_solver::infer::select::EvaluationResult;
-use crate::next_solver::infer::traits::PredicateObligation;
-use crate::next_solver::obligation_ctxt::ObligationCtxt;
-use crate::next_solver::{BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, SolverContext};
+use crate::next_solver::{
+    BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, SolverContext,
+    fold::BoundVarReplacerDelegate,
+    infer::{select::EvaluationResult, traits::PredicateObligation},
+    obligation_ctxt::ObligationCtxt,
+};
 
 use super::{
     AliasTerm, Binder, CanonicalQueryInput, CanonicalVarValues, Const, ConstKind, DbInterner,
@@ -46,7 +46,7 @@ use super::{
 pub mod at;
 pub mod canonical;
 mod context;
-mod opaque_types;
+pub mod opaque_types;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
@@ -398,6 +398,46 @@ impl<'db> InferCtxt<'db> {
             obligation.param_env,
             obligation.predicate,
         ))
+    }
+
+    pub(crate) fn insert_type_vars<T>(&self, ty: T) -> T
+    where
+        T: TypeFoldable<DbInterner<'db>>,
+    {
+        struct Folder<'a, 'db> {
+            infcx: &'a InferCtxt<'db>,
+        }
+        impl<'db> TypeFolder<DbInterner<'db>> for Folder<'_, 'db> {
+            fn cx(&self) -> DbInterner<'db> {
+                self.infcx.interner
+            }
+
+            fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
+                if !ty.references_error() {
+                    return ty;
+                }
+
+                if ty.is_ty_error() { self.infcx.next_ty_var() } else { ty.super_fold_with(self) }
+            }
+
+            fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
+                if !ct.references_error() {
+                    return ct;
+                }
+
+                if ct.is_ct_error() {
+                    self.infcx.next_const_var()
+                } else {
+                    ct.super_fold_with(self)
+                }
+            }
+
+            fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
+                if r.is_error() { self.infcx.next_region_var() } else { r }
+            }
+        }
+
+        ty.fold_with(&mut Folder { infcx: self })
     }
 
     /// Evaluates whether the predicate can be satisfied in the given

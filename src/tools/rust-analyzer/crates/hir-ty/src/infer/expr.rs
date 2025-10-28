@@ -1458,10 +1458,11 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let g = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
-        let prev_env = block_id.map(|block_id| {
+        let prev_state = block_id.map(|block_id| {
             let prev_env = self.table.trait_env.clone();
             TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
-            prev_env
+            let prev_block = self.table.infer_ctxt.interner.block.replace(block_id);
+            (prev_env, prev_block)
         });
 
         let (break_ty, ty) =
@@ -1576,8 +1577,9 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             });
         self.resolver.reset_to_guard(g);
-        if let Some(prev_env) = prev_env {
+        if let Some((prev_env, prev_block)) = prev_state {
             self.table.trait_env = prev_env;
+            self.table.infer_ctxt.interner.block = prev_block;
         }
 
         break_ty.unwrap_or(ty)
@@ -1689,10 +1691,11 @@ impl<'db> InferenceContext<'_, 'db> {
                 // work out while people are typing
                 let canonicalized_receiver = self.canonicalize(receiver_ty);
                 let resolved = method_resolution::lookup_method(
-                    self.db,
                     &canonicalized_receiver,
-                    self.table.trait_env.clone(),
-                    self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+                    &mut self.table,
+                    Self::get_traits_in_scope(&self.resolver, &self.traits_in_scope)
+                        .as_ref()
+                        .left_or_else(|&it| it),
                     VisibleFromModule::Filter(self.resolver.module()),
                     name,
                 );
@@ -1844,10 +1847,11 @@ impl<'db> InferenceContext<'_, 'db> {
         let canonicalized_receiver = self.canonicalize(receiver_ty);
 
         let resolved = method_resolution::lookup_method(
-            self.db,
             &canonicalized_receiver,
-            self.table.trait_env.clone(),
-            self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+            &mut self.table,
+            Self::get_traits_in_scope(&self.resolver, &self.traits_in_scope)
+                .as_ref()
+                .left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             method_name,
         );
@@ -1892,9 +1896,10 @@ impl<'db> InferenceContext<'_, 'db> {
 
                 let assoc_func_with_same_name = method_resolution::iterate_method_candidates(
                     &canonicalized_receiver,
-                    self.db,
-                    self.table.trait_env.clone(),
-                    self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+                    &mut self.table,
+                    Self::get_traits_in_scope(&self.resolver, &self.traits_in_scope)
+                        .as_ref()
+                        .left_or_else(|&it| it),
                     VisibleFromModule::Filter(self.resolver.module()),
                     Some(method_name),
                     method_resolution::LookupMode::Path,
