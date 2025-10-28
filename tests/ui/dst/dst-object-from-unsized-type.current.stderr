@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/dst-object-from-unsized-type.rs:8:23
+  --> $DIR/dst-object-from-unsized-type.rs:11:23
    |
 LL | fn test1<T: ?Sized + Foo>(t: &T) {
    |          - this type parameter needs to be `Sized`
@@ -14,7 +14,7 @@ LL + fn test1<T: Foo>(t: &T) {
    |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/dst-object-from-unsized-type.rs:13:23
+  --> $DIR/dst-object-from-unsized-type.rs:17:23
    |
 LL | fn test2<T: ?Sized + Foo>(t: &T) {
    |          - this type parameter needs to be `Sized`
@@ -29,7 +29,7 @@ LL + fn test2<T: Foo>(t: &T) {
    |
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/dst-object-from-unsized-type.rs:18:28
+  --> $DIR/dst-object-from-unsized-type.rs:23:28
    |
 LL |     let _: &[&dyn Foo] = &["hi"];
    |                            ^^^^ doesn't have a size known at compile-time
@@ -38,7 +38,7 @@ LL |     let _: &[&dyn Foo] = &["hi"];
    = note: required for the cast from `&'static str` to `&dyn Foo`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/dst-object-from-unsized-type.rs:23:23
+  --> $DIR/dst-object-from-unsized-type.rs:29:23
    |
 LL |     let _: &dyn Foo = x as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time

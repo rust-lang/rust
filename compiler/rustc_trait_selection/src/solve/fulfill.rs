@@ -24,7 +24,7 @@ use tracing::instrument;
 use self::derive_errors::*;
 use super::Certainty;
 use super::delegate::SolverDelegate;
-use super::inspect::{self, ProofTreeInferCtxtExt};
+use super::inspect::{self, InferCtxtProofTreeExt};
 use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
