@@ -269,15 +269,15 @@ Be patient; this can take a while and the queue can sometimes be long. PRs are n
 
 ### Opening a PR
 
-You are now ready to file a pull request? Great! Here are a few points you
-should be aware of.
+You are now ready to file a pull request (PR)?
+Great! Here are a few points you should be aware of.
 
 All pull requests should be filed against the `master` branch,
 unless you know for sure that you should target a different branch.
 
-Make sure your pull request is in compliance with Rust's style guidelines by running
+Run some style checks before you submit the PR:
 
-    $ ./x test tidy --bless
+    ./x test tidy --bless
 
 We recommend to make this check before every pull request (and every new commit
 in a pull request); you can add [git hooks]
