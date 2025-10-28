@@ -1,4 +1,4 @@
-error: use of deprecated struct `a::Foo`
+error: use of deprecated unit struct `a::Foo`
   --> $DIR/unit_and_tuple_struct.rs:12:8
    |
 LL | use a::Foo;
@@ -10,47 +10,35 @@ note: the lint level is defined here
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
 
-error: use of deprecated unit struct `a::Foo`
-  --> $DIR/unit_and_tuple_struct.rs:12:8
-   |
-LL | use a::Foo;
-   |        ^^^
-
-error: use of deprecated struct `a::Bar`
-  --> $DIR/unit_and_tuple_struct.rs:15:8
-   |
-LL | use a::Bar;
-   |        ^^^
-
 error: use of deprecated tuple struct `a::Bar`
-  --> $DIR/unit_and_tuple_struct.rs:15:8
+  --> $DIR/unit_and_tuple_struct.rs:14:8
    |
 LL | use a::Bar;
    |        ^^^
 
 error: use of deprecated struct `a::Baz`
-  --> $DIR/unit_and_tuple_struct.rs:18:8
+  --> $DIR/unit_and_tuple_struct.rs:16:8
    |
 LL | use a::Baz;
    |        ^^^
 
 error: use of deprecated unit struct `a::Foo`
-  --> $DIR/unit_and_tuple_struct.rs:22:6
+  --> $DIR/unit_and_tuple_struct.rs:20:6
    |
 LL |   a::Foo;
    |      ^^^
 
 error: use of deprecated tuple struct `a::Bar`
-  --> $DIR/unit_and_tuple_struct.rs:24:6
+  --> $DIR/unit_and_tuple_struct.rs:22:6
    |
 LL |   a::Bar();
    |      ^^^
 
 error: use of deprecated struct `a::Baz`
-  --> $DIR/unit_and_tuple_struct.rs:26:6
+  --> $DIR/unit_and_tuple_struct.rs:24:6
    |
 LL |   a::Baz {};
    |      ^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

@@ -10,11 +10,9 @@ pub mod a {
 
 
 use a::Foo;
-//~^ ERROR use of deprecated struct `a::Foo`
-//~| ERROR use of deprecated unit struct `a::Foo`
+//~^ ERROR use of deprecated unit struct `a::Foo`
 use a::Bar;
-//~^ ERROR use of deprecated struct `a::Bar`
-//~| ERROR use of deprecated tuple struct `a::Bar`
+//~^ ERROR use of deprecated tuple struct `a::Bar`
 use a::Baz;
 //~^ ERROR use of deprecated struct `a::Baz`
 
