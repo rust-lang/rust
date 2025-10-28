@@ -49,7 +49,7 @@ pub(crate) fn build_sysroot(
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         let wrapper_path = dist_dir.join(&wrapper_name);
         build_cargo_wrapper_cmd
-            .arg(dirs.source_dir.join("scripts").join(&format!("{wrapper}.rs")))
+            .arg(dirs.source_dir.join("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");

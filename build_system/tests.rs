@@ -355,7 +355,7 @@ impl<'a> TestRunner<'a> {
 
             let _guard = if !config::get_bool(config)
                 || (is_jit_test && !self.jit_supported)
-                || self.skip_tests.contains(&config)
+                || self.skip_tests.contains(config)
             {
                 eprintln!("[{tag}] {testname} (skipped)");
                 continue;
