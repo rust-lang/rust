@@ -351,7 +351,7 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
 
     let (_, lib_path) = get_cc_search_dirs(target, builder);
 
-    // Libraries necessary to link the windows-gnu toolchains.
+    // Libraries necessary to link the windows-gnullvm toolchains.
     // System libraries will be preferred if they are available (see #67429).
     let target_libs = [
         // MinGW libs
