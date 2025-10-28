@@ -329,7 +329,7 @@ impl AnnotateSnippetEmitter {
                     let substitutions = suggestion
                         .substitutions
                         .into_iter()
-                        .filter_map(|mut subst| {
+                        .filter(|subst| {
                             // Suggestions coming from macros can have malformed spans. This is a heavy
                             // handed approach to avoid ICEs by ignoring the suggestion outright.
                             let invalid =
@@ -337,12 +337,14 @@ impl AnnotateSnippetEmitter {
                             if invalid {
                                 debug!("suggestion contains an invalid span: {:?}", subst);
                             }
-
+                            !invalid
+                        })
+                        .filter_map(|mut subst| {
                             // Assumption: all spans are in the same file, and all spans
                             // are disjoint. Sort in ascending order.
                             subst.parts.sort_by_key(|part| part.span.lo());
                             // Verify the assumption that all spans are disjoint
-                            assert_eq!(
+                            debug_assert_eq!(
                                 subst.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
                                 None,
                                 "all spans must be disjoint",
@@ -355,13 +357,11 @@ impl AnnotateSnippetEmitter {
 
                             let item_span = subst.parts.first()?;
                             let file = sm.lookup_source_file(item_span.span.lo());
-                            if !invalid
-                                && should_show_source_code(
-                                    &self.ignored_directories_in_source_blocks,
-                                    sm,
-                                    &file,
-                                )
-                            {
+                            if should_show_source_code(
+                                &self.ignored_directories_in_source_blocks,
+                                sm,
+                                &file,
+                            ) {
                                 Some(subst)
                             } else {
                                 None
