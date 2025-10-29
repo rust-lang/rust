@@ -3904,6 +3904,8 @@ class DocSearch {
                     return name === "primitive" || name === "associatedtype";
                 case "trait":
                     return name === "traitalias";
+                case "macro":
+                    return name === "attr" || name === "derive";
             }
 
             // No match
