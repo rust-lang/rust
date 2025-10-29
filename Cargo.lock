@@ -4440,6 +4440,7 @@ dependencies = [
  "rustc_target",
  "scoped-tls",
  "serde",
+ "serde_json",
  "tracing",
 ]
 
