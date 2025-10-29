@@ -644,7 +644,7 @@ trigger_files = [
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
 message_on_add = """\
-@*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
+Issue #{number} has been requested for prioritization.
 
 # [Procedure](https://forge.rust-lang.org/compiler/prioritization.html)
 - Priority?
@@ -738,12 +738,12 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 [notify-zulip."beta-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-topic = "#{number}: beta-backport nomination"
+topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-PR #{number} "{title}" fixes a regression.
-{recipients}, please evaluate nominating this PR for backport.
-The following poll is a vibe-check and not binding.
+PR #{number} "{title}" fixes a regression and has been nominated for backport.
+{recipients}, what do you think about it?
+This topic will help T-compiler getting context about it.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -757,7 +757,7 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-# Put it in the same thread as beta-nominated.
+# Put it in the same Zulip topic as beta-nominated.
 topic = "#{number}: beta-nominated"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
