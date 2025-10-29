@@ -61,6 +61,7 @@ use crate::{mem, ptr};
 #[repr(transparent)]
 #[rustc_pub_transparent]
 #[derive(Debug, Copy, Clone, Default)]
+#[lang = "maybe_dangling"]
 pub struct MaybeDangling<P: ?Sized>(P);
 
 impl<P: ?Sized> MaybeDangling<P> {
