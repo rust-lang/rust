@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for FunctionCastsAsInteger {
         let hir::ExprKind::Cast(cast_from_expr, cast_to_expr) = expr.kind else { return };
         let cast_to_ty = cx.typeck_results().expr_ty(expr);
         // Casting to a function (pointer?), so all good.
-        if matches!(cast_to_ty.kind(), ty::FnDef(..) | ty::FnPtr(..)) {
+        if matches!(cast_to_ty.kind(), ty::FnDef(..) | ty::FnPtr(..) | ty::RawPtr(..)) {
             return;
         }
         let cast_from_ty = cx.typeck_results().expr_ty(cast_from_expr);
@@ -51,8 +51,6 @@ impl<'tcx> LateLintPass<'tcx> for FunctionCastsAsInteger {
                 FunctionCastsAsIntegerDiag {
                     sugg: FunctionCastsAsIntegerSugg {
                         suggestion: cast_from_expr.span.shrink_to_hi(),
-                        // We get the function pointer to have a nice display.
-                        cast_from_ty: cx.typeck_results().expr_ty_adjusted(cast_from_expr),
                         cast_to_ty,
                     },
                 },
