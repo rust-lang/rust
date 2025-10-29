@@ -1522,18 +1522,16 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         }
         // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive`.
 
-        fn check_non_exhaustive<'tcx>(
+        fn check_unsuited<'tcx>(
             tcx: TyCtxt<'tcx>,
             typing_env: ty::TypingEnv<'tcx>,
-            t: Ty<'tcx>,
+            ty: Ty<'tcx>,
         ) -> ControlFlow<(&'static str, DefId, GenericArgsRef<'tcx>, bool)> {
             // We can encounter projections during traversal, so ensure the type is normalized.
-            let t = tcx.try_normalize_erasing_regions(typing_env, t).unwrap_or(t);
-            match t.kind() {
-                ty::Tuple(list) => {
-                    list.iter().try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
-                }
-                ty::Array(ty, _) => check_non_exhaustive(tcx, typing_env, *ty),
+            let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            match ty.kind() {
+                ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
+                ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
                 ty::Adt(def, args) => {
                     if !def.did().is_local()
                         && !find_attr!(
@@ -1556,15 +1554,18 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                             ));
                         }
                     }
+                    if def.repr().c() {
+                        return ControlFlow::Break((def.descr(), def.did(), args, true));
+                    }
                     def.all_fields()
                         .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_non_exhaustive(tcx, typing_env, t))
+                        .try_for_each(|t| check_unsuited(tcx, typing_env, t))
                 }
                 _ => ControlFlow::Continue(()),
             }
         }
 
-        (span, trivial, check_non_exhaustive(tcx, typing_env, ty).break_value())
+        (span, trivial, check_unsuited(tcx, typing_env, ty).break_value())
     });
 
     let non_trivial_fields = field_infos
@@ -1581,12 +1582,12 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         );
         return;
     }
-    let mut prev_non_exhaustive_1zst = false;
+    let mut prev_unsuited_1zst = false;
     for (span, _trivial, non_exhaustive_1zst) in field_infos {
         if let Some((descr, def_id, args, non_exhaustive)) = non_exhaustive_1zst {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
-            if non_trivial_count > 0 || prev_non_exhaustive_1zst {
+            if non_trivial_count > 0 || prev_unsuited_1zst {
                 tcx.node_span_lint(
                     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
@@ -1610,7 +1611,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     },
                 )
             } else {
-                prev_non_exhaustive_1zst = true;
+                prev_unsuited_1zst = true;
             }
         }
     }
