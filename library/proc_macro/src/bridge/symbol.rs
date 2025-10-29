@@ -10,6 +10,7 @@
 //! proc_macro, this module should probably be removed or simplified.
 
 use std::cell::RefCell;
+use std::fmt;
 use std::num::NonZero;
 
 use super::*;
