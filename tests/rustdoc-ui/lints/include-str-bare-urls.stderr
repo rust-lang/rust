@@ -1,5 +1,5 @@
 error: this URL is not a hyperlink
-  --> $DIR/auxiliary/include-str-bare-urls.md:1:11
+  --> $DIR/../auxiliary/include-str-bare-urls.md:1:11
    |
 LL | HEADS UP! https://example.com MUST SHOW UP IN THE STDERR FILE!
    |           ^^^^^^^^^^^^^^^^^^^
