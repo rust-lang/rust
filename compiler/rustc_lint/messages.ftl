@@ -266,7 +266,7 @@ lint_forgetting_references = calls to `std::mem::forget` with a reference instea
     .label = argument has type `{$arg_ty}`
 
 lint_function_casts_as_integer = direct cast of function item into an integer
-    .cast_as_fn = first cast to a function pointer `{$cast_from_ty}`
+    .cast_as_fn = first cast to a pointer `as *const ()`
 
 lint_hidden_glob_reexport = private item shadows public glob re-export
     .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here

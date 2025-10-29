@@ -3029,14 +3029,13 @@ pub(crate) struct FunctionCastsAsIntegerDiag<'tcx> {
 #[derive(Subdiagnostic)]
 #[suggestion(
     lint_cast_as_fn,
-    code = " as {cast_from_ty}",
+    code = " as *const ()",
     applicability = "machine-applicable",
     style = "verbose"
 )]
 pub(crate) struct FunctionCastsAsIntegerSugg<'tcx> {
     #[primary_span]
     pub suggestion: Span,
-    pub cast_from_ty: Ty<'tcx>,
     pub cast_to_ty: Ty<'tcx>,
 }
 
