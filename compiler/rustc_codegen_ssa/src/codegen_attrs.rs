@@ -327,6 +327,9 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
+            sym::rustc_propagate_ffi_unwind => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::PROPAGATE_FFI_UNWIND
+            }
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }

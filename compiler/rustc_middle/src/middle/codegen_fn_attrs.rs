@@ -190,6 +190,10 @@ bitflags::bitflags! {
         const NO_BUILTINS               = 1 << 15;
         /// Marks foreign items, to make `contains_extern_indicator` cheaper.
         const FOREIGN_ITEM              = 1 << 16;
+        /// `#[rustc_propagate_ffi_unwind]`: indicates that the function may leak unwinds from
+        /// invoked FFI functions regardless of the panic strategy and should always be considered
+        /// unwinding.
+        const PROPAGATE_FFI_UNWIND      = 1 << 17;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }

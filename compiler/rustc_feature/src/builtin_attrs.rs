@@ -1007,6 +1007,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No,
     ),
     rustc_attr!(
+        rustc_propagate_ffi_unwind, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No,
+    ),
+    rustc_attr!(
         rustc_allocator_zeroed_variant, Normal, template!(NameValueStr: "function"), ErrorPreceding,
         EncodeCrossCrate::Yes,
     ),

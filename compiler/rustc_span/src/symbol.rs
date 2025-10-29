@@ -1950,6 +1950,7 @@ symbols! {
         rustc_private,
         rustc_proc_macro_decls,
         rustc_promotable,
+        rustc_propagate_ffi_unwind,
         rustc_pub_transparent,
         rustc_reallocator,
         rustc_regions,

@@ -1219,9 +1219,14 @@ where
 #[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) -> bool {
     if let Some(did) = fn_def_id {
-        // Special attribute for functions which can't unwind.
-        if tcx.codegen_fn_attrs(did).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
+        // Special attributes for functions which can't unwind or unwind regardless of the panic
+        // strategy.
+        let flags = tcx.codegen_fn_attrs(did).flags;
+        if flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
             return false;
+        }
+        if flags.contains(CodegenFnAttrFlags::PROPAGATE_FFI_UNWIND) {
+            return true;
         }
 
         // With `-C panic=abort`, all non-FFI functions are required to not unwind.

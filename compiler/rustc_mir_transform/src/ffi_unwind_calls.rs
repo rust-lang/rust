@@ -1,5 +1,6 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::def_id::{LOCAL_CRATE, LocalDefId};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::*;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{self, TyCtxt, layout};
@@ -36,6 +37,12 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
     // Foreign unwinds cannot leak past functions that themselves cannot unwind.
     if !body_can_unwind {
+        return false;
+    }
+
+    // `#[rustc_propagate_ffi_unwind]` functions are assumed to be unwinding by callers, so their
+    // bodies don't have to be verified for soundness.
+    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::PROPAGATE_FFI_UNWIND) {
         return false;
     }
 
