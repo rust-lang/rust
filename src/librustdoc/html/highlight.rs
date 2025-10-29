@@ -566,52 +566,52 @@ pub(super) fn write_code(
     };
     let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, file_span);
 
-    Classifier::new(
+    classify(
         &src,
-        token_handler.href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        token_handler.href_context.as_ref().map_or(DUMMY_SP, |c| c.file_span),
         decoration_info,
-    )
-    .highlight(&mut |span, highlight| match highlight {
-        Highlight::Token { text, class } => {
-            token_handler.push_token(class, Cow::Borrowed(text));
+        &mut |span, highlight| match highlight {
+            Highlight::Token { text, class } => {
+                token_handler.push_token(class, Cow::Borrowed(text));
 
-            if text == "\n" {
-                if current_expansion.is_none() {
-                    current_expansion = get_expansion(&mut token_handler, expanded_codes, span);
-                }
-                if let Some(ref current_expansion) = current_expansion
-                    && current_expansion.span.lo() == span.hi()
-                {
-                    token_handler.add_expanded_code(current_expansion);
-                }
-            } else {
-                let mut need_end = false;
-                if let Some(ref current_expansion) = current_expansion {
-                    if current_expansion.span.lo() == span.hi() {
-                        token_handler.add_expanded_code(current_expansion);
-                    } else if current_expansion.end_line == token_handler.line
-                        && span.hi() >= current_expansion.span.hi()
+                if text == "\n" {
+                    if current_expansion.is_none() {
+                        current_expansion = get_expansion(&mut token_handler, expanded_codes, span);
+                    }
+                    if let Some(ref current_expansion) = current_expansion
+                        && current_expansion.span.lo() == span.hi()
                     {
-                        need_end = true;
+                        token_handler.add_expanded_code(current_expansion);
+                    }
+                } else {
+                    let mut need_end = false;
+                    if let Some(ref current_expansion) = current_expansion {
+                        if current_expansion.span.lo() == span.hi() {
+                            token_handler.add_expanded_code(current_expansion);
+                        } else if current_expansion.end_line == token_handler.line
+                            && span.hi() >= current_expansion.span.hi()
+                        {
+                            need_end = true;
+                        }
+                    }
+                    if need_end {
+                        current_expansion = end_expansion(&mut token_handler, expanded_codes, span);
                     }
                 }
-                if need_end {
-                    current_expansion = end_expansion(&mut token_handler, expanded_codes, span);
-                }
             }
-        }
-        Highlight::EnterSpan { class } => {
-            token_handler.class_stack.enter_elem(
-                token_handler.out,
-                &token_handler.href_context,
-                class,
-                None,
-            );
-        }
-        Highlight::ExitSpan => {
-            token_handler.class_stack.exit_elem();
-        }
-    });
+            Highlight::EnterSpan { class } => {
+                token_handler.class_stack.enter_elem(
+                    token_handler.out,
+                    &token_handler.href_context,
+                    class,
+                    None,
+                );
+            }
+            Highlight::ExitSpan => {
+                token_handler.class_stack.exit_elem();
+            }
+        },
+    );
 }
 
 fn write_footer(playground_button: Option<&str>) -> impl Display {
@@ -735,6 +735,12 @@ struct TokenIter<'a> {
     cursor: Cursor<'a>,
 }
 
+impl<'a> TokenIter<'a> {
+    fn new(src: &'a str) -> Self {
+        Self { src, cursor: Cursor::new(src, FrontmatterAllowed::Yes) }
+    }
+}
+
 impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
@@ -843,6 +849,54 @@ fn new_span(lo: u32, text: &str, file_span: Span) -> Span {
     file_span.with_lo(file_lo + BytePos(lo)).with_hi(file_lo + BytePos(hi))
 }
 
+fn classify<'src>(
+    src: &'src str,
+    file_span: Span,
+    decoration_info: Option<&DecorationInfo>,
+    sink: &mut dyn FnMut(Span, Highlight<'src>),
+) {
+    let offset = rustc_lexer::strip_shebang(src);
+
+    if let Some(offset) = offset {
+        sink(DUMMY_SP, Highlight::Token { text: &src[..offset], class: Some(Class::Comment) });
+    }
+
+    let mut classifier =
+        Classifier::new(src, offset.unwrap_or_default(), file_span, decoration_info);
+
+    loop {
+        if let Some(decs) = classifier.decorations.as_mut() {
+            let byte_pos = classifier.byte_pos;
+            let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
+            for (_, kind) in decs.starts.drain(0..n_starts) {
+                sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Decoration(kind) });
+            }
+
+            let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
+            for _ in decs.ends.drain(0..n_ends) {
+                sink(DUMMY_SP, Highlight::ExitSpan);
+            }
+        }
+
+        if let Some((TokenKind::Colon | TokenKind::Ident, _)) = classifier.tokens.peek() {
+            let tokens = classifier.get_full_ident_path();
+            for &(token, start, end) in &tokens {
+                let text = &classifier.src[start..end];
+                classifier.advance(token, text, sink, start as u32);
+                classifier.byte_pos += text.len() as u32;
+            }
+            if !tokens.is_empty() {
+                continue;
+            }
+        }
+        if let Some((token, text, before)) = classifier.next() {
+            classifier.advance(token, text, sink, before);
+        } else {
+            break;
+        }
+    }
+}
+
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'src> {
@@ -857,21 +911,23 @@ struct Classifier<'src> {
 }
 
 impl<'src> Classifier<'src> {
-    /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
-    /// file span which will be used later on by the `span_correspondence_map`.
-    fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
-        let tokens =
-            PeekIter::new(TokenIter { src, cursor: Cursor::new(src, FrontmatterAllowed::Yes) });
-        let decorations = decoration_info.map(Decorations::new);
+    /// Takes as argument the source code to HTML-ify and the source code file span
+    /// which will be used later on by the `span_correspondence_map`.
+    fn new(
+        src: &'src str,
+        byte_pos: usize,
+        file_span: Span,
+        decoration_info: Option<&DecorationInfo>,
+    ) -> Self {
         Classifier {
-            tokens,
+            tokens: PeekIter::new(TokenIter::new(&src[byte_pos..])),
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
-            byte_pos: 0,
+            byte_pos: byte_pos as u32,
             file_span,
             src,
-            decorations,
+            decorations: decoration_info.map(Decorations::new),
         }
     }
 
@@ -938,50 +994,6 @@ impl<'src> Classifier<'src> {
         }
     }
 
-    /// Exhausts the `Classifier` writing the output into `sink`.
-    ///
-    /// The general structure for this method is to iterate over each token,
-    /// possibly giving it an HTML span with a class specifying what flavor of
-    /// token is used.
-    fn highlight(mut self, sink: &mut dyn FnMut(Span, Highlight<'src>)) {
-        loop {
-            if let Some(decs) = self.decorations.as_mut() {
-                let byte_pos = self.byte_pos;
-                let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
-                for (_, kind) in decs.starts.drain(0..n_starts) {
-                    sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Decoration(kind) });
-                }
-
-                let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
-                for _ in decs.ends.drain(0..n_ends) {
-                    sink(DUMMY_SP, Highlight::ExitSpan);
-                }
-            }
-
-            if self
-                .tokens
-                .peek()
-                .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
-                .unwrap_or(false)
-            {
-                let tokens = self.get_full_ident_path();
-                for (token, start, end) in &tokens {
-                    let text = &self.src[*start..*end];
-                    self.advance(*token, text, sink, *start as u32);
-                    self.byte_pos += text.len() as u32;
-                }
-                if !tokens.is_empty() {
-                    continue;
-                }
-            }
-            if let Some((token, text, before)) = self.next() {
-                self.advance(token, text, sink, before);
-            } else {
-                break;
-            }
-        }
-    }
-
     /// Single step of highlighting. This will classify `token`, but maybe also a couple of
     /// following ones as well.
     ///
@@ -1019,6 +1031,7 @@ impl<'src> Classifier<'src> {
                     Class::Comment
                 }
             }
+            TokenKind::Frontmatter { .. } => Class::Comment,
             // Consider this as part of a macro invocation if there was a
             // leading identifier.
             TokenKind::Bang if self.in_macro => {
@@ -1117,7 +1130,6 @@ impl<'src> Classifier<'src> {
             | TokenKind::At
             | TokenKind::Tilde
             | TokenKind::Colon
-            | TokenKind::Frontmatter { .. }
             | TokenKind::Unknown => return no_highlight(sink),
 
             TokenKind::Question => Class::QuestionMark,
