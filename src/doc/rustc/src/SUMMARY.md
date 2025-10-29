@@ -87,6 +87,7 @@
     - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
     - [hexagon-unknown-linux-musl](platform-support/hexagon-unknown-linux-musl.md)
     - [hexagon-unknown-none-elf](platform-support/hexagon-unknown-none-elf.md)
+    - [hexagon-unknown-qurt](platform-support/hexagon-unknown-qurt.md)
     - [illumos](platform-support/illumos.md)
     - [loongarch\*-unknown-linux-\*](platform-support/loongarch-linux.md)
     - [loongarch\*-unknown-none\*](platform-support/loongarch-none.md)
