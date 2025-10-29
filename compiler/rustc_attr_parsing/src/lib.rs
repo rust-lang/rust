@@ -113,5 +113,6 @@ pub use attributes::util::{is_builtin_attr, is_doc_alias_attrs_contain_symbol, p
 pub use context::{Early, Late, OmitDoc, ShouldEmit};
 pub use interface::AttributeParser;
 pub use lints::emit_attribute_lint;
+pub use session_diagnostics::ParsedDescription;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

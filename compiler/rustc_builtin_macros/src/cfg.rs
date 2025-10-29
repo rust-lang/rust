@@ -6,7 +6,9 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, token};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::parser::MetaItemOrLitParser;
-use rustc_attr_parsing::{AttributeParser, CFG_TEMPLATE, ShouldEmit, parse_cfg_entry};
+use rustc_attr_parsing::{
+    AttributeParser, CFG_TEMPLATE, ParsedDescription, ShouldEmit, parse_cfg_entry,
+};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::CfgEntry;
@@ -53,6 +55,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         span,
         AttrStyle::Inner,
         AttrPath { segments: vec![Ident::from_str("cfg")].into_boxed_slice(), span },
+        ParsedDescription::Macro,
         span,
         CRATE_NODE_ID,
         Some(cx.ecfg.features),

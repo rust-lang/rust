@@ -19,6 +19,7 @@ use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
+    ParsedDescription,
 };
 use crate::{
     AttributeParser, CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics,
@@ -352,7 +353,8 @@ pub fn parse_cfg_attr(
                 span,
                 attr_span: cfg_attr.span,
                 template: CFG_ATTR_TEMPLATE,
-                attribute: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                description: ParsedDescription::Attribute,
                 reason,
                 suggestions: CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr),
             });
@@ -395,6 +397,7 @@ fn parse_cfg_attr_internal<'a>(
                 .into_boxed_slice(),
             span: attribute.span,
         },
+        ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
         features,
