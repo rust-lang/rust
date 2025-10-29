@@ -1,6 +1,5 @@
 //! Test that various operations involving pointer fragments work as expected.
 //@ run-pass
-//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 use std::mem::{self, MaybeUninit, transmute};
 use std::ptr;
@@ -58,6 +57,15 @@ fn reassemble_ptr_fragments_in_static() {
         Thing { x, y }
     };
 }
+
+const _PARTIAL_OVERWRITE: () = {
+    // The result in `p` is not a valid pointer, but we never use it again so that's fine.
+    let mut p = &42;
+    unsafe {
+        let ptr: *mut _ = &mut p;
+        *(ptr as *mut u8) = 123;
+    }
+};
 
 fn main() {
     assert_eq!(unsafe { MEMCPY_RET.assume_init().read() }, 42);

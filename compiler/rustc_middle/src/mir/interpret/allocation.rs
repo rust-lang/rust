@@ -630,7 +630,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> &mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
 
         &mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
@@ -643,7 +643,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> *mut [u8] {
         self.mark_init(range, true);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
         // Crucially, we go via `AllocBytes::as_mut_ptr`, not `AllocBytes::deref_mut`.
@@ -722,37 +722,49 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             if self.provenance.range_empty(range, cx) {
                 return Ok(Scalar::from_uint(bits, range.size));
             }
-            // If we get here, we have to check per-byte provenance, and join them together.
+            // If we get here, we have to check whether we can merge per-byte provenance.
             let prov = 'prov: {
-                if !Prov::OFFSET_IS_ADDR {
-                    // FIXME(#146291): We need to ensure that we don't mix different pointers with
-                    // the same provenance.
-                    return Err(AllocError::ReadPartialPointer(range.start));
-                }
-                // Initialize with first fragment. Must have index 0.
-                let Some((mut joint_prov, 0)) = self.provenance.get_byte(range.start, cx) else {
+                // If there is any ptr-sized provenance overlapping with this range,
+                // this is definitely mixing multiple pointers and we can bail.
+                if !self.provenance.range_ptrs_is_empty(range, cx) {
                     break 'prov None;
-                };
-                // Update with the remaining fragments.
-                for offset in Size::from_bytes(1)..range.size {
-                    // Ensure there is provenance here and it has the right index.
-                    let Some((frag_prov, frag_idx)) =
-                        self.provenance.get_byte(range.start + offset, cx)
-                    else {
+                }
+                // Scan all fragments, and ensure their indices, provenance, and bytes match.
+                // However, we have to ignore wildcard fragments for this (this is needed for Miri's
+                // native-lib mode). Therefore, we will only know the expected provenance and bytes
+                // once we find the first non-wildcard fragment.
+                let mut expected = None;
+                for idx in Size::ZERO..range.size {
+                    // Ensure there is provenance here.
+                    let Some(frag) = self.provenance.get_byte(range.start + idx, cx) else {
                         break 'prov None;
                     };
-                    // Wildcard provenance is allowed to come with any index (this is needed
-                    // for Miri's native-lib mode to work).
-                    if u64::from(frag_idx) != offset.bytes() && Some(frag_prov) != Prov::WILDCARD {
+                    // If this is wildcard provenance, ignore this fragment.
+                    if Some(frag.prov) == Prov::WILDCARD {
+                        continue;
+                    }
+                    // For non-wildcard fragments, the index must match.
+                    if u64::from(frag.idx) != idx.bytes() {
                         break 'prov None;
                     }
-                    // Merge this byte's provenance with the previous ones.
-                    joint_prov = match Prov::join(joint_prov, frag_prov) {
-                        Some(prov) => prov,
-                        None => break 'prov None,
-                    };
+                    // If there are expectations registered, check them.
+                    // If not, record this fragment as setting the expectations.
+                    match expected {
+                        Some(expected) => {
+                            if (frag.prov, frag.bytes) != expected {
+                                break 'prov None;
+                            }
+                        }
+                        None => {
+                            expected = Some((frag.prov, frag.bytes));
+                        }
+                    }
                 }
-                break 'prov Some(joint_prov);
+                // The final provenance is the expected one we found along the way, or wildcard if
+                // we didn't find any.
+                break 'prov Some(
+                    expected.map(|(prov, _addr)| prov).or_else(|| Prov::WILDCARD).unwrap(),
+                );
             };
             if prov.is_none() && !Prov::OFFSET_IS_ADDR {
                 // There are some bytes with provenance here but overall the provenance does not add up.
@@ -816,7 +828,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// Write "uninit" to the given memory range.
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
         self.mark_init(range, false);
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
     }
 
     /// Mark all bytes in the given range as initialised and reset the provenance
@@ -831,21 +843,28 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             size: Size::from_bytes(self.len()),
         });
         self.mark_init(range, true);
-        self.provenance.write_wildcards(cx, range);
+        self.provenance.write_wildcards(cx, &self.bytes, range);
     }
 
     /// Remove all provenance in the given memory range.
     pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
-        self.provenance.clear(range, cx);
+        self.provenance.clear(range, &self.bytes, cx);
     }
 
     pub fn provenance_merge_bytes(&mut self, cx: &impl HasDataLayout) -> bool {
         self.provenance.merge_bytes(cx)
     }
 
+    pub fn provenance_prepare_copy(
+        &self,
+        range: AllocRange,
+        cx: &impl HasDataLayout,
+    ) -> ProvenanceCopy<Prov> {
+        self.provenance.prepare_copy(range, &self.bytes, cx)
+    }
+
     /// Applies a previously prepared provenance copy.
-    /// The affected range, as defined in the parameters to `provenance().prepare_copy` is expected
-    /// to be clear of provenance.
+    /// The affected range is expected to be clear of provenance.
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
