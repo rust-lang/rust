@@ -1382,11 +1382,8 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
             /// assert_eq!(three.div_ceil(two), two);
             /// ```
-            #[stable(feature = "unsigned_nonzero_div_ceil", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(
-                feature = "unsigned_nonzero_div_ceil",
-                since = "CURRENT_RUSTC_VERSION"
-            )]
+            #[stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
+            #[rustc_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]

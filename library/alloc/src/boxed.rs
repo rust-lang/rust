@@ -300,7 +300,7 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
@@ -692,7 +692,7 @@ impl<T> Box<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }

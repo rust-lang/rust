@@ -529,7 +529,7 @@ impl<T> Rc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -1057,7 +1057,7 @@ impl<T> Rc<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe {
