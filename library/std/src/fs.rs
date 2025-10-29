@@ -3333,32 +3333,27 @@ impl DirBuilder {
             return Ok(());
         }
 
-        let mut uncreated_dirs = Vec::new();
-        let mut current = path;
+        let ancestors = path.ancestors();
+        let mut uncreated_dir_ctr = 0;
 
-        loop {
-            match self.inner.mkdir(current) {
+        for ancestor in ancestors {
+            if ancestor == Path::new("") {
+                break;
+            }
+
+            match self.inner.mkdir(ancestor) {
                 Ok(()) => break,
-                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(e) if e.kind() == io::ErrorKind::NotFound => uncreated_dir_ctr += 1,
                 // we check if the err is AlreadyExists for two reasons
                 //    - in case the path exists as a *file*
                 //    - and to avoid calls to .is_dir() in case of other errs
                 //      (i.e. PermissionDenied)
-                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && current.is_dir() => break,
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && ancestor.is_dir() => break,
                 Err(e) => return Err(e),
-            }
-
-            if let Some(parent) = current.parent() {
-                if parent == Path::new("") {
-                    break;
-                }
-                uncreated_dirs.push(current);
-                current = parent;
-            } else {
-                break;
             }
         }
 
+        let uncreated_dirs: Box<[_]> = ancestors.take(uncreated_dir_ctr).collect();
         for uncreated_dir in uncreated_dirs.iter().rev() {
             if let Err(e) = self.inner.mkdir(uncreated_dir) {
                 if !uncreated_dir.is_dir() {
