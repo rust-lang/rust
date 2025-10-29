@@ -3,12 +3,13 @@
 
 use serde::Serialize;
 
-use crate::ty::{GenericArgs, Span, Ty};
-use crate::{AssocItems, Crate, Symbol, with};
+use crate::ty::{GenericArgs, Span, Ty, index_impl};
+use crate::{AssocItems, Crate, ReferencesTls, Symbol, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct DefId(pub(crate) usize);
+pub struct DefId(pub(crate) usize, ReferencesTls);
+index_impl!(DefId);
 
 impl DefId {
     /// Return fully qualified name of this definition

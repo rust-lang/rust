@@ -20,11 +20,12 @@
 //! [crates.io](https://crates.io).
 
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::{fmt, io};
 
+use rustc_public_bridge::context::CompilerCtxt;
 pub(crate) use rustc_public_bridge::IndexedVal;
 use rustc_public_bridge::Tables;
-use rustc_public_bridge::context::CompilerCtxt;
 /// Export the rustc_internal APIs. Note that this module has no stability
 /// guarantees and it is not taken into account for semver.
 #[cfg(feature = "rustc_internal")]
@@ -56,21 +57,12 @@ pub mod visitor;
 pub type Symbol = String;
 
 /// The number that identifies a crate.
+// FIXME: Make this a newtype, so it can have a `ReferencesTls`
 pub type CrateNum = usize;
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DefId").field("id", &self.0).field("name", &self.name()).finish()
-    }
-}
-
-impl IndexedVal for DefId {
-    fn to_val(index: usize) -> Self {
-        DefId(index)
-    }
-
-    fn to_index(&self) -> usize {
-        self.0
     }
 }
 
@@ -92,6 +84,9 @@ pub struct Crate {
     pub id: CrateNum,
     pub name: Symbol,
     pub is_local: bool,
+    // FIXME: Remove this when `CrateNum` holds `ReferencesTLS`
+    #[serde(skip)]
+    references_tls: ReferencesTls,
 }
 
 impl Crate {
@@ -298,5 +293,28 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
             align,
             mutability: mutability.stable(tables, cx),
         }
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
+#[derive(serde::Serialize)] // TODO: Don't.
+/// Marker type for indexes into [`TLV`].
+///
+/// Makes things `!Send`/`!Sync`, so users don't move `rustc_public`` types to
+/// thread with no (or worse, different) `rustc_public` pointer.
+///
+/// Note. This doens't make it impossible to confuse TLS. You could return a
+/// `DefId` from one `run!` invocation, and then use it inside a different
+/// `run!` invocation with different tables.
+pub(crate) struct ReferencesTls {
+    _phantom: PhantomData<*const ()>,
+}
+#[expect(non_upper_case_globals)]
+/// Emulating unit struct `struct ReferencesTLS`;
+pub(crate) const ReferencesTLS: ReferencesTls = ReferencesTls { _phantom: PhantomData };
+
+impl fmt::Debug for ReferencesTls {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ReferencesTLS").finish()
     }
 }

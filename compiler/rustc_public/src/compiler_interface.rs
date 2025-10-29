@@ -25,7 +25,7 @@ use crate::ty::{
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
     AssocItems, Crate, CrateDef, CrateItem, CrateItems, CrateNum, DefId, Error, Filename,
-    ImplTraitDecls, ItemKind, Symbol, TraitDecls, alloc, mir,
+    ImplTraitDecls, ItemKind, ReferencesTls, Symbol, TraitDecls, alloc, mir,
 };
 
 pub struct BridgeTys;
@@ -1095,5 +1095,5 @@ fn smir_crate<'tcx>(
     let is_local = cx.crate_is_local(crate_num);
     let id = cx.crate_num_id(crate_num);
     debug!(?name, ?crate_num, "smir_crate");
-    Crate { id, name, is_local }
+    Crate { id, name, is_local, references_tls: ReferencesTLS }
 }
