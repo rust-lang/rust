@@ -256,7 +256,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 match evt {
                     AccessEvent::Read(_) => {
                         // If a provenance was read by the foreign code, expose it.
-                        for prov in alloc.provenance().get_range(this, overlap.into()) {
+                        for (_prov_range, prov) in
+                            alloc.provenance().get_range(overlap.into(), this)
+                        {
                             this.expose_provenance(prov)?;
                         }
                     }
@@ -321,7 +323,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Expose all provenances in the allocation within the byte range of the struct, if
                 // any. These pointers are being directly passed to native code by-value.
                 let alloc = this.get_alloc_raw(id)?;
-                for prov in alloc.provenance().get_range(this, range.clone().into()) {
+                for (_prov_range, prov) in alloc.provenance().get_range(range.clone().into(), this)
+                {
                     expose(prov)?;
                 }
                 // Read the bytes that make up this argument. We cannot use the normal getter as

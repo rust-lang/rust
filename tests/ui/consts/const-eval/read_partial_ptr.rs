@@ -1,5 +1,4 @@
 //! Ensure we error when trying to load from a pointer whose provenance has been messed with.
-//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 const PARTIAL_OVERWRITE: () = {
     let mut p = &42;
