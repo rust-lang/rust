@@ -1028,9 +1028,12 @@ where
         let optimize = tcx.sess.opts.optimize != OptLevel::No;
 
         let pointee_info = match *this.ty.kind() {
-            ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => {
-                Some(PointeeInfo { safe: None, size: Size::ZERO, align: Align::ONE })
-            }
+            ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => Some(PointeeInfo {
+                safe: None,
+                size: Size::ZERO,
+                align: Align::ONE,
+                may_dangle: false,
+            }),
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
                     let (size, kind);
@@ -1059,7 +1062,12 @@ where
                             kind = PointerKind::MutableRef { unpin };
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo {
+                        safe: Some(kind),
+                        size,
+                        align: layout.align.abi,
+                        may_dangle: false,
+                    }
                 })
             }
 
@@ -1082,6 +1090,21 @@ where
                     size: Size::ZERO,
 
                     align: layout.align.abi,
+                    may_dangle: false,
+                })
+            }
+
+            ty::Adt(adt_def, ..) if adt_def.is_maybe_dangling() => {
+                Self::ty_and_layout_pointee_info_at(this.field(cx, 0), cx, offset).map(|info| {
+                    PointeeInfo {
+                        // Mark the pointer as possibly dangling
+                        // (thus removing noalias in case of llvm backend)
+                        may_dangle: true,
+                        // Make sure we don't assert dereferenceability of the pointer.
+                        size: Size::ZERO,
+                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
+                        ..info
+                    }
                 })
             }
 
