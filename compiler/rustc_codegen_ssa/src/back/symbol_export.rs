@@ -104,10 +104,6 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             if tcx.cross_crate_inlinable(def_id) { None } else { Some(def_id) }
         })
         .map(|def_id| {
-            // We won't link right if this symbol is stripped during LTO.
-            let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
-            let used = name == "rust_eh_personality";
-
             let export_level = if special_runtime_crate {
                 SymbolExportLevel::Rust
             } else {
@@ -131,8 +127,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                     SymbolExportKind::Text
                 },
                 used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
-                    || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-                    || used,
+                    || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER),
                 rustc_std_internal_symbol: codegen_attrs
                     .flags
                     .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL),
