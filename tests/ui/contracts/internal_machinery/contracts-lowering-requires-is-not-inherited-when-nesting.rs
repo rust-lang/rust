@@ -5,7 +5,7 @@
 struct Outer { outer: std::cell::Cell<i32> }
 
 fn outer(x: Outer)
-    contract_requires(|| x.outer.get() > 0)
+    contract_requires { x.outer.get() > 0 }
 {
     let inner_closure = || { };
     x.outer.set(0);

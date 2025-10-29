@@ -195,6 +195,11 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Grab the optimized MIR. Analyze it to determine which arguments have been mutated.
     let body: &Body<'tcx> = tcx.optimized_mir(def_id);
+    // Arguments spread at ABI level are currently unsupported.
+    if body.spread_arg.is_some() {
+        return &[];
+    }
+
     let mut deduce = DeduceParamAttrs::new(body);
     deduce.visit_body(body);
     tracing::trace!(?deduce.usage);
