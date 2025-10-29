@@ -611,6 +611,17 @@ impl dyn Any + Send + Sync {
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
 ///
+/// # Layout
+///
+/// The size of `TypeId` is guaranteed not to exceed 16 bytes.
+///
+/// ```rust
+/// # #![feature(assert_matches)]
+/// # use std::any::TypeId;
+/// # use std::assert_matches::assert_matches;
+/// assert_matches!(size_of::<TypeId>(), 1..=16);
+/// ```
+///
 /// # Danger of Improper Variance
 ///
 /// You might think that subtyping is impossible between two static types,
