@@ -104,7 +104,7 @@ pub(crate) fn write_shared(
             cx.info.include_sources,
         )?;
         match &opt.index_page {
-            Some(index_page) if opt.enable_index_page => {
+            Some(index_page) if opt.enable_index_page.0 => {
                 let mut md_opts = opt.clone();
                 md_opts.output = cx.dst.clone();
                 md_opts.external_html = cx.shared.layout.external_html.clone();
@@ -113,7 +113,7 @@ pub(crate) fn write_shared(
                     &index_page
                 );
             }
-            None if opt.enable_index_page => {
+            None if opt.enable_index_page.0 => {
                 write_rendered_cci::<CratesIndexPart, _>(
                     || CratesIndexPart::blank(cx),
                     &cx.dst,
@@ -212,7 +212,7 @@ fn write_static_files(
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
             let contents: &[u8] =
-                if opt.disable_minification { f.src_bytes } else { f.minified_bytes };
+                if opt.disable_minification.0 { f.src_bytes } else { f.minified_bytes };
             fs::write(&filename, contents).map_err(|e| PathError::new(e, &filename))
         })?;
     }

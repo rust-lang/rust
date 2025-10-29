@@ -563,7 +563,7 @@ pub(crate) fn href_with_root_path(
                 return Err(HrefError::Private);
             }
         } else if !cache.effective_visibilities.is_directly_public(tcx, did)
-            && !cache.document_private
+            && !cache.document_private.0
             && !cache.primitive_locations.values().any(|&id| id == did)
         {
             return Err(HrefError::Private);

@@ -46,12 +46,12 @@ fn check_redundant_explicit_link_for_did(
         return;
     };
 
-    let is_hidden = !cx.render_options.document_hidden
+    let is_hidden = !cx.render_options.document_hidden.0
         && (item.is_doc_hidden() || inherits_doc_hidden(cx.tcx, local_item_id, None));
     if is_hidden {
         return;
     }
-    let is_private = !cx.render_options.document_private
+    let is_private = !cx.render_options.document_private.0
         && !cx.cache.effective_visibilities.is_directly_public(cx.tcx, did);
     if is_private {
         return;

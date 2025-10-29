@@ -10,6 +10,7 @@ use tracing::debug;
 
 use crate::clean::types::ExternalLocation;
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::config::{DocumentHidden, DocumentPrivate};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::Impl;
@@ -88,10 +89,10 @@ pub(crate) struct Cache {
 
     /// Whether to document private items.
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
-    pub(crate) document_private: bool,
+    pub(crate) document_private: DocumentPrivate,
     /// Whether to document hidden items.
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
-    pub(crate) document_hidden: bool,
+    pub(crate) document_hidden: DocumentHidden,
 
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
@@ -142,7 +143,7 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
+    pub(crate) fn new(document_private: DocumentPrivate, document_hidden: DocumentHidden) -> Self {
         Cache { document_private, document_hidden, ..Cache::default() }
     }
 

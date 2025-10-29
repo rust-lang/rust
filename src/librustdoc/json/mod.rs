@@ -190,7 +190,7 @@ impl<'tcx> JsonRenderer<'tcx> {
             JsonRenderer {
                 tcx,
                 index: FxHashMap::default(),
-                out_dir: if options.output_to_stdout { None } else { Some(options.output) },
+                out_dir: if options.output_to_stdout.0 { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
                 id_interner: Default::default(),
@@ -323,7 +323,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let output_crate = types::Crate {
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
-            includes_private: self.cache.document_private,
+            includes_private: self.cache.document_private.0,
             index,
             paths: self
                 .cache
