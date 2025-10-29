@@ -1,7 +1,5 @@
-//@ check-pass
+//@ run-pass
 //@ ignore-backends: gcc
-//@ known-bug: #148239
-//@ compile-flags: -Zno-codegen
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 

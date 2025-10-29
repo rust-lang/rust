@@ -1,6 +1,5 @@
 //@ run-pass
 //@ ignore-backends: gcc
-//@ known-bug: #148239
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
@@ -17,5 +16,5 @@ fn dispatch(param: &Box<u8>) -> [u8; 24] {
 fn main() {
     let param = Box::new(0);
     let result = dispatch(&param);
-    assert_ne!(result, [1; 24]); // the data is not right!
+    assert_eq!(result, [1; 24]);
 }
