@@ -18,21 +18,29 @@
               scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
                   let mut _6: std::num::NonZero<usize>;
                   scope 6 {
-                      scope 8 (inlined std::ptr::Alignment::as_nonzero) {
+                      scope 7 {
+                          scope 9 {
+                          }
                       }
-                      scope 9 (inlined NonNull::<[bool; 0]>::without_provenance) {
-                          let _7: *const [bool; 0];
-                          scope 10 {
+                      scope 8 {
+                          scope 12 (inlined std::ptr::Alignment::as_nonzero) {
                           }
-                          scope 11 (inlined NonZero::<usize>::get) {
-                          }
-                          scope 12 (inlined std::ptr::without_provenance::<[bool; 0]>) {
-                              scope 13 (inlined without_provenance_mut::<[bool; 0]>) {
+                          scope 13 (inlined NonNull::<[bool; 0]>::without_provenance) {
+                              let _7: *const [bool; 0];
+                              scope 14 {
+                              }
+                              scope 15 (inlined NonZero::<usize>::get) {
+                              }
+                              scope 16 (inlined std::ptr::without_provenance::<[bool; 0]>) {
+                                  scope 17 (inlined without_provenance_mut::<[bool; 0]>) {
+                                  }
                               }
                           }
                       }
+                      scope 11 (inlined std::ptr::Alignment::of::<[bool; 0]>) {
+                      }
                   }
-                  scope 7 (inlined std::ptr::Alignment::of::<[bool; 0]>) {
+                  scope 10 (inlined core::contracts::build_check_ensures::<NonNull<[bool; 0]>, {closure@NonNull<[bool; 0]>::dangling::{closure#0}}>) {
                   }
               }
           }

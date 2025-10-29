@@ -12,50 +12,74 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             scope 3 {
                 let _8: std::ptr::alignment::AlignmentEnum;
                 scope 4 {
-                    scope 12 (inlined Layout::size) {
+                    scope 11 (inlined Layout::size) {
                     }
-                    scope 13 (inlined Unique::<[T]>::cast::<u8>) {
-                        scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
-                            scope 15 (inlined NonNull::<[T]>::as_ptr) {
+                    scope 12 (inlined Unique::<[T]>::cast::<u8>) {
+                        scope 13 (inlined NonNull::<[T]>::cast::<u8>) {
+                            scope 14 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
                     }
-                    scope 16 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
-                        scope 17 (inlined Unique::<u8>::as_non_null_ptr) {
+                    scope 15 (inlined <NonNull<u8> as From<Unique<u8>>>::from) {
+                        scope 16 (inlined Unique::<u8>::as_non_null_ptr) {
                         }
                     }
-                    scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
+                    scope 30 (inlined <std::alloc::Global as Allocator>::deallocate) {
                         let mut _9: *mut u8;
-                        scope 19 (inlined Layout::size) {
+                        scope 31 (inlined Layout::size) {
                         }
-                        scope 20 (inlined NonNull::<u8>::as_ptr) {
+                        scope 32 (inlined NonNull::<u8>::as_ptr) {
                         }
-                        scope 21 (inlined std::alloc::dealloc) {
+                        scope 33 (inlined std::alloc::dealloc) {
                             let mut _10: usize;
-                            scope 22 (inlined Layout::size) {
+                            scope 34 (inlined Layout::size) {
                             }
-                            scope 23 (inlined Layout::align) {
-                                scope 24 (inlined std::ptr::Alignment::as_usize) {
+                            scope 35 (inlined Layout::align) {
+                                scope 36 (inlined std::ptr::Alignment::as_usize) {
                                 }
                             }
                         }
                     }
                 }
                 scope 5 (inlined Unique::<[T]>::as_ptr) {
-                    scope 6 (inlined NonNull::<[T]>::as_ptr) {
-                    }
-                }
-                scope 7 (inlined Layout::for_value_raw::<[T]>) {
-                    let mut _5: usize;
-                    let mut _6: usize;
-                    scope 8 {
-                        scope 11 (inlined #[track_caller] Layout::from_size_align_unchecked) {
-                            let mut _7: std::ptr::Alignment;
+                    scope 6 {
+                        scope 7 {
+                            scope 8 {
+                            }
+                        }
+                        scope 10 (inlined NonNull::<[T]>::as_ptr) {
                         }
                     }
-                    scope 9 (inlined size_of_val_raw::<[T]>) {
+                    scope 9 (inlined core::contracts::build_check_ensures::<*mut [T], {closure@Unique<[T]>::as_ptr::{closure#0}}>) {
                     }
-                    scope 10 (inlined align_of_val_raw::<[T]>) {
+                }
+                scope 17 (inlined Layout::for_value_raw::<[T]>) {
+                    let mut _5: usize;
+                    let mut _6: usize;
+                    scope 18 {
+                        scope 19 {
+                            scope 21 {
+                            }
+                        }
+                        scope 20 {
+                            scope 25 (inlined #[track_caller] Layout::from_size_align_unchecked) {
+                                let mut _7: std::ptr::Alignment;
+                                scope 26 {
+                                    scope 27 {
+                                        scope 28 {
+                                        }
+                                    }
+                                }
+                                scope 29 (inlined core::contracts::build_check_ensures::<Layout, {closure@Layout::from_size_align_unchecked::{closure#1}}>) {
+                                }
+                            }
+                        }
+                        scope 23 (inlined size_of_val_raw::<[T]>) {
+                        }
+                        scope 24 (inlined align_of_val_raw::<[T]>) {
+                        }
+                    }
+                    scope 22 (inlined core::contracts::build_check_ensures::<Layout, {closure@Layout::for_value_raw<[T]>::{closure#0}}>) {
                     }
                 }
             }
