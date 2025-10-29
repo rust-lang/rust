@@ -171,7 +171,6 @@ mod inherent_to_string;
 mod init_numbered_fields;
 mod inline_fn_without_body;
 mod int_plus_one;
-mod integer_division_remainder_used;
 mod item_name_repetitions;
 mod items_after_statements;
 mod items_after_test_module;
@@ -793,7 +792,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     store.register_late_pass(move |_| Box::new(assigning_clones::AssigningClones::new(conf)));
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
-    store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
     store.register_late_pass(move |_| Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe::new(conf)));
     store.register_late_pass(move |_| Box::new(string_patterns::StringPatterns::new(conf)));
     store.register_early_pass(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers));
