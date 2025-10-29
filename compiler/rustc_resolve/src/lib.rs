@@ -70,7 +70,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, DelegationFnSig, Feed, MainDefinition, RegisteredTools, ResolverAstLowering,
-    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility
+    ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::BuiltinLintDiag;
@@ -96,8 +96,8 @@ pub mod rustdoc;
 
 pub use macros::registered_tools_ast;
 
-use crate::ref_mut::{CmCell, CmRefCell};
 use crate::late::AnonConstKind;
+use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

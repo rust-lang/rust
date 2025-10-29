@@ -6,7 +6,7 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::late::{PatternSource, AnonConstKind};
+use crate::late::{AnonConstKind, PatternSource};
 use crate::{Res, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
