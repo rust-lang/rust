@@ -3,7 +3,7 @@
 //@ revisions: LLVM21 LLVM20
 //@ [LLVM21] min-llvm-version: 21
 //@ [LLVM20] max-llvm-major-version: 20
-#![feature(custom_mir, core_intrinsics)]
+#![feature(custom_mir, core_intrinsics, unboxed_closures)]
 #![crate_type = "lib"]
 extern crate core;
 use core::intrinsics::mir::*;
@@ -170,3 +170,11 @@ pub fn not_captured_return_place() -> [u8; 80] {
 pub fn captured_return_place() -> [u8; 80] {
     black_box([0u8; 80])
 }
+
+// Arguments spread at ABI level are unsupported.
+//
+// CHECK-LABEL: @spread_arg(
+// CHECK-NOT: readonly
+// CHECK-SAME: )
+#[no_mangle]
+pub extern "rust-call" fn spread_arg(_: (Big, Big, Big)) {}
