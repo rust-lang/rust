@@ -59,6 +59,8 @@ bitflags::bitflags! {
         const IS_PIN                        = 1 << 11;
         /// Indicates whether the type is `#[pin_project]`.
         const IS_PIN_PROJECT                = 1 << 12;
+        /// Indicates whether the type is `MaybeDangling<_>`.
+        const IS_MAYBE_DANGLING             = 1 << 13;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -315,6 +317,9 @@ impl AdtDefData {
         if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
+        if tcx.is_lang_item(did, LangItem::MaybeDangling) {
+            flags |= AdtFlags::IS_MAYBE_DANGLING;
+        }
         if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
@@ -437,6 +442,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
+    /// Returns `true` if this is `MaybeDangling<T>`.
+    #[inline]
+    pub fn is_maybe_dangling(self) -> bool {
+        self.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
     }
 
     /// Returns `true` if this is `Pin<T>`.
