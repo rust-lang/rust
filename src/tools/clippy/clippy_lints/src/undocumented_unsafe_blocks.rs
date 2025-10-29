@@ -374,7 +374,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
                         hir::Stmt {
                             kind:
                                 hir::StmtKind::Let(hir::LetStmt {
-                                    source: hir::LocalSource::AssignDesugar(_),
+                                    source: hir::LocalSource::AssignDesugar,
                                     ..
                                 }),
                             ..
