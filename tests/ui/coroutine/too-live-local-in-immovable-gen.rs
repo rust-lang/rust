@@ -12,7 +12,7 @@ fn main() {
             // The compiler will panic if the coroutine transformation finds that
             // `a` is live and type checking finds it dead.
             let a = {
-                yield ();
+                ().yield;
                 4i32
             };
             let _ = &a;

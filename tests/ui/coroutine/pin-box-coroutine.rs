@@ -8,6 +8,6 @@ fn assert_coroutine<G: Coroutine>(_: G) {
 }
 
 fn main() {
-    assert_coroutine(#[coroutine] static || yield);
-    assert_coroutine(Box::pin(#[coroutine] static || yield));
+    assert_coroutine(#[coroutine] static || ().yield);
+    assert_coroutine(Box::pin(#[coroutine] static || ().yield));
 }

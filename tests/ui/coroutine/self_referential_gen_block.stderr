@@ -6,7 +6,7 @@ LL |         let mut x = gen {
 LL |             let y = 42;
 LL |             let z = &y;
    |                     ^^
-LL |             yield 43;
+LL |             43.yield;
    |             -------- possible yield occurs here
 
 error: aborting due to 1 previous error

@@ -8,7 +8,7 @@ fn main() {
     let mut b = #[coroutine]
     || {
         let d = 6;
-        yield;
+        ().yield;
         _zzz(); // #break
         a = d;
     };

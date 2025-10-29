@@ -9,10 +9,10 @@ fn main() {
 
 fn foo() {
     #[coroutine] || {
-        yield drop(Config {
+        drop(Config {
             nickname: NonCopy,
             b: NonCopy2,
-        }.nickname);
+        }.nickname).yield;
     };
 }
 

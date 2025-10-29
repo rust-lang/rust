@@ -10,7 +10,7 @@ fn foo() -> impl Coroutine<Return = i32> {
             return Ok(6);
         }
 
-        yield ();
+        ().yield;
 
         5 //~ ERROR mismatched types [E0308]
     }

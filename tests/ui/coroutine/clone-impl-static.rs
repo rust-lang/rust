@@ -9,7 +9,7 @@
 fn main() {
     let generator = #[coroutine]
     static move || {
-        yield;
+        ().yield;
     };
     check_copy(&generator);
     //~^ ERROR Copy` is not satisfied

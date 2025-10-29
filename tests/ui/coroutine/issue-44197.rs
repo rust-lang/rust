@@ -11,7 +11,7 @@ fn foo(_: &str) -> String {
 
 fn bar(baz: String) -> impl Coroutine<(), Yield = String, Return = ()> {
     #[coroutine] move || {
-        yield foo(&baz);
+        foo(&baz).yield;
     }
 }
 
@@ -22,7 +22,7 @@ fn foo2(_: &str) -> Result<String, ()> {
 fn bar2(baz: String) -> impl Coroutine<(), Yield = String, Return = ()> {
     #[coroutine] move || {
         if let Ok(quux) = foo2(&baz) {
-            yield quux;
+            quux.yield;
         }
     }
 }

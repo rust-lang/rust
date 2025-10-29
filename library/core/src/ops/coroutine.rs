@@ -47,7 +47,7 @@ pub enum CoroutineState<Y, R> {
 ///
 /// fn main() {
 ///     let mut coroutine = #[coroutine] || {
-///         yield 1;
+///         1.yield;
 ///         "foo"
 ///     };
 ///

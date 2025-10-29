@@ -12,7 +12,7 @@ note: coroutine is returned here
    |
 LL | /     static || {
 LL | |
-LL | |         yield;
+LL | |         ().yield;
 LL | |         x
 LL | |     }
    | |_____^

@@ -39,8 +39,8 @@ LL | struct S;
 error[E0277]: `{static coroutine@$DIR/issue-84973-blacklist.rs:18:26: 18:35}` cannot be unpinned
   --> $DIR/issue-84973-blacklist.rs:18:26
    |
-LL |     f_unpin(#[coroutine] static || { yield; });
-   |     -------              ^^^^^^^^^^^^^^^^^^^^ the trait `Unpin` is not implemented for `{static coroutine@$DIR/issue-84973-blacklist.rs:18:26: 18:35}`
+LL |     f_unpin(#[coroutine] static || { ().yield; });
+   |     -------              ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Unpin` is not implemented for `{static coroutine@$DIR/issue-84973-blacklist.rs:18:26: 18:35}`
    |     |
    |     required by a bound introduced by this call
    |

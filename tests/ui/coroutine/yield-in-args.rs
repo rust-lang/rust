@@ -6,6 +6,6 @@ fn main() {
     #[coroutine]
     || {
         let b = true;
-        foo(&b, yield); //~ ERROR
+        foo(&b, ().yield); //~ ERROR
     };
 }

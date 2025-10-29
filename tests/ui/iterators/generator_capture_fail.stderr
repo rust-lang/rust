@@ -6,9 +6,9 @@ LL |       let i = {
 LL |           let s = String::new();
 LL |           iter! { || {
    |  _________________^
-LL | |             yield s.len();
+LL | |             s.len().yield;
 LL | |             for x in 5..10 {
-LL | |                 yield x * 2;
+LL | |                 (x * 2).yield;
 LL | |             }
 LL | |         } }
    | |_________^ borrowed value does not live long enough

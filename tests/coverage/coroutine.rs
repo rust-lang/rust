@@ -20,7 +20,7 @@ fn main() {
     let is_true = std::env::args().len() == 1;
     let mut coroutine = #[coroutine]
     || {
-        yield get_u32(is_true);
+        get_u32(is_true).yield;
         return "foo";
     };
 

@@ -9,7 +9,7 @@ fn main() {
         let s = "foo".to_string();
         iter! { move || {
             for c in s.chars() {
-                yield c;
+                c.yield;
             }
         }}
     };

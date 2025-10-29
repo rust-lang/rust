@@ -316,8 +316,8 @@ fn test_expr() {
     c1!(expr, [ expr? ], "expr?");
 
     // ExprKind::Yield
-    c1!(expr, [ yield ], "yield");
-    c1!(expr, [ yield true ], "yield true");
+    c1!(expr, [ ().yield ], "().yield");
+    c1!(expr, [ true.yield ], "true.yield");
 
     // ExprKind::Yeet
     c1!(expr, [ do yeet ], "do yeet");

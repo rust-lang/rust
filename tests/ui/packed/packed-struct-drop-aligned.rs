@@ -50,7 +50,7 @@ fn main() {
         // struct to a separate local before dropping it. We move out the
         // first field to generate and open drop for the second field.
         drop(p.0);
-        yield;
+        ().yield;
     };
     Pin::new(&mut g).resume(());
     assert_eq!(drop_count.get(), 1);

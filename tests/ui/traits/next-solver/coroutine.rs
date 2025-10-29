@@ -19,7 +19,7 @@ fn main() {
         #[coroutine]
         || {
             //[fail]~^ ERROR Coroutine<A>` is not satisfied
-            yield ();
+            ().yield;
         },
     );
 }
@@ -29,7 +29,7 @@ fn main() {
     needs_coroutine(
         #[coroutine]
         |_: A| {
-            let _: A = yield B;
+            let _: A = B.yield;
             C
         },
     )

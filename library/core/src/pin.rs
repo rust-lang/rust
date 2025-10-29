@@ -1954,9 +1954,9 @@ unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 ///     #[coroutine] static || {
 ///         let foo = String::from("foo");
 ///         let foo_ref = &foo; // ------+
-///         yield 0;                  // | <- crosses yield point!
+///         0.yield;                  // | <- crosses yield point!
 ///         println!("{foo_ref}"); // <--+
-///         yield foo.len();
+///         foo.len().yield;
 ///     }
 /// }
 ///

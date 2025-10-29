@@ -11,7 +11,7 @@ where F: Fn() -> ()
     #[coroutine] move || {
         loop {
             match f() {
-                _ => yield,
+                _ => ().yield,
             }
         }
     }
@@ -22,7 +22,7 @@ fn main() {
     #[coroutine] || { //~ WARN unused coroutine that must be used
         let _to_pin = with(move || println!("{:p}", data));
         loop {
-            yield
+            ().yield
         }
     };
 }

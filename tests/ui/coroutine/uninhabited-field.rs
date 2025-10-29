@@ -19,13 +19,13 @@ fn run<T>(x: bool, y: bool) {
             if y {
                 a = conjure::<T>();
             }
-            yield ();
+            ().yield;
         } else {
             let a : T;
             if y {
                 a = conjure::<T>();
             }
-            yield ();
+            ().yield;
         }
     };
     assert_matches!(Pin::new(&mut c).resume(()), CoroutineState::Yielded(()));

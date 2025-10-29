@@ -18,11 +18,11 @@ async fn two() -> i32 {
 }
 
 async gen fn foo() -> i32 {
-    yield one().await;
+    one().await.yield;
     pause().await;
-    yield two().await;
+    two().await.yield;
     pause().await;
-    yield 3;
+    3.yield;
     pause().await;
 }
 

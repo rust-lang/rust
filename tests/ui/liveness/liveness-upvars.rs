@@ -139,10 +139,10 @@ pub fn coroutine() {
     let mut s: u32 = 0;
     let _ = #[coroutine] |_| {
         s = 0;
-        yield ();
+        ().yield;
         s = 1; //~ WARN value assigned to `s` is never read
-        yield (s = 2);
-        s = yield (); //~ WARN value assigned to `s` is never read
+        (s = 2).yield;
+        s = ().yield; //~ WARN value assigned to `s` is never read
         s = 3;
     };
 }

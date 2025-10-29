@@ -9,7 +9,7 @@ use std::ops::{Coroutine, CoroutineState};
 use std::pin::pin;
 
 fn main() {
-    let mut gn = gen { yield 1; 2.yield; (1 + 2).yield; };
+    let mut gn = gen { 1.yield; 2.yield; (1 + 2).yield; };
 
     let mut coro =
         pin!(#[coroutine] |_: i32| { let x = 1.yield; (x + 2).yield; });

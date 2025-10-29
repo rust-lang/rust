@@ -11,7 +11,7 @@ note: async gen block is returned here
    |
 LL | /     async gen {
 LL | |         x.clear();
-LL | |         for x in 3..6 { yield x }
+LL | |         for x in 3..6 { x.yield }
 LL | |     }
    | |_____^
 help: to force the async gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
@@ -34,7 +34,7 @@ note: async gen block is returned here
 LL | /     async // Just to check that whitespace characters are correctly handled
 LL | |     gen {
 LL | |         x.clear();
-LL | |         for x in 3..6 { yield x }
+LL | |         for x in 3..6 { x.yield }
 LL | |     }
    | |_____^
 help: to force the async gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword

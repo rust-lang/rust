@@ -12,7 +12,7 @@ fn foo(_a: (), _b: &bool) {}
 fn bar() {
     #[coroutine] || { //~ WARN unused coroutine that must be used
         let b = true;
-        foo(yield, &b);
+        foo(().yield, &b);
     };
 }
 

@@ -11,8 +11,8 @@ note: coroutine is not `Send` as this value is used across a yield
    |
 LL |         let _non_send_gen = make_non_send_coroutine();
    |             ------------- has type `Opaque(DefId(0:24 ~ coroutine_print_verbose_1[75fb]::make_non_send_coroutine::{opaque#0}), [])` which is not `Send`
-LL |         yield;
-   |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
+LL |         ().yield;
+   |         ^^^^^^^^ yield occurs here, with `_non_send_gen` maybe used later
 note: required by a bound in `require_send`
   --> $DIR/coroutine-print-verbose-1.rs:26:25
    |

@@ -55,13 +55,13 @@ LL | const F = S { t: foo };
 error: missing type for `const` item
   --> $DIR/unnamable-types.rs:37:8
    |
-LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };
+LL | const G = #[coroutine] || -> i32 { 0.yield; return 1; };
    |        ^
    |
 note: however, the inferred type `{coroutine@$DIR/unnamable-types.rs:37:24: 37:33}` cannot be named
   --> $DIR/unnamable-types.rs:37:24
    |
-LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };
+LL | const G = #[coroutine] || -> i32 { 0.yield; return 1; };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors

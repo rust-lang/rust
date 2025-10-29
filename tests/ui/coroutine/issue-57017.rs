@@ -22,7 +22,7 @@ macro_rules! type_combinations {
         // This is the same bug as issue 57017, but using yield instead of await
         {
             let g = #[coroutine] move || match drop(&$name::unsync::Client::default()) {
-                _status => yield,
+                _status => ().yield,
             };
             assert_send(g);
         }
@@ -31,7 +31,7 @@ macro_rules! type_combinations {
         // function.
         {
             let g = #[coroutine] move || match drop($name::unsend::Client::default()) {
-                _status => yield,
+                _status => ().yield,
             };
             assert_send(g);
         }

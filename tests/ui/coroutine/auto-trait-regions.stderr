@@ -6,8 +6,8 @@ LL |     let generator = #[coroutine] move || {
 LL |         let a = A(&mut true, &mut true, No);
    |                   ^^^^^^^^^
 ...
-LL |         yield;
-   |         ----- possible yield occurs here
+LL |         ().yield;
+   |         -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable
    |
@@ -22,8 +22,8 @@ LL |     let generator = #[coroutine] move || {
 LL |         let a = A(&mut true, &mut true, No);
    |                              ^^^^^^^^^
 ...
-LL |         yield;
-   |         ----- possible yield occurs here
+LL |         ().yield;
+   |         -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable
    |

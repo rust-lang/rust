@@ -6,9 +6,9 @@ impl !Send for Foo {}
 fn main() {
     assert_send(#[coroutine] || { //~ ERROR coroutine cannot be sent between threads safely
         let guard = Foo(42);
-        yield;
+        ().yield;
         drop(guard);
-        yield;
+        ().yield;
     })
 }
 

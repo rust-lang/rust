@@ -34,7 +34,7 @@ fn t1() {
         if test() {
             drop(b);
         }
-        yield;
+        ().yield;
     };
 
     let n = A.load(Ordering::SeqCst);
@@ -50,7 +50,7 @@ fn t2() {
         if test2() {
             drop(b);
         }
-        yield;
+        ().yield;
     };
 
     let n = A.load(Ordering::SeqCst);

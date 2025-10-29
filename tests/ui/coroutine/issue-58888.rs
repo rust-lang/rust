@@ -17,7 +17,7 @@ impl Database {
         move || {
             let iter = self.get_connection();
             for i in iter {
-                yield i
+                i.yield
             }
         }
     }

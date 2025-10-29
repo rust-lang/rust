@@ -168,7 +168,7 @@ pub enum TyKind<I: Interner> {
     CoroutineClosure(I::CoroutineClosureId, I::GenericArgs),
 
     /// The anonymous type of a coroutine. Used to represent the type of
-    /// `|a| yield a`.
+    /// `|a| a.yield`.
     ///
     /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
@@ -192,8 +192,8 @@ pub enum TyKind<I: Interner> {
     /// #![feature(coroutines)]
     /// #[coroutine] static |a| {
     ///     let x = &vec![3];
-    ///     yield a;
-    ///     yield x[0];
+    ///     a.yield;
+    ///     x[0].yield;
     /// }
     /// # ;
     /// ```

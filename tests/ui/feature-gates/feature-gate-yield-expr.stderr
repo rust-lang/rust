@@ -1,8 +1,8 @@
 error[E0658]: yield syntax is experimental
-  --> $DIR/feature-gate-yield-expr.rs:5:5
+  --> $DIR/feature-gate-yield-expr.rs:5:8
    |
-LL |     yield ();
-   |     ^^^^^^^^
+LL |     ().yield;
+   |        ^^^^^
    |
    = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
    = help: add `#![feature(yield_expr)]` to the crate attributes to enable
@@ -11,7 +11,7 @@ LL |     yield ();
 error[E0658]: yield syntax is experimental
   --> $DIR/feature-gate-yield-expr.rs:5:5
    |
-LL |     yield ();
+LL |     ().yield;
    |     ^^^^^^^^
    |
    = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
@@ -21,7 +21,7 @@ LL |     yield ();
 error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
   --> $DIR/feature-gate-yield-expr.rs:5:5
    |
-LL |     yield ();
+LL |     ().yield;
    |     ^^^^^^^^
    |
 help: use `#[coroutine]` to make this closure a coroutine
@@ -32,7 +32,7 @@ LL | #[coroutine] fn main() {
 error[E0627]: yield expression outside of coroutine literal
   --> $DIR/feature-gate-yield-expr.rs:5:5
    |
-LL |     yield ();
+LL |     ().yield;
    |     ^^^^^^^^
 
 error: aborting due to 4 previous errors

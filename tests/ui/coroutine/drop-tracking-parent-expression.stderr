@@ -23,8 +23,8 @@ note: coroutine is not `Send` as this value is used across a yield
 LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
    |                                                                         ------------------------ has type `derived_drop::Client` which is not `Send`
 ...
-LL |                   _ => yield,
-   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |                   _ => ().yield,
+   |                        ^^^^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -65,8 +65,8 @@ note: coroutine is not `Send` as this value is used across a yield
 LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
    |                                                                         ------------------------ has type `significant_drop::Client` which is not `Send`
 ...
-LL |                   _ => yield,
-   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |                   _ => ().yield,
+   |                        ^^^^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -107,8 +107,8 @@ note: coroutine is not `Send` as this value is used across a yield
 LL |               let g = #[coroutine] move || match drop($name::Client { ..$name::Client::default() }) {
    |                                                                         ------------------------ has type `insignificant_dtor::Client` which is not `Send`
 ...
-LL |                   _ => yield,
-   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |                   _ => ().yield,
+   |                        ^^^^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
 ...
 LL | /     type_combinations!(
 LL | |         // OK

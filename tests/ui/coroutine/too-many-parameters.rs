@@ -4,6 +4,6 @@ fn main() {
     #[coroutine]
     |(), ()| {
         //~^ error: too many parameters for a coroutine
-        yield;
+        ().yield;
     };
 }

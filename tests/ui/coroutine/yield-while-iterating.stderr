@@ -5,8 +5,8 @@ LL |     let _b =#[coroutine]  move || {
    |                           ------- within this coroutine
 LL |         for p in &x {
    |                  ^^
-LL |             yield();
-   |             ------- possible yield occurs here
+LL |             ().yield;
+   |             -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable
    |

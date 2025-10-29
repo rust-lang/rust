@@ -9,8 +9,8 @@ fn bar<'a>() {
     let b: &'a str = a;
 
     #[coroutine] || { //~ WARN unused coroutine that must be used
-        yield a;
-        yield b;
+        a.yield;
+        b.yield;
     };
 }
 

@@ -2,7 +2,7 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/type-mismatch-error.rs:17:17
    |
 LL | /             if false {
-LL | |                 yield ();
+LL | |                 ().yield;
    | |                 ---------
    | |                 |       |
    | |                 |       help: consider removing this semicolon

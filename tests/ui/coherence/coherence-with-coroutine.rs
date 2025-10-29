@@ -12,7 +12,7 @@ fn defining_use() -> OpaqueCoroutine {
     #[coroutine]
     || {
         for i in 0..10 {
-            yield i;
+            i.yield;
         }
     }
 }

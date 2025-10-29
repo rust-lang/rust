@@ -6,7 +6,7 @@ LL | fn bad1<'short, 'long: 'short>() -> impl Coroutine<Covariant<'short>> {
    |         |
    |         lifetime `'short` defined here
 LL |     #[coroutine] |_: Covariant<'short>| {
-LL |         let a: Covariant<'long> = yield ();
+LL |         let a: Covariant<'long> = ().yield;
    |                ^^^^^^^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
    |
    = help: consider adding the following bound: `'short: 'long`
@@ -23,7 +23,7 @@ LL | fn bad2<'short, 'long: 'short>() -> impl Coroutine<Contravariant<'long>> {
    |         |
    |         lifetime `'short` defined here
 LL |     #[coroutine] |_: Contravariant<'long>| {
-LL |         let a: Contravariant<'short> = yield ();
+LL |         let a: Contravariant<'short> = ().yield;
    |                                        ^^^^^^^^ yielding this value requires that `'short` must outlive `'long`
    |
    = help: consider adding the following bound: `'short: 'long`

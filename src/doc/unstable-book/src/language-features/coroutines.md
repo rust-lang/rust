@@ -33,7 +33,7 @@ use std::pin::Pin;
 
 fn main() {
     let mut coroutine = #[coroutine] || {
-        yield 1;
+        1.yield;
         return "foo"
     };
 
@@ -67,7 +67,7 @@ use std::pin::Pin;
 fn main() {
     let mut coroutine = #[coroutine] || {
         println!("2");
-        yield;
+        ().yield;
         println!("4");
     };
 
@@ -172,7 +172,7 @@ use std::pin::Pin;
 fn main() {
     let ret = "foo";
     let mut coroutine = #[coroutine] move || {
-        yield 1;
+        1.yield;
         return ret
     };
 

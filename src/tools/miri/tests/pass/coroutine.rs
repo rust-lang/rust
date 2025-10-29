@@ -45,7 +45,7 @@ fn basic() {
         1,
         false,
         #[coroutine]
-        || yield 1,
+        || 1.yield,
     );
 
     finish(
@@ -54,11 +54,11 @@ fn basic() {
         #[coroutine]
         || {
             let mut x = 0;
-            yield 1;
+            1.yield;
             x += 1;
-            yield 1;
+            1.yield;
             x += 1;
-            yield 1;
+            1.yield;
             assert_eq!(x, 2);
         },
     );
@@ -69,7 +69,7 @@ fn basic() {
         #[coroutine]
         || {
             for i in 0..8 {
-                yield i;
+               i.yield;
             }
         },
     );
@@ -80,7 +80,7 @@ fn basic() {
         #[coroutine]
         || {
             if true {
-                yield 1;
+                1.yield;
             } else {
             }
         },
@@ -93,7 +93,7 @@ fn basic() {
         || {
             if false {
             } else {
-                yield 1;
+                1.yield;
             }
         },
     );
@@ -104,13 +104,13 @@ fn basic() {
         #[coroutine]
         || {
             if {
-                yield 1;
+                1.yield;
                 false
             } {
-                yield 1;
+                1.yield;
                 panic!()
             }
-            yield 1;
+            1.yield;
         },
     );
 
@@ -124,7 +124,7 @@ fn basic() {
                 let mut x = 5;
                 let y = &mut x;
                 *y = 5;
-                yield *y;
+                y.yield;
                 *y = 10;
                 x
             }
@@ -140,7 +140,7 @@ fn basic() {
                 let mut x = Box::new(5);
                 let y = &mut *x;
                 *y = 5;
-                yield *y;
+                y.yield;
                 *y = 10;
                 *x
             }
@@ -154,14 +154,14 @@ fn basic() {
         false,
         #[coroutine]
         || {
-            yield 1;
+            1.yield;
             if b {
                 return;
             }
             #[allow(unused)]
             let x = never();
             #[allow(unreachable_code)]
-            yield 2;
+            2.yield;
             drop(x);
         },
     );
@@ -171,10 +171,10 @@ fn basic() {
         false,
         #[coroutine]
         || {
-            yield 1;
+            1.yield;
             #[allow(unreachable_code)]
             let _x: (String, !) = (String::new(), {
-                yield 2;
+                2.yield;
                 return;
             });
         },
@@ -223,7 +223,7 @@ fn smoke_resume_arg() {
         &mut #[coroutine]
         |mut b| {
             while b != 0 {
-                b = yield (b + 1);
+                b = (b + 1).yield;
             }
             -1
         },
@@ -233,7 +233,7 @@ fn smoke_resume_arg() {
     expect_drops(2, || {
         drain(
             &mut #[coroutine]
-            |a| yield a,
+            |a| a.yield,
             vec![(DropMe, Yielded(DropMe))],
         )
     });
@@ -241,7 +241,7 @@ fn smoke_resume_arg() {
     expect_drops(6, || {
         drain(
             &mut #[coroutine]
-            |a| yield yield a,
+            |a| a.yield.yield,
             vec![(DropMe, Yielded(DropMe)), (DropMe, Yielded(DropMe)), (DropMe, Complete(DropMe))],
         )
     });
@@ -250,7 +250,7 @@ fn smoke_resume_arg() {
     expect_drops(2, || {
         drain(
             &mut #[coroutine]
-            |a| yield return a,
+            |a| (return a).yield,
             vec![(DropMe, Complete(DropMe))],
         )
     });
@@ -259,7 +259,7 @@ fn smoke_resume_arg() {
         drain(
             &mut #[coroutine]
             |a: DropMe| {
-                if false { yield () } else { a }
+                if false { ().yield } else { a }
             },
             vec![(DropMe, Complete(DropMe))],
         )
@@ -270,9 +270,9 @@ fn smoke_resume_arg() {
             #[allow(unused_assignments, unused_variables)]
             &mut #[coroutine]
             |mut a: DropMe| {
-                a = yield;
-                a = yield;
-                a = yield;
+                a = ().yield;
+                a = ().yield;
+                a = ().yield;
             },
             vec![
                 (DropMe, Yielded(())),
@@ -299,13 +299,13 @@ fn uninit_fields() {
                 if y {
                     _a = conjure::<T>();
                 }
-                yield ();
+                ().yield;
             } else {
                 let _a: T;
                 if y {
                     _a = conjure::<T>();
                 }
-                yield ();
+                ().yield;
             }
         };
         assert!(matches!(Pin::new(&mut c).resume(()), CoroutineState::Yielded(())));

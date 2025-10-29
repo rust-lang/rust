@@ -21,7 +21,7 @@ fn main() {
     |_x: u8| {
         let _d = HasDrop;
         loop {
-            yield;
+            ().yield;
             callee();
         }
     };

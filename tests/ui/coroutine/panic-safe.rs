@@ -13,7 +13,7 @@ fn main() {
         if true {
             panic!();
         }
-        yield;
+        ().yield;
     };
 
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {

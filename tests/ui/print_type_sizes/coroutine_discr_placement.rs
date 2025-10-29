@@ -13,12 +13,12 @@ pub fn foo() {
     || {
         {
             let w: i32 = 4;
-            yield;
+            ().yield;
             drop(w);
         }
         {
             let z: i32 = 7;
-            yield;
+            ().yield;
             drop(z);
         }
     };

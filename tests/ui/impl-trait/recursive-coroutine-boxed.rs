@@ -11,7 +11,7 @@ fn foo() -> impl Coroutine<Yield = (), Return = ()> {
         let mut gen = Box::pin(foo());
         let mut r = gen.as_mut().resume(());
         while let CoroutineState::Yielded(v) = r {
-            yield v;
+            v.yield;
             r = gen.as_mut().resume(());
         }
     }

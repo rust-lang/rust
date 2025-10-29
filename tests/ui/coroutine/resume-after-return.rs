@@ -14,7 +14,7 @@ fn main() {
         if true {
             return;
         }
-        yield;
+        ().yield;
     };
 
     match Pin::new(&mut foo).resume(()) {

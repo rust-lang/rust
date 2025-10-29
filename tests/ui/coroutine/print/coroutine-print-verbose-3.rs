@@ -7,7 +7,7 @@ fn main() {
     let coroutine: () = #[coroutine]
     || {
         //~^ ERROR mismatched types
-        yield 1i32;
+        1i32.yield;
         return x;
     };
 }

@@ -17,13 +17,13 @@ fn drop_and_yield() {
     let x = #[coroutine]
     || {
         String::new();
-        yield;
+        ().yield;
     };
     Box::pin(x).as_mut().resume(());
     let y = #[coroutine]
     static || {
         String::new();
-        yield;
+        ().yield;
     };
     Box::pin(y).as_mut().resume(());
 }

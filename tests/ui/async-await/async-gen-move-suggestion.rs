@@ -16,7 +16,7 @@ fn moved() -> impl AsyncIterator<Item = u32> {
 
     async gen { //~ ERROR
         x.clear();
-        for x in 3..6 { yield x }
+        for x in 3..6 { x.yield }
     }
 }
 
@@ -27,7 +27,7 @@ fn check_with_whitespace_chars() -> impl AsyncIterator<Item = u32> {
     async // Just to check that whitespace characters are correctly handled
     gen { //~^ ERROR
         x.clear();
-        for x in 3..6 { yield x }
+        for x in 3..6 { x.yield }
     }
 }
 
