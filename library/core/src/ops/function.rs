@@ -310,4 +310,15 @@ mod impls {
             (*self).call_mut(args)
         }
     }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
+    impl<A: Tuple, F: ?Sized> const Fn<A> for &mut F
+    where
+        F: [const] Fn<A>,
+    {
+        extern "rust-call" fn call(&self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
 }
