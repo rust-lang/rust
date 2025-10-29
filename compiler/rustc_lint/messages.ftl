@@ -187,9 +187,9 @@ lint_closure_returning_async_block = closure returning async block can be made i
     .label = this async block can be removed, and the closure can be turned into an async closure
     .suggestion = turn this into an async closure
 
-lint_cmse_union_may_leak_information =
-    passing a union across the security boundary may leak information
-    .note = the bits not used by the current variant may contain stale secure data
+lint_cmse_uninitialized_may_leak_information =
+    passing a (partially) uninitialized value across the security boundary may leak information
+    .note = padding or fields not used by the current variant of a union may contain stale secure data
 
 lint_command_line_source = `forbid` lint level was set on command line
 

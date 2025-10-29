@@ -1469,9 +1469,9 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
 
 // cmse_uninitialized_leak.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_cmse_union_may_leak_information)]
+#[diag(lint_cmse_uninitialized_may_leak_information)]
 #[note]
-pub(crate) struct CmseUnionMayLeakInformation;
+pub(crate) struct CmseUninitializedMayLeakInformation;
 
 // precedence.rs
 #[derive(LintDiagnostic)]

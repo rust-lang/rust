@@ -10,42 +10,67 @@ extern crate minicore;
 use minicore::*;
 
 #[repr(Rust)]
-pub union ReprRustUnionU64 {
+union ReprRustUnionU64 {
     _unused: u64,
 }
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
-pub extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU64 {
+extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU64 {
+    // With `repr(Rust)` value is always fully initialized.
     ReprRustUnionU64 { _unused: 1 }
-    //~^ WARN passing a union across the security boundary may leak information
+}
+
+#[repr(Rust)]
+union ReprRustUnionPartiallyUninit {
+    _unused1: u32,
+    _unused2: u16,
 }
 
 #[no_mangle]
-pub extern "cmse-nonsecure-entry" fn maybe_uninit_32bit() -> MaybeUninit<u32> {
+#[allow(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn union_rust_partially_uninit() -> ReprRustUnionPartiallyUninit {
+    ReprRustUnionPartiallyUninit { _unused1: 1 }
+    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn maybe_uninit_32bit() -> MaybeUninit<u32> {
     MaybeUninit::uninit()
-    //~^ WARN passing a union across the security boundary may leak information
+    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
 }
 
 #[no_mangle]
-pub extern "cmse-nonsecure-entry" fn maybe_uninit_64bit() -> MaybeUninit<f64> {
+extern "cmse-nonsecure-entry" fn maybe_uninit_64bit() -> MaybeUninit<f64> {
     if true {
         return MaybeUninit::new(6.28);
-        //~^ WARN passing a union across the security boundary may leak information
+        //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
     }
     MaybeUninit::new(3.14)
-    //~^ WARN passing a union across the security boundary may leak information
+    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
 }
 
 #[repr(transparent)]
-pub struct Wrapper(ReprRustUnionU64);
+struct Wrapper(MaybeUninit<u64>);
 
 #[no_mangle]
-pub extern "cmse-nonsecure-entry" fn repr_transparent_union() -> Wrapper {
-    //~^ WARN improper_ctypes_definitions
+extern "cmse-nonsecure-entry" fn repr_transparent_union() -> Wrapper {
     match 0 {
-        //~^ WARN passing a union across the security boundary may leak information
-        0 => Wrapper(ReprRustUnionU64 { _unused: 1 }),
-        _ => Wrapper(ReprRustUnionU64 { _unused: 2 }),
+        //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
+        0 => Wrapper(MaybeUninit::new(0)),
+        _ => Wrapper(MaybeUninit::new(1)),
     }
+}
+
+// This is an aggregate that cannot be unwrapped, and has 1 (uninitialized) padding byte.
+#[repr(C, align(4))]
+struct PaddedStruct {
+    a: u8,
+    b: u16,
+}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn padded_struct() -> PaddedStruct {
+    PaddedStruct { a: 0, b: 1 }
+    //~^ WARN passing a (partially) uninitialized value across the security boundary may leak information
 }

@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
@@ -86,11 +86,12 @@ fn check_cmse_call_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             continue;
         };
 
-        if layout_contains_union(cx.tcx, &layout) {
+        if !is_transmutable_to_array_u8(cx.tcx, ty.clone(), layout) {
+            // Some part of the source type may be uninitialized.
             cx.emit_span_lint(
                 CMSE_UNINITIALIZED_LEAK,
                 arg.span,
-                lints::CmseUnionMayLeakInformation,
+                lints::CmseUninitializedMayLeakInformation,
             );
         }
     }
@@ -126,11 +127,12 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
     }
 
     let typing_env = ty::TypingEnv::fully_monomorphized();
+
     let Ok(ret_layout) = cx.tcx.layout_of(typing_env.as_query_input(return_type)) else {
         return;
     };
 
-    if layout_contains_union(cx.tcx, &ret_layout) {
+    if !is_transmutable_to_array_u8(cx.tcx, return_type.clone(), ret_layout) {
         let return_expr_span = if is_implicit_return {
             match expr.kind {
                 ExprKind::Block(block, _) => match block.expr {
@@ -143,46 +145,39 @@ fn check_cmse_entry_return<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             expr.span
         };
 
+        // Some part of the source type may be uninitialized.
         cx.emit_span_lint(
             CMSE_UNINITIALIZED_LEAK,
             return_expr_span,
-            lints::CmseUnionMayLeakInformation,
+            lints::CmseUninitializedMayLeakInformation,
         );
     }
 }
 
-/// Check whether any part of the layout is a union, which may contain secure data still.
-fn layout_contains_union<'tcx>(tcx: TyCtxt<'tcx>, layout: &TyAndLayout<'tcx>) -> bool {
-    if layout.ty.is_union() {
-        return true;
+/// Check whether the source type `T` can be safely transmuted to `[u8; size_of::<T>()]`.
+///
+/// If the transmute is valid, `T` must be fully initialized. Otherwise, parts of it may be
+/// uninitialized, which should trigger the lint defined by this module.
+fn is_transmutable_to_array_u8<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    layout: TyAndLayout<'tcx>,
+) -> bool {
+    use rustc_transmute::{Answer, Assume, TransmuteTypeEnv, Types};
+
+    let mut transmute_env = TransmuteTypeEnv::new(tcx);
+    let assume = Assume { alignment: true, lifetimes: true, safety: false, validity: false };
+
+    let array_u8_ty = Ty::new_array_with_const_len(
+        tcx,
+        tcx.types.u8,
+        ty::Const::from_target_usize(tcx, layout.size.bytes()),
+    );
+
+    let types = Types { src: ty, dst: array_u8_ty };
+
+    match transmute_env.is_transmutable(types, assume) {
+        Answer::Yes => true,
+        Answer::No(_) | Answer::If(_) => false,
     }
-
-    let typing_env = ty::TypingEnv::fully_monomorphized();
-    let cx = LayoutCx::new(tcx, typing_env);
-
-    match &layout.variants {
-        rustc_abi::Variants::Single { .. } => {
-            for i in 0..layout.fields.count() {
-                if layout_contains_union(tcx, &layout.field(&cx, i)) {
-                    return true;
-                }
-            }
-        }
-
-        rustc_abi::Variants::Multiple { variants, .. } => {
-            for (variant_idx, _vdata) in variants.iter_enumerated() {
-                let variant_layout = layout.for_variant(&cx, variant_idx);
-
-                for i in 0..variant_layout.fields.count() {
-                    if layout_contains_union(tcx, &variant_layout.field(&cx, i)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        rustc_abi::Variants::Empty => {}
-    }
-
-    false
 }
