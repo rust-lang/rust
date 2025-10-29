@@ -1,0 +1,52 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        CLOSURE_EXPR
+          PARAM_LIST
+            PIPE "|"
+            PIPE "|"
+          WHITESPACE " "
+          RET_TYPE
+            THIN_ARROW "->"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "A"
+          ERROR
+            R_ANGLE ">"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              LET_STMT
+                LET_KW "let"
+                WHITESPACE " "
+                IDENT_PAT
+                  NAME
+                    IDENT "x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "1"
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 18: expected a curly brace

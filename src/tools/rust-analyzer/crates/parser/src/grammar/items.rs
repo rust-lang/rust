@@ -424,6 +424,14 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     // fn bar() -> () {}
     opt_ret_type(p);
 
+    // test_err fn_ret_recovery
+    // fn foo() -> A>]) { let x = 1; }
+    // fn foo() -> A>]) where T: Copy { let x = 1; }
+    while p.at(T![')']) | p.at(T![']']) | p.at(T![>]) {
+        // recover from unbalanced return type brackets
+        p.err_and_bump("expected a curly brace");
+    }
+
     // test function_where_clause
     // fn foo<T>() where T: Copy {}
     generic_params::opt_where_clause(p);
