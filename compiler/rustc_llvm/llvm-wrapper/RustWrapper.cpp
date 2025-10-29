@@ -1486,7 +1486,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
           RemarkStreamer(std::move(RemarkStreamer)),
           LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
-#if LLVM_VERSION_GE(22, 0)
+#if LLVM_VERSION_GE(23, 0)
     ~RustDiagnosticHandler() {
       if (RemarkStreamer) {
         RemarkStreamer->releaseSerializer();
@@ -1588,7 +1588,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     // Do not delete the file after we gather remarks
     RemarkFile->keep();
 
-#if LLVM_VERSION_GE(22, 0)
+#if LLVM_VERSION_GE(23, 0)
     auto RemarkSerializer = remarks::createRemarkSerializer(
         llvm::remarks::Format::YAML, RemarkFile->os());
 #else
