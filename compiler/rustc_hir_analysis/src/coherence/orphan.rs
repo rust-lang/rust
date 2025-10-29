@@ -217,21 +217,19 @@ pub(crate) fn orphan_check_impl(
             | ty::Slice(..)
             | ty::RawPtr(..)
             | ty::Ref(..)
-            | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Never
             | ty::Tuple(..)
             | ty::UnsafeBinder(_) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
-            ty::Closure(..)
+            ty::FnDef(..)
+            | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..) => {
-                return Err(tcx
-                    .dcx()
-                    .delayed_bug("cannot define inherent `impl` for closure types"));
-            }
-            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
+            | ty::CoroutineWitness(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..) => {
                 let sp = tcx.def_span(impl_def_id);
                 span_bug!(sp, "weird self type for autotrait impl")
             }
