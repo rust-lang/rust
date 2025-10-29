@@ -613,12 +613,14 @@ impl dyn Any + Send + Sync {
 ///
 /// # Layout
 ///
-/// Like other [`Rust`-representation][repr-rust] types, `TypeId`'s size and layout are unstable.
-/// In particular, this means that you cannot rely on the size and layout of `TypeId` remaining the
-/// same between Rust releases; they are subject to change without prior notice between Rust
-/// releases.
+/// The size of `TypeId` is guaranteed not to exceed 16 bytes.
 ///
-/// [repr-rust]: https://doc.rust-lang.org/reference/type-layout.html#r-layout.repr.rust.unspecified
+/// This is the only guarantee given; any other layout or implementation details
+/// are unstable and prone to change between Rust releases without prior notice.
+///
+/// ```
+/// assert!(size_of::<std::any::TypeId>() <= 16);
+/// ```
 ///
 /// # Danger of Improper Variance
 ///
@@ -714,6 +716,7 @@ impl dyn Any + Send + Sync {
 ///     std::mem::forget(fake_one_ring);
 /// }
 /// ```
+#[repr(C)]
 #[derive(Copy, PartialOrd, Ord)]
 #[derive_const(Clone, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
