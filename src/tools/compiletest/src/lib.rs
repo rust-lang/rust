@@ -485,7 +485,7 @@ fn parse_config(args: Vec<String>) -> Config {
 
         default_codegen_backend,
         override_codegen_backend,
-        bypass_backends: matches.opt_present("bypass-ignore-backends"),
+        bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
     }
 }
 
