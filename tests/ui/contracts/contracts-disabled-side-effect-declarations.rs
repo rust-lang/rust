@@ -3,9 +3,9 @@
 //~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 extern crate core;
-use core::contracts::ensures;
+use core::contracts::requires;
 
-#[ensures(*x = 0; |_ret| true)]
+#[requires(*x = 0; true)]
 fn buggy_add(x: &mut u32, y: u32) {
     *x = *x + y;
 }
