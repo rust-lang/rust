@@ -22,26 +22,6 @@ help: consider inserting whitespace here
 LL | c 'r'
    |  +
 
-error: unexpected closing delimiter: `)`
-  --> $DIR/nonfatal-parsing.rs:15:5
-   |
-LL |     nonfatal_parsing::run!();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unexpected closing delimiter
-   |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: unexpected closing delimiter: `]`
-  --> $DIR/nonfatal-parsing.rs:15:5
-   |
-LL |     nonfatal_parsing::run!();
-   |     -^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     the nearest open delimiter
-   |     missing open `(` for this delimiter
-   |     unexpected closing delimiter
-   |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
   --> $DIR/nonfatal-parsing.rs:15:5
    |
@@ -117,21 +97,6 @@ LL |     nonfatal_parsing::run!();
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: unexpected closing delimiter: `)`
-  --> <proc-macro source code>:1:3
-   |
-LL | 1 ) 2
-   |   ^ unexpected closing delimiter
-
-error: unexpected closing delimiter: `]`
-  --> <proc-macro source code>:1:10
-   |
-LL | ( x  [ ) ]
-   |      - - ^ unexpected closing delimiter
-   |      | |
-   |      | missing open `(` for this delimiter
-   |      the nearest open delimiter
-
 error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
   --> <proc-macro source code>:1:1
    |
@@ -192,6 +157,6 @@ error: invalid digit for a base 2 literal
 LL | /*a*/ 0b2 //
    |         ^
 
-error: aborting due to 22 previous errors
+error: aborting due to 18 previous errors
 
 For more information about this error, try `rustc --explain E0768`.
