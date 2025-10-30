@@ -128,7 +128,7 @@ pub enum NonHaltingDiagnostic {
     PoppedPointerTag(Item, String),
     TrackingAlloc(AllocId, Size, Align),
     FreedAlloc(AllocId),
-    AccessedAlloc(AllocId, AccessKind),
+    AccessedAlloc(AllocId, AllocRange, AccessKind),
     RejectedIsolatedOp(String),
     ProgressReport {
         block_count: u64, // how many basic blocks have been run so far
@@ -673,15 +673,15 @@ impl<'tcx> MiriMachine<'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            TrackingAlloc(AllocId(id), size, align) =>
+            TrackingAlloc(id, size, align) =>
                 format!(
-                    "now tracking allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    "now tracking allocation {id:?} of {size} bytes (alignment {align} bytes)",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
-            AccessedAlloc(AllocId(id), access_kind) =>
-                format!("{access_kind} to allocation with id {id}"),
-            FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
+            AccessedAlloc(id, range, access_kind) =>
+                format!("{access_kind} at {id:?}[{}..{}]", range.start.bytes(), range.end().bytes()),
+            FreedAlloc(id) => format!("freed allocation {id:?}"),
             RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),

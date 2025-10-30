@@ -1523,8 +1523,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
-            machine
-                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Read));
+            machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
+                alloc_id,
+                range,
+                AccessKind::Read,
+            ));
         }
         // The order of checks is deliberate, to prefer reporting a data race over a borrow tracker error.
         match &machine.data_race {
@@ -1559,8 +1562,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
-            machine
-                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Write));
+            machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
+                alloc_id,
+                range,
+                AccessKind::Write,
+            ));
         }
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
