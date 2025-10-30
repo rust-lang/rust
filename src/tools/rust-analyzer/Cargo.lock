@@ -2047,6 +2047,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "smallvec",
  "stdx",
  "syntax",
  "syntax-bridge",

@@ -1023,9 +1023,9 @@ impl GlobalState {
                 package_id,
             } => {
                 let snap = self.snapshot();
-                let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                let diagnostics = crate::diagnostics::flycheck_to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
-                    &diagnostic,
+                    diagnostic,
                     &workspace_root,
                     &snap,
                 );

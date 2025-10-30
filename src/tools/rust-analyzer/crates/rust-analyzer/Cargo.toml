@@ -42,6 +42,7 @@ tenthash = "1.1.0"
 num_cpus = "1.17.0"
 mimalloc = { version = "0.1.46", default-features = false, optional = true }
 lsp-server.workspace = true
+smallvec.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-tree.workspace = true
