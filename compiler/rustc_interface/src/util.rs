@@ -421,6 +421,7 @@ impl CodegenBackend for DummyCodegenBackend {
             .crate_types
             .iter()
             .find(|&&crate_type| crate_type != CrateType::Rlib)
+            && outputs.outputs.should_link()
         {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
