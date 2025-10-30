@@ -60,9 +60,15 @@ where
     }
 
     /// The name (e.g. "A_VALS" or "a_vals") for the array of possible test inputs.
-    fn rust_vals_array_name(&self) -> impl std::fmt::Display {
+    pub(crate) fn rust_vals_array_name(&self) -> impl std::fmt::Display {
         if self.ty.is_rust_vals_array_const() {
-            format!("{}_VALS", self.name.to_uppercase())
+            let loads = crate::common::gen_rust::PASSES;
+            format!(
+                "{}_{ty}_{load_size}",
+                self.name.to_uppercase(),
+                ty = self.ty.rust_scalar_type(),
+                load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
+            )
         } else {
             format!("{}_vals", self.name.to_lowercase())
         }
@@ -134,18 +140,32 @@ where
         loads: u32,
     ) -> std::io::Result<()> {
         for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
-            writeln!(
-                w,
-                "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
-                bind = arg.rust_vals_array_binding(),
-                name = arg.rust_vals_array_name(),
-                ty = arg.ty.rust_scalar_type(),
-                load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-                values = arg.ty.populate_random(indentation, loads, &Language::Rust)
-            )?
+            // Constants are defined globally.
+            if arg.ty.is_rust_vals_array_const() {
+                continue;
+            }
+
+            Self::gen_arg_rust(arg, w, indentation, loads)?;
         }
 
         Ok(())
+    }
+
+    pub fn gen_arg_rust(
+        arg: &Argument<T>,
+        w: &mut impl std::io::Write,
+        indentation: Indentation,
+        loads: u32,
+    ) -> std::io::Result<()> {
+        writeln!(
+            w,
+            "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};\n",
+            bind = arg.rust_vals_array_binding(),
+            name = arg.rust_vals_array_name(),
+            ty = arg.ty.rust_scalar_type(),
+            load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+            values = arg.ty.populate_random(indentation, loads, &Language::Rust)
+        )
     }
 
     /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at
