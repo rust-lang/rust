@@ -1298,30 +1298,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        match self.commit_if_ok(|_| coerce.coerce(prev_ty, new_ty)) {
-            Err(_) => {
-                // Avoid giving strange errors on failed attempts.
-                if let Some(e) = first_error {
-                    Err(e)
-                } else {
-                    Err(self
-                        .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        .unwrap_err())
-                }
-            }
-            Ok(ok) => {
-                let (adjustments, target) = self.register_infer_ok_obligations(ok);
-                for expr in exprs {
-                    let expr = expr.as_coercion_site();
-                    self.apply_adjustments(expr, adjustments.clone());
-                }
-                debug!(
-                    "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
-                    prev_ty, new_ty, target
-                );
-                Ok(target)
-            }
+        let ok = self
+            .commit_if_ok(|_| coerce.coerce(prev_ty, new_ty))
+            // Avoid giving strange errors on failed attempts.
+            .map_err(|e| first_error.unwrap_or(e))?;
+
+        let (adjustments, target) = self.register_infer_ok_obligations(ok);
+        for expr in exprs {
+            let expr = expr.as_coercion_site();
+            self.apply_adjustments(expr, adjustments.clone());
         }
+        debug!(
+            "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
+            prev_ty, new_ty, target
+        );
+        Ok(target)
     }
 }
 
