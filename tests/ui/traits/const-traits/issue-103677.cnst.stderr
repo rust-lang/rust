@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `String: const Deref` is not satisfied
+  --> $DIR/issue-103677.rs:6:5
+   |
+LL |     &*s as &str;
+   |     ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
