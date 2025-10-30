@@ -31,8 +31,8 @@ declare_lint_pass!(ByteCharSlice => [BYTE_CHAR_SLICES]);
 
 impl EarlyLintPass for ByteCharSlice {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let Some(slice) = is_byte_char_slices(expr)
-            && !expr.span.from_expansion()
+        if !expr.span.from_expansion()
+            && let Some(slice) = is_byte_char_slices(expr)
         {
             span_lint_and_sugg(
                 cx,
@@ -47,33 +47,28 @@ impl EarlyLintPass for ByteCharSlice {
     }
 }
 
+/// Checks whether the slice is that of byte chars, and if so, builds a byte-string out of it
 fn is_byte_char_slices(expr: &Expr) -> Option<String> {
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = &expr.kind {
-        match &expr.kind {
-            ExprKind::Array(members) => {
-                if members.is_empty() {
-                    return None;
-                }
-
-                members
-                    .iter()
-                    .map(|member| match &member.kind {
-                        ExprKind::Lit(Lit {
-                            kind: LitKind::Byte,
-                            symbol,
-                            ..
-                        }) => Some(symbol.as_str()),
-                        _ => None,
-                    })
-                    .map(|maybe_quote| match maybe_quote {
-                        Some("\"") => Some("\\\""),
-                        Some("\\'") => Some("'"),
-                        other => other,
-                    })
-                    .collect::<Option<String>>()
-            },
-            _ => None,
-        }
+    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = &expr.kind
+        && let ExprKind::Array(members) = &expr.kind
+        && !members.is_empty()
+    {
+        members
+            .iter()
+            .map(|member| match &member.kind {
+                ExprKind::Lit(Lit {
+                    kind: LitKind::Byte,
+                    symbol,
+                    ..
+                }) => Some(symbol.as_str()),
+                _ => None,
+            })
+            .map(|maybe_quote| match maybe_quote {
+                Some("\"") => Some("\\\""),
+                Some("\\'") => Some("'"),
+                other => other,
+            })
+            .collect::<Option<String>>()
     } else {
         None
     }
