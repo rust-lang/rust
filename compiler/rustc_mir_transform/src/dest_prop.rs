@@ -272,7 +272,15 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match &statement.kind {
-            // FIXME: Don't delete storage statements, but "merge" the storage ranges instead.
+            // Currently we delete storage statements for merged locals.
+            // TODO: A better approach would be to merge the storage liveness ranges:
+            // - For StorageLive: use the earliest live point among merged locals
+            // - For StorageDead: use the latest dead point among merged locals
+            // This would improve stack usage by allowing the compiler to reuse stack slots.
+            // Implementation would require:
+            // 1. Computing liveness ranges for all locals before merging
+            // 2. Updating StorageLive/Dead statements to reflect merged ranges
+            // 3. Ensuring no overlapping lifetimes for non-merged locals
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
                 if self.merged_locals.contains(*local) =>
             {
@@ -410,11 +418,15 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
             }
 
             // As described at the top of this file, we do not touch locals which have
-            // different types.
+            // different types. Even if types are subtypes of each other, merging them
+            // could lead to incorrect vtable selection or other type-dependent behavior.
             let src_ty = self.body.local_decls()[src].ty;
             let dest_ty = self.body.local_decls()[dest].ty;
             if src_ty != dest_ty {
-                // FIXME(#112651): This can be removed afterwards. Also update the module description.
+                // See issue #112651: Once the type system properly handles subtyping in MIR,
+                // we might be able to relax this constraint for certain safe subtyping cases.
+                // For now, we require exact type equality to ensure soundness.
+                // Also update the module description if this changes.
                 trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
                 return;
             }

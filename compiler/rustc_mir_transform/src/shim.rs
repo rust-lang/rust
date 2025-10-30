@@ -365,6 +365,23 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     if ty.is_some() {
         let patch = {
+            // FIXME(#127030): This typing_env is constructed using the `drop_in_place`
+            // intrinsic's `def_id`, not the type being dropped. This causes issues when
+            // the dropped type contains const parameters, because the param-env lacks
+            // `ConstArgHasType` predicates for those const params.
+            //
+            // When MIR generation needs const param types (via `ParamConst::find_const_ty_from_env`),
+            // it searches the param-env's caller bounds, which are empty for const params in
+            // this context. This leads to panics during MIR construction for drop glue of
+            // types with const params.
+            //
+            // Current workaround: We prevent inlining of drop glue with const params in
+            // `check_mir_is_available` (see compiler/rustc_mir_transform/src/inline.rs:746).
+            //
+            // Proper fix would involve constructing a typing_env that merges predicates from
+            // both the drop_in_place intrinsic and the type being dropped (if it's an ADT with
+            // a DefId). This requires significant refactoring to properly handle ADT field
+            // predicates and const param bounds.
             let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator = DropShimElaborator {
                 body: &body,

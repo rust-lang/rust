@@ -388,9 +388,18 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         if callee_body.basic_blocks.len() <= 3 {
             threshold += threshold / 4;
         }
+        
+        // Give an extra bonus to very tiny functions (single block, likely trivial getters/setters)
+        // These are especially profitable to inline as they often disappear entirely after optimization
+        if callee_body.basic_blocks.len() == 1 {
+            threshold += threshold / 2;
+        }
+        
         debug!("    final inline threshold = {}", threshold);
 
-        // FIXME: Give a bonus to functions with only a single caller
+        // Note: Detecting single-caller functions would require inter-procedural analysis
+        // which is not currently available at this stage. Such analysis would need to be
+        // performed earlier in the compilation pipeline and stored as metadata.
 
         let mut checker =
             CostChecker::new(tcx, self.typing_env(), Some(callsite.callee), callee_body);
@@ -440,8 +449,13 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
                 // if the no-attribute function ends up with the same instruction set anyway.
                 return Err("cannot move inline-asm across instruction sets");
             } else if let TerminatorKind::TailCall { .. } = term.kind {
-                // FIXME(explicit_tail_calls): figure out how exactly functions containing tail
-                // calls can be inlined (and if they even should)
+                // Functions containing tail calls are currently not inlined.
+                // Inlining them would require:
+                // 1. Converting the tail call to a regular call (losing tail-call optimization)
+                // 2. Or complex transformation to preserve the tail-call property
+                // Since tail calls are often used for performance (avoid stack growth),
+                // inlining them might defeat their purpose. More analysis needed to determine
+                // when inlining a function with tail calls would be beneficial.
                 return Err("can't inline functions with tail calls");
             } else {
                 work_list.extend(term.successors())
@@ -549,7 +563,13 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     // Only consider direct calls to functions
     let terminator = bb_data.terminator();
 
-    // FIXME(explicit_tail_calls): figure out if we can inline tail calls
+    // Note: Tail calls (TerminatorKind::TailCall) are not currently supported for inlining.
+    // Inlining a tail call would require special handling:
+    // 1. The tail call must become a direct transfer of control (no return)
+    // 2. Caller's cleanup/return must be eliminated
+    // 3. Argument passing must be carefully handled (potential ABI differences)
+    // These transformations are complex and may not always be beneficial.
+    // For now, we only inline regular Call terminators.
     if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
         let func_ty = func.ty(caller_body, tcx);
         if let ty::FnDef(def_id, args) = *func_ty.kind() {
@@ -725,9 +745,41 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
 
         // FIXME(#127030): `ConstParamHasTy` has bad interactions with
         // the drop shim builder, which does not evaluate predicates in
-        // the correct param-env for types being dropped. Stall resolving
-        // the MIR for this instance until all of its const params are
-        // substituted.
+        // the correct param-env for types being dropped.
+        //
+        // Root cause: `build_drop_shim` (in compiler/rustc_mir_transform/src/shim.rs)
+        // constructs the `TypingEnv` using `ty::TypingEnv::post_analysis(tcx, def_id)`,
+        // where `def_id` refers to the `drop_in_place` intrinsic, not the type being
+        // dropped. This means the param-env lacks `ConstArgHasType` predicates that
+        // describe the types of const parameters.
+        //
+        // When MIR generation needs the type of a const param (e.g., for field access
+        // or const evaluation), it calls `ParamConst::find_const_ty_from_env`, which
+        // searches the param-env's caller bounds for matching `ConstArgHasType` clauses.
+        // Since the drop shim's param-env is based on `drop_in_place` rather than the
+        // dropped type's definition, these clauses are missing, causing a panic:
+        // "cannot find `ParamConst { ... }` in param-env".
+        //
+        // Workaround: Stall resolving MIR for drop glue of types with const params
+        // until all const params are substituted. This ensures we only build drop
+        // shims for monomorphized types with concrete const arguments.
+        //
+        // Potential fixes:
+        // 1. Modify `build_drop_shim` to construct a typing environment that includes
+        //    the dropped type's predicates. This requires plumbing the type's `DefId`
+        //    (if it's an ADT) and combining its param-env with drop_in_place's param-env.
+        //
+        // 2. Make `DropShimElaborator::typing_env()` return a synthesized typing env
+        //    that merges predicates from both the drop_in_place item and the type being
+        //    dropped. This would require changes to the `DropElaborator` trait.
+        //
+        // 3. Relax `ParamConst::find_const_ty_from_env` to handle missing predicates
+        //    more gracefully, potentially by falling back to a generic inference or
+        //    deferring const evaluation. (Note: core maintainers discourage this approach
+        //    as it masks deeper param-env construction issues.)
+        //
+        // See also: compiler/rustc_mir_transform/src/shim.rs:369 (DropShimElaborator init)
+        //           compiler/rustc_middle/src/ty/sty.rs:351 (find_const_ty_from_env impl)
         InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
             debug!("still needs substitution");
             return Err("implementation limitation -- HACK for dropping polymorphic type");

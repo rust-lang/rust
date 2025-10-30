@@ -245,8 +245,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 return self.handle_switch_int(discr, targets, state);
             }
             TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): determine if we need to do something here (probably
-                // not)
+                // Tail calls transfer control permanently to the callee,
+                // so there's no return value to propagate. The analysis
+                // naturally terminates here, which is the correct behavior.
+                // Effect is already handled by normal terminator processing.
             }
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume

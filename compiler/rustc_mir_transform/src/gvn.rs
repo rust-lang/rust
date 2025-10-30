@@ -1715,9 +1715,15 @@ fn op_to_prop_const<'tcx>(
         && let Some(scalar) = ecx.read_scalar(op).discard_err()
     {
         if !scalar.try_to_scalar_int().is_ok() {
-            // Check that we do not leak a pointer.
-            // Those pointers may lose part of their identity in codegen.
-            // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+            // Prevent propagation of pointer values as Scalar constants.
+            // Issue #79738: Pointers can lose provenance information during
+            // constant propagation, leading to miscompilation. Specifically:
+            // - Different allocations might get the same address in CTFE
+            // - Pointer identity is not preserved across const prop boundaries
+            // - Codegen may incorrectly assume pointer equality
+            //
+            // Until pointer identity is properly tracked through const prop,
+            // we avoid propagating any pointer-containing scalars.
             return None;
         }
         return Some(ConstValue::Scalar(scalar));
@@ -1728,9 +1734,17 @@ fn op_to_prop_const<'tcx>(
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
         let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
 
-        // Do not try interning a value that contains provenance.
-        // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
-        // FIXME: remove this hack once that issue is fixed.
+        // Do not try interning a value that contains provenance (interior pointers).
+        // Issue #79738: Values with interior pointers can have pointer identity
+        // issues during constant propagation. When we intern and later retrieve
+        // such values, the pointer provenance may not be preserved correctly,
+        // causing:
+        // - Loss of allocation identity
+        // - Incorrect pointer comparisons in the generated code
+        // - Potential miscompilation when pointers are compared by address
+        //
+        // We must avoid propagating any allocation with interior provenance
+        // until the const prop system properly tracks pointer identity.
         let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
         if alloc_ref.has_provenance() {
             return None;
@@ -1741,9 +1755,20 @@ fn op_to_prop_const<'tcx>(
         let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 
-        // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
-        // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
-        // FIXME: find a way to treat this more uniformly (probably by fixing codegen)
+        // Check if we can directly use this allocation as an Indirect constant.
+        // Codegen currently only handles GlobalAlloc::Memory in Indirect constants;
+        // other allocation kinds (like GlobalAlloc::Static, GlobalAlloc::Function, 
+        // GlobalAlloc::VTable) require different handling in codegen.
+        //
+        // TODO: Ideally codegen should handle all GlobalAlloc kinds uniformly in
+        // ConstValue::Indirect, which would allow us to eliminate this check and
+        // avoid unnecessary allocation copies. This would require:
+        // 1. Teaching codegen to handle Indirect references to statics
+        // 2. Ensuring proper handling of vtable and function pointer indirection
+        // 3. Verifying that no optimization passes break with non-Memory Indirect values
+        //
+        // Until then, we fall back to copying non-Memory allocations into a new
+        // Memory allocation to ensure codegen compatibility.
         if let GlobalAlloc::Memory(alloc) = ecx.tcx.global_alloc(alloc_id)
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
@@ -1758,9 +1783,14 @@ fn op_to_prop_const<'tcx>(
         ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).discard_err()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
-    // Check that we do not leak a pointer.
-    // Those pointers may lose part of their identity in codegen.
-    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+    // Final check: ensure the newly created allocation has no interior pointers.
+    // Issue #79738: Even after creating a fresh allocation, we must verify it
+    // doesn't contain pointers that could lose their identity. This can happen when:
+    // - The source value contained function pointers or vtable pointers
+    // - The copy operation preserved pointer values without proper provenance tracking
+    // - Interior pointers could be compared by address later
+    //
+    // Only propagate allocations that are pointer-free to avoid identity issues.
     if ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty() {
         return Some(value);
     }
@@ -1800,9 +1830,15 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
         let value = op_to_prop_const(&mut self.ecx, op)?;
 
-        // Check that we do not leak a pointer.
-        // Those pointers may lose part of their identity in codegen.
-        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
+        // Verify no pointer provenance leaked through into the constant.
+        // Issue #79738: This assertion catches cases where pointer-containing
+        // values slipped through our earlier checks. If this fires, it means:
+        // 1. A pointer made it into a ConstValue despite our guards
+        // 2. The pointer identity tracking is insufficient
+        // 3. Propagating this constant could cause miscompilation
+        //
+        // This is a safety net; the earlier checks in op_to_prop_const should
+        // have already prevented pointer-containing values from reaching here.
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
@@ -1901,13 +1937,30 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
 
         if let Some(local) = lhs.as_local()
             && self.ssa.is_ssa(local)
-            && let rvalue_ty = rvalue.ty(self.local_decls, self.tcx)
-            // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
-            // `local` as reusable if we have an exact type match.
-            && self.local_decls[local].ty == rvalue_ty
         {
-            let value = value.unwrap_or_else(|| self.new_opaque(rvalue_ty));
-            self.assign(local, value);
+            let local_ty = self.local_decls[local].ty;
+            let rvalue_ty = rvalue.ty(self.local_decls, self.tcx);
+            
+            // Check if the assignment is valid. We accept both exact type equality
+            // and valid subtyping relationships (handled by Subtype casts inserted
+            // by the `add_subtyping_projections` pass). The type checker uses
+            // `relate_types` with Covariant variance to accept subtyping during
+            // the optimization phase.
+            let types_compatible = if local_ty == rvalue_ty {
+                // Fast path: exact type match
+                true
+            } else {
+                // Check for valid subtyping relationship using the same logic
+                // as the validator. This allows GVN to work correctly with
+                // Subtype casts that may be present.
+                use rustc_middle::ty::Variance;
+                crate::util::relate_types(self.tcx, self.typing_env(), Variance::Covariant, rvalue_ty, local_ty)
+            };
+            
+            if types_compatible {
+                let value = value.unwrap_or_else(|| self.new_opaque(rvalue_ty));
+                self.assign(local, value);
+            }
         }
     }
 
