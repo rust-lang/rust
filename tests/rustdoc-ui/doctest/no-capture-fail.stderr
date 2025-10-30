@@ -1,5 +1,5 @@
 error: struct literal body without path
-  --> $DIR/nocapture-fail.rs:8:10
+  --> $DIR/no-capture-fail.rs:8:10
    |
 LL |   fn foo() {
    |  __________^
