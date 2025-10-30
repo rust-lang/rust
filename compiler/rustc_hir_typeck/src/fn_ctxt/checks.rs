@@ -1165,6 +1165,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let ty = ctxt.coerce.unwrap().complete(self);
+        if blk.targeted_by_break {
+            self.register_wf_obligation(ty.into(), blk.span, ObligationCauseCode::WellFormed(None));
+        }
 
         self.write_ty(blk.hir_id, ty);
 

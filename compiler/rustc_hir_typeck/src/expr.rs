@@ -1402,6 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let result_ty = coerce.complete(self);
+        self.register_wf_obligation(result_ty.into(), sp, ObligationCauseCode::WellFormed(None));
         if let Err(guar) = cond_ty.error_reported() {
             Ty::new_error(self.tcx, guar)
         } else {
@@ -1622,7 +1623,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if ctxt.coerce.is_none() && !ctxt.may_break {
             self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
-        ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.types.unit)
+        ctxt.coerce
+            .map(|c| {
+                let ty = c.complete(self);
+                self.register_wf_obligation(
+                    ty.into(),
+                    body.span,
+                    ObligationCauseCode::WellFormed(None),
+                );
+                ty
+            })
+            .unwrap_or_else(|| self.tcx.types.unit)
     }
 
     /// Checks a method call.
@@ -1838,7 +1849,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
             }
-            coerce.complete(self)
+            let ty = coerce.complete(self);
+            self.register_wf_obligation(
+                ty.into(),
+                expr.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+            ty
         } else {
             self.next_ty_var(expr.span)
         };

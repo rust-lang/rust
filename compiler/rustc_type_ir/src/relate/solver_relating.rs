@@ -111,7 +111,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
-    pub fn new(
+    fn new(
         infcx: &'infcx Infcx,
         structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
