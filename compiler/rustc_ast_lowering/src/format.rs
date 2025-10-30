@@ -391,7 +391,8 @@ fn make_format_spec<'hir>(
     let flags = ctx.expr_field(Ident::new(sym::flags, sp), ctx.arena.alloc(flags), sp);
     let precision = ctx.expr_field(Ident::new(sym::precision, sp), ctx.arena.alloc(precision), sp);
     let width = ctx.expr_field(Ident::new(sym::width, sp), ctx.arena.alloc(width), sp);
-    let placeholder = ctx.arena.alloc(hir::QPath::LangItem(hir::LangItem::FormatPlaceholder, sp));
+    let placeholder =
+        ctx.arena.alloc(ctx.make_lang_item_qpath(hir::LangItem::FormatPlaceholder, sp, None));
     let fields = ctx.arena.alloc_from_iter([position, flags, precision, width]);
     ctx.expr(sp, hir::ExprKind::Struct(placeholder, fields, hir::StructTailExpr::None))
 }

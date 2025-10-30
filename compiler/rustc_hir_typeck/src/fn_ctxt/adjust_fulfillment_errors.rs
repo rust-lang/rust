@@ -419,7 +419,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            _ => {}
         }
 
         false

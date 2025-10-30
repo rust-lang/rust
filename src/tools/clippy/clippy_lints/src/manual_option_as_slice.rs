@@ -207,7 +207,7 @@ fn is_empty_slice(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Index(arr, range, _) => match arr.kind {
             ExprKind::Array([]) => is_range_literal(range),
             ExprKind::Array(_) => {
-                let Some(range) = clippy_utils::higher::Range::hir(range) else {
+                let Some(range) = clippy_utils::higher::Range::hir(cx, range) else {
                     return false;
                 };
                 range.end.is_some_and(|e| clippy_utils::is_integer_const(cx, e, 0))

@@ -1703,7 +1703,6 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 trait_,
             }))
         }
-        hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
     }
 }
 

@@ -11,7 +11,7 @@ use super::RANGE_ZIP_WITH_LEN;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>, zip_arg: &'tcx Expr<'_>) {
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // range expression in `.zip()` call: `0..x.len()`
-        && let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg)
+        && let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(cx, zip_arg)
         && is_integer_const(cx, start, 0)
         // `.len()` call
         && let ExprKind::MethodCall(len_path, len_recv, [], _) = end.kind

@@ -550,7 +550,6 @@ fn get_item_name(item: &Item<'_>) -> Option<String> {
                         // This case doesn't exist in the clippy tests codebase.
                         None
                     },
-                    QPath::LangItem(_, _) => None,
                 }
             } else {
                 // Impls for anything that isn't a named type can be skipped.

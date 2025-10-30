@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, lis
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
@@ -1290,10 +1290,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
-            QPath::LangItem(lang_item, span) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
-                (res, LoweredTy::from_raw(self, path_span, ty))
-            }
         }
     }
 
@@ -2051,8 +2047,9 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
     fn detect_dotdot(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'tcx>) {
         if let ty::Adt(adt, _) = ty.kind()
             && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
-            && let hir::ExprKind::Struct(hir::QPath::LangItem(hir::LangItem::RangeFull, _), [], _) =
-                expr.kind
+            && is_range_literal(expr)
+            && let hir::ExprKind::Struct(&path, [], _) = expr.kind
+            && self.tcx().qpath_is_lang_item(path, hir::LangItem::RangeFull)
         {
             // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
             // from default field values, which is not supported on tuples.
