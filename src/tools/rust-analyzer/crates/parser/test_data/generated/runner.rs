@@ -265,6 +265,8 @@ mod ok {
     #[test]
     fn for_type() { run_and_expect_no_errors("test_data/parser/inline/ok/for_type.rs"); }
     #[test]
+    fn frontmatter() { run_and_expect_no_errors("test_data/parser/inline/ok/frontmatter.rs"); }
+    #[test]
     fn full_range_expr() {
         run_and_expect_no_errors("test_data/parser/inline/ok/full_range_expr.rs");
     }
