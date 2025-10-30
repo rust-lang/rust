@@ -765,8 +765,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span, cb);
             }
-            hir::ItemKind::TraitAlias(ident, generics, bounds) => {
-                let (cb, ib) = self.head("trait");
+            hir::ItemKind::TraitAlias(constness, ident, generics, bounds) => {
+                let (cb, ib) = self.head("");
+                self.print_constness(constness);
+                self.word_nbsp("trait");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
                 self.nbsp();

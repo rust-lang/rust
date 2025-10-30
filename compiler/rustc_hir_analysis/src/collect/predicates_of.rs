@@ -167,7 +167,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
             }
             ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
-            | ItemKind::TraitAlias(_, _, self_bounds) => {
+            | ItemKind::TraitAlias(_, _, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
             _ => {}
@@ -654,7 +654,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(_, _, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
 
@@ -1032,7 +1032,10 @@ pub(super) fn const_conditions<'tcx>(
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
             hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
-                (generics, Some((item.owner_id.def_id, supertraits)), false)
+                (generics, Some((Some(item.owner_id.def_id), supertraits)), false)
+            }
+            hir::ItemKind::TraitAlias(_, _, generics, supertraits) => {
+                (generics, Some((None, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
@@ -1089,12 +1092,14 @@ pub(super) fn const_conditions<'tcx>(
     }
 
     if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
-        // We've checked above that the trait is conditionally const.
-        bounds.push((
-            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
-                .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
-            DUMMY_SP,
-        ));
+        if let Some(def_id) = def_id {
+            // We've checked above that the trait is conditionally const.
+            bounds.push((
+                ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
+                    .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
+                DUMMY_SP,
+            ));
+        }
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
@@ -1143,13 +1148,14 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
         }
         None => match tcx.hir_node_by_def_id(def_id) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
-                implied_predicates_with_filter(
-                    tcx,
-                    def_id.to_def_id(),
-                    PredicateFilter::SelfConstIfConst,
-                )
-            }
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                ..
+            }) => implied_predicates_with_filter(
+                tcx,
+                def_id.to_def_id(),
+                PredicateFilter::SelfConstIfConst,
+            ),
             Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
             | Node::OpaqueTy(_) => {
                 explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
