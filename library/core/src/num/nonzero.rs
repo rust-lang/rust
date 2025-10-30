@@ -817,6 +817,10 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(let old : NonZero<$Int> = self; true)]
+            #[core::contracts::ensures(
+                move |result: &NonZero<$Int>| result.rotate_right(n).get() == old.get())]
             pub const fn rotate_left(self, n: u32) -> Self {
                 let result = self.get().rotate_left(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
@@ -848,6 +852,10 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(let old : NonZero<$Int> = self; true)]
+            #[core::contracts::ensures(
+                move |result: &NonZero<$Int>| result.rotate_left(n).get() == old.get())]
             pub const fn rotate_right(self, n: u32) -> Self {
                 let result = self.get().rotate_right(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
