@@ -3,7 +3,7 @@
 //@ [WASMEXN] compile-flags: -C panic=unwind -Z emscripten-wasm-eh
 
 #![crate_type = "lib"]
-#![feature(core_intrinsics, wasm_exception_handling_intrinsics, link_llvm_intrinsics)]
+#![feature(core_intrinsics, link_llvm_intrinsics)]
 
 extern "C-unwind" {
     fn may_panic();
