@@ -648,18 +648,17 @@ impl MemoryCellClocks {
             thread_clocks.clock.index_mut(index).span = current_span;
         }
         thread_clocks.clock.index_mut(index).set_read_type(read_type);
-        if self.write_was_before(&thread_clocks.clock) {
-            // We must be ordered-after all atomic writes.
-            let race_free = if let Some(atomic) = self.atomic() {
-                atomic.write_vector <= thread_clocks.clock
-            } else {
-                true
-            };
-            self.read.set_at_index(&thread_clocks.clock, index);
-            if race_free { Ok(()) } else { Err(DataRace) }
-        } else {
-            Err(DataRace)
+        // Check synchronization with non-atomic writes.
+        if !self.write_was_before(&thread_clocks.clock) {
+            return Err(DataRace);
         }
+        // Check synchronization with atomic writes.
+        if !self.atomic().is_none_or(|atomic| atomic.write_vector <= thread_clocks.clock) {
+            return Err(DataRace);
+        }
+        // Record this access.
+        self.read.set_at_index(&thread_clocks.clock, index);
+        Ok(())
     }
 
     /// Detect races for non-atomic write operations at the current memory cell
@@ -675,24 +674,21 @@ impl MemoryCellClocks {
         if !current_span.is_dummy() {
             thread_clocks.clock.index_mut(index).span = current_span;
         }
-        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
-            let race_free = if let Some(atomic) = self.atomic() {
-                atomic.write_vector <= thread_clocks.clock
-                    && atomic.read_vector <= thread_clocks.clock
-            } else {
-                true
-            };
-            self.write = (index, thread_clocks.clock[index]);
-            self.write_type = write_type;
-            if race_free {
-                self.read.set_zero_vector();
-                Ok(())
-            } else {
-                Err(DataRace)
-            }
-        } else {
-            Err(DataRace)
+        // Check synchronization with non-atomic accesses.
+        if !(self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock) {
+            return Err(DataRace);
         }
+        // Check synchronization with atomic accesses.
+        if !self.atomic().is_none_or(|atomic| {
+            atomic.write_vector <= thread_clocks.clock && atomic.read_vector <= thread_clocks.clock
+        }) {
+            return Err(DataRace);
+        }
+        // Record this access.
+        self.write = (index, thread_clocks.clock[index]);
+        self.write_type = write_type;
+        self.read.set_zero_vector();
+        Ok(())
     }
 }
 
@@ -1201,7 +1197,7 @@ impl VClockAlloc {
     /// operation for which data-race detection is handled separately, for example
     /// atomic read operations. The `ty` parameter is used for diagnostics, letting
     /// the user know which type was read.
-    pub fn read<'tcx>(
+    pub fn read_non_atomic<'tcx>(
         &self,
         alloc_id: AllocId,
         access_range: AllocRange,
@@ -1243,7 +1239,7 @@ impl VClockAlloc {
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation. The `ty` parameter is used for diagnostics, letting
     /// the user know which type was written.
-    pub fn write<'tcx>(
+    pub fn write_non_atomic<'tcx>(
         &mut self,
         alloc_id: AllocId,
         access_range: AllocRange,

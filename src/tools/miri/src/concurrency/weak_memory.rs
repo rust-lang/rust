@@ -177,11 +177,11 @@ impl StoreBufferAlloc {
         Self { store_buffers: RefCell::new(RangeObjectMap::new()) }
     }
 
-    /// When a non-atomic access happens on a location that has been atomically accessed
-    /// before without data race, we can determine that the non-atomic access fully happens
+    /// When a non-atomic write happens on a location that has been atomically accessed
+    /// before without data race, we can determine that the non-atomic write fully happens
     /// after all the prior atomic writes so the location no longer needs to exhibit
-    /// any weak memory behaviours until further atomic accesses.
-    pub fn memory_accessed(&self, range: AllocRange, global: &DataRaceState) {
+    /// any weak memory behaviours until further atomic writes.
+    pub fn non_atomic_write(&self, range: AllocRange, global: &DataRaceState) {
         if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
             let access_type = buffers.access_type(range);

@@ -92,6 +92,9 @@ fn initialization_write(add_fence: bool) {
 
         let j1 = spawn(move || {
             x.store(22, Relaxed);
+            // Since nobody else writes to `x`, we can non-atomically read it.
+            // (This tests that we do not delete the store buffer here.)
+            unsafe { std::ptr::from_ref(x).read() };
             // Relaxed is intentional. We want to test if the thread 2 reads the initialisation write
             // after a relaxed write
             wait.store(1, Relaxed);
