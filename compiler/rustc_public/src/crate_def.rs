@@ -1,13 +1,11 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use serde::Serialize;
-
 use crate::ty::{GenericArgs, Span, Ty, index_impl};
 use crate::{AssocItems, Crate, Symbol, ThreadLocalIndex, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(pub(crate) usize, ThreadLocalIndex);
 index_impl!(DefId);
 

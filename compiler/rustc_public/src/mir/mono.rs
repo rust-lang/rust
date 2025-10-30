@@ -241,7 +241,7 @@ impl From<StaticDef> for CrateItem {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InstanceDef(usize, ThreadLocalIndex);
 index_impl!(InstanceDef);
 

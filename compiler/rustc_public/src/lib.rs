@@ -37,7 +37,10 @@ pub use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
-use crate::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty};
+use crate::ty::{
+    AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
+    serialize_index_impl,
+};
 use crate::unstable::Stable;
 
 pub mod abi;
@@ -57,8 +60,9 @@ pub mod visitor;
 pub type Symbol = String;
 
 /// The number that identifies a crate.
-#[derive(Clone, Copy, Serialize, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct CrateNum(pub(crate) usize, ThreadLocalIndex);
+serialize_index_impl!(CrateNum);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -294,7 +298,6 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
-#[derive(serde::Serialize)] // TODO: Don't.
 /// Marker type for indexes into [`TLV`].
 ///
 /// Makes things `!Send`/`!Sync`, so users don't move `rustc_public`` types to

@@ -109,7 +109,7 @@ impl LayoutShape {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Layout(usize, ThreadLocalIndex);
 index_impl!(Layout);
 

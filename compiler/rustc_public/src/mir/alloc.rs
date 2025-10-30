@@ -47,7 +47,7 @@ impl GlobalAlloc {
 }
 
 /// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct AllocId(usize, ThreadLocalIndex);
 index_impl!(AllocId);
 

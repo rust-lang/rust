@@ -53,7 +53,7 @@ where
 }
 
 pub fn crate_num(item: &crate::Crate) -> CrateNum {
-    CrateNum::from_u32(item.id.0)
+    item.id.0.into()
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

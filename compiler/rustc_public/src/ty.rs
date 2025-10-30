@@ -13,7 +13,7 @@ use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
 use crate::{Filename, IndexedVal, Opaque, ThreadLocalIndex};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(usize, ThreadLocalIndex);
 
 impl Debug for Ty {
@@ -151,7 +151,7 @@ pub enum TyConstKind {
     ZSTValue(Ty),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct TyConstId(usize, ThreadLocalIndex);
 
 /// Represents a constant in MIR
@@ -212,7 +212,7 @@ impl MirConst {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct MirConstId(usize, ThreadLocalIndex);
 
 type Ident = Opaque;
@@ -255,7 +255,7 @@ pub struct Placeholder<T> {
     pub bound: T,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span(usize, ThreadLocalIndex);
 
 impl Debug for Span {
@@ -1566,9 +1566,23 @@ macro_rules! index_impl {
                 self.0
             }
         }
+        $crate::ty::serialize_index_impl!($name);
     };
 }
-pub(crate) use index_impl;
+macro_rules! serialize_index_impl {
+    ($name:ident) => {
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                let n: usize = self.0; // Make sure we're serializing an int.
+                ::serde::Serialize::serialize(&n, serializer)
+            }
+        }
+    };
+}
+pub(crate) use {index_impl, serialize_index_impl};
 
 index_impl!(TyConstId);
 index_impl!(MirConstId);
@@ -1588,7 +1602,7 @@ index_impl!(Span);
 /// `a` is in the variant with the `VariantIdx` of `0`,
 /// `c` is in the variant with the `VariantIdx` of `1`, and
 /// `g` is in the variant with the `VariantIdx` of `0`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct VariantIdx(usize, ThreadLocalIndex);
 
 index_impl!(VariantIdx);
