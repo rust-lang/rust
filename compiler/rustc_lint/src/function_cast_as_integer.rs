@@ -7,8 +7,8 @@ use crate::lints::{FunctionCastsAsIntegerDiag, FunctionCastsAsIntegerSugg};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
-    /// The `function_casts_as_integer` lint detects cases where a function item is casted
-    /// into an integer.
+    /// The `function_casts_as_integer` lint detects cases where a function item is cast
+    /// to an integer.
     ///
     /// ### Example
     ///
@@ -21,8 +21,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// When casting a function item into an integer, it's implicitly creating a
-    /// function pointer that will in turn be casted into an integer. By making
+    /// When casting a function item to an integer, it implicitly creates a
+    /// function pointer that will in turn be cast to an integer. By making
     /// it explicit, it improves readability of the code and prevents bugs.
     pub FUNCTION_CASTS_AS_INTEGER,
     Warn,
