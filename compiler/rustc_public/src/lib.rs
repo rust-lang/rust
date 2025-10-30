@@ -303,7 +303,7 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
 /// Makes things `!Send`/`!Sync`, so users don't move `rustc_public`` types to
 /// thread with no (or worse, different) `rustc_public` pointer.
 ///
-/// Note. This doens't make it impossible to confuse TLS. You could return a
+/// Note. This doesn't make it impossible to confuse TLS. You could return a
 /// `DefId` from one `run!` invocation, and then use it inside a different
 /// `run!` invocation with different tables.
 pub(crate) struct ThreadLocalIndex {
