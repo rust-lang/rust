@@ -805,7 +805,6 @@ impl A {
         );
     }
 
-    #[ignore = "FIXME(next-solver): Fix async closures"]
     #[test]
     fn replaces_async_closure_with_async_fn() {
         check_assist(

@@ -18,7 +18,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
-    AliasTyKind, InferTy, Interner,
+    CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _},
 };
 use syntax::ast::RangeOp;
@@ -29,6 +29,7 @@ use crate::{
     IncorrectGenericsLenKind, Rawness, TraitEnvironment,
     autoderef::overloaded_deref_ty,
     consteval,
+    db::InternedCoroutine,
     generics::generics,
     infer::{
         AllowTwoPhase, BreakableKind,
@@ -37,16 +38,16 @@ use crate::{
         pat::contains_explicit_ref_binding,
     },
     lang_items::lang_items_for_bin_op,
-    lower_nextsolver::{
+    lower::{
         LifetimeElisionKind, lower_mutability,
         path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
     },
     method_resolution::{self, VisibleFromModule},
     next_solver::{
-        AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
+        Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
         TypeError,
         infer::{
-            DefineOpaqueTypes, InferOk,
+            InferOk,
             traits::{Obligation, ObligationCause},
         },
         obligation_ctxt::ObligationCtxt,
@@ -564,7 +565,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 match def_id {
                     _ if fields.is_empty() => {}
                     Some(def) => {
-                        let field_types = self.db.field_types_ns(def);
+                        let field_types = self.db.field_types(def);
                         let variant_data = def.fields(self.db);
                         let visibilities = self.db.field_visibilities(def);
                         for field in fields.iter() {
@@ -1132,18 +1133,26 @@ impl<'db> InferenceContext<'_, 'db> {
         inner_ty: Ty<'db>,
         tgt_expr: ExprId,
     ) -> Ty<'db> {
-        // Use the first type parameter as the output type of future.
-        // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
-        let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, tgt_expr);
-        let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-        Ty::new_alias(
+        let coroutine_id = InternedCoroutine(self.owner, tgt_expr);
+        let coroutine_id = self.db.intern_coroutine(coroutine_id).into();
+        let parent_args = GenericArgs::identity_for_item(self.interner(), self.generic_def.into());
+        Ty::new_coroutine(
             self.interner(),
-            AliasTyKind::Opaque,
-            AliasTy::new(
+            coroutine_id,
+            CoroutineArgs::new(
                 self.interner(),
-                opaque_ty_id,
-                GenericArgs::new_from_iter(self.interner(), [inner_ty.into()]),
-            ),
+                CoroutineArgsParts {
+                    parent_args,
+                    kind_ty: self.types.unit,
+                    // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
+                    resume_ty: self.types.unit,
+                    yield_ty: self.types.unit,
+                    return_ty: inner_ty,
+                    // FIXME: Infer upvars.
+                    tupled_upvars_ty: self.types.unit,
+                },
+            )
+            .args,
         )
     }
 
@@ -1333,7 +1342,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.interner(),
                     box_id.into(),
                     [inner_ty.into()],
-                    |_, _, id, _| self.table.next_var_for_param(id),
+                    |_, id, _| self.table.next_var_for_param(id),
                 ),
             )
         } else {
@@ -1622,7 +1631,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
                 return None;
             }
-            let ty = self.db.field_types_ns(field_id.parent)[field_id.local_id]
+            let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                 .instantiate(interner, parameters);
             Some((Either::Left(field_id), ty))
         });
@@ -1637,7 +1646,7 @@ impl<'db> InferenceContext<'_, 'db> {
             None => {
                 let (field_id, subst) = private_field?;
                 let adjustments = autoderef.adjust_steps();
-                let ty = self.db.field_types_ns(field_id.parent)[field_id.local_id]
+                let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                     .instantiate(self.interner(), subst);
                 let ty = self.process_remote_user_written_ty(ty);
 
@@ -2122,7 +2131,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 .table
                 .infer_ctxt
                 .at(&ObligationCause::new(), this.table.trait_env.env)
-                .eq(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty);
+                .eq(formal_input_ty, coerced_ty);
 
             // If neither check failed, the types are compatible
             match formal_ty_error {
@@ -2320,7 +2329,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let callable_ty = self.table.try_structurally_resolve_type(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind() {
             let generic_predicates =
-                self.db.generic_predicates_ns(GenericDefId::from_callable(self.db, fn_def.0));
+                self.db.generic_predicates(GenericDefId::from_callable(self.db, fn_def.0));
             if let Some(predicates) = generic_predicates.instantiate(self.interner(), parameters) {
                 let interner = self.interner();
                 let param_env = self.table.trait_env.env;

@@ -134,7 +134,7 @@ pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 #[no_mangle]
 pub fn notunpin_borrow(_: &NotUnpin) {}
 
-// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(address\))?}} dereferenceable(32) %_1)
+// CHECK: @indirect_struct(ptr{{( dead_on_return)?}} noalias noundef readonly align 4{{( captures\(none\))?}} dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {}
 
@@ -197,7 +197,7 @@ pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
     x
 }
 
-// CHECK: @struct_return(ptr{{( dead_on_unwind)?}} noalias noundef{{( writable)?}} sret([32 x i8]) align 4{{( captures\(address\))?}} dereferenceable(32){{( %_0)?}})
+// CHECK: @struct_return(ptr{{( dead_on_unwind)?}} noalias noundef{{( writable)?}} sret([32 x i8]) align 4{{( captures\(none\))?}} dereferenceable(32){{( %_0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
     S { _field: [0, 0, 0, 0, 0, 0, 0, 0] }

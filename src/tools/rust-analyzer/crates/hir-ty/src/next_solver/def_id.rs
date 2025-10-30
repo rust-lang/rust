@@ -1,8 +1,8 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId,
-    ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, CallableDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GeneralConstId, GenericDefId, ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -29,6 +29,8 @@ pub enum SolverDefId {
     InternedClosureId(InternedClosureId),
     InternedCoroutineId(InternedCoroutineId),
     InternedOpaqueTyId(InternedOpaqueTyId),
+    EnumVariantId(EnumVariantId),
+    // FIXME(next-solver): Do we need the separation of `Ctor`? It duplicates some variants.
     Ctor(Ctor),
 }
 
@@ -73,6 +75,16 @@ impl std::fmt::Debug for SolverDefId {
             SolverDefId::InternedOpaqueTyId(id) => {
                 f.debug_tuple("InternedOpaqueTyId").field(&id).finish()
             }
+            SolverDefId::EnumVariantId(id) => {
+                let parent_enum = id.loc(db).parent;
+                f.debug_tuple("EnumVariantId")
+                    .field(&format_args!(
+                        "\"{}::{}\"",
+                        db.enum_signature(parent_enum).name.as_str(),
+                        parent_enum.enum_variants(db).variant_name_by_id(id).unwrap().as_str()
+                    ))
+                    .finish()
+            }
             SolverDefId::Ctor(Ctor::Struct(id)) => {
                 f.debug_tuple("Ctor").field(&db.struct_signature(id).name.as_str()).finish()
             }
@@ -101,6 +113,7 @@ impl_from!(
     InternedClosureId,
     InternedCoroutineId,
     InternedOpaqueTyId,
+    EnumVariantId,
     Ctor
     for SolverDefId
 );
@@ -129,8 +142,20 @@ impl From<GeneralConstId> for SolverDefId {
     }
 }
 
+impl From<DefWithBodyId> for SolverDefId {
+    #[inline]
+    fn from(value: DefWithBodyId) -> Self {
+        match value {
+            DefWithBodyId::FunctionId(id) => id.into(),
+            DefWithBodyId::StaticId(id) => id.into(),
+            DefWithBodyId::ConstId(id) => id.into(),
+            DefWithBodyId::VariantId(id) => id.into(),
+        }
+    }
+}
+
 impl TryFrom<SolverDefId> for GenericDefId {
-    type Error = SolverDefId;
+    type Error = ();
 
     fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -141,10 +166,11 @@ impl TryFrom<SolverDefId> for GenericDefId {
             SolverDefId::StaticId(static_id) => GenericDefId::StaticId(static_id),
             SolverDefId::TraitId(trait_id) => GenericDefId::TraitId(trait_id),
             SolverDefId::TypeAliasId(type_alias_id) => GenericDefId::TypeAliasId(type_alias_id),
-            SolverDefId::InternedClosureId(_) => return Err(value),
-            SolverDefId::InternedCoroutineId(_) => return Err(value),
-            SolverDefId::InternedOpaqueTyId(_) => return Err(value),
-            SolverDefId::Ctor(_) => return Err(value),
+            SolverDefId::InternedClosureId(_)
+            | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedOpaqueTyId(_)
+            | SolverDefId::EnumVariantId(_)
+            | SolverDefId::Ctor(_) => return Err(()),
         })
     }
 }
@@ -185,7 +211,7 @@ macro_rules! declare_id_wrapper {
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Debug::fmt(&self.0, f)
+                std::fmt::Debug::fmt(&SolverDefId::from(self.0), f)
             }
         }
 

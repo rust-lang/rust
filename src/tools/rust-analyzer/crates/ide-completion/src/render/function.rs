@@ -93,8 +93,8 @@ fn render(
             has_call_parens,
             ..
         }) => (false, has_call_parens, ctx.completion.config.snippet_cap),
-        FuncKind::Method(&DotAccess { kind: DotAccessKind::Method { has_parens }, .. }, _) => {
-            (true, has_parens, ctx.completion.config.snippet_cap)
+        FuncKind::Method(&DotAccess { kind: DotAccessKind::Method, .. }, _) => {
+            (true, true, ctx.completion.config.snippet_cap)
         }
         FuncKind::Method(DotAccess { kind: DotAccessKind::Field { .. }, .. }, _) => {
             (true, false, ctx.completion.config.snippet_cap)

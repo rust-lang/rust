@@ -4036,6 +4036,30 @@ impl<'a> Parser<'a> {
         self.mk_expr(span, ExprKind::Err(guar))
     }
 
+    pub(crate) fn mk_unit_expr(&self, span: Span) -> Box<Expr> {
+        self.mk_expr(span, ExprKind::Tup(Default::default()))
+    }
+
+    pub(crate) fn mk_closure_expr(&self, span: Span, body: Box<Expr>) -> Box<Expr> {
+        self.mk_expr(
+            span,
+            ast::ExprKind::Closure(Box::new(ast::Closure {
+                binder: rustc_ast::ClosureBinder::NotPresent,
+                constness: rustc_ast::Const::No,
+                movability: rustc_ast::Movability::Movable,
+                capture_clause: rustc_ast::CaptureBy::Ref,
+                coroutine_kind: None,
+                fn_decl: Box::new(rustc_ast::FnDecl {
+                    inputs: Default::default(),
+                    output: rustc_ast::FnRetTy::Default(span),
+                }),
+                fn_arg_span: span,
+                fn_decl_span: span,
+                body,
+            })),
+        )
+    }
+
     /// Create expression span ensuring the span of the parent node
     /// is larger than the span of lhs and rhs, including the attributes.
     fn mk_expr_sp(&self, lhs: &Box<Expr>, lhs_span: Span, op_span: Span, rhs_span: Span) -> Span {

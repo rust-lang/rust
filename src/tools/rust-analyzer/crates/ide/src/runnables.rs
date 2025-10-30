@@ -8,6 +8,7 @@ use hir::{
     sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
+use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
     base_db::RootQueryDb,
@@ -17,6 +18,7 @@ use ide_db::{
     search::{FileReferenceNode, SearchScope},
 };
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use smallvec::SmallVec;
 use span::{Edition, TextSize};
 use stdx::format_to;
@@ -28,7 +30,7 @@ use syntax::{
 
 use crate::{FileId, NavigationTarget, ToNav, TryToNav, references};
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, UpmapFromRaFixture)]
 pub struct Runnable {
     pub use_name_in_title: bool,
     pub nav: NavigationTarget,
@@ -36,6 +38,8 @@ pub struct Runnable {
     pub cfg: Option<CfgExpr>,
     pub update_test: UpdateTest,
 }
+
+impl_empty_upmap_from_ra_fixture!(RunnableKind, UpdateTest);
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum TestId {

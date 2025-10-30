@@ -684,12 +684,13 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
-    make_coroutine_state_argument_indirect(tcx, &mut body);
-
     match transform.coroutine_kind {
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+            make_coroutine_state_argument_indirect(tcx, &mut body);
+        }
+
         _ => {
             make_coroutine_state_argument_pinned(tcx, &mut body);
         }

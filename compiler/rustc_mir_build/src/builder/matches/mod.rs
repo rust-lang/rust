@@ -2897,8 +2897,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for (_, node) in tcx.hir_parent_iter(var_id.0) {
             // FIXME(khuey) at what point is it safe to bail on the iterator?
             // Can we stop at the first non-Pat node?
-            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar(_), .. }))
-            {
+            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar, .. })) {
                 return false;
             }
         }

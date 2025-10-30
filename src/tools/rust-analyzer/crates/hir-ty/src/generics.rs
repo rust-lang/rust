@@ -9,7 +9,6 @@
 //! where parent follows the same scheme.
 use std::ops;
 
-use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast as _};
 use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId, Lookup,
     TypeOrConstParamId, TypeParamId,
@@ -22,8 +21,6 @@ use hir_def::{
 };
 use itertools::chain;
 use triomphe::Arc;
-
-use crate::{Interner, Substitution, db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx};
 
 pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
@@ -130,9 +127,14 @@ impl Generics {
 
     /// Returns total number of generic parameters in scope, including those from parent.
     pub(crate) fn len(&self) -> usize {
-        let parent = self.parent_generics().map_or(0, Generics::len);
+        let parent = self.len_parent();
         let child = self.params.len();
         parent + child
+    }
+
+    #[inline]
+    pub(crate) fn len_parent(&self) -> usize {
+        self.parent_generics().map_or(0, Generics::len)
     }
 
     /// Returns numbers of generic parameters excluding those from parent.
@@ -224,50 +226,6 @@ impl Generics {
 
     pub(crate) fn parent_generics(&self) -> Option<&Generics> {
         self.parent_generics.as_deref()
-    }
-
-    pub(crate) fn parent_or_self(&self) -> &Generics {
-        self.parent_generics.as_deref().unwrap_or(self)
-    }
-
-    /// Returns a Substitution that replaces each parameter by a bound variable.
-    pub(crate) fn bound_vars_subst(
-        &self,
-        db: &dyn HirDatabase,
-        debruijn: DebruijnIndex,
-    ) -> Substitution {
-        Substitution::from_iter(
-            Interner,
-            self.iter_id().enumerate().map(|(idx, id)| match id {
-                GenericParamId::ConstParamId(id) => BoundVar::new(debruijn, idx)
-                    .to_const(Interner, db.const_param_ty(id))
-                    .cast(Interner),
-                GenericParamId::TypeParamId(_) => {
-                    BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner)
-                }
-                GenericParamId::LifetimeParamId(_) => {
-                    BoundVar::new(debruijn, idx).to_lifetime(Interner).cast(Interner)
-                }
-            }),
-        )
-    }
-
-    /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
-    pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
-        Substitution::from_iter(
-            Interner,
-            self.iter_id().enumerate().map(|(index, id)| match id {
-                GenericParamId::TypeParamId(id) => {
-                    to_placeholder_idx(db, id.into(), index as u32).to_ty(Interner).cast(Interner)
-                }
-                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into(), index as u32)
-                    .to_const(Interner, db.const_param_ty(id))
-                    .cast(Interner),
-                GenericParamId::LifetimeParamId(id) => {
-                    lt_to_placeholder_idx(db, id, index as u32).to_lifetime(Interner).cast(Interner)
-                }
-            }),
-        )
     }
 }
 

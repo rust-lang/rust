@@ -29,7 +29,7 @@ use expect_test::Expect;
 use hir::db::HirDatabase;
 use hir::{PrefixKind, setup_tracing};
 use ide_db::{
-    FilePosition, RootDatabase, SnippetCap,
+    FilePosition, MiniCore, RootDatabase, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use itertools::Itertools;
@@ -90,6 +90,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     exclude_traits: &[],
     enable_auto_await: true,
     enable_auto_iter: true,
+    minicore: MiniCore::default(),
 };
 
 pub(crate) fn completion_list(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
@@ -245,11 +246,10 @@ pub(crate) fn check_edit_with_config(
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
         hir::attach_db(&db, || crate::completions(&db, &config, position, None).unwrap());
-    let (completion,) = completions
-        .iter()
-        .filter(|it| it.lookup() == what)
-        .collect_tuple()
-        .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
+    let Some((completion,)) = completions.iter().filter(|it| it.lookup() == what).collect_tuple()
+    else {
+        panic!("can't find {what:?} completion in {completions:#?}")
+    };
     let mut actual = db.file_text(position.file_id).text(&db).to_string();
 
     let mut combined_edit = completion.text_edit.clone();

@@ -15,7 +15,7 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     pat: &ast::Pat,
 ) -> Option<()> {
     if !config.binding_mode_hints {

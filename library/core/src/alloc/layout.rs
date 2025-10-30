@@ -316,8 +316,7 @@ impl Layout {
         // Size 1 Align MAX or Size isize::MAX Align 2 round up to `isize::MAX + 1`.)
         unsafe {
             let align_m1 = unchecked_sub(align.as_usize(), 1);
-            let size_rounded_up = unchecked_add(self.size, align_m1) & !align_m1;
-            size_rounded_up
+            unchecked_add(self.size, align_m1) & !align_m1
         }
     }
 

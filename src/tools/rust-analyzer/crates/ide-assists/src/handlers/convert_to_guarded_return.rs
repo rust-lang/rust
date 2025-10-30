@@ -75,8 +75,8 @@ fn if_expr_to_guarded_return(
 
     let let_chains = flat_let_chain(cond);
 
-    let then_block = if_expr.then_branch()?;
-    let then_block = then_block.stmt_list()?;
+    let then_branch = if_expr.then_branch()?;
+    let then_block = then_branch.stmt_list()?;
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
@@ -84,17 +84,8 @@ fn if_expr_to_guarded_return(
         return None;
     }
 
-    // FIXME: This relies on untyped syntax tree and casts to much. It should be
-    // rewritten to use strongly-typed APIs.
-
     // check for early return and continue
-    let first_in_then_block = then_block.syntax().first_child()?;
-    if ast::ReturnExpr::can_cast(first_in_then_block.kind())
-        || ast::ContinueExpr::can_cast(first_in_then_block.kind())
-        || first_in_then_block
-            .children()
-            .any(|x| ast::ReturnExpr::can_cast(x.kind()) || ast::ContinueExpr::can_cast(x.kind()))
-    {
+    if is_early_block(&then_block) || is_never_block(&ctx.sema, &then_branch) {
         return None;
     }
 
@@ -255,20 +246,25 @@ fn early_expression(
 
 fn flat_let_chain(mut expr: ast::Expr) -> Vec<ast::Expr> {
     let mut chains = vec![];
+    let mut reduce_cond = |rhs| {
+        if !matches!(rhs, ast::Expr::LetExpr(_))
+            && let Some(last) = chains.pop_if(|last| !matches!(last, ast::Expr::LetExpr(_)))
+        {
+            chains.push(make::expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
+        } else {
+            chains.push(rhs);
+        }
+    };
 
     while let ast::Expr::BinExpr(bin_expr) = &expr
         && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
         && let (Some(lhs), Some(rhs)) = (bin_expr.lhs(), bin_expr.rhs())
     {
-        if let Some(last) = chains.pop_if(|last| !matches!(last, ast::Expr::LetExpr(_))) {
-            chains.push(make::expr_bin_op(rhs, ast::BinaryOp::LogicOp(ast::LogicOp::And), last));
-        } else {
-            chains.push(rhs);
-        }
+        reduce_cond(rhs);
         expr = lhs;
     }
 
-    chains.push(expr);
+    reduce_cond(expr);
     chains.reverse();
     chains
 }
@@ -282,6 +278,17 @@ fn clean_stmt_block(block: &ast::BlockExpr) -> ast::BlockExpr {
     } else {
         block.clone()
     }
+}
+
+fn is_early_block(then_block: &ast::StmtList) -> bool {
+    let is_early_expr =
+        |expr| matches!(expr, ast::Expr::ReturnExpr(_) | ast::Expr::ContinueExpr(_));
+    let into_expr = |stmt| match stmt {
+        ast::Stmt::ExprStmt(expr_stmt) => expr_stmt.expr(),
+        _ => None,
+    };
+    then_block.tail_expr().is_some_and(is_early_expr)
+        || then_block.statements().filter_map(into_expr).any(is_early_expr)
 }
 
 #[cfg(test)]
@@ -547,6 +554,93 @@ fn main() {
 fn main() {
     let Ok(x) = Err(92) else { return };
     if !(x < 30 && y < 20) {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 cond
+        && let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    if !cond {
+        return;
+    }
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
+        return;
+    }
+    let Some(y) = Some(8) else { return };
+    foo(x, y);
+}
+"#,
+        );
+
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if$0 cond
+        && foo()
+        && let Ok(x) = Err(92)
+        && let Ok(y) = Ok(37)
+        && x < 30
+        && let Some(y) = Some(8)
+    {
+        foo(x, y);
+    }
+}
+"#,
+            r#"
+fn main() {
+    if !(cond && foo()) {
+        return;
+    }
+    let Ok(x) = Err(92) else { return };
+    let Ok(y) = Ok(37) else { return };
+    if x >= 30 {
         return;
     }
     let Some(y) = Some(8) else { return };

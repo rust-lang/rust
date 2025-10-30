@@ -85,7 +85,6 @@ async fn test() {
 }
 
 #[test]
-#[ignore = "FIXME(next-solver): fix async closures"]
 fn infer_async_closure() {
     check_types(
         r#"
@@ -93,7 +92,7 @@ fn infer_async_closure() {
 async fn test() {
     let f = async move |x: i32| x + 42;
     f;
-//  ^ impl Fn(i32) -> impl Future<Output = i32>
+//  ^ impl AsyncFn(i32) -> i32
     let a = f(4);
     a;
 //  ^ impl Future<Output = i32>
@@ -102,7 +101,7 @@ async fn test() {
 //  ^ i32
     let f = async move || 42;
     f;
-//  ^ impl Fn() -> impl Future<Output = i32>
+//  ^ impl AsyncFn() -> i32
     let a = f();
     a;
 //  ^ impl Future<Output = i32>
@@ -119,7 +118,7 @@ async fn test() {
     };
     let _: Option<u64> = c().await;
     c;
-//  ^ impl Fn() -> impl Future<Output = Option<u64>>
+//  ^ impl AsyncFn() -> Option<u64>
 }
 "#,
     );
@@ -4930,7 +4929,6 @@ fn main() {
 
 #[test]
 fn async_fn_return_type() {
-    // FIXME(next-solver): Async closures are lowered as closures currently. We should fix that.
     check_infer(
         r#"
 //- minicore: async_fn
@@ -4948,9 +4946,9 @@ fn main() {
             46..53 'loop {}': !
             51..53 '{}': ()
             67..97 '{     ...()); }': ()
-            73..76 'foo': fn foo<impl Fn(), ()>(impl Fn())
+            73..76 'foo': fn foo<impl AsyncFn(), ()>(impl AsyncFn())
             73..94 'foo(as...|| ())': ()
-            77..93 'async ... || ()': impl Fn()
+            77..93 'async ... || ()': impl AsyncFn()
             91..93 '()': ()
         "#]],
     );

@@ -1274,13 +1274,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         })
         .expect("failed to spawn helper thread");
 
-    let ol =
-        if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-            // If we know that we won’t be doing codegen, create target machines without optimisation.
-            config::OptLevel::No
-        } else {
-            tcx.backend_optimization_level(())
-        };
+    let ol = tcx.backend_optimization_level(());
     let backend_features = tcx.global_backend_features(());
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {

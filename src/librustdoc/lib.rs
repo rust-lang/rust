@@ -6,6 +6,7 @@
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
+#![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
@@ -566,7 +567,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
-            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]",
+            "[toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(

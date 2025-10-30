@@ -7,6 +7,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
@@ -62,13 +63,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
+            let mut span = self.lower_span(e.span);
             match &e.kind {
                 // Parenthesis expression does not have a HirId and is handled specially.
                 ExprKind::Paren(ex) => {
                     let mut ex = self.lower_expr_mut(ex);
                     // Include parens in span, but only if it is a super-span.
                     if e.span.contains(ex.span) {
-                        ex.span = self.lower_span(e.span);
+                        ex.span = self.lower_span(e.span.with_ctxt(ex.span.ctxt()));
                     }
                     // Merge attributes into the inner expression.
                     if !e.attrs.is_empty() {
@@ -287,7 +289,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_span(*brackets_span),
                 ),
                 ExprKind::Range(e1, e2, lims) => {
-                    self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), *lims)
+                    span = self.mark_span_with_reason(DesugaringKind::RangeExpr, span, None);
+                    self.lower_expr_range(span, e1.as_deref(), e2.as_deref(), *lims)
                 }
                 ExprKind::Underscore => {
                     let guar = self.dcx().emit_err(UnderscoreExprLhsAssign { span: e.span });
@@ -379,7 +382,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            hir::Expr { hir_id: expr_hir_id, kind, span: self.lower_span(e.span) }
+            hir::Expr { hir_id: expr_hir_id, kind, span }
         })
     }
 
@@ -461,7 +464,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(
+                    node_id,
+                    None,
+                    DefKind::AnonConst,
+                    DefPathData::LateAnonConst,
+                    f.span,
+                );
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
                     Box::new(Expr {
@@ -1233,13 +1242,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let rhs = self.lower_expr(rhs);
 
         // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
-        let destructure_let = self.stmt_let_pat(
-            None,
-            whole_span,
-            Some(rhs),
-            pat,
-            hir::LocalSource::AssignDesugar(self.lower_span(eq_sign_span)),
-        );
+        let destructure_let =
+            self.stmt_let_pat(None, whole_span, Some(rhs), pat, hir::LocalSource::AssignDesugar);
 
         // `a = lhs1; b = lhs2;`.
         let stmts = self.arena.alloc_from_iter(std::iter::once(destructure_let).chain(assignments));
@@ -1475,7 +1479,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
-        let fn_path = hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span));
+        let fn_path = hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, span);
         let fn_expr = self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path)));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
@@ -1552,14 +1556,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }))
                 .map(|(s, e)| {
+                    let span = self.lower_span(e.span);
+                    let span = self.mark_span_with_reason(DesugaringKind::RangeExpr, span, None);
                     let expr = self.lower_expr(e);
-                    let ident = Ident::new(s, self.lower_span(e.span));
-                    self.expr_field(ident, expr, e.span)
+                    let ident = Ident::new(s, span);
+                    self.expr_field(ident, expr, span)
                 }),
         );
 
         hir::ExprKind::Struct(
-            self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
+            self.arena.alloc(hir::QPath::LangItem(lang_item, span)),
             fields,
             hir::StructTailExpr::None,
         )

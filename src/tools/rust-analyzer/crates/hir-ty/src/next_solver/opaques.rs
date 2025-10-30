@@ -1,85 +1,17 @@
 //! Things related to opaques in the next-trait-solver.
 
-use intern::Interned;
 use rustc_ast_ir::try_visit;
+use rustc_type_ir::inherent::SliceLike;
 
-use crate::next_solver::SolverDefId;
-
-use super::{CanonicalVarKind, DbInterner, interned_vec_nolifetime_salsa};
+use super::{DbInterner, SolverDefId, Ty, interned_vec_db, interned_vec_nolifetime_salsa};
 
 pub type OpaqueTypeKey<'db> = rustc_type_ir::OpaqueTypeKey<DbInterner<'db>>;
-pub type PredefinedOpaquesData<'db> = rustc_type_ir::solve::PredefinedOpaquesData<DbInterner<'db>>;
+
+type PredefinedOpaque<'db> = (OpaqueTypeKey<'db>, Ty<'db>);
+interned_vec_db!(PredefinedOpaques, PredefinedOpaque);
+
 pub type ExternalConstraintsData<'db> =
     rustc_type_ir::solve::ExternalConstraintsData<DbInterner<'db>>;
-
-#[salsa::interned(constructor = new_, debug)]
-pub struct PredefinedOpaques<'db> {
-    #[returns(ref)]
-    kind_: rustc_type_ir::solve::PredefinedOpaquesData<DbInterner<'db>>,
-}
-
-impl<'db> PredefinedOpaques<'db> {
-    pub fn new(interner: DbInterner<'db>, data: PredefinedOpaquesData<'db>) -> Self {
-        PredefinedOpaques::new_(interner.db(), data)
-    }
-
-    pub fn inner(&self) -> &PredefinedOpaquesData<'db> {
-        crate::with_attached_db(|db| {
-            let inner = self.kind_(db);
-            // SAFETY: ¯\_(ツ)_/¯
-            unsafe { std::mem::transmute(inner) }
-        })
-    }
-}
-
-impl<'db> rustc_type_ir::TypeVisitable<DbInterner<'db>> for PredefinedOpaques<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        self.opaque_types.visit_with(visitor)
-    }
-}
-
-impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for PredefinedOpaques<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(PredefinedOpaques::new(
-            folder.cx(),
-            PredefinedOpaquesData {
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .cloned()
-                    .map(|opaque| opaque.try_fold_with(folder))
-                    .collect::<Result<_, F::Error>>()?,
-            },
-        ))
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        PredefinedOpaques::new(
-            folder.cx(),
-            PredefinedOpaquesData {
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .cloned()
-                    .map(|opaque| opaque.fold_with(folder))
-                    .collect(),
-            },
-        )
-    }
-}
-
-impl<'db> std::ops::Deref for PredefinedOpaques<'db> {
-    type Target = PredefinedOpaquesData<'db>;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner()
-    }
-}
 
 interned_vec_nolifetime_salsa!(SolverDefIds, SolverDefId);
 

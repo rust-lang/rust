@@ -42,6 +42,11 @@ pub(crate) fn complete_pattern(
         }
     }
 
+    if pattern_ctx.after_if_expr {
+        add_keyword("else", "else {\n    $0\n}");
+        add_keyword("else if", "else if $1 {\n    $0\n}");
+    }
+
     if pattern_ctx.record_pat.is_some() {
         return;
     }

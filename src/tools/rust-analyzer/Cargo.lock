@@ -235,6 +235,7 @@ name = "cfg"
 version = "0.0.0"
 dependencies = [
  "arbitrary",
+ "cfg",
  "expect-test",
  "intern",
  "oorandom",
@@ -256,28 +257,6 @@ name = "cfg_aliases"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
-
-[[package]]
-name = "chalk-derive"
-version = "0.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ea9b1e80910f66ae87c772247591432032ef3f6a67367ff17f8343db05beafa"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
-]
-
-[[package]]
-name = "chalk-ir"
-version = "0.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7047a516de16226cd17344d41a319d0ea1064bf9e60bd612ab341ab4a34bbfa8"
-dependencies = [
- "bitflags 2.9.4",
- "chalk-derive",
-]
 
 [[package]]
 name = "clap"
@@ -776,8 +755,6 @@ dependencies = [
  "arrayvec",
  "base-db",
  "bitflags 2.9.4",
- "chalk-derive",
- "chalk-ir",
  "cov-mark",
  "either",
  "ena",
@@ -819,11 +796,11 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.5.11"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "589533453244b0995c858700322199b2becb13b627df2851f64a2775d024abcf"
+checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -929,6 +906,7 @@ dependencies = [
  "ide-diagnostics",
  "ide-ssr",
  "itertools",
+ "macros",
  "nohash-hasher",
  "oorandom",
  "profile",
@@ -975,6 +953,7 @@ dependencies = [
  "hir",
  "ide-db",
  "itertools",
+ "macros",
  "smallvec",
  "stdx",
  "syntax",
@@ -999,6 +978,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "macros",
  "memchr",
  "nohash-hasher",
  "parser",
@@ -1008,6 +988,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "salsa",
  "salsa-macros",
+ "smallvec",
  "span",
  "stdx",
  "syntax",
@@ -1404,14 +1385,14 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "1.0.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78bed444cc8a2160f01cbcf811ef18cac863ad68ae8ca62092e8db51d51c761c"
+checksum = "69d83b0086dc8ecf3ce9ae2874b2d1290252e2a30720bea58a5c6639b0092873"
 dependencies = [
  "libc",
  "log",
  "wasi",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -1467,11 +1448,11 @@ checksum = "5e0826a989adedc2a244799e823aece04662b66609d96af8dff7ac6df9a8925d"
 
 [[package]]
 name = "nu-ansi-term"
-version = "0.50.1"
+version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4a28e057d01f97e61255210fcff094d74ed0466038633e95017f5beb68e4399"
+checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1578,6 +1559,7 @@ dependencies = [
  "rustc-literal-escaper 0.0.4",
  "stdx",
  "tracing",
+ "winnow",
 ]
 
 [[package]]
@@ -1842,9 +1824,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c063a7fef3c49d03837ee9a5d988aad83630c3460b03b32355c279d3fafa7d07"
+checksum = "a4ce5c9ea794353e02beae390c4674f74ffb23a2ad9de763469fdcef5c1026ef"
 dependencies = [
  "bitflags 2.9.4",
  "ra-ap-rustc_hashes",
@@ -1854,24 +1836,24 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_ast_ir"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a210dbd77e794b33ff17d2d15750dee44eeabd1330685d69a6bad272d515892a"
+checksum = "1696b77af9bbfe1fcc7a09c907561061c6ef4c8bd6d5f1675b927bc62d349103"
 
 [[package]]
 name = "ra-ap-rustc_hashes"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dea031ea45bb92cd346ed222b35c812e355f304183096ee91bb437b3813c6348"
+checksum = "c055d8b0d8a592d8cf9547495189f52c1ee5c691d28df1628253a816214e8521"
 dependencies = [
  "rustc-stable-hash",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db0114f842b20cba9beb2d9002ca31ae706b47f28ba2d6a49cbf9fd65fa72b9d"
+checksum = "a08a03e3d4a452144b68f48130eda3a2894d4d79e99ddb44bdb4e0ab8c384e10"
 dependencies = [
  "ra-ap-rustc_index_macros",
  "smallvec",
@@ -1879,9 +1861,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc738a5bb06fb3893725fbeb3640ff1822bb2aae3f416c4a49f0a706ba89d1cc"
+checksum = "a1e0446b4d65a8ce19d8fd12826c4bf2365ffa4b8fe0ee94daf5968fe36e920c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1890,9 +1872,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31c35b3d812cfc101d3f534640c13f24c0ec50ee2249685e4c20b2868609c9ee"
+checksum = "ac80365383a3c749f38af567fdcfaeff3fa6ea5df3846852abbce73e943921b9"
 dependencies = [
  "memchr",
  "unicode-properties",
@@ -1901,9 +1883,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_next_trait_solver"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7b0fa6fb8e0717ebd0836f8de4a6efc954fca1a8652980fd2584dbe448c7d95"
+checksum = "a39b419d2d6f7fdec7e0981b7fb7d5beb5dda7140064f1199704ec9dadbb6f73"
 dependencies = [
  "derive-where",
  "ra-ap-rustc_index",
@@ -1914,9 +1896,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33d01bad23470cc749ef607476890aabcc8993ca3ef87d4241d0f6a08c6f9402"
+checksum = "b743b0c8f795842e41b1720bbc5af6e896129fb9acf04e9785774bfb0dc5947c"
 dependencies = [
  "ra-ap-rustc_lexer",
  "rustc-literal-escaper 0.0.5",
@@ -1924,9 +1906,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a181cf7943dc16e888046584d6172be95818811b25d695dbacbb4dd71973cc3"
+checksum = "cf944dce80137195528f89a576f70153c2060a6f8ca49c3fa9f55f9da14ab937"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.1.1",
@@ -1937,9 +1919,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_type_ir"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87c99f33be18d9e50cefef5442822da1f0b416e9a17a483879a9704e08a6a6e6"
+checksum = "1bfe2722b20bc889a9d7711bd3a1f4f7b082940491241615aa643c17e0deffec"
 dependencies = [
  "arrayvec",
  "bitflags 2.9.4",
@@ -1957,9 +1939,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_type_ir_macros"
-version = "0.133.0"
+version = "0.137.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77b162d65e058abfc058e6b67ae68156cc282fbd78da148c1a7ec77b4230661e"
+checksum = "6fad1527df26aaa77367393fae86f42818b33e02b3737a19f3846d1c7671e7f9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2989,24 +2971,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
  "windows-link 0.1.3",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
-dependencies = [
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-sys"
-version = "0.59.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
-dependencies = [
- "windows-targets 0.52.6",
 ]
 
 [[package]]

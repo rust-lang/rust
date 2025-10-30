@@ -1,0 +1,18 @@
+   LL|       |// This test makes sure that the files used in the coverage are remapped by
+   LL|       |// `--remap-path-prefix` and the `coverage` <- `object` scopes.
+   LL|       |//
+   LL|       |// We also test the `macro` scope to make sure it does not affect coverage.
+   LL|       |
+   LL|       |// When coverage paths are remapped, the coverage-run mode can't find source files (because
+   LL|       |// it doesn't know about the remapping), so it produces an empty coverage report. The empty
+   LL|       |// report (i.e. no `.coverage` files) helps to demonstrate that remapping was indeed performed.
+   LL|       |
+   LL|       |//@ revisions: with_remap with_coverage_scope with_object_scope with_macro_scope
+   LL|       |//@ compile-flags: --remap-path-prefix={{src-base}}=remapped
+   LL|       |//
+   LL|       |//@[with_coverage_scope] compile-flags: -Zremap-path-scope=coverage
+   LL|       |//@[with_object_scope] compile-flags: -Zremap-path-scope=object
+   LL|       |//@[with_macro_scope] compile-flags: -Zremap-path-scope=macro
+   LL|       |
+   LL|      1|fn main() {}
+

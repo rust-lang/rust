@@ -196,7 +196,7 @@ impl<V, T> ProjectionElem<V, T> {
             },
             ProjectionElem::Field(Either::Left(f)) => match base.kind() {
                 TyKind::Adt(_, subst) => {
-                    db.field_types_ns(f.parent)[f.local_id].instantiate(interner, subst)
+                    db.field_types(f.parent)[f.local_id].instantiate(interner, subst)
                 }
                 ty => {
                     never!("Only adt has field, found {:?}", ty);

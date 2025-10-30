@@ -5,7 +5,7 @@
 extern crate core;
 use core::contracts::ensures;
 
-#[ensures({*x = 0; |_ret| true})]
+#[ensures(*x = 0; |_ret| true)]
 fn buggy_add(x: &mut u32, y: u32) {
     *x = *x + y;
 }

@@ -36,7 +36,7 @@ use crate::next_solver::{
     AliasTerm, AliasTy, Binder, Const, DbInterner, GenericArg, Goal, ParamEnv,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, Predicate, Region, Span, Term,
     TraitRef, Ty,
-    fulfill::{FulfillmentCtxt, NextSolverError},
+    fulfill::NextSolverError,
     infer::relate::lattice::{LatticeOp, LatticeOpKind},
 };
 
@@ -44,16 +44,6 @@ use super::{
     InferCtxt, InferOk, InferResult, TypeTrace, ValuePairs,
     traits::{Obligation, ObligationCause},
 };
-
-/// Whether we should define opaque types or just treat them opaquely.
-///
-/// Currently only used to prevent predicate matching from matching anything
-/// against opaque types.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum DefineOpaqueTypes {
-    Yes,
-    No,
-}
 
 #[derive(Clone, Copy)]
 pub struct At<'a, 'db> {
@@ -107,12 +97,7 @@ impl<'a, 'db> At<'a, 'db> {
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
-    pub fn sup<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'db, ()>
+    pub fn sup<T>(self, expected: T, actual: T) -> InferResult<'db, ()>
     where
         T: ToTrace<'db>,
     {
@@ -128,12 +113,7 @@ impl<'a, 'db> At<'a, 'db> {
     }
 
     /// Makes `expected <: actual`.
-    pub fn sub<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'db, ()>
+    pub fn sub<T>(self, expected: T, actual: T) -> InferResult<'db, ()>
     where
         T: ToTrace<'db>,
     {
@@ -149,31 +129,7 @@ impl<'a, 'db> At<'a, 'db> {
     }
 
     /// Makes `expected == actual`.
-    pub fn eq<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'db, ()>
-    where
-        T: ToTrace<'db>,
-    {
-        self.eq_trace(
-            define_opaque_types,
-            ToTrace::to_trace(self.cause, expected, actual),
-            expected,
-            actual,
-        )
-    }
-
-    /// Makes `expected == actual`.
-    pub fn eq_trace<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        trace: TypeTrace<'db>,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'db, ()>
+    pub fn eq<T>(self, expected: T, actual: T) -> InferResult<'db, ()>
     where
         T: Relate<DbInterner<'db>>,
     {
@@ -188,20 +144,14 @@ impl<'a, 'db> At<'a, 'db> {
         .map(|goals| self.goals_to_obligations(goals))
     }
 
-    pub fn relate<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        variance: Variance,
-        actual: T,
-    ) -> InferResult<'db, ()>
+    pub fn relate<T>(self, expected: T, variance: Variance, actual: T) -> InferResult<'db, ()>
     where
         T: ToTrace<'db>,
     {
         match variance {
-            Variance::Covariant => self.sub(define_opaque_types, expected, actual),
-            Variance::Invariant => self.eq(define_opaque_types, expected, actual),
-            Variance::Contravariant => self.sup(define_opaque_types, expected, actual),
+            Variance::Covariant => self.sub(expected, actual),
+            Variance::Invariant => self.eq(expected, actual),
+            Variance::Contravariant => self.sup(expected, actual),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note

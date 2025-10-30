@@ -23,7 +23,7 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: hir::DisplayTarget,
     node: &ast::Fn,
 ) -> Option<()> {
@@ -147,7 +147,7 @@ mod tests {
         inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
-    const ONLY_DROP_CONFIG: InlayHintsConfig =
+    const ONLY_DROP_CONFIG: InlayHintsConfig<'_> =
         InlayHintsConfig { implicit_drop_hints: true, ..DISABLED_CONFIG };
 
     #[test]

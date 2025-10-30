@@ -16,7 +16,8 @@ fn check_with_config(
     expect: Expect,
 ) {
     let (db, position) = crate::tests::position(ra_fixture);
-    let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
+    let (ctx, analysis) =
+        crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
 
     let mut acc = crate::completions::Completions::default();
     hir::attach_db(ctx.db, || {

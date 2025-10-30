@@ -14,7 +14,7 @@ impl Tr for str {
     type Arr = [u8; 8];
     #[cfg(cfail)]
     type Arr = [u8; Self::C];
-    //[cfail]~^ ERROR cycle detected when caching mir
+    //[cfail]~^ ERROR cycle detected when
 }
 
 fn main() {}

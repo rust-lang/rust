@@ -11,7 +11,7 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     path: Either<ast::PathType, ast::DynTraitType>,
 ) -> Option<()> {
     let parent = path.syntax().parent()?;

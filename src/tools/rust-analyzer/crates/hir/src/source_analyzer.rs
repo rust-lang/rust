@@ -712,8 +712,7 @@ impl<'db> SourceAnalyzer<'db> {
         let variant = self.infer()?.variant_resolution_for_expr_or_pat(expr_id)?;
         let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
-        let field_ty =
-            (*db.field_types_ns(variant).get(field.local_id)?).instantiate(interner, subst);
+        let field_ty = (*db.field_types(variant).get(field.local_id)?).instantiate(interner, subst);
         Some((
             field.into(),
             local,
@@ -735,8 +734,7 @@ impl<'db> SourceAnalyzer<'db> {
         let variant_data = variant.fields(db);
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
         let (adt, subst) = self.infer()?[pat_id.as_pat()?].as_adt()?;
-        let field_ty =
-            (*db.field_types_ns(variant).get(field.local_id)?).instantiate(interner, subst);
+        let field_ty = (*db.field_types(variant).get(field.local_id)?).instantiate(interner, subst);
         Some((
             field.into(),
             Type::new_with_resolver(db, &self.resolver, field_ty),
@@ -802,7 +800,7 @@ impl<'db> SourceAnalyzer<'db> {
                 |variant: VariantId, subst: GenericArgs<'db>, container: &mut _| {
                     let fields = variant.fields(db);
                     let field = fields.field(&field_name.as_name())?;
-                    let field_types = db.field_types_ns(variant);
+                    let field_types = db.field_types(variant);
                     *container = Either::Right(field_types[field].instantiate(interner, subst));
                     let generic_def = match variant {
                         VariantId::EnumVariantId(it) => it.loc(db).parent.into(),
@@ -1255,7 +1253,7 @@ impl<'db> SourceAnalyzer<'db> {
         missing_fields: Vec<LocalFieldId>,
     ) -> Vec<(Field, Type<'db>)> {
         let interner = DbInterner::new_with(db, None, None);
-        let field_types = db.field_types_ns(variant);
+        let field_types = db.field_types(variant);
 
         missing_fields
             .into_iter()

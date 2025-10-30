@@ -5,6 +5,7 @@ use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
+use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
@@ -614,41 +615,51 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
-
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
-        let deduced_param_attrs =
+        let deduced =
             if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
                 fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
             } else {
                 &[]
             };
-
-        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
-            if arg.is_ignore() {
-                continue;
-            }
-
-            // If we deduced that this parameter was read-only, add that to the attribute list now.
-            //
-            // The `readonly` parameter only applies to pointers, so we can only do this if the
-            // argument was passed indirectly. (If the argument is passed directly, it's an SSA
-            // value, so it's implicitly immutable.)
-            if let &mut PassMode::Indirect { ref mut attrs, .. } = &mut arg.mode {
-                // The `deduced_param_attrs` list could be empty if this is a type of function
-                // we can't deduce any parameters for, so make sure the argument index is in
-                // bounds.
-                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx)
-                    && deduced_param_attrs.read_only(tcx, cx.typing_env, arg.layout.ty)
-                {
-                    debug!("added deduced read-only attribute");
-                    attrs.regular.insert(ArgAttribute::ReadOnly);
-                }
+        if !deduced.is_empty() {
+            apply_deduced_attributes(cx, deduced, 0, &mut fn_abi.ret);
+            for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
+                apply_deduced_attributes(cx, deduced, arg_idx + 1, arg);
             }
         }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
+    }
+}
+
+/// Apply deduced optimization attributes to a parameter using an indirect pass mode.
+///
+/// `deduced` is a possibly truncated list of deduced attributes for a return place and arguments.
+/// `idx` the index of the parameter on the list (0 for a return place, and 1.. for arguments).
+fn apply_deduced_attributes<'tcx>(
+    cx: &LayoutCx<'tcx>,
+    deduced: &[DeducedParamAttrs],
+    idx: usize,
+    arg: &mut ArgAbi<'tcx, Ty<'tcx>>,
+) {
+    // Deduction is performed under the assumption of the indirection pass mode.
+    let PassMode::Indirect { ref mut attrs, .. } = arg.mode else {
+        return;
+    };
+    // The default values at the tail of the list are not encoded.
+    let Some(deduced) = deduced.get(idx) else {
+        return;
+    };
+    if deduced.read_only(cx.tcx(), cx.typing_env, arg.layout.ty) {
+        debug!("added deduced ReadOnly attribute");
+        attrs.regular.insert(ArgAttribute::ReadOnly);
+    }
+    if deduced.captures_none(cx.tcx(), cx.typing_env, arg.layout.ty) {
+        debug!("added deduced CapturesNone attribute");
+        attrs.regular.insert(ArgAttribute::CapturesNone);
     }
 }
 

@@ -311,7 +311,6 @@ pub(crate) enum ModuleSorting {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
-    Unversioned,
     Toolchain,
     InvocationSpecific,
     DepInfo(Option<OutFileName>),
@@ -322,7 +321,6 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "unversioned-shared-resources" => Ok(Self::Unversioned),
             "toolchain-shared-resources" => Ok(Self::Toolchain),
             "invocation-specific" => Ok(Self::InvocationSpecific),
             "dep-info" => Ok(Self::DepInfo(None)),

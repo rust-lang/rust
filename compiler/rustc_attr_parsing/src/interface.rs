@@ -142,6 +142,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         Self::parse_single_args(
             sess,
             attr.span,
+            normal_attr.item.span(),
             attr.style,
             path.get_attribute_path(),
             target_span,
@@ -159,6 +160,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_single_args<T, I>(
         sess: &'sess Session,
         attr_span: Span,
+        inner_span: Span,
         attr_style: AttrStyle,
         attr_path: AttrPath,
         target_span: Span,
@@ -186,6 +188,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 },
             },
             attr_span,
+            inner_span,
             attr_style,
             template,
             attr_path,
@@ -305,6 +308,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                     emit_lint: &mut emit_lint,
                                 },
                                 attr_span: lower_span(attr.span),
+                                inner_span: lower_span(attr.get_normal_item().span()),
                                 attr_style: attr.style,
                                 template: &accept.template,
                                 attr_path: path.get_attribute_path(),

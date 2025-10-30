@@ -179,6 +179,33 @@ fn baz() {
     }
 
     #[test]
+    fn literal_struct_completion_shorthand() {
+        check_edit(
+            "FooDesc{}",
+            r#"
+struct FooDesc { pub bar: bool, n: i32 }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let bar = true;
+    let foo = create_foo(&$0);
+}
+            "#,
+            r#"
+struct FooDesc { pub bar: bool, n: i32 }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let bar = true;
+    let foo = create_foo(&FooDesc { bar$1, n: ${2:()} }$0);
+}
+            "#,
+        )
+    }
+
+    #[test]
     fn enum_variant_no_snippets() {
         let conf = CompletionConfig { snippet_cap: SnippetCap::new(false), ..TEST_CONFIG };
         // tuple variant

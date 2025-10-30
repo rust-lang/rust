@@ -4,9 +4,9 @@ use std::mem;
 
 use either::Either;
 use hir::{EditionedFileId, HirFileId, InFile, Semantics, sym};
+use ide_db::range_mapper::RangeMapper;
 use ide_db::{
-    SymbolKind, active_parameter::ActiveParameter, defs::Definition,
-    documentation::docs_with_rangemap, rust_doc::is_rust_fence,
+    SymbolKind, defs::Definition, documentation::docs_with_rangemap, rust_doc::is_rust_fence,
 };
 use syntax::{
     AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
@@ -16,85 +16,56 @@ use syntax::{
 use crate::{
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    syntax_highlighting::{HighlightConfig, highlights::Highlights, injector::Injector},
+    syntax_highlighting::{HighlightConfig, highlights::Highlights},
 };
 
 pub(super) fn ra_fixture(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     literal: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
-    let active_parameter =
-        hir::attach_db(sema.db, || ActiveParameter::at_token(sema, expanded.syntax().clone()))?;
-    let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
-        attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
-            path.segments()
-                .zip(["rust_analyzer", "rust_fixture"])
-                .all(|(seg, name)| seg.name_ref().map_or(false, |nr| nr.text() == name))
-        })
-    });
-    if !has_rust_fixture_attr {
-        return None;
-    }
-    let value = literal.value().ok()?;
+    let (analysis, fixture_analysis) = Analysis::from_ra_fixture_with_on_cursor(
+        sema,
+        literal.clone(),
+        expanded,
+        config.minicore,
+        &mut |range| {
+            hl.add(HlRange {
+                range,
+                highlight: HlTag::Keyword | HlMod::Injected,
+                binding_hash: None,
+            });
+        },
+    )?;
 
     if let Some(range) = literal.open_quote_text_range() {
         hl.add(HlRange { range, highlight: HlTag::StringLiteral.into(), binding_hash: None })
     }
 
-    let mut inj = Injector::default();
-
-    let mut text = &*value;
-    let mut offset: TextSize = 0.into();
-
-    while !text.is_empty() {
-        let marker = "$0";
-        let idx = text.find(marker).unwrap_or(text.len());
-        let (chunk, next) = text.split_at(idx);
-        inj.add(chunk, TextRange::at(offset, TextSize::of(chunk)));
-
-        text = next;
-        offset += TextSize::of(chunk);
-
-        if let Some(next) = text.strip_prefix(marker) {
-            if let Some(range) = literal.map_range_up(TextRange::at(offset, TextSize::of(marker))) {
-                hl.add(HlRange {
-                    range,
-                    highlight: HlTag::Keyword | HlMod::Injected,
-                    binding_hash: None,
-                });
-            }
-
-            text = next;
-
-            let marker_len = TextSize::of(marker);
-            offset += marker_len;
-        }
-    }
-
-    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
-
-    for mut hl_range in analysis
-        .highlight(
-            HighlightConfig {
-                syntactic_name_ref_highlighting: false,
-                comments: true,
-                punctuation: true,
-                operator: true,
-                strings: true,
-                specialize_punctuation: config.specialize_punctuation,
-                specialize_operator: config.operator,
-                inject_doc_comment: config.inject_doc_comment,
-                macro_bang: config.macro_bang,
-            },
-            tmp_file_id,
-        )
-        .unwrap()
-    {
-        for range in inj.map_range_up(hl_range.range) {
-            if let Some(range) = literal.map_range_up(range) {
+    for tmp_file_id in fixture_analysis.files() {
+        for mut hl_range in analysis
+            .highlight(
+                HighlightConfig {
+                    syntactic_name_ref_highlighting: false,
+                    comments: true,
+                    punctuation: true,
+                    operator: true,
+                    strings: true,
+                    specialize_punctuation: config.specialize_punctuation,
+                    specialize_operator: config.operator,
+                    inject_doc_comment: config.inject_doc_comment,
+                    macro_bang: config.macro_bang,
+                    // What if there is a fixture inside a fixture? It's fixtures all the way down.
+                    // (In fact, we have a fixture inside a fixture in our test suite!)
+                    minicore: config.minicore,
+                },
+                tmp_file_id,
+            )
+            .unwrap()
+        {
+            for range in fixture_analysis.map_range_up(tmp_file_id, hl_range.range) {
                 hl_range.range = range;
                 hl_range.highlight |= HlMod::Injected;
                 hl.add(hl_range);
@@ -116,7 +87,7 @@ const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 pub(super) fn doc_comment(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     src_file_id: EditionedFileId,
     node: &SyntaxNode,
 ) {
@@ -128,39 +99,37 @@ pub(super) fn doc_comment(
 
     // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = docs_with_rangemap(sema.db, &attributes) {
-        hir::attach_db(sema.db, || {
-            extract_definitions_from_docs(&docs)
-                .into_iter()
-                .filter_map(|(range, link, ns)| {
-                    doc_mapping
-                        .map(range)
-                        .filter(|(mapping, _)| mapping.file_id == src_file_id)
-                        .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
-                            Some(mapped_range).zip(resolve_doc_path_for_def(
-                                sema.db,
-                                def,
-                                &link,
-                                ns,
-                                attr_id.is_inner_attr(),
-                            ))
-                        })
-                })
-                .for_each(|(range, def)| {
-                    hl.add(HlRange {
-                        range,
-                        highlight: module_def_to_hl_tag(def)
-                            | HlMod::Documentation
-                            | HlMod::Injected
-                            | HlMod::IntraDocLink,
-                        binding_hash: None,
+        extract_definitions_from_docs(&docs)
+            .into_iter()
+            .filter_map(|(range, link, ns)| {
+                doc_mapping
+                    .map(range)
+                    .filter(|(mapping, _)| mapping.file_id == src_file_id)
+                    .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
+                        Some(mapped_range).zip(resolve_doc_path_for_def(
+                            sema.db,
+                            def,
+                            &link,
+                            ns,
+                            attr_id.is_inner_attr(),
+                        ))
                     })
+            })
+            .for_each(|(range, def)| {
+                hl.add(HlRange {
+                    range,
+                    highlight: module_def_to_hl_tag(def)
+                        | HlMod::Documentation
+                        | HlMod::Injected
+                        | HlMod::IntraDocLink,
+                    binding_hash: None,
                 })
-        });
+            })
     }
 
     // Extract doc-test sources from the docs and calculate highlighting for them.
 
-    let mut inj = Injector::default();
+    let mut inj = RangeMapper::default();
     inj.add_unmapped("fn doctest() {\n");
 
     let attrs_source_map = attributes.source_map(sema.db);
@@ -249,7 +218,7 @@ pub(super) fn doc_comment(
     if let Ok(ranges) = analysis.with_db(|db| {
         super::highlight(
             db,
-            HighlightConfig {
+            &HighlightConfig {
                 syntactic_name_ref_highlighting: true,
                 comments: true,
                 punctuation: true,
@@ -259,6 +228,7 @@ pub(super) fn doc_comment(
                 specialize_operator: config.operator,
                 inject_doc_comment: config.inject_doc_comment,
                 macro_bang: config.macro_bang,
+                minicore: config.minicore,
             },
             tmp_file_id,
             None,

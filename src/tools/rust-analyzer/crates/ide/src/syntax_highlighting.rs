@@ -1,7 +1,6 @@
 pub(crate) mod tags;
 
 mod highlights;
-mod injector;
 
 mod escape;
 mod format;
@@ -16,7 +15,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -44,8 +43,8 @@ pub struct HlRange {
     pub binding_hash: Option<u64>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct HighlightConfig {
+#[derive(Copy, Clone, Debug)]
+pub struct HighlightConfig<'a> {
     /// Whether to highlight strings
     pub strings: bool,
     /// Whether to highlight comments
@@ -64,6 +63,7 @@ pub struct HighlightConfig {
     pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
+    pub minicore: MiniCore<'a>,
 }
 
 // Feature: Semantic Syntax Highlighting
@@ -191,7 +191,7 @@ pub struct HighlightConfig {
 // ![Semantic Syntax Highlighting](https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png)
 pub(crate) fn highlight(
     db: &RootDatabase,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
@@ -226,7 +226,7 @@ pub(crate) fn highlight(
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     InRealFile { file_id, value: root }: InRealFile<&SyntaxNode>,
     krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
@@ -426,12 +426,9 @@ fn traverse(
         let edition = descended_element.file_id.edition(sema.db);
         let (unsafe_ops, bindings_shadow_count) = match current_body {
             Some(current_body) => {
-                let (ops, bindings) = per_body_cache.entry(current_body).or_insert_with(|| {
-                    (
-                        hir::attach_db(sema.db, || sema.get_unsafe_ops(current_body)),
-                        Default::default(),
-                    )
-                });
+                let (ops, bindings) = per_body_cache
+                    .entry(current_body)
+                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
                 (&*ops, Some(bindings))
             }
             None => (&empty, None),
@@ -494,7 +491,7 @@ fn traverse(
 fn string_injections(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: EditionedFileId,
     krate: Option<hir::Crate>,
     token: SyntaxToken,
@@ -591,7 +588,7 @@ fn descend_token(
     })
 }
 
-fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
+fn filter_by_config(highlight: &mut Highlight, config: &HighlightConfig<'_>) -> bool {
     match &mut highlight.tag {
         HlTag::StringLiteral if !config.strings => return false,
         HlTag::Comment if !config.comments => return false,
