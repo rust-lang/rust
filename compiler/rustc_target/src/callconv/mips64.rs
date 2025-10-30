@@ -34,7 +34,7 @@ where
     }
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
@@ -70,10 +70,11 @@ where
         ret.cast_to(Uniform::new(Reg::i64(), size));
     } else {
         ret.make_indirect();
+        *offset += cx.data_layout().pointer_size();
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
@@ -134,9 +135,17 @@ where
         }
     };
 
+    // Detect need for padding
+    let align = arg.layout.align.abi.max(dl.i64_align).min(dl.i128_align);
+    let pad_i32 = !offset.is_aligned(align);
     // Extract first 8 chunks as the prefix
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
-    arg.cast_to(CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)));
+    // FIXME: an i32 padding is generated while clang uses i64
+    arg.cast_to_and_pad_i32(
+        CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)),
+        pad_i32,
+    );
+    *offset = offset.align_to(align) + size.align_to(align);
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
@@ -144,14 +153,18 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    // mips64 argument passing is also affected by the alignment of aggregates.
+    // see mips.rs for how the offset is used
+    let mut offset = Size::ZERO;
+
     if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret);
+        classify_ret(cx, &mut fn_abi.ret, &mut offset);
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(cx, arg);
+        classify_arg(cx, arg, &mut offset);
     }
 }
