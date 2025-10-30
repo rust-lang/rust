@@ -955,7 +955,24 @@ fn default_emitter(
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter =
-                    AnnotateSnippetEmitter::new(source_map, translator, short, macro_backtrace);
+                    AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                        .sm(source_map)
+                        .short_message(short)
+                        .diagnostic_width(sopts.diagnostic_width)
+                        .macro_backtrace(macro_backtrace)
+                        .track_diagnostics(track_diagnostics)
+                        .terminal_url(terminal_url)
+                        .theme(if let HumanReadableErrorType::Unicode = kind {
+                            OutputTheme::Unicode
+                        } else {
+                            OutputTheme::Ascii
+                        })
+                        .ignored_directories_in_source_blocks(
+                            sopts
+                                .unstable_opts
+                                .ignore_directory_in_diagnostics_source_blocks
+                                .clone(),
+                        );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
                 let emitter = HumanEmitter::new(stderr_destination(color_config), translator)

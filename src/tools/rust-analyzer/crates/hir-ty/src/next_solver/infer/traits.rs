@@ -9,17 +9,13 @@ use std::{
 
 use hir_def::TraitId;
 use macros::{TypeFoldable, TypeVisitable};
+use rustc_type_ir::Upcast;
 use rustc_type_ir::elaborate::Elaboratable;
-use rustc_type_ir::{
-    PredicatePolarity, Upcast,
-    solve::{Certainty, NoSolution},
-};
-use rustc_type_ir::{TypeFoldable, TypeVisitable};
 use tracing::debug;
 
 use crate::next_solver::{
-    Binder, Clause, DbInterner, Goal, ParamEnv, PolyTraitPredicate, Predicate, SolverDefId, Span,
-    TraitPredicate, TraitRef, Ty,
+    Clause, DbInterner, Goal, ParamEnv, PolyTraitPredicate, Predicate, Span, TraitPredicate,
+    TraitRef, Ty,
 };
 
 use super::InferCtxt;
@@ -106,9 +102,9 @@ impl<'db> Elaboratable<DbInterner<'db>> for PredicateObligation<'db> {
     fn child_with_derived_cause(
         &self,
         clause: Clause<'db>,
-        span: Span,
-        parent_trait_pred: PolyTraitPredicate<'db>,
-        index: usize,
+        _span: Span,
+        _parent_trait_pred: PolyTraitPredicate<'db>,
+        _index: usize,
     ) -> Self {
         let cause = ObligationCause::new();
         Obligation {
@@ -153,16 +149,16 @@ impl<'db, P> From<Obligation<'db, P>> for Goal<'db, P> {
     }
 }
 
-pub type PredicateObligation<'db> = Obligation<'db, Predicate<'db>>;
-pub type TraitObligation<'db> = Obligation<'db, TraitPredicate<'db>>;
+pub(crate) type PredicateObligation<'db> = Obligation<'db, Predicate<'db>>;
+pub(crate) type TraitObligation<'db> = Obligation<'db, TraitPredicate<'db>>;
 
-pub type PredicateObligations<'db> = Vec<PredicateObligation<'db>>;
+pub(crate) type PredicateObligations<'db> = Vec<PredicateObligation<'db>>;
 
 impl<'db> PredicateObligation<'db> {
     /// Flips the polarity of the inner predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
-    pub fn flip_polarity(&self, tcx: DbInterner<'db>) -> Option<PredicateObligation<'db>> {
+    pub fn flip_polarity(&self, _interner: DbInterner<'db>) -> Option<PredicateObligation<'db>> {
         Some(PredicateObligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
@@ -215,7 +211,7 @@ impl<'db, O> Obligation<'db, O> {
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
+pub(crate) fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,

@@ -25,10 +25,8 @@ use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
-use crate::next_solver::infer::InferCtxt;
-use crate::next_solver::infer::select::ImplSource;
 use crate::{
-    TraitEnvironment, TyBuilder,
+    TraitEnvironment,
     autoderef::{self, AutoderefKind},
     db::HirDatabase,
     infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
@@ -37,7 +35,8 @@ use crate::{
         Canonical, DbInterner, ErrorGuaranteed, GenericArgs, Goal, Predicate, Region, SolverDefId,
         TraitRef, Ty, TyKind, TypingMode,
         infer::{
-            DbInternerInferExt, DefineOpaqueTypes,
+            DbInternerInferExt, InferCtxt,
+            select::ImplSource,
             traits::{Obligation, ObligationCause, PredicateObligation},
         },
         obligation_ctxt::ObligationCtxt,
@@ -1597,9 +1596,9 @@ fn is_valid_impl_method_candidate<'db>(
                 return IsValidCandidate::NotVisible;
             }
             let self_ty_matches = table.run_in_snapshot(|table| {
-                let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
-                    .fill_with_inference_vars(table)
-                    .build(table.interner());
+                let impl_args = table.fresh_args_for_item(impl_id.into());
+                let expected_self_ty =
+                    db.impl_self_ty(impl_id).instantiate(table.interner(), impl_args);
                 table.unify(expected_self_ty, self_ty)
             });
             if !self_ty_matches {
@@ -1654,7 +1653,7 @@ fn is_valid_trait_method_candidate<'db>(
                     let res = table
                         .infer_ctxt
                         .at(&ObligationCause::dummy(), table.trait_env.env)
-                        .relate(DefineOpaqueTypes::No, expected_receiver, variance, receiver_ty);
+                        .relate(expected_receiver, variance, receiver_ty);
                     let Ok(infer_ok) = res else {
                         return IsValidCandidate::No;
                     };
@@ -1727,7 +1726,7 @@ fn is_valid_impl_fn_candidate<'db>(
 
         // We need to consider the bounds on the impl to distinguish functions of the same name
         // for a type.
-        let predicates = db.generic_predicates_ns(impl_id.into());
+        let predicates = db.generic_predicates(impl_id.into());
         let Some(predicates) = predicates.instantiate(table.interner(), impl_subst) else {
             return IsValidCandidate::Yes;
         };

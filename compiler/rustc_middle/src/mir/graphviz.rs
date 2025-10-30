@@ -16,6 +16,7 @@ where
 
     let mirs = def_ids
         .iter()
+        .filter(|def_id| !tcx.is_trivial_const(*def_id))
         .flat_map(|def_id| {
             if tcx.is_const_fn(*def_id) {
                 vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]

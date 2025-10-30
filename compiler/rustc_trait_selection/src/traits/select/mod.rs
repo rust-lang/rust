@@ -2877,7 +2877,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligations
     }
 
-    fn should_stall_coroutine(&self, def_id: DefId) -> bool {
+    pub(super) fn should_stall_coroutine(&self, def_id: DefId) -> bool {
         match self.infcx.typing_mode() {
             TypingMode::Analysis { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))

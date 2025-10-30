@@ -1,7 +1,7 @@
 use ide_db::syntax_helpers::suggest_name;
 use syntax::ast::{self, AstNode, syntax_factory::SyntaxFactory};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::cover_let_chain};
 
 // Assist: replace_is_some_with_if_let_some
 //
@@ -27,13 +27,11 @@ pub(crate) fn replace_is_method_with_if_let_method(
     let if_expr = ctx.find_node_at_offset::<ast::IfExpr>()?;
 
     let cond = if_expr.condition()?;
+    let cond = cover_let_chain(cond, ctx.selection_trimmed())?;
     let call_expr = match cond {
         ast::Expr::MethodCallExpr(call) => call,
         _ => return None,
     };
-    if ctx.offset() > if_expr.then_branch()?.stmt_list()?.l_curly_token()?.text_range().end() {
-        return None;
-    }
 
     let name_ref = call_expr.name_ref()?;
     match name_ref.text().as_str() {
@@ -190,6 +188,63 @@ fn main() {
 fn main() {
     let x = Ok(1);
     if x.is_e$0rr() {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_is_some_with_if_let_some_in_let_chain() {
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && x.is_som$0e() {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && let Some(${0:x1}) = x {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if x.is_som$0e() && cond {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if let Some(${0:x1}) = x && cond {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && x.is_som$0e() && cond {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && let Some(${0:x1}) = x && cond {}
 }
 "#,
         );

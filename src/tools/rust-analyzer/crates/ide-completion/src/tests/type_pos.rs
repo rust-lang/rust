@@ -25,6 +25,10 @@ struct Foo<'lt, T, const C: usize> {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )
@@ -50,6 +54,10 @@ struct Foo<'lt, T, const C: usize>(f$0);
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw pub
             kw pub(crate)
             kw pub(super)
@@ -76,6 +84,37 @@ fn x<'lt, T, const C: usize>() -> $0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
+            kw self::
+        "#]],
+    );
+}
+
+#[test]
+fn fn_return_type_after_reference() {
+    check_with_base_items(
+        r#"
+fn x<'lt, T, const C: usize>(_: &()) -> &$0
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            tt Trait
+            tp T
+            un Union                  Union
+            bt u32                      u32
+            kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -106,6 +145,10 @@ fn foo() -> B$0 {
             bt u32                      u32
             it ()
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )
@@ -131,6 +174,10 @@ const FOO: $0 = Foo(2);
             bt u32                      u32
             it Foo<i32>
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -157,6 +204,10 @@ fn f2() {
             bt u32                      u32
             it i32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -185,6 +236,10 @@ fn f2() {
             bt u32                      u32
             it u64
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -210,6 +265,10 @@ fn f2(x: u64) -> $0 {
             bt u32                      u32
             it u64
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -236,6 +295,10 @@ fn f2(x: $0) {
             bt u32                      u32
             it i32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -270,6 +333,10 @@ fn foo<'lt, T, const C: usize>() {
             bt u32                      u32
             it a::Foo<a::Foo<i32>>
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -299,6 +366,10 @@ fn foo<'lt, T, const C: usize>() {
             bt u32                      u32
             it Foo<i32>
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -325,6 +396,10 @@ fn foo<'lt, T, const C: usize>() {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -392,6 +467,10 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -442,6 +521,10 @@ impl Tr<$0
             un Union                      Union
             bt u32                          u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -487,6 +570,10 @@ fn f(t: impl MyTrait<u$0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -512,6 +599,10 @@ fn f(t: impl MyTrait<u8, u$0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -555,6 +646,10 @@ fn f(t: impl MyTrait<u$0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -582,6 +677,10 @@ fn f(t: impl MyTrait<u8, u$0
             un Union                      Union
             bt u32                          u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -625,6 +724,10 @@ fn f(t: impl MyTrait<Item1 = $0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -650,6 +753,10 @@ fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -666,6 +773,10 @@ fn f(t: impl MyTrait<C = $0
             ct CONST                   Unit
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -690,6 +801,10 @@ pub struct S;
             st Foo  Foo
             bt u32  u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )
@@ -716,6 +831,10 @@ pub struct S;
             st S      S
             bt u32  u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )
@@ -745,6 +864,10 @@ fn completes_const_and_type_generics_separately() {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -765,6 +888,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -791,6 +918,10 @@ fn completes_const_and_type_generics_separately() {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -808,6 +939,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -835,6 +970,10 @@ fn completes_const_and_type_generics_separately() {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -852,6 +991,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -870,6 +1013,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -889,6 +1036,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -907,6 +1058,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -923,6 +1078,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -941,6 +1100,10 @@ fn completes_const_and_type_generics_separately() {
             ct X                      usize
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -955,6 +1118,10 @@ fn foo<'a>() { S::<F$0, _>; }
             ct CONST                   Unit
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -968,6 +1135,10 @@ fn foo<'a>() { S::<'static, 'static, F$0, _>; }
             ct CONST                   Unit
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -980,6 +1151,10 @@ fn foo<'a>() { S::<'static, F$0, _, _>; }
             lt 'a
             ma makro!(…) macro_rules! makro
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );

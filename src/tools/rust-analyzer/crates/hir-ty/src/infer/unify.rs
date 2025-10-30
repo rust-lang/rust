@@ -25,7 +25,7 @@ use crate::{
         SolverDefId, SolverDefIds, TraitRef, Ty, TyKind, TypingMode,
         fulfill::{FulfillmentCtxt, NextSolverError},
         infer::{
-            DbInternerInferExt, DefineOpaqueTypes, InferCtxt, InferOk, InferResult,
+            DbInternerInferExt, InferCtxt, InferOk, InferResult,
             at::ToTrace,
             snapshot::CombinedSnapshot,
             traits::{Obligation, ObligationCause, PredicateObligation},
@@ -148,7 +148,7 @@ fn could_unify_impl<'db>(
     let ((ty1_with_vars, ty2_with_vars), _) = infcx.instantiate_canonical(tys);
     let mut ctxt = ObligationCtxt::new(&infcx);
     let can_unify = at
-        .eq(DefineOpaqueTypes::No, ty1_with_vars, ty2_with_vars)
+        .eq(ty1_with_vars, ty2_with_vars)
         .map(|infer_ok| ctxt.register_infer_ok_obligations(infer_ok))
         .is_ok();
     can_unify && select(&mut ctxt).is_empty()
@@ -452,11 +452,7 @@ impl<'db> InferenceTable<'db> {
     /// Unify two relatable values (e.g. `Ty`) and return new trait goals arising from it, so the
     /// caller needs to deal with them.
     pub(crate) fn try_unify<T: ToTrace<'db>>(&mut self, t1: T, t2: T) -> InferResult<'db, ()> {
-        self.infer_ctxt.at(&ObligationCause::new(), self.trait_env.env).eq(
-            DefineOpaqueTypes::Yes,
-            t1,
-            t2,
-        )
+        self.infer_ctxt.at(&ObligationCause::new(), self.trait_env.env).eq(t1, t2)
     }
 
     pub(crate) fn shallow_resolve(&self, ty: Ty<'db>) -> Ty<'db> {
@@ -804,7 +800,7 @@ impl<'db> InferenceTable<'db> {
             while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
                 let struct_data = id.fields(self.db);
                 if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
-                    let last_field_ty = self.db.field_types_ns(id.into())[last_field]
+                    let last_field_ty = self.db.field_types(id.into())[last_field]
                         .instantiate(self.interner(), subst);
                     if structs.contains(&ty) {
                         // A struct recursively contains itself as a tail field somewhere.

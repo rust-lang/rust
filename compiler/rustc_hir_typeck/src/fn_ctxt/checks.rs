@@ -1112,8 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 hir::Stmt {
                                                     kind:
                                                         hir::StmtKind::Let(hir::LetStmt {
-                                                            source:
-                                                                hir::LocalSource::AssignDesugar(_),
+                                                            source: hir::LocalSource::AssignDesugar,
                                                             ..
                                                         }),
                                                     ..

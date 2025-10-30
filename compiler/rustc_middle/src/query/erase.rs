@@ -160,6 +160,10 @@ impl EraseType for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
     type Result = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
 }
 
+impl EraseType for Option<(mir::ConstValue, Ty<'_>)> {
+    type Result = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
+}
+
 impl EraseType for EvalToValTreeResult<'_> {
     type Result = [u8; size_of::<EvalToValTreeResult<'static>>()];
 }

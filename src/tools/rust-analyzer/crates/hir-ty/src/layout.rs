@@ -138,7 +138,7 @@ fn layout_of_simd_ty<'db>(
     // * #[repr(simd)] struct S([T; 4])
     //
     // where T is a primitive scalar (integer/float/pointer).
-    let fields = db.field_types_ns(id.into());
+    let fields = db.field_types(id.into());
     let mut fields = fields.iter();
     let Some(TyKind::Array(e_ty, e_len)) = fields
         .next()
@@ -401,7 +401,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: &GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types_ns(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
+    db.field_types(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {

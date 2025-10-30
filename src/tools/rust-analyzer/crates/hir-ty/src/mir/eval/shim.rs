@@ -1383,7 +1383,7 @@ impl<'db> Evaluator<'db> {
                     AdtId::StructId(s) => s,
                     _ => not_supported!("unsized enum or union"),
                 };
-                let field_types = self.db.field_types_ns(id.into());
+                let field_types = self.db.field_types(id.into());
                 let last_field_ty =
                     field_types.iter().next_back().unwrap().1.instantiate(self.interner(), subst);
                 let sized_part_size =

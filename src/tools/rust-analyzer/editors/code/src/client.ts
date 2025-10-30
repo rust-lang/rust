@@ -13,7 +13,7 @@ import { RaLanguageClient } from "./lang_client";
 export async function createClient(
     traceOutputChannel: vscode.OutputChannel,
     outputChannel: vscode.OutputChannel,
-    initializationOptions: vscode.WorkspaceConfiguration,
+    initializationOptions: lc.LanguageClientOptions["initializationOptions"],
     serverOptions: lc.ServerOptions,
     config: Config,
     unlinkedFiles: vscode.Uri[],

@@ -13,7 +13,7 @@ use crate::{
     InferenceDiagnostic, ValueTyDefId,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower_nextsolver::LifetimeElisionKind,
+    lower::LifetimeElisionKind,
     method_resolution::{self, VisibleFromModule},
     next_solver::{
         GenericArg, GenericArgs, TraitRef, Ty,
@@ -118,7 +118,7 @@ impl<'db> InferenceContext<'_, 'db> {
             self.interner(),
             generic_def.into(),
             self_subst.iter().flat_map(|it| it.iter()).chain(substs.iter().skip(parent_substs_len)),
-            |_, _, id, _| GenericArg::error_from_id(self.interner(), id),
+            |_, id, _| GenericArg::error_from_id(self.interner(), id),
         );
 
         Some(ValuePathResolution::GenericDef(value_def, generic_def, substs))
@@ -221,7 +221,7 @@ impl<'db> InferenceContext<'_, 'db> {
         def: GenericDefId,
         subst: GenericArgs<'db>,
     ) {
-        let predicates = self.db.generic_predicates_ns(def);
+        let predicates = self.db.generic_predicates(def);
         let interner = self.interner();
         let param_env = self.table.trait_env.env;
         if let Some(predicates) = predicates.instantiate(self.interner(), subst) {
@@ -352,7 +352,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.interner(),
                     trait_.into(),
                     [ty.into()],
-                    |_, _, id, _| self.table.next_var_for_param(id),
+                    |_, id, _| self.table.next_var_for_param(id),
                 );
                 let trait_ref = TraitRef::new(self.interner(), trait_.into(), args);
                 self.table.register_predicate(Obligation::new(

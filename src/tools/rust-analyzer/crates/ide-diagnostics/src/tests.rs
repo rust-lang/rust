@@ -311,7 +311,7 @@ fn minicore_smoke_test() {
     }
 
     fn check(minicore: MiniCore) {
-        let source = minicore.source_code();
+        let source = minicore.source_code(MiniCore::RAW_SOURCE);
         let mut config = DiagnosticsConfig::test_sample();
         // This should be ignored since we conditionally remove code which creates single item use with braces
         config.disabled.insert("unused_braces".to_owned());
@@ -321,7 +321,7 @@ fn minicore_smoke_test() {
     }
 
     // Checks that there is no diagnostic in minicore for each flag.
-    for flag in MiniCore::available_flags() {
+    for flag in MiniCore::available_flags(MiniCore::RAW_SOURCE) {
         if flag == "clone" {
             // Clone without copy has `moved-out-of-ref`, so ignoring.
             // FIXME: Maybe we should merge copy and clone in a single flag?
@@ -332,5 +332,5 @@ fn minicore_smoke_test() {
     }
     // And one time for all flags, to check codes which are behind multiple flags + prevent name collisions
     eprintln!("Checking all minicore flags");
-    check(MiniCore::from_flags(MiniCore::available_flags()))
+    check(MiniCore::from_flags(MiniCore::available_flags(MiniCore::RAW_SOURCE)))
 }

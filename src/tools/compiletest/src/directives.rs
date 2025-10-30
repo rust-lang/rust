@@ -18,7 +18,7 @@ use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
-use crate::executor::{CollectedTestDesc, ShouldPanic};
+use crate::executor::{CollectedTestDesc, ShouldFail};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
@@ -1366,10 +1366,10 @@ pub(crate) fn make_test_description(
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
-    let should_panic = match config.mode {
-        TestMode::Pretty => ShouldPanic::No,
-        _ if should_fail => ShouldPanic::Yes,
-        _ => ShouldPanic::No,
+    let should_fail = if should_fail && config.mode != TestMode::Pretty {
+        ShouldFail::Yes
+    } else {
+        ShouldFail::No
     };
 
     CollectedTestDesc {
@@ -1377,7 +1377,7 @@ pub(crate) fn make_test_description(
         filterable_path: filterable_path.to_owned(),
         ignore,
         ignore_message,
-        should_panic,
+        should_fail,
     }
 }
 

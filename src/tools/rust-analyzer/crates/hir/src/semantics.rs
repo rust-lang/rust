@@ -1657,14 +1657,11 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<Function> {
         let interner = DbInterner::new_with(self.db, None, None);
         let mut subst = subst.into_iter();
-        let substs = hir_ty::next_solver::GenericArgs::for_item(
-            interner,
-            trait_.id.into(),
-            |_, _, id, _| {
+        let substs =
+            hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
                 assert!(matches!(id, hir_def::GenericParamId::TypeParamId(_)), "expected a type");
                 subst.next().expect("too few subst").ty.into()
-            },
-        );
+            });
         assert!(subst.next().is_none(), "too many subst");
         Some(self.db.lookup_impl_method(env.env, func.into(), substs).0.into())
     }

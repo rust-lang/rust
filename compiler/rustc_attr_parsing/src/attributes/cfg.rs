@@ -326,7 +326,8 @@ pub fn parse_cfg_attr(
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
-                    let suggestions = CFG_ATTR_TEMPLATE.suggestions(cfg_attr.style, sym::cfg_attr);
+                    let suggestions =
+                        CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr);
                     e.with_span_suggestions(
                         cfg_attr.span,
                         "must be of the form",
@@ -356,7 +357,7 @@ pub fn parse_cfg_attr(
                 template: CFG_ATTR_TEMPLATE,
                 attribute: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
                 reason,
-                attr_style: cfg_attr.style,
+                suggestions: CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr),
             });
         }
     }
@@ -388,6 +389,7 @@ fn parse_cfg_attr_internal<'a>(
     let cfg_predicate = AttributeParser::parse_single_args(
         sess,
         attribute.span,
+        attribute.get_normal_item().span(),
         attribute.style,
         AttrPath {
             segments: attribute

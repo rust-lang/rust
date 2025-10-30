@@ -1,7 +1,6 @@
 //@ add-core-stubs
 //@ compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ needs-llvm-components: arm
-//@ needs-asm-support
 //@ build-pass
 //@ ignore-backends: gcc
 

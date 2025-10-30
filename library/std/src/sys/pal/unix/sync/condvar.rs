@@ -1,6 +1,10 @@
 use super::Mutex;
 use crate::cell::UnsafeCell;
 use crate::pin::Pin;
+#[cfg(not(target_os = "nto"))]
+use crate::sys::pal::time::TIMESPEC_MAX;
+#[cfg(target_os = "nto")]
+use crate::sys::pal::time::TIMESPEC_MAX_CAPPED;
 use crate::time::Duration;
 
 pub struct Condvar {
@@ -51,10 +55,6 @@ impl Condvar {
     /// * `mutex` must be locked by the current thread.
     /// * This condition variable may only be used with the same mutex.
     pub unsafe fn wait_timeout(&self, mutex: Pin<&Mutex>, dur: Duration) -> bool {
-        #[cfg(not(target_os = "nto"))]
-        use crate::sys::pal::time::TIMESPEC_MAX;
-        #[cfg(target_os = "nto")]
-        use crate::sys::pal::time::TIMESPEC_MAX_CAPPED;
         use crate::sys::pal::time::Timespec;
 
         let mutex = mutex.raw();
@@ -118,10 +118,12 @@ impl Condvar {
 
         let (dur, clamped) = if dur <= MAX_DURATION { (dur, false) } else { (MAX_DURATION, true) };
 
-        let timeout = libc::timespec {
-            // This cannot overflow because of the clamping above.
-            tv_sec: dur.as_secs() as i64,
-            tv_nsec: dur.subsec_nanos() as i64,
+        // This can overflow on 32-bit platforms, but not on 64-bit because of the clamping above.
+        let timeout = if let Ok(tv_sec) = dur.as_secs().try_into() {
+            libc::timespec { tv_sec, tv_nsec: dur.subsec_nanos() as _ }
+        } else {
+            // This is less than `MAX_DURATION` on 32-bit platforms.
+            TIMESPEC_MAX
         };
 
         let r = unsafe { libc::pthread_cond_timedwait_relative_np(self.raw(), mutex, &timeout) };

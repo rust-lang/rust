@@ -113,7 +113,7 @@ error[E0539]: malformed `link_section` attribute input
   --> $DIR/cfg_attr-attr-syntax-validation.rs:44:18
    |
 LL | #[cfg_attr(true, link_section)]
-   |                  ^^^^^^^^^^^^ help: must be of the form: `#[link_section = "name"]`
+   |                  ^^^^^^^^^^^^ help: must be of the form: `link_section = "name"`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
 
@@ -129,14 +129,12 @@ LL | #[cfg_attr(true, inline())]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[cfg_attr(true, inline())]
-LL + #[cfg_attr(true, #[inline(always)])]
+LL + #[cfg_attr(true, inline)]
    |
-LL - #[cfg_attr(true, inline())]
-LL + #[cfg_attr(true, #[inline(never)])]
-   |
-LL - #[cfg_attr(true, inline())]
-LL + #[cfg_attr(true, #[inline])]
-   |
+LL | #[cfg_attr(true, inline(always))]
+   |                         ++++++
+LL | #[cfg_attr(true, inline(never))]
+   |                         +++++
 
 warning: `#[link_section]` attribute cannot be used on structs
   --> $DIR/cfg_attr-attr-syntax-validation.rs:44:18

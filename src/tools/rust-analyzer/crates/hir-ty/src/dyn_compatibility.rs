@@ -7,7 +7,6 @@ use hir_def::{
     TypeAliasId, TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
     lang_item::LangItem, signatures::TraitFlags,
 };
-use intern::Symbol;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     AliasTyKind, ClauseKind, PredicatePolarity, TypeSuperVisitable as _, TypeVisitable as _,
@@ -19,10 +18,10 @@ use smallvec::SmallVec;
 use crate::{
     ImplTraitId,
     db::{HirDatabase, InternedOpaqueTyId},
-    lower_nextsolver::associated_ty_item_bounds,
+    lower::associated_ty_item_bounds,
     next_solver::{
-        Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate, TraitRef,
-        TypingMode, infer::DbInternerInferExt, mk_param,
+        Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv, ParamTy,
+        SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt, mk_param,
     },
     traits::next_trait_solve_in_ctxt,
 };
@@ -137,7 +136,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     };
 
     let interner = DbInterner::new_with(db, Some(krate), None);
-    let predicates = db.generic_predicates_ns(def);
+    let predicates = db.generic_predicates(def);
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
     // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
@@ -163,7 +162,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    db.generic_predicates_ns(trait_.into())
+    db.generic_predicates(trait_.into())
         .iter()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
@@ -379,7 +378,7 @@ where
         }) = pred
             && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
             && trait_data.flags.contains(TraitFlags::AUTO)
-            && let rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, .. }) =
+            && let rustc_type_ir::TyKind::Param(ParamTy { index: 0, .. }) =
                 pred_trait_ref.self_ty().kind()
         {
             continue;
@@ -398,10 +397,7 @@ fn receiver_is_dispatchable<'db>(
     db: &dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
-    sig: &crate::next_solver::EarlyBinder<
-        'db,
-        crate::next_solver::Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>,
-    >,
+    sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> bool {
     let sig = sig.instantiate_identity();
 
@@ -410,10 +406,8 @@ fn receiver_is_dispatchable<'db>(
         parent: trait_.into(),
         local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
     });
-    let self_param_ty = crate::next_solver::Ty::new(
-        interner,
-        rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, id: self_param_id }),
-    );
+    let self_param_ty =
+        Ty::new(interner, rustc_type_ir::TyKind::Param(ParamTy { index: 0, id: self_param_id }));
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
@@ -441,21 +435,20 @@ fn receiver_is_dispatchable<'db>(
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
-    let unsized_self_ty =
-        crate::next_solver::Ty::new_param(interner, self_param_id, u32::MAX, Symbol::empty());
+    let unsized_self_ty = Ty::new_param(interner, self_param_id, u32::MAX);
     // `Receiver[Self => U]`
     let unsized_receiver_ty = receiver_for_self_ty(interner, func, receiver_ty, unsized_self_ty);
 
     let param_env = {
-        let generic_predicates = &*db.generic_predicates_ns(func.into());
+        let generic_predicates = &*db.generic_predicates(func.into());
 
         // Self: Unsize<U>
         let unsize_predicate =
             TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let args = GenericArgs::for_item(interner, trait_.into(), |name, index, kind, _| {
-            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, name, kind) }
+        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _| {
+            if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, kind) }
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
@@ -477,7 +470,7 @@ fn receiver_is_dispatchable<'db>(
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let predicate =
         TraitRef::new(interner, dispatch_from_dyn_did.into(), [receiver_ty, unsized_receiver_ty]);
-    let goal = crate::next_solver::Goal::new(interner, param_env, predicate);
+    let goal = Goal::new(interner, param_env, predicate);
 
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     // the receiver is dispatchable iff the obligation holds
@@ -488,26 +481,19 @@ fn receiver_is_dispatchable<'db>(
 fn receiver_for_self_ty<'db>(
     interner: DbInterner<'db>,
     func: FunctionId,
-    receiver_ty: crate::next_solver::Ty<'db>,
-    self_ty: crate::next_solver::Ty<'db>,
-) -> crate::next_solver::Ty<'db> {
-    let args = crate::next_solver::GenericArgs::for_item(
-        interner,
-        SolverDefId::FunctionId(func),
-        |name, index, kind, _| {
-            if index == 0 { self_ty.into() } else { mk_param(interner, index, name, kind) }
-        },
-    );
+    receiver_ty: Ty<'db>,
+    self_ty: Ty<'db>,
+) -> Ty<'db> {
+    let args = GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _| {
+        if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
+    });
 
-    crate::next_solver::EarlyBinder::bind(receiver_ty).instantiate(interner, args)
+    EarlyBinder::bind(receiver_ty).instantiate(interner, args)
 }
 
 fn contains_illegal_impl_trait_in_trait<'db>(
     db: &'db dyn HirDatabase,
-    sig: &crate::next_solver::EarlyBinder<
-        'db,
-        crate::next_solver::Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>,
-    >,
+    sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> Option<MethodViolationCode> {
     struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
 

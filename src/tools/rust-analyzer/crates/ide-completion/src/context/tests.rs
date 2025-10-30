@@ -10,7 +10,7 @@ fn check_expected_type_and_name(#[rust_analyzer::rust_fixture] ra_fixture: &str,
     let (db, pos) = position(ra_fixture);
     let config = TEST_CONFIG;
     let (completion_context, _analysis) =
-        hir::attach_db(&db, || CompletionContext::new(&db, pos, &config).unwrap());
+        hir::attach_db(&db, || CompletionContext::new(&db, pos, &config, None).unwrap());
 
     let ty = completion_context
         .expected_type

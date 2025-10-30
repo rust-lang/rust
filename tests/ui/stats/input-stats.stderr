@@ -105,10 +105,10 @@ hir-stats - Semi                      32 (NN.N%)             1
 hir-stats Arm                       80 (NN.N%)             2            40
 hir-stats WherePredicate            72 (NN.N%)             3            24
 hir-stats - BoundPredicate            72 (NN.N%)             3
-hir-stats Local                     72 (NN.N%)             1            72
 hir-stats InlineAsm                 72 (NN.N%)             1            72
 hir-stats Body                      72 (NN.N%)             3            24
 hir-stats Param                     64 (NN.N%)             2            32
+hir-stats Local                     64 (NN.N%)             1            64
 hir-stats GenericArg                64 (NN.N%)             4            16
 hir-stats - Type                      16 (NN.N%)             1
 hir-stats - Lifetime                  48 (NN.N%)             3
@@ -119,5 +119,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_624                   173
+hir-stats Total                  8_616                   173
 hir-stats ================================================================

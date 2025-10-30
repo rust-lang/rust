@@ -1,40 +1,10 @@
 //! Things related to the infer context of the next-trait-solver.
 
-use std::sync::Arc;
-
-use tracing::{debug, instrument};
-
-use crate::next_solver::{
-    Clause, ClauseKind, FxIndexMap, GenericArgs, OpaqueTypeKey, ProjectionPredicate, SolverDefId,
-    TypingMode, util::BottomUpFolder,
-};
-
 pub(crate) mod table;
 
 pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
-use crate::next_solver::{
-    AliasTy, Binder, BoundRegion, BoundTy, Canonical, CanonicalVarValues, Const, DbInterner, Goal,
-    ParamEnv, Predicate, PredicateKind, Region, Ty, TyKind,
-    fold::FnMutDelegate,
-    infer::{
-        DefineOpaqueTypes, InferCtxt, TypeTrace,
-        traits::{Obligation, PredicateObligations},
-    },
-};
-use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, BoundConstness, BoundVar, Flags, GenericArgKind, InferTy,
-    Interner, RegionKind, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, Upcast, Variance,
-    error::{ExpectedFound, TypeError},
-    inherent::{DefId, GenericArgs as _, IntoKind, SliceLike},
-    relate::{
-        Relate, TypeRelation, VarianceDiagInfo,
-        combine::{super_combine_consts, super_combine_tys},
-    },
-};
-
-use super::{InferOk, traits::ObligationCause};
+use crate::next_solver::{OpaqueTypeKey, Ty, infer::InferCtxt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueHiddenType<'db> {

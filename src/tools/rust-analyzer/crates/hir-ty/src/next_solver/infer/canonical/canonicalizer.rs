@@ -10,17 +10,16 @@ use rustc_index::Idx;
 use rustc_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
 use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, SliceLike, Ty as _};
 use rustc_type_ir::{
-    BoundVar, CanonicalQueryInput, DebruijnIndex, Flags, InferConst, RegionKind, TyVid, TypeFlags,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    BoundVar, BoundVarIndexKind, CanonicalQueryInput, DebruijnIndex, Flags, InferConst, RegionKind,
+    TyVid, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
 };
 use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
-    Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, Canonical, CanonicalVarKind,
-    CanonicalVars, Const, ConstKind, DbInterner, GenericArg, ParamEnvAnd, Placeholder, Region, Ty,
-    TyKind,
+    Binder, Canonical, CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, GenericArg,
+    ParamEnvAnd, Placeholder, Region, Ty, TyKind,
 };
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -345,12 +344,9 @@ impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Canonicalizer<'cx, 'db> {
 
     fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
         match r.kind() {
-            RegionKind::ReBound(index, ..) => {
-                if index >= self.binder_index {
-                    panic!("escaping late-bound region during canonicalization");
-                } else {
-                    r
-                }
+            RegionKind::ReBound(BoundVarIndexKind::Bound(..), ..) => r,
+            RegionKind::ReBound(BoundVarIndexKind::Canonical, ..) => {
+                panic!("canonicalized bound var found during canonicalization");
             }
 
             RegionKind::ReStatic
@@ -427,12 +423,9 @@ impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Canonicalizer<'cx, 'db> {
                 self.canonicalize_ty_var(CanonicalVarKind::PlaceholderTy(placeholder), t)
             }
 
-            TyKind::Bound(debruijn, _) => {
-                if debruijn >= self.binder_index {
-                    panic!("escaping bound type during canonicalization")
-                } else {
-                    t
-                }
+            TyKind::Bound(BoundVarIndexKind::Bound(..), _) => t,
+            TyKind::Bound(BoundVarIndexKind::Canonical, ..) => {
+                panic!("canonicalized bound var found during canonicalization");
             }
 
             TyKind::Closure(..)
@@ -503,12 +496,11 @@ impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Canonicalizer<'cx, 'db> {
             ConstKind::Infer(InferConst::Fresh(_)) => {
                 panic!("encountered a fresh const during canonicalization")
             }
-            ConstKind::Bound(debruijn, _) => {
-                if debruijn >= self.binder_index {
-                    panic!("escaping bound const during canonicalization")
-                } else {
-                    return ct;
-                }
+            ConstKind::Bound(BoundVarIndexKind::Bound(..), _) => {
+                return ct;
+            }
+            ConstKind::Bound(BoundVarIndexKind::Canonical, ..) => {
+                panic!("canonicalized bound var found during canonicalization");
             }
             ConstKind::Placeholder(placeholder) => {
                 return self
@@ -758,8 +750,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
         r: Region<'db>,
     ) -> Region<'db> {
         let var = self.canonical_var(info, r.into());
-        let br = BoundRegion { var, kind: BoundRegionKind::Anon };
-        Region::new_bound(self.cx(), self.binder_index, br)
+        Region::new_canonical_bound(self.cx(), var)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -769,11 +760,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
     fn canonicalize_ty_var(&mut self, info: CanonicalVarKind<'db>, ty_var: Ty<'db>) -> Ty<'db> {
         debug_assert_eq!(ty_var, self.infcx.shallow_resolve(ty_var));
         let var = self.canonical_var(info, ty_var.into());
-        Ty::new_bound(
-            self.tcx,
-            self.binder_index,
-            BoundTy { kind: crate::next_solver::BoundTyKind::Anon, var },
-        )
+        Ty::new_canonical_bound(self.cx(), var)
     }
 
     /// Given a type variable `const_var` of the given kind, first check
@@ -787,6 +774,6 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
     ) -> Const<'db> {
         debug_assert_eq!(const_var, self.infcx.shallow_resolve_const(const_var));
         let var = self.canonical_var(info, const_var.into());
-        Const::new_bound(self.tcx, self.binder_index, BoundConst { var })
+        Const::new_canonical_bound(self.cx(), var)
     }
 }
