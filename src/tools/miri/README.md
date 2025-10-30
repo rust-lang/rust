@@ -292,6 +292,9 @@ Try running `cargo miri clean`.
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
 environment variable. We first document the most relevant and most commonly used flags:
 
+* `-Zmiri-backtrace=<0|1|full>` configures how Miri prints backtraces: `1` is the default,
+  where backtraces are printed in pruned form; `full` prints backtraces without pruning, and `0`
+  disables backtraces entirely.
 * `-Zmiri-deterministic-concurrency` makes Miri's concurrency-related behavior fully deterministic.
   Strictly speaking, Miri is always fully deterministic when isolation is enabled (the default
   mode), but this determinism is achieved by using an RNG with a fixed seed. Seemingly harmless

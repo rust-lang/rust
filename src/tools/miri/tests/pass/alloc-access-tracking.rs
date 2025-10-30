@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-track-alloc-accesses
-//@normalize-stderr-test: "id \d+" -> "id $$ALLOC"
 
 #[path = "../utils/mod.rs"]
 mod utils;

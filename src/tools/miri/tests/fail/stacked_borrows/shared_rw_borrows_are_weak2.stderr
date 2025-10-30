@@ -16,8 +16,6 @@ help: <TAG> was later invalidated at offsets [$HEX..$HEX] by a Unique retag
    |
 LL |         shr_rw.replace(1);
    |         ^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/stacked_borrows/shared_rw_borrows_are_weak2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
