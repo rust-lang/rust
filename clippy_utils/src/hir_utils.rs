@@ -555,7 +555,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (QPath::TypeRelative(lty, lseg), QPath::TypeRelative(rty, rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
-            (QPath::LangItem(llang_item, ..), QPath::LangItem(rlang_item, ..)) => llang_item == rlang_item,
             _ => false,
         }
     }
@@ -1091,9 +1090,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             QPath::TypeRelative(_, path) => {
                 self.hash_name(path.ident.name);
-            },
-            QPath::LangItem(lang_item, ..) => {
-                std::mem::discriminant(lang_item).hash(&mut self.s);
             },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);

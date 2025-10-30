@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
                 end: None,
                 limits: ast::RangeLimits::HalfOpen,
                 span: _,
-            }) = higher::Range::hir(index_expr)
+            }) = higher::Range::hir(cx, index_expr)
             && let hir::ExprKind::Lit(start_lit) = &start_expr.kind
             && let ast::LitKind::Int(start_idx, _) = start_lit.node
         {

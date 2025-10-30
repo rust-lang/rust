@@ -530,11 +530,13 @@ impl QuestionMark {
     }
 }
 
-fn is_try_block(bl: &Block<'_>) -> bool {
+fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
         && let ExprKind::Call(callee, [_]) = expr.kind
+        && let ExprKind::Path(qpath) = callee.kind
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitFromOutput)
     {
-        callee.opt_lang_path() == Some(LangItem::TryTraitFromOutput)
+        true
     } else {
         false
     }
@@ -590,8 +592,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_block(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()
@@ -607,8 +609,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()
