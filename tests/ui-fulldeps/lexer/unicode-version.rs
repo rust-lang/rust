@@ -22,6 +22,9 @@ fn main() {
          it should also be updated in the reference at \
          https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md."
     );
-    println!("Unicode XID version is: {:?}", rustc_lexer::UNICODE_XID_VERSION);
-    println!("Unicode normalization version is: {:?}", rustc_parse::UNICODE_NORMALIZATION_VERSION);
+    println!("Unicode version of unicode-ident is: {:?}", rustc_lexer::UNICODE_IDENT_VERSION);
+    println!(
+        "Unicode version of unicode-normalization is: {:?}",
+        rustc_parse::UNICODE_NORMALIZATION_VERSION
+    );
 }

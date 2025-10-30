@@ -34,8 +34,8 @@ use LiteralKind::*;
 use TokenKind::*;
 use cursor::EOF_CHAR;
 pub use cursor::{Cursor, FrontmatterAllowed};
+pub use unicode_ident::UNICODE_VERSION as UNICODE_IDENT_VERSION;
 use unicode_properties::UnicodeEmoji;
-pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -370,14 +370,14 @@ pub fn is_horizontal_whitespace(c: char) -> bool {
 /// a formal definition of valid identifier name.
 pub fn is_id_start(c: char) -> bool {
     // This is XID_Start OR '_' (which formally is not a XID_Start).
-    c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
+    c == '_' || unicode_ident::is_xid_start(c)
 }
 
 /// True if `c` is valid as a non-first character of an identifier.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
 /// a formal definition of valid identifier name.
 pub fn is_id_continue(c: char) -> bool {
-    unicode_xid::UnicodeXID::is_xid_continue(c)
+    unicode_ident::is_xid_continue(c)
 }
 
 /// The passed string is lexically an identifier.
