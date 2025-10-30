@@ -24,8 +24,6 @@ help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (act
 LL |         assert_eq!(root, 0); // Parent Read
    |         ^^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a loss of write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/parent_read_freezes_raw_mut.rs:LL:CC
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

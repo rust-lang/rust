@@ -604,28 +604,30 @@ pub fn report_msg<'tcx>(
     }
 
     // Add backtrace
-    let mut backtrace_title = String::from("BACKTRACE");
-    if extra_span {
-        write!(backtrace_title, " (of the first span)").unwrap();
-    }
-    if let Some(thread) = thread {
-        let thread_name = machine.threads.get_thread_display_name(thread);
-        if thread_name != "main" {
-            // Only print thread name if it is not `main`.
-            write!(backtrace_title, " on thread `{thread_name}`").unwrap();
-        };
-    }
-    write!(backtrace_title, ":").unwrap();
-    err.note(backtrace_title);
-    for (idx, frame_info) in stacktrace.iter().enumerate() {
-        let is_local = machine.is_local(frame_info);
-        // No span for non-local frames and the first frame (which is the error site).
-        if is_local && idx > 0 {
-            err.subdiagnostic(frame_info.as_note(machine.tcx));
-        } else {
-            let sm = sess.source_map();
-            let span = sm.span_to_embeddable_string(frame_info.span);
-            err.note(format!("{frame_info} at {span}"));
+    if stacktrace.len() > 1 {
+        let mut backtrace_title = String::from("BACKTRACE");
+        if extra_span {
+            write!(backtrace_title, " (of the first span)").unwrap();
+        }
+        if let Some(thread) = thread {
+            let thread_name = machine.threads.get_thread_display_name(thread);
+            if thread_name != "main" {
+                // Only print thread name if it is not `main`.
+                write!(backtrace_title, " on thread `{thread_name}`").unwrap();
+            };
+        }
+        write!(backtrace_title, ":").unwrap();
+        err.note(backtrace_title);
+        for (idx, frame_info) in stacktrace.iter().enumerate() {
+            let is_local = machine.is_local(frame_info);
+            // No span for non-local frames and the first frame (which is the error site).
+            if is_local && idx > 0 {
+                err.subdiagnostic(frame_info.as_note(machine.tcx));
+            } else {
+                let sm = sess.source_map();
+                let span = sm.span_to_embeddable_string(frame_info.span);
+                err.note(format!("{frame_info} at {span}"));
+            }
         }
     }
 

@@ -3,9 +3,6 @@ error: memory leaked: ALLOC (Rust heap, size: 4, align: 4), allocated here:
    |
 LL |         TLS.set(Some(Box::leak(Box::new(123))));
    |                                ^^^^^^^^^^^^^
-   |
-   = note: BACKTRACE:
-   = note: inside closure at tests/fail/tls_static_leak.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

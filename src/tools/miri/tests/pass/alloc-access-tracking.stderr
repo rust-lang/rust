@@ -3,18 +3,12 @@ note: now tracking allocation ALLOC of 123 bytes (alignment ALIGN bytes)
    |
 LL |         utils::miri_track_alloc(ptr);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/pass/alloc-access-tracking.rs:LL:CC
 
 note: write access at ALLOC[0..1]
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
 LL |         *ptr = 42; // Crucially, only a write is printed here, no read!
    |         ^^^^^^^^^ tracking was triggered here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/pass/alloc-access-tracking.rs:LL:CC
 
 note: read access at ALLOC[0..1]
   --> tests/pass/alloc-access-tracking.rs:LL:CC
@@ -22,8 +16,6 @@ note: read access at ALLOC[0..1]
 LL |         assert_eq!(*ptr, 42);
    |         ^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
    |
-   = note: BACKTRACE:
-   = note: inside `main` at RUSTLIB/core/src/macros/mod.rs:LL:CC
    = note: this note originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: freed allocation ALLOC
