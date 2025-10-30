@@ -568,11 +568,11 @@ fn compile_merged_doctest_and_caller_binary(
     compiler_args: Vec<String>,
     test_code: &str,
     instant: Instant,
-    is_compile_fail: bool,
+    should_panic: bool,
 ) -> Result<process::Output, (Duration, Result<(), RustdocResult>)> {
     // compile-fail tests never get merged, so this should always pass
     let output = child.wait_with_output().expect("Failed to wait");
-    if is_compile_fail && !output.status.success() {
+    if !output.status.success() {
         return Ok(output);
     }
 
@@ -583,7 +583,7 @@ fn compile_merged_doctest_and_caller_binary(
     runner_compiler.env("RUSTC_BOOTSTRAP", "1");
     runner_compiler.args(compiler_args);
     runner_compiler.args(["--crate-type=bin", "-o"]).arg(output_file);
-    let base_name = if is_compile_fail {
+    let base_name = if should_panic {
         format!("rust_out")
     } else {
         format!("doctest_bundle_{edition}", edition = doctest.edition)
@@ -611,7 +611,7 @@ fn compile_merged_doctest_and_caller_binary(
     extern_path.push(&output_bundle_file);
     runner_compiler.arg(&extern_path);
 
-    if is_compile_fail {
+    if should_panic {
         add_rustdoc_env_vars(&mut runner_compiler, doctest);
         runner_compiler.stderr(Stdio::piped());
         runner_compiler.stdin(Stdio::piped());
@@ -635,17 +635,13 @@ fn compile_merged_doctest_and_caller_binary(
     }
     debug!("compiler invocation for doctest runner: {runner_compiler:?}");
 
-    let output = if !output.status.success() {
-        output
-    } else {
-        let mut child_runner = runner_compiler.spawn().expect("Failed to spawn rustc process");
-        if is_compile_fail {
-            let stdin = child_runner.stdin.as_mut().expect("Failed to open stdin");
-            stdin.write_all(test_code.as_bytes()).expect("could write out test sources");
-        }
-        child_runner.wait_with_output().expect("Failed to wait")
-    };
-    if is_compile_fail {
+    let mut child_runner = runner_compiler.spawn().expect("Failed to spawn rustc process");
+    if should_panic {
+        let stdin = child_runner.stdin.as_mut().expect("Failed to open stdin");
+        stdin.write_all(test_code.as_bytes()).expect("could write out test sources");
+    }
+    let output = child_runner.wait_with_output().expect("Failed to wait");
+    if should_panic {
         Ok(output)
     } else {
         Ok(process::Output { status: output.status, stdout: Vec::new(), stderr: Vec::new() })
