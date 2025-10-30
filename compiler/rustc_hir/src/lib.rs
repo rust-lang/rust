@@ -5,7 +5,10 @@
 // tidy-alphabetical-start
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 #![feature(debug_closure_helpers)]
+#![feature(derive_const)]
 #![feature(exhaustive_patterns)]
 #![feature(never_type)]
 #![feature(variant_count)]

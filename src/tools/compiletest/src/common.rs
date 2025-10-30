@@ -174,6 +174,7 @@ pub enum Sanitizer {
     ShadowCallStack,
     Thread,
     Hwaddress,
+    Realtime,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
