@@ -200,7 +200,7 @@ pub(crate) struct TestProps {
     pub no_auto_check_cfg: bool,
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
-    pub add_core_stubs: bool,
+    pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
     pub core_stubs_compile_flags: Vec<String>,
     /// Whether line annotatins are required for the given error kind.
@@ -254,7 +254,7 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
-    pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
+    pub const ADD_MINICORE: &'static str = "add-minicore";
     pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
@@ -311,7 +311,7 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
-            add_core_stubs: false,
+            add_minicore: false,
             core_stubs_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
@@ -601,7 +601,7 @@ impl TestProps {
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
 
-                    self.update_add_core_stubs(ln, config);
+                    self.update_add_minicore(ln, config);
 
                     if let Some(flags) =
                         config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS)
@@ -753,12 +753,12 @@ impl TestProps {
         self.pass_mode
     }
 
-    fn update_add_core_stubs(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
-        let add_core_stubs = config.parse_name_directive(ln, directives::ADD_CORE_STUBS);
-        if add_core_stubs {
+    fn update_add_minicore(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
+        let add_minicore = config.parse_name_directive(ln, directives::ADD_MINICORE);
+        if add_minicore {
             if !matches!(config.mode, TestMode::Ui | TestMode::Codegen | TestMode::Assembly) {
                 panic!(
-                    "`add-core-stubs` is currently only supported for ui, codegen and assembly test modes"
+                    "`add-minicore` is currently only supported for ui, codegen and assembly test modes"
                 );
             }
 
@@ -767,10 +767,10 @@ impl TestProps {
             if self.local_pass_mode().is_some_and(|pm| pm == PassMode::Run) {
                 // `minicore` can only be used with non-run modes, because it's `core` prelude stubs
                 // and can't run.
-                panic!("`add-core-stubs` cannot be used to run the test binary");
+                panic!("`add-minicore` cannot be used to run the test binary");
             }
 
-            self.add_core_stubs = add_core_stubs;
+            self.add_minicore = add_minicore;
         }
     }
 }

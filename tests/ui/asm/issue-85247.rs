@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: ropi rwpi
 
 //@ [ropi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=ropi

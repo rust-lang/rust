@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-asm-support
 #![no_core]
 #![feature(no_core, lang_items)]

@@ -3,7 +3,7 @@
 //! This test is duplicated between ui/codegen/assembly because they have different runtest
 //! codepaths.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86

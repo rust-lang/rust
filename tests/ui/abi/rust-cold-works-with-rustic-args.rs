@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ compile-flags: -Clink-dead-code=true
 // We used to not handle all "rustic" ABIs in a (relatively) uniform way,
