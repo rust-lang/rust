@@ -6,8 +6,8 @@ use serde::Serialize;
 
 use crate::mir::mono::{Instance, StaticDef};
 use crate::target::{Endian, MachineInfo};
-use crate::ty::{index_impl, Allocation, Binder, ExistentialTraitRef, Ty};
-use crate::{with, Error, ReferencesTls};
+use crate::ty::{Allocation, Binder, ExistentialTraitRef, Ty, index_impl};
+use crate::{Error, ReferencesTls, with};
 
 /// An allocation in the rustc_public's IR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.

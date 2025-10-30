@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
-use crate::ty::{index_impl, Align, Ty, VariantIdx};
-use crate::{error, Error, Opaque, ReferencesTls};
+use crate::ty::{Align, Ty, VariantIdx, index_impl};
+use crate::{Error, Opaque, ReferencesTls, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
