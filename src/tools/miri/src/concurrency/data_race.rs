@@ -688,6 +688,8 @@ impl MemoryCellClocks {
         self.write = (index, thread_clocks.clock[index]);
         self.write_type = write_type;
         self.read.set_zero_vector();
+        // This is not an atomic location any more.
+        self.atomic_ops = None;
         Ok(())
     }
 }
@@ -754,14 +756,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
-        // Read the previous value so we can put it in the store buffer later.
-        // The program didn't actually do a read, so suppress the memory access hooks.
-        // This is also a very special exception where we just ignore an error -- if this read
-        // was UB e.g. because the memory is uninitialized, we don't want to know!
-        let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
-
         // Inform GenMC about the atomic store.
         if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            let old_val = this.run_for_validation_ref(|this| this.read_scalar(dest)).discard_err();
             if genmc_ctx.atomic_store(
                 this,
                 dest.ptr().addr(),
@@ -776,6 +773,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             }
             return interp_ok(());
         }
+
+        // Read the previous value so we can put it in the store buffer later.
+        let old_val = this.get_latest_nonatomic_val(dest);
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         this.buffered_atomic_write(val, dest, atomic, old_val)
@@ -1534,6 +1534,35 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                 }
             },
         )
+    }
+
+    /// Returns the most recent *non-atomic* value stored in the given place.
+    /// Errors if we don't need that (because we don't do store buffering) or if
+    /// the most recent value is in fact atomic.
+    fn get_latest_nonatomic_val(&self, place: &MPlaceTy<'tcx>) -> Result<Option<Scalar>, ()> {
+        let this = self.eval_context_ref();
+        // These cannot fail because `atomic_access_check` was done first.
+        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(place.ptr(), 0).unwrap();
+        let alloc_meta = &this.get_alloc_extra(alloc_id).unwrap().data_race;
+        if alloc_meta.as_weak_memory_ref().is_none() {
+            // No reason to read old value if we don't track store buffers.
+            return Err(());
+        }
+        let data_race = alloc_meta.as_vclocks_ref().unwrap();
+        // Only read old value if this is currently a non-atomic location.
+        for (_range, clocks) in data_race.alloc_ranges.borrow_mut().iter(offset, place.layout.size)
+        {
+            // If this had an atomic write that's not before the non-atomic write, that should
+            // already be in the store buffer. Initializing the store buffer now would use the
+            // wrong `sync_clock` so we better make sure that does not happen.
+            if clocks.atomic().is_some_and(|atomic| !(atomic.write_vector <= clocks.write())) {
+                return Err(());
+            }
+        }
+        // The program didn't actually do a read, so suppress the memory access hooks.
+        // This is also a very special exception where we just ignore an error -- if this read
+        // was UB e.g. because the memory is uninitialized, we don't want to know!
+        Ok(this.run_for_validation_ref(|this| this.read_scalar(place)).discard_err())
     }
 
     /// Generic atomic operation implementation

@@ -88,6 +88,13 @@ fn initialization_write(add_fence: bool) {
     check_all_outcomes([11, 22], || {
         let x = static_atomic(11);
 
+        if add_fence {
+            // For the fun of it, let's make this location atomic and non-atomic again,
+            // to ensure Miri updates the state properly for that.
+            x.store(99, Relaxed);
+            unsafe { std::ptr::from_ref(x).cast_mut().write(11.into()) };
+        }
+
         let wait = static_atomic(0);
 
         let j1 = spawn(move || {
