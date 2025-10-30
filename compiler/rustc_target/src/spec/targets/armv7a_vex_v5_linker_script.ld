@@ -60,7 +60,7 @@ SECTIONS {
     /*
      * Executable program instructions.
      */
-    .text : {
+    .text ALIGN(4) : {
         /* _boot routine (entry point from VEXos, must be at 0x03800020) */
         *(.boot)
 
