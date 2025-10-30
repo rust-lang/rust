@@ -1416,7 +1416,6 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(qself));
             visitor.visit_path_segment(segment)
         }
-        QPath::LangItem(..) => V::Result::output(),
     }
 }
 

@@ -865,6 +865,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let features = match await_kind {
+            FutureKind::Future if is_async_gen => Some(Arc::clone(&self.allow_async_gen)),
             FutureKind::Future => None,
             FutureKind::AsyncIterator => Some(Arc::clone(&self.allow_for_await)),
         };
@@ -1479,7 +1480,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
-        let fn_path = hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, span);
+        let fn_path = self.make_lang_item_qpath(hir::LangItem::RangeInclusiveNew, span, None);
         let fn_expr = self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path)));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
@@ -1565,7 +1566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::ExprKind::Struct(
-            self.arena.alloc(hir::QPath::LangItem(lang_item, span)),
+            self.arena.alloc(self.make_lang_item_qpath(lang_item, span, None)),
             fields,
             hir::StructTailExpr::None,
         )
@@ -1715,8 +1716,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
             // This ensures that we store our resumed `ResumeContext` correctly, and also that
             // the apparent value of the `yield` expression is `()`.
-            let wrapped_yielded = self.expr_call_lang_item_fn(
+            let desugar_span = self.mark_span_with_reason(
+                DesugaringKind::Async,
                 span,
+                Some(Arc::clone(&self.allow_async_gen)),
+            );
+            let wrapped_yielded = self.expr_call_lang_item_fn(
+                desugar_span,
                 hir::LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
             );
@@ -1728,7 +1734,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unreachable!("use of `await` outside of an async context.");
             };
             let task_context_ident = Ident::with_dummy_span(sym::_task_context);
-            let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
+            let lhs = self.expr_ident(desugar_span, task_context_ident, task_context_hid);
 
             hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span))
         } else {
@@ -2161,7 +2167,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lang_item: hir::LangItem,
         fields: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path = self.arena.alloc(self.lang_item_path(span, lang_item));
+        let path = self.arena.alloc(self.make_lang_item_qpath(lang_item, span, None));
         self.expr_enum_variant(span, path, fields)
     }
 
@@ -2198,16 +2204,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         lang_item: hir::LangItem,
     ) -> hir::Expr<'hir> {
-        let path = self.lang_item_path(span, lang_item);
-        self.expr(span, hir::ExprKind::Path(path))
-    }
-
-    pub(super) fn lang_item_path(
-        &mut self,
-        span: Span,
-        lang_item: hir::LangItem,
-    ) -> hir::QPath<'hir> {
-        hir::QPath::LangItem(lang_item, self.lower_span(span))
+        let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
+        self.expr(span, hir::ExprKind::Path(qpath))
     }
 
     /// `<LangItem>::name`

@@ -11,7 +11,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
     GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
-    WherePredicateKind, expr_needs_parens,
+    WherePredicateKind, expr_needs_parens, is_range_literal,
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
@@ -1664,7 +1664,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         match expr.kind {
-            ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
+            ExprKind::Struct(&qpath, [start, end], _)
+                if is_range_literal(expr)
+                    && self.tcx.qpath_is_lang_item(qpath, LangItem::Range) =>
+            {
                 err.span_suggestion_verbose(
                     start.expr.span.shrink_to_hi().with_hi(end.expr.span.lo()),
                     "remove the unnecessary `.` operator for a floating point literal",
@@ -1673,24 +1676,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 true
             }
-            ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+            ExprKind::Struct(&qpath, [arg], _)
+                if is_range_literal(expr)
+                    && let Some(qpath @ (LangItem::RangeFrom | LangItem::RangeTo)) =
+                        self.tcx.qpath_lang_item(qpath) =>
+            {
                 let range_span = expr.span.parent_callsite().unwrap();
-                err.span_suggestion_verbose(
-                    range_span.with_lo(start.expr.span.hi()),
-                    "remove the unnecessary `.` operator for a floating point literal",
-                    '.',
-                    Applicability::MaybeIncorrect,
-                );
-                true
-            }
-            ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
-                let range_span = expr.span.parent_callsite().unwrap();
-                err.span_suggestion_verbose(
-                    range_span.until(end.expr.span),
-                    "remove the unnecessary `.` operator and add an integer part for a floating point literal",
-                    "0.",
-                    Applicability::MaybeIncorrect,
-                );
+                match qpath {
+                    LangItem::RangeFrom => {
+                        err.span_suggestion_verbose(
+                            range_span.with_lo(arg.expr.span.hi()),
+                            "remove the unnecessary `.` operator for a floating point literal",
+                            '.',
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {
+                        err.span_suggestion_verbose(
+                            range_span.until(arg.expr.span),
+                            "remove the unnecessary `.` operator and add an integer part for a floating point literal",
+                            "0.",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
                 true
             }
             ExprKind::Lit(Spanned {
@@ -3497,11 +3506,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !hir::is_range_literal(expr) {
             return;
         }
-        let hir::ExprKind::Struct(hir::QPath::LangItem(LangItem::Range, ..), [start, end], _) =
-            expr.kind
-        else {
+        let hir::ExprKind::Struct(&qpath, [start, end], _) = expr.kind else {
             return;
         };
+        if !self.tcx.qpath_is_lang_item(qpath, LangItem::Range) {
+            return;
+        }
         if let hir::Node::ExprField(_) = self.tcx.parent_hir_node(expr.hir_id) {
             // Ignore `Foo { field: a..Default::default() }`
             return;

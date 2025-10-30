@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use thin_vec::thin_vec;
 
 use crate::LoweringContext;
@@ -128,7 +130,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let req_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             lowered_req.span,
-            None,
+            Some(Arc::clone(&self.allow_contracts)),
         );
         let precond = self.expr_call_lang_item_fn_mut(
             req_span,
@@ -143,8 +145,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ens: &Box<rustc_ast::Expr>,
     ) -> &'hir rustc_hir::Expr<'hir> {
         let ens_span = self.lower_span(ens.span);
-        let ens_span =
-            self.mark_span_with_reason(rustc_span::DesugaringKind::Contract, ens_span, None);
+        let ens_span = self.mark_span_with_reason(
+            rustc_span::DesugaringKind::Contract,
+            ens_span,
+            Some(Arc::clone(&self.allow_contracts)),
+        );
         let lowered_ens = self.lower_expr_mut(&ens);
         self.expr_call_lang_item_fn(
             ens_span,

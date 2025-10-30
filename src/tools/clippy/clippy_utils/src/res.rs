@@ -99,15 +99,6 @@ pub trait MaybeQPath<'a>: Copy {
     /// use for type dependant lookup.
     fn opt_qpath(self) -> Option<QPathId<'a>>;
 
-    /// If this node is a `QPath::LangItem` gets the item it resolves to.
-    #[inline]
-    fn opt_lang_path(self) -> Option<LangItem> {
-        match self.opt_qpath() {
-            Some((&QPath::LangItem(item, _), _)) => Some(item),
-            _ => None,
-        }
-    }
-
     /// If this is a path gets its resolution. Returns `Res::Err` otherwise.
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
@@ -116,10 +107,10 @@ pub trait MaybeQPath<'a>: Copy {
         fn f(qpath: &QPath<'_>, id: HirId, typeck: &TypeckResults<'_>) -> Res {
             match *qpath {
                 QPath::Resolved(_, p) => p.res,
-                QPath::TypeRelative(..) | QPath::LangItem(..) if let Some((kind, id)) = typeck.ty_based_def(id) => {
+                QPath::TypeRelative(..) if let Some((kind, id)) = typeck.ty_based_def(id) => {
                     Res::Def(kind, id)
                 },
-                QPath::TypeRelative(..) | QPath::LangItem(..) => Res::Err,
+                QPath::TypeRelative(..) => Res::Err,
             }
         }
         match self.opt_qpath() {
@@ -148,7 +139,7 @@ pub trait MaybeQPath<'a>: Copy {
                 {
                     Res::Def(kind, id)
                 },
-                QPath::Resolved(..) | QPath::TypeRelative(..) | QPath::LangItem(..) => Res::Err,
+                QPath::Resolved(..) | QPath::TypeRelative(..) => Res::Err,
             }
         }
         match self.opt_qpath() {
@@ -168,7 +159,7 @@ pub trait MaybeQPath<'a>: Copy {
                 QPath::TypeRelative(_, seg) if let Some((kind, id)) = typeck.ty_based_def(id) => {
                     (Res::Def(kind, id), Some(seg))
                 },
-                QPath::Resolved(..) | QPath::TypeRelative(..) | QPath::LangItem(..) => (Res::Err, None),
+                QPath::Resolved(..) | QPath::TypeRelative(..) => (Res::Err, None),
             }
         }
         match self.opt_qpath() {
@@ -202,7 +193,7 @@ pub trait MaybeQPath<'a>: Copy {
                     },
                     _,
                 ) if let Some((kind, id)) = typeck.ty_based_def(id) => Res::Def(kind, id),
-                QPath::Resolved(..) | QPath::TypeRelative(..) | QPath::LangItem(..) => Res::Err,
+                QPath::Resolved(..) | QPath::TypeRelative(..) => Res::Err,
             }
         }
         match self.opt_qpath() {
@@ -244,7 +235,7 @@ pub trait MaybeQPath<'a>: Copy {
                 {
                     Res::Def(kind, id)
                 },
-                QPath::Resolved(..) | QPath::TypeRelative(..) | QPath::LangItem(..) => Res::Err,
+                QPath::Resolved(..) | QPath::TypeRelative(..) => Res::Err,
             }
         }
         match self.opt_qpath() {

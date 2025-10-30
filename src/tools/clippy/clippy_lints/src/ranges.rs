@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{DesugaringKind, Span, sym};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -368,7 +368,9 @@ fn can_switch_ranges<'tcx>(
     // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
     if let ExprKind::Call(func, [arg]) = parent_expr.kind
         && arg.hir_id == use_ctxt.child_id
-        && func.opt_lang_path() == Some(LangItem::IntoIterIntoIter)
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
+        && parent_expr.span.is_desugaring(DesugaringKind::ForLoop)
     {
         return true;
     }
@@ -501,7 +503,7 @@ fn check_range_switch<'tcx>(
     msg: &'static str,
     operator: &str,
 ) {
-    if let Some(range) = higher::Range::hir(expr)
+    if let Some(range) = higher::Range::hir(cx, expr)
         && let higher::Range {
             start,
             end: Some(end),
@@ -569,7 +571,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         end: Some(end),
         limits,
         span,
-    }) = higher::Range::hir(expr)
+    }) = higher::Range::hir(cx, expr)
         && let ty = cx.typeck_results().expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
         && let ecx = ConstEvalCtxt::new(cx)

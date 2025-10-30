@@ -517,6 +517,7 @@ symbols! {
         async_fn_track_caller,
         async_fn_traits,
         async_for_loop,
+        async_gen_internals,
         async_iterator,
         async_iterator_poll_next,
         async_trait_bounds,

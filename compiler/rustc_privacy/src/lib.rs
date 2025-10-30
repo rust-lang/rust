@@ -1268,7 +1268,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 Res::Def(kind, def_id) => Some((kind, def_id)),
                 _ => None,
             },
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
+            hir::QPath::TypeRelative(..) => {
                 match self.maybe_typeck_results {
                     Some(typeck_results) => typeck_results.type_dependent_def(id),
                     // FIXME: Check type-relative associated types in signatures.
@@ -1287,9 +1287,6 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 if let DefKind::Static { .. } = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
-                    hir::QPath::LangItem(it, ..) => {
-                        self.tcx.lang_items().get(it).map(|did| self.tcx.def_path_str(did))
-                    }
                     hir::QPath::Resolved(_, path) => Some(self.tcx.def_path_str(path.res.def_id())),
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };

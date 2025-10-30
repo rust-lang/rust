@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
         start: Some(start),
         end: Some(end),
         ..
-    }) = higher::Range::hir(arg)
+    }) = higher::Range::hir(cx, arg)
         && let (mut_id_start, mut_id_end) = (check_for_mutability(cx, start), check_for_mutability(cx, end))
         && (mut_id_start.is_some() || mut_id_end.is_some())
     {
