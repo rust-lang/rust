@@ -11,10 +11,10 @@ use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{Filename, IndexedVal, Opaque, ReferencesTls};
+use crate::{Filename, IndexedVal, Opaque, ThreadLocalIndex};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
-pub struct Ty(usize, ReferencesTls);
+pub struct Ty(usize, ThreadLocalIndex);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -152,7 +152,7 @@ pub enum TyConstKind {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub struct TyConstId(usize, ReferencesTls);
+pub struct TyConstId(usize, ThreadLocalIndex);
 
 /// Represents a constant in MIR
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
@@ -213,7 +213,7 @@ impl MirConst {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct MirConstId(usize, ReferencesTls);
+pub struct MirConstId(usize, ThreadLocalIndex);
 
 type Ident = Opaque;
 
@@ -256,7 +256,7 @@ pub struct Placeholder<T> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct Span(usize, ReferencesTls);
+pub struct Span(usize, ThreadLocalIndex);
 
 impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -1560,7 +1560,7 @@ macro_rules! index_impl {
     ($name:ident) => {
         impl crate::IndexedVal for $name {
             fn to_val(index: usize) -> Self {
-                $name(index, $crate::ReferencesTLS)
+                $name(index, $crate::ThreadLocalIndex)
             }
             fn to_index(&self) -> usize {
                 self.0
@@ -1589,7 +1589,7 @@ index_impl!(Span);
 /// `c` is in the variant with the `VariantIdx` of `1`, and
 /// `g` is in the variant with the `VariantIdx` of `0`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct VariantIdx(usize, ReferencesTls);
+pub struct VariantIdx(usize, ThreadLocalIndex);
 
 index_impl!(VariantIdx);
 

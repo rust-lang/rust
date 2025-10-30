@@ -303,15 +303,15 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
 /// Note. This doens't make it impossible to confuse TLS. You could return a
 /// `DefId` from one `run!` invocation, and then use it inside a different
 /// `run!` invocation with different tables.
-pub(crate) struct ReferencesTls {
+pub(crate) struct ThreadLocalIndex {
     _phantom: PhantomData<*const ()>,
 }
 #[expect(non_upper_case_globals)]
-/// Emulating unit struct `struct ReferencesTLS`;
-pub(crate) const ReferencesTLS: ReferencesTls = ReferencesTls { _phantom: PhantomData };
+/// Emulating unit struct `struct ThreadLocalIndex`;
+pub(crate) const ThreadLocalIndex: ThreadLocalIndex = ThreadLocalIndex { _phantom: PhantomData };
 
-impl fmt::Debug for ReferencesTls {
+impl fmt::Debug for ThreadLocalIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ReferencesTLS").finish()
+        f.debug_tuple("ThreadLocalIndex").finish()
     }
 }

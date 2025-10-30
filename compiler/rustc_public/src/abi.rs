@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, Ty, VariantIdx, index_impl};
-use crate::{Error, Opaque, ReferencesTls, error};
+use crate::{Error, Opaque, ThreadLocalIndex, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -110,7 +110,7 @@ impl LayoutShape {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct Layout(usize, ReferencesTls);
+pub struct Layout(usize, ThreadLocalIndex);
 index_impl!(Layout);
 
 impl Layout {

@@ -8,7 +8,7 @@ use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
 use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty, index_impl};
-use crate::{CrateItem, DefId, Error, ItemKind, Opaque, ReferencesTls, Symbol, with};
+use crate::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, ThreadLocalIndex, with};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum MonoItem {
@@ -242,7 +242,7 @@ impl From<StaticDef> for CrateItem {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct InstanceDef(usize, ReferencesTls);
+pub struct InstanceDef(usize, ThreadLocalIndex);
 index_impl!(InstanceDef);
 
 impl CrateDef for InstanceDef {
