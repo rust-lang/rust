@@ -207,7 +207,9 @@ settings:
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
 - `needs-target-std` — ignores if target platform does not have std support.
-- `ignore-backends` — ignores the listed backends, separated by whitespace characters.
+- `ignore-backends` — ignores the listed backends, separated by whitespace characters. Please note
+  that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
+  flag. 
 - `needs-backends` — only runs the test if current codegen backend is listed.
 
 The following directives will check LLVM support:

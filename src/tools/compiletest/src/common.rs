@@ -710,6 +710,8 @@ pub struct Config {
     pub default_codegen_backend: CodegenBackend,
     /// Name/path of the backend to use instead of `default_codegen_backend`.
     pub override_codegen_backend: Option<String>,
+    /// Whether to ignore `//@ ignore-backends`.
+    pub bypass_ignore_backends: bool,
 }
 
 impl Config {
