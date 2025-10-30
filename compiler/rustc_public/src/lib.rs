@@ -23,9 +23,9 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::{fmt, io};
 
-use rustc_public_bridge::context::CompilerCtxt;
 pub(crate) use rustc_public_bridge::IndexedVal;
 use rustc_public_bridge::Tables;
+use rustc_public_bridge::context::CompilerCtxt;
 /// Export the rustc_internal APIs. Note that this module has no stability
 /// guarantees and it is not taken into account for semver.
 #[cfg(feature = "rustc_internal")]
@@ -57,8 +57,8 @@ pub mod visitor;
 pub type Symbol = String;
 
 /// The number that identifies a crate.
-// FIXME: Make this a newtype, so it can have a `ReferencesTls`
-pub type CrateNum = usize;
+#[derive(Clone, Copy, Serialize, PartialEq, Eq, Debug)]
+pub struct CrateNum(pub(crate) usize, ThreadLocalIndex);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -84,9 +84,6 @@ pub struct Crate {
     pub id: CrateNum,
     pub name: Symbol,
     pub is_local: bool,
-    // FIXME: Remove this when `CrateNum` holds `ReferencesTLS`
-    #[serde(skip)]
-    references_tls: ReferencesTls,
 }
 
 impl Crate {
