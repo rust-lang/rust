@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions:riscv64gc riscv32gc riscv32imac
 
 //@[riscv64gc] compile-flags: --target=riscv64gc-unknown-linux-gnu

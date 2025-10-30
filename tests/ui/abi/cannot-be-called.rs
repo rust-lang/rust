@@ -3,7 +3,7 @@
 Interrupt ABIs share similar semantics, in that they are special entry-points unusable by Rust.
 So we test that they error in essentially all of the same places.
 */
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430
 //
 //@ [x64] needs-llvm-components: x86

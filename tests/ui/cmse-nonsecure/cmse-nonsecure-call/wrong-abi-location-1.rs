@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 #![feature(abi_cmse_nonsecure_call, lang_items, no_core)]

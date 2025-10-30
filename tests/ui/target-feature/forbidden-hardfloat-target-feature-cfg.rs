@@ -1,7 +1,7 @@
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=lib
 //@ needs-llvm-components: x86
 //@ check-pass
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![no_core]
 #![allow(unexpected_cfgs)]

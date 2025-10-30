@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: ENABLE_SVE DISABLE_SVE DISABLE_NEON ENABLE_NEON
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64

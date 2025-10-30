@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: elfv1-be elfv2-be elfv2-le aix
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3

@@ -4,7 +4,7 @@
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 // FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
 //@ core-stubs-compile-flags: -C target-feature=-pacg,-paca
 #![feature(no_core)]

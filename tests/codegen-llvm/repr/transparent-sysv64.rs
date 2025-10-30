@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: linux apple win
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 

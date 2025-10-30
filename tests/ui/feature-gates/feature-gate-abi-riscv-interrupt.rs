@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: riscv
 //@ compile-flags: --target=riscv32imc-unknown-none-elf --crate-type=rlib
 //@ ignore-backends: gcc

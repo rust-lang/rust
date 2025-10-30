@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ needs-llvm-components: arm
 //@ build-pass

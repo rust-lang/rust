@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --target loongarch64-unknown-linux-gnu
 //@ needs-llvm-components: loongarch

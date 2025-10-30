@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: sparc sparcv8plus sparc_cpu_v9 sparc_feature_v8plus sparc_cpu_v9_feature_v8plus
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
 //@[sparc] needs-llvm-components: sparc

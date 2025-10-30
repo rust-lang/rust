@@ -1,6 +1,6 @@
 // Test the regparm ABI with builtin and non-builtin calls
 // Issue: https://github.com/rust-lang/rust/issues/145271
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static
 //@ revisions: REGPARM1 REGPARM2 REGPARM3

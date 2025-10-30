@@ -3,7 +3,7 @@
 //@ needs-llvm-components: riscv
 //@ check-pass
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![no_core]
 #![allow(unexpected_cfgs)]

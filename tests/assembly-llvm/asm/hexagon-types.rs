@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target hexagon-unknown-linux-musl
 //@ compile-flags: -Zmerge-functions=disabled

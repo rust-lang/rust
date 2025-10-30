@@ -1,7 +1,7 @@
 // Test that structs aligned to 128 bits are passed with the correct ABI on powerpc64le.
 // This is similar to aarch64-struct-align-128.rs, but for ppc.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target powerpc64le-unknown-linux-gnu
 //@ needs-llvm-components: powerpc
 

@@ -3,7 +3,7 @@
 /// a best-effort approximation for diagnostics. Add new directives to this list when needed.
 pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-start
-    "add-core-stubs",
+    "add-minicore",
     "assembly-output",
     "aux-bin",
     "aux-build",

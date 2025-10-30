@@ -1,6 +1,6 @@
 //! Verify that Rust implements the expected calling convention for `f128`
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=3 --target wasm32-wasip1
 //@ needs-llvm-components: webassembly
 

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: linux win_x86 win_i686 macos thumb
 //
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target hexagon-unknown-linux-musl
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ needs-llvm-components: hexagon

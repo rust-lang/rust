@@ -1,7 +1,7 @@
 // Checks that we leave the target alone MACOSX_DEPLOYMENT_TARGET is unset.
 // See issue #60235.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=3 --target=i686-apple-darwin --crate-type=rlib
 //@ needs-llvm-components: x86
 //@ unset-rustc-env:MACOSX_DEPLOYMENT_TARGET

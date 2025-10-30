@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target thumbv8m.main-none-eabihf
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ needs-llvm-components: arm

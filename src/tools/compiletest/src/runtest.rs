@@ -1312,7 +1312,7 @@ impl<'test> TestCx<'test> {
         input: Option<String>,
         root_testpaths: &TestPaths,
     ) -> ProcRes {
-        if self.props.add_core_stubs {
+        if self.props.add_minicore {
             let minicore_path = self.build_minicore();
             rustc.arg("--extern");
             rustc.arg(&format!("minicore={}", minicore_path));
@@ -1457,7 +1457,7 @@ impl<'test> TestCx<'test> {
 
         aux_rustc.arg("-L").arg(&aux_dir);
 
-        if aux_props.add_core_stubs {
+        if aux_props.add_minicore {
             let minicore_path = self.build_minicore();
             aux_rustc.arg("--extern");
             aux_rustc.arg(&format!("minicore={}", minicore_path));
@@ -1899,7 +1899,7 @@ impl<'test> TestCx<'test> {
         // change the default.
         //
         // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
-        if self.props.add_core_stubs {
+        if self.props.add_minicore {
             rustc.arg("-Cpanic=abort");
             rustc.arg("-Cforce-unwind-tables=yes");
         }

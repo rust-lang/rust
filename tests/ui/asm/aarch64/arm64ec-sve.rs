@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target arm64ec-pc-windows-msvc
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc

@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: COMPAT INCOMPAT
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3

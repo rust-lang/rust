@@ -1,5 +1,5 @@
 //@ revisions: z10 z10_vector z13 z13_no_vector
-//@ add-core-stubs
+//@ add-minicore
 // ignore-tidy-linelength
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled

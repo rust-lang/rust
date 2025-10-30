@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target msp430-none-elf
 //@ needs-llvm-components: msp430

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target bpfel-unknown-none
 //@ needs-llvm-components: bpf
 

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: i686-linux i686-freebsd x64-linux x64-apple
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 

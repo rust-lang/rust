@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target m68k-unknown-linux-gnu
 //@ needs-llvm-components: m68k

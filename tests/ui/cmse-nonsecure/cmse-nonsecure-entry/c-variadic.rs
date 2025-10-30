@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ edition: 2018
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm

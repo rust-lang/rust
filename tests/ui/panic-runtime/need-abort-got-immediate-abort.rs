@@ -2,7 +2,7 @@
 //@ aux-build:needs-abort.rs
 //@ compile-flags:-Cpanic=immediate-abort -Zunstable-options
 //@ no-prefer-dynamic
-//@ add-core-stubs
+//@ add-minicore
 //@ core-stubs-compile-flags: -Cpanic=immediate-abort -Zunstable-options
 
 #![feature(no_core)]

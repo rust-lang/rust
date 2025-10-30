@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: riscv32 riscv64
 //
 //@ [riscv32] needs-llvm-components: riscv

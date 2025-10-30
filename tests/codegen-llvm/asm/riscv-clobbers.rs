@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ revisions: rv32i rv64i rv32e
 //@[rv32i] compile-flags: --target riscv32i-unknown-none-elf

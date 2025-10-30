@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: enable-backchain disable-backchain default-backchain
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --crate-type=lib --target=s390x-unknown-linux-gnu
