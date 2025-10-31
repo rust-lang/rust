@@ -49,7 +49,7 @@ use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
+use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
@@ -537,13 +537,11 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let (mut flow_analysis, flow_entry_states) =
-        get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut flow_analysis,
-        &flow_entry_states,
+        &flow_results,
         &mut mbcx,
     );
 
@@ -604,7 +602,7 @@ fn get_flow_results<'a, 'tcx>(
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-) -> (Borrowck<'a, 'tcx>, Results<BorrowckDomain>) {
+) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
@@ -629,14 +627,14 @@ fn get_flow_results<'a, 'tcx>(
         ever_inits: ever_inits.analysis,
     };
 
-    assert_eq!(borrows.results.len(), uninits.results.len());
-    assert_eq!(borrows.results.len(), ever_inits.results.len());
-    let results: Results<_> =
-        itertools::izip!(borrows.results, uninits.results, ever_inits.results)
+    assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
+    assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
+    let entry_states: EntryStates<_> =
+        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
             .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
             .collect();
 
-    (analysis, results)
+    Results { analysis, entry_states }
 }
 
 pub(crate) struct BorrowckInferCtxt<'tcx> {
@@ -790,7 +788,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         stmt: &Statement<'tcx>,
         location: Location,
@@ -865,7 +863,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         term: &Terminator<'tcx>,
         loc: Location,
@@ -985,7 +983,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         term: &Terminator<'tcx>,
         loc: Location,
