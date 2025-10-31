@@ -97,5 +97,17 @@ LL | |         0
 LL | |     }
    | |_____^ help: replace it with: `Some(42).unwrap_or_default()`
 
-error: aborting due to 9 previous errors
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:178:13
+   |
+LL |     let _ = if let Ok(v) = x { v } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x.unwrap_or_default()`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:182:13
+   |
+LL |     let _ = if let Ok(v) = copyable_res { v } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `copyable_res.unwrap_or_default()`
+
+error: aborting due to 11 previous errors
 

@@ -157,10 +157,7 @@ pub(super) fn check<'tcx>(
                             "consider using an iterator and enumerate()",
                             vec![
                                 (pat.span, format!("({}, <item>)", ident.name)),
-                                (
-                                    span,
-                                    format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
-                                ),
+                                (span, format!("{indexed}.{method}().enumerate(){method_1}{method_2}")),
                             ],
                             Applicability::HasPlaceholders,
                         );
