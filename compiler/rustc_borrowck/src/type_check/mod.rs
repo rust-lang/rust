@@ -560,8 +560,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         // check rvalue is Reborrow
-        if let Rvalue::Reborrow(_, rvalue) = rvalue {
-            self.add_generic_reborrow_constraint(location, place, rvalue);
+        if let Rvalue::Reborrow(mutability, rvalue) = rvalue {
+            self.add_generic_reborrow_constraint(*mutability, location, place, rvalue);
         } else {
             // rest of the cases
             self.super_assign(place, rvalue, location);
@@ -2455,6 +2455,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn add_generic_reborrow_constraint(
         &mut self,
+        mutability: Mutability,
         location: Location,
         dest: &Place<'tcx>,
         borrowed_place: &Place<'tcx>,
@@ -2481,7 +2482,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        debug!("add_generic_reborrow_constraint({:?}, {:?}, {:?})", location, dest, borrowed_place);
+        debug!("add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})", mutability, location, dest, borrowed_place);
 
         let tcx = self.infcx.tcx;
         let def = self.body.source.def_id().expect_local();
@@ -2497,18 +2498,47 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let dest_ty = dest.ty(self.body, tcx).ty;
         let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
 
-        // FIXME: for shared reborrow we need to relate the types manually,
-        // field by field with CoerceShared drilling down and down and down.
-        // We cannot just attempt to relate T and <T as CoerceShared>::Target
-        // by calling relate_types.
-        self.relate_types(
-            borrowed_ty,
-            ty::Variance::Covariant,
-            dest_ty,
-            location.to_locations(),
-            category,
-        )
-        .unwrap();
+        if mutability.is_not() {
+            // FIXME: for shared reborrow we need to relate the types manually,
+            // field by field with CoerceShared drilling down and down and down.
+            // We cannot just attempt to relate T and <T as CoerceShared>::Target
+            // by calling relate_types.
+            let dest_adt = dest_ty.ty_adt_def().unwrap();
+            let ty::Adt(_, dest_args) = dest_ty.kind() else {
+                unreachable!()
+            };
+            let ty::Adt(_, borrowed_args) = borrowed_ty.kind() else {
+                unreachable!()
+            };
+            let borrowed_adt = borrowed_ty.ty_adt_def().unwrap();
+            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
+            for dest_field in dest_adt.all_fields() {
+                let Some(borrowed_field) = borrowed_fields.iter().find(|f| f.name == dest_field.name) else {
+                    continue;
+                };
+                let dest_ty = dest_field.ty(tcx, dest_args);
+                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args);
+                self.relate_types(
+                    borrowed_ty,
+                    ty::Variance::Covariant,
+                    dest_ty,
+                    location.to_locations(),
+                    category,
+                )
+                .unwrap();
+            }
+        } else {
+            // Exclusive reborrow
+            self.relate_types(
+                borrowed_ty,
+                ty::Variance::Covariant,
+                dest_ty,
+                location.to_locations(),
+                category,
+            )
+            .unwrap();
+        }
+
     }
 
     fn prove_aggregate_predicates(

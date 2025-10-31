@@ -196,6 +196,18 @@ pub enum AutoBorrow {
     RawPtr(hir::Mutability),
 }
 
+/// Information for `CoerceShared` impls, storing information we
+/// have computed about the coercion.
+///
+/// This struct can be obtained via the `coerce_shared_impl` query.
+/// Demanding this struct also has the side-effect of reporting errors
+/// for inappropriate impls.
+#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct CoerceSharedInfo {
+    pub is_trivial: bool,
+    pub participating_lifetimes: u8,
+}
+
 /// Information for `CoerceUnsized` impls, storing information we
 /// have computed about the coercion.
 ///

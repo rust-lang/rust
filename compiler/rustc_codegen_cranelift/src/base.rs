@@ -624,7 +624,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Reborrow(place) => {
+                Rvalue::Reborrow(_, place) => {
                     let cplace = codegen_place(fx, place);
                     let val = cplace.to_cvalue(fx);
                     lval.write_cvalue(fx, val)
