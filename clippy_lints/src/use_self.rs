@@ -10,7 +10,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParamKind, HirId, Impl,
-    ImplItemKind, Item, ItemKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
+    ImplItemImplKind, ImplItemKind, Item, ItemKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty as MiddleTy;
@@ -142,13 +142,14 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // We want to skip types in trait `impl`s that aren't declared as `Self` in the trait
         // declaration. The collection of those types is all this method implementation does.
         if let ImplItemKind::Fn(FnSig { decl, .. }, ..) = impl_item.kind
+            && let ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let Some(&mut StackItem::Check {
                 impl_id,
                 ref mut types_to_skip,
                 ..
             }) = self.stack.last_mut()
-            && let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_id)
         {
+            let impl_trait_ref = cx.tcx.impl_trait_ref(impl_id);
             // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
             // `Self`.
             let self_ty = impl_trait_ref.instantiate_identity().self_ty();

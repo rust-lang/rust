@@ -3,7 +3,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
-use itertools::Itertools;
 use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -22,8 +21,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgsRef, GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -903,8 +902,10 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     }
 }
 
+#[cfg(debug_assertions)]
 /// Asserts that the given arguments match the generic parameters of the given item.
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
+    use itertools::Itertools;
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));
     let count = g.parent_count + g.own_params.len();
@@ -920,7 +921,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
             note: the expected arguments are: `[{}]`\n\
             the given arguments are: `{args:#?}`",
         args.len(),
-        params.clone().map(GenericParamDefKind::descr).format(", "),
+        params.clone().map(ty::GenericParamDefKind::descr).format(", "),
     );
 
     if let Some((idx, (param, arg))) =
@@ -929,13 +930,13 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
             .zip(args.iter().map(|&x| x.kind()))
             .enumerate()
             .find(|(_, (param, arg))| match (param, arg) {
-                (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
-                | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
-                | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
+                (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_)) => false,
                 (
-                    GenericParamDefKind::Lifetime
-                    | GenericParamDefKind::Type { .. }
-                    | GenericParamDefKind::Const { .. },
+                    ty::GenericParamDefKind::Lifetime
+                    | ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Const { .. },
                     _,
                 ) => true,
             })
@@ -945,7 +946,7 @@ fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[Generi
                 note: the expected arguments are `[{}]`\n\
                 the given arguments are `{args:#?}`",
             param.descr(),
-            params.clone().map(GenericParamDefKind::descr).format(", "),
+            params.clone().map(ty::GenericParamDefKind::descr).format(", "),
         );
     }
 }

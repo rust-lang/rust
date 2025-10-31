@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath, RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -200,9 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                     self.emit_lint_if_under_msrv(cx, is_in_const_context(cx), method_did, expr.hir_id, span);
                 }
             },
-            ExprKind::Call(callee, _)
-                if let ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = callee.kind =>
-            {
+            ExprKind::Call(callee, _) if let ExprKind::Path(qpath) = callee.kind => {
                 self.called_path = Some(callee.hir_id);
                 let needs_const = is_in_const_context(cx);
                 let def_id = if let Some(def_id) = cx.qpath_res(&qpath, callee.hir_id).opt_def_id() {
@@ -221,7 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
             // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
             // not be linted as they will not be generated in older compilers if the function is not available,
             // and the compiler is allowed to call unstable functions.
-            ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..)))
+            ExprKind::Path(qpath)
                 if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id()
                     && self.called_path != Some(expr.hir_id) =>
             {
@@ -232,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
-        if let hir::TyKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = hir_ty.kind
+        if let hir::TyKind::Path(qpath) = hir_ty.kind
             && let Some(ty_def_id) = cx.qpath_res(&qpath, hir_ty.hir_id).opt_def_id()
             // `CStr` and `CString` have been moved around but have been available since Rust 1.0.0
             && !matches!(cx.tcx.get_diagnostic_name(ty_def_id), Some(sym::cstr_type | sym::cstring_type))

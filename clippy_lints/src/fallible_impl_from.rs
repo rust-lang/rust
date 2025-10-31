@@ -52,11 +52,9 @@ declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`
-        if let hir::ItemKind::Impl(_) = &item.kind
-            && let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
-            && cx
-                .tcx
-                .is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id)
+        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = &item.kind
+            && let impl_trait_id = cx.tcx.impl_trait_id(item.owner_id)
+            && cx.tcx.is_diagnostic_item(sym::From, impl_trait_id)
         {
             lint_impl_body(cx, item.owner_id, item.span);
         }

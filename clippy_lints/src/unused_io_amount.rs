@@ -85,9 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     /// get desugared to match.
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'tcx>) {
         let fn_def_id = block.hir_id.owner.to_def_id();
-        if let Some(impl_id) = cx.tcx.impl_of_assoc(fn_def_id)
-            && let Some(trait_id) = cx.tcx.trait_id_of_impl(impl_id)
-        {
+        if let Some(impl_id) = cx.tcx.trait_impl_of_assoc(fn_def_id) {
+            let trait_id = cx.tcx.impl_trait_id(impl_id);
             // We don't want to lint inside io::Read or io::Write implementations, as the author has more
             // information about their trait implementation than our lint, see https://github.com/rust-lang/rust-clippy/issues/4836
             if let Some(trait_name) = cx.tcx.get_diagnostic_name(trait_id)
@@ -193,9 +192,9 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
 
 fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option<IoOp> {
     inner = unpack_match(inner);
-    inner = unpack_try(inner);
+    inner = unpack_try(cx, inner);
     inner = unpack_call_chain(inner);
-    inner = unpack_await(inner);
+    inner = unpack_await(cx, inner);
     // we type-check it to get whether it's a read/write or their vectorized forms
     // and keep only the ones that are produce io amount
     check_io_mode(cx, inner)
@@ -257,12 +256,10 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     expr
 }
 
-fn unpack_try<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+fn unpack_try<'a>(cx: &LateContext<'_>, mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     while let ExprKind::Call(func, [arg_0]) = expr.kind
-        && matches!(
-            func.kind,
-            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
-        )
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::TryTraitBranch)
     {
         expr = arg_0;
     }
@@ -278,13 +275,11 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
-fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+fn unpack_await<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind
         && let ExprKind::Call(func, [arg_0]) = expr.kind
-        && matches!(
-            func.kind,
-            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
-        )
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::IntoFutureIntoFuture)
     {
         return arg_0;
     }
