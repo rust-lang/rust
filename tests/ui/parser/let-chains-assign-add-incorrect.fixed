@@ -5,7 +5,7 @@
 
 fn test_where_left_is_not_let() {
     let y = 2;
-    if let _ = 1 && true && y += 2 {};
+    if let _ = 1 && true && y == 2 {};
     //~^ ERROR expected expression, found `let` statement
     //~| NOTE only supported directly in conditions of `if` and `while` expressions
     //~| ERROR mismatched types
@@ -19,7 +19,7 @@ fn test_where_left_is_not_let() {
 
 fn test_where_left_is_let() {
     let y = 2;
-    if let _ = 1 && y += 2 {};
+    if let _ = 1 && y == 2 {};
     //~^ ERROR expected expression, found `let` statement
     //~| NOTE only supported directly in conditions of `if` and `while` expressions
     //~| ERROR mismatched types

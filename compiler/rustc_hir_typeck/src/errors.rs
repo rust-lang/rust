@@ -7,7 +7,7 @@ use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, struct_span_code_err,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
@@ -1146,11 +1146,14 @@ pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &right.kind
         && matches!(path.res, hir::def::Res::Local(_))
     {
-        let mut err = struct_span_code_err!(
-            fnctxt.dcx(),
+        let mut err = fnctxt.dcx().struct_span_err(
             assign_op.span,
-            E0368,
             "binary assignment operation `+=` cannot be used in a let chain",
+        );
+
+        err.span_label(
+            lhs_expr.span,
+            "you are add-assigning the right-hand side expression to the result of this let-chain",
         );
 
         err.span_label(assign_op.span, "cannot use `+=` in a let chain");
