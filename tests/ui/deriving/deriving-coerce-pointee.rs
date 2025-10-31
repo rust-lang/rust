@@ -2,6 +2,7 @@
 #![feature(derive_coerce_pointee, arbitrary_self_types)]
 
 use std::marker::CoercePointee;
+use std::ops::{Deref, Receiver};
 
 #[derive(CoercePointee)]
 #[repr(transparent)]
@@ -16,11 +17,15 @@ impl<T: ?Sized> Clone for MyPointer<'_, T> {
     }
 }
 
-impl<'a, T: ?Sized> core::ops::Deref for MyPointer<'a, T> {
+impl<'a, T: ?Sized> Deref for MyPointer<'a, T> {
     type Target = T;
     fn deref(&self) -> &'a T {
         self.ptr
     }
+}
+
+impl<'a, T: ?Sized> Receiver for MyPointer<'a, T> {
+    type Target = T;
 }
 
 struct MyValue(u32);
