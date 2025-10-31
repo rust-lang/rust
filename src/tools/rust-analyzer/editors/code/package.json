@@ -2760,6 +2760,19 @@
                 }
             },
             {
+                "title": "Profiling",
+                "properties": {
+                    "rust-analyzer.profiling.memoryProfile": {
+                        "markdownDescription": "The path where to save memory profiling output.\n\n**Note:** Memory profiling is not enabled by default in rust-analyzer builds, you need to build\nfrom source for it.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "References",
                 "properties": {
                     "rust-analyzer.references.excludeImports": {

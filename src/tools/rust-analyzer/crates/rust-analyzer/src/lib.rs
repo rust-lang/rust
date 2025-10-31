@@ -82,3 +82,10 @@ macro_rules! try_default_ {
     };
 }
 pub(crate) use try_default_ as try_default;
+
+#[cfg(feature = "dhat")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+#[cfg(feature = "dhat")]
+static DHAT_PROFILER: std::sync::Mutex<Option<dhat::Profiler>> = std::sync::Mutex::new(None);
