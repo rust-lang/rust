@@ -2705,7 +2705,7 @@ macro_rules! int_impl {
             Self::carrying_mul_add(self, rhs, carry, 0)
         }
 
-        /// Calculates the "full multiplication" `self * rhs + carry1 + carry2`
+        /// Calculates the "full multiplication" `self * rhs + carry + add`
         /// without the possibility to overflow.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
