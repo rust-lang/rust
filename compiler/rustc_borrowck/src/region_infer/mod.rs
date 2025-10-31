@@ -1292,6 +1292,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // so slightly larger than `shorter_fr`.
             let shorter_fr_plus =
                 self.universal_region_relations.non_local_upper_bounds(shorter_fr);
+
+            // If any of the `shorter_fr+` regions are already outlived by `fr-`, we propagate only those.
+            // Otherwise, we might incorrectly reject valid code.
+            //
+            // Consider this example (`'b: 'a` == `a -> b`), where we try to propagate `'d: 'a`:
+            // a --> b --> d
+            //  \
+            //   \-> c
+            // Here, `shorter_fr+` of `'a` == `['b, 'c]`.
+            // Propagating `'d: 'b` is correct and should occur; `'d: 'c` is redundant because of `'d: 'b`
+            // and could reject valid code.
+            //
+            // So we filter `shorter_fr+` to regions already outlived by `fr-`, but if the filter yields an empty set,
+            // we fall back to the original one.
+            let subset: Vec<_> = shorter_fr_plus
+                .iter()
+                .filter(|&&fr_plus| self.eval_outlives(fr_minus, fr_plus))
+                .copied()
+                .collect();
+            let shorter_fr_plus = if subset.is_empty() { shorter_fr_plus } else { subset };
             debug!("try_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus);
             for fr in shorter_fr_plus {
                 // Push the constraint `fr-: shorter_fr+`
