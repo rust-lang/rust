@@ -82,7 +82,7 @@ use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
+use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, TransmuteFrom};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
@@ -3243,6 +3243,92 @@ impl<T, A: Allocator> Vec<T, A> {
         // - `cap / N` fits the size of the allocated memory after shrinking
         unsafe { Vec::from_raw_parts_in(ptr.cast(), len / N, cap / N, alloc) }
     }
+
+    /// This clears out this `Vec` and recycles the allocation into a new `Vec`.
+    /// The item type of the resulting `Vec` needs to have the same size and
+    /// alignment as the item type of the original `Vec`.
+    ///
+    /// # Examples
+    ///
+    ///  ```
+    /// #![feature(vec_recycle, transmutability)]
+    /// let a: Vec<u8> = vec![0; 100];
+    /// let capacity = a.capacity();
+    /// let addr = a.as_ptr().addr();
+    /// let b: Vec<i8> = a.recycle();
+    /// assert_eq!(b.len(), 0);
+    /// assert_eq!(b.capacity(), capacity);
+    /// assert_eq!(b.as_ptr().addr(), addr);
+    /// ```
+    ///
+    /// The `Recyclable` bound prevents this method from being called when `T` and `U` have different sizes; e.g.:
+    ///
+    ///  ```compile_fail,E0277
+    /// #![feature(vec_recycle, transmutability)]
+    /// let vec: Vec<[u8; 2]> = Vec::new();
+    /// let _: Vec<[u8; 1]> = vec.recycle();
+    /// ```
+    /// ...or different alignments:
+    ///
+    ///  ```compile_fail,E0277
+    /// #![feature(vec_recycle, transmutability)]
+    /// let vec: Vec<[u16; 0]> = Vec::new();
+    /// let _: Vec<[u8; 0]> = vec.recycle();
+    /// ```
+    ///
+    /// However, due to temporary implementation limitations of `Recyclable`,
+    /// this method is not yet callable when `T` or `U` are slices, trait objects,
+    /// or other exotic types; e.g.:
+    ///
+    /// ```compile_fail,E0277
+    /// #![feature(vec_recycle, transmutability)]
+    /// # let inputs = ["a b c", "d e f"];
+    /// # fn process(_: &[&str]) {}
+    /// let mut storage: Vec<&[&str]> = Vec::new();
+    ///
+    /// for input in inputs {
+    ///     let mut buffer: Vec<&str> = storage.recycle();
+    ///     buffer.extend(input.split(" "));
+    ///     process(&buffer);
+    ///     storage = buffer.recycle();
+    /// }
+    /// ```
+    #[unstable(feature = "vec_recycle", issue = "148227")]
+    #[expect(private_bounds)]
+    pub fn recycle<U>(mut self) -> Vec<U, A>
+    where
+        U: Recyclable<T>,
+    {
+        self.clear();
+        const {
+            // FIXME(const-hack, 146097): compare `Layout`s
+            assert!(size_of::<T>() == size_of::<U>());
+            assert!(align_of::<T>() == align_of::<U>());
+        };
+        let (ptr, length, capacity, alloc) = self.into_parts_with_alloc();
+        debug_assert_eq!(length, 0);
+        // SAFETY:
+        // - `ptr` and `alloc` were just returned from `self.into_raw_parts_with_alloc()`
+        // - `T` & `U` have the same layout, so `capacity` does not need to be changed and we can safely use `alloc.dealloc` later
+        // - the original vector was cleared, so there is no problem with "transmuting" the stored values
+        unsafe { Vec::from_parts_in(ptr.cast::<U>(), length, capacity, alloc) }
+    }
+}
+
+/// Denotes that an allocation of `From` can be recycled into an allocation of `Self`.
+///
+/// # Safety
+///
+/// `Self` is `Recyclable<From>` if `Layout::new::<Self>() == Layout::new::<From>()`.
+unsafe trait Recyclable<From: Sized>: Sized {}
+
+#[unstable_feature_bound(transmutability)]
+// SAFETY: enforced by `TransmuteFrom`
+unsafe impl<From, To> Recyclable<From> for To
+where
+    for<'a> &'a MaybeUninit<To>: TransmuteFrom<&'a MaybeUninit<From>, { Assume::SAFETY }>,
+    for<'a> &'a MaybeUninit<From>: TransmuteFrom<&'a MaybeUninit<To>, { Assume::SAFETY }>,
+{
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
