@@ -1,6 +1,8 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
+// Regression test for trait-system-refactor-initiative#244
+
 trait Trait {
     type Assoc;
 }

@@ -454,7 +454,16 @@ where
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
-            AssembleCandidatesFrom::EnvAndBounds => {}
+            AssembleCandidatesFrom::EnvAndBounds => {
+                // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
+                // However, it matches the behavior of the old solver. See
+                // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
+                if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
+                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                {
+                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                }
+            }
         }
 
         (candidates, failed_candidate_info)
@@ -1143,12 +1152,6 @@ where
                 // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
                 if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
                     candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
-                } else if matches!(goal.predicate.self_ty().kind(), ty::Dynamic(..)) {
-                    // Object candidate may be shadowed by where-bound for the trait goal, see
-                    // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
-                    // Trait objects always have their associated types specified so `candidates`
-                    // won't be empty.
-                    self.assemble_object_bound_candidates(goal, &mut candidates);
                 } else if candidates.is_empty() {
                     // If the trait goal has been proven by using the environment, we want to treat
                     // aliases as rigid if there are no applicable projection bounds in the environment.
