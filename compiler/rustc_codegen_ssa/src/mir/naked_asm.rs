@@ -180,9 +180,13 @@ fn prefix_and_suffix<'tcx>(
                     }
                 }
             }
-            Linkage::Internal => {
-                // write nothing
-            }
+            Linkage::Internal => match asm_binary_format {
+                BinaryFormat::MachO => {
+                    // See https://github.com/rust-lang/rust/issues/148307.
+                    writeln!(w, ".private_extern {asm_name}")?;
+                }
+                _ => { /* write nothing */ }
+            },
             Linkage::Common => emit_fatal("Functions may not have common linkage"),
             Linkage::AvailableExternally => {
                 // this would make the function equal an extern definition
