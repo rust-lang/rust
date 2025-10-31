@@ -165,7 +165,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                             };
                             diag.span_suggestion_verbose(
                                 span,
-                                "consider using the named lifetime here instead of an implict \
+                                "consider using the named lifetime here instead of an implicit \
                                  lifetime",
                                 sugg,
                                 Applicability::MaybeIncorrect,

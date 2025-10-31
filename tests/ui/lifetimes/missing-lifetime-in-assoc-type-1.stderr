@@ -18,7 +18,7 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
 LL | impl<'a> IntoIterator for &S {
    |      ^^ unconstrained lifetime parameter
    |
-help: consider using the named lifetime here instead of an implict lifetime
+help: consider using the named lifetime here instead of an implicit lifetime
    |
 LL | impl<'a> IntoIterator for &'a S {
    |                            ++
