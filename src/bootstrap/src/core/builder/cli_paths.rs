@@ -5,7 +5,7 @@
 use std::fmt::{self, Debug};
 use std::path::PathBuf;
 
-use crate::core::builder::{Builder, Kind, ShouldRun, StepDescription};
+use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
 
 pub(crate) const PATH_REMAP: &[(&str, &[&str])] = &[
     // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
@@ -93,6 +93,12 @@ impl From<PathBuf> for CLIStepPath {
 struct StepExtra<'a> {
     desc: &'a StepDescription,
     should_run: ShouldRun<'a>,
+}
+
+struct StepToRun<'a> {
+    sort_index: usize,
+    desc: &'a StepDescription,
+    pathsets: Vec<PathSet>,
 }
 
 pub(crate) fn match_paths_to_steps_and_run(
@@ -187,9 +193,8 @@ pub(crate) fn match_paths_to_steps_and_run(
     let mut path_lookup: Vec<(CLIStepPath, bool)> =
         paths.clone().into_iter().map(|p| (p, false)).collect();
 
-    // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
-    // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
-    // the steps.
+    // Before actually running (non-suite) steps, collect them into a list of structs
+    // so that we can then sort the list to preserve CLI order as much as possible.
     let mut steps_to_run = vec![];
 
     for StepExtra { desc, should_run } in &steps {
@@ -211,14 +216,14 @@ pub(crate) fn match_paths_to_steps_and_run(
             }
         }
 
-        steps_to_run.push((closest_index, desc, pathsets));
+        steps_to_run.push(StepToRun { sort_index: closest_index, desc, pathsets });
     }
 
     // Sort the steps before running them to respect the CLI order.
-    steps_to_run.sort_by_key(|(index, _, _)| *index);
+    steps_to_run.sort_by_key(|step| step.sort_index);
 
     // Handle all PathSets.
-    for (_index, desc, pathsets) in steps_to_run {
+    for StepToRun { sort_index: _, desc, pathsets } in steps_to_run {
         if !pathsets.is_empty() {
             desc.maybe_run(builder, pathsets);
         }
