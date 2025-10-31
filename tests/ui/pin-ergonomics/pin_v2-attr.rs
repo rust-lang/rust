@@ -135,6 +135,20 @@ macro_rules! macro_def {
 #[pin_v2] //~ ERROR `#[pin_v2]` attribute cannot be used on macro calls
 macro_def!();
 
+// Restricted on architectures where inline assembly is stable
+// accroding to `compiler/rustc_ast_lowering/src/asm.rs`
+#[cfg(any(
+    target_arch = "x86",
+    target_arch = "x86_64",
+    target_arch = "arm",
+    target_arch = "aarch64",
+    target_arch = "arm64ec",
+    target_arch = "riscv32",
+    target_arch = "riscv64",
+    target_arch = "loongarch32",
+    target_arch = "loongarch64",
+    target_arch = "s390x",
+))]
 std::arch::global_asm! {
     "{}",
     #[pin_v2] //~ ERROR this attribute is not supported on assembly
