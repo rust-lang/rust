@@ -2101,7 +2101,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
-            DefKind::Trait => self.is_const_trait(def_id),
+            DefKind::TraitAlias | DefKind::Trait => self.is_const_trait(def_id),
             DefKind::AssocTy => {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
@@ -2144,7 +2144,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Variant
             | DefKind::TyAlias
             | DefKind::ForeignTy
-            | DefKind::TraitAlias
             | DefKind::TyParam
             | DefKind::Const
             | DefKind::ConstParam

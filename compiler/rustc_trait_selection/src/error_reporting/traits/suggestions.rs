@@ -364,7 +364,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
@@ -444,7 +444,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 }) if finder.can_suggest_bound(generics) => {
                     // Missing generic type parameter bound.

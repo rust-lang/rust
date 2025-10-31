@@ -288,7 +288,15 @@ pub(crate) fn run_in_thread_pool_with_globals<
                         pool.install(|| f(current_gcx.into_inner(), proxy))
                     },
                 )
-                .unwrap()
+                .unwrap_or_else(|err| {
+                    let mut diag = thread_builder_diag.early_struct_fatal(format!(
+                        "failed to spawn compiler thread pool: could not create {threads} threads ({err})",
+                    ));
+                    diag.help(
+                        "try lowering `-Z threads` or checking the operating system's resource limits",
+                    );
+                    diag.emit();
+                })
         })
     })
 }

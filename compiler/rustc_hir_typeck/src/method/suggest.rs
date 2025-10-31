@@ -1596,7 +1596,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Node::Item(hir::Item {
                         kind:
                             hir::ItemKind::Trait(_, _, _, ident, ..)
-                            | hir::ItemKind::TraitAlias(ident, ..),
+                            | hir::ItemKind::TraitAlias(_, ident, ..),
                         ..
                     })
                     // We may also encounter unsatisfied GAT or method bounds
