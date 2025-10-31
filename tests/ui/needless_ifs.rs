@@ -12,7 +12,7 @@
     clippy::redundant_pattern_matching,
     unused
 )]
-#![warn(clippy::needless_if)]
+#![warn(clippy::needless_ifs)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};
@@ -23,19 +23,19 @@ fn maybe_side_effect() -> bool {
 
 fn main() {
     // Lint
-    
-    //~^ needless_if
+    if (true) {}
+    //~^ needless_ifs
     // Do not remove the condition
-    maybe_side_effect();
-    //~^ needless_if
+    if maybe_side_effect() {}
+    //~^ needless_ifs
     // Do not lint
     if (true) {
     } else {
     }
-    ({
-        //~^ needless_if
+    if {
+        //~^ needless_ifs
         return;
-    });
+    } {}
     // Do not lint if `else if` is present
     if (true) {
     } else if (true) {
@@ -47,8 +47,8 @@ fn main() {
     {}
     if true && let true = true {}
     // Can lint nested `if let`s
-    ({
-        //~^ needless_if
+    if {
+        //~^ needless_ifs
         if let true = true
             && true
         {
@@ -56,7 +56,8 @@ fn main() {
         } else {
             false
         }
-    } && true);
+    } && true
+    {}
     external! { if (true) {} }
     with_span! {
         span
@@ -91,16 +92,25 @@ fn main() {
     empty_repetition!();
 
     // Must be placed into an expression context to not be interpreted as a block
-    ({ maybe_side_effect() });
-    //~^ needless_if
+    if { maybe_side_effect() } {}
+    //~^ needless_ifs
     // Would be a block followed by `&&true` - a double reference to `true`
-    ({ maybe_side_effect() } && true);
-    //~^ needless_if
+    if { maybe_side_effect() } && true {}
+    //~^ needless_ifs
 
     // Don't leave trailing attributes
     #[allow(unused)]
-    true;
-    //~^ needless_if
+    if true {}
+    //~^ needless_ifs
 
     let () = if maybe_side_effect() {};
+}
+
+fn issue15960() -> i32 {
+    if matches!(2, 3) {}
+    //~^ needless_ifs
+    if matches!(2, 3) == (2 * 2 == 5) {}
+    //~^ needless_ifs
+
+    1 // put something here so that `if` is a statement not an expression
 }

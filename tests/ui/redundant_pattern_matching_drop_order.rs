@@ -3,7 +3,7 @@
 #![allow(
     clippy::if_same_then_else,
     clippy::equatable_if_let,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::needless_else
 )]
 use std::task::Poll::{Pending, Ready};

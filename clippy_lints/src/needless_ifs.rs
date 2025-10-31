@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::If;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{SpanRangeExt, walk_span_to_context};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -29,13 +29,13 @@ declare_clippy_lint! {
     /// really_expensive_condition_with_side_effects(&mut i);
     /// ```
     #[clippy::version = "1.72.0"]
-    pub NEEDLESS_IF,
+    pub NEEDLESS_IFS,
     complexity,
     "checks for empty if branches"
 }
-declare_lint_pass!(NeedlessIf => [NEEDLESS_IF]);
+declare_lint_pass!(NeedlessIfs => [NEEDLESS_IFS]);
 
-impl LateLintPass<'_> for NeedlessIf {
+impl LateLintPass<'_> for NeedlessIfs {
     fn check_stmt<'tcx>(&mut self, cx: &LateContext<'tcx>, stmt: &Stmt<'tcx>) {
         if let StmtKind::Expr(expr) = stmt.kind
             && let Some(If {
@@ -56,12 +56,13 @@ impl LateLintPass<'_> for NeedlessIf {
                 src.bytes()
                     .all(|ch| matches!(ch, b'{' | b'}') || ch.is_ascii_whitespace())
             })
-            && let Some(cond_snippet) = cond.span.get_source_text(cx)
+            && let Some(cond_span) = walk_span_to_context(cond.span, expr.span.ctxt())
+            && let Some(cond_snippet) = cond_span.get_source_text(cx)
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_sugg(
                 cx,
-                NEEDLESS_IF,
+                NEEDLESS_IFS,
                 stmt.span,
                 "this `if` branch is empty",
                 "you can remove it",
