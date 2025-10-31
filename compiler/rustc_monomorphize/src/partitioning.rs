@@ -580,6 +580,16 @@ fn internalize_symbols<'tcx>(
                 }
             }
 
+            // When LTO inlines the caller of a naked function, it will attempt but fail to make the
+            // naked function symbol visible. To ensure that LTO works correctly, do not default
+            // naked functions to internal linkage and default visibility.
+            if let MonoItem::Fn(instance) = item {
+                let flags = cx.tcx.codegen_instance_attrs(instance.def).flags;
+                if flags.contains(CodegenFnAttrFlags::NAKED) {
+                    continue;
+                }
+            }
+
             // If we got here, we did not find any uses from other CGUs, so
             // it's fine to make this monomorphization internal.
             data.linkage = Linkage::Internal;
