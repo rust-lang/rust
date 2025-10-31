@@ -209,6 +209,27 @@ Note that while the `-C instrument-coverage` option is stable, the profile data
 format produced by the resulting instrumentation may change, and may not work
 with coverage tools other than those built and shipped with the compiler.
 
+## jump-tables
+
+This option is used to allow or prevent the LLVM codegen backend from creating
+jump tables when lowering switches from Rust code.
+
+* `y`, `yes`, `on`, `true` or no value: allow jump tables (the default).
+* `n`, `no`, `off` or `false`: disable jump tables.
+
+To prevent jump tables being created from Rust code, a target must ensure
+all crates are compiled with jump tables disabled.
+
+Note, in many cases the Rust toolchain is distributed with precompiled
+crates, such as the core and std crates, which could possibly include
+jump tables. Furthermore, this option does not guarantee a target will
+be free of jump tables. They could arise from external dependencies,
+inline asm, or other complicated interactions when using crates which
+are compiled with jump table support.
+
+Disabling jump tables can be used to help provide protection against
+jump-oriented-programming (JOP) attacks.
+
 ## link-arg
 
 This flag lets you append a single extra argument to the linker invocation.
