@@ -511,6 +511,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|| Box::new(byte_char_slices::ByteCharSlice)),
         Box::new(|| Box::new(cfg_not_test::CfgNotTest)),
         Box::new(|| Box::new(empty_line_after::EmptyLineAfter::new())),
+        // add early passes here, used by `cargo dev new_lint`
     ];
     store.early_passes.extend(early_lints);
 
@@ -847,7 +848,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|_| Box::new(toplevel_ref_arg::ToplevelRefArg)),
         Box::new(|_| Box::new(volatile_composites::VolatileComposites)),
         Box::new(|_| Box::<replace_box::ReplaceBox>::default()),
+        // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);
-    // add lints here, do not remove this comment, it's used in `new_lint`
 }
