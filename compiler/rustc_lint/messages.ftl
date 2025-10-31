@@ -193,11 +193,11 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
-    .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
-    .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
+lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dropped local variable `{$local_var_name}`
+    .ret_ty = return type is `{$ret_ty}`
+    .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = pointers do not have a lifetime; after returning, the `{$local_var_ty}` will be deallocated at the end of the {$fn_kind} because nothing is referencing it as far as the type system is concerned
+    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
 
 lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
     .label_ptr = this pointer will immediately be invalid
