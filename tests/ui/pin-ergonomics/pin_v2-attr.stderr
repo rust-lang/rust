@@ -6,12 +6,6 @@ LL | #[pin_v2]
    |
    = help: `#[pin_v2]` can be applied to data types and unions
 
-error: this attribute is not supported on assembly
-  --> $DIR/pin_v2-attr.rs:154:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
-
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/pin_v2-attr.rs:84:12
    |
@@ -314,5 +308,5 @@ LL | #[pin_v2]
    |
    = help: `#[pin_v2]` can be applied to data types and unions
 
-error: aborting due to 40 previous errors
+error: aborting due to 39 previous errors
 
