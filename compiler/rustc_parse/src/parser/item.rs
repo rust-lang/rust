@@ -665,13 +665,8 @@ impl<'a> Parser<'a> {
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
 
-                let of_trait = Some(Box::new(TraitImplHeader {
-                    defaultness,
-                    safety,
-                    constness,
-                    polarity,
-                    trait_ref,
-                }));
+                let of_trait =
+                    Some(Box::new(TraitImplHeader { defaultness, safety, polarity, trait_ref }));
                 (of_trait, ty_second)
             }
             None => {
@@ -702,7 +697,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items }))
+        Ok(ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items, constness }))
     }
 
     fn parse_item_delegation(&mut self) -> PResult<'a, ItemKind> {

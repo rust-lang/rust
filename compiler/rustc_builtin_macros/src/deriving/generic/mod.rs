@@ -845,13 +845,9 @@ impl<'a> TraitDef<'a> {
                     safety: self.safety,
                     polarity: ast::ImplPolarity::Positive,
                     defaultness: ast::Defaultness::Final,
-                    constness: if self.is_const {
-                        ast::Const::Yes(DUMMY_SP)
-                    } else {
-                        ast::Const::No
-                    },
                     trait_ref,
                 })),
+                constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 self_ty: self_type,
                 items: methods.into_iter().chain(associated_types).collect(),
             }),

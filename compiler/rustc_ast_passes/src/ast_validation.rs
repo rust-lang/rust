@@ -1070,14 +1070,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match &item.kind {
             ItemKind::Impl(Impl {
                 generics,
+                constness,
                 of_trait:
-                    Some(box TraitImplHeader {
-                        safety,
-                        polarity,
-                        defaultness: _,
-                        constness,
-                        trait_ref: t,
-                    }),
+                    Some(box TraitImplHeader { safety, polarity, defaultness: _, trait_ref: t }),
                 self_ty,
                 items,
             }) => {
@@ -1109,7 +1104,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
             }
-            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items }) => {
+            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items, constness: _ }) => {
                 self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.visibility_not_permitted(
                     &item.vis,
