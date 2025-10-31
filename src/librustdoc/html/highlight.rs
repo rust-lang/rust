@@ -343,7 +343,7 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
     href_context: Option<HrefContext<'a, 'tcx>>,
-    write_line_number: LineNumberKind,
+    line_number_kind: LineNumberKind,
     line: u32,
     max_lines: u32,
 }
@@ -358,7 +358,7 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
     fn handle_backline(&mut self) -> Option<impl Display + use<F>> {
         self.line += 1;
         if self.line < self.max_lines {
-            return Some(self.write_line_number.render(self.line));
+            return Some(self.line_number_kind.render(self.line));
         }
         None
     }
@@ -436,7 +436,7 @@ impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     }
 }
 
-/// Represents line numbers to be generated as HTML.
+/// Represents the type of line number to be generated as HTML.
 #[derive(Clone, Copy)]
 enum LineNumberKind {
     /// Used for scraped code examples.
@@ -542,7 +542,7 @@ pub(super) fn write_code(
     let mut token_handler = TokenHandler {
         out,
         href_context,
-        write_line_number: match line_info {
+        line_number_kind: match line_info {
             Some(line_info) => {
                 if line_info.is_scraped_example {
                     LineNumberKind::Scraped
