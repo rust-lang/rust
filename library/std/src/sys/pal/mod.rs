@@ -85,6 +85,10 @@ cfg_select! {
         mod zkvm;
         pub use self::zkvm::*;
     }
+    target_os = "openvm" => {
+        mod openvm;
+        pub use self::openvm::*;
+    }
     _ => {
         mod unsupported;
         pub use self::unsupported::*;

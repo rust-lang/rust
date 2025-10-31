@@ -19,6 +19,9 @@ mod android;
 #[cfg(target_os = "zkvm")]
 mod zkvm;
 
+#[cfg(target_os = "openvm")]
+mod openvm;
+
 use core::any::Any;
 use core::panic::PanicPayload;
 
@@ -40,7 +43,10 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
     unsafe {
         zkvm::zkvm_set_abort_message(_payload);
     }
-
+    #[cfg(target_os = "openvm")]
+    unsafe {
+        openvm::openvm_set_abort_message(_payload);
+    }
     unsafe extern "Rust" {
         // This is defined in std::rt.
         #[rustc_std_internal_symbol]
