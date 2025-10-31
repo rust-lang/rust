@@ -306,24 +306,23 @@ pub(crate) fn clean_precise_capturing_arg(
     }
 }
 
-pub(crate) fn clean_const<'tcx>(
-    constant: &hir::ConstArg<'tcx>,
-    // Used for mgca representation of const item bodies.
-    parent_if_item_body: Option<DefId>,
-    _cx: &mut DocContext<'tcx>,
+pub(crate) fn clean_const_item_rhs<'tcx>(
+    ct_rhs: hir::ConstItemRhs<'tcx>,
+    parent: DefId,
 ) -> ConstantKind {
+    match ct_rhs {
+        hir::ConstItemRhs::Body(body) => ConstantKind::Local { def_id: parent, body },
+        hir::ConstItemRhs::TypeConst(ct) => clean_const(ct),
+    }
+}
+
+pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind {
     match &constant.kind {
         hir::ConstArgKind::Path(qpath) => {
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
-        hir::ConstArgKind::Anon(anon) => {
-            if let Some(def_id) = parent_if_item_body {
-                ConstantKind::Local { def_id, body: anon.body }
-            } else {
-                ConstantKind::Anonymous { body: anon.body }
-            }
-        }
-        hir::ConstArgKind::Infer(..) => ConstantKind::Infer,
+        hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
+        hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => ConstantKind::Infer,
     }
 }
 
@@ -1202,7 +1201,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Const(ty, Some(default)) => {
                 ProvidedAssocConstItem(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                    kind: clean_const(default, Some(local_did), cx),
+                    kind: clean_const_item_rhs(default, local_did),
                     type_: clean_ty(ty, cx),
                 }))
             }
@@ -1252,7 +1251,7 @@ pub(crate) fn clean_impl_item<'tcx>(
         let inner = match impl_.kind {
             hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
-                kind: clean_const(expr, Some(local_did), cx),
+                kind: clean_const_item_rhs(expr, local_did),
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
@@ -1807,7 +1806,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             // results in an ICE while manually constructing the constant and using `eval`
             // does nothing for `ConstKind::Param`.
             let length = match const_arg.kind {
-                hir::ConstArgKind::Infer(..) => "_".to_string(),
+                hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
@@ -2524,7 +2523,7 @@ fn clean_generic_args<'tcx>(
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
                     hir::GenericArg::Const(ct) => {
-                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), None, cx)))
+                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct())))
                     }
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
@@ -2796,7 +2795,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Const(_, generics, ty, body) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
-                kind: clean_const(body, Some(def_id), cx),
+                kind: clean_const_item_rhs(body, def_id),
             })),
             ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
