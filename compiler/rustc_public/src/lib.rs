@@ -298,7 +298,7 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
-/// Marker type for indexes into [`TLV`].
+/// Marker type for indexes into thread local structures.
 ///
 /// Makes things `!Send`/`!Sync`, so users don't move `rustc_public` types to
 /// thread with no (or worse, different) `rustc_public` pointer.
