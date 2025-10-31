@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
 use std::path::PathBuf;
