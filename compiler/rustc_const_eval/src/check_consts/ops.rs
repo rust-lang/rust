@@ -11,8 +11,8 @@ use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, AssocItemContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param,
-    TraitRef, Ty, suggest_constraining_type_param,
+    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
+    Ty, suggest_constraining_type_param,
 };
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -362,7 +362,7 @@ fn build_error_for_const_call<'tcx>(
                 non_or_conditionally,
             });
             if let Some(item) = ccx.tcx.opt_associated_item(callee) {
-                if let AssocItemContainer::Trait = item.container
+                if let AssocContainer::Trait = item.container
                     && let parent = item.container_id(ccx.tcx)
                     && !ccx.tcx.is_const_trait(parent)
                 {
