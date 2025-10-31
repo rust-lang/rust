@@ -28,7 +28,7 @@ Otherwise, have a great day =^.^=
     <script src="script.js" defer></script> {# #}
 </head> {# #}
 <body> {# #}
-    <div id="settings-dropdown"> {# #}
+    <div id="settings-dropdown" class="dropdown"> {# #}
         <button class="settings-icon" tabindex="-1"></button> {# #}
         <div class="settings-menu" tabindex="-1"> {# #}
             <div class="setting-radio-name">Theme</div> {# #}
@@ -59,64 +59,96 @@ Otherwise, have a great day =^.^=
         <div id="menu-filters"> {# #}
             <div class="panel-body row"> {# #}
                 <div id="upper-filters"> {# #}
-                    <div id="lint-levels" tabindex="-1"> {# #}
+                    <div class="dropdown" data-filter="levels" tabindex="-1"> {# #}
                         <button type="button" class="btn-default dropdown-toggle"> {# #}
-                            Lint levels <span class="badge">4</span> <span class="caret"></span> {# #}
+                            Lint levels <span id="levels-count" class="badge">4</span> <span class="caret"></span> {# #}
                         </button> {# #}
-                        <ul class="dropdown-menu" id="lint-levels-selector"> {# #}
+                        <ul class="dropdown-menu"> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('levels_filter', true)">All</button> {# #}
+                                <button class="reset-all">All</button> {# #}
                             </li> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('levels_filter', false)">None</button> {# #}
+                                <button class="reset-none">None</button> {# #}
                             </li> {# #}
                             <li role="separator" class="divider"></li> {# #}
+                            {% for level in ["allow", "warn", "deny", "none"] %}
+                                <li class="checkbox"> {# #}
+                                    <label> {# #}
+                                        <input type="checkbox" name="{{ level }}" checked />
+                                        {{ level | capitalize }}
+                                    </label> {# #}
+                                </li> {# #}
+                            {% endfor %}
                         </ul> {# #}
                     </div> {# #}
-                    <div id="lint-groups" tabindex="-1"> {# #}
+                    <div class="dropdown" data-filter="groups" tabindex="-1"> {# #}
                         <button type="button" class="btn-default dropdown-toggle"> {# #}
-                            Lint groups <span class="badge">9</span> <span class="caret"></span> {# #}
+                            Lint groups <span id="groups-count" class="badge">9</span> <span class="caret"></span> {# #}
                         </button> {# #}
-                        <ul class="dropdown-menu" id="lint-groups-selector"> {# #}
+                        <ul class="dropdown-menu"> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('groups_filter', true)">All</button> {# #}
+                                <button class="reset-all">All</button> {# #}
                             </li> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="resetGroupsToDefault()">Default</button> {# #}
+                                <button class="reset-default">Default</button> {# #}
                             </li> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('groups_filter', false)">None</button> {# #}
+                                <button class="reset-none">None</button> {# #}
                             </li> {# #}
                             <li role="separator" class="divider"></li> {# #}
+                            {% for group in ["cargo", "complexity", "correctness", "nursery", "pedantic", "perf", "restriction", "style", "suspicious", "deprecated"] %}
+                                <li class="checkbox"> {# #}
+                                    <label> {# #}
+                                        <input type="checkbox" name="{{ group }}" {% if *group != "deprecated" +%} checked {% endif %} />
+                                        {{ group | capitalize }}
+                                    </label> {# #}
+                                </li> {# #}
+                            {% endfor %}
                         </ul> {# #}
                     </div> {# #}
-                    <div id="version-filter" tabindex="-1"> {# #}
+                    <div id="version-filter" class="dropdown" tabindex="-1"> {# #}
                         <button type="button" class="btn-default dropdown-toggle"> {# #}
                             Version {#+ #}
-                            <span id="version-filter-count" class="badge">0</span> {#+ #}
+                            <span id="versions-count" class="badge">0</span> {#+ #}
                             <span class="caret"></span> {# #}
                         </button> {# #}
-                        <ul id="version-filter-selector" class="dropdown-menu"> {# #}
+                        <ul class="dropdown-menu"> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="clearVersionFilters()">Clear filters</button> {# #}
+                                <button id="reset-versions">Clear filters</button> {# #}
                             </li> {# #}
                             <li role="separator" class="divider"></li> {# #}
+                            {% for (sym, name) in [("≥", "gte"), ("≤", "lte"), ("=", "eq")] %}
+                                <li class="checkbox"> {# #}
+                                    <label>{{ sym }}</label> {#+ #}
+                                    <span>1.</span> {# #}
+                                    <input type="number" name="{{ name }}" min="29" maxlength="2" class="version-filter-input form-control filter-input" /> {# #}
+                                    <span>.0</span> {# #}
+                                </li> {# #}
+                            {% endfor %}
                         </ul> {# #}
                     </div> {# #}
-                    <div id="lint-applicabilities" tabindex="-1"> {# #}
+                    <div class="dropdown" data-filter="applicabilities" tabindex="-1"> {# #}
                         <button type="button" class="btn-default dropdown-toggle"> {# #}
                             Applicability {#+ #}
-                            <span class="badge">4</span> {#+ #}
+                            <span id="applicabilities-count" class="badge">4</span> {#+ #}
                             <span class="caret"></span> {# #}
                         </button> {# #}
-                        <ul class="dropdown-menu" id="lint-applicabilities-selector"> {# #}
+                        <ul class="dropdown-menu"> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('applicabilities_filter', true)">All</button> {# #}
+                                <button class="reset-all">All</button> {# #}
                             </li> {# #}
                             <li class="checkbox"> {# #}
-                                <button onclick="toggleElements('applicabilities_filter', false)">None</button> {# #}
+                                <button class="reset-none">None</button> {# #}
                             </li> {# #}
                             <li role="separator" class="divider"></li> {# #}
+                            {% for applicability in ["Unspecified", "MachineApplicable", "MaybeIncorrect", "HasPlaceholders"] %}
+                                <li class="checkbox"> {# #}
+                                    <label> {# #}
+                                        <input type="checkbox" name="{{ applicability }}" checked />
+                                        {{ applicability }}
+                                    </label> {# #}
+                                </li> {# #}
+                            {% endfor %}
                         </ul> {# #}
                     </div> {# #}
                 </div> {# #}
@@ -124,7 +156,7 @@ Otherwise, have a great day =^.^=
                     <div class="input-group"> {# #}
                         <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label> {# #}
                         <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input" /> {# #}
-                        <button class="filter-clear" type="button" onclick="searchState.clearInput(event)"> {# #}
+                        <button id="filter-clear" type="button"> {# #}
                             Clear {# #}
                         </button> {# #}
                     </div> {# #}
