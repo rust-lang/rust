@@ -1,11 +1,3 @@
-error[E0559]: variant `Option<_>::None` has no field named `value`
-  --> $DIR/drop-track-bad-field-in-fru.rs:6:12
-   |
-LL |     None { value: (), ..Default::default() }.await;
-   |            ^^^^^ `Option<_>::None` does not have this field
-   |
-   = note: all struct fields are already assigned
-
 error[E0277]: `Option<_>` is not a future
   --> $DIR/drop-track-bad-field-in-fru.rs:6:46
    |
@@ -20,6 +12,14 @@ help: remove the `.await`
 LL -     None { value: (), ..Default::default() }.await;
 LL +     None { value: (), ..Default::default() };
    |
+
+error[E0559]: variant `Option<_>::None` has no field named `value`
+  --> $DIR/drop-track-bad-field-in-fru.rs:6:12
+   |
+LL |     None { value: (), ..Default::default() }.await;
+   |            ^^^^^ `Option<_>::None` does not have this field
+   |
+   = note: all struct fields are already assigned
 
 error: aborting due to 2 previous errors
 

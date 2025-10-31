@@ -2022,22 +2022,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let adt_ty = self.try_structurally_resolve_type(path_span, adt_ty);
-        let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
-            self.fudge_inference_if_ok(|| {
+        // We eagerly constrain the generic arguments of our ADT to
+        // guide inference if possible.
+        //
+        // This is necessary if we need to coerce the field, e.g. see
+        // tests/ui/traits/next-solver/typeck/guide-ctors.rs.
+        if let Some(expected) = expected.only_has_type(self) {
+            let _ = self.commit_if_ok(|_| {
                 let ocx = ObligationCtxt::new(self);
                 ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
                 if !ocx.try_evaluate_obligations().is_empty() {
-                    return Err(TypeError::Mismatch);
+                    Err(TypeError::Mismatch)
+                } else {
+                    Ok(())
                 }
-                Ok(self.resolve_vars_if_possible(adt_ty))
-            })
-            .ok()
-        });
-        if let Some(adt_ty_hint) = adt_ty_hint {
-            // re-link the variables that the fudging above can create.
-            self.demand_eqtype(path_span, adt_ty_hint, adt_ty);
+            });
         }
+        let adt_ty = self.try_structurally_resolve_type(path_span, adt_ty);
 
         let ty::Adt(adt, args) = adt_ty.kind() else {
             span_bug!(path_span, "non-ADT passed to check_expr_struct_fields");

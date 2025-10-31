@@ -28,11 +28,15 @@ error[E0271]: expected `callback` to return `Pin<Box<dyn Future<Output = ()>>>`,
 LL |         StructAsync { callback }.await;
    |                                  ^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
    |
-note: required by a bound in `StructAsync`
-  --> $DIR/issue-98634.rs:9:35
+note: required for `StructAsync<fn() -> impl Future<Output = ()> {callback}>` to implement `Future`
+  --> $DIR/issue-98634.rs:13:9
    |
-LL | pub struct StructAsync<F: Fn() -> Pin<Box<dyn Future<Output = ()>>>> {
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StructAsync`
+LL | impl<F> Future for StructAsync<F>
+   |         ^^^^^^     ^^^^^^^^^^^^^^
+LL | where
+LL |     F: Fn() -> Pin<Box<dyn Future<Output = ()>>>,
+   |                --------------------------------- unsatisfied trait bound introduced here
+   = note: required for `StructAsync<fn() -> impl Future<Output = ()> {callback}>` to implement `IntoFuture`
 
 error: aborting due to 3 previous errors
 

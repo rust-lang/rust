@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `B<C>: Copy` is not satisfied
+error[E0277]: the trait bound `B<_>: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:31:26
    |
 LL |     is_copy(B { a: 1, b: C });
-   |     -------              ^ the trait `Copy` is not implemented for `B<C>`
+   |     -------              ^ the trait `Copy` is not implemented for `B<_>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -21,11 +21,11 @@ help: consider borrowing here
 LL |     is_copy(B { a: 1, b: &C });
    |                          +
 
-error[E0277]: the trait bound `B<C>: Clone` is not satisfied
+error[E0277]: the trait bound `B<_>: Clone` is not satisfied
   --> $DIR/deriving-copyclone.rs:32:27
    |
 LL |     is_clone(B { a: 1, b: C });
-   |     --------              ^ the trait `Clone` is not implemented for `B<C>`
+   |     --------              ^ the trait `Clone` is not implemented for `B<_>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -44,11 +44,11 @@ help: consider borrowing here
 LL |     is_clone(B { a: 1, b: &C });
    |                           +
 
-error[E0277]: the trait bound `B<D>: Copy` is not satisfied
+error[E0277]: the trait bound `B<_>: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:35:26
    |
 LL |     is_copy(B { a: 1, b: D });
-   |     -------              ^ the trait `Copy` is not implemented for `B<D>`
+   |     -------              ^ the trait `Copy` is not implemented for `B<_>`
    |     |
    |     required by a bound introduced by this call
    |
