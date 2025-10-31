@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueHiddenType, OpaqueTypeKey,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueTypeKey, ProvisionalHiddenType,
     TypeVisitableExt, TypingMode,
 };
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -57,8 +57,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 enum UsageKind<'tcx> {
     None,
-    NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
-    UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
+    NonDefiningUse(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>),
+    UnconstrainedHiddenType(ProvisionalHiddenType<'tcx>),
     HasDefiningUse(DefinitionSiteHiddenType<'tcx>),
 }
 
@@ -88,7 +88,7 @@ impl<'tcx> UsageKind<'tcx> {
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn compute_definition_site_hidden_types(
         &mut self,
-        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
+        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
         error_on_missing_defining_use: bool,
     ) {
         for entry in opaque_types.iter_mut() {
@@ -200,7 +200,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn consider_opaque_type_use(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        hidden_type: OpaqueHiddenType<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
     ) -> UsageKind<'tcx> {
         if let Err(err) = opaque_type_has_defining_use_args(
             &self,
@@ -232,7 +232,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             Ok(hidden_type) => hidden_type,
             Err(errors) => {
                 let guar = self.err_ctxt().report_fulfillment_errors(errors);
-                OpaqueHiddenType::new_error(self.tcx, guar)
+                ProvisionalHiddenType::new_error(self.tcx, guar)
             }
         };
         let hidden_type = hidden_type.remap_generic_params_to_declaration_params(

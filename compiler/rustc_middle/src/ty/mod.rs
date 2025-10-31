@@ -725,7 +725,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
-pub struct OpaqueHiddenType<'tcx> {
+pub struct ProvisionalHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
     ///
@@ -767,9 +767,9 @@ pub enum DefiningScopeKind {
     MirBorrowck,
 }
 
-impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> OpaqueHiddenType<'tcx> {
-        OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
+impl<'tcx> ProvisionalHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> ProvisionalHiddenType<'tcx> {
+        ProvisionalHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
     }
 
     pub fn build_mismatch_error(

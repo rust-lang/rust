@@ -11,8 +11,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, GenericArg,
-    GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, Region, RegionVid, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, fold_regions,
+    GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -48,7 +48,7 @@ pub(crate) enum DeferredOpaqueTypeError<'tcx> {
         /// The opaque type.
         opaque_type_key: OpaqueTypeKey<'tcx>,
         /// The hidden type containing the member region.
-        hidden_type: OpaqueHiddenType<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
         /// The unexpected region.
         member_region: Region<'tcx>,
     },
@@ -67,7 +67,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>) {
+) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>) {
     let opaque_types = infcx.clone_opaque_types();
     let opaque_types_storage_num_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
     let opaque_types = opaque_types
@@ -161,7 +161,7 @@ struct DefiningUse<'tcx> {
     /// to interact with code outside of `rustc_borrowck`.
     opaque_type_key: OpaqueTypeKey<'tcx>,
     arg_regions: Vec<RegionVid>,
-    hidden_type: OpaqueHiddenType<'tcx>,
+    hidden_type: ProvisionalHiddenType<'tcx>,
 }
 
 /// This computes the actual hidden types of the opaque types and maps them to their
@@ -181,7 +181,7 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     constraints: &MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
     // When computing the hidden type we need to track member constraints.
@@ -216,7 +216,7 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
 fn collect_defining_uses<'tcx>(
     rcx: &mut RegionCtxt<'_, 'tcx>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) -> Vec<DefiningUse<'tcx>> {
     let infcx = rcx.infcx;
@@ -302,7 +302,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
                         hidden_type.span,
                         "opaque type with non-universal region args",
                     );
-                    ty::OpaqueHiddenType::new_error(tcx, guar)
+                    ty::ProvisionalHiddenType::new_error(tcx, guar)
                 }
             };
 
@@ -489,7 +489,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let tcx = infcx.tcx;
     let mut errors = Vec::new();
@@ -679,7 +679,7 @@ impl<'tcx> InferCtxt<'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: OpaqueHiddenType<'tcx>,
+        instantiated_ty: ProvisionalHiddenType<'tcx>,
     ) -> Result<ty::DefinitionSiteHiddenType<'tcx>, NonDefiningUseReason<'tcx>> {
         opaque_type_has_defining_use_args(
             self,
