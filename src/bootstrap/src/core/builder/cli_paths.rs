@@ -89,14 +89,25 @@ impl From<PathBuf> for CLIStepPath {
     }
 }
 
+/// Combines a `StepDescription` with its corresponding `ShouldRun`.
+struct StepExtra<'a> {
+    desc: &'a StepDescription,
+    should_run: ShouldRun<'a>,
+}
+
 pub(crate) fn match_paths_to_steps_and_run(
     builder: &Builder<'_>,
-    v: &[StepDescription],
+    step_descs: &[StepDescription],
     paths: &[PathBuf],
 ) {
-    let should_runs = v
+    // Obtain `ShouldRun` information for each step, so that we know which
+    // paths to match it against.
+    let steps = step_descs
         .iter()
-        .map(|desc| (desc.should_run)(ShouldRun::new(builder, desc.kind)))
+        .map(|desc| StepExtra {
+            desc,
+            should_run: (desc.should_run)(ShouldRun::new(builder, desc.kind)),
+        })
         .collect::<Vec<_>>();
 
     // FIXME(Zalathar): This particular check isn't related to path-to-step
@@ -110,12 +121,12 @@ pub(crate) fn match_paths_to_steps_and_run(
     }
 
     // sanity checks on rules
-    for (desc, should_run) in v.iter().zip(&should_runs) {
+    for StepExtra { desc, should_run } in &steps {
         assert!(!should_run.paths.is_empty(), "{:?} should have at least one pathset", desc.name);
     }
 
     if paths.is_empty() || builder.config.include_default_paths {
-        for (desc, should_run) in v.iter().zip(&should_runs) {
+        for StepExtra { desc, should_run } in &steps {
             if desc.default && should_run.is_really_default() {
                 desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
             }
@@ -159,7 +170,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // Handle all test suite paths.
     // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
     paths.retain(|path| {
-        for (desc, should_run) in v.iter().zip(&should_runs) {
+        for StepExtra { desc, should_run } in &steps {
             if let Some(suite) = should_run.is_suite_path(path) {
                 desc.maybe_run(builder, vec![suite.clone()]);
                 return false;
@@ -181,7 +192,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // the steps.
     let mut steps_to_run = vec![];
 
-    for (desc, should_run) in v.iter().zip(&should_runs) {
+    for StepExtra { desc, should_run } in &steps {
         let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
 
         // This value is used for sorting the step execution order.
