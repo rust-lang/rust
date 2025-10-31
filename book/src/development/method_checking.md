@@ -21,14 +21,13 @@ use clippy_utils::sym;
 impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         // Check our expr is calling a method with pattern matching
-        if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind
+        if let hir::ExprKind::MethodCall(path, _, _, _) = &expr.kind
             // Check if the name of this method is `our_fancy_method`
             && path.ident.name == sym::our_fancy_method
-            // We can check the type of the self argument whenever necessary.
-            // (It's necessary if we want to check that method is specifically belonging to a specific trait,
-            // for example, a `map` method could belong to user-defined trait instead of to `Iterator`)
+            // Check if the method belongs to the `sym::OurFancyTrait` trait.
+            // (for example, a `map` method could belong to user-defined trait instead of to `Iterator`)
             // See the next section for more information.
-            && cx.ty_based_def(self_arg).opt_parent(cx).is_diag_item(cx, sym::OurFancyTrait)
+            && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::OurFancyTrait)
         {
             println!("`expr` is a method call for `our_fancy_method`");
         }
@@ -44,6 +43,12 @@ matching with `MethodCall` in case the reader wishes to explore more.
 New symbols such as `our_fancy_method` need to be added to the `clippy_utils::sym` module.
 This module extends the list of symbols already provided by the compiler crates
 in `rustc_span::sym`.
+
+If a trait defines only one method (such as the `std::ops::Deref` trait, which only has the `deref()` method),
+one might be tempted to omit the method name check. This would work, but is not always advisable because:
+- If a new method (possibly with a default implementation) were to be added to the trait, there would be a risk of
+  matching the wrong method.
+- Comparing symbols is very cheap and might prevent a more expensive lookup.
 
 ## Checking if a `impl` block implements a method
 

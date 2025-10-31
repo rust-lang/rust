@@ -856,89 +856,49 @@ fn elision_suggestions(
         .filter(|param| !param.is_elided_lifetime() && !param.is_impl_trait())
         .collect::<Vec<_>>();
 
-    if !elidable_lts
-        .iter()
-        .all(|lt| explicit_params.iter().any(|param| param.def_id == *lt))
-    {
-        return None;
-    }
-
-    let mut suggestions = if elidable_lts.is_empty() {
-        vec![]
-    } else if elidable_lts.len() == explicit_params.len() {
+    let mut suggestions = if elidable_lts.len() == explicit_params.len() {
         // if all the params are elided remove the whole generic block
         //
         // fn x<'a>() {}
         //     ^^^^
         vec![(generics.span, String::new())]
     } else {
-        match &explicit_params[..] {
-            // no params, nothing to elide
-            [] => unreachable!("handled by `elidable_lts.is_empty()`"),
-            [param] => {
-                if elidable_lts.contains(&param.def_id) {
-                    unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
+        // 1. Start from the last elidable lifetime
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
+        //    lifetime to the comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
+        //    current lifetime to the comma _after_ it
+        let mut end: Option<LocalDefId> = None;
+        elidable_lts
+            .iter()
+            .rev()
+            .map(|&id| {
+                let (idx, param) = explicit_params.iter().find_position(|param| param.def_id == id)?;
+
+                let span = if let Some(next) = explicit_params.get(idx + 1)
+                    && end != Some(next.def_id)
+                {
+                    // Extend the current span forward, up until the next param in the list.
+                    // fn x<'prev, 'a, 'next>() {}
+                    //             ^^^^
+                    param.span.until(next.span)
                 } else {
-                    unreachable!("handled by `elidable_lts.is_empty()`")
-                }
-            },
-            [_, _, ..] => {
-                // Given a list like `<'a, 'b, 'c, 'd, ..>`,
-                //
-                // If there is a cluster of elidable lifetimes at the beginning, say `'a` and `'b`, we should
-                // suggest removing them _and_ the trailing comma. The span for that is `a.span.until(c.span)`:
-                // <'a, 'b, 'c, 'd, ..> => <'a, 'b, 'c, 'd, ..>
-                //  ^^  ^^                  ^^^^^^^^
-                //
-                // And since we know that `'c` isn't elidable--otherwise it would've been in the cluster--we can go
-                // over all the lifetimes after it, and for each elidable one, add a suggestion spanning the
-                // lifetime itself and the comma before, because each individual suggestion is guaranteed to leave
-                // the list valid:
-                // <.., 'c, 'd, 'e, 'f, 'g, ..> => <.., 'c, 'd, 'e, 'f, 'g, ..>
-                //          ^^      ^^  ^^                ^^^^    ^^^^^^^^
-                //
-                // In case there is no such starting cluster, we only need to do the second part of the algorithm:
-                // <'a, 'b, 'c, 'd, 'e, 'f, 'g, ..> => <'a, 'b , 'c, 'd, 'e, 'f, 'g, ..>
-                //      ^^  ^^      ^^  ^^                ^^^^^^^^^    ^^^^^^^^
+                    // Extend the current span back to include the comma following the previous
+                    // param. If the span of the next param in the list has already been
+                    // extended, we continue the chain. This is why we're iterating in reverse.
+                    end = Some(param.def_id);
 
-                // Split off the starting cluster
-                // TODO: use `slice::split_once` once stabilized (github.com/rust-lang/rust/issues/112811):
-                // ```
-                // let Some(split) = explicit_params.split_once(|param| !elidable_lts.contains(&param.def_id)) else {
-                //     // there were no lifetime param that couldn't be elided
-                //     unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
-                // };
-                // match split { /* .. */ }
-                // ```
-                let Some(split_pos) = explicit_params
-                    .iter()
-                    .position(|param| !elidable_lts.contains(&param.def_id))
-                else {
-                    // there were no lifetime param that couldn't be elided
-                    unreachable!("handled by `elidable_lts.len() == explicit_params.len()`")
+                    // `idx` will never be 0, else we'd be removing the entire list of generics
+                    let prev = explicit_params.get(idx - 1)?;
+
+                    // fn x<'prev, 'a>() {}
+                    //           ^^^^
+                    param.span.with_lo(prev.span.hi())
                 };
-                let split = explicit_params
-                    .split_at_checked(split_pos)
-                    .expect("got `split_pos` from `position` on the same Vec");
 
-                match split {
-                    ([..], []) => unreachable!("handled by `elidable_lts.len() == explicit_params.len()`"),
-                    ([], [_]) => unreachable!("handled by `explicit_params.len() == 1`"),
-                    (cluster, rest @ [rest_first, ..]) => {
-                        // the span for the cluster
-                        (cluster.first().map(|fw| fw.span.until(rest_first.span)).into_iter())
-                            // the span for the remaining lifetimes (calculations independent of the cluster)
-                            .chain(
-                                rest.array_windows()
-                                    .filter(|[_, curr]| elidable_lts.contains(&curr.def_id))
-                                    .map(|[prev, curr]| curr.span.with_lo(prev.span.hi())),
-                            )
-                            .map(|sp| (sp, String::new()))
-                            .collect()
-                    },
-                }
-            },
-        }
+                Some((span, String::new()))
+            })
+            .collect::<Option<Vec<_>>>()?
     };
 
     suggestions.extend(usages.iter().map(|&usage| {
