@@ -562,3 +562,37 @@ fn nonpoison_timeout_nanoseconds() {
         }
     })
 }
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_arc_condvar_poison() {
+    use std::sync::poison::{Condvar, Mutex};
+
+    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+
+    let packet = Packet(Arc::new((Mutex::new(1), Condvar::new())));
+    let packet2 = Packet(packet.0.clone());
+    let (tx, rx) = channel();
+
+    let _t = thread::spawn(move || -> () {
+        rx.recv().unwrap();
+        let &(ref lock, ref cvar) = &*packet2.0;
+        let _g = lock.lock().unwrap();
+        cvar.notify_one();
+        // Parent should fail when it wakes up.
+        panic!();
+    });
+
+    let &(ref lock, ref cvar) = &*packet.0;
+    let mut lock = lock.lock().unwrap();
+    tx.send(()).unwrap();
+    while *lock == 1 {
+        match cvar.wait(lock) {
+            Ok(l) => {
+                lock = l;
+                assert_eq!(*lock, 1);
+            }
+            Err(..) => break,
+        }
+    }
+}
