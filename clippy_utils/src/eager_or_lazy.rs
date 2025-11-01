@@ -211,7 +211,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
 
                 // Custom `Deref` impl might have side effects
                 ExprKind::Unary(UnOp::Deref, e)
-                    if self.cx.typeck_results().expr_ty(e).builtin_deref(true).is_none() =>
+                    if self
+                        .cx
+                        .typeck_results()
+                        .expr_ty(e)
+                        .builtin_deref(true)
+                        .is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
