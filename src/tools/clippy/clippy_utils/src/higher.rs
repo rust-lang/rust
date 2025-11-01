@@ -209,7 +209,7 @@ pub struct Range<'a> {
     pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
-    pub span: Span
+    pub span: Span,
 }
 
 impl<'a> Range<'a> {
@@ -236,14 +236,12 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::HalfOpen,
                     span,
                 }),
-                (hir::LangItem::RangeFrom, [field]) if field.ident.name == sym::start => {
-                    Some(Range {
-                        start: Some(field.expr),
-                        end: None,
-                        limits: ast::RangeLimits::HalfOpen,
-                        span,
-                    })
-                },
+                (hir::LangItem::RangeFrom, [field]) if field.ident.name == sym::start => Some(Range {
+                    start: Some(field.expr),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                    span,
+                }),
                 (hir::LangItem::Range, [field1, field2]) => {
                     let (start, end) = match (field1.ident.name, field2.ident.name) {
                         (sym::start, sym::end) => (field1.expr, field2.expr),
@@ -257,14 +255,12 @@ impl<'a> Range<'a> {
                         span,
                     })
                 },
-                (hir::LangItem::RangeToInclusive, [field]) if field.ident.name == sym::end => {
-                    Some(Range {
-                        start: None,
-                        end: Some(field.expr),
-                        limits: ast::RangeLimits::Closed,
-                        span,
-                    })
-                },
+                (hir::LangItem::RangeToInclusive, [field]) if field.ident.name == sym::end => Some(Range {
+                    start: None,
+                    end: Some(field.expr),
+                    limits: ast::RangeLimits::Closed,
+                    span,
+                }),
                 (hir::LangItem::RangeTo, [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
                     end: Some(field.expr),

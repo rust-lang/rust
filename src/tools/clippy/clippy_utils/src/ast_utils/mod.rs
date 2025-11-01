@@ -48,12 +48,10 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
         (Box(l), Box(r))
         | (Ref(l, Mutability::Not), Ref(r, Mutability::Not))
         | (Ref(l, Mutability::Mut), Ref(r, Mutability::Mut)) => eq_pat(l, r),
-        (Tuple(l), Tuple(r)) | (Slice(l), Slice(r)) => over(l, r, |l, r| eq_pat(l, r)),
+        (Tuple(l), Tuple(r)) | (Slice(l), Slice(r)) => over(l, r, eq_pat),
         (Path(lq, lp), Path(rq, rp)) => both(lq.as_deref(), rq.as_deref(), eq_qself) && eq_path(lp, rp),
         (TupleStruct(lqself, lp, lfs), TupleStruct(rqself, rp, rfs)) => {
-            eq_maybe_qself(lqself.as_deref(), rqself.as_deref())
-                && eq_path(lp, rp)
-                && over(lfs, rfs, |l, r| eq_pat(l, r))
+            eq_maybe_qself(lqself.as_deref(), rqself.as_deref()) && eq_path(lp, rp) && over(lfs, rfs, eq_pat)
         },
         (Struct(lqself, lp, lfs, lr), Struct(rqself, rp, rfs, rr)) => {
             lr == rr
@@ -61,7 +59,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
                 && eq_path(lp, rp)
                 && unordered_over(lfs, rfs, eq_field_pat)
         },
-        (Or(ls), Or(rs)) => unordered_over(ls, rs, |l, r| eq_pat(l, r)),
+        (Or(ls), Or(rs)) => unordered_over(ls, rs, eq_pat),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
     }
