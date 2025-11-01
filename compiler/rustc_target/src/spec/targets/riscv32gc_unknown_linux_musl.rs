@@ -6,9 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv32-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some(
-                "RISC-V Linux (kernel 5.4, musl 1.2.3 + RISCV32 support patches".into(),
-            ),
+            description: Some("RISC-V Linux (kernel 5.4, musl 1.2.5)".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
