@@ -71,6 +71,7 @@ windows_link::link!("kernel32.dll" "system" fn GetWindowsDirectoryW(lpbuffer : P
 windows_link::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonce : *mut INIT_ONCE, dwflags : u32, fpending : *mut BOOL, lpcontext : *mut *mut core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : *mut INIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : LPPROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn IsThreadAFiber() -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
 windows_link::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : LOCK_FILE_FLAGS, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : MOVE_FILE_FLAGS) -> BOOL);
