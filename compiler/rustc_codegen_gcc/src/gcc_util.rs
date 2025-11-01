@@ -82,6 +82,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
         ("x86", "avx512vbmi2") => smallvec!["avx512vbmi2", "avx512bw"],
         // NOTE: seems like GCC requires 'avx512bw' for 'avx512bitalg'.
         ("x86", "avx512bitalg") => smallvec!["avx512bitalg", "avx512bw"],
+        ("x86", "cpuid") => smallvec![],
         ("aarch64", "rcpc2") => smallvec!["rcpc-immo"],
         ("aarch64", "dpb") => smallvec!["ccpp"],
         ("aarch64", "dpb2") => smallvec!["ccdp"],
