@@ -128,5 +128,44 @@ macro_rules! declare_tests {
 declare_tests!(
     // tidy-alphabetical-start
     (x_build, "build"),
+    (x_build_compiler, "build compiler"),
+    (x_build_compiletest, "build compiletest"),
+    (x_build_llvm, "build llvm"),
+    (x_build_rustc, "build rustc"),
+    (x_build_rustc_llvm, "build rustc_llvm"),
+    (x_build_rustdoc, "build rustdoc"),
+    (x_check, "check"),
+    (x_check_bootstrap, "check bootstrap"),
+    (x_check_compiler, "check compiler"),
+    (x_check_compiletest, "check compiletest"),
+    (x_check_compiletest_include_default_paths, "check compiletest --include-default-paths"),
+    (x_check_library, "check library"),
+    (x_check_rustc, "check rustc"),
+    (x_check_rustdoc, "check rustdoc"),
+    (x_dist, "dist"),
+    (x_test, "test"),
+    (x_test_coverage, "test coverage"),
+    (x_test_coverage_map, "test coverage-map"),
+    (x_test_coverage_run, "test coverage-run"),
+    // FIXME(Zalathar): Currently this doesn't actually skip the coverage-run tests!
+    (x_test_coverage_skip_coverage_run, "test coverage --skip=coverage-run"),
+    (x_test_debuginfo, "test debuginfo"),
+    (x_test_librustdoc, "test librustdoc"),
+    (x_test_librustdoc_rustdoc, "test librustdoc rustdoc"),
+    (x_test_rustdoc, "test rustdoc"),
+    (x_test_skip_coverage, "test --skip=coverage"),
+    // FIXME(Zalathar): This doesn't skip the coverage-map or coverage-run tests.
+    (x_test_skip_tests, "test --skip=tests"),
+    // From `src/ci/docker/scripts/stage_2_test_set2.sh`.
+    (
+        x_test_skip_tests_etc,
+        "test --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest"
+    ),
+    (x_test_tests, "test tests"),
+    (x_test_tests_skip_coverage, "test tests --skip=coverage"),
+    (x_test_tests_ui, "test tests/ui"),
+    (x_test_tidy, "test tidy"),
+    (x_test_tidyselftest, "test tidyselftest"),
+    (x_test_ui, "test ui"),
     // tidy-alphabetical-end
 );

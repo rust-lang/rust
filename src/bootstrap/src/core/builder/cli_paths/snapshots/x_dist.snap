@@ -1,0 +1,34 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: dist
+---
+[Dist] dist::Docs
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({dist::rust-docs})
+[Dist] dist::JsonDocs
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({dist::rust-docs-json})
+[Dist] dist::Mingw
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({dist::rust-mingw})
+[Dist] dist::Rustc
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rustc})
+[Dist] dist::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({dist::rust-std})
+[Dist] dist::RustcDev
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rustc-dev})
+[Dist] dist::Src
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rust-src})
+[Dist] dist::RustDev
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rust-dev})
+[Dist] dist::PlainSourceTarball
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::rustc-src})
+[Dist] dist::ReproducibleArtifacts
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({dist::reproducible-artifacts})
