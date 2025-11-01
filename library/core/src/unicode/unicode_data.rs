@@ -18,7 +18,7 @@ pub const UNICODE_VERSION: (u8, u8, u8) = (17, 0, 0);
 pub mod alphabetic {
     use super::ShortOffsetRunHeader;
 
-    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 51] = [
+    static SHORT_OFFSET_RUNS: &[ShortOffsetRunHeader; 51] = &[
         ShortOffsetRunHeader::new(0, 706),
         ShortOffsetRunHeader::new(12, 4681),
         ShortOffsetRunHeader::new(414, 5741),
@@ -71,7 +71,7 @@ pub mod alphabetic {
         ShortOffsetRunHeader::new(1516, 210042),
         ShortOffsetRunHeader::new(1518, 1324154),
     ];
-    static OFFSETS: [u8; 1519] = [
+    static OFFSETS: &[u8; 1519] = &[
         170, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 0, 4, 12, 14, 5, 7, 1, 1, 1, 86, 1, 29, 18, 1, 2, 2,
         4, 1, 1, 6, 1, 1, 3, 1, 1, 1, 20, 1, 83, 1, 139, 8, 166, 1, 38, 2, 1, 6, 41, 39, 14, 1, 1,
         1, 2, 1, 2, 1, 1, 8, 27, 4, 4, 29, 11, 5, 56, 1, 7, 14, 102, 1, 8, 4, 8, 4, 3, 10, 3, 2, 1,
@@ -139,24 +139,14 @@ pub mod alphabetic {
 
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
-        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
-        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
-        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+        super::skip_search!(c, SHORT_OFFSET_RUNS, OFFSETS)
     }
 }
 
 pub mod case_ignorable {
     use super::ShortOffsetRunHeader;
 
-    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 36] = [
+    static SHORT_OFFSET_RUNS: &[ShortOffsetRunHeader; 36] = &[
         ShortOffsetRunHeader::new(0, 688),
         ShortOffsetRunHeader::new(11, 4957),
         ShortOffsetRunHeader::new(263, 5906),
@@ -194,7 +184,7 @@ pub mod case_ignorable {
         ShortOffsetRunHeader::new(911, 917505),
         ShortOffsetRunHeader::new(913, 2032112),
     ];
-    static OFFSETS: [u8; 919] = [
+    static OFFSETS: &[u8; 919] = &[
         168, 1, 4, 1, 1, 1, 4, 1, 2, 2, 0, 192, 4, 2, 4, 1, 9, 2, 1, 1, 251, 7, 207, 1, 5, 1, 49,
         45, 1, 1, 1, 2, 1, 2, 1, 1, 44, 1, 11, 6, 10, 11, 1, 1, 35, 1, 10, 21, 16, 1, 101, 8, 1,
         10, 1, 4, 33, 1, 1, 1, 30, 27, 91, 11, 58, 11, 4, 1, 2, 1, 24, 24, 43, 3, 44, 1, 7, 2, 5,
@@ -239,24 +229,14 @@ pub mod case_ignorable {
 
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
-        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
-        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
-        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+        super::skip_search!(c, SHORT_OFFSET_RUNS, OFFSETS)
     }
 }
 
 pub mod cased {
     use super::ShortOffsetRunHeader;
 
-    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 22] = [
+    static SHORT_OFFSET_RUNS: &[ShortOffsetRunHeader; 22] = &[
         ShortOffsetRunHeader::new(0, 4256),
         ShortOffsetRunHeader::new(51, 5024),
         ShortOffsetRunHeader::new(61, 7296),
@@ -280,7 +260,7 @@ pub mod cased {
         ShortOffsetRunHeader::new(305, 127280),
         ShortOffsetRunHeader::new(307, 1241482),
     ];
-    static OFFSETS: [u8; 313] = [
+    static OFFSETS: &[u8; 313] = &[
         170, 1, 10, 1, 4, 1, 5, 23, 1, 31, 1, 195, 1, 4, 4, 208, 2, 35, 7, 2, 30, 5, 96, 1, 42, 4,
         2, 2, 2, 4, 1, 1, 6, 1, 1, 3, 1, 1, 1, 20, 1, 83, 1, 139, 8, 166, 1, 38, 9, 41, 0, 38, 1,
         1, 5, 1, 2, 43, 1, 4, 0, 86, 2, 6, 0, 11, 5, 43, 2, 3, 64, 192, 64, 0, 2, 6, 2, 38, 2, 6,
@@ -303,24 +283,14 @@ pub mod cased {
 
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
-        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
-        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
-        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+        super::skip_search!(c, SHORT_OFFSET_RUNS, OFFSETS)
     }
 }
 
 pub mod grapheme_extend {
     use super::ShortOffsetRunHeader;
 
-    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 33] = [
+    static SHORT_OFFSET_RUNS: &[ShortOffsetRunHeader; 33] = &[
         ShortOffsetRunHeader::new(0, 768),
         ShortOffsetRunHeader::new(1, 1155),
         ShortOffsetRunHeader::new(3, 1425),
@@ -355,7 +325,7 @@ pub mod grapheme_extend {
         ShortOffsetRunHeader::new(759, 917536),
         ShortOffsetRunHeader::new(763, 2032112),
     ];
-    static OFFSETS: [u8; 767] = [
+    static OFFSETS: &[u8; 767] = &[
         0, 112, 0, 7, 0, 45, 1, 1, 1, 2, 1, 2, 1, 1, 72, 11, 48, 21, 16, 1, 101, 7, 2, 6, 2, 2, 1,
         4, 35, 1, 30, 27, 91, 11, 58, 9, 9, 1, 24, 4, 1, 9, 1, 3, 1, 5, 43, 3, 59, 9, 42, 24, 1,
         32, 55, 1, 1, 1, 4, 8, 4, 1, 3, 7, 10, 2, 29, 1, 58, 1, 1, 1, 2, 4, 8, 1, 9, 1, 10, 2, 26,
@@ -394,17 +364,7 @@ pub mod grapheme_extend {
 
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
-        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
-        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
-        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+        super::skip_search!(c, SHORT_OFFSET_RUNS, OFFSETS)
     }
 }
 
@@ -538,7 +498,7 @@ pub mod lowercase {
 pub mod n {
     use super::ShortOffsetRunHeader;
 
-    static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 43] = [
+    static SHORT_OFFSET_RUNS: &[ShortOffsetRunHeader; 43] = &[
         ShortOffsetRunHeader::new(0, 1632),
         ShortOffsetRunHeader::new(7, 2406),
         ShortOffsetRunHeader::new(13, 4160),
@@ -583,7 +543,7 @@ pub mod n {
         ShortOffsetRunHeader::new(287, 130032),
         ShortOffsetRunHeader::new(289, 1244154),
     ];
-    static OFFSETS: [u8; 291] = [
+    static OFFSETS: &[u8; 291] = &[
         178, 2, 5, 1, 2, 3, 0, 10, 134, 10, 198, 10, 0, 10, 118, 10, 4, 6, 108, 10, 118, 10, 118,
         10, 2, 6, 110, 13, 115, 10, 8, 7, 103, 10, 104, 7, 7, 19, 109, 10, 96, 10, 118, 10, 70, 20,
         0, 10, 70, 10, 0, 20, 0, 3, 239, 10, 6, 10, 22, 10, 0, 10, 128, 11, 165, 10, 6, 10, 182,
@@ -607,17 +567,7 @@ pub mod n {
 
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
-        const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
-            let mut i = 0;
-            while i < SHORT_OFFSET_RUNS.len() {
-                assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
-                i += 1;
-            }
-        }
-        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`
-        // and the start indices of all elements in `SHORT_OFFSET_RUNS` are smaller than `OFFSETS.len()`.
-        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
+        super::skip_search!(c, SHORT_OFFSET_RUNS, OFFSETS)
     }
 }
 
@@ -1163,29 +1113,12 @@ pub mod conversions {
 
     #[inline]
     pub fn to_lower(c: char) -> [char; 3] {
-        const {
-            let mut i = 0;
-            while i < LOWERCASE_TABLE.len() {
-                let (_, val) = LOWERCASE_TABLE[i];
-                if val & (1 << 22) == 0 {
-                    assert!(char::from_u32(val).is_some());
-                } else {
-                    let index = val & ((1 << 22) - 1);
-                    assert!((index as usize) < LOWERCASE_TABLE_MULTI.len());
-                }
-                i += 1;
-            }
-        }
-
-        // SAFETY: Just checked that the tables are valid
-        unsafe {
-            super::case_conversion(
-                c,
-                |c| c.to_ascii_lowercase(),
-                LOWERCASE_TABLE,
-                LOWERCASE_TABLE_MULTI,
-            )
-        }
+        super::case_conversion!(
+            c,
+            |c| c.to_ascii_lowercase(),
+            LOWERCASE_TABLE,
+            LOWERCASE_TABLE_MULTI,
+        )
     }
 
     #[rustfmt::skip]
@@ -1668,28 +1601,11 @@ pub mod conversions {
 
     #[inline]
     pub fn to_upper(c: char) -> [char; 3] {
-        const {
-            let mut i = 0;
-            while i < UPPERCASE_TABLE.len() {
-                let (_, val) = UPPERCASE_TABLE[i];
-                if val & (1 << 22) == 0 {
-                    assert!(char::from_u32(val).is_some());
-                } else {
-                    let index = val & ((1 << 22) - 1);
-                    assert!((index as usize) < UPPERCASE_TABLE_MULTI.len());
-                }
-                i += 1;
-            }
-        }
-
-        // SAFETY: Just checked that the tables are valid
-        unsafe {
-            super::case_conversion(
-                c,
-                |c| c.to_ascii_uppercase(),
-                UPPERCASE_TABLE,
-                UPPERCASE_TABLE_MULTI,
-            )
-        }
+        super::case_conversion!(
+            c,
+            |c| c.to_ascii_uppercase(),
+            UPPERCASE_TABLE,
+            UPPERCASE_TABLE_MULTI,
+        )
     }
 }
