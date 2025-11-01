@@ -27,10 +27,8 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
-# FIXME: Remove this pin once this rustix issue is resolved
-# https://github.com/bytecodealliance/rustix/issues/1496
 # tidy-alphabetical-start
-libc = "=0.2.174"
+libc = "0.2"
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
