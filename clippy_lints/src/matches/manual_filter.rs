@@ -1,8 +1,9 @@
+use clippy_utils::as_some_expr;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::visitors::contains_unsafe_block;
 
-use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{SyntaxContext, sym};
@@ -52,21 +53,19 @@ fn peels_blocks_incl_unsafe<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
     peels_blocks_incl_unsafe_opt(expr).unwrap_or(expr)
 }
 
-// function called for each <expr> expression:
+/// Checks whether <expr> resolves to `Some(target)`
+// NOTE: called for each <expr> expression:
 // Some(x) => if <cond> {
 //    <expr>
 // } else {
 //    <expr>
 // }
-// Returns true if <expr> resolves to `Some(x)`, `false` otherwise
 fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr)
         // there can be not statements in the block as they would be removed when switching to `.filter`
-        && let ExprKind::Call(callee, [arg]) = inner_expr.kind
+        && let Some(arg) = as_some_expr(cx, inner_expr)
     {
-        return ctxt == expr.span.ctxt()
-            && callee.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
-            && arg.res_local_id() == Some(target);
+        return ctxt == expr.span.ctxt() && arg.res_local_id() == Some(target);
     }
     false
 }

@@ -354,10 +354,7 @@ fn self_cmp_call<'tcx>(
     needs_fully_qualified: &mut bool,
 ) -> bool {
     match cmp_expr.kind {
-        ExprKind::Call(path, [_, _]) => path
-            .res(typeck)
-            .opt_def_id()
-            .is_some_and(|def_id| cx.tcx.is_diagnostic_item(sym::ord_cmp_method, def_id)),
+        ExprKind::Call(path, [_, _]) => path.res(typeck).is_diag_item(cx, sym::ord_cmp_method),
         ExprKind::MethodCall(_, recv, [_], ..) => {
             let ExprKind::Path(path) = recv.kind else {
                 return false;
