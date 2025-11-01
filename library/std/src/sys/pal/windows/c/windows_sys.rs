@@ -27,6 +27,10 @@ windows_link::link!("kernel32.dll" "system" fn ExitProcess(uexitcode : u32) -> !
 windows_link::link!("kernel32.dll" "system" fn FindClose(hfindfile : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FindFirstFileExW(lpfilename : PCWSTR, finfolevelid : FINDEX_INFO_LEVELS, lpfindfiledata : *mut core::ffi::c_void, fsearchop : FINDEX_SEARCH_OPS, lpsearchfilter : *const core::ffi::c_void, dwadditionalflags : FIND_FIRST_EX_FLAGS) -> HANDLE);
 windows_link::link!("kernel32.dll" "system" fn FindNextFileW(hfindfile : HANDLE, lpfindfiledata : *mut WIN32_FIND_DATAW) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn FlsAlloc(lpcallback : PFLS_CALLBACK_FUNCTION) -> u32);
+windows_link::link!("kernel32.dll" "system" fn FlsFree(dwflsindex : u32) -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn FlsGetValue(dwflsindex : u32) -> *mut core::ffi::c_void);
+windows_link::link!("kernel32.dll" "system" fn FlsSetValue(dwflsindex : u32, lpflsdata : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FlushFileBuffers(hfile : HANDLE) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn FormatMessageW(dwflags : FORMAT_MESSAGE_OPTIONS, lpsource : *const core::ffi::c_void, dwmessageid : u32, dwlanguageid : u32, lpbuffer : PWSTR, nsize : u32, arguments : *const *const i8) -> u32);
 windows_link::link!("kernel32.dll" "system" fn FreeEnvironmentStringsW(penv : PCWSTR) -> BOOL);
@@ -2667,6 +2671,7 @@ impl Default for FLOATING_SAVE_AREA {
         unsafe { core::mem::zeroed() }
     }
 }
+pub const FLS_OUT_OF_INDEXES: u32 = 4294967295u32;
 pub const FORMAT_MESSAGE_ALLOCATE_BUFFER: FORMAT_MESSAGE_OPTIONS = 256u32;
 pub const FORMAT_MESSAGE_ARGUMENT_ARRAY: FORMAT_MESSAGE_OPTIONS = 8192u32;
 pub const FORMAT_MESSAGE_FROM_HMODULE: FORMAT_MESSAGE_OPTIONS = 2048u32;
@@ -3037,6 +3042,8 @@ pub struct OVERLAPPED_0_0 {
 }
 pub type PCSTR = *const u8;
 pub type PCWSTR = *const u16;
+pub type PFLS_CALLBACK_FUNCTION =
+    Option<unsafe extern "system" fn(lpflsdata: *const core::ffi::c_void)>;
 pub type PIO_APC_ROUTINE = Option<
     unsafe extern "system" fn(
         apccontext: *mut core::ffi::c_void,
