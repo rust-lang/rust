@@ -28,7 +28,7 @@ use rustc_span::symbol::sym;
 use tracing::{debug, info};
 
 use crate::clean::inline::build_trait;
-use crate::clean::{self, ItemId};
+use crate::clean::{self, ItemId, NestedAttributesExt};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
@@ -61,8 +61,6 @@ pub(crate) struct DocContext<'tcx> {
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
     pub(crate) auto_traits: Vec<DefId>,
-    /// The options given to rustdoc that could be relevant to a pass.
-    pub(crate) render_options: RenderOptions,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     pub(crate) cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -137,6 +135,16 @@ impl<'tcx> DocContext<'tcx> {
     /// If another option like `--show-coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
         self.output_format.is_json() && !self.show_coverage
+    }
+
+    /// If `--document-private-items` was passed to rustdoc.
+    pub(crate) fn document_private(&self) -> bool {
+        self.cache.document_private
+    }
+
+    /// If `--document-hidden-items` was passed to rustdoc.
+    pub(crate) fn document_hidden(&self) -> bool {
+        self.cache.document_hidden
     }
 }
 
@@ -328,7 +336,7 @@ pub(crate) fn create_config(
 pub(crate) fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     show_coverage: bool,
-    render_options: RenderOptions,
+    mut render_options: RenderOptions,
     output_format: OutputFormat,
 ) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
     // Certain queries assume that some checks were run elsewhere
@@ -361,6 +369,13 @@ pub(crate) fn run_global_ctxt(
     let auto_traits =
         tcx.visible_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
 
+    // Remnence of processing crate attributes for passes to run.
+    if clean::hir_attr_lists(tcx.get_all_attrs(rustc_hir::def_id::CRATE_DEF_ID), sym::doc)
+        .has_word(sym::document_private_items)
+    {
+        render_options.document_private = true;
+    }
+
     let mut ctxt = DocContext {
         tcx,
         param_env: ParamEnv::empty(),
@@ -374,7 +389,6 @@ pub(crate) fn run_global_ctxt(
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
         output_format,
-        render_options,
         show_coverage,
     };
 
@@ -411,14 +425,6 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    // Process all of the crate attributes, extracting plugin metadata along
-    // with the passes which we are supposed to run.
-    for attr in krate.module.attrs.lists(sym::doc) {
-        if attr.is_word() && attr.has_name(sym::document_private_items) {
-            ctxt.render_options.document_private = true;
-        }
-    }
-
     info!("Executing passes");
 
     let mut visited = FxHashMap::default();
@@ -427,9 +433,9 @@ pub(crate) fn run_global_ctxt(
     for p in passes::defaults(show_coverage) {
         let run = match p.condition {
             Always => true,
-            WhenDocumentPrivate => ctxt.render_options.document_private,
-            WhenNotDocumentPrivate => !ctxt.render_options.document_private,
-            WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
+            WhenDocumentPrivate => ctxt.document_private(),
+            WhenNotDocumentPrivate => !ctxt.document_private(),
+            WhenNotDocumentHidden => !ctxt.document_hidden(),
         };
         if run {
             debug!("running pass {}", p.pass.name);
@@ -447,7 +453,8 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
+    krate =
+        tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
     let mut collector =
         LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
@@ -455,7 +462,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.dcx().abort_if_errors();
 
-    (krate, ctxt.render_options, ctxt.cache, expanded_macros)
+    (krate, render_options, ctxt.cache, expanded_macros)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,
