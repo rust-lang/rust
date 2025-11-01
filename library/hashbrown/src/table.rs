@@ -425,7 +425,7 @@ where
     }
 
     /// Returns an `OccupiedEntry` for the given bucket index in the table,
-    /// or `None` if it is unoccupied or out of bounds.
+    /// or `AbsentEntry` if it is unoccupied or out of bounds.
     ///
     /// # Examples
     ///
@@ -444,7 +444,7 @@ where
     ///
     /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
     ///
-    /// assert!(table.get_bucket_entry(usize::MAX).is_none());
+    /// assert!(table.get_bucket_entry(usize::MAX).is_err());
     ///
     /// let occupied_entry = table.get_bucket_entry(index).unwrap();
     /// assert_eq!(occupied_entry.get(), &(2, 'b'));
@@ -458,11 +458,17 @@ where
     /// # }
     /// ```
     #[inline]
-    pub fn get_bucket_entry(&mut self, index: usize) -> Option<OccupiedEntry<'_, T, A>> {
-        Some(OccupiedEntry {
-            bucket: self.raw.checked_bucket(index)?,
-            table: self,
-        })
+    pub fn get_bucket_entry(
+        &mut self,
+        index: usize,
+    ) -> Result<OccupiedEntry<'_, T, A>, AbsentEntry<'_, T, A>> {
+        match self.raw.checked_bucket(index) {
+            Some(bucket) => Ok(OccupiedEntry {
+                bucket,
+                table: self,
+            }),
+            None => Err(AbsentEntry { table: self }),
+        }
     }
 
     /// Gets a reference to an entry in the table at the given bucket index,
@@ -2224,10 +2230,11 @@ where
     }
 }
 
-/// Type representing the absence of an entry, as returned by [`HashTable::find_entry`].
+/// Type representing the absence of an entry, as returned by [`HashTable::find_entry`]
+/// and [`HashTable::get_bucket_entry`].
 ///
 /// This type only exists due to [limitations] in Rust's NLL borrow checker. In
-/// the future, `find_entry` will return an `Option<OccupiedEntry>` and this
+/// the future, those methods will return an `Option<OccupiedEntry>` and this
 /// type will be removed.
 ///
 /// [limitations]: https://smallcultfollowing.com/babysteps/blog/2018/06/15/mir-based-borrow-check-nll-status-update/#polonius
