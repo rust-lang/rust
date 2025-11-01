@@ -5,7 +5,9 @@ LL | impl<T> S0<T> {
    | ------------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
 LL |     fn foo() {
 LL |         const C: S0<i32> = Self(0);
-   |                            ^^^^ help: replace `Self` with the actual type: `S0`
+   |               -            ^^^^ help: replace `Self` with the actual type: `S0`
+   |               |
+   |               `Self` used in this inner item
 
 error[E0401]: can't reference `Self` constructor from outer item
   --> $DIR/self-ctor.rs:8:13
@@ -13,6 +15,8 @@ error[E0401]: can't reference `Self` constructor from outer item
 LL | impl<T> S0<T> {
    | ------------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
 ...
+LL |         fn bar() -> S0<i32> {
+   |            --- `Self` used in this inner item
 LL |             Self(0)
    |             ^^^^ help: replace `Self` with the actual type: `S0`
 
