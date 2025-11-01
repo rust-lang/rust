@@ -504,7 +504,7 @@ unsafe extern "C" {
 mod tests {
     use crate::core_arch::x86::_mm_cvtness_sbh;
     use crate::core_arch::x86_64::*;
-    use core::mem::transmute;
+    use core::{array, mem::transmute};
     use stdarch_test::simd_test;
     #[cfg(target_os = "linux")]
     use syscalls::{Sysno, syscall};
@@ -842,5 +842,231 @@ mod tests {
         _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
         _tile_release();
         assert_eq!(res, [[0f32; 16]; 16]);
+    }
+
+    const BF8_ONE: u8 = 0x3c;
+    const BF8_TWO: u8 = 0x40;
+    const HF8_ONE: u8 = 0x38;
+    const HF8_TWO: u8 = 0x40;
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dpbf8ps() {
+        _init_amx();
+        let ones = [BF8_ONE; 1024];
+        let twos = [BF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dpbf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dpbhf8ps() {
+        _init_amx();
+        let ones = [BF8_ONE; 1024];
+        let twos = [HF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dpbhf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dphbf8ps() {
+        _init_amx();
+        let ones = [HF8_ONE; 1024];
+        let twos = [BF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dphbf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dphf8ps() {
+        _init_amx();
+        let ones = [HF8_ONE; 1024];
+        let twos = [HF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dphf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-tile")]
+    unsafe fn test_tile_loaddrs() {
+        _init_amx();
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        let mat = [1_i8; 1024];
+        _tile_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+        let mut out = [[0_i8; 64]; 16];
+        _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+        _tile_release();
+        assert_eq!(out, [[1; 64]; 16]);
+    }
+
+    #[simd_test(enable = "amx-tile")]
+    unsafe fn test_tile_stream_loaddrs() {
+        _init_amx();
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        let mat = [1_i8; 1024];
+        _tile_stream_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+        let mut out = [[0_i8; 64]; 16];
+        _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+        _tile_release();
+        assert_eq!(out, [[1; 64]; 16]);
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_movrow() {
+        _init_amx();
+        let array: [[u8; 64]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_movrow::<0>(i);
+            assert_eq!(*row.as_u8x64().as_array(), [i as _; _]);
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowd2ps() {
+        _init_amx();
+        let array: [[u32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowd2ps::<0>(i);
+            assert_eq!(*row.as_f32x16().as_array(), [i as _; _]);
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowps2phh() {
+        _init_amx();
+        let array: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowps2phh::<0>(i);
+            assert_eq!(
+                *row.as_f16x32().as_array(),
+                array::from_fn(|j| if j & 1 == 0 { 0.0 } else { i as _ })
+            );
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowps2phl() {
+        _init_amx();
+        let array: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowps2phl::<0>(i);
+            assert_eq!(
+                *row.as_f16x32().as_array(),
+                array::from_fn(|j| if j & 1 == 0 { i as _ } else { 0.0 })
+            );
+        }
+    }
+
+    #[simd_test(enable = "amx-tf32")]
+    unsafe fn test_tile_mmultf32ps() {
+        _init_amx();
+        let a: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+        let b: [[f32; 16]; 16] = [array::from_fn(|j| j as _); _];
+        let mut res = [[0.0; 16]; 16];
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(a.as_ptr().cast(), 64);
+        _tile_loadd::<2>(b.as_ptr().cast(), 64);
+        _tile_mmultf32ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+
+        let expected = array::from_fn(|i| array::from_fn(|j| 16.0 * i as f32 * j as f32));
+        assert_eq!(res, expected);
     }
 }
