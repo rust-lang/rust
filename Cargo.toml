@@ -24,7 +24,7 @@ default = ["master"]
 [dependencies]
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
 tempfile = "3.20"
-gccjit = "2.8"
+gccjit = "2.10"
 #gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
 
 # Local copy.

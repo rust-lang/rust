@@ -21,6 +21,7 @@ use std::ffi::{CStr, CString};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
@@ -39,7 +40,7 @@ use tempfile::{TempDir, tempdir};
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::LtoBitcodeFromRlib;
-use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
+use crate::{GccCodegenBackend, GccContext, LTO_SUPPORTED, LtoMode, SyncContext, to_gcc_opt_level};
 
 struct LtoData {
     // TODO(antoyo): use symbols_below_threshold.
@@ -229,7 +230,7 @@ fn fat_lto(
             info!("linking {:?}", name);
             match bc_decoded {
                 SerializedModule::Local(ref module_buffer) => {
-                    module.module_llvm.should_combine_object_files = true;
+                    module.module_llvm.lto_mode = LtoMode::Fat;
                     module
                         .module_llvm
                         .context
@@ -534,7 +535,7 @@ pub fn optimize_thin_module(
     // that LLVM Context and Module.
     //let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
     //let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &dcx)? as *const _;
-    let mut should_combine_object_files = false;
+    let mut lto_mode = LtoMode::None;
     let context = match thin_module.shared.thin_buffers.get(thin_module.idx) {
         Some(thin_buffer) => Arc::clone(&thin_buffer.context),
         None => {
@@ -545,7 +546,7 @@ pub fn optimize_thin_module(
                 SerializedModule::Local(ref module_buffer) => {
                     let path = module_buffer.0.to_str().expect("path");
                     context.add_driver_option(path);
-                    should_combine_object_files = true;
+                    lto_mode = LtoMode::Thin;
                     /*module.module_llvm.should_combine_object_files = true;
                     module
                         .module_llvm
@@ -560,11 +561,13 @@ pub fn optimize_thin_module(
             Arc::new(SyncContext::new(context))
         }
     };
+    let lto_supported = LTO_SUPPORTED.load(Ordering::SeqCst);
     let module = ModuleCodegen::new_regular(
         thin_module.name().to_string(),
         GccContext {
             context,
-            should_combine_object_files,
+            lto_mode,
+            lto_supported,
             // TODO(antoyo): use the correct relocation model here.
             relocation_model: RelocModel::Pic,
             temp_dir: None,
