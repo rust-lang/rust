@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use clippy_config::Conf;
+use clippy_utils::consts::const_item_rhs_to_expr;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
@@ -184,7 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'tcx>) {
         if item.span.in_external_macro(cx.tcx.sess.source_map()) {
             return;
         }
@@ -214,7 +215,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 }
 
-fn check_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>, (span, help_span): (Span, Span), is_doc: bool) {
+fn check_has_safety_comment<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, (span, help_span): (Span, Span), is_doc: bool) {
     match &item.kind {
         ItemKind::Impl(Impl {
             of_trait: Some(of_trait),
@@ -234,7 +235,29 @@ fn check_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>, (span, h
         },
         ItemKind::Impl(_) => {},
         // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
-        &ItemKind::Const(.., body) | &ItemKind::Static(.., body) => {
+        &ItemKind::Const(.., ct_rhs) => {
+                        if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, ct_rhs.hir_id()) {
+                let expr = const_item_rhs_to_expr(cx.tcx, ct_rhs);
+                if let Some(expr) = expr && !matches!(
+                    expr.kind, hir::ExprKind::Block(block, _)
+                    if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                ) {
+                    span_lint_and_then(
+                        cx,
+                        UNNECESSARY_SAFETY_COMMENT,
+                        span,
+                        format!(
+                            "{} has unnecessary safety comment",
+                            cx.tcx.def_descr(item.owner_id.to_def_id()),
+                        ),
+                        |diag| {
+                            diag.span_help(help_span, "consider removing the safety comment");
+                        },
+                    );
+                }
+            }
+        }
+         &ItemKind::Static(.., body) => {
             if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                 let body = cx.tcx.hir_body(body);
                 if !matches!(
