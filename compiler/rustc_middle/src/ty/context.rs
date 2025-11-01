@@ -2850,6 +2850,13 @@ impl<'tcx> TyCtxt<'tcx> {
         sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig })
     }
 
+    /// Given a `unsafe fn` sig, returns an equivalent `fn` sig;
+    /// that is, a `fn` sig that is equivalent in every way for being
+    /// safe.
+    pub fn unsafe_to_safe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
+        sig.map_bound(|sig| ty::FnSig{ safety: hir::Safety::Safe, ..sig  })
+    }
+
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
     /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
     pub fn trait_may_define_assoc_item(self, trait_def_id: DefId, assoc_name: Ident) -> bool {

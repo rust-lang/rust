@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 match kind {
                     // FIXME: Add Checks for these
                     CastKind::PointerWithExposedProvenance | CastKind::PointerExposeProvenance => {}
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _) => {
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _) => {
                         // FIXME: check signature compatibility.
                         check_kinds!(
                             op_ty,

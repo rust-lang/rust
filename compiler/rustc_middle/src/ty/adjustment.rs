@@ -11,7 +11,7 @@ use crate::ty::{Ty, TyCtxt};
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn pointer or an unsafe fn pointer.
     /// It cannot convert an unsafe fn-item to a safe fn pointer.
-    ReifyFnPointer(hir::Safety),
+    ReifyFnPointer,
 
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,

@@ -845,7 +845,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety))?;
+                let a_sig = self.sig_for_fn_def_coercion(a, None)?;
 
                 // FIXME: we shouldn't be normalizing here as coercion is inside of
                 // a probe. This can probably cause ICEs.
@@ -853,8 +853,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.at(&self.cause, self.param_env).normalize(a_sig);
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
-                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety));
-                let InferOk { value, obligations: o2 } = self.unify_and(a, b, [], adjust)?;
+                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer);
+                let (a, opt_adjustment, adjust) = if a_sig.safety().is_safe() && b_hdr.safety.is_unsafe() {
+                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
+                    (unsafe_a, Some(Adjustment { kind: adjust, target: a }), Adjust::Pointer(PointerCoercion::UnsafeFnPointer))
+                } else {
+                    (a, None, adjust)
+                };
+                let InferOk { value, obligations: o2 } = self.unify_and(a, b, opt_adjustment, adjust)?;
 
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
@@ -1205,10 +1211,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some((mut a_sig, mut b_sig)) = opt_sigs {
             // Allow coercing safe sigs to unsafe sigs
+            let mut adjust_a_safety = false;
+            let mut adjust_b_safety = false;
+            
             if a_sig.safety().is_safe() && b_sig.safety().is_unsafe() {
                 a_sig = self.tcx.safe_to_unsafe_sig(a_sig);
+                adjust_a_safety = true;
             } else if b_sig.safety().is_safe() && a_sig.safety().is_unsafe() {
                 b_sig = self.tcx.safe_to_unsafe_sig(b_sig);
+                adjust_b_safety = true;
             };
 
             // The signature must match.
@@ -1222,24 +1233,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.leak_check(outer_universe, None)?;
 
             // Reify both sides and return the reified fn pointer type.
+            let safe_fn_ptr = Ty::new_fn_ptr(self.tcx, self.tcx.unsafe_to_safe_sig(sig));
             let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
+
             let prev_adjustment = match prev_ty.kind() {
                 ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => Adjust::Pointer(PointerCoercion::ClosureFnPointer(sig.safety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer(sig.safety())),
+                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
+
+            let adjustments = |adjust_kind, should_adjust_safety| {
+                let mut adjustments = Vec::with_capacity(2);
+
+                let unadjusted_fn_ptr = if should_adjust_safety {
+                    safe_fn_ptr
+                } else {
+                    fn_ptr
+                };
+
+                adjustments.push(
+                    Adjustment { kind: adjust_kind, target: unadjusted_fn_ptr }
+                );
+                if should_adjust_safety {
+                    adjustments.push(
+                        Adjustment { kind: Adjust::Pointer(PointerCoercion::UnsafeFnPointer), target: fn_ptr}
+                    )
+                }
+
+                adjustments
+            };
+            
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
                 self.apply_adjustments(
                     expr,
-                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
+                    adjustments(prev_adjustment.clone(), adjust_a_safety),
                 );
             }
-            self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
+            self.apply_adjustments(new, adjustments(next_adjustment, adjust_b_safety));
             return Ok(fn_ptr);
         }
 

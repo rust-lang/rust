@@ -627,7 +627,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     | PointerCoercion::ArrayToPointer
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
-                    | PointerCoercion::ReifyFnPointer(_),
+                    | PointerCoercion::ReifyFnPointer,
                     _,
                 ),
                 _,

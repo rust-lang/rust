@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 match *cast_kind {
                     CastKind::PointerCoercion(
-                        PointerCoercion::ReifyFnPointer(target_safety),
+                        PointerCoercion::ReifyFnPointer,
                         coercion_source,
                     ) => {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
@@ -1080,10 +1080,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             )
                         {
                             src_sig = safe_sig;
-                        }
-
-                        if src_sig.safety().is_safe() && target_safety.is_unsafe() {
-                            src_sig = tcx.safe_to_unsafe_sig(src_sig);
                         }
 
                         // HACK: This shouldn't be necessary... We can remove this when we actually
