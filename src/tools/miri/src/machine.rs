@@ -1536,14 +1536,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 genmc_ctx.memory_load(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_data_race) => {
                 let _trace = enter_trace_span!(data_race::before_memory_read);
-                let AllocDataRaceHandler::Vclocks(data_race, weak_memory) = &alloc_extra.data_race
+                let AllocDataRaceHandler::Vclocks(data_race, _weak_memory) = &alloc_extra.data_race
                 else {
                     unreachable!();
                 };
-                data_race.read(alloc_id, range, NaReadType::Read, None, machine)?;
-                if let Some(weak_memory) = weak_memory {
-                    weak_memory.memory_accessed(range, machine.data_race.as_vclocks_ref().unwrap());
-                }
+                data_race.read_non_atomic(alloc_id, range, NaReadType::Read, None, machine)?;
             }
         }
         if let Some(borrow_tracker) = &alloc_extra.borrow_tracker {
@@ -1579,9 +1576,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 else {
                     unreachable!()
                 };
-                data_race.write(alloc_id, range, NaWriteType::Write, None, machine)?;
+                data_race.write_non_atomic(alloc_id, range, NaWriteType::Write, None, machine)?;
                 if let Some(weak_memory) = weak_memory {
-                    weak_memory.memory_accessed(range, machine.data_race.as_vclocks_ref().unwrap());
+                    weak_memory
+                        .non_atomic_write(range, machine.data_race.as_vclocks_ref().unwrap());
                 }
             }
         }
@@ -1612,7 +1610,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Vclocks(_global_state) => {
                 let _trace = enter_trace_span!(data_race::before_memory_deallocation);
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
-                data_race.write(
+                data_race.write_non_atomic(
                     alloc_id,
                     alloc_range(Size::ZERO, size),
                     NaWriteType::Deallocate,

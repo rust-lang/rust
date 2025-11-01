@@ -177,11 +177,11 @@ impl StoreBufferAlloc {
         Self { store_buffers: RefCell::new(RangeObjectMap::new()) }
     }
 
-    /// When a non-atomic access happens on a location that has been atomically accessed
-    /// before without data race, we can determine that the non-atomic access fully happens
+    /// When a non-atomic write happens on a location that has been atomically accessed
+    /// before without data race, we can determine that the non-atomic write fully happens
     /// after all the prior atomic writes so the location no longer needs to exhibit
-    /// any weak memory behaviours until further atomic accesses.
-    pub fn memory_accessed(&self, range: AllocRange, global: &DataRaceState) {
+    /// any weak memory behaviours until further atomic writes.
+    pub fn non_atomic_write(&self, range: AllocRange, global: &DataRaceState) {
         if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
             let access_type = buffers.access_type(range);
@@ -223,18 +223,23 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer_mut<'tcx>(
         &mut self,
         range: AllocRange,
-        init: Option<Scalar>,
+        init: Result<Option<Scalar>, ()>,
     ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffers = self.store_buffers.get_mut();
         let access_type = buffers.access_type(range);
         let pos = match access_type {
             AccessType::PerfectlyOverlapping(pos) => pos,
             AccessType::Empty(pos) => {
+                let init =
+                    init.expect("cannot have empty store buffer when previous write was atomic");
                 buffers.insert_at_pos(pos, range, StoreBuffer::new(init));
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
                 // Once we reach here we would've already checked that this access is not racy.
+                let init = init.expect(
+                    "cannot have partially overlapping store buffer when previous write was atomic",
+                );
                 buffers.remove_pos_range(pos_range.clone());
                 buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
                 pos_range.start
@@ -490,7 +495,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let range = alloc_range(base_offset, place.layout.size);
             let sync_clock = data_race_clocks.sync_clock(range);
-            let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, Some(init))?;
+            let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, Ok(Some(init)))?;
             // The RMW always reads from the most recent store.
             buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(
@@ -556,7 +561,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Add the given write to the store buffer. (Does not change machine memory.)
     ///
     /// `init` says with which value to initialize the store buffer in case there wasn't a store
-    /// buffer for this memory range before.
+    /// buffer for this memory range before. `Err(())` means the value is not available;
+    /// `Ok(None)` means the memory does not contain a valid scalar.
     ///
     /// Must be called *after* `validate_atomic_store` to ensure that `sync_clock` is up-to-date.
     fn buffered_atomic_write(
@@ -564,7 +570,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         val: Scalar,
         dest: &MPlaceTy<'tcx>,
         atomic: AtomicWriteOrd,
-        init: Option<Scalar>,
+        init: Result<Option<Scalar>, ()>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr(), 0)?;

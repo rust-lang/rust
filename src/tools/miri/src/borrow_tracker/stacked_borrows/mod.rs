@@ -749,7 +749,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                     // Make sure the data race model also knows about this.
                     // FIXME(genmc): Ensure this is still done in GenMC mode. Check for other places where GenMC may need to be informed.
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
-                        data_race.write(
+                        data_race.write_non_atomic(
                             alloc_id,
                             range,
                             NaWriteType::Retag,
@@ -798,7 +798,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         assert_eq!(access, AccessKind::Read);
                         // Make sure the data race model also knows about this.
                         if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
-                            data_race.read(
+                            data_race.read_non_atomic(
                                 alloc_id,
                                 range,
                                 NaReadType::Retag,
