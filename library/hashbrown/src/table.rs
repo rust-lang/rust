@@ -471,6 +471,52 @@ where
         }
     }
 
+    /// Returns an `OccupiedEntry` for the given bucket index in the table,
+    /// without checking whether the index is in-bounds or occupied.
+    ///
+    /// For a safe alternative, see [`get_bucket_entry`](Self::get_bucket_entry).
+    ///
+    /// # Safety
+    ///
+    /// It is *[undefined behavior]* to call this method with an index that is
+    /// out-of-bounds or unoccupied, even if the resulting entry is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert!(std::ptr::eq(
+    ///     table.get_bucket_entry(index).unwrap().into_mut(),
+    ///     unsafe { table.get_bucket_entry_unchecked(index).into_mut() },
+    /// ));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub unsafe fn get_bucket_entry_unchecked(&mut self, index: usize) -> OccupiedEntry<'_, T, A> {
+        OccupiedEntry {
+            bucket: self.raw.bucket(index),
+            table: self,
+        }
+    }
+
     /// Gets a reference to an entry in the table at the given bucket index,
     /// or `None` if it is unoccupied or out of bounds.
     ///
