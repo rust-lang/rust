@@ -835,6 +835,8 @@ impl<'tcx> CompilerInterface<'tcx> {
 // A thread local variable that stores a pointer to [`CompilerInterface`].
 scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
+// remove this cfg when we have a stable driver.
+#[cfg(feature = "rustc_internal")]
 pub(crate) fn run<'tcx, F, T>(interface: &CompilerInterface<'tcx>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
