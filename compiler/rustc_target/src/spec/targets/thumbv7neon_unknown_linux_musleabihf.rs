@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-musleabihf".into(),
         metadata: TargetMetadata {
-            description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3".into()),
+            description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
