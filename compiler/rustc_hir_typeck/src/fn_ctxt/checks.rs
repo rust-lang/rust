@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
@@ -72,16 +72,13 @@ pub(crate) enum DivergingBlockBehavior {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
-        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
-        // when writing to `self.param_env`.
-        let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
-
+        let mut deferred_cast_checks = self.root_ctxt.deferred_cast_checks.borrow_mut();
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
+            let body_id = std::mem::replace(&mut self.body_id, cast.body_id);
             cast.check(self);
+            self.body_id = body_id;
         }
-
-        *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
     pub(in super::super) fn check_asms(&self) {

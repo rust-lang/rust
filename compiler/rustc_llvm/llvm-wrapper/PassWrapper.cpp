@@ -224,6 +224,31 @@ static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
   report_fatal_error("Bad FloatABI.");
 }
 
+// Must match the layout of `rustc_codegen_llvm::llvm::ffi::CompressionKind`.
+enum class LLVMRustCompressionKind {
+  None = 0,
+  Zlib = 1,
+  Zstd = 2,
+};
+
+static llvm::DebugCompressionType fromRust(LLVMRustCompressionKind Kind) {
+  switch (Kind) {
+  case LLVMRustCompressionKind::None:
+    return llvm::DebugCompressionType::None;
+  case LLVMRustCompressionKind::Zlib:
+    if (!llvm::compression::zlib::isAvailable()) {
+      report_fatal_error("LLVMRustCompressionKind::Zlib not available");
+    }
+    return llvm::DebugCompressionType::Zlib;
+  case LLVMRustCompressionKind::Zstd:
+    if (!llvm::compression::zstd::isAvailable()) {
+      report_fatal_error("LLVMRustCompressionKind::Zstd not available");
+    }
+    return llvm::DebugCompressionType::Zstd;
+  }
+  report_fatal_error("bad LLVMRustCompressionKind");
+}
+
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
                                         RustStringRef OutStr) {
   ArrayRef<SubtargetSubTypeKV> CPUTable =
@@ -271,7 +296,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
-    const char *DebugInfoCompression, bool UseEmulatedTls, bool UseWasmEH) {
+    LLVMRustCompressionKind DebugInfoCompression, bool UseEmulatedTls,
+    bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -307,16 +333,10 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (OutputObjFile) {
     Options.ObjectFilenameForDebug = OutputObjFile;
   }
-  if (!strcmp("zlib", DebugInfoCompression) &&
-      llvm::compression::zlib::isAvailable()) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zlib;
-  } else if (!strcmp("zstd", DebugInfoCompression) &&
-             llvm::compression::zstd::isAvailable()) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zstd;
-  } else if (!strcmp("none", DebugInfoCompression)) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::None;
-  }
-
+  // To avoid fatal errors, make sure the Rust-side code only passes a
+  // compression kind that is known to be supported by this build of LLVM, via
+  // `LLVMRustLLVMHasZlibCompression` and `LLVMRustLLVMHasZstdCompression`.
+  Options.MCOptions.CompressDebugSections = fromRust(DebugInfoCompression);
   Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
   Options.EmulatedTLS = UseEmulatedTls;

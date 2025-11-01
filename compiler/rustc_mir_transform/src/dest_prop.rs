@@ -146,7 +146,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, Results};
+use rustc_mir_dataflow::{Analysis, EntryStates};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
@@ -173,7 +173,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let points = DenseLocationMap::new(body);
         let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
-        let mut live = save_as_intervals(&points, body, &relevant, live.results);
+        let mut live = save_as_intervals(&points, body, &relevant, live.entry_states);
 
         dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
 
@@ -506,7 +506,7 @@ fn save_as_intervals<'tcx>(
     elements: &DenseLocationMap,
     body: &Body<'tcx>,
     relevant: &RelevantLocals,
-    results: Results<DenseBitSet<Local>>,
+    entry_states: EntryStates<DenseBitSet<Local>>,
 ) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
     let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
     let mut state = MaybeLiveLocals.bottom_value(body);
@@ -529,7 +529,7 @@ fn save_as_intervals<'tcx>(
             continue;
         }
 
-        state.clone_from(&results[block]);
+        state.clone_from(&entry_states[block]);
 
         let block_data = &body.basic_blocks[block];
         let loc = Location { block, statement_index: block_data.statements.len() };

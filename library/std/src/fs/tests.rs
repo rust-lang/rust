@@ -5,6 +5,7 @@ use rand::RngCore;
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 use crate::assert_matches::assert_matches;
@@ -14,6 +15,7 @@ use crate::char::MAX_LEN_UTF8;
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 use crate::fs::TryLockError;
@@ -227,6 +229,7 @@ fn file_test_io_seek_and_write() {
     target_os = "linux",
     target_os = "netbsd",
     target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_multiple_shared() {
@@ -251,6 +254,7 @@ fn file_lock_multiple_shared() {
     target_os = "linux",
     target_os = "netbsd",
     target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_blocking() {
@@ -276,6 +280,7 @@ fn file_lock_blocking() {
     target_os = "linux",
     target_os = "netbsd",
     target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_drop() {
@@ -298,6 +303,7 @@ fn file_lock_drop() {
     target_os = "linux",
     target_os = "netbsd",
     target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_dup() {

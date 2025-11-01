@@ -36,7 +36,7 @@ impl OwnedTargetMachine {
         use_init_array: bool,
         split_dwarf_file: &CStr,
         output_obj_file: &CStr,
-        debug_info_compression: &CStr,
+        debug_info_compression: llvm::CompressionKind,
         use_emulated_tls: bool,
         use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
@@ -62,7 +62,7 @@ impl OwnedTargetMachine {
                 use_init_array,
                 split_dwarf_file.as_ptr(),
                 output_obj_file.as_ptr(),
-                debug_info_compression.as_ptr(),
+                debug_info_compression,
                 use_emulated_tls,
                 use_wasm_eh,
             )

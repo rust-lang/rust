@@ -32,7 +32,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -63,6 +63,7 @@ pub(crate) struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
+    pub body_id: LocalDefId,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -244,7 +245,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         span: Span,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span };
+        let check =
+            CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, body_id: fcx.body_id };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once

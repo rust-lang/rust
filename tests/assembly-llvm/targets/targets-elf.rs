@@ -34,6 +34,9 @@
 //@ revisions: aarch64_unknown_fuchsia
 //@ [aarch64_unknown_fuchsia] compile-flags: --target aarch64-unknown-fuchsia
 //@ [aarch64_unknown_fuchsia] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_helenos
+//@ [aarch64_unknown_helenos] compile-flags: --target aarch64-unknown-helenos
+//@ [aarch64_unknown_helenos] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_hermit
 //@ [aarch64_unknown_hermit] compile-flags: --target aarch64-unknown-hermit
 //@ [aarch64_unknown_hermit] needs-llvm-components: aarch64
@@ -256,6 +259,9 @@
 //@ revisions: i686_unknown_haiku
 //@ [i686_unknown_haiku] compile-flags: --target i686-unknown-haiku
 //@ [i686_unknown_haiku] needs-llvm-components: x86
+//@ revisions: i686_unknown_helenos
+//@ [i686_unknown_helenos] compile-flags: --target i686-unknown-helenos
+//@ [i686_unknown_helenos] needs-llvm-components: x86
 //@ revisions: i686_unknown_hurd_gnu
 //@ [i686_unknown_hurd_gnu] compile-flags: --target i686-unknown-hurd-gnu
 //@ [i686_unknown_hurd_gnu] needs-llvm-components: x86
@@ -394,6 +400,9 @@
 //@ revisions: powerpc_unknown_freebsd
 //@ [powerpc_unknown_freebsd] compile-flags: --target powerpc-unknown-freebsd
 //@ [powerpc_unknown_freebsd] needs-llvm-components: powerpc
+//@ revisions: powerpc_unknown_helenos
+//@ [powerpc_unknown_helenos] compile-flags: --target powerpc-unknown-helenos
+//@ [powerpc_unknown_helenos] needs-llvm-components: powerpc
 //@ revisions: powerpc_unknown_linux_gnu
 //@ [powerpc_unknown_linux_gnu] compile-flags: --target powerpc-unknown-linux-gnu
 //@ [powerpc_unknown_linux_gnu] needs-llvm-components: powerpc
@@ -517,6 +526,9 @@
 //@ revisions: s390x_unknown_linux_musl
 //@ [s390x_unknown_linux_musl] compile-flags: --target s390x-unknown-linux-musl
 //@ [s390x_unknown_linux_musl] needs-llvm-components: systemz
+//@ revisions: sparc64_unknown_helenos
+//@ [sparc64_unknown_helenos] compile-flags: --target sparc64-unknown-helenos
+//@ [sparc64_unknown_helenos] needs-llvm-components: sparc
 //@ revisions: sparc64_unknown_linux_gnu
 //@ [sparc64_unknown_linux_gnu] compile-flags: --target sparc64-unknown-linux-gnu
 //@ [sparc64_unknown_linux_gnu] needs-llvm-components: sparc
@@ -634,6 +646,9 @@
 //@ revisions: x86_64_unknown_haiku
 //@ [x86_64_unknown_haiku] compile-flags: --target x86_64-unknown-haiku
 //@ [x86_64_unknown_haiku] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_helenos
+//@ [x86_64_unknown_helenos] compile-flags: --target x86_64-unknown-helenos
+//@ [x86_64_unknown_helenos] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_hurd_gnu
 //@ [x86_64_unknown_hurd_gnu] compile-flags: --target x86_64-unknown-hurd-gnu
 //@ [x86_64_unknown_hurd_gnu] needs-llvm-components: x86

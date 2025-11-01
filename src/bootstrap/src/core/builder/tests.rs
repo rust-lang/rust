@@ -7,6 +7,7 @@ use llvm::prebuilt_llvm_config;
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::builder::cli_paths::PATH_REMAP;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;

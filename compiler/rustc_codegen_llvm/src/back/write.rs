@@ -6,9 +6,6 @@ use std::sync::Arc;
 use std::{fs, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
-use llvm::{
-    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
-};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
@@ -252,21 +249,25 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
-    match sess.opts.debuginfo_compression {
-        rustc_session::config::DebugInfoCompression::Zlib => {
-            if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
+    let debuginfo_compression = match sess.opts.debuginfo_compression {
+        config::DebugInfoCompression::None => llvm::CompressionKind::None,
+        config::DebugInfoCompression::Zlib => {
+            if llvm::LLVMRustLLVMHasZlibCompression() {
+                llvm::CompressionKind::Zlib
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::Zstd => {
-            if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
+        config::DebugInfoCompression::Zstd => {
+            if llvm::LLVMRustLLVMHasZstdCompression() {
+                llvm::CompressionKind::Zstd
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::None => {}
     };
-    let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
     let file_name_display_preference =
         sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
@@ -310,7 +311,7 @@ pub(crate) fn target_machine_factory(
             use_init_array,
             &split_dwarf_file,
             &output_obj_file,
-            &debuginfo_compression,
+            debuginfo_compression,
             use_emulated_tls,
             use_wasm_eh,
         )
