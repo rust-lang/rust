@@ -203,6 +203,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 Some(attrs),
                 Some(fn_abi),
                 aliasee,
+                None,
                 &args,
                 None,
                 Some(aliasee_instance),
