@@ -5,6 +5,7 @@
 struct OnDiskDirEntry<'a> {}
 
 impl<'a> OnDiskDirEntry<'a> {
+    #[type_const]
     const LFN_FRAGMENT_LEN: i64 = 2;
 
     fn lfn_contents() -> [char; Self::LFN_FRAGMENT_LEN] {
