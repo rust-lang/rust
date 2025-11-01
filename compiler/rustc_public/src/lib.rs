@@ -41,7 +41,7 @@ use crate::unstable::Stable;
 
 pub mod abi;
 mod alloc;
-pub(crate) mod unstable;
+pub mod unstable;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
