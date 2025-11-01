@@ -885,7 +885,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         TypeNS,
                         Some(Finalize::new(ty.id, ty.span)),
                         None,
-                        None,
                     )
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
@@ -1458,7 +1457,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             None,
             &self.ribs[ns],
             None,
-            None,
+            Some(&self.diag_metadata),
         )
     }
 
@@ -1468,7 +1467,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ns: Namespace,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'ra>>,
-        diag_metadata: Option<&crate::late::DiagMetadata<'_>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -1477,7 +1475,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             finalize,
             &self.ribs[ns],
             ignore_binding,
-            diag_metadata,
+            Some(&self.diag_metadata),
         )
     }
 
@@ -2556,8 +2554,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        if let Some(LexicalScopeBinding::Res(..)) = self
-                            .resolve_ident_in_lexical_scope(ident, ns, None, Some(binding), None)
+                        if let Some(LexicalScopeBinding::Res(..)) =
+                            self.resolve_ident_in_lexical_scope(ident, ns, None, Some(binding))
                         {
                             report_error(self, ns);
                         }
@@ -5110,7 +5108,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // use the type namespace
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
-            let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None, None)?;
+            let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
             (res == binding.res()).then_some((seg, binding))
         });
 

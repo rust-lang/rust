@@ -1835,6 +1835,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 module,
                                 segment_idx,
                                 ident,
+                                diag_metadata,
                             )
                         },
                     );

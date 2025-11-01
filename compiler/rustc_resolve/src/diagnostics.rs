@@ -40,7 +40,7 @@ use crate::errors::{
     MaybeMissingMacroRulesName,
 };
 use crate::imports::{Import, ImportKind};
-use crate::late::{PatternSource, Rib};
+use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
     ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
@@ -2406,6 +2406,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
         ident: Ident,
+        diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> (String, Option<Suggestion>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
@@ -2511,7 +2512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None,
                         &ribs[ns_to_try],
                         ignore_binding,
-                        None,
+                        diag_metadata,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Some(binding),
@@ -2562,7 +2563,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None,
                     &ribs[ValueNS],
                     ignore_binding,
-                    None,
+                    diag_metadata,
                 )
             } else {
                 None
