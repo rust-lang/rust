@@ -127,7 +127,11 @@ impl<'a> Sugg<'a> {
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(cx: &LateContext<'_>, expr: &hir::Expr<'_>, mut get_snippet: impl FnMut(Span) -> Cow<'a, str>) -> Self {
+    fn hir_from_snippet(
+        cx: &LateContext<'_>,
+        expr: &hir::Expr<'_>,
+        mut get_snippet: impl FnMut(Span) -> Cow<'a, str>,
+    ) -> Self {
         if let Some(range) = higher::Range::hir(cx, expr) {
             let op = AssocOp::Range(range.limits);
             let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
@@ -765,7 +769,7 @@ pub struct DerefClosure {
 /// such as explicit deref and borrowing cases.
 /// Returns `None` if no such use cases have been triggered in closure body
 ///
-/// note: this only works on single line immutable closures with exactly one input parameter.
+/// note: This only works on immutable closures with exactly one input parameter.
 pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
     if let ExprKind::Closure(&Closure {
         fn_decl, def_id, body, ..

@@ -6,7 +6,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
-use rustc_hir::{Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind};
+use rustc_hir::{
+    Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
 use rustc_session::impl_lint_pass;

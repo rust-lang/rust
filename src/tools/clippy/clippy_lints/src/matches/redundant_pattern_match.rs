@@ -416,7 +416,7 @@ fn get_ident(path: &QPath<'_>) -> Option<rustc_span::symbol::Ident> {
             let name = path.segments[0].ident;
             Some(name)
         },
-        _ => None,
+        QPath::TypeRelative(..) => None,
     }
 }
 

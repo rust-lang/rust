@@ -183,7 +183,13 @@ fn emit_manual_let_else(
                 format!("{{ {sn_else} }}")
             };
             let sn_bl = replace_in_pattern(cx, span, ident_map, pat, &mut app, true);
-            let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
+            let sugg = if sn_expr.ends_with('}') {
+                // let-else statement expressions are not allowed to end with `}`
+                // https://rust-lang.github.io/rfcs/3137-let-else.html#let-pattern--if--else--else-
+                format!("let {sn_bl} = ({sn_expr}) else {else_bl};")
+            } else {
+                format!("let {sn_bl} = {sn_expr} else {else_bl};")
+            };
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );
