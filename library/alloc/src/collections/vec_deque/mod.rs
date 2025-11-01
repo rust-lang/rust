@@ -227,6 +227,78 @@ impl<T, A: Allocator> VecDeque<T, A> {
         wrap_index(idx.wrapping_sub(subtrahend).wrapping_add(self.capacity()), self.capacity())
     }
 
+    /// Get source, destination and count (like the arguments to [`ptr::copy_nonoverlapping`])
+    /// for copying `count` values from index `src` to index `dst`.
+    /// One of the ranges can wrap around the physical buffer, for this reason 2 triples are returned.
+    ///
+    /// Use of the word "ranges" specifically refers to `src..src + count` and `dst..dst + count`.
+    ///
+    /// # Safety
+    ///
+    /// - Ranges must not overlap: `src.abs_diff(dst) >= count`.
+    /// - Ranges must be in bounds of the logical buffer: `src + count <= self.capacity()` and `dst + count <= self.capacity()`.
+    /// - `head` must be in bounds: `head < self.capacity()`.
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn nonoverlapping_ranges(
+        &mut self,
+        src: usize,
+        dst: usize,
+        count: usize,
+        head: usize,
+    ) -> [(*const T, *mut T, usize); 2] {
+        // "`src` and `dst` must be at least as far apart as `count`"
+        debug_assert!(
+            src.abs_diff(dst) >= count,
+            "`src` and `dst` must not overlap. src={src} dst={dst} count={count}",
+        );
+        debug_assert!(
+            src.max(dst) + count <= self.capacity(),
+            "ranges must be in bounds. src={src} dst={dst} count={count} cap={}",
+            self.capacity(),
+        );
+
+        let wrapped_src = self.wrap_add(head, src);
+        let wrapped_dst = self.wrap_add(head, dst);
+
+        let room_after_src = self.capacity() - wrapped_src;
+        let room_after_dst = self.capacity() - wrapped_dst;
+
+        let src_wraps = room_after_src < count;
+        let dst_wraps = room_after_dst < count;
+
+        // Wrapping occurs if `capacity` is contained within `wrapped_src..wrapped_src + count` or `wrapped_dst..wrapped_dst + count`.
+        // Since these two ranges must not overlap as per the safety invariants of this function, only one range can wrap.
+        debug_assert!(
+            !(src_wraps && dst_wraps),
+            "BUG: at most one of src and dst can wrap. src={src} dst={dst} count={count} cap={}",
+            self.capacity(),
+        );
+
+        unsafe {
+            let ptr = self.ptr();
+            let src_ptr = ptr.add(wrapped_src);
+            let dst_ptr = ptr.add(wrapped_dst);
+
+            if src_wraps {
+                [
+                    (src_ptr, dst_ptr, room_after_src),
+                    (ptr, dst_ptr.add(room_after_src), count - room_after_src),
+                ]
+            } else if dst_wraps {
+                [
+                    (src_ptr, dst_ptr, room_after_dst),
+                    (src_ptr.add(room_after_dst), ptr, count - room_after_dst),
+                ]
+            } else {
+                [
+                    (src_ptr, dst_ptr, count),
+                    // null pointers are fine as long as the count is 0
+                    (ptr::null(), ptr::null_mut(), 0),
+                ]
+            }
+        }
+    }
+
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
     unsafe fn copy(&mut self, src: usize, dst: usize, len: usize) {
@@ -2970,6 +3042,222 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
         } else {
             self.truncate(new_len);
         }
+    }
+
+    /// Clones the elements at the range `src` and appends them to the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting index is greater than the end index
+    /// or if either index is greater than the length of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut characters = VecDeque::from(['a', 'b', 'c', 'd', 'e']);
+    /// characters.extend_from_within(2..);
+    /// assert_eq!(characters, ['a', 'b', 'c', 'd', 'e', 'c', 'd', 'e']);
+    ///
+    /// let mut numbers = VecDeque::from([0, 1, 2, 3, 4]);
+    /// numbers.extend_from_within(..2);
+    /// assert_eq!(numbers, [0, 1, 2, 3, 4, 0, 1]);
+    ///
+    /// let mut strings = VecDeque::from([String::from("hello"), String::from("world"), String::from("!")]);
+    /// strings.extend_from_within(1..=2);
+    /// assert_eq!(strings, ["hello", "world", "!", "world", "!"]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn extend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let range = slice::range(src, ..self.len());
+        self.reserve(range.len());
+
+        // SAFETY:
+        // - `slice::range` guarantees that the given range is valid for indexing self
+        // - at least `range.len()` additional space is available
+        unsafe {
+            self.spec_extend_from_within(range);
+        }
+    }
+
+    /// Clones the elements at the range `src` and prepends them to the front.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting index is greater than the end index
+    /// or if either index is greater than the length of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut characters = VecDeque::from(['a', 'b', 'c', 'd', 'e']);
+    /// characters.prepend_from_within(2..);
+    /// assert_eq!(characters, ['c', 'd', 'e', 'a', 'b', 'c', 'd', 'e']);
+    ///
+    /// let mut numbers = VecDeque::from([0, 1, 2, 3, 4]);
+    /// numbers.prepend_from_within(..2);
+    /// assert_eq!(numbers, [0, 1, 0, 1, 2, 3, 4]);
+    ///
+    /// let mut strings = VecDeque::from([String::from("hello"), String::from("world"), String::from("!")]);
+    /// strings.prepend_from_within(1..=2);
+    /// assert_eq!(strings, ["world", "!", "hello", "world", "!"]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn prepend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let range = slice::range(src, ..self.len());
+        self.reserve(range.len());
+
+        // SAFETY:
+        // - `slice::range` guarantees that the given range is valid for indexing self
+        // - at least `range.len()` additional space is available
+        unsafe {
+            self.spec_prepend_from_within(range);
+        }
+    }
+}
+
+/// Associated functions have the following preconditions:
+///
+/// - `src` needs to be a valid range: `src.start <= src.end <= self.len()`.
+/// - The buffer must have enough spare capacity: `self.capacity() - self.len() >= src.len()`.
+#[cfg(not(no_global_oom_handling))]
+trait SpecExtendFromWithin {
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
+
+    unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>);
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: Clone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let dst = self.len();
+        let count = src.end - src.start;
+        let src = src.start;
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, self.head);
+
+            // `len` is updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            for (src, dst, count) in ranges {
+                for offset in 0..count {
+                    dst.add(offset).write((*src.add(offset)).clone());
+                    self.len += 1;
+                }
+            }
+        }
+    }
+
+    default unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
+        let dst = 0;
+        let count = src.end - src.start;
+        let src = src.start + count;
+
+        let new_head = self.wrap_sub(self.head, count);
+        let cap = self.capacity();
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, new_head);
+
+            // Cloning is done in reverse because we prepend to the front of the deque,
+            // we can't get holes in the *logical* buffer.
+            // `head` and `len` are updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            // Clone the first range
+            let (src, dst, count) = ranges[1];
+            for offset in (0..count).rev() {
+                dst.add(offset).write((*src.add(offset)).clone());
+                self.head -= 1;
+                self.len += 1;
+            }
+
+            // Clone the second range
+            let (src, dst, count) = ranges[0];
+            let mut iter = (0..count).rev();
+            if let Some(offset) = iter.next() {
+                dst.add(offset).write((*src.add(offset)).clone());
+                // After the first clone of the second range, wrap `head` around
+                if self.head == 0 {
+                    self.head = cap;
+                }
+                self.head -= 1;
+                self.len += 1;
+
+                // Continue like normal
+                for offset in iter {
+                    dst.add(offset).write((*src.add(offset)).clone());
+                    self.head -= 1;
+                    self.len += 1;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: Copy, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let dst = self.len();
+        let count = src.end - src.start;
+        let src = src.start;
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, self.head);
+            for (src, dst, count) in ranges {
+                ptr::copy_nonoverlapping(src, dst, count);
+            }
+        }
+
+        // SAFETY:
+        // - The elements were just initialized by `copy_nonoverlapping`
+        self.len += count;
+    }
+
+    unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
+        let dst = 0;
+        let count = src.end - src.start;
+        let src = src.start + count;
+
+        let new_head = self.wrap_sub(self.head, count);
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, new_head);
+            for (src, dst, count) in ranges {
+                ptr::copy_nonoverlapping(src, dst, count);
+            }
+        }
+
+        // SAFETY:
+        // - The elements were just initialized by `copy_nonoverlapping`
+        self.head = new_head;
+        self.len += count;
     }
 }
 
