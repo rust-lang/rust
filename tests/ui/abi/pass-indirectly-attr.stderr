@@ -1,0 +1,194 @@
+error[E0692]: transparent struct cannot have other repr hints
+  --> $DIR/pass-indirectly-attr.rs:35:1
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | struct Wrapper(Inner);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(extern_c) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: Type,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Memory {
+                               sized: true,
+                           },
+                           fields: Arbitrary {
+                               offsets: [
+                                   Size(0 bytes),
+                               ],
+                               memory_index: [
+                                   0,
+                               ],
+                           },
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: $SEED,
+                       },
+                   },
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(1 bytes),
+                           pointee_align: Some(
+                               Align(1 bytes),
+                           ),
+                       },
+                       meta_attrs: None,
+                       on_stack: false,
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: C,
+           can_unwind: false,
+       }
+  --> $DIR/pass-indirectly-attr.rs:20:1
+   |
+LL | pub extern "C" fn extern_c(_: Type) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(extern_rust) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: Type,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Memory {
+                               sized: true,
+                           },
+                           fields: Arbitrary {
+                               offsets: [
+                                   Size(0 bytes),
+                               ],
+                               memory_index: [
+                                   0,
+                               ],
+                           },
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: $SEED,
+                       },
+                   },
+                   mode: Cast {
+                       pad_i32: false,
+                       cast: CastTarget {
+                           prefix: [
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                               None,
+                           ],
+                           rest_offset: None,
+                           rest: Uniform {
+                               unit: Reg {
+                                   kind: Integer,
+                                   size: Size(1 bytes),
+                               },
+                               total: Size(1 bytes),
+                               is_consecutive: false,
+                           },
+                           attrs: ArgAttributes {
+                               regular: ,
+                               arg_ext: None,
+                               pointee_size: Size(0 bytes),
+                               pointee_align: None,
+                           },
+                       },
+                   },
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: Rust,
+           can_unwind: false,
+       }
+  --> $DIR/pass-indirectly-attr.rs:27:1
+   |
+LL | pub extern "Rust" fn extern_rust(_: Type) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0692`.
