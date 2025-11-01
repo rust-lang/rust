@@ -3102,7 +3102,7 @@ impl<'hir> TraitItem<'hir> {
 
     expect_methods_self_kind! {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
-            TraitItemKind::Const(ty, body), (ty, *body);
+            TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3195,9 +3195,9 @@ impl<'hir> ImplItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, ConstItemRhs<'hir>), ImplItemKind::Const(ty, body), (ty, *body);
-        expect_fn,    (&FnSig<'hir>, BodyId),               ImplItemKind::Fn(ty, body),    (ty, *body);
-        expect_type,  &'hir Ty<'hir>,                       ImplItemKind::Type(ty),        ty;
+        expect_const, (&'hir Ty<'hir>, ConstItemRhs<'hir>), ImplItemKind::Const(ty, rhs), (ty, *rhs);
+        expect_fn,    (&FnSig<'hir>, BodyId),               ImplItemKind::Fn(ty, body),   (ty, *body);
+        expect_type,  &'hir Ty<'hir>,                       ImplItemKind::Type(ty),       ty;
     }
 }
 
@@ -4136,7 +4136,7 @@ impl<'hir> Item<'hir> {
             ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
 
         expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, ConstItemRhs<'hir>),
-            ItemKind::Const(ident, generics, ty, ct_arg), (*ident, generics, ty, *ct_arg);
+            ItemKind::Const(ident, generics, ty, rhs), (*ident, generics, ty, *rhs);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);

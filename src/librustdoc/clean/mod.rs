@@ -2792,10 +2792,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, generics, ty, body) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, generics, ty, rhs) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
-                kind: clean_const_item_rhs(body, def_id),
+                kind: clean_const_item_rhs(rhs, def_id),
             })),
             ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;

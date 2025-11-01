@@ -551,11 +551,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ident, ref generics, ref typ, body) => {
+        ItemKind::Const(ident, ref generics, ref typ, rhs) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_ty_unambig(typ));
-            try_visit!(visitor.visit_const_item_rhs(body));
+            try_visit!(visitor.visit_const_item_rhs(rhs));
         }
         ItemKind::Fn { ident, sig, generics, body: body_id, .. } => {
             try_visit!(visitor.visit_ident(ident));
@@ -1288,9 +1288,9 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         }
     }
     match *kind {
-        ImplItemKind::Const(ref ty, body) => {
+        ImplItemKind::Const(ref ty, rhs) => {
             try_visit!(visitor.visit_ty_unambig(ty));
-            visitor.visit_const_item_rhs(body)
+            visitor.visit_const_item_rhs(rhs)
         }
         ImplItemKind::Fn(ref sig, body_id) => visitor.visit_fn(
             FnKind::Method(impl_item.ident, sig),

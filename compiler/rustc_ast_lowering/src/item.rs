@@ -184,27 +184,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Static(*m, ident, ty, body_id)
             }
             ItemKind::Const(box ast::ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                define_opaque,
-                ..
+                ident, generics, ty, rhs, define_opaque, ..
             }) => {
                 let ident = self.lower_ident(*ident);
-                let (generics, (ty, body)) = self.lower_generics(
+                let (generics, (ty, rhs)) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = this.lower_const_item_rhs(attrs, body.as_ref(), span);
-                        (ty, body)
+                        let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), span);
+                        (ty, rhs)
                     },
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
-                hir::ItemKind::Const(ident, generics, ty, body)
+                hir::ItemKind::Const(ident, generics, ty, rhs)
             }
             ItemKind::Fn(box Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
@@ -797,12 +792,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, generics, kind, has_default) = match &i.kind {
             AssocItemKind::Const(box ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                define_opaque,
-                ..
+                ident, generics, ty, rhs, define_opaque, ..
             }) => {
                 let (generics, kind) = self.lower_generics(
                     generics,
@@ -811,15 +801,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
-                        let body = body
+                        let rhs = rhs
                             .as_ref()
-                            .map(|body| this.lower_const_item_rhs(attrs, Some(body), i.span));
-                        hir::TraitItemKind::Const(ty, body)
+                            .map(|rhs| this.lower_const_item_rhs(attrs, Some(rhs), i.span));
+                        hir::TraitItemKind::Const(ty, rhs)
                     },
                 );
 
                 if define_opaque.is_some() {
-                    if body.is_some() {
+                    if rhs.is_some() {
                         self.lower_define_opaque(hir_id, &define_opaque);
                     } else {
                         self.dcx().span_err(
@@ -829,7 +819,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                (*ident, generics, kind, body.is_some())
+                (*ident, generics, kind, rhs.is_some())
             }
             AssocItemKind::Fn(box Fn {
                 sig, ident, generics, body: None, define_opaque, ..
@@ -1016,12 +1006,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, (generics, kind)) = match &i.kind {
             AssocItemKind::Const(box ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                define_opaque,
-                ..
+                ident, generics, ty, rhs, define_opaque, ..
             }) => (
                 *ident,
                 self.lower_generics(
@@ -1032,8 +1017,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let ty = this
                             .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let body = this.lower_const_item_rhs(attrs, body.as_ref(), i.span);
-                        hir::ImplItemKind::Const(ty, body)
+                        let rhs = this.lower_const_item_rhs(attrs, rhs.as_ref(), i.span);
+                        hir::ImplItemKind::Const(ty, rhs)
                     },
                 ),
             ),
