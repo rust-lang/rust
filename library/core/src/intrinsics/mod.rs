@@ -2802,7 +2802,6 @@ pub const fn align_of<T>() -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_stable_indirect]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[lang = "offset_of"]
