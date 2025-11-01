@@ -56,6 +56,7 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod lib;
+mod lines_filter_map_ok;
 mod manual_c_str_literals;
 mod manual_contains;
 mod manual_inspect;
@@ -4665,6 +4666,55 @@ declare_clippy_lint! {
     "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
+    /// when `lines` has type `std::io::Lines`.
+    ///
+    /// ### Why is this bad?
+    /// `Lines` instances might produce a never-ending stream of `Err`, in which case
+    /// `filter_map(Result::ok)` will enter an infinite loop while waiting for an
+    /// `Ok` variant. Calling `next()` once is sufficient to enter the infinite loop,
+    /// even in the absence of explicit loops in the user code.
+    ///
+    /// This situation can arise when working with user-provided paths. On some platforms,
+    /// `std::fs::File::open(path)` might return `Ok(fs)` even when `path` is a directory,
+    /// but any later attempt to read from `fs` will return an error.
+    ///
+    /// ### Known problems
+    /// This lint suggests replacing `filter_map()` or `flat_map()` applied to a `Lines`
+    /// instance in all cases. There are two cases where the suggestion might not be
+    /// appropriate or necessary:
+    ///
+    /// - If the `Lines` instance can never produce any error, or if an error is produced
+    ///   only once just before terminating the iterator, using `map_while()` is not
+    ///   necessary but will not do any harm.
+    /// - If the `Lines` instance can produce intermittent errors then recover and produce
+    ///   successful results, using `map_while()` would stop at the first error.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().filter_map(Result::ok);
+    /// // If "some-path" points to a directory, the next statement never terminates:
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().map_while(Result::ok);
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub LINES_FILTER_MAP_OK,
+    suspicious,
+    "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4847,6 +4897,7 @@ impl_lint_pass!(Methods => [
     IP_CONSTANT,
     REDUNDANT_ITER_CLONED,
     UNNECESSARY_OPTION_MAP_OR_ELSE,
+    LINES_FILTER_MAP_OK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -5050,7 +5101,11 @@ impl Methods {
                 (sym::bytes, []) => unbuffered_bytes::check(cx, expr, recv),
                 (sym::cloned, []) => {
                     cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
-                    option_as_ref_cloned::check(cx, recv, span);
+                    if let Some((method @ (sym::as_ref | sym::as_mut), as_ref_recv, [], as_ref_ident_span, _)) =
+                        method_call(recv)
+                    {
+                        option_as_ref_cloned::check(cx, span, method, as_ref_recv, as_ref_ident_span);
+                    }
                 },
                 (sym::collect, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
@@ -5162,32 +5217,47 @@ impl Methods {
                 },
                 (sym::filter_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FilterMap);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
+                    lines_filter_map_ok::check_filter_or_flat_map(
+                        cx,
+                        expr,
+                        recv,
+                        "filter_map",
+                        arg,
+                        call_span,
+                        self.msrv,
+                    );
                 },
                 (sym::find_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FindMap);
                 },
                 (sym::flat_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
+                    lines_filter_map_ok::check_filter_or_flat_map(
+                        cx, expr, recv, "flat_map", arg, call_span, self.msrv,
+                    );
                 },
-                (sym::flatten, []) => match method_call(recv) {
-                    Some((sym::map, recv, [map_arg], map_span, _)) => {
-                        map_flatten::check(cx, expr, recv, map_arg, map_span);
-                    },
-                    Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
-                        cx,
-                        expr,
-                        recv,
-                        recv2,
-                        iter_overeager_cloned::Op::LaterCloned,
-                        true,
-                    ),
-                    _ => {},
+                (sym::flatten, []) => {
+                    match method_call(recv) {
+                        Some((sym::map, recv, [map_arg], map_span, _)) => {
+                            map_flatten::check(cx, expr, recv, map_arg, map_span);
+                        },
+                        Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::LaterCloned,
+                            true,
+                        ),
+                        _ => {},
+                    }
+                    lines_filter_map_ok::check_flatten(cx, expr, recv, call_span, self.msrv);
                 },
                 (sym::fold, [init, acc]) => {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);

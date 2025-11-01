@@ -107,9 +107,7 @@ pub trait MaybeQPath<'a>: Copy {
         fn f(qpath: &QPath<'_>, id: HirId, typeck: &TypeckResults<'_>) -> Res {
             match *qpath {
                 QPath::Resolved(_, p) => p.res,
-                QPath::TypeRelative(..) if let Some((kind, id)) = typeck.ty_based_def(id) => {
-                    Res::Def(kind, id)
-                },
+                QPath::TypeRelative(..) if let Some((kind, id)) = typeck.ty_based_def(id) => Res::Def(kind, id),
                 QPath::TypeRelative(..) => Res::Err,
             }
         }
@@ -403,7 +401,7 @@ impl<'a> MaybeResPath<'a> for &QPath<'a> {
     fn opt_res_path(self) -> OptResPath<'a> {
         match *self {
             QPath::Resolved(ty, path) => (ty, Some(path)),
-            _ => (None, None),
+            QPath::TypeRelative(..) => (None, None),
         }
     }
 }

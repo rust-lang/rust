@@ -1,6 +1,6 @@
 #![deny(clippy::useless_conversion)]
 #![allow(
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::unnecessary_fallible_conversions,
     clippy::manual_unwrap_or_default
 )]

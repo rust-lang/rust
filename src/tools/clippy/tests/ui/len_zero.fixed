@@ -2,7 +2,7 @@
 #![allow(
     dead_code,
     unused,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::len_without_is_empty,
     clippy::const_is_empty
 )]
@@ -274,4 +274,8 @@ fn no_infinite_recursion() -> bool {
 
     // Do not crash while checking if S implements `.is_empty()`
     S == ""
+}
+
+fn issue15890(vertices: &mut dyn ExactSizeIterator<Item = u8>) -> bool {
+    vertices.len() == 0
 }

@@ -1,3 +1,5 @@
+#![warn(clippy::while_immutable_condition)]
+
 fn fn_val(i: i32) -> i32 {
     unimplemented!()
 }

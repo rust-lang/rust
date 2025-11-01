@@ -3,10 +3,9 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::{is_in_const_context, is_in_test};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{ExpnKind, Span, sym};
@@ -83,6 +82,10 @@ pub struct IncompatibleMsrv {
     availability_cache: FxHashMap<(DefId, bool), Availability>,
     check_in_tests: bool,
     core_crate: Option<CrateNum>,
+
+    // The most recently called path. Used to skip checking the path after it's
+    // been checked when visiting the call expression.
+    called_path: Option<HirId>,
 }
 
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
@@ -98,6 +101,7 @@ impl IncompatibleMsrv {
                 .iter()
                 .find(|krate| tcx.crate_name(**krate) == sym::core)
                 .copied(),
+            called_path: None,
         }
     }
 
@@ -140,7 +144,14 @@ impl IncompatibleMsrv {
     }
 
     /// Emit lint if `def_id`, associated with `node` and `span`, is below the current MSRV.
-    fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, node: HirId, span: Span) {
+    fn emit_lint_if_under_msrv(
+        &mut self,
+        cx: &LateContext<'_>,
+        needs_const: bool,
+        def_id: DefId,
+        node: HirId,
+        span: Span,
+    ) {
         if def_id.is_local() {
             // We don't check local items since their MSRV is supposed to always be valid.
             return;
@@ -157,10 +168,6 @@ impl IncompatibleMsrv {
         if Some(def_id.krate) == self.core_crate && expn_data.macro_def_id.map(|did| did.krate) == self.core_crate {
             return;
         }
-
-        let needs_const = cx.enclosing_body.is_some()
-            && is_in_const_context(cx)
-            && matches!(cx.tcx.def_kind(def_id), DefKind::AssocFn | DefKind::Fn);
 
         if (self.check_in_tests || !is_in_test(cx.tcx, node))
             && let Some(current) = self.msrv.current(cx)
@@ -190,13 +197,33 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
                 if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    self.emit_lint_if_under_msrv(cx, method_did, expr.hir_id, span);
+                    self.emit_lint_if_under_msrv(cx, is_in_const_context(cx), method_did, expr.hir_id, span);
                 }
             },
-            ExprKind::Path(qpath) => {
-                if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id() {
-                    self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, expr.span);
-                }
+            ExprKind::Call(callee, _) if let ExprKind::Path(qpath) = callee.kind => {
+                self.called_path = Some(callee.hir_id);
+                let needs_const = is_in_const_context(cx);
+                let def_id = if let Some(def_id) = cx.qpath_res(&qpath, callee.hir_id).opt_def_id() {
+                    def_id
+                } else if needs_const && let ty::FnDef(def_id, _) = *cx.typeck_results().expr_ty(callee).kind() {
+                    // Edge case where a function is first assigned then called.
+                    // We previously would have warned for the non-const MSRV, when
+                    // checking the path, but now that it's called the const MSRV
+                    // must also be met.
+                    def_id
+                } else {
+                    return;
+                };
+                self.emit_lint_if_under_msrv(cx, needs_const, def_id, expr.hir_id, callee.span);
+            },
+            // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
+            // not be linted as they will not be generated in older compilers if the function is not available,
+            // and the compiler is allowed to call unstable functions.
+            ExprKind::Path(qpath)
+                if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id()
+                    && self.called_path != Some(expr.hir_id) =>
+            {
+                self.emit_lint_if_under_msrv(cx, false, path_def_id, expr.hir_id, expr.span);
             },
             _ => {},
         }
@@ -208,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
             // `CStr` and `CString` have been moved around but have been available since Rust 1.0.0
             && !matches!(cx.tcx.get_diagnostic_name(ty_def_id), Some(sym::cstr_type | sym::cstring_type))
         {
-            self.emit_lint_if_under_msrv(cx, ty_def_id, hir_ty.hir_id, hir_ty.span);
+            self.emit_lint_if_under_msrv(cx, false, ty_def_id, hir_ty.hir_id, hir_ty.span);
         }
     }
 }

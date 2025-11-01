@@ -1,5 +1,5 @@
 #![warn(clippy::partialeq_to_none)]
-#![allow(clippy::eq_op, clippy::needless_if)]
+#![allow(clippy::eq_op, clippy::needless_ifs)]
 
 struct Foobar;
 
