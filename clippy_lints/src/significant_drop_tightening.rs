@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, peel_hir_expr_unary, sym};
+use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -167,7 +167,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
 
     fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
-            let mut iter = get_attr(
+            let mut iter = get_builtin_attr(
                 self.cx.sess(),
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,
