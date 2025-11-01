@@ -358,7 +358,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                body: lb,
+                rhs: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -366,7 +366,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                body: rb,
+                rhs: rb,
                 define_opaque: _,
             }),
         ) => {
@@ -612,7 +612,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                body: lb,
+                rhs: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -620,7 +620,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                body: rb,
+                rhs: rb,
                 define_opaque: _,
             }),
         ) => {

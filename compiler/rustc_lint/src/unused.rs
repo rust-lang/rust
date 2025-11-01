@@ -1032,8 +1032,8 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        let expr = if let Const(box ast::ConstItem { body: Some(body), .. }) = &item.kind {
-            body.expr()
+        let expr = if let Const(box ast::ConstItem { rhs: Some(rhs), .. }) = &item.kind {
+            rhs.expr()
         } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
             expr
         } else {

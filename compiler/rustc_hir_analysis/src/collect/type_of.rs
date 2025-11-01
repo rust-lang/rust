@@ -158,15 +158,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body) => body
-                .and_then(|ct_arg| {
+            TraitItemKind::Const(ty, rhs) => rhs
+                .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
                             icx.lowerer(),
                             def_id,
-                            ct_arg.hir_id(),
+                            rhs.hir_id(),
                             ty.span,
-                            ct_arg.span(tcx),
+                            rhs.span(tcx),
                             item.ident,
                             "associated constant",
                         )
@@ -184,14 +184,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, ct_arg) => {
+            ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        ct_arg.hir_id(),
+                        rhs.hir_id(),
                         ty.span,
-                        ct_arg.span(tcx),
+                        rhs.span(tcx),
                         item.ident,
                         "associated constant",
                     )
@@ -232,14 +232,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     }
                 }
             }
-            ItemKind::Const(ident, _, ty, body) => {
+            ItemKind::Const(ident, _, ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body.hir_id(),
+                        rhs.hir_id(),
                         ty.span,
-                        body.span(tcx),
+                        rhs.span(tcx),
                         ident,
                         "constant",
                     )

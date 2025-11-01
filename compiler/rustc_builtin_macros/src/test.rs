@@ -289,7 +289,7 @@ pub(crate) fn expand_test_or_bench(
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     define_opaque: None,
                     // test::TestDescAndFn {
-                    body: Some(ast::ConstItemRhs::Body(
+                    rhs: Some(ast::ConstItemRhs::Body(
                         cx.expr_struct(
                             sp,
                             test_path("TestDescAndFn"),
