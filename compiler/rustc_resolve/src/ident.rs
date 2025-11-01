@@ -1484,13 +1484,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     // This was an attempt to use a const parameter outside its scope.
                     if let Some(span) = finalize {
+                        let item = if let Some(diag_metadata) = diag_metadata
+                            && let Some(current_item) = diag_metadata.current_item
+                        {
+                            let span = current_item
+                                .kind
+                                .ident()
+                                .map(|i| i.span)
+                                .unwrap_or(current_item.span);
+                            Some((span, current_item.kind.descr().to_string()))
+                        } else {
+                            None
+                        };
                         self.report_error(
                             span,
                             ResolutionError::GenericParamsFromOuterItem(
                                 res,
                                 has_generic_params,
                                 def_kind,
-                                None,
+                                item,
                             ),
                         );
                     }
