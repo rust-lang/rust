@@ -1561,7 +1561,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 self.consume_operand(location, (operand2, span), state);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {
+            Rvalue::NullaryOp(_op) => {
                 // nullary ops take no dynamic input; no borrowck effect.
             }
 

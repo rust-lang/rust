@@ -1419,7 +1419,7 @@ pub enum Rvalue<'tcx> {
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
-    NullaryOp(NullOp<'tcx>, Ty<'tcx>),
+    NullaryOp(NullOp),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1562,9 +1562,7 @@ pub enum AggregateKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum NullOp<'tcx> {
-    /// Returns the offset of a field
-    OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
+pub enum NullOp {
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,

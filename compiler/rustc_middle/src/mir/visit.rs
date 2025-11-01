@@ -775,9 +775,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::NullaryOp(_op, ty) => {
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                    }
+                    Rvalue::NullaryOp(_op) => {}
 
                     Rvalue::Aggregate(kind, operands) => {
                         let kind = &$($mutability)? **kind;

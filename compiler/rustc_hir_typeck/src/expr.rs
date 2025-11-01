@@ -3869,10 +3869,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let container = self.lower_ty(container).normalized;
-
+        let mut current_container = self.lower_ty(container).normalized;
         let mut field_indices = Vec::with_capacity(fields.len());
-        let mut current_container = container;
         let mut fields = fields.into_iter();
 
         while let Some(&field) = fields.next() {
@@ -3960,7 +3958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Save the index of all fields regardless of their visibility in case
                     // of error recovery.
-                    field_indices.push((index, subindex));
+                    field_indices.push((current_container, index, subindex));
                     current_container = field_ty;
 
                     continue;
@@ -3995,7 +3993,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
-                        field_indices.push((FIRST_VARIANT, index));
+                        field_indices.push((current_container, FIRST_VARIANT, index));
                         current_container = field_ty;
 
                         continue;
@@ -4016,7 +4014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
 
-                            field_indices.push((FIRST_VARIANT, index.into()));
+                            field_indices.push((current_container, FIRST_VARIANT, index.into()));
                             current_container = field_ty;
 
                             continue;
@@ -4031,10 +4029,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             break;
         }
 
-        self.typeck_results
-            .borrow_mut()
-            .offset_of_data_mut()
-            .insert(expr.hir_id, (container, field_indices));
+        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, field_indices);
 
         self.tcx.types.usize
     }

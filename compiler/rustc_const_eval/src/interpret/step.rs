@@ -203,9 +203,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
-            NullaryOp(null_op, ty) => {
-                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
-                let val = self.nullary_op(null_op, ty)?;
+            NullaryOp(null_op) => {
+                let val = self.nullary_op(null_op)?;
                 self.write_immediate(*val, &dest)?;
             }
 

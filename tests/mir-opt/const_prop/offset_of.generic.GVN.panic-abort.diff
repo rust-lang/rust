@@ -34,21 +34,21 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = OffsetOf(Gamma<T>, [(0, 0)]);
+          _1 = const generic::<T>::{constant#0};
           StorageLive(_2);
-          _2 = OffsetOf(Gamma<T>, [(0, 1)]);
+          _2 = const generic::<T>::{constant#1};
           StorageLive(_3);
--         _3 = OffsetOf(Delta<T>, [(0, 1)]);
+-         _3 = const generic::<T>::{constant#2};
 +         _3 = const 0_usize;
           StorageLive(_4);
--         _4 = OffsetOf(Delta<T>, [(0, 2)]);
+-         _4 = const generic::<T>::{constant#3};
 +         _4 = const 2_usize;
           StorageLive(_5);
-          _5 = OffsetOf(Zeta<T>, [(0, 0)]);
+          _5 = const generic::<T>::{constant#4};
           StorageLive(_6);
-          _6 = OffsetOf(Zeta<T>, [(0, 1)]);
+          _6 = const generic::<T>::{constant#5};
           StorageLive(_7);
-          _7 = OffsetOf(Zeta<T>, [(1, 0)]);
+          _7 = const generic::<T>::{constant#6};
           _0 = const ();
           StorageDead(_7);
           StorageDead(_6);
