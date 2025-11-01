@@ -1840,11 +1840,11 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_hash::<K, S>(&self.hash_builder, &k);
-        match self.find_or_find_insert_slot(hash, &k) {
+        match self.find_or_find_insert_index(hash, &k) {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().1 }, v)),
-            Err(slot) => {
+            Err(index) => {
                 unsafe {
-                    self.table.insert_in_slot(hash, slot, (k, v));
+                    self.table.insert_at_index(hash, index, (k, v));
                 }
                 None
             }
@@ -1852,15 +1852,15 @@ where
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
-    pub(crate) fn find_or_find_insert_slot<Q>(
+    pub(crate) fn find_or_find_insert_index<Q>(
         &mut self,
         hash: u64,
         key: &Q,
-    ) -> Result<Bucket<(K, V)>, crate::raw::InsertSlot>
+    ) -> Result<Bucket<(K, V)>, usize>
     where
         Q: Equivalent<K> + ?Sized,
     {
-        self.table.find_or_find_insert_slot(
+        self.table.find_or_find_insert_index(
             hash,
             equivalent_key(key),
             make_hasher(&self.hash_builder),

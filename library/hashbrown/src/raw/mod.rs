@@ -237,11 +237,6 @@ impl TableLayout {
     }
 }
 
-/// A reference to an empty bucket into which an can be inserted.
-pub struct InsertSlot {
-    index: usize,
-}
-
 /// A reference to a hash table bucket containing a `T`.
 ///
 /// This is usually just a pointer to the element itself. However if the element
@@ -835,17 +830,12 @@ impl<T, A: Allocator> RawTable<T, A> {
 
     /// Removes an element from the table, returning it.
     ///
-    /// This also returns an `InsertSlot` pointing to the newly free bucket.
+    /// This also returns an index to the newly free bucket.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::needless_pass_by_value)]
-    pub unsafe fn remove(&mut self, item: Bucket<T>) -> (T, InsertSlot) {
+    pub unsafe fn remove(&mut self, item: Bucket<T>) -> (T, usize) {
         self.erase_no_drop(&item);
-        (
-            item.read(),
-            InsertSlot {
-                index: self.bucket_index(&item),
-            },
-        )
+        (item.read(), self.bucket_index(&item))
     }
 
     /// Finds and removes an element from the table, returning it.
@@ -1039,9 +1029,9 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// * If `self.table.items > capacity_to_buckets(capacity, Self::TABLE_LAYOUT)`
     ///   calling this function are never return (will loop infinitely).
     ///
-    /// See [`RawTableInner::find_insert_slot`] for more information.
+    /// See [`RawTableInner::find_insert_index`] for more information.
     ///
-    /// [`RawTableInner::find_insert_slot`]: RawTableInner::find_insert_slot
+    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     unsafe fn resize(
         &mut self,
@@ -1075,22 +1065,21 @@ impl<T, A: Allocator> RawTable<T, A> {
             //    we will never expose `RawTable::new_uninitialized` in a public API.
             //
             // 2. We reserve additional space (if necessary) right after calling this function.
-            let mut slot = self.table.find_insert_slot(hash);
+            let mut index = self.table.find_insert_index(hash);
 
             // We can avoid growing the table once we have reached our load factor if we are replacing
             // a tombstone. This works since the number of EMPTY slots does not change in this case.
             //
-            // SAFETY: The function is guaranteed to return [`InsertSlot`] that contains an index
-            // in the range `0..=self.buckets()`.
-            let old_ctrl = *self.table.ctrl(slot.index);
+            // SAFETY: The function is guaranteed to return an index in the range `0..=self.buckets()`.
+            let old_ctrl = *self.table.ctrl(index);
             if unlikely(self.table.growth_left == 0 && old_ctrl.special_is_empty()) {
                 self.reserve(1, hasher);
                 // SAFETY: We know for sure that `RawTableInner` has control bytes
                 // initialized and that there is extra space in the table.
-                slot = self.table.find_insert_slot(hash);
+                index = self.table.find_insert_index(hash);
             }
 
-            self.insert_in_slot(hash, slot, value)
+            self.insert_at_index(hash, index, value)
         }
     }
 
@@ -1110,7 +1099,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg(feature = "rustc-internal-api")]
     pub unsafe fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
-        let (index, old_ctrl) = self.table.prepare_insert_slot(hash);
+        let (index, old_ctrl) = self.table.prepare_insert_index(hash);
         let bucket = self.table.bucket(index);
 
         // If we are replacing a DELETED entry then we don't need to update
@@ -1156,12 +1145,12 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// This function may resize the table if additional space is required for
     /// inserting an element.
     #[inline]
-    pub fn find_or_find_insert_slot(
+    pub fn find_or_find_insert_index(
         &mut self,
         hash: u64,
         mut eq: impl FnMut(&T) -> bool,
         hasher: impl Fn(&T) -> u64,
-    ) -> Result<Bucket<T>, InsertSlot> {
+    ) -> Result<Bucket<T>, usize> {
         self.reserve(1, hasher);
 
         unsafe {
@@ -1169,34 +1158,34 @@ impl<T, A: Allocator> RawTable<T, A> {
             // 1. We know for sure that there is at least one empty `bucket` in the table.
             // 2. The [`RawTableInner`] must already have properly initialized control bytes since we will
             //    never expose `RawTable::new_uninitialized` in a public API.
-            // 3. The `find_or_find_insert_slot_inner` function returns the `index` of only the full bucket,
+            // 3. The `find_or_find_insert_index_inner` function returns the `index` of only the full bucket,
             //    which is in the range `0..self.buckets()` (since there is at least one empty `bucket` in
             //    the table), so calling `self.bucket(index)` and `Bucket::as_ref` is safe.
             match self
                 .table
-                .find_or_find_insert_slot_inner(hash, &mut |index| eq(self.bucket(index).as_ref()))
+                .find_or_find_insert_index_inner(hash, &mut |index| eq(self.bucket(index).as_ref()))
             {
                 // SAFETY: See explanation above.
                 Ok(index) => Ok(self.bucket(index)),
-                Err(slot) => Err(slot),
+                Err(index) => Err(index),
             }
         }
     }
 
-    /// Inserts a new element into the table in the given slot, and returns its
+    /// Inserts a new element into the table at the given index, and returns its
     /// raw bucket.
     ///
     /// # Safety
     ///
-    /// `slot` must point to a slot previously returned by
-    /// `find_or_find_insert_slot`, and no mutation of the table must have
+    /// `index` must point to a slot previously returned by
+    /// `find_or_find_insert_index`, and no mutation of the table must have
     /// occurred since that call.
     #[inline]
-    pub unsafe fn insert_in_slot(&mut self, hash: u64, slot: InsertSlot, value: T) -> Bucket<T> {
-        let old_ctrl = *self.table.ctrl(slot.index);
-        self.table.record_item_insert_at(slot.index, old_ctrl, hash);
+    pub unsafe fn insert_at_index(&mut self, hash: u64, index: usize, value: T) -> Bucket<T> {
+        let old_ctrl = *self.table.ctrl(index);
+        self.table.record_item_insert_at(index, old_ctrl, hash);
 
-        let bucket = self.bucket(slot.index);
+        let bucket = self.bucket(index);
         bucket.write(value);
         bucket
     }
@@ -1624,20 +1613,19 @@ impl RawTableInner {
         }
     }
 
-    /// Fixes up an insertion slot returned by the [`RawTableInner::find_insert_slot_in_group`] method.
+    /// Fixes up an insertion index returned by the [`RawTableInner::find_insert_index_in_group`] method.
     ///
     /// In tables smaller than the group width (`self.buckets() < Group::WIDTH`), trailing control
     /// bytes outside the range of the table are filled with [`Tag::EMPTY`] entries. These will unfortunately
-    /// trigger a match of [`RawTableInner::find_insert_slot_in_group`] function. This is because
+    /// trigger a match of [`RawTableInner::find_insert_index_in_group`] function. This is because
     /// the `Some(bit)` returned by `group.match_empty_or_deleted().lowest_set_bit()` after masking
     /// (`(probe_seq.pos + bit) & self.bucket_mask`) may point to a full bucket that is already occupied.
     /// We detect this situation here and perform a second scan starting at the beginning of the table.
     /// This second scan is guaranteed to find an empty slot (due to the load factor) before hitting the
     /// trailing control bytes (containing [`Tag::EMPTY`] bytes).
     ///
-    /// If this function is called correctly, it is guaranteed to return [`InsertSlot`] with an
-    /// index of an empty or deleted bucket in the range `0..self.buckets()` (see `Warning` and
-    /// `Safety`).
+    /// If this function is called correctly, it is guaranteed to return an index of an empty or
+    /// deleted bucket in the range `0..self.buckets()` (see `Warning` and `Safety`).
     ///
     /// # Warning
     ///
@@ -1655,21 +1643,21 @@ impl RawTableInner {
     /// * The [`RawTableInner`] must have properly initialized control bytes otherwise calling this
     ///   function results in [`undefined behavior`].
     ///
-    /// * This function must only be used on insertion slots found by [`RawTableInner::find_insert_slot_in_group`]
-    ///   (after the `find_insert_slot_in_group` function, but before insertion into the table).
+    /// * This function must only be used on insertion indices found by [`RawTableInner::find_insert_index_in_group`]
+    ///   (after the `find_insert_index_in_group` function, but before insertion into the table).
     ///
     /// * The `index` must not be greater than the `self.bucket_mask`, i.e. `(index + 1) <= self.buckets()`
-    ///   (this one is provided by the [`RawTableInner::find_insert_slot_in_group`] function).
+    ///   (this one is provided by the [`RawTableInner::find_insert_index_in_group`] function).
     ///
-    /// Calling this function with an index not provided by [`RawTableInner::find_insert_slot_in_group`]
+    /// Calling this function with an index not provided by [`RawTableInner::find_insert_index_in_group`]
     /// may result in [`undefined behavior`] even if the index satisfies the safety rules of the
     /// [`RawTableInner::ctrl`] function (`index < self.bucket_mask + 1 + Group::WIDTH`).
     ///
     /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
-    /// [`RawTableInner::find_insert_slot_in_group`]: RawTableInner::find_insert_slot_in_group
+    /// [`RawTableInner::find_insert_index_in_group`]: RawTableInner::find_insert_index_in_group
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn fix_insert_slot(&self, mut index: usize) -> InsertSlot {
+    unsafe fn fix_insert_index(&self, mut index: usize) -> usize {
         // SAFETY: The caller of this function ensures that `index` is in the range `0..=self.bucket_mask`.
         if unlikely(self.is_bucket_full(index)) {
             debug_assert!(self.bucket_mask < Group::WIDTH);
@@ -1682,9 +1670,9 @@ impl RawTableInner {
             //   `TableLayout::calculate_layout_for` and `ptr::read`);
             //
             // * Because the caller of this function ensures that the index was provided by the
-            //   `self.find_insert_slot_in_group()` function, so for for tables larger than the
+            //   `self.find_insert_index_in_group()` function, so for for tables larger than the
             //   group width (self.buckets() >= Group::WIDTH), we will never end up in the given
-            //   branch, since `(probe_seq.pos + bit) & self.bucket_mask` in `find_insert_slot_in_group`
+            //   branch, since `(probe_seq.pos + bit) & self.bucket_mask` in `find_insert_index_in_group`
             //   cannot return a full bucket index. For tables smaller than the group width, calling
             //   the `unwrap_unchecked` function is also safe, as the trailing control bytes outside
             //   the range of the table are filled with EMPTY bytes (and we know for sure that there
@@ -1695,18 +1683,18 @@ impl RawTableInner {
                 .lowest_set_bit()
                 .unwrap_unchecked();
         }
-        InsertSlot { index }
+        index
     }
 
     /// Finds the position to insert something in a group.
     ///
-    /// **This may have false positives and must be fixed up with `fix_insert_slot`
+    /// **This may have false positives and must be fixed up with `fix_insert_index`
     /// before it's used.**
     ///
     /// The function is guaranteed to return the index of an empty or deleted [`Bucket`]
     /// in the range `0..self.buckets()` (`0..=self.bucket_mask`).
     #[inline]
-    fn find_insert_slot_in_group(&self, group: &Group, probe_seq: &ProbeSeq) -> Option<usize> {
+    fn find_insert_index_in_group(&self, group: &Group, probe_seq: &ProbeSeq) -> Option<usize> {
         let bit = group.match_empty_or_deleted().lowest_set_bit();
 
         if likely(bit.is_some()) {
@@ -1737,29 +1725,28 @@ impl RawTableInner {
     /// function with only `FULL` buckets' indices and return the `index` of the found
     /// element (as `Ok(index)`). If the element is not found and there is at least 1
     /// empty or deleted [`Bucket`] in the table, the function is guaranteed to return
-    /// [`InsertSlot`] with an index in the range `0..self.buckets()`, but in any case,
-    /// if this function returns [`InsertSlot`], it will contain an index in the range
-    /// `0..=self.buckets()`.
+    /// an index in the range `0..self.buckets()`, but in any case, if this function
+    /// returns `Err`, it will contain an index in the range `0..=self.buckets()`.
     ///
     /// # Safety
     ///
     /// The [`RawTableInner`] must have properly initialized control bytes otherwise calling
     /// this function results in [`undefined behavior`].
     ///
-    /// Attempt to write data at the [`InsertSlot`] returned by this function when the table is
-    /// less than the group width and if there was not at least one empty or deleted bucket in
-    /// the table will cause immediate [`undefined behavior`]. This is because in this case the
-    /// function will return `self.bucket_mask + 1` as an index due to the trailing [`Tag::EMPTY`]
-    /// control bytes outside the table range.
+    /// Attempt to write data at the index returned by this function when the table is less than
+    /// the group width and if there was not at least one empty or deleted bucket in the table
+    /// will cause immediate [`undefined behavior`]. This is because in this case the function
+    /// will return `self.bucket_mask + 1` as an index due to the trailing [`Tag::EMPTY`] control
+    /// bytes outside the table range.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn find_or_find_insert_slot_inner(
+    unsafe fn find_or_find_insert_index_inner(
         &self,
         hash: u64,
         eq: &mut dyn FnMut(usize) -> bool,
-    ) -> Result<usize, InsertSlot> {
-        let mut insert_slot = None;
+    ) -> Result<usize, usize> {
+        let mut insert_index = None;
 
         let tag_hash = Tag::full(hash);
         let mut probe_seq = self.probe_seq(hash);
@@ -1792,11 +1779,11 @@ impl RawTableInner {
 
             // We didn't find the element we were looking for in the group, try to get an
             // insertion slot from the group if we don't have one yet.
-            if likely(insert_slot.is_none()) {
-                insert_slot = self.find_insert_slot_in_group(&group, &probe_seq);
+            if likely(insert_index.is_none()) {
+                insert_index = self.find_insert_index_in_group(&group, &probe_seq);
             }
 
-            if let Some(insert_slot) = insert_slot {
+            if let Some(insert_index) = insert_index {
                 // Only stop the search if the group contains at least one empty element.
                 // Otherwise, the element that we are looking for might be in a following group.
                 if likely(group.match_empty().any_bit_set()) {
@@ -1807,8 +1794,8 @@ impl RawTableInner {
                         // SAFETY:
                         // * Caller of this function ensures that the control bytes are properly initialized.
                         //
-                        // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
-                        return Err(self.fix_insert_slot(insert_slot));
+                        // * We use this function with the index found by `self.find_insert_index_in_group`
+                        return Err(self.fix_insert_index(insert_index));
                     }
                 }
             }
@@ -1839,7 +1826,7 @@ impl RawTableInner {
     /// # Safety
     ///
     /// The safety rules are directly derived from the safety rules for the
-    /// [`RawTableInner::set_ctrl_hash`] and [`RawTableInner::find_insert_slot`] methods.
+    /// [`RawTableInner::set_ctrl_hash`] and [`RawTableInner::find_insert_index`] methods.
     /// Thus, in order to uphold the safety contracts for that methods, as well as for
     /// the correct logic of the work of this crate, you must observe the following rules
     /// when calling this function:
@@ -1868,13 +1855,13 @@ impl RawTableInner {
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     /// [`RawTableInner::ctrl`]: RawTableInner::ctrl
     /// [`RawTableInner::set_ctrl_hash`]: RawTableInner::set_ctrl_hash
-    /// [`RawTableInner::find_insert_slot`]: RawTableInner::find_insert_slot
+    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     #[inline]
-    unsafe fn prepare_insert_slot(&mut self, hash: u64) -> (usize, Tag) {
+    unsafe fn prepare_insert_index(&mut self, hash: u64) -> (usize, Tag) {
         // SAFETY: Caller of this function ensures that the control bytes are properly initialized.
-        let index: usize = self.find_insert_slot(hash).index;
+        let index: usize = self.find_insert_index(hash);
         // SAFETY:
-        // 1. The `find_insert_slot` function either returns an `index` less than or
+        // 1. The `find_insert_index` function either returns an `index` less than or
         //    equal to `self.buckets() = self.bucket_mask + 1` of the table, or never
         //    returns if it cannot find an empty or deleted slot.
         // 2. The caller of this function guarantees that the table has already been
@@ -1896,16 +1883,15 @@ impl RawTableInner {
     /// than the group width.
     ///
     /// If there is at least 1 empty or deleted `bucket` in the table, the function is
-    /// guaranteed to return [`InsertSlot`] with an index in the range `0..self.buckets()`,
-    /// but in any case, if this function returns [`InsertSlot`], it will contain an index
-    /// in the range `0..=self.buckets()`.
+    /// guaranteed to return an index in the range `0..self.buckets()`, but in any case,
+    /// it will contain an index in the range `0..=self.buckets()`.
     ///
     /// # Safety
     ///
     /// The [`RawTableInner`] must have properly initialized control bytes otherwise calling
     /// this function results in [`undefined behavior`].
     ///
-    /// Attempt to write data at the [`InsertSlot`] returned by this function when the table is
+    /// Attempt to write data at the index returned by this function when the table is
     /// less than the group width and if there was not at least one empty or deleted bucket in
     /// the table will cause immediate [`undefined behavior`]. This is because in this case the
     /// function will return `self.bucket_mask + 1` as an index due to the trailing [`Tag::EMPTY`]
@@ -1913,7 +1899,7 @@ impl RawTableInner {
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn find_insert_slot(&self, hash: u64) -> InsertSlot {
+    unsafe fn find_insert_index(&self, hash: u64) -> usize {
         let mut probe_seq = self.probe_seq(hash);
         loop {
             // SAFETY:
@@ -1933,14 +1919,14 @@ impl RawTableInner {
             //   bytes, which is safe (see RawTableInner::new).
             let group = unsafe { Group::load(self.ctrl(probe_seq.pos)) };
 
-            let index = self.find_insert_slot_in_group(&group, &probe_seq);
+            let index = self.find_insert_index_in_group(&group, &probe_seq);
             if likely(index.is_some()) {
                 // SAFETY:
                 // * Caller of this function ensures that the control bytes are properly initialized.
                 //
-                // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
+                // * We use this function with the slot / index found by `self.find_insert_index_in_group`
                 unsafe {
-                    return self.fix_insert_slot(index.unwrap_unchecked());
+                    return self.fix_insert_index(index.unwrap_unchecked());
                 }
             }
             probe_seq.move_next(self.bucket_mask);
@@ -2837,10 +2823,10 @@ impl RawTableInner {
     ///
     /// Note: It is recommended (but not required) that the new table's `capacity`
     /// be greater than or equal to `self.items`. In case if `capacity <= self.items`
-    /// this function can never return. See [`RawTableInner::find_insert_slot`] for
+    /// this function can never return. See [`RawTableInner::find_insert_index`] for
     /// more information.
     ///
-    /// [`RawTableInner::find_insert_slot`]: RawTableInner::find_insert_slot
+    /// [`RawTableInner::find_insert_index`]: RawTableInner::find_insert_index
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[allow(clippy::inline_always)]
     #[inline(always)]
@@ -2877,7 +2863,7 @@ impl RawTableInner {
             //    after the loop.
             // 6. We insert into the table, at the returned index, the data
             //    matching the given hash immediately after calling this function.
-            let (new_index, _) = new_table.prepare_insert_slot(hash);
+            let (new_index, _) = new_table.prepare_insert_index(hash);
 
             // SAFETY:
             //
@@ -2888,7 +2874,7 @@ impl RawTableInner {
             // * `dst` is valid for writes of `layout.size` bytes, since the
             //   caller ensures that `table_layout` matches the [`TableLayout`]
             //   that was used to allocate old table and we have the `new_index`
-            //   returned by `prepare_insert_slot`.
+            //   returned by `prepare_insert_index`.
             //
             // * Both `src` and `dst` are properly aligned.
             //
@@ -2984,7 +2970,7 @@ impl RawTableInner {
                 //
                 // SAFETY: Caller of this function ensures that the control bytes
                 // are properly initialized.
-                let new_i = guard.find_insert_slot(hash).index;
+                let new_i = guard.find_insert_index(hash);
 
                 // Probing works by scanning through all of the control
                 // bytes in groups, which may not be aligned to the group
@@ -3184,14 +3170,14 @@ impl RawTableInner {
 
         // Inserting and searching in the map is performed by two key functions:
         //
-        // - The `find_insert_slot` function that looks up the index of any `Tag::EMPTY` or `Tag::DELETED`
+        // - The `find_insert_index` function that looks up the index of any `Tag::EMPTY` or `Tag::DELETED`
         //   slot in a group to be able to insert. If it doesn't find an `Tag::EMPTY` or `Tag::DELETED`
         //   slot immediately in the first group, it jumps to the next `Group` looking for it,
         //   and so on until it has gone through all the groups in the control bytes.
         //
         // - The `find_inner` function that looks for the index of the desired element by looking
         //   at all the `FULL` bytes in the group. If it did not find the element right away, and
-        //   there is no `Tag::EMPTY` byte in the group, then this means that the `find_insert_slot`
+        //   there is no `Tag::EMPTY` byte in the group, then this means that the `find_insert_index`
         //   function may have found a suitable slot in the next group. Therefore, `find_inner`
         //   jumps further, and if it does not find the desired element and again there is no `Tag::EMPTY`
         //   byte, then it jumps further, and so on. The search stops only if `find_inner` function

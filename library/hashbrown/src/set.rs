@@ -913,9 +913,9 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
         let hash = make_hash(&self.map.hash_builder, &value);
-        let bucket = match self.map.find_or_find_insert_slot(hash, &value) {
+        let bucket = match self.map.find_or_find_insert_index(hash, &value) {
             Ok(bucket) => bucket,
-            Err(slot) => unsafe { self.map.table.insert_in_slot(hash, slot, (value, ())) },
+            Err(index) => unsafe { self.map.table.insert_at_index(hash, index, (value, ())) },
         };
         unsafe { &bucket.as_ref().0 }
     }
@@ -952,12 +952,12 @@ where
         F: FnOnce(&Q) -> T,
     {
         let hash = make_hash(&self.map.hash_builder, value);
-        let bucket = match self.map.find_or_find_insert_slot(hash, value) {
+        let bucket = match self.map.find_or_find_insert_index(hash, value) {
             Ok(bucket) => bucket,
-            Err(slot) => {
+            Err(index) => {
                 let new = f(value);
                 assert!(value.equivalent(&new), "new value is not equivalent");
-                unsafe { self.map.table.insert_in_slot(hash, slot, (new, ())) }
+                unsafe { self.map.table.insert_at_index(hash, index, (new, ())) }
             }
         };
         unsafe { &bucket.as_ref().0 }
@@ -1139,11 +1139,11 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
         let hash = make_hash(&self.map.hash_builder, &value);
-        match self.map.find_or_find_insert_slot(hash, &value) {
+        match self.map.find_or_find_insert_index(hash, &value) {
             Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().0 }, value)),
-            Err(slot) => {
+            Err(index) => {
                 unsafe {
-                    self.map.table.insert_in_slot(hash, slot, (value, ()));
+                    self.map.table.insert_at_index(hash, index, (value, ()));
                 }
                 None
             }
@@ -1586,14 +1586,14 @@ where
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
             let hash = make_hash(&self.map.hash_builder, item);
-            match self.map.find_or_find_insert_slot(hash, item) {
+            match self.map.find_or_find_insert_index(hash, item) {
                 Ok(bucket) => unsafe {
                     self.map.table.remove(bucket);
                 },
-                Err(slot) => unsafe {
+                Err(index) => unsafe {
                     self.map
                         .table
-                        .insert_in_slot(hash, slot, (item.clone(), ()));
+                        .insert_at_index(hash, index, (item.clone(), ()));
                 },
             }
         }
