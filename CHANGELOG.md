@@ -8,6 +8,89 @@ document.
 
 [e9b7045...master](https://github.com/rust-lang/rust-clippy/compare/e9b7045...master)
 
+## Rust 1.91
+
+Current stable, released 2025-10-30
+
+[View all 146 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2025-07-25T21%3A05%3A11Z..2025-09-04T22%3A34%3A27Z+base%3Amaster)
+
+### New Lints
+
+* Added [`possible_missing_else`] to `suspicious`
+  [#15317](https://github.com/rust-lang/rust-clippy/pull/15317)
+
+### Moves and Deprecations
+
+* Moved [`cognitive_complexity`] from `nursery` to `restriction`
+  [#15415](https://github.com/rust-lang/rust-clippy/pull/15415)
+* Moved [`declare_interior_mutable_const`] from `style` to `suspicious`
+  [#15454](https://github.com/rust-lang/rust-clippy/pull/15454)
+* Moved [`crosspointer_transmute`] from `complexity` to `suspicious`
+  [#15403](https://github.com/rust-lang/rust-clippy/pull/15403)
+
+### Enhancements
+
+* [`excessive_precision`] added `const_literal_digits_threshold` option to suppress overly precise constants.
+  [#15193](https://github.com/rust-lang/rust-clippy/pull/15193)
+* [`unwrap_in_result`] rewritten for better accuracy; now lints on `.unwrap()` and `.expect()` 
+  directly and no longer mixes `Result` and `Option`.
+  [#15445](https://github.com/rust-lang/rust-clippy/pull/15445)
+* [`panic`] now works in `const` contexts.
+  [#15565](https://github.com/rust-lang/rust-clippy/pull/15565)
+* [`implicit_clone`] now also lints `to_string` calls (merging [`string_to_string`] behavior).
+  [#14177](https://github.com/rust-lang/rust-clippy/pull/14177)
+* [`collapsible_match`] improved suggestions to handle necessary ref/dereferencing.
+  [#14221](https://github.com/rust-lang/rust-clippy/pull/14221)
+* [`map_identity`] now suggests making variables mutable when required; recognizes tuple struct restructuring.
+  [#15261](https://github.com/rust-lang/rust-clippy/pull/15261)
+* [`option_map_unit_fn`] preserves `unsafe` blocks in suggestions.
+  [#15570](https://github.com/rust-lang/rust-clippy/pull/15570)
+* [`unnecessary_mut_passed`] provides structured, clearer fix suggestions.
+  [#15438](https://github.com/rust-lang/rust-clippy/pull/15438)
+* [`float_equality_without_abs`] now checks `f16` and `f128` types.
+  [#15054](https://github.com/rust-lang/rust-clippy/pull/15054)
+* [`doc_markdown`] expanded whitelist (`InfiniBand`, `RoCE`, `PowerPC`) and improved handling of 
+  identifiers like NixOS.
+  [#15558](https://github.com/rust-lang/rust-clippy/pull/15558)
+* [`clone_on_ref_ptr`] now suggests fully qualified paths to avoid resolution errors.
+  [#15561](https://github.com/rust-lang/rust-clippy/pull/15561)
+* [`manual_assert`] simplifies boolean expressions in suggested fixes.
+  [#15368](https://github.com/rust-lang/rust-clippy/pull/15368)
+* [`four_forward_slashes`] warns about bare CR in comments and avoids invalid autofixes.
+  [#15175](https://github.com/rust-lang/rust-clippy/pull/15175)
+
+### False Positive Fixes
+
+* [`alloc_instead_of_core`] fixed FP when `alloc` is an alias
+  [#15581](https://github.com/rust-lang/rust-clippy/pull/15581)
+* [`needless_range_loop`] fixed FP and FN when meeting multidimensional array
+  [#15486](https://github.com/rust-lang/rust-clippy/pull/15486)
+* [`semicolon_inside_block`] fixed FP when attribute over expr is not enabled
+  [#15476](https://github.com/rust-lang/rust-clippy/pull/15476)
+* [`unnested_or_patterns`] fixed FP on structs with only shorthand field patterns
+  [#15343](https://github.com/rust-lang/rust-clippy/pull/15343)
+* [`match_ref_pats`] fixed FP on match scrutinee of never type
+  [#15474](https://github.com/rust-lang/rust-clippy/pull/15474)
+* [`infinite_loop`] fixed FP in async blocks that are not awaited
+  [#15157](https://github.com/rust-lang/rust-clippy/pull/15157)
+* [`iter_on_single_items`] fixed FP on function pointers and let statements
+  [#15013](https://github.com/rust-lang/rust-clippy/pull/15013)
+
+### ICE Fixes
+
+* [`len_zero`] fix ICE when fn len has a return type without generic type params
+  [#15660](https://github.com/rust-lang/rust-clippy/pull/15660)
+
+### Documentation Improvements
+
+* [`cognitive_complexity`] corrected documentation to state lint is in `restriction`, not `nursery`
+  [#15563](https://github.com/rust-lang/rust-clippy/pull/15563)
+
+### Performance Improvements
+
+* [`doc_broken_link`] optimized by 99.77% (12M → 27k instructions)
+  [#15385](https://github.com/rust-lang/rust-clippy/pull/15385)
+
 ## Rust 1.90
 
 Current stable, released 2025-09-18
@@ -6253,6 +6336,7 @@ Released 2018-09-13
 [`empty_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_drop
 [`empty_enum`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_enum
 [`empty_enum_variants_with_brackets`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_enum_variants_with_brackets
+[`empty_enums`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_enums
 [`empty_line_after_doc_comments`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_line_after_doc_comments
 [`empty_line_after_outer_attr`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_line_after_outer_attr
 [`empty_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_loop
@@ -6583,6 +6667,7 @@ Released 2018-09-13
 [`needless_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_else
 [`needless_for_each`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_for_each
 [`needless_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_if
+[`needless_ifs`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_ifs
 [`needless_late_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_late_init
 [`needless_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_lifetimes
 [`needless_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#needless_match

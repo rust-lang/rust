@@ -1,13 +1,13 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{is_none_pattern, msrvs, peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
@@ -124,8 +124,7 @@ fn check_map(cx: &LateContext<'_>, map: &Expr<'_>, span: Span, msrv: Msrv) {
 fn check_as_ref(cx: &LateContext<'_>, expr: &Expr<'_>, span: Span, msrv: Msrv) {
     if let ExprKind::MethodCall(seg, callee, [], _) = expr.kind
         && seg.ident.name == sym::as_ref
-        && let ty::Adt(adtdef, ..) = cx.typeck_results().expr_ty(callee).kind()
-        && cx.tcx.is_diagnostic_item(sym::Option, adtdef.did())
+        && cx.typeck_results().expr_ty(callee).is_diag_item(cx, sym::Option)
         && msrv.meets(
             cx,
             if clippy_utils::is_in_const_context(cx) {
@@ -135,19 +134,22 @@ fn check_as_ref(cx: &LateContext<'_>, expr: &Expr<'_>, span: Span, msrv: Msrv) {
             },
         )
     {
-        if let Some(snippet) = clippy_utils::source::snippet_opt(cx, callee.span) {
-            span_lint_and_sugg(
-                cx,
-                MANUAL_OPTION_AS_SLICE,
-                span,
-                "use `Option::as_slice`",
-                "use",
-                format!("{snippet}.as_slice()"),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint(cx, MANUAL_OPTION_AS_SLICE, span, "use `Option_as_slice`");
-        }
+        span_lint_and_then(
+            cx,
+            MANUAL_OPTION_AS_SLICE,
+            span,
+            "manual implementation of `Option::as_slice`",
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let callee = snippet_with_context(cx, callee.span, expr.span.ctxt(), "_", &mut app).0;
+                diag.span_suggestion_verbose(
+                    span,
+                    "use `Option::as_slice` directly",
+                    format!("{callee}.as_slice()"),
+                    app,
+                );
+            },
+        );
     }
 }
 

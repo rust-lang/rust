@@ -85,6 +85,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::drop_copy", "dropping_copy_types"),
     #[clippy::version = ""]
     ("clippy::drop_ref", "dropping_references"),
+    #[clippy::version = "1.92.0"]
+    ("clippy::empty_enum", "clippy::empty_enums"),
     #[clippy::version = ""]
     ("clippy::eval_order_dependence", "clippy::mixed_read_write_in_expression"),
     #[clippy::version = "1.53.0"]
@@ -137,6 +139,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION) = [
     ("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums"),
     #[clippy::version = "1.80.0"]
     ("clippy::mismatched_target_os", "unexpected_cfgs"),
+    #[clippy::version = "1.92.0"]
+    ("clippy::needless_if", "clippy::needless_ifs"),
     #[clippy::version = ""]
     ("clippy::new_without_default_derive", "clippy::new_without_default"),
     #[clippy::version = ""]

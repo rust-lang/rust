@@ -1,52 +1,52 @@
-#![deny(clippy::option_option)]
-#![allow(clippy::unnecessary_wraps, clippy::manual_unwrap_or_default)]
+#![warn(clippy::option_option)]
+#![expect(clippy::unnecessary_wraps)]
 
 const C: Option<Option<i32>> = None;
-//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+//~^ option_option
 static S: Option<Option<i32>> = None;
-//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+//~^ option_option
 
 fn input(_: Option<Option<u8>>) {}
-//~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+//~^ option_option
 
 fn output() -> Option<Option<u8>> {
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+    //~^ option_option
     None
 }
 
 fn output_nested() -> Vec<Option<Option<u8>>> {
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+    //~^ option_option
     vec![None]
 }
 
 // The lint only generates one warning for this
 fn output_nested_nested() -> Option<Option<Option<u8>>> {
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if
+    //~^ option_option
     None
 }
 
 struct Struct {
     x: Option<Option<u8>>,
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
+    //~^ option_option
 }
 
 impl Struct {
     fn struct_fn() -> Option<Option<u8>> {
-        //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
+        //~^ option_option
         None
     }
 }
 
 trait Trait {
     fn trait_fn() -> Option<Option<u8>>;
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
+    //~^ option_option
 }
 
 enum Enum {
     Tuple(Option<Option<u8>>),
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
+    //~^ option_option
     Struct { x: Option<Option<u8>> },
-    //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum
+    //~^ option_option
 }
 
 // The lint allows this
@@ -88,7 +88,7 @@ mod issue_4298 {
         #[serde(default)]
         #[serde(borrow)]
         foo: Option<Option<Cow<'a, str>>>,
-        //~^ ERROR: consider using `Option<T>` instead of `Option<Option<T>>` or a custom
+        //~^ option_option
     }
 
     #[allow(clippy::option_option)]
