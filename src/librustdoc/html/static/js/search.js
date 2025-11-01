@@ -3906,6 +3906,8 @@ class DocSearch {
                     return name === "traitalias";
                 case "macro":
                     return name === "attr" || name === "derive";
+                case "import":
+                    return name === "externcrate";
             }
 
             // No match
