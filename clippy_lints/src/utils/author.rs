@@ -320,6 +320,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.body(field!(anon_const.body));
             },
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
+            ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
         }
     }
 
