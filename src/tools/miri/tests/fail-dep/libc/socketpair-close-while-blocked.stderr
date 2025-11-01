@@ -19,15 +19,11 @@ error: the evaluated program deadlocked
    |
 LL |             libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t)
    |                                                                                  ^ this thread got stuck here
-   |
-   = note: BACKTRACE on thread `unnamed-ID`:
-   = note: inside closure at tests/fail-dep/libc/socketpair-close-while-blocked.rs:LL:CC
 
 error: the evaluated program deadlocked
    |
    = note: this thread got stuck here
    = note: (no span available)
-   = note: BACKTRACE on thread `unnamed-ID`:
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

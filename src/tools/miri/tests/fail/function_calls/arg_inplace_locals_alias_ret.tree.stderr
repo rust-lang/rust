@@ -25,8 +25,6 @@ help: the protected tag <TAG> later transitioned to Unique due to a child write 
 LL |     x
    |     ^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -350,6 +350,21 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MiriMemoryKind::Miri.into(),
                 )?;
             }
+            "miri_track_alloc" => {
+                let [ptr] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
+                    err_machine_stop!(TerminationInfo::Abort(format!(
+                        "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
+                    )))
+                })?;
+                if this.machine.tracked_alloc_ids.insert(alloc_id) {
+                    let info = this.get_alloc_info(alloc_id);
+                    this.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(
+                        alloc_id, info.size, info.align,
+                    ));
+                }
+            }
             "miri_start_unwind" => {
                 let [payload] =
                     this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;

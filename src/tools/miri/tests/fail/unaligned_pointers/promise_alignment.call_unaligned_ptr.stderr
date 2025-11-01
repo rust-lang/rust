@@ -5,8 +5,6 @@ LL |         unsafe { utils::miri_promise_symbolic_alignment(align8.add(1).cast(
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/unaligned_pointers/promise_alignment.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

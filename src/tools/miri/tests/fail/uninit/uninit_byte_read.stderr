@@ -6,8 +6,6 @@ LL |     let undef = unsafe { *v.as_ptr().add(5) };
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/uninit/uninit_byte_read.rs:LL:CC
 
 Uninitialized memory occurred at ALLOC[0x5..0x6], in this allocation:
 ALLOC (Rust heap, size: 10, align: 1) {

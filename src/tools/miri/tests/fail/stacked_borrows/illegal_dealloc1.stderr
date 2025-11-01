@@ -16,8 +16,6 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
    |
 LL |         ptr1.write(0);
    |         ^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
