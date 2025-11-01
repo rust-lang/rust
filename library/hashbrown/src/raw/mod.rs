@@ -1414,6 +1414,28 @@ impl<T, A: Allocator> RawTable<T, A> {
         RawIterHash::new(self, hash)
     }
 
+    /// Returns an iterator over occupied bucket indices that could match a given hash.
+    ///
+    /// `RawTable` only stores 7 bits of the hash value, so this iterator may
+    /// return items that have a hash value different than the one provided. You
+    /// should always validate the returned values before using them.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the
+    /// `RawIterHashIndices`. Because we cannot make the `next` method unsafe on the
+    /// `RawIterHashIndices` struct, we have to make the `iter_hash_buckets` method unsafe.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub(crate) unsafe fn iter_hash_buckets(&self, hash: u64) -> RawIterHashIndices {
+        RawIterHashIndices::new(&self.table, hash)
+    }
+
+    /// Returns an iterator over full buckets indices in the table.
+    ///
+    /// See [`RawTableInner::full_buckets_indices`] for safety conditions.
+    #[inline(always)]
+    pub(crate) unsafe fn full_buckets_indices(&self) -> FullBucketsIndices {
+        self.table.full_buckets_indices()
+    }
+
     /// Returns an iterator which removes all elements from the table without
     /// freeing the memory.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -3871,6 +3893,7 @@ impl<T> FusedIterator for RawIter<T> {}
 ///   created will be yielded by that iterator.
 /// - The order in which the iterator yields indices of the buckets is unspecified
 ///   and may change in the future.
+#[derive(Clone)]
 pub(crate) struct FullBucketsIndices {
     // Mask of full buckets in the current group. Bits are cleared from this
     // mask as each element is processed.
@@ -3886,6 +3909,14 @@ pub(crate) struct FullBucketsIndices {
 
     // Number of elements in the table.
     items: usize,
+}
+
+impl Default for FullBucketsIndices {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        // SAFETY: Because the table is static, it always outlives the iter.
+        unsafe { RawTableInner::NEW.full_buckets_indices() }
+    }
 }
 
 impl FullBucketsIndices {
@@ -4153,12 +4184,12 @@ impl<T, A: Allocator> FusedIterator for RawDrain<'_, T, A> {}
 /// - The order in which the iterator yields buckets is unspecified and may
 ///   change in the future.
 pub struct RawIterHash<T> {
-    inner: RawIterHashInner,
+    inner: RawIterHashIndices,
     _marker: PhantomData<T>,
 }
 
 #[derive(Clone)]
-struct RawIterHashInner {
+pub(crate) struct RawIterHashIndices {
     // See `RawTableInner`'s corresponding fields for details.
     // We can't store a `*const RawTableInner` as it would get
     // invalidated by the user calling `&mut` methods on `RawTable`.
@@ -4181,7 +4212,7 @@ impl<T> RawIterHash<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new<A: Allocator>(table: &RawTable<T, A>, hash: u64) -> Self {
         RawIterHash {
-            inner: RawIterHashInner::new(&table.table, hash),
+            inner: RawIterHashIndices::new(&table.table, hash),
             _marker: PhantomData,
         }
     }
@@ -4201,14 +4232,21 @@ impl<T> Default for RawIterHash<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn default() -> Self {
         Self {
-            // SAFETY: Because the table is static, it always outlives the iter.
-            inner: unsafe { RawIterHashInner::new(&RawTableInner::NEW, 0) },
+            inner: RawIterHashIndices::default(),
             _marker: PhantomData,
         }
     }
 }
 
-impl RawIterHashInner {
+impl Default for RawIterHashIndices {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        // SAFETY: Because the table is static, it always outlives the iter.
+        unsafe { RawIterHashIndices::new(&RawTableInner::NEW, 0) }
+    }
+}
+
+impl RawIterHashIndices {
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new(table: &RawTableInner, hash: u64) -> Self {
         let tag_hash = Tag::full(hash);
@@ -4216,7 +4254,7 @@ impl RawIterHashInner {
         let group = Group::load(table.ctrl(probe_seq.pos));
         let bitmask = group.match_tag(tag_hash).into_iter();
 
-        RawIterHashInner {
+        RawIterHashIndices {
             bucket_mask: table.bucket_mask,
             ctrl: table.ctrl,
             tag_hash,
@@ -4246,7 +4284,7 @@ impl<T> Iterator for RawIterHash<T> {
     }
 }
 
-impl Iterator for RawIterHashInner {
+impl Iterator for RawIterHashIndices {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {

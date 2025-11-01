@@ -3,8 +3,8 @@ use core::{fmt, iter::FusedIterator, marker::PhantomData};
 use crate::{
     control::Tag,
     raw::{
-        Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
-        RawTable,
+        Allocator, Bucket, FullBucketsIndices, Global, RawDrain, RawExtractIf, RawIntoIter,
+        RawIter, RawIterHash, RawIterHashIndices, RawTable,
     },
     TryReserveError,
 };
@@ -1000,7 +1000,7 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
     /// table.insert_unique(hasher(&"b"), "b", hasher);
     ///
     /// // Will print in an arbitrary order.
@@ -1067,6 +1067,42 @@ where
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             inner: unsafe { self.raw.iter() },
+            marker: PhantomData,
+        }
+    }
+
+    /// An iterator producing the `usize` indices of all occupied buckets.
+    ///
+    /// The order in which the iterator yields indices is unspecified
+    /// and may change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
+    /// table.insert_unique(hasher(&"b"), "b", hasher);
+    ///
+    /// // Will print in an arbitrary order.
+    /// for index in table.iter_buckets() {
+    ///     println!("{index}: {}", table.get_bucket(index).unwrap());
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_buckets(&self) -> IterBuckets<'_> {
+        IterBuckets {
+            inner: unsafe { self.raw.full_buckets_indices() },
             marker: PhantomData,
         }
     }
@@ -1159,6 +1195,47 @@ where
     pub fn iter_hash_mut(&mut self, hash: u64) -> IterHashMut<'_, T> {
         IterHashMut {
             inner: unsafe { self.raw.iter_hash(hash) },
+            marker: PhantomData,
+        }
+    }
+
+    /// An iterator producing the `usize` indices of all buckets which may match a hash.
+    ///
+    /// This iterator may return indices from the table that have a hash value
+    /// different than the one provided. You should always validate the returned
+    /// values before using them.
+    ///
+    /// The order in which the iterator yields indices is unspecified
+    /// and may change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
+    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"b"), "c", hasher);
+    ///
+    /// // Will print the indices with "a" and "b" (and possibly "c") in an arbitrary order.
+    /// for index in table.iter_hash_buckets(hasher(&"a")) {
+    ///     println!("{index}: {}", table.get_bucket(index).unwrap());
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_hash_buckets(&self, hash: u64) -> IterHashBuckets<'_> {
+        IterHashBuckets {
+            inner: unsafe { self.raw.iter_hash_buckets(hash) },
             marker: PhantomData,
         }
     }
@@ -2484,6 +2561,46 @@ where
     }
 }
 
+/// An iterator producing the `usize` indices of all occupied buckets,
+/// within the range `0..table.num_buckets()`.
+///
+/// The order in which the iterator yields indices is unspecified
+/// and may change in the future.
+///
+/// This `struct` is created by the [`HashTable::iter_buckets`] method. See its
+/// documentation for more.
+#[derive(Clone, Default)]
+pub struct IterBuckets<'a> {
+    inner: FullBucketsIndices,
+    marker: PhantomData<&'a ()>,
+}
+
+impl Iterator for IterBuckets<'_> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<usize> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl ExactSizeIterator for IterBuckets<'_> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl FusedIterator for IterBuckets<'_> {}
+
+impl fmt::Debug for IterBuckets<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
 /// An iterator over the entries of a `HashTable` that could match a given hash.
 /// The iterator element type is `&'a T`.
 ///
@@ -2607,6 +2724,32 @@ where
                 marker: PhantomData,
             })
             .finish()
+    }
+}
+
+/// An iterator producing the `usize` indices of all buckets which may match a hash.
+///
+/// This `struct` is created by the [`HashTable::iter_hash_buckets`] method. See its
+/// documentation for more.
+#[derive(Clone, Default)]
+pub struct IterHashBuckets<'a> {
+    inner: RawIterHashIndices,
+    marker: PhantomData<&'a ()>,
+}
+
+impl Iterator for IterHashBuckets<'_> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+impl FusedIterator for IterHashBuckets<'_> {}
+
+impl fmt::Debug for IterHashBuckets<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
