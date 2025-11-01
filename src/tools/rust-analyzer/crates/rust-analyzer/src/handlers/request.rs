@@ -140,7 +140,7 @@ pub(crate) fn handle_memory_usage(_state: &mut GlobalState, _: ()) -> anyhow::Re
     #[cfg(feature = "dhat")]
     {
         if let Some(dhat_output_file) = _state.config.dhat_output_file() {
-            let mutprofiler = crate::DHAT_PROFILER.lock().unwrap();
+            let mut profiler = crate::DHAT_PROFILER.lock().unwrap();
             let old_profiler = profiler.take();
             // Need to drop the old profiler before creating a new one.
             drop(old_profiler);
