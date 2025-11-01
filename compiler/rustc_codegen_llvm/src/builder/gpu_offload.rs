@@ -109,9 +109,9 @@ pub(crate) fn register_offload<'ll>(cx: &CodegenCx<'ll, '_>) {
     // }
     let bb = Builder::append_block(cx, desc_reg_fn, "entry");
     let mut a = Builder::build(cx, bb);
-    a.call(reg_lib_decl, None, None, register_lib, &[omp_descriptor], None, None);
-    a.call(init_ty, None, None, init_rtls, &[], None, None);
-    a.call(atexit, None, None, atexit_fn, &[desc_unreg_fn], None, None);
+    a.call(reg_lib_decl, None, None, register_lib, None, &[omp_descriptor], None, None);
+    a.call(init_ty, None, None, init_rtls, None, &[], None, None);
+    a.call(atexit, None, None, atexit_fn, None, &[desc_unreg_fn], None, None);
     a.ret_void();
 
     // define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
@@ -121,7 +121,7 @@ pub(crate) fn register_offload<'ll>(cx: &CodegenCx<'ll, '_>) {
     // }
     let bb = Builder::append_block(cx, desc_unreg_fn, "entry");
     let mut a = Builder::build(cx, bb);
-    a.call(reg_lib_decl, None, None, unregister_lib, &[omp_descriptor], None, None);
+    a.call(reg_lib_decl, None, None, unregister_lib, None, &[omp_descriptor], None, None);
     a.ret_void();
 
     // @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
@@ -755,7 +755,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         let num_args = cx.get_const_i32(num_args);
         let args =
             vec![s_ident_t, i64_max, num_args, geps[0], geps[1], geps[2], o_type, nullptr, nullptr];
-        builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
+        builder.call(fn_ty, None, None, fn_to_call, None, &args, None, None);
     }
 
     // Step 2)
@@ -792,7 +792,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     let device_id = builder.sext(device_id, cx.type_i64());
     let args = vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5];
-    builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
+    builder.call(tgt_target_kernel_ty, None, None, tgt_decl, None, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 
     // Step 4)
