@@ -5,12 +5,13 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
+use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::OptLevel;
+use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
@@ -131,6 +132,10 @@ pub struct OperandRef<'tcx, V> {
 
     /// The layout of value, based on its Rust type.
     pub layout: TyAndLayout<'tcx>,
+
+    /// Annotation for profiler visibility of move/copy operations.
+    /// When set, the store operation should appear as an inlined call to this function.
+    pub move_annotation: Option<ty::Instance<'tcx>>,
 }
 
 impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
@@ -142,7 +147,7 @@ impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     pub fn zero_sized(layout: TyAndLayout<'tcx>) -> OperandRef<'tcx, V> {
         assert!(layout.is_zst());
-        OperandRef { val: OperandValue::ZeroSized, layout }
+        OperandRef { val: OperandValue::ZeroSized, layout, move_annotation: None }
     }
 
     pub(crate) fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -180,7 +185,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
         };
 
-        OperandRef { val, layout }
+        OperandRef { val, layout, move_annotation: None }
     }
 
     fn from_const_alloc<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -214,7 +219,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
                 let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
-                OperandRef { val: OperandValue::Immediate(val), layout }
+                OperandRef { val: OperandValue::Immediate(val), layout, move_annotation: None }
             }
             BackendRepr::ScalarPair(
                 a @ abi::Scalar::Initialized { .. },
@@ -235,7 +240,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     b,
                     bx.scalar_pair_element_backend_type(layout, 1, true),
                 );
-                OperandRef { val: OperandValue::Pair(a_val, b_val), layout }
+                OperandRef { val: OperandValue::Pair(a_val, b_val), layout, move_annotation: None }
             }
             _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
@@ -285,6 +290,22 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         self.val.deref(layout.align.abi).with_type(layout)
     }
 
+    /// Store this operand into a place, applying move/copy annotation if present.
+    ///
+    /// This is the preferred method for storing operands, as it automatically
+    /// applies profiler annotations for tracked move/copy operations.
+    pub fn store_with_annotation<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        self,
+        bx: &mut Bx,
+        dest: PlaceRef<'tcx, V>,
+    ) {
+        if let Some(instance) = self.move_annotation {
+            bx.with_move_annotation(instance, |bx| self.val.store(bx, dest))
+        } else {
+            self.val.store(bx, dest)
+        }
+    }
+
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
     pub fn immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -320,7 +341,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         } else {
             OperandValue::Immediate(llval)
         };
-        OperandRef { val, layout }
+        OperandRef { val, layout, move_annotation: None }
     }
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
@@ -388,7 +409,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             })
         };
 
-        OperandRef { val, layout: field }
+        OperandRef { val, layout: field, move_annotation: None }
     }
 
     /// Obtain the actual discriminant of a value.
@@ -828,9 +849,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRefBuilder<'tcx, V> {
                 }
             },
         };
-        OperandRef { val, layout }
+        OperandRef { val, layout, move_annotation: None }
     }
 }
+
+/// Default size limit for move/copy annotations (in bytes). 64 bytes is a common size of a cache
+/// line, and the assumption is that anything this size or below is very cheap to move/copy, so only
+/// annotate copies larger than this.
+const MOVE_ANNOTATION_DEFAULT_LIMIT: u64 = 65;
 
 impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     /// Returns an `OperandValue` that's generally UB to use in any way.
@@ -961,7 +987,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 abi::Variants::Single { index: vidx },
                             );
                             let layout = o.layout.for_variant(bx.cx(), vidx);
-                            o = OperandRef { val: o.val, layout }
+                            o = OperandRef { layout, ..o }
                         }
                         _ => return None,
                     }
@@ -1014,7 +1040,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         match *operand {
             mir::Operand::Copy(ref place) | mir::Operand::Move(ref place) => {
-                self.codegen_consume(bx, place.as_ref())
+                let kind = match operand {
+                    mir::Operand::Move(_) => LangItem::CompilerMove,
+                    mir::Operand::Copy(_) => LangItem::CompilerCopy,
+                    _ => unreachable!(),
+                };
+
+                // Check if we should annotate this move/copy for profiling
+                let move_annotation = self.move_copy_annotation_instance(bx, place.as_ref(), kind);
+
+                OperandRef { move_annotation, ..self.codegen_consume(bx, place.as_ref()) }
             }
 
             mir::Operand::Constant(ref constant) => {
@@ -1030,11 +1065,76 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         return OperandRef {
                             val: OperandValue::Immediate(llval),
                             layout: bx.layout_of(ty),
+                            move_annotation: None,
                         };
                     }
                 }
                 self.eval_mir_constant_to_operand(bx, constant)
             }
         }
+    }
+
+    /// Creates an `Instance` for annotating a move/copy operation at codegen time.
+    ///
+    /// Returns `Some(instance)` if the operation should be annotated with debug info, `None`
+    /// otherwise. The instance represents a monomorphized `compiler_move<T, SIZE>` or
+    /// `compiler_copy<T, SIZE>` function that can be used to create debug scopes.
+    ///
+    /// There are a number of conditions that must be met for an annotation to be created, but aside
+    /// from the basics (annotation is enabled, we're generating debuginfo), the primary concern is
+    /// moves/copies which could result in a real `memcpy`. So we check for the size limit, but also
+    /// that the underlying representation of the type is in memory.
+    fn move_copy_annotation_instance(
+        &self,
+        bx: &Bx,
+        place: mir::PlaceRef<'tcx>,
+        kind: LangItem,
+    ) -> Option<ty::Instance<'tcx>> {
+        let tcx = bx.tcx();
+        let sess = tcx.sess;
+
+        // Skip if we're not generating debuginfo
+        if sess.opts.debuginfo == DebugInfo::None {
+            return None;
+        }
+
+        // Check if annotation is enabled and get size limit (otherwise skip)
+        let size_limit = match sess.opts.unstable_opts.annotate_moves {
+            AnnotateMoves::Disabled => return None,
+            AnnotateMoves::Enabled(None) => MOVE_ANNOTATION_DEFAULT_LIMIT,
+            AnnotateMoves::Enabled(Some(limit)) => limit,
+        };
+
+        let ty = self.monomorphized_place_ty(place);
+        let layout = bx.cx().layout_of(ty);
+        let ty_size = layout.size.bytes();
+
+        // Only annotate if type has a memory representation and exceeds size limit (and has a
+        // non-zero size)
+        if layout.is_zst()
+            || ty_size < size_limit
+            || !matches!(layout.backend_repr, BackendRepr::Memory { .. })
+        {
+            return None;
+        }
+
+        // Look up the DefId for compiler_move or compiler_copy lang item
+        let def_id = tcx.lang_items().get(kind)?;
+
+        // Create generic args: compiler_move<T, SIZE> or compiler_copy<T, SIZE>
+        let size_const = ty::Const::from_target_usize(tcx, ty_size);
+        let generic_args = tcx.mk_args(&[ty.into(), size_const.into()]);
+
+        // Create the Instance
+        let typing_env = self.mir.typing_env(tcx);
+        let instance = ty::Instance::expect_resolve(
+            tcx,
+            typing_env,
+            def_id,
+            generic_args,
+            rustc_span::DUMMY_SP, // span only used for error messages
+        );
+
+        Some(instance)
     }
 }
