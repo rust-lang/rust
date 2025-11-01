@@ -7,7 +7,11 @@ LL |     let _ = foo([0; 1]);
    |             required by a bound introduced by this call
    |
    = note: cannot satisfy `_: Foo`
-   = help: the trait `Foo` is implemented for `u8`
+help: the trait `Foo` is implemented for `u8`
+  --> $DIR/issue-83249.rs:8:1
+   |
+LL | impl Foo for u8 {
+   | ^^^^^^^^^^^^^^^
 note: required by a bound in `foo`
   --> $DIR/issue-83249.rs:12:11
    |

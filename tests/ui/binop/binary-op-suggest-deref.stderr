@@ -302,11 +302,17 @@ LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
    |                 ^ no implementation for `i32 & str`
    |
    = help: the trait `BitAnd<str>` is not implemented for `i32`
-   = help: the following other types implement trait `BitAnd<Rhs>`:
-             `&i32` implements `BitAnd<i32>`
-             `&i32` implements `BitAnd`
-             `i32` implements `BitAnd<&i32>`
-             `i32` implements `BitAnd`
+help: the following other types implement trait `BitAnd<Rhs>`
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+   |
+   = note: `&i32` implements `BitAnd<i32>`
+   |
+   = note: `&i32` implements `BitAnd`
+   |
+   = note: `i32` implements `BitAnd<&i32>`
+   |
+   = note: `i32` implements `BitAnd`
+   = note: this error originates in the macro `bitand_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/binary-op-suggest-deref.rs:78:17
