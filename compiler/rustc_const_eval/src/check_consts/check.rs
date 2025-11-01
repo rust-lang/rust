@@ -853,9 +853,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Intrinsics are language primitives, not regular calls, so treat them separately.
-                if let Some(intrinsic) = tcx.intrinsic(callee)
-                    && intrinsic.name != sym::offset_of
-                {
+                if let Some(intrinsic) = tcx.intrinsic(callee) {
                     if !tcx.is_const_fn(callee) {
                         // Non-const intrinsic.
                         self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
@@ -888,6 +886,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             feature,
                             ..
                         }) => {
+                            // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]`
+                            // if the callee is safe to expose, to avoid bypassing recursive stability.
+                            // This is not ideal since it means the user sees an error, not the macro
+                            // author, but that's also the case if one forgets to set
+                            // `#[allow_internal_unstable]` in the first place.
+                            if self.span.allows_unstable(feature) && is_const_stable {
+                                return;
+                            }
+
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
