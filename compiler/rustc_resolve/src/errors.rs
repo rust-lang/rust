@@ -47,7 +47,12 @@ pub(crate) enum GenericParamsFromOuterItemLabel {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(resolve_suggestion, code = "{snippet}", applicability = "maybe-incorrect")]
+#[suggestion(
+    resolve_suggestion,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
 pub(crate) struct GenericParamsFromOuterItemSugg {
     #[primary_span]
     pub(crate) span: Span,
