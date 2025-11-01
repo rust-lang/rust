@@ -1083,7 +1083,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
-    /// implementation of`ToString` and instead goes through the more expensive string
+    /// implementation of `ToString` and instead goes through the more expensive string
     /// formatting facilities.
     ///
     /// ### Example
