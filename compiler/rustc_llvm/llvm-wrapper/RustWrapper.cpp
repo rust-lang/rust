@@ -1645,11 +1645,11 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
   return false;
 }
 
-extern "C" bool LLVMRustLLVMHasZlibCompressionForDebugSymbols() {
+extern "C" bool LLVMRustLLVMHasZlibCompression() {
   return llvm::compression::zlib::isAvailable();
 }
 
-extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
+extern "C" bool LLVMRustLLVMHasZstdCompression() {
   return llvm::compression::zstd::isAvailable();
 }
 
