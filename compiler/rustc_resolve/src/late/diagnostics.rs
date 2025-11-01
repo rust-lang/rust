@@ -2605,13 +2605,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
             && self.r.tcx.sess.source_map().is_line_before_span_empty(ident_span)
         {
-            let (span, text) = match path.segments.first() {
-                Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
-                    // a special case for #117894
-                    let name = name.strip_prefix('_').unwrap_or(name);
-                    (ident_span, format!("let {name}"))
-                }
-                _ => (ident_span.shrink_to_lo(), "let ".to_string()),
+            let (span, text) = if let Some(seg) = path.segments.first()
+                && let Some(name) = seg.ident.as_str().strip_prefix("let")
+            {
+                // a special case for #117894
+                let name = name.strip_prefix('_').unwrap_or(name);
+                (ident_span, format!("let {name}"))
+            } else {
+                (ident_span.shrink_to_lo(), "let ".to_string())
             };
 
             err.span_suggestion_verbose(
