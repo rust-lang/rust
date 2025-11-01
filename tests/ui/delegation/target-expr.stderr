@@ -3,7 +3,9 @@ error[E0401]: can't use generic parameters from outer item
    |
 LL | fn bar<T: Default>(_: T) {
    |        - type parameter from outer item
-...
+LL |     reuse Trait::static_method {
+   |                  ------------- generic parameter used in this inner delegated function
+LL |
 LL |         let _ = T::Default();
    |                 ^^^^^^^^^^ use of generic parameter from outer item
    |

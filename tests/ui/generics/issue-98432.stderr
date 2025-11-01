@@ -5,7 +5,9 @@ LL | impl<T> Struct<T> {
    |      - type parameter from outer item
 LL |     const CONST: fn() = || {
 LL |         struct _Obligation where T:;
-   |                                  ^ use of generic parameter from outer item
+   |                -----------       ^ use of generic parameter from outer item
+   |                |
+   |                generic parameter used in this inner struct
    |
 help: try introducing a local generic parameter here
    |

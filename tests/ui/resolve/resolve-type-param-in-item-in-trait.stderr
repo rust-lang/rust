@@ -3,7 +3,9 @@ error[E0401]: can't use generic parameters from outer item
    |
 LL | trait TraitA<A> {
    |              - type parameter from outer item
-...
+LL |     fn outer(&self) {
+LL |         enum Foo<B> {
+   |              --- generic parameter used in this inner enum
 LL |             Variance(A)
    |                      ^ use of generic parameter from outer item
    |
@@ -19,7 +21,9 @@ LL | trait TraitB<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         struct Foo<B>(A);
-   |                       ^ use of generic parameter from outer item
+   |                ---    ^ use of generic parameter from outer item
+   |                |
+   |                generic parameter used in this inner struct
    |
 help: try introducing a local generic parameter here
    |
@@ -33,7 +37,9 @@ LL | trait TraitC<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         struct Foo<B> { a: A }
-   |                            ^ use of generic parameter from outer item
+   |                ---         ^ use of generic parameter from outer item
+   |                |
+   |                generic parameter used in this inner struct
    |
 help: try introducing a local generic parameter here
    |
@@ -47,7 +53,9 @@ LL | trait TraitD<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         fn foo<B>(a: A) { }
-   |                      ^ use of generic parameter from outer item
+   |            ---       ^ use of generic parameter from outer item
+   |            |
+   |            generic parameter used in this inner function
    |
 help: try introducing a local generic parameter here
    |

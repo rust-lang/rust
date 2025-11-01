@@ -557,6 +557,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 outer_res,
                 has_generic_params,
                 def_kind,
+                item,
             ) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
@@ -575,6 +576,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sugg: None,
                     static_or_const,
                     is_self,
+                    item: item.map(|(span, descr)| errs::GenericParamsFromOuterItemInnerItem {
+                        span,
+                        descr,
+                    }),
                 };
 
                 let sm = self.tcx.sess.source_map();
@@ -2506,6 +2511,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None,
                         &ribs[ns_to_try],
                         ignore_binding,
+                        None,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Some(binding),
@@ -2556,6 +2562,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None,
                     &ribs[ValueNS],
                     ignore_binding,
+                    None,
                 )
             } else {
                 None

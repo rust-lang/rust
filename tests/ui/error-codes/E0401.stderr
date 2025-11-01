@@ -4,7 +4,9 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn foo<T>(x: T) {
    |        - type parameter from outer item
 LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
-   |                                       ^ use of generic parameter from outer item
+   |        ----                           ^ use of generic parameter from outer item
+   |        |
+   |        generic parameter used in this inner function
    |
 help: try introducing a local generic parameter here
    |
@@ -16,6 +18,9 @@ error[E0401]: can't use generic parameters from outer item
    |
 LL | fn foo<T>(x: T) {
    |        - type parameter from outer item
+...
+LL |     fn baz<U,
+   |        --- generic parameter used in this inner function
 ...
 LL |            (y: T) {
    |                ^ use of generic parameter from outer item
@@ -32,10 +37,11 @@ LL | impl<T> Iterator for A<T> {
    | ---- `Self` type implicitly declared here, by this `impl`
 ...
 LL |         fn helper(sel: &Self) -> u8 {
-   |                         ^^^^
-   |                         |
-   |                         use of `Self` from outer item
-   |                         refer to the type directly here instead
+   |            ------       ^^^^
+   |            |            |
+   |            |            use of `Self` from outer item
+   |            |            refer to the type directly here instead
+   |            `Self` used in this inner function
 
 error: aborting due to 3 previous errors
 

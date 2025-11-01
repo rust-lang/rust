@@ -667,7 +667,7 @@ pub(crate) struct UnnecessaryQualification<'ra> {
 }
 
 #[derive(Default, Debug)]
-struct DiagMetadata<'ast> {
+pub(crate) struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
     current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
@@ -678,7 +678,7 @@ struct DiagMetadata<'ast> {
     current_self_item: Option<NodeId>,
 
     /// The current trait (used to suggest).
-    current_item: Option<&'ast Item>,
+    pub(crate) current_item: Option<&'ast Item>,
 
     /// When processing generic arguments and encountering an unresolved ident not found,
     /// suggest introducing a type or const param depending on the context.
@@ -884,6 +884,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         self_ty,
                         TypeNS,
                         Some(Finalize::new(ty.id, ty.span)),
+                        None,
                         None,
                     )
                     .map_or(Res::Err, |d| d.res());
@@ -1457,6 +1458,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             None,
             &self.ribs[ns],
             None,
+            None,
         )
     }
 
@@ -1466,6 +1468,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ns: Namespace,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'ra>>,
+        diag_metadata: Option<&crate::late::DiagMetadata<'_>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -1474,6 +1477,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             finalize,
             &self.ribs[ns],
             ignore_binding,
+            diag_metadata,
         )
     }
 
@@ -1493,6 +1497,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             Some(&self.ribs),
             None,
             None,
+            Some(&self.diag_metadata),
         )
     }
 
@@ -2551,8 +2556,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        if let Some(LexicalScopeBinding::Res(..)) =
-                            self.resolve_ident_in_lexical_scope(ident, ns, None, Some(binding))
+                        if let Some(LexicalScopeBinding::Res(..)) = self
+                            .resolve_ident_in_lexical_scope(ident, ns, None, Some(binding), None)
                         {
                             report_error(self, ns);
                         }
@@ -5105,7 +5110,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // use the type namespace
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
-            let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
+            let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None, None)?;
             (res == binding.res()).then_some((seg, binding))
         });
 

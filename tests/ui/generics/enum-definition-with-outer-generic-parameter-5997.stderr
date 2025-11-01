@@ -4,7 +4,9 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn f<Z>() -> bool {
    |      - type parameter from outer item
 LL |     enum E { V(Z) }
-   |                ^ use of generic parameter from outer item
+   |          -     ^ use of generic parameter from outer item
+   |          |
+   |          generic parameter used in this inner enum
    |
 help: try introducing a local generic parameter here
    |
