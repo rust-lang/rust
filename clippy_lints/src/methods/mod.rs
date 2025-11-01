@@ -138,7 +138,6 @@ mod unnecessary_option_map_or_else;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
-mod unused_enumerate_index;
 mod unwrap_expect_used;
 mod useless_asref;
 mod useless_nonzero_new_unchecked;
@@ -5026,7 +5025,6 @@ impl Methods {
                     zst_offset::check(cx, expr, recv);
                 },
                 (sym::all, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
                     needless_character_iteration::check(cx, expr, recv, arg, true);
                     match method_call(recv) {
                         Some((sym::cloned, recv2, [], _, _)) => {
@@ -5056,7 +5054,6 @@ impl Methods {
                     }
                 },
                 (sym::any, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
                     needless_character_iteration::check(cx, expr, recv, arg, false);
                     match method_call(recv) {
                         Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
@@ -5216,7 +5213,6 @@ impl Methods {
                     }
                 },
                 (sym::filter_map, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FilterMap);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
@@ -5231,11 +5227,9 @@ impl Methods {
                     );
                 },
                 (sym::find_map, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
                     unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FindMap);
                 },
                 (sym::flat_map, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
                     lines_filter_map_ok::check_filter_or_flat_map(
@@ -5263,20 +5257,17 @@ impl Methods {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
                     unnecessary_fold::check(cx, expr, init, acc, span);
                 },
-                (sym::for_each, [arg]) => {
-                    unused_enumerate_index::check(cx, expr, recv, arg);
-                    match method_call(recv) {
-                        Some((sym::inspect, _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
-                        Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
-                            cx,
-                            expr,
-                            recv,
-                            recv2,
-                            iter_overeager_cloned::Op::NeedlessMove(arg),
-                            false,
-                        ),
-                        _ => {},
-                    }
+                (sym::for_each, [arg]) => match method_call(recv) {
+                    Some((sym::inspect, _, [_], span2, _)) => inspect_for_each::check(cx, expr, span2),
+                    Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
+                        cx,
+                        expr,
+                        recv,
+                        recv2,
+                        iter_overeager_cloned::Op::NeedlessMove(arg),
+                        false,
+                    ),
+                    _ => {},
                 },
                 (sym::get, [arg]) => {
                     get_first::check(cx, expr, recv, arg);
@@ -5337,7 +5328,6 @@ impl Methods {
                 },
                 (name @ (sym::map | sym::map_err), [m_arg]) => {
                     if name == sym::map {
-                        unused_enumerate_index::check(cx, expr, recv, m_arg);
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
                         map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
                         manual_is_variant_and::check_map(cx, expr);
