@@ -2609,7 +2609,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 && let Some(name) = seg.ident.as_str().strip_prefix("let")
             {
                 // a special case for #117894
-                let name = name.strip_prefix('_').unwrap_or(name);
+                let name = name.trim_prefix('_');
                 (ident_span, format!("let {name}"))
             } else {
                 (ident_span.shrink_to_lo(), "let ".to_string())

@@ -22,6 +22,7 @@
 #![feature(ptr_as_ref_unchecked)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

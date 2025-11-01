@@ -17,6 +17,7 @@
 #![feature(iter_order_by)]
 #![feature(rustc_private)]
 #![feature(test)]
+#![feature(trim_prefix_suffix)]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
 
