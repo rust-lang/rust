@@ -14,7 +14,7 @@ pub(crate) fn target() -> Target {
         // LLVM doesn't recognize "muslabi64" yet.
         llvm_target: "mips64-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("MIPS64 for OpenWrt Linux musl 1.2.3".into()),
+            description: Some("MIPS64 for OpenWrt Linux musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
