@@ -13,7 +13,10 @@ use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath, TyKind, UnOp};
+use rustc_hir::{
+    BinOpKind, Block, ConstArgKind, ConstBlock, ConstItemRhs, Expr, ExprKind, HirId, PatExpr, PatExprKind, QPath,
+    TyKind, UnOp,
+};
 use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -1129,4 +1132,15 @@ pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext)
 #[inline]
 pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
     integer_const(cx, expr, ctxt) == Some(0)
+}
+
+pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    match ct_rhs {
+        ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
+        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+            ConstArgKind::Path(_) => None,
+            ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
+            ConstArgKind::Error(..) | ConstArgKind::Infer(..) => None,
+        },
+    }
 }

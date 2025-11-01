@@ -9,7 +9,7 @@
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// With an explicit return type it should lint too
 /// ```edition2015
 /// fn main() -> () {
@@ -17,7 +17,7 @@
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// This should, too.
 /// ```rust
 /// fn main() {
@@ -25,7 +25,7 @@
 ///     unimplemented!();
 /// }
 /// ```
-///
+/// 
 /// This one too.
 /// ```no_run
 /// // the fn is not always the first line
