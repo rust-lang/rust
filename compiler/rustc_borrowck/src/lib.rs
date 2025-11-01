@@ -2582,6 +2582,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
                     }
+                    // Check as the inner reference type if it is a field projection
+                    // from the `&pin` pattern
+                    ProjectionElem::Field(FieldIdx::ZERO, _)
+                        if let Some(adt) =
+                            place_base.ty(self.body(), self.infcx.tcx).ty.ty_adt_def()
+                            && adt.is_pin()
+                            && self.infcx.tcx.features().pin_ergonomics() =>
+                    {
+                        self.is_mutable(place_base, is_local_mutation_allowed)
+                    }
                     // All other projections are owned by their base path, so mutable if
                     // base path is mutable
                     ProjectionElem::Field(..)

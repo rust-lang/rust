@@ -743,10 +743,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let ann = match ann {
                     BindingMode::NONE => "NONE",
                     BindingMode::REF => "REF",
+                    BindingMode::REF_PIN => "REF_PIN",
                     BindingMode::MUT => "MUT",
                     BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::REF_PIN_MUT => "REF_PIN_MUT",
                     BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_PIN => "MUT_REF_PIN",
                     BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::MUT_REF_PIN_MUT => "MUT_REF_PIN_MUT",
                 };
                 kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);
