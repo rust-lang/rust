@@ -29,6 +29,8 @@
 pub mod ffi;
 pub mod fs;
 pub mod io;
+#[cfg(windows)]
+pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
