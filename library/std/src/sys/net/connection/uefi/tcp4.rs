@@ -1,7 +1,7 @@
 use r_efi::efi::{self, Status};
 use r_efi::protocols::tcp4;
 
-use crate::io;
+use crate::io::{self, IoSlice};
 use crate::net::SocketAddrV4;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -108,11 +108,7 @@ impl Tcp4 {
     }
 
     pub(crate) fn write(&self, buf: &[u8], timeout: Option<Duration>) -> io::Result<usize> {
-        let evt = unsafe { self.create_evt() }?;
-        let completion_token =
-            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
         let data_len = u32::try_from(buf.len()).unwrap_or(u32::MAX);
-
         let fragment = tcp4::FragmentData {
             fragment_length: data_len,
             fragment_buffer: buf.as_ptr().cast::<crate::ffi::c_void>().cast_mut(),
@@ -125,13 +121,62 @@ impl Tcp4 {
             fragment_table: [fragment],
         };
 
-        let protocol = self.protocol.as_ptr();
-        let mut token = tcp4::IoToken {
-            completion_token,
-            packet: tcp4::IoTokenPacket {
-                tx_data: (&raw mut tx_data).cast::<tcp4::TransmitData<0>>(),
-            },
+        self.write_inner((&raw mut tx_data).cast(), timeout).map(|_| data_len as usize)
+    }
+
+    pub(crate) fn write_vectored(
+        &self,
+        buf: &[IoSlice<'_>],
+        timeout: Option<Duration>,
+    ) -> io::Result<usize> {
+        let mut data_length = 0u32;
+        let mut fragment_count = 0u32;
+
+        // Calculate how many IoSlice in buf can be transmitted.
+        for i in buf {
+            // IoSlice length is always <= u32::MAX in UEFI.
+            match data_length
+                .checked_add(u32::try_from(i.as_slice().len()).expect("value is stored as a u32"))
+            {
+                Some(x) => data_length = x,
+                None => break,
+            }
+            fragment_count += 1;
+        }
+
+        let tx_data_size = size_of::<tcp4::TransmitData<0>>()
+            + size_of::<tcp4::FragmentData>() * (fragment_count as usize);
+        let mut tx_data = helpers::UefiBox::<tcp4::TransmitData>::new(tx_data_size)?;
+        tx_data.write(tcp4::TransmitData {
+            push: r_efi::efi::Boolean::FALSE,
+            urgent: r_efi::efi::Boolean::FALSE,
+            data_length,
+            fragment_count,
+            fragment_table: [],
+        });
+        unsafe {
+            // SAFETY: IoSlice and FragmentData are guaranteed to have same layout.
+            crate::ptr::copy_nonoverlapping(
+                buf.as_ptr().cast(),
+                (*tx_data.as_mut_ptr()).fragment_table.as_mut_ptr(),
+                fragment_count as usize,
+            );
         };
+
+        self.write_inner(tx_data.as_mut_ptr(), timeout).map(|_| data_length as usize)
+    }
+
+    fn write_inner(
+        &self,
+        tx_data: *mut tcp4::TransmitData,
+        timeout: Option<Duration>,
+    ) -> io::Result<()> {
+        let evt = unsafe { self.create_evt() }?;
+        let completion_token =
+            tcp4::CompletionToken { event: evt.as_ptr(), status: Status::SUCCESS };
+
+        let protocol = self.protocol.as_ptr();
+        let mut token = tcp4::IoToken { completion_token, packet: tcp4::IoTokenPacket { tx_data } };
 
         let r = unsafe { ((*protocol).transmit)(protocol, &mut token) };
         if r.is_error() {
@@ -143,7 +188,7 @@ impl Tcp4 {
         if completion_token.status.is_error() {
             Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
         } else {
-            Ok(data_len as usize)
+            Ok(())
         }
     }
 
