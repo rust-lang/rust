@@ -1,0 +1,12 @@
+//@ check-pass
+//@ run-rustfix
+
+#![warn(unused_visibilities)]
+
+ const _: () = {};
+//~^WARN visibility qualifiers have no effect on `const _` declarations
+
+ const _: () = {};
+//~^WARN visibility qualifiers have no effect on `const _` declarations
+
+fn main() {}
