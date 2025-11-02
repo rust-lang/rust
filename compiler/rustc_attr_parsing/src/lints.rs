@@ -31,6 +31,14 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
                 },
             );
         }
+        AttributeLintKind::DuplicateDocAlias { first_definition } => {
+            lint_emitter.emit_node_span_lint(
+                rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT,
+                *id,
+                *span,
+                session_diagnostics::DocAliasDuplicated { first_defn: *first_definition },
+            );
+        }
         AttributeLintKind::InvalidMacroExportArguments { suggestions } => lint_emitter
             .emit_node_span_lint(
                 rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS,

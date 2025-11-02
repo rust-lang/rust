@@ -132,31 +132,6 @@ pub(crate) struct DocExpectStr<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_doc_alias_empty)]
-pub(crate) struct DocAliasEmpty<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub attr_str: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_alias_bad_char)]
-pub(crate) struct DocAliasBadChar<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub attr_str: &'a str,
-    pub char_: char,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_alias_start_end)]
-pub(crate) struct DocAliasStartEnd<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub attr_str: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_doc_alias_bad_location)]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]
@@ -171,13 +146,6 @@ pub(crate) struct DocAliasNotAnAlias<'a> {
     #[primary_span]
     pub span: Span,
     pub attr_str: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_doc_alias_duplicated)]
-pub(crate) struct DocAliasDuplicated {
-    #[label]
-    pub first_defn: Span,
 }
 
 #[derive(Diagnostic)]
@@ -249,14 +217,6 @@ pub(crate) struct DocSearchUnboxInvalid {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_doc_inline_conflict)]
-#[help]
-pub(crate) struct DocKeywordConflict {
-    #[primary_span]
-    pub spans: MultiSpan,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_doc_inline_only_use)]
 #[note]
@@ -264,7 +224,7 @@ pub(crate) struct DocInlineOnlyUse {
     #[label]
     pub attr_span: Span,
     #[label(passes_not_a_use_item_label)]
-    pub item_span: Option<Span>,
+    pub item_span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -274,7 +234,7 @@ pub(crate) struct DocMaskedOnlyExternCrate {
     #[label]
     pub attr_span: Span,
     #[label(passes_not_an_extern_crate_label)]
-    pub item_span: Option<Span>,
+    pub item_span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -283,7 +243,7 @@ pub(crate) struct DocMaskedNotExternCrateSelf {
     #[label]
     pub attr_span: Span,
     #[label(passes_extern_crate_self_label)]
-    pub item_span: Option<Span>,
+    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1327,17 +1287,7 @@ pub(crate) struct IneffectiveUnstableImpl;
 #[derive(LintDiagnostic)]
 #[diag(passes_attr_crate_level)]
 #[note]
-pub(crate) struct AttrCrateLevelOnly {
-    #[subdiagnostic]
-    pub sugg: Option<AttrCrateLevelOnlySugg>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(passes_suggestion, applicability = "maybe-incorrect", code = "!", style = "verbose")]
-pub(crate) struct AttrCrateLevelOnlySugg {
-    #[primary_span]
-    pub attr: Span,
-}
+pub(crate) struct AttrCrateLevelOnly {}
 
 /// "sanitize attribute not allowed here"
 #[derive(Diagnostic)]
