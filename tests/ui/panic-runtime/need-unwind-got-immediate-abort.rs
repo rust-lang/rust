@@ -3,7 +3,7 @@
 //@ compile-flags:-C panic=immediate-abort -Zunstable-options
 //@ no-prefer-dynamic
 //@ add-minicore
-//@ core-stubs-compile-flags: -Zunstable-options -Cpanic=immediate-abort
+//@ minicore-compile-flags: -Zunstable-options -Cpanic=immediate-abort
 
 #![feature(no_core)]
 #![no_std]

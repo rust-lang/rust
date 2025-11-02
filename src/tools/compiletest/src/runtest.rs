@@ -1341,7 +1341,7 @@ impl<'test> TestCx<'test> {
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
-        rustc.args(self.props.core_stubs_compile_flags.clone());
+        rustc.args(self.props.minicore_compile_flags.clone());
 
         let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
         if !res.status.success() {

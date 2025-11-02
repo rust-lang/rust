@@ -202,7 +202,7 @@ pub(crate) struct TestProps {
     /// that don't otherwise want/need `-Z build-std`.
     pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
-    pub core_stubs_compile_flags: Vec<String>,
+    pub minicore_compile_flags: Vec<String>,
     /// Whether line annotatins are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
@@ -255,7 +255,7 @@ mod directives {
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
     pub const ADD_MINICORE: &'static str = "add-minicore";
-    pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
+    pub const MINICORE_COMPILE_FLAGS: &'static str = "minicore-compile-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
@@ -312,7 +312,7 @@ impl TestProps {
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
             add_minicore: false,
-            core_stubs_compile_flags: vec![],
+            minicore_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
@@ -604,7 +604,7 @@ impl TestProps {
                     self.update_add_minicore(ln, config);
 
                     if let Some(flags) =
-                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS)
+                        config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS)
                     {
                         let flags = split_flags(&flags);
                         for flag in &flags {
@@ -612,7 +612,7 @@ impl TestProps {
                                 panic!("you must use `//@ edition` to configure the edition");
                             }
                         }
-                        self.core_stubs_compile_flags.extend(flags);
+                        self.minicore_compile_flags.extend(flags);
                     }
 
                     if let Some(err_kind) =
