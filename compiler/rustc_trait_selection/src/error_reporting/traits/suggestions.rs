@@ -930,13 +930,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let hir::ExprKind::Block(block, None) = init.kind else {
             return;
         };
-        if block.expr.is_some() {
+        if block.expr.is_some() || block.span.from_expansion() {
             return;
         }
         let [.., stmt] = block.stmts else {
             err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
+        if stmt.span.from_expansion() {
+            return;
+        }
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else {
             return;
         };
