@@ -528,6 +528,28 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ii = apply(b);
                     if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
+                        let primitive_b = scalar_b.primitive();
+                        let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b
+                            && let ty::Ref(_, pointee_ty, _) = *arg.layout.ty.kind()
+                            && let ty::Slice(element_ty) = *pointee_ty.kind()
+                            && let elem_size = cx.layout_of(element_ty).size
+                            && elem_size != rustc_abi::Size::ZERO
+                        {
+                            // Ideally the layout calculations would have set the range,
+                            // but that's complicated due to cycles, so in the mean time
+                            // we calculate and apply it here.
+                            debug_assert!(scalar_b.is_always_valid(cx));
+                            let isize_max = int.signed_max() as u64;
+                            rustc_abi::Scalar::Initialized {
+                                value: primitive_b,
+                                valid_range: rustc_abi::WrappingRange {
+                                    start: 0,
+                                    end: u128::from(isize_max / elem_size.bytes()),
+                                },
+                            }
+                        } else {
+                            scalar_b
+                        };
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
                 }

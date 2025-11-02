@@ -67,8 +67,26 @@ pub fn enum2_value(x: Enum2) -> Enum2 {
     x
 }
 
-// CHECK: noundef [[USIZE]] @takes_slice(ptr {{.*}} %x.0, [[USIZE]] noundef %x.1)
+// CHECK: noundef [[USIZE]] @takes_slice_4(ptr {{.*}} %x.0, [[USIZE]] noundef
+// bit32-SAME: range(i32 0, [[#0x20000000]])
+// bit64-SAME: range(i64 0, [[#0x2000000000000000]])
+// CHECK-SAME: %x.1)
 #[no_mangle]
-pub fn takes_slice(x: &[i32]) -> usize {
+pub fn takes_slice_4(x: &[i32]) -> usize {
+    x.len()
+}
+
+// CHECK: noundef [[USIZE]] @takes_slice_3(ptr {{.*}} %x.0, [[USIZE]] noundef
+// bit32-SAME: range(i32 0, [[#0x2AAAAAAB]])
+// bit64-SAME: range(i64 0, [[#0x2AAAAAAAAAAAAAAB]])
+// CHECK-SAME: %x.1)
+#[no_mangle]
+pub fn takes_slice_3(x: &[[u8; 3]]) -> usize {
+    x.len()
+}
+
+// CHECK: noundef [[USIZE]] @takes_zst_slice(ptr {{.*}} %x.0, [[USIZE]] noundef %x.1)
+#[no_mangle]
+pub fn takes_zst_slice(x: &[()]) -> usize {
     x.len()
 }
