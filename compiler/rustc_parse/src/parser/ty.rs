@@ -328,8 +328,6 @@ impl<'a> Parser<'a> {
             // Reference
             self.expect_and()?;
             self.parse_borrowed_pointee()?
-        } else if self.eat_keyword_noexpect(kw::Typeof) {
-            self.parse_typeof_ty()?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -761,15 +759,6 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
-    }
-
-    // Parses the `typeof(EXPR)`.
-    // To avoid ambiguity, the type is surrounded by parentheses.
-    fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
-        self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr_anon_const()?;
-        self.expect(exp!(CloseParen))?;
-        Ok(TyKind::Typeof(expr))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).

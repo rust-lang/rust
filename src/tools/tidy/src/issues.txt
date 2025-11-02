@@ -2983,9 +2983,6 @@ ui/typeck/issue-96530.rs
 ui/typeck/issue-96738.rs
 ui/typeck/issue-98260.rs
 ui/typeck/issue-98982.rs
-ui/typeof/issue-100183.rs
-ui/typeof/issue-29184.rs
-ui/typeof/issue-42060.rs
 ui/unboxed-closures/issue-18652.rs
 ui/unboxed-closures/issue-18661.rs
 ui/unboxed-closures/issue-30906.rs

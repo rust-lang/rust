@@ -321,7 +321,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
 
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
-        || [kw::Underscore, kw::For, kw::Impl, kw::Fn, kw::Unsafe, kw::Extern, kw::Typeof, kw::Dyn]
+        || [kw::Underscore, kw::For, kw::Impl, kw::Fn, kw::Unsafe, kw::Extern, kw::Dyn]
             .contains(&name)
 }
 

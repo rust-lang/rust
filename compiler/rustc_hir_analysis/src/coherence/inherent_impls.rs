@@ -195,10 +195,11 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
-            | ty::CoroutineWitness(..) => {
-                Err(self.tcx.dcx().delayed_bug("cannot define inherent `impl` for closure types"))
-            }
-            ty::Alias(ty::Free, _) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) => {
+            | ty::CoroutineWitness(..)
+            | ty::Alias(ty::Free, _)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => {
                 bug!("unexpected impl self type of impl: {:?} {:?}", id, self_ty);
             }
             // We could bail out here, but that will silence other useful errors.
