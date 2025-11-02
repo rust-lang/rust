@@ -2,8 +2,8 @@ use core::{fmt, iter::FusedIterator, marker::PhantomData};
 
 use crate::{
     raw::{
-        Allocator, Bucket, Global, InsertSlot, RawDrain, RawExtractIf, RawIntoIter, RawIter,
-        RawIterHash, RawTable,
+        Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
+        RawTable,
     },
     TryReserveError,
 };
@@ -362,15 +362,15 @@ where
         eq: impl FnMut(&T) -> bool,
         hasher: impl Fn(&T) -> u64,
     ) -> Entry<'_, T, A> {
-        match self.raw.find_or_find_insert_slot(hash, eq, hasher) {
+        match self.raw.find_or_find_insert_index(hash, eq, hasher) {
             Ok(bucket) => Entry::Occupied(OccupiedEntry {
                 hash,
                 bucket,
                 table: self,
             }),
-            Err(insert_slot) => Entry::Vacant(VacantEntry {
+            Err(insert_index) => Entry::Vacant(VacantEntry {
                 hash,
-                insert_slot,
+                index: insert_index,
                 table: self,
             }),
         }
@@ -1638,12 +1638,12 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> (T, VacantEntry<'a, T, A>) {
-        let (val, slot) = unsafe { self.table.raw.remove(self.bucket) };
+        let (val, index) = unsafe { self.table.raw.remove(self.bucket) };
         (
             val,
             VacantEntry {
                 hash: self.hash,
-                insert_slot: slot,
+                index,
                 table: self.table,
             },
         )
@@ -1835,7 +1835,7 @@ where
     A: Allocator,
 {
     hash: u64,
-    insert_slot: InsertSlot,
+    index: usize,
     table: &'a mut HashTable<T, A>,
 }
 
@@ -1882,11 +1882,7 @@ where
     /// ```
     #[inline]
     pub fn insert(self, value: T) -> OccupiedEntry<'a, T, A> {
-        let bucket = unsafe {
-            self.table
-                .raw
-                .insert_in_slot(self.hash, self.insert_slot, value)
-        };
+        let bucket = unsafe { self.table.raw.insert_at_index(self.hash, self.index, value) };
         OccupiedEntry {
             hash: self.hash,
             bucket,
