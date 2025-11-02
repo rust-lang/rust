@@ -7,6 +7,7 @@ use cranelift_module::{
     ModuleReloc, ModuleResult,
 };
 use cranelift_object::{ObjectModule, ObjectProduct};
+use rustc_middle::ty::TyCtxt;
 
 use crate::UnwindContext;
 
@@ -17,8 +18,8 @@ pub(crate) struct UnwindModule<T> {
 }
 
 impl<T: Module> UnwindModule<T> {
-    pub(crate) fn new(mut module: T, pic_eh_frame: bool) -> Self {
-        let unwind_context = UnwindContext::new(&mut module, pic_eh_frame);
+    pub(crate) fn new(mut module: T, tcx: TyCtxt<'_>, pic_eh_frame: bool) -> Self {
+        let unwind_context = UnwindContext::new(&mut module, tcx, pic_eh_frame);
         UnwindModule { module, unwind_context }
     }
 }

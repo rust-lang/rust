@@ -3,6 +3,19 @@ use std::path::{Path, PathBuf};
 use crate::command::Command;
 use crate::env::env_var;
 
+pub fn llvm_version() -> (u32, u32, u32) {
+    let version_string = env_var("LLVM_VERSION");
+    let mut parts = version_string.split(".");
+    let mut part = || {
+        parts
+            .next()
+            .expect(&format!("invalid LLVM version: {version_string}"))
+            .parse::<u32>()
+            .expect(&format!("invalid LLVM version: {version_string}"))
+    };
+    (part(), part(), part())
+}
+
 /// Construct a new `llvm-readobj` invocation with the `GNU` output style.
 /// This assumes that `llvm-readobj` is available at `$LLVM_BIN_DIR/llvm-readobj`.
 #[track_caller]
