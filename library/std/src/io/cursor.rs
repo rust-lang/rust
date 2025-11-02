@@ -481,7 +481,7 @@ fn reserve_and_pad<A: Allocator>(
         // to have room for (pos+buf_len) bytes. Reserve allocates
         // based on additional elements from the length, so we need to
         // reserve the difference
-        vec.reserve(desired_cap - vec.len());
+        vec.try_reserve(desired_cap - vec.len())?;
     }
     // Pad if pos is above the current len.
     if pos > vec.len() {
@@ -565,7 +565,7 @@ where
     A: Allocator,
 {
     // For safety reasons, we don't want this sum to overflow ever.
-    // If this saturates, the reserve should panic to avoid any unsound writing.
+    // If this saturates, the reserve should fail to avoid any unsound writing.
     let buf_len = bufs.iter().fold(0usize, |a, b| a.saturating_add(b.len()));
     let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
 
