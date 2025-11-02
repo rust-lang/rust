@@ -284,6 +284,7 @@ pub(crate) fn handle_run_test(
                     path,
                     state.config.cargo_test_options(None),
                     cargo.workspace_root(),
+                    Some(cargo.target_directory().as_ref()),
                     target,
                     state.test_run_sender.clone(),
                 )?;

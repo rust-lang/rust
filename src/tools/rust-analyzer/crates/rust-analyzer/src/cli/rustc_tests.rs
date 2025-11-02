@@ -9,7 +9,6 @@ use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use ide_db::base_db;
 use itertools::Either;
-use paths::Utf8PathBuf;
 use profile::StopWatch;
 use project_model::toolchain_info::{QueryConfig, target_data};
 use project_model::{
@@ -75,12 +74,8 @@ impl Tester {
         };
 
         let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
-        let loaded_sysroot = sysroot.load_workspace(
-            &RustSourceWorkspaceConfig::default_cargo(),
-            false,
-            &Utf8PathBuf::default(),
-            &|_| (),
-        );
+        let loaded_sysroot =
+            sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo(), false, &|_| ());
         if let Some(loaded_sysroot) = loaded_sysroot {
             sysroot.set_workspace(loaded_sysroot);
         }
