@@ -1,5 +1,6 @@
 use crate::iter::{
-    FusedIterator, Step, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
+    FusedIterator, InfiniteIterator, Step, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNoCoerce, TrustedStep,
 };
 use crate::num::NonZero;
 use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
@@ -337,3 +338,9 @@ impl<A: Step> IntoIterator for RangeFrom<A> {
         IterRangeFrom(self.into())
     }
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A> !ExactSizeIterator for IterRangeFrom<A> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A: Step> InfiniteIterator for IterRangeFrom<A> {}
