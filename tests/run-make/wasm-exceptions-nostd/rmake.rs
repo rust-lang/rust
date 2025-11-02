@@ -12,6 +12,7 @@ fn main() {
         .panic("unwind")
         .arg("-Cllvm-args=-wasm-enable-eh")
         .arg("-Ctarget-feature=+exception-handling")
+        .arg("-Cunsafe-allow-abi-mismatch=target-feature")
         .run();
 
     cmd(&env_var("NODE")).arg("verify.mjs").arg("lib.wasm").run();

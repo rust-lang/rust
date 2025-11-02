@@ -1,6 +1,6 @@
 //@ only-wasm32
 //@ assembly-output: emit-asm
-//@ compile-flags: -C target-feature=+exception-handling
+//@ compile-flags: -C target-feature=+exception-handling -C unsafe-allow-abi-mismatch=target-feature
 //@ compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]

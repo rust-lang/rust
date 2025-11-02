@@ -773,9 +773,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures, TargetModifier)] = &
 
 static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures, TargetModifier)] = &[
     // tidy-alphabetical-start
-    ("atomics", Unstable(sym::wasm_target_feature), &[], false),
+    ("atomics", Unstable(sym::wasm_target_feature), &[], true),
     ("bulk-memory", Stable, &[], false),
-    ("exception-handling", Unstable(sym::wasm_target_feature), &[], false),
+    ("exception-handling", Unstable(sym::wasm_target_feature), &[], true),
     ("extended-const", Stable, &[], false),
     ("multivalue", Stable, &[], false),
     ("mutable-globals", Stable, &[], false),

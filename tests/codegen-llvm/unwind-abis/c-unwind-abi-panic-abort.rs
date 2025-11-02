@@ -3,7 +3,7 @@
 //@ [NONWASM] ignore-wasm32
 //@ [WASM] only-wasm32
 //@ [WASMEXN] only-wasm32
-//@ [WASMEXN] compile-flags: -Ctarget-feature=+exception-handling
+//@ [WASMEXN] compile-flags: -Ctarget-feature=+exception-handling -C unsafe-allow-abi-mismatch=target-feature
 
 // Test that `nounwind` attributes are also applied to extern `C-unwind` Rust functions
 // when the code is compiled with `panic=abort`.
