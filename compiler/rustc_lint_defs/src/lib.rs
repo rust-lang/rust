@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
 use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
@@ -593,21 +593,6 @@ impl StableCompare for LintId {
     }
 }
 
-#[derive(Debug)]
-pub struct AmbiguityErrorDiag {
-    pub msg: String,
-    pub span: Span,
-    pub label_span: Span,
-    pub label_msg: String,
-    pub note_msg: String,
-    pub b1_span: Span,
-    pub b1_note_msg: String,
-    pub b1_help_msgs: Vec<String>,
-    pub b2_span: Span,
-    pub b2_note_msg: String,
-    pub b2_help_msgs: Vec<String>,
-}
-
 #[derive(Debug, Clone)]
 pub enum DeprecatedSinceKind {
     InEffect,
@@ -678,13 +663,6 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    ExternCrateNotIdiomatic {
-        vis_span: Span,
-        ident_span: Span,
-    },
-    AmbiguousGlobImports {
-        diag: AmbiguityErrorDiag,
-    },
     AmbiguousGlobReexports {
         /// The name for which collision(s) have occurred.
         name: String,
@@ -718,23 +696,6 @@ pub enum BuiltinLintDiag {
         span: Span,
         lifetimes_in_scope: MultiSpan,
     },
-    RedundantImportVisibility {
-        span: Span,
-        max_vis: String,
-        import_vis: String,
-    },
-    UnknownDiagnosticAttribute {
-        span: Span,
-        typo_name: Option<Symbol>,
-    },
-    PrivateExternCrateReexport {
-        source: Ident,
-        extern_crate_span: Span,
-    },
-    MacroIsPrivate(Ident),
-    UnusedMacroDefinition(Symbol),
-    MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(DiagMessage),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,
@@ -742,11 +703,6 @@ pub enum BuiltinLintDiag {
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
-    },
-    OutOfScopeMacroCalls {
-        span: Span,
-        path: String,
-        location: String,
     },
 }
 

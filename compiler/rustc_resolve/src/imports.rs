@@ -1095,10 +1095,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         UNUSED_IMPORTS,
                         id,
                         import.span,
-                        BuiltinLintDiag::RedundantImportVisibility {
+                        crate::errors::RedundantImportVisibility {
+                            span: import.span,
+                            help: (),
                             max_vis: max_vis.to_string(def_id, self.tcx),
                             import_vis: import.vis.to_string(def_id, self.tcx),
-                            span: import.span,
                         },
                     );
                 }
@@ -1330,13 +1331,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
             if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import, binding) {
+                let extern_crate_sp = self.tcx.source_span(self.local_def_id(extern_crate_id));
                 self.lint_buffer.buffer_lint(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                     import_id,
                     import.span,
-                    BuiltinLintDiag::PrivateExternCrateReexport {
-                        source: ident,
-                        extern_crate_span: self.tcx.source_span(self.local_def_id(extern_crate_id)),
+                    crate::errors::PrivateExternCrateReexport {
+                        ident,
+                        sugg: extern_crate_sp.shrink_to_lo(),
                     },
                 );
             } else if ns == TypeNS {

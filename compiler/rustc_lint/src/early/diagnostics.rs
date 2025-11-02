@@ -251,15 +251,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
-            let suggestion_span = vis_span.between(ident_span);
-            let code = if vis_span.is_empty() { "use " } else { " use " };
-
-            lints::ExternCrateNotIdiomatic { span: suggestion_span, code }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AmbiguousGlobImports { diag: ambiguity } => {
-            lints::AmbiguousGlobImports { ambiguity }.decorate_lint(diag);
-        }
         BuiltinLintDiag::AmbiguousGlobReexports {
             name,
             namespace,
@@ -317,33 +308,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::RedundantImportVisibility { max_vis, span: vis_span, import_vis } => {
-            lints::RedundantImportVisibility { span: vis_span, help: (), max_vis, import_vis }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnknownDiagnosticAttribute { span: typo_span, typo_name } => {
-            let typo = typo_name.map(|typo_name| lints::UnknownDiagnosticAttributeTypoSugg {
-                span: typo_span,
-                typo_name,
-            });
-            lints::UnknownDiagnosticAttribute { typo }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::PrivateExternCrateReexport { source: ident, extern_crate_span } => {
-            lints::PrivateExternCrateReexport { ident, sugg: extern_crate_span.shrink_to_lo() }
-                .decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroIsPrivate(ident) => {
-            lints::MacroIsPrivate { ident }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedMacroDefinition(name) => {
-            lints::UnusedMacroDefinition { name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::MacroRuleNeverUsed(n, name) => {
-            lints::MacroRuleNeverUsed { n: n + 1, name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnstableFeature(msg) => {
-            lints::UnstableFeature { msg }.decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
@@ -357,9 +321,6 @@ pub fn decorate_builtin_lint(
                 docs: docs.unwrap_or(""),
             }
             .decorate_lint(diag)
-        }
-        BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
-            lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }
     }
 }
