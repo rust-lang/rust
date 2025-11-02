@@ -31,7 +31,8 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
-          # Disabled due to Ubuntu repo trouble
+          # Ubuntu mirrors are not reliable enough for these architectures
+          # (see <https://bugs.launchpad.net/ubuntu/+bug/2130309>).
           # - host_target: riscv64gc-unknown-linux-gnu
           #   os: ubuntu-latest
           #   multiarch: riscv64
@@ -68,7 +69,7 @@ jobs:
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
-          # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
+          # armhf, s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}

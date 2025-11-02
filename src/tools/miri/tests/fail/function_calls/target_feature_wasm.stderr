@@ -3,9 +3,6 @@ error: abnormal termination: calling a function that requires unavailable target
    |
 LL |     simd128_fn();
    |     ^^^^^^^^^^^^ abnormal termination occurred here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/function_calls/target_feature_wasm.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

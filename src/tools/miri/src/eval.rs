@@ -115,6 +115,8 @@ pub struct MiriConfig {
     pub float_rounding_error: FloatRoundingErrorMode,
     /// Whether Miri artifically introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
+    /// A list of crates that are considered user-relevant.
+    pub user_relevant_crates: Vec<String>,
 }
 
 impl Default for MiriConfig {
@@ -158,6 +160,7 @@ impl Default for MiriConfig {
             float_nondet: true,
             float_rounding_error: FloatRoundingErrorMode::Random,
             short_fd_operations: true,
+            user_relevant_crates: vec![],
         }
     }
 }

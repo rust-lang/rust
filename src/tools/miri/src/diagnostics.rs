@@ -126,9 +126,9 @@ pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
-    CreatedAlloc(AllocId, Size, Align, MemoryKind),
+    TrackingAlloc(AllocId, Size, Align),
     FreedAlloc(AllocId),
-    AccessedAlloc(AllocId, AccessKind),
+    AccessedAlloc(AllocId, AllocRange, AccessKind),
     RejectedIsolatedOp(String),
     ProgressReport {
         block_count: u64, // how many basic blocks have been run so far
@@ -604,28 +604,30 @@ pub fn report_msg<'tcx>(
     }
 
     // Add backtrace
-    let mut backtrace_title = String::from("BACKTRACE");
-    if extra_span {
-        write!(backtrace_title, " (of the first span)").unwrap();
-    }
-    if let Some(thread) = thread {
-        let thread_name = machine.threads.get_thread_display_name(thread);
-        if thread_name != "main" {
-            // Only print thread name if it is not `main`.
-            write!(backtrace_title, " on thread `{thread_name}`").unwrap();
-        };
-    }
-    write!(backtrace_title, ":").unwrap();
-    err.note(backtrace_title);
-    for (idx, frame_info) in stacktrace.iter().enumerate() {
-        let is_local = machine.is_local(frame_info);
-        // No span for non-local frames and the first frame (which is the error site).
-        if is_local && idx > 0 {
-            err.subdiagnostic(frame_info.as_note(machine.tcx));
-        } else {
-            let sm = sess.source_map();
-            let span = sm.span_to_embeddable_string(frame_info.span);
-            err.note(format!("{frame_info} at {span}"));
+    if stacktrace.len() > 1 {
+        let mut backtrace_title = String::from("BACKTRACE");
+        if extra_span {
+            write!(backtrace_title, " (of the first span)").unwrap();
+        }
+        if let Some(thread) = thread {
+            let thread_name = machine.threads.get_thread_display_name(thread);
+            if thread_name != "main" {
+                // Only print thread name if it is not `main`.
+                write!(backtrace_title, " on thread `{thread_name}`").unwrap();
+            };
+        }
+        write!(backtrace_title, ":").unwrap();
+        err.note(backtrace_title);
+        for (idx, frame_info) in stacktrace.iter().enumerate() {
+            let is_local = machine.is_local(frame_info);
+            // No span for non-local frames and the first frame (which is the error site).
+            if is_local && idx > 0 {
+                err.subdiagnostic(frame_info.as_note(machine.tcx));
+            } else {
+                let sm = sess.source_map();
+                let span = sm.span_to_embeddable_string(frame_info.span);
+                err.note(format!("{frame_info} at {span}"));
+            }
         }
     }
 
@@ -656,7 +658,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
-            | CreatedAlloc(..)
+            | TrackingAlloc(..)
             | AccessedAlloc(..)
             | FreedAlloc(..)
             | ProgressReport { .. }
@@ -673,15 +675,15 @@ impl<'tcx> MiriMachine<'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedAlloc(AllocId(id), size, align, kind) =>
+            TrackingAlloc(id, size, align) =>
                 format!(
-                    "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                    "now tracking allocation {id:?} of {size} bytes (alignment {align} bytes)",
                     size = size.bytes(),
                     align = align.bytes(),
                 ),
-            AccessedAlloc(AllocId(id), access_kind) =>
-                format!("{access_kind} to allocation with id {id}"),
-            FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
+            AccessedAlloc(id, range, access_kind) =>
+                format!("{access_kind} at {id:?}[{}..{}]", range.start.bytes(), range.end().bytes()),
+            FreedAlloc(id) => format!("freed allocation {id:?}"),
             RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),

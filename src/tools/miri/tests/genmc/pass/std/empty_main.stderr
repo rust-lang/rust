@@ -6,20 +6,8 @@ LL |                 intrinsics::atomic_cxchgweak::<T, { AO::Relaxed }, { AO::Re
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
    |
    = note: BACKTRACE:
-   = note: inside `std::sync::atomic::atomic_compare_exchange_weak::<u64>` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::sync::atomic::AtomicU64::compare_exchange_weak` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::thread::ThreadId::new` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/thread/current.rs:LL:CC
-   = note: inside `std::option::Option::<std::thread::ThreadId>::unwrap_or_else::<{closure@std::thread::current::id::get_or_init::{closure#0}}>` at RUSTLIB/core/src/option.rs:LL:CC
-   = note: inside `std::thread::current::id::get_or_init` at RUSTLIB/std/src/thread/current.rs:LL:CC
-   = note: inside `std::thread::current_id` at RUSTLIB/std/src/thread/current.rs:LL:CC
-   = note: inside `std::rt::init` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::do_call::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::<isize, {closure@std::rt::lang_start_internal::{closure#0}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
-   = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
 
 warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
   --> RUSTLIB/core/src/sync/atomic.rs:LL:CC
@@ -28,17 +16,7 @@ LL |                 intrinsics::atomic_cxchgweak::<T, { AO::Acquire }, { AO::Ac
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
    |
    = note: BACKTRACE:
-   = note: inside `std::sync::atomic::atomic_compare_exchange_weak::<u32>` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::sync::atomic::AtomicU32::compare_exchange_weak` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::sys::sync::PLATFORM::futex::Once::call` at RUSTLIB/std/src/sys/sync/PLATFORM/futex.rs:LL:CC
-   = note: inside `std::sync::Once::call_once::<{closure@std::rt::cleanup::{closure#0}}>` at RUSTLIB/std/src/sync/poison/once.rs:LL:CC
-   = note: inside `std::rt::cleanup` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::do_call::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::<isize, {closure@std::rt::lang_start_internal::{closure#0}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
-   = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
 
 warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
   --> RUSTLIB/core/src/sync/atomic.rs:LL:CC
@@ -47,14 +25,6 @@ LL |                 intrinsics::atomic_cxchg::<T, { AO::Acquire }, { AO::Relaxe
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
    |
    = note: BACKTRACE:
-   = note: inside `std::sync::atomic::atomic_compare_exchange::<*mut i32>` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::sync::atomic::AtomicPtr::<i32>::compare_exchange` at RUSTLIB/core/src/sync/atomic.rs:LL:CC
-   = note: inside `std::sys::exit_guard::unique_thread_exit` at RUSTLIB/std/src/sys/exit_guard.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::do_call::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::catch_unwind::<isize, {closure@std::rt::lang_start_internal::{closure#0}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#0}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
-   = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
 
 Verification complete with 1 executions. No errors found.

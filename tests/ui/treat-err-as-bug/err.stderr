@@ -9,5 +9,5 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
 #0 [eval_static_initializer] evaluating initializer of static `C`
-#1 [analysis] running analysis passes on this crate
+#1 [analysis] running analysis passes on crate `err`
 end of query stack

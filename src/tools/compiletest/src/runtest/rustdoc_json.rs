@@ -13,7 +13,7 @@ impl TestCx<'_> {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
         });
 
-        let proc_res = self.document(&out_dir, &self.testpaths, DocKind::Json);
+        let proc_res = self.document(&out_dir, DocKind::Json);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }

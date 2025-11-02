@@ -16,7 +16,8 @@ Target triples:
 
 This target supports all of core, alloc, std and test. This is automatically
 tested every night on private infrastructure hosted by the maintainer. Host
-tools may also work, though those are not currently tested.
+tools may also work, though it is not guaranteed. Last known success built
+version of rustc with host tools (x86_64) is 1.91.0.
 
 Those targets follow Windows calling convention for extern "C".
 

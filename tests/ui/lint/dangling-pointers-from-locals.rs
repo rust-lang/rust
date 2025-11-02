@@ -8,46 +8,46 @@ const X: u8 = 5;
 fn simple() -> *const u8 {
     let x = 0;
     &x
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn bindings() -> *const u8 {
     let x = 0;
     let x = &x;
     x
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn bindings_with_return() -> *const u8 {
     let x = 42;
     let y = &x;
     return y;
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn with_simple_cast() -> *const u8 {
     let x = 0u8;
     &x as *const u8
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn bindings_and_casts() -> *const u8 {
     let x = 0u8;
     let x = &x as *const u8;
     x as *const u8
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn return_with_complex_cast() -> *mut u8 {
     let mut x = 0u8;
     return &mut x as *mut u8 as *const u8 as *mut u8;
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn with_block() -> *const u8 {
     let x = 0;
     &{ x }
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn with_many_blocks() -> *const u8 {
@@ -55,7 +55,7 @@ fn with_many_blocks() -> *const u8 {
     {
         {
             &{
-                //~^ WARN a dangling pointer will be produced
+                //~^ WARN dangling pointer
                 { x }
             }
         }
@@ -65,20 +65,20 @@ fn with_many_blocks() -> *const u8 {
 fn simple_return() -> *const u8 {
     let x = 0;
     return &x;
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn return_mut() -> *mut u8 {
     let mut x = 0;
     return &mut x;
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn const_and_flow() -> *const u8 {
     if false {
         let x = 8;
         return &x;
-        //~^ WARN a dangling pointer will be produced
+        //~^ WARN dangling pointer
     }
     &X // not dangling
 }
@@ -86,20 +86,20 @@ fn const_and_flow() -> *const u8 {
 fn vector<T: Default>() -> *const Vec<T> {
     let x = vec![T::default()];
     &x
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn local_adt() -> *const Adt {
     let x = Adt(5);
     return &x;
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn closure() -> *const u8 {
     let _x = || -> *const u8 {
         let x = 8;
         return &x;
-        //~^ WARN a dangling pointer will be produced
+        //~^ WARN dangling pointer
     };
     &X // not dangling
 }
@@ -111,27 +111,27 @@ fn fn_ptr() -> *const fn() -> u8 {
 
     let x = ret_u8 as fn() -> u8;
     &x
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn as_arg(a: Adt) -> *const Adt {
     &a
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn fn_ptr_as_arg(a: fn() -> u8) -> *const fn() -> u8 {
     &a
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn ptr_as_arg(a: *const Adt) -> *const *const Adt {
     &a
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn adt_as_arg(a: &Adt) -> *const &Adt {
     &a
-    //~^ WARN a dangling pointer will be produced
+    //~^ WARN dangling pointer
 }
 
 fn unit() -> *const () {
