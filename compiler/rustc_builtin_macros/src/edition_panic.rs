@@ -1,5 +1,5 @@
 use rustc_ast::token::{Delimiter, Lit, LitKind, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::*;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
@@ -117,24 +117,22 @@ fn expand<'cx>(
     }
 
     ExpandResult::Ready(MacEager::expr(
-        cx.expr(
+        cx.expr_macro_call(
             sp,
-            ExprKind::MacCall(Box::new(MacCall {
-                path: Path {
+            cx.macro_call(
+                sp,
+                Path {
                     span: sp,
                     segments: cx
                         .std_path(&[sym::panic, mac.symbol()])
                         .into_iter()
-                        .map(|ident| PathSegment::from_ident(ident))
+                        .map(PathSegment::from_ident)
                         .collect(),
                     tokens: None,
                 },
-                args: Box::new(DelimArgs {
-                    dspan: DelimSpan::from_single(sp),
-                    delim: Delimiter::Parenthesis,
-                    tokens: tts,
-                }),
-            })),
+                Delimiter::Parenthesis,
+                tts,
+            ),
         ),
     ))
 }
