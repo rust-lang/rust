@@ -10,6 +10,6 @@ proc-macro = true
 # tidy-alphabetical-start
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2.0.9", features = ["full"] }
+syn = { version = "2.0.9", features = ["full", "visit-mut"] }
 synstructure = "0.13.0"
 # tidy-alphabetical-end
