@@ -60,7 +60,7 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate test;
 
-// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys as jemalloc_sys;
@@ -123,7 +123,7 @@ mod visit_ast;
 mod visit_lib;
 
 pub fn main() {
-    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
     // about jemalloc.
     #[cfg(feature = "jemalloc")]
     {

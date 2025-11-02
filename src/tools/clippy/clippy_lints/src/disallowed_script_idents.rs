@@ -67,7 +67,7 @@ impl_lint_pass!(DisallowedScriptIdents => [DISALLOWED_SCRIPT_IDENTS]);
 impl EarlyLintPass for DisallowedScriptIdents {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         // Implementation is heavily inspired by the implementation of [`non_ascii_idents`] lint:
-        // https://github.com/rust-lang/rust/blob/master/compiler/rustc_lint/src/non_ascii_idents.rs
+        // https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_lint/src/non_ascii_idents.rs
 
         let check_disallowed_script_idents = cx.builder.lint_level(DISALLOWED_SCRIPT_IDENTS).level != Level::Allow;
         if !check_disallowed_script_idents {

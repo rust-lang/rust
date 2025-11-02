@@ -226,7 +226,7 @@ a macro author may want to introduce a new name to the context where the macro
 was called. Alternately, the macro author may be defining a variable for use
 only within the macro (i.e. it should not be visible outside the macro).
 
-[code_dir]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_expand/src/mbe
+[code_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_expand/src/mbe
 [code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
 [code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
 [code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/struct.TtParser.html#method.parse_tt
