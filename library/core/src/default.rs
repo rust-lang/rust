@@ -142,7 +142,7 @@ pub const trait Default: Sized {
 /// Derive macro generating an impl of the trait `Default`.
 #[rustc_builtin_macro(Default, attributes(default))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, rustc_attrs)]
 pub macro Default($item:item) {
     /* compiler built-in */
 }

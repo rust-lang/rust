@@ -42,11 +42,18 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
+    if tcx.has_attr(def_id, sym::rustc_defer_codegen) {
+        // meow meow meow
+        return true;
+    }
+
     // Obey source annotations first; this is important because it means we can use
     // #[inline(never)] to force code generation.
     match codegen_fn_attrs.inline {
         InlineAttr::Never => return false,
-        InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. } => return true,
+        // For -Copt-level=0, we won't inline functions anyways, so there's no reason to codegen them as LocalCopy.
+        InlineAttr::Hint if tcx.sess.opts.optimize != OptLevel::No => return true,
+        InlineAttr::Always | InlineAttr::Force { .. } => return true,
         _ => {}
     }
 

@@ -247,7 +247,7 @@ pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Hash`.
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[allow_internal_unstable(core_intrinsics, rustc_attrs)]
     pub macro Hash($item:item) {
         /* compiler built-in */
     }

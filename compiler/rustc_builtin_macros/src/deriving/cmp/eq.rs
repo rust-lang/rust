@@ -32,7 +32,7 @@ pub(crate) fn expand_deriving_eq(
             nonself_args: vec![],
             ret_ty: Unit,
             attributes: thin_vec![
-                cx.attr_word(sym::inline, span),
+                cx.attr_word(sym::rustc_defer_codegen, span),
                 cx.attr_nested_word(sym::doc, sym::hidden, span),
                 cx.attr_nested_word(sym::coverage, sym::off, span)
             ],
