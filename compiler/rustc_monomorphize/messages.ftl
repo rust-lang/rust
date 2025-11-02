@@ -12,6 +12,17 @@ monomorphize_abi_error_disabled_vector_type =
   } here
   .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
 
+monomorphize_abi_error_unsupported_unsized_parameter =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses unsized type `{$ty}` which is not supported with the chosen ABI
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = only rustic ABIs support unsized parameters
+
 monomorphize_abi_error_unsupported_vector_type =
   this function {$is_call ->
     [true] call
