@@ -15,7 +15,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;
 use crate::context::{CodegenCx, GenericCx, SCx};
-use crate::llvm::{self, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
+use crate::llvm::{self, FALSE, Metadata, TRUE, ToGeneric, ToLlvmBool, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 
 impl PartialEq for Type {
