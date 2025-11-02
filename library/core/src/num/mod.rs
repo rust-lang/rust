@@ -509,7 +509,7 @@ impl u8 {
         assert_unsafe_precondition!(
             check_library_ub,
             "as_ascii_unchecked requires that the byte is valid ASCII",
-            (it: &u8 = self) => it.is_ascii()
+            (it: u8 = *self) => it.is_ascii()
         );
 
         // SAFETY: the caller promised that this byte is ASCII.

@@ -79,7 +79,8 @@ impl Alignment {
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,
-            "Alignment::new_unchecked requires a power of two",
+            "Alignment::new_unchecked requires a power of two \
+            (align:{align})",
             (align: usize = align) => align.is_power_of_two()
         );
 
