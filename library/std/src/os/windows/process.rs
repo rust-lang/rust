@@ -117,7 +117,7 @@ impl IntoRawHandle for process::ChildStderr {
 impl From<OwnedHandle> for process::ChildStdin {
     fn from(handle: OwnedHandle) -> process::ChildStdin {
         let handle = sys::handle::Handle::from_inner(handle);
-        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
         process::ChildStdin::from_inner(pipe)
     }
 }
@@ -130,7 +130,7 @@ impl From<OwnedHandle> for process::ChildStdin {
 impl From<OwnedHandle> for process::ChildStdout {
     fn from(handle: OwnedHandle) -> process::ChildStdout {
         let handle = sys::handle::Handle::from_inner(handle);
-        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
         process::ChildStdout::from_inner(pipe)
     }
 }
@@ -143,7 +143,7 @@ impl From<OwnedHandle> for process::ChildStdout {
 impl From<OwnedHandle> for process::ChildStderr {
     fn from(handle: OwnedHandle) -> process::ChildStderr {
         let handle = sys::handle::Handle::from_inner(handle);
-        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
         process::ChildStderr::from_inner(pipe)
     }
 }
