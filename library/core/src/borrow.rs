@@ -187,7 +187,7 @@ pub const trait Borrow<Borrowed: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "BorrowMut"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub const trait BorrowMut<Borrowed: ?Sized>: Borrow<Borrowed> {
+pub const trait BorrowMut<Borrowed: ?Sized>: [const] Borrow<Borrowed> {
     /// Mutably borrows from an owned value.
     ///
     /// # Examples
