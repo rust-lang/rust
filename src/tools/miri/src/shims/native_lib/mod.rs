@@ -7,10 +7,12 @@ use libffi::low::CodePtr;
 use libffi::middle::Type as FfiType;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::either;
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, IntTy, Ty, UintTy};
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, UintTy};
 use rustc_span::Symbol;
 use serde::{Deserialize, Serialize};
+
+use self::helpers::ToSoft;
 
 mod ffi;
 
@@ -138,13 +140,21 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let x = unsafe { ffi::call::<usize>(fun, libffi_args) };
                     Scalar::from_target_usize(x.try_into().unwrap(), this)
                 }
+                ty::Float(FloatTy::F32) => {
+                    let x = unsafe { ffi::call::<f32>(fun, libffi_args) };
+                    Scalar::from_f32(x.to_soft())
+                }
+                ty::Float(FloatTy::F64) => {
+                    let x = unsafe { ffi::call::<f64>(fun, libffi_args) };
+                    Scalar::from_f64(x.to_soft())
+                }
                 // Functions with no declared return type (i.e., the default return)
                 // have the output_type `Tuple([])`.
                 ty::Tuple(t_list) if (*t_list).deref().is_empty() => {
                     unsafe { ffi::call::<()>(fun, libffi_args) };
                     return interp_ok(ImmTy::uninit(dest.layout));
                 }
-                ty::RawPtr(..) => {
+                ty::RawPtr(ty, ..) if ty.is_sized(*this.tcx, this.typing_env()) => {
                     let x = unsafe { ffi::call::<*const ()>(fun, libffi_args) };
                     let ptr = StrictPointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
                     Scalar::from_pointer(ptr, this)
@@ -396,7 +406,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Gets the matching libffi type for a given Ty.
     fn ty_to_ffitype(&self, layout: TyAndLayout<'tcx>) -> InterpResult<'tcx, FfiType> {
-        use rustc_abi::{AddressSpace, BackendRepr, Integer, Primitive};
+        use rustc_abi::{AddressSpace, BackendRepr, Float, Integer, Primitive};
 
         // `BackendRepr::Scalar` is also a signal to pass this type as a scalar in the ABI. This
         // matches what codegen does. This does mean that we support some types whose ABI is not
@@ -413,6 +423,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Primitive::Int(Integer::I16, /* signed */ false) => FfiType::u16(),
                 Primitive::Int(Integer::I32, /* signed */ false) => FfiType::u32(),
                 Primitive::Int(Integer::I64, /* signed */ false) => FfiType::u64(),
+                Primitive::Float(Float::F32) => FfiType::f32(),
+                Primitive::Float(Float::F64) => FfiType::f64(),
                 Primitive::Pointer(AddressSpace::ZERO) => FfiType::pointer(),
                 _ =>
                     throw_unsup_format!(

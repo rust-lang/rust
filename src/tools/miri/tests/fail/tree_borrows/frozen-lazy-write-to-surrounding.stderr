@@ -12,8 +12,6 @@ help: the accessed tag <TAG> was created here, in the initial state Frozen
    |
 LL |     let x = &pair.0;
    |             ^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/frozen-lazy-write-to-surrounding.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

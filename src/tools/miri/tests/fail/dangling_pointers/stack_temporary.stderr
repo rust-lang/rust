@@ -16,8 +16,6 @@ help: ALLOC was deallocated here:
    |
 LL |         let x = make_ref(&mut 0); // The temporary storing "0" is deallocated at the ";"!
    |                                 ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/dangling_pointers/stack_temporary.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
