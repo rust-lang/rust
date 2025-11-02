@@ -818,6 +818,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
     store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     store.register_late_pass(|_| Box::new(volatile_composites::VolatileComposites));
-    store.register_late_pass(|_| Box::new(replace_box::ReplaceBox));
+    store.register_late_pass(|_| Box::new(replace_box::ReplaceBox::default()));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
