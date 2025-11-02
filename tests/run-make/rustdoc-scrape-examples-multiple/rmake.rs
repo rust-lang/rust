@@ -3,5 +3,5 @@
 mod scrape;
 
 fn main() {
-    scrape::scrape(&[]);
+    scrape::scrape(&[], &[]);
 }

@@ -896,7 +896,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         // Register the loaded external files in the source map so they show up in depinfo.
         // We can't load them via the source map because it gets created after we process the options.
         for external_path in &loaded_paths {
-            let _ = sess.source_map().load_file(external_path);
+            let _ = sess.source_map().load_binary_file(external_path);
         }
 
         if sess.opts.describe_lints {
