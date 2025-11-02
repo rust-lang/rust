@@ -9,17 +9,18 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
+use rustc_infer::traits::{ObligationCause, ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
@@ -384,56 +385,83 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Make sure that we didn't infer a signature that mentions itself.
                 // This can happen when we elaborate certain supertrait bounds that
                 // mention projections containing the `Self` type. See #105401.
-                struct MentionsTy<'tcx> {
-                    expected_ty: Ty<'tcx>,
-                }
-                impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
-                    type Result = ControlFlow<()>;
-
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-                        if t == self.expected_ty {
-                            ControlFlow::Break(())
-                        } else {
-                            t.super_visit_with(self)
-                        }
-                    }
-                }
-
-                // Don't infer a closure signature from a goal that names the closure type as this will
-                // (almost always) lead to occurs check errors later in type checking.
+                //
+                // Doing so will (almost always) lead to occurs check errors later in
+                // type checking.
                 if self.next_trait_solver()
                     && let Some(inferred_sig) = inferred_sig
                 {
-                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
-                    // would have to manually handle universes and rewriting bound vars and placeholders back
-                    // and forth.
+                    // If we've got `F: FnOnce(<u32 as Id<F>>::This)` we want to
+                    // use this to infer the signature `FnOnce(u32)` for the closure.
                     //
-                    // Instead we take advantage of the fact that we relating an inference variable with an alias
-                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
-                    // - Create some new variable `?sig`
-                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
-                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
-                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
-                    //
-                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
-                    //    they will wind up present in `?sig` even though they are non-rigid.
-                    //
-                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
-                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
-                    //    behaviour of the old solver and would be technically a breaking change to fix.
+                    // We handle self-referential aliases here by relying on generalization
+                    // which replaces such aliases with inference variables. This is currently
+                    // a bit too weak, see trait-system-refactor-initiative#191.
+                    struct ReplaceTy<'tcx> {
+                        tcx: TyCtxt<'tcx>,
+                        expected_ty: Ty<'tcx>,
+                        with_ty: Ty<'tcx>,
+                    }
+                    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceTy<'tcx> {
+                        fn cx(&self) -> TyCtxt<'tcx> {
+                            self.tcx
+                        }
+
+                        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                            if t == self.expected_ty {
+                                self.with_ty
+                            } else {
+                                t.super_fold_with(self)
+                            }
+                        }
+                    }
                     let generalized_fnptr_sig = self.next_ty_var(span);
                     let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
-                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
-
-                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
-
-                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = Some(ExpectedSig {
-                            cause_span: inferred_sig.cause_span,
-                            sig: resolved_sig.fn_sig(self.tcx),
-                        });
+                    let inferred_fnptr_sig = inferred_fnptr_sig.fold_with(&mut ReplaceTy {
+                        tcx: self.tcx,
+                        expected_ty,
+                        with_ty: generalized_fnptr_sig,
+                    });
+                    let resolved_sig = self.commit_if_ok(|snapshot| {
+                        let outer_universe = self.universe();
+                        let ocx = ObligationCtxt::new(self);
+                        ocx.eq(
+                            &ObligationCause::dummy(),
+                            self.param_env,
+                            generalized_fnptr_sig,
+                            inferred_fnptr_sig,
+                        )?;
+                        if ocx.select_where_possible().is_empty() {
+                            self.leak_check(outer_universe, Some(snapshot))?;
+                            Ok(self.resolve_vars_if_possible(generalized_fnptr_sig))
+                        } else {
+                            Err(TypeError::Mismatch)
+                        }
+                    });
+                    match resolved_sig {
+                        Ok(resolved_sig) => {
+                            expected_sig = Some(ExpectedSig {
+                                cause_span: inferred_sig.cause_span,
+                                sig: resolved_sig.fn_sig(self.tcx),
+                            })
+                        }
+                        Err(_) => {}
                     }
                 } else {
+                    struct MentionsTy<'tcx> {
+                        expected_ty: Ty<'tcx>,
+                    }
+                    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
+                        type Result = ControlFlow<()>;
+
+                        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                            if t == self.expected_ty {
+                                ControlFlow::Break(())
+                            } else {
+                                t.super_visit_with(self)
+                            }
+                        }
+                    }
                     if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
                         expected_sig = inferred_sig;
                     }
