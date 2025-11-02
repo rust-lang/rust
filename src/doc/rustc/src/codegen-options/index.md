@@ -501,7 +501,7 @@ By default, `rustc` prefers to statically link dependencies. This option will
 indicate that dynamic linking should be used if possible if both a static and
 dynamic versions of a library are available.
 
-There is [an internal algorithm](https://github.com/rust-lang/rust/blob/master/compiler/rustc_metadata/src/dependency_format.rs)
+There is [an internal algorithm](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_metadata/src/dependency_format.rs)
 for determining whether or not it is possible to statically or dynamically link
 with a dependency.
 
