@@ -5,7 +5,9 @@ LL | impl S0 {
    | ------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
 LL |     fn foo() {
 LL |         const C: S0 = Self(0);
-   |                       ^^^^ help: replace `Self` with the actual type: `S0`
+   |               -       ^^^^ help: replace `Self` with the actual type: `S0`
+   |               |
+   |               `Self` used in this inner item
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124186 <https://github.com/rust-lang/rust/issues/124186>
@@ -17,6 +19,8 @@ warning: can't reference `Self` constructor from outer item
 LL | impl S0 {
    | ------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
 ...
+LL |         fn bar() -> S0 {
+   |            --- `Self` used in this inner item
 LL |             Self(0)
    |             ^^^^ help: replace `Self` with the actual type: `S0`
    |

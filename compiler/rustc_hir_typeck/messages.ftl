@@ -266,6 +266,8 @@ hir_typeck_self_ctor_from_outer_item = can't reference `Self` constructor from o
     .label = the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
     .suggestion = replace `Self` with the actual type
 
+hir_typeck_self_ctor_from_outer_item_inner_item = `Self` used in this inner item
+
 hir_typeck_slicing_suggestion = consider slicing here
 
 hir_typeck_struct_expr_non_exhaustive =

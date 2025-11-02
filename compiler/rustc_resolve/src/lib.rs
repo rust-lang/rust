@@ -241,7 +241,7 @@ struct BindingError {
 #[derive(Debug)]
 enum ResolutionError<'ra> {
     /// Error E0401: can't use type or const parameters from outer item.
-    GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
+    GenericParamsFromOuterItem(Res, HasGenericParams, DefKind, Option<(Span, String)>),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Ident, Span),

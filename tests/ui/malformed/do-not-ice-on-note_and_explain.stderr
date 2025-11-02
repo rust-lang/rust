@@ -3,7 +3,9 @@ error[E0401]: can't reference `Self` constructor from outer item
    |
 LL | impl<B> A<B> {
    | ------------ the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
-...
+LL |     fn d() {
+LL |         fn d() {
+   |            - `Self` used in this inner item
 LL |             Self(1)
    |             ^^^^ help: replace `Self` with the actual type: `A`
 

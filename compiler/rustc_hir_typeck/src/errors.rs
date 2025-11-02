@@ -978,6 +978,15 @@ pub(crate) struct SelfCtorFromOuterItem {
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
+    #[subdiagnostic]
+    pub item: Option<InnerItem>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_typeck_self_ctor_from_outer_item_inner_item)]
+pub(crate) struct InnerItem {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -987,6 +996,8 @@ pub(crate) struct SelfCtorFromOuterItemLint {
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
+    #[subdiagnostic]
+    pub item: Option<InnerItem>,
 }
 
 #[derive(Subdiagnostic)]

@@ -1094,11 +1094,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: path_span,
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
+                let item = match self
+                    .tcx
+                    .hir_node_by_def_id(self.tcx.hir_get_parent_item(hir_id).def_id)
+                {
+                    hir::Node::Item(item) => Some(errors::InnerItem {
+                        span: item.kind.ident().map(|i| i.span).unwrap_or(item.span),
+                    }),
+                    _ => None,
+                };
                 if ty.raw.has_param() {
                     let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
                         span: path_span,
                         impl_span: tcx.def_span(impl_def_id),
                         sugg,
+                        item,
                     });
                     return (Ty::new_error(self.tcx, guar), res);
                 } else {
@@ -1109,6 +1119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         errors::SelfCtorFromOuterItemLint {
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,
+                            item,
                         },
                     );
                 }

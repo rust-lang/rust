@@ -180,6 +180,11 @@ resolve_generic_params_from_outer_item_const = a `const` is a separate item from
 
 resolve_generic_params_from_outer_item_const_param = const parameter from outer item
 
+resolve_generic_params_from_outer_item_inner_item = {$is_self ->
+        [true] `Self`
+        *[false] generic parameter
+    } used in this inner {$descr}
+
 resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
 
 resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here

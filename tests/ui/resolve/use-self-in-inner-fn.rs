@@ -6,6 +6,7 @@ impl A {
         fn peach(this: &Self) {
         //~^ ERROR can't use `Self` from outer item
         //~| NOTE use of `Self` from outer item
+        //~| NOTE `Self` used in this inner function
         //~| NOTE refer to the type directly here instead
         }
     }
