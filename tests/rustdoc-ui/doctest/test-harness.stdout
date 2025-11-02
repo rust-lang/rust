@@ -1,0 +1,76 @@
+
+running 4 tests
+test $DIR/test-harness.rs - (line 14) ... FAILED
+test $DIR/test-harness.rs - (line 25) ... FAILED
+test $DIR/test-harness.rs - (line 34) ... FAILED
+test $DIR/test-harness.rs - (line 9) ... ok
+
+failures:
+
+---- $DIR/test-harness.rs - (line 14) stdout ----
+Test executable failed (exit status: 101).
+
+stdout:
+
+running 2 tests
+test bad ... FAILED
+test good ... ok
+
+failures:
+
+---- bad stdout ----
+
+thread 'bad' ($TID) panicked at $DIR/test-harness.rs:4:5:
+assertion failed: false
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    bad
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+
+---- $DIR/test-harness.rs - (line 25) stdout ----
+Test executable failed (exit status: 101).
+
+stdout:
+
+running 1 test
+test group::element ... FAILED
+
+failures:
+
+---- group::element stdout ----
+
+thread 'group::element' ($TID) panicked at $DIR/test-harness.rs:6:9:
+assertion failed: false
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    group::element
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+
+---- $DIR/test-harness.rs - (line 34) stdout ----
+error: non-item macro in item position: assert
+  --> $DIR/test-harness.rs:35:1
+   |
+LL | assert!(true);
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/test-harness.rs - (line 14)
+    $DIR/test-harness.rs - (line 25)
+    $DIR/test-harness.rs - (line 34)
+
+test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
