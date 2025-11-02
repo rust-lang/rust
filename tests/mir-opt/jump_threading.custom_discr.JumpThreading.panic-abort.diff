@@ -23,14 +23,14 @@
   
       bb2: {
           _2 = CustomDiscr::B;
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb8;
       }
   
       bb3: {
           StorageDead(_3);
           _4 = discriminant(_2);
--         switchInt(move _4) -> [35: bb5, otherwise: bb4];
-+         goto -> bb4;
+          switchInt(move _4) -> [35: bb5, otherwise: bb4];
       }
   
       bb4: {
@@ -52,6 +52,12 @@
 +         StorageDead(_3);
 +         _4 = discriminant(_2);
 +         goto -> bb5;
++     }
++ 
++     bb8: {
++         StorageDead(_3);
++         _4 = discriminant(_2);
++         goto -> bb4;
       }
   }
   
