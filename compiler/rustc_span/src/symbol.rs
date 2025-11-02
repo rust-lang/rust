@@ -1944,6 +1944,7 @@ symbols! {
         rustc_partition_codegened,
         rustc_partition_reused,
         rustc_pass_by_value,
+        rustc_pass_indirectly_in_non_rustic_abis,
         rustc_peek,
         rustc_peek_liveness,
         rustc_peek_maybe_init,

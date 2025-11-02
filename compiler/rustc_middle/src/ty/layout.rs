@@ -3,7 +3,7 @@ use std::{cmp, fmt};
 
 use rustc_abi::{
     AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
-    PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
+    PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
 use rustc_error_messages::DiagMessage;
@@ -1172,6 +1172,11 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
+    fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().flags.contains(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS))
     }
 }
 
