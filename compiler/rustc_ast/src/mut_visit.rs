@@ -362,7 +362,10 @@ pub fn walk_flat_map_stmt<T: MutVisitor>(
     stmts
 }
 
-fn walk_flat_map_stmt_kind<T: MutVisitor>(vis: &mut T, kind: StmtKind) -> SmallVec<[StmtKind; 1]> {
+pub fn walk_flat_map_stmt_kind<T: MutVisitor>(
+    vis: &mut T,
+    kind: StmtKind,
+) -> SmallVec<[StmtKind; 1]> {
     match kind {
         StmtKind::Let(mut local) => smallvec![StmtKind::Let({
             vis.visit_local(&mut local);
