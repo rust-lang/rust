@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
+rustc-literal-escaper = "0.0.5"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }

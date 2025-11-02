@@ -9,7 +9,7 @@
 #[macro_export]
 #[rustc_builtin_macro(std_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(edition_panic)]
+#[allow_internal_unstable(edition_panic, panic_internals)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_macro")]
 macro_rules! panic {
     // Expands to either `$crate::panic::panic_2015` or `$crate::panic::panic_2021`

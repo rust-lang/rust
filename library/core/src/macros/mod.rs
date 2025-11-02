@@ -1,7 +1,7 @@
 #[doc = include_str!("panic.md")]
 #[macro_export]
 #[rustc_builtin_macro(core_panic)]
-#[allow_internal_unstable(edition_panic)]
+#[allow_internal_unstable(edition_panic, panic_internals)]
 #[stable(feature = "core", since = "1.6.0")]
 #[rustc_diagnostic_item = "core_panic_macro"]
 macro_rules! panic {
@@ -705,7 +705,7 @@ macro_rules! writeln {
 /// ```
 #[macro_export]
 #[rustc_builtin_macro(unreachable)]
-#[allow_internal_unstable(edition_panic)]
+#[allow_internal_unstable(edition_panic, panic_internals)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "unreachable_macro"]
 macro_rules! unreachable {
