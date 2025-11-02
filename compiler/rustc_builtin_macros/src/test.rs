@@ -207,9 +207,9 @@ pub(crate) fn expand_test_or_bench(
     };
 
     let test_fn = if is_bench {
-        // A simple ident for a lambda
-        let b = Ident::from_str_and_span("b", attr_sp);
-
+        // A simple ident for a lambda, using the user's function name within it to avoid collisions.
+        let param_name = format!("__bench_{}", fn_.ident.name);
+        let bencher_param = Ident::from_str_and_span(&param_name, attr_sp);
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
@@ -226,11 +226,11 @@ pub(crate) fn expand_test_or_bench(
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, b)],
+                                thin_vec![cx.expr_ident(sp, bencher_param)],
                             ),
                         ],
                     ),
-                    b,
+                    bencher_param,
                 )), // )
             ],
         )
