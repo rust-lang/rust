@@ -4,7 +4,8 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
 LL | impl extern_crate::StructWithAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
    |
-   = note: define and implement a trait or new type instead
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/no-attr-empty-impl.rs:7:1
@@ -12,7 +13,8 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
 LL | impl extern_crate::StructNoAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
    |
-   = note: define and implement a trait or new type instead
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/no-attr-empty-impl.rs:10:1
@@ -20,7 +22,8 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
 LL | impl extern_crate::EnumWithAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
    |
-   = note: define and implement a trait or new type instead
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/no-attr-empty-impl.rs:13:1
@@ -28,7 +31,8 @@ error[E0116]: cannot define inherent `impl` for a type outside of the crate wher
 LL | impl extern_crate::EnumNoAttr {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
    |
-   = note: define and implement a trait or new type instead
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: For more details about orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0390]: cannot define inherent `impl` for primitive types
   --> $DIR/no-attr-empty-impl.rs:16:1
