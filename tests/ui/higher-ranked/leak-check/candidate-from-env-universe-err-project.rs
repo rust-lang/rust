@@ -50,9 +50,8 @@ fn function3<T: Trait<'static, Assoc = usize>>() {
     // leak check during candidate selection for normalization, this
     // case would still not compile.
     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
-    //[next]~^ ERROR higher-ranked subtype error
-    //[next]~| ERROR higher-ranked subtype error
-    //[current]~^^^ ERROR mismatched types
+    //[next]~^ ERROR mismatched types
+    //[current]~^^ ERROR mismatched types
     //[current]~| ERROR mismatched types
 }
 

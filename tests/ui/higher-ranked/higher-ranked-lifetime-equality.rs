@@ -33,6 +33,5 @@ fn main() {
     foo.deref();
     let foo: Foo<Two> = foo;
     //~^ ERROR mismatched types [E0308]
-    //~| ERROR mismatched types [E0308]
     foo.deref();
 }

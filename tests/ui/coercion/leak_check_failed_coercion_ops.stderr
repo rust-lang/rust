@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/leak_check_failed_coercion_ops.rs:16:38
+   |
+LL |     let a: Foo<for<'a> fn(&'a ())> = mk::<Foo<fn(&'static ())>>();
+   |            -----------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<for<'a> fn(&'a ())>`
+              found struct `Foo<fn(&'static ())>`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_failed_coercion_ops.rs:21:15
+   |
+LL |     lub!(lhs, rhs);
+   |          ---  ^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected struct `Foo<for<'a> fn(&(), &'a ())>`
+              found struct `Foo<for<'a> fn(&'a (), &())>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
