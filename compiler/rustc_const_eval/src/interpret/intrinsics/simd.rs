@@ -2,7 +2,7 @@ use either::Either;
 use rustc_abi::Endian;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, UndefinedBehaviorInfo};
-use rustc_middle::ty::FloatTy;
+use rustc_middle::ty::{FloatTy, ScalarInt};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -699,6 +699,44 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let place = self.ptr_to_mplace(ptr, val.layout);
                         self.write_immediate(*val, &place)?
                     };
+                }
+            }
+            sym::simd_funnel_shl | sym::simd_funnel_shr => {
+                let (left, _) = self.project_to_simd(&args[0])?;
+                let (right, _) = self.project_to_simd(&args[1])?;
+                let (shift, _) = self.project_to_simd(&args[2])?;
+                let (dest, _) = self.project_to_simd(&dest)?;
+
+                let (len, elem_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
+                let (elem_size, _signed) = elem_ty.int_size_and_signed(*self.tcx);
+                let elem_size_bits = elem_size.bits() as u128;
+
+                let is_left = intrinsic_name == sym::simd_funnel_shl;
+
+                for i in 0..len {
+                    let left =
+                        self.read_scalar(&self.project_index(&left, i)?)?.to_bits(elem_size)?;
+                    let right =
+                        self.read_scalar(&self.project_index(&right, i)?)?.to_bits(elem_size)?;
+                    let shift_bits =
+                        self.read_scalar(&self.project_index(&shift, i)?)?.to_bits(elem_size)?;
+
+                    if shift_bits >= elem_size_bits {
+                        err_ub_format!(
+                            "overflowing shift by {shift_bits} in `{intrinsic_name}` in lane {i}"
+                        );
+                    }
+                    let inv_shift_bits = (elem_size_bits - shift_bits) as u32;
+
+                    let result_bits = if is_left {
+                        (left << shift_bits) | right.unbounded_shr(inv_shift_bits)
+                    } else {
+                        left.unbounded_shl(inv_shift_bits) | (right >> shift_bits)
+                    };
+                    let (result, _overflow) = ScalarInt::truncate_from_uint(result_bits, elem_size);
+
+                    let dest = self.project_index(&dest, i)?;
+                    self.write_scalar(result, &dest)?;
                 }
             }
 
