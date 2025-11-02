@@ -147,7 +147,7 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                     }
                 }
             }
-            hir::ExprKind::Loop(ref b, _, source, _) => {
+            hir::ExprKind::Loop(b, _, source, _) => {
                 let cx = match self.is_loop_match(e, b) {
                     Some(labeled_block) => LoopMatch { labeled_block },
                     None => Loop(source),
@@ -155,9 +155,7 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
 
                 self.with_context(cx, |v| v.visit_block(b));
             }
-            hir::ExprKind::Closure(&hir::Closure {
-                ref fn_decl, body, fn_decl_span, kind, ..
-            }) => {
+            hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, kind, .. }) => {
                 let cx = match kind {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(kind, source)) => {
                         Coroutine { coroutine_span: fn_decl_span, kind, source }
@@ -167,16 +165,16 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 self.visit_fn_decl(fn_decl);
                 self.with_context(cx, |v| v.visit_nested_body(body));
             }
-            hir::ExprKind::Block(ref b, Some(_label)) => {
+            hir::ExprKind::Block(b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(b));
             }
-            hir::ExprKind::Block(ref b, None)
+            hir::ExprKind::Block(b, None)
                 if matches!(self.cx_stack.last(), Some(&Fn) | Some(&ConstBlock)) =>
             {
                 self.with_context(Normal, |v| v.visit_block(b));
             }
             hir::ExprKind::Block(
-                ref b @ hir::Block { rules: hir::BlockCheckMode::DefaultBlock, .. },
+                b @ hir::Block { rules: hir::BlockCheckMode::DefaultBlock, .. },
                 None,
             ) if matches!(
                 self.cx_stack.last(),
@@ -431,10 +429,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
 
         // Accept either `state = expr` or `state = expr;`.
         let loop_body_expr = match body.stmts {
-            [] => match body.expr {
-                Some(expr) => expr,
-                None => return None,
-            },
+            [] => body.expr?,
             [single] if body.expr.is_none() => match single.kind {
                 hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) => expr,
                 _ => return None,

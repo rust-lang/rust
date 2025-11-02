@@ -94,20 +94,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let find_param_matching = |matches: &dyn Fn(ParamTerm) -> bool| {
             predicate_args.iter().find_map(|arg| {
-                arg.walk().find_map(|arg| {
-                    if let ty::GenericArgKind::Type(ty) = arg.kind()
-                        && let ty::Param(param_ty) = *ty.kind()
-                        && matches(ParamTerm::Ty(param_ty))
-                    {
-                        Some(arg)
-                    } else if let ty::GenericArgKind::Const(ct) = arg.kind()
-                        && let ty::ConstKind::Param(param_ct) = ct.kind()
-                        && matches(ParamTerm::Const(param_ct))
-                    {
-                        Some(arg)
-                    } else {
-                        None
+                arg.walk().find(|arg| match arg.kind() {
+                    ty::GenericArgKind::Type(ty) if let ty::Param(param_ty) = ty.kind() => {
+                        matches(ParamTerm::Ty(*param_ty))
                     }
+                    ty::GenericArgKind::Const(ct)
+                        if let ty::ConstKind::Param(param_ct) = ct.kind() =>
+                    {
+                        matches(ParamTerm::Const(param_ct))
+                    }
+                    _ => false,
                 })
             })
         };
@@ -162,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into_iter()
                 .flatten()
                 {
-                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
+                    if self.point_at_path_if_possible(error, def_id, param, qpath) {
                         return true;
                     }
                 }
@@ -194,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args,
             ) => {
                 if let Some(param) = predicate_self_type_to_point_at
-                    && self.point_at_path_if_possible(error, callee_def_id, param, &qpath)
+                    && self.point_at_path_if_possible(error, callee_def_id, param, qpath)
                 {
                     return true;
                 }
@@ -225,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .into_iter()
                     .flatten()
                 {
-                    if self.point_at_path_if_possible(error, callee_def_id, param, &qpath) {
+                    if self.point_at_path_if_possible(error, callee_def_id, param, qpath) {
                         return true;
                     }
                 }
@@ -543,10 +539,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// - `blame_specific_*` means that the function will recursively traverse the expression,
-    /// looking for the most-specific-possible span to blame.
+    ///   looking for the most-specific-possible span to blame.
     ///
     /// - `point_at_*` means that the function will only go "one level", pointing at the specific
-    /// expression mentioned.
+    ///   expression mentioned.
     ///
     /// `blame_specific_arg_if_possible` will find the most-specific expression anywhere inside
     /// the provided function call expression, and mark it as responsible for the fulfillment
@@ -609,6 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
      * - want `Vec<i32>: Copy`
      * - because `Option<Vec<i32>>: Copy` needs `Vec<i32>: Copy` because `impl <T: Copy> Copy for Option<T>`
      * - because `(Option<Vec<i32>, bool)` needs `Option<Vec<i32>>: Copy` because `impl <A: Copy, B: Copy> Copy for (A, B)`
+     *
      * then if you pass in `(Some(vec![1, 2, 3]), false)`, this helper `point_at_specific_expr_if_possible`
      * will find the expression `vec![1, 2, 3]` as the "most blameable" reason for this missing constraint.
      *
@@ -749,6 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - expr: `(Some(vec![1, 2, 3]), false)`
     /// - param: `T`
     /// - in_ty: `(Option<Vec<T>, bool)`
+    ///
     /// we would drill until we arrive at `vec![1, 2, 3]`.
     ///
     /// If successful, we return `Ok(refined_expr)`. If unsuccessful, we return `Err(partially_refined_expr`),
@@ -1016,7 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variant_with_id(variant_def_id)
                     .fields
                     .iter()
-                    .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args))
+                    .map(|field| field.ty(self.tcx, in_ty_adt_generic_args))
                     .enumerate()
                     .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param)),
             ) else {
