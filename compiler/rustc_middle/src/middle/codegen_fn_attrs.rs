@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr, RtsanSetting};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -80,9 +80,9 @@ pub struct CodegenFnAttrs {
     /// The `#[link_section = "..."]` attribute, or what executable section this
     /// should be placed in.
     pub link_section: Option<Symbol>,
-    /// The `#[sanitize(xyz = "off")]` attribute. Indicates sanitizers for which
-    /// instrumentation should be disabled inside the function.
-    pub no_sanitize: SanitizerSet,
+    /// The `#[sanitize(xyz = "off")]` attribute. Indicates the settings for each
+    /// sanitizer for this function.
+    pub sanitizers: SanitizerFnAttrs,
     /// The `#[instruction_set(set)]` attribute. Indicates if the generated code should
     /// be generated against a specific instruction set. Only usable on architectures which allow
     /// switching between multiple instruction sets.
@@ -209,7 +209,7 @@ impl CodegenFnAttrs {
             linkage: None,
             import_linkage: None,
             link_section: None,
-            no_sanitize: SanitizerSet::empty(),
+            sanitizers: SanitizerFnAttrs::default(),
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
@@ -239,5 +239,17 @@ impl CodegenFnAttrs {
                 None | Some(Linkage::Internal) => false,
                 Some(_) => true,
             }
+    }
+}
+
+#[derive(Clone, Copy, Debug, HashStable, TyEncodable, TyDecodable, Eq, PartialEq)]
+pub struct SanitizerFnAttrs {
+    pub disabled: SanitizerSet,
+    pub rtsan_setting: RtsanSetting,
+}
+
+impl const Default for SanitizerFnAttrs {
+    fn default() -> Self {
+        Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }
 }

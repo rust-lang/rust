@@ -290,6 +290,8 @@ pub(crate) enum AttributeKind {
     DeadOnReturn = 44,
     CapturesReadOnly = 45,
     CapturesNone = 46,
+    SanitizeRealtimeNonblocking = 47,
+    SanitizeRealtimeBlocking = 48,
 }
 
 /// LLVMIntPredicate
@@ -482,6 +484,7 @@ pub(crate) struct SanitizerOptions {
     pub sanitize_memory: bool,
     pub sanitize_memory_recover: bool,
     pub sanitize_memory_track_origins: c_int,
+    pub sanitize_realtime: bool,
     pub sanitize_thread: bool,
     pub sanitize_hwaddress: bool,
     pub sanitize_hwaddress_recover: bool,

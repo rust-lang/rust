@@ -212,7 +212,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
                     self.check_custom_mir(dialect, phase, attr_span)
                 }
-                &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, span: attr_span}) => {
+                &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
                 Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {

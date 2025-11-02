@@ -1177,6 +1177,7 @@ bitflags::bitflags! {
         const KERNELADDRESS = 1 << 9;
         const SAFESTACK = 1 << 10;
         const DATAFLOW = 1 << 11;
+        const REALTIME = 1 << 12;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1227,6 +1228,7 @@ impl SanitizerSet {
             SanitizerSet::SHADOWCALLSTACK => "shadow-call-stack",
             SanitizerSet::THREAD => "thread",
             SanitizerSet::HWADDRESS => "hwaddress",
+            SanitizerSet::REALTIME => "realtime",
             _ => return None,
         })
     }
@@ -1271,6 +1273,7 @@ impl FromStr for SanitizerSet {
             "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
             "thread" => SanitizerSet::THREAD,
             "hwaddress" => SanitizerSet::HWADDRESS,
+            "realtime" => SanitizerSet::REALTIME,
             s => return Err(format!("unknown sanitizer {s}")),
         })
     }
