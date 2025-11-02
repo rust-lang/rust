@@ -335,10 +335,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
                             binding_mode: BindingMode(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
+                            pat_span,
                             ..
                         })) => {
                             if suggest {
                                 err.span_note(sp, "the binding is already a mutable borrow");
+                                err.span_suggestion_verbose(
+                                    pat_span.shrink_to_lo(),
+                                    "consider making the binding mutable if you need to reborrow \
+                                     multiple times",
+                                    "mut ".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             }
                         }
                         _ => {
@@ -356,9 +364,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             // give a best effort structured suggestion.
                             err.span_suggestion_verbose(
                                 source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
-                                "try removing `&mut` here",
+                                "if there is only one mutable reborrow, remove the `&mut`",
                                 "",
-                                Applicability::MachineApplicable,
+                                Applicability::MaybeIncorrect,
                             );
                         } else {
                             // This can occur with things like `(&mut self).foo()`.
