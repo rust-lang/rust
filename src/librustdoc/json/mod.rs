@@ -135,7 +135,7 @@ fn target(sess: &rustc_session::Session) -> types::Target {
         .rust_target_features()
         .iter()
         .copied()
-        .map(|(name, stability, _)| (name, stability))
+        .map(|(name, stability, _, _)| (name, stability))
         .collect();
 
     types::Target {
@@ -145,11 +145,11 @@ fn target(sess: &rustc_session::Session) -> types::Target {
             .rust_target_features()
             .iter()
             .copied()
-            .filter(|(_, stability, _)| {
+            .filter(|(_, stability, _, _)| {
                 // Describe only target features which the user can toggle
                 stability.toggle_allowed().is_ok()
             })
-            .map(|(name, stability, implied_features)| {
+            .map(|(name, stability, implied_features, _)| {
                 types::TargetFeature {
                     name: name.into(),
                     unstable_feature_gate: match stability {

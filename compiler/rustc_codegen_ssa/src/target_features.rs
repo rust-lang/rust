@@ -173,7 +173,7 @@ fn parse_rust_feature_flag<'a>(
 
             let inverse_implied_features = inverse_implied_features.get_or_insert_with(|| {
                 let mut set: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
-                for (f, _, is) in sess.target.rust_target_features() {
+                for (f, _, is, _) in sess.target.rust_target_features() {
                     for i in is.iter() {
                         set.entry(i).or_default().insert(f);
                     }
@@ -222,8 +222,8 @@ pub fn cfg_target_feature(
         .target
         .rust_target_features()
         .iter()
-        .filter(|(feature, _, _)| target_base_has_feature(feature))
-        .flat_map(|(base_feature, _, _)| {
+        .filter(|(feature, _, _, _)| target_base_has_feature(feature))
+        .flat_map(|(base_feature, _, _, _)| {
             // Expand the direct base feature into all transitively-implied features. Note that we
             // cannot simply use the `implied` field of the tuple since that only contains
             // directly-implied features.
@@ -260,7 +260,7 @@ pub fn cfg_target_feature(
         sess.target
             .rust_target_features()
             .iter()
-            .filter_map(|(feature, gate, _)| {
+            .filter_map(|(feature, gate, _, _)| {
                 // The `allow_unstable` set is used by rustc internally to determine which target
                 // features are truly available, so we want to return even perma-unstable
                 // "forbidden" features.
@@ -330,13 +330,13 @@ pub fn flag_to_backend_features<'a, const N: usize>(
             );
             // Check feature validity.
             if diagnostics {
-                let feature_state = known_features.iter().find(|&&(v, _, _)| v == base_feature);
+                let feature_state = known_features.iter().find(|&&(v, _, _, _)| v == base_feature);
                 match feature_state {
                     None => {
                         // This is definitely not a valid Rust feature name. Maybe it is a backend
                         // feature name? If so, give a better error message.
                         let rust_feature =
-                            known_features.iter().find_map(|&(rust_feature, _, _)| {
+                            known_features.iter().find_map(|&(rust_feature, _, _, _)| {
                                 let backend_features = to_backend_features(rust_feature);
                                 if backend_features.contains(&base_feature)
                                     && !backend_features.contains(&rust_feature)
@@ -359,7 +359,7 @@ pub fn flag_to_backend_features<'a, const N: usize>(
                         };
                         sess.dcx().emit_warn(unknown_feature);
                     }
-                    Some((_, stability, _)) => {
+                    Some((_, stability, _, _)) => {
                         if let Err(reason) = stability.toggle_allowed() {
                             sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
                                 feature: base_feature,
@@ -463,7 +463,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|(a, b, _)| (a.to_string(), *b))
+                    .map(|(a, b, _, _)| (a.to_string(), *b))
                     .collect()
             }
         },

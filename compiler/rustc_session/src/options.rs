@@ -22,7 +22,7 @@ use rustc_target::spec::{
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{EarlyDiagCtxt, lint};
+use crate::{EarlyDiagCtxt, Session, lint};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
@@ -85,6 +85,53 @@ pub struct TargetModifier {
 
 mod target_modifier_consistency_check {
     use super::*;
+    pub(super) fn target_feature(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        fn parse<'a>(session: &'a Session, val: &'a TargetModifier) -> Vec<&'a str> {
+            let mut target_features = Vec::new();
+
+            for feature in session
+                .target_features
+                .iter()
+                .map(|symbol| symbol.as_str())
+                .chain(val.value_name.split(','))
+            {
+                if let Some(feature) = feature.strip_prefix('+') {
+                    if session
+                        .target
+                        .rust_target_features()
+                        .iter()
+                        .any(|(name, _, _, target_modifier)| feature == *name && *target_modifier)
+                    {
+                        target_features.push(feature);
+                    }
+                } else if let Some(feature) = feature.strip_prefix('-') {
+                    if session
+                        .target
+                        .rust_target_features()
+                        .iter()
+                        .any(|(name, _, _, target_modifier)| feature == *name && *target_modifier)
+                    {
+                        for (index, target_feature) in target_features.iter().enumerate() {
+                            if *target_feature == feature {
+                                target_features.remove(index);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            target_features
+        }
+
+        let l = parse(sess, l);
+
+        if let Some(r) = r { l == parse(sess, r) } else { l.is_empty() }
+    }
     pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
         let mut lparsed: SanitizerSet = Default::default();
         let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
@@ -133,21 +180,25 @@ impl TargetModifier {
     }
     // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
     // When other is None, consistency with default value is checked
-    pub fn consistent(&self, opts: &Options, other: Option<&TargetModifier>) -> bool {
+    pub fn consistent(&self, sess: &Session, other: Option<&TargetModifier>) -> bool {
         assert!(other.is_none() || self.opt == other.unwrap().opt);
         match self.opt {
+            OptionsTargetModifiers::CodegenOptions(
+                CodegenOptionsTargetModifiers::target_feature,
+            ) => {
+                return target_modifier_consistency_check::target_feature(sess, self, other);
+            }
             OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
                 UnstableOptionsTargetModifiers::sanitizer => {
                     return target_modifier_consistency_check::sanitizer(self, other);
                 }
                 UnstableOptionsTargetModifiers::sanitizer_cfi_normalize_integers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
-                        opts, self, other,
+                        &sess.opts, self, other,
                     );
                 }
                 _ => {}
             },
-            _ => {}
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -2172,7 +2223,7 @@ options! {
         "which mangling version to use for symbol names ('legacy' (default), 'v0', or 'hashed')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
-    target_feature: String = (String::new(), parse_target_feature, [TRACKED],
+    target_feature: String = (String::new(), parse_target_feature, [TRACKED TARGET_MODIFIER],
         "target specific attributes. (`rustc --print target-features` for details). \
         This feature is unsafe."),
     unsafe_allow_abi_mismatch: Vec<String> = (Vec::new(), parse_comma_list, [UNTRACKED],

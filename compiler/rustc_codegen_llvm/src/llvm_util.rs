@@ -515,7 +515,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
         .target
         .rust_target_features()
         .iter()
-        .filter_map(|(feature, gate, _implied)| {
+        .filter_map(|(feature, gate, _implied, _)| {
             if !gate.in_cfg() {
                 // Only list (experimentally) supported features.
                 return None;
