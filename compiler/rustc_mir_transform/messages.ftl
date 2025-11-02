@@ -69,8 +69,8 @@ mir_transform_tail_expr_local = {$is_generated_name ->
         *[false] `{$name}` calls a custom destructor
     }
 
-mir_transform_unaligned_packed_ref = reference to packed field is unaligned
-    .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
+mir_transform_unaligned_packed_ref = reference to field of packed {$ty_descr} is unaligned
+    .note = this {$ty_descr} is at most {$align}-byte aligned, but the type of this field may require higher alignment
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
     .help = copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 

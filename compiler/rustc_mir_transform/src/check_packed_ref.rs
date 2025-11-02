@@ -37,7 +37,9 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        if context.is_borrow() && util::is_disaligned(self.tcx, self.body, self.typing_env, *place)
+        if context.is_borrow()
+            && let Some((adt, pack)) =
+                util::unalignment(self.tcx, self.body, self.typing_env, *place)
         {
             let def_id = self.body.source.instance.def_id();
             if let Some(impl_def_id) = self.tcx.trait_impl_of_assoc(def_id)
@@ -48,7 +50,11 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                 // shouldn't do.
                 span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
             } else {
-                self.tcx.dcx().emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
+                self.tcx.dcx().emit_err(errors::UnalignedPackedRef {
+                    span: self.source_info.span,
+                    ty_descr: adt.descr(),
+                    align: pack.bytes(),
+                });
             }
         }
     }

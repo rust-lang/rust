@@ -20,12 +20,12 @@ fn let_wild_gets_unsafe_field() {
     let u1 = U { a: I(0) };
     let u2 = U { a: I(1) };
     let p = P { a: &2, b: &3 };
-    let _ = &p.b;  //~ ERROR    reference to packed field
+    let _ = &p.b;  //~ ERROR    reference to field of packed struct
     let _ = u1.a;  //~ ERROR  [E0133]
     let _ = &u2.a; //~ ERROR  [E0133]
 
     // variation on above with `_` in substructure
-    let (_,) = (&p.b,);  //~ ERROR     reference to packed field
+    let (_,) = (&p.b,);  //~ ERROR     reference to field of packed struct
     let (_,) = (u1.a,);  //~ ERROR   [E0133]
     let (_,) = (&u2.a,); //~ ERROR   [E0133]
 }
@@ -34,12 +34,12 @@ fn let_ascribe_gets_unsafe_field() {
     let u1 = U { a: I(0) };
     let u2 = U { a: I(1) };
     let p = P { a: &2, b: &3 };
-    let _: _ = &p.b;  //~ ERROR    reference to packed field
+    let _: _ = &p.b;  //~ ERROR    reference to field of packed struct
     let _: _ = u1.a;  //~ ERROR  [E0133]
     let _: _ = &u2.a; //~ ERROR  [E0133]
 
     // variation on above with `_` in substructure
-    let (_,): _ = (&p.b,);  //~ ERROR     reference to packed field
+    let (_,): _ = (&p.b,);  //~ ERROR     reference to field of packed struct
     let (_,): _ = (u1.a,);  //~ ERROR   [E0133]
     let (_,): _ = (&u2.a,); //~ ERROR   [E0133]
 }
@@ -48,12 +48,12 @@ fn match_unsafe_field_to_wild() {
     let u1 = U { a: I(0) };
     let u2 = U { a: I(1) };
     let p = P { a: &2, b: &3 };
-    match &p.b  { _ => { } } //~ ERROR     reference to packed field
+    match &p.b  { _ => { } } //~ ERROR     reference to field of packed struct
     match u1.a  { _ => { } } //~ ERROR   [E0133]
     match &u2.a { _ => { } } //~ ERROR   [E0133]
 
     // variation on above with `_` in substructure
-    match (&p.b,)  { (_,) => { } } //~ ERROR     reference to packed field
+    match (&p.b,)  { (_,) => { } } //~ ERROR     reference to field of packed struct
     match (u1.a,)  { (_,) => { } } //~ ERROR   [E0133]
     match (&u2.a,) { (_,) => { } } //~ ERROR   [E0133]
 }
