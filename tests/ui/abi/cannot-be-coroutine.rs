@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ edition: 2021
 //@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430
 //

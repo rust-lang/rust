@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --crate-type=rlib -Copt-level=0
 //@ revisions: force-on aarch64-apple aarch64-apple-on aarch64-apple-off
 //@ [force-on] compile-flags: -Cforce-frame-pointers=on

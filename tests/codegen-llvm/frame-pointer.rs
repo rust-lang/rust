@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --crate-type=rlib -Copt-level=0
 //@ revisions: aarch64-apple aarch64-linux force x64-apple x64-linux
 //@ [aarch64-apple] needs-llvm-components: aarch64

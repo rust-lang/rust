@@ -1,6 +1,6 @@
 // Test that we don't generate Objective-C definitions or image info unnecessarily.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: i686_apple_darwin
 //@ [i686_apple_darwin] compile-flags: --target i686-apple-darwin
 //@ [i686_apple_darwin] needs-llvm-components: x86

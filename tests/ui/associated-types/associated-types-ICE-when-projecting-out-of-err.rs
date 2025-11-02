@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 // Test that we do not ICE when the self type is `ty::err`, but rather
 // just propagate the error.
 

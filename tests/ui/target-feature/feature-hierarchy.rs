@@ -4,7 +4,7 @@
 //@ [aarch64-sve2] compile-flags: -Ctarget-feature=-neon,+sve2 --target=aarch64-unknown-linux-gnu
 //@ [aarch64-sve2] needs-llvm-components: aarch64
 //@ build-pass
-//@ add-core-stubs
+//@ add-minicore
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, staged_api)]

@@ -2,7 +2,7 @@
 // does not result in skipping the features following it.
 // This is a regression test for #144143
 
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
 //@ compile-flags: -Ctarget-feature=+crt-static,+avx2

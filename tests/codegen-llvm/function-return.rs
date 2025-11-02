@@ -1,7 +1,7 @@
 // Test that the `fn_ret_thunk_extern` function attribute is (not) emitted when
 // the `-Zfunction-return={keep,thunk-extern}` flag is (not) set.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: unset keep thunk-extern keep-thunk-extern thunk-extern-keep
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu

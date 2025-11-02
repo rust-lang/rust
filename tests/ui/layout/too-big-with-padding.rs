@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-fail
 //@ compile-flags: --target i686-unknown-linux-gnu --crate-type lib
 //@ needs-llvm-components: x86

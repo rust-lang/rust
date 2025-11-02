@@ -1,6 +1,6 @@
 // Verifies that `-Zsanitizer=kernel-address` emits sanitizer instrumentation.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Zsanitizer=kernel-address -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none

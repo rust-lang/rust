@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 --target riscv64gc-unknown-linux-gnu
 //@ needs-llvm-components: riscv

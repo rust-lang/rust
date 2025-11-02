@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 
 #![feature(no_core)]

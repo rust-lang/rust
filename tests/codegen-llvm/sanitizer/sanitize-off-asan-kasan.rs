@@ -1,7 +1,7 @@
 // Verifies that the `#[sanitize(address = "off")]` attribute also turns off
 // the kernel address sanitizer.
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Zsanitizer=kernel-address -Ctarget-feature=-crt-static -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none

@@ -10,7 +10,7 @@
 //@[riscv] core-stubs-compile-flags: -Ctarget-feature=-d
 //@[riscv] needs-llvm-components: riscv
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 
 #![feature(no_core, riscv_target_feature)]
 #![no_core]

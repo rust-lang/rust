@@ -14,21 +14,21 @@ range of tests.
 
 </div>
 
-A test can use [`minicore`] by specifying the `//@ add-core-stubs` directive.
-Then, mark the test with `#![feature(no_core)]` + `#![no_std]` + `#![no_core]`.
-Due to Edition 2015 extern prelude rules, you will probably need to declare
-`minicore` as an extern crate.
+A test can use [`minicore`] by specifying the `//@ add-minicore` directive.
+Then, mark the test with `#![feature(no_core)]` + `#![no_std]` + `#![no_core]`,
+and import the crate into the test with `extern crate minicore` (edition 2015)
+or `use minicore` (edition 2018+).
 
 ## Implied compiler flags
 
-Due to the `no_std` + `no_core` nature of these tests, `//@ add-core-stubs`
+Due to the `no_std` + `no_core` nature of these tests, `//@ add-minicore`
 implies and requires that the test will be built with `-C panic=abort`.
 **Unwinding panics are not supported.**
 
 Tests will also be built with `-C force-unwind-tables=yes` to preserve CFI
 directives in assembly tests.
 
-TL;DR: `//@ add-core-stubs` implies two compiler flags:
+TL;DR: `//@ add-minicore` implies two compiler flags:
 
 1. `-C panic=abort`
 2. `-C force-unwind-tables=yes`
@@ -48,7 +48,7 @@ attributes (e.g. `on_unimplemented`) should be replicated exactly in `minicore`.
 ## Example codegen test that uses `minicore`
 
 ```rust,no_run
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: meow bark
 //@[meow] compile-flags: --target=x86_64-unknown-linux-gnu
 //@[meow] needs-llvm-components: x86

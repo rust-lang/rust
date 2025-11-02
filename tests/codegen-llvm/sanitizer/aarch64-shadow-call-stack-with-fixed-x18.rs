@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: aarch64 android
 //@[aarch64] compile-flags: --target aarch64-unknown-none -Zfixed-x18 -Zsanitizer=shadow-call-stack
 //@[aarch64] needs-llvm-components: aarch64

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: mips64 mips64el
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 

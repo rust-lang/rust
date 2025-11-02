@@ -3,7 +3,7 @@
 // `retpoline-external-thunk`, `retpoline-indirect-branches`, `retpoline-indirect-calls`
 // target features are (not) emitted when the `retpoline/retpoline-external-thunk` flag is (not) set.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: disabled enabled_retpoline enabled_retpoline_external_thunk
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu

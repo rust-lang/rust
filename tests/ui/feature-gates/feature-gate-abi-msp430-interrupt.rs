@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: msp430
 //@ compile-flags: --target=msp430-none-elf --crate-type=rlib
 #![no_core]

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: linux apple
 //@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes -Zlint-llvm-ir
 

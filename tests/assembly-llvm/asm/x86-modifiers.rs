@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 -C panic=abort

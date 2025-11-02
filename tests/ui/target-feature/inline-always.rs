@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ compile-flags: --crate-type=lib
 //@ revisions: aarch64

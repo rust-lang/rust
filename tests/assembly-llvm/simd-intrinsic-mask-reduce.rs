@@ -1,5 +1,5 @@
 // verify that simd mask reductions do not introduce additional bit shift operations
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 // Set the base cpu explicitly, in case the default has been changed.
