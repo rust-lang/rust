@@ -397,7 +397,10 @@ rustc_queries! {
     /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) {
         eval_always
-        desc { "running analysis passes on this crate" }
+        desc { |tcx|
+            "running analysis passes on crate `{}`",
+            tcx.crate_name(LOCAL_CRATE),
+        }
     }
 
     /// This query checks the fulfillment of collected lint expectations.
