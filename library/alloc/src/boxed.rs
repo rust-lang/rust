@@ -1110,6 +1110,11 @@ impl<T: ?Sized> Box<T> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The ownership of `raw` is effectively transferred to the resulting
+    /// `Box<T>` which may then deallocate or change the contents of memory
+    /// pointed to by the pointer at will. You must ensure that nothing else uses
+    /// the pointer after calling this function.
+    ///
     /// The raw pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
@@ -1158,6 +1163,11 @@ impl<T: ?Sized> Box<T> {
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same `NonNull` pointer.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the resulting
+    /// `Box<T>` which may then deallocate or change the contents of memory
+    /// pointed to by the pointer at will. You must ensure that nothing else uses
+    /// the pointer after calling this function.
     ///
     /// The non-null pointer must point to a block of memory allocated by the global allocator.
     ///
@@ -1333,6 +1343,11 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The ownership of `raw` is effectively transferred to the resulting
+    /// `Box<T>` which may then deallocate or change the contents of memory
+    /// pointed to by the pointer at will. You must ensure that nothing else uses
+    /// the pointer after calling this function.
+    ///
     /// The raw pointer must point to a block of memory allocated by `alloc`.
     ///
     /// # Examples
@@ -1385,6 +1400,11 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
+    ///
+    /// The ownership of `raw` is effectively transferred to the resulting
+    /// `Box<T>` which may then deallocate or change the contents of memory
+    /// pointed to by the pointer at will. You must ensure that nothing else uses
+    /// the pointer after calling this function.
     ///
     /// The non-null pointer must point to a block of memory allocated by `alloc`.
     ///
