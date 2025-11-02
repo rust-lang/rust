@@ -13,6 +13,7 @@ use crate::ptr::NonNull;
 use crate::task::Context;
 
 mod async_drop;
+#[allow(module_inception)]
 mod future;
 mod into_future;
 mod join;
