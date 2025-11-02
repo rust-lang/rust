@@ -6,8 +6,8 @@ use serde::Serialize;
 
 use crate::mir::mono::{Instance, StaticDef};
 use crate::target::{Endian, MachineInfo};
-use crate::ty::{Allocation, Binder, ExistentialTraitRef, Ty};
-use crate::{Error, IndexedVal, with};
+use crate::ty::{Allocation, Binder, ExistentialTraitRef, Ty, index_impl};
+use crate::{Error, ThreadLocalIndex, with};
 
 /// An allocation in the rustc_public's IR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
@@ -47,17 +47,9 @@ impl GlobalAlloc {
 }
 
 /// A unique identification number for each provenance
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
-pub struct AllocId(usize);
-
-impl IndexedVal for AllocId {
-    fn to_val(index: usize) -> Self {
-        AllocId(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
-    }
-}
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub struct AllocId(usize, ThreadLocalIndex);
+index_impl!(AllocId);
 
 /// Utility function used to read an allocation data into a unassigned integer.
 pub(crate) fn read_target_uint(mut bytes: &[u8]) -> Result<u128, Error> {
