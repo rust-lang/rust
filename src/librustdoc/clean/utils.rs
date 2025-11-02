@@ -26,6 +26,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::display::Joined as _;
+use crate::formats::item_type::ItemType;
 
 #[cfg(test)]
 mod tests;
@@ -494,7 +495,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     use DefKind::*;
     debug!("register_res({res:?})");
 
-    let (kind, did) = match res {
+    let (kinds, did) = match res {
         Res::Def(
             kind @ (AssocTy
             | AssocFn
@@ -513,14 +514,16 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Macro(..)
             | TraitAlias),
             did,
-        ) => (kind.into(), did),
+        ) => (ItemType::from_def_kind(kind, None), did),
 
         _ => panic!("register_res: unexpected {res:?}"),
     };
     if did.is_local() {
         return did;
     }
-    inline::record_extern_fqn(cx, did, kind);
+    for kind in kinds.iter().copied() {
+        inline::record_extern_fqn(cx, did, kind);
+    }
     did
 }
 
