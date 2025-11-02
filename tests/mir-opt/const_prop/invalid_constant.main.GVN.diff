@@ -61,17 +61,11 @@
           StorageDead(_1);
           return;
       }
-+ }
-+ 
-+ ALLOC0 (size: 4, align: 4) {
-+     00 00 00 00                                     │ ....
-+ }
-+ 
-+ ALLOC1 (size: 4, align: 4) {
-+     04 00 00 00                                     │ ....
-+ }
-+ 
-+ ALLOC2 (size: 4, align: 4) {
-+     01 00 11 00                                     │ ....
   }
++ 
++ ALLOC0 (size: 4, align: 4) { .. }
++ 
++ ALLOC1 (size: 4, align: 4) { .. }
++ 
++ ALLOC2 (size: 4, align: 4) { .. }
   
