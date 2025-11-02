@@ -5,25 +5,25 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run 7
+//@ gdb-command:run 7
 
-// gdb-command:next
-// gdb-command:next
-// gdb-check:[...]#loc1[...]
-// gdb-command:next
-// gdb-check:[...]#loc2[...]
+//@ gdb-command:next
+//@ gdb-command:next
+//@ gdb-check:[...]#loc1[...]
+//@ gdb-command:next
+//@ gdb-check:[...]#loc2[...]
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run 7
+//@ lldb-command:run 7
 
-// lldb-command:next
-// lldb-command:next
-// lldb-command:frame select
-// lldb-check:[...]#loc1[...]
-// lldb-command:next
-// lldb-command:frame select
-// lldb-check:[...]#loc2[...]
+//@ lldb-command:next
+//@ lldb-command:next
+//@ lldb-command:frame select
+//@ lldb-check:[...]#loc1[...]
+//@ lldb-command:next
+//@ lldb-command:frame select
+//@ lldb-check:[...]#loc2[...]
 
 use std::env;
 use std::num::ParseIntError;

@@ -4,36 +4,36 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print self
-// gdb-check:$1 = 1111
-// gdb-command:continue
+//@ gdb-command:print self
+//@ gdb-check:$1 = 1111
+//@ gdb-command:continue
 
-// gdb-command:print self
-// gdb-check:$2 = by_value_self_argument_in_trait_impl::Struct {x: 2222, y: 3333}
-// gdb-command:continue
+//@ gdb-command:print self
+//@ gdb-check:$2 = by_value_self_argument_in_trait_impl::Struct {x: 2222, y: 3333}
+//@ gdb-command:continue
 
-// gdb-command:print self
-// gdb-check:$3 = (4444.5, 5555, 6666, 7777.5)
-// gdb-command:continue
+//@ gdb-command:print self
+//@ gdb-check:$3 = (4444.5, 5555, 6666, 7777.5)
+//@ gdb-command:continue
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v self
-// lldb-check:[...] 1111
-// lldb-command:continue
+//@ lldb-command:v self
+//@ lldb-check:[...] 1111
+//@ lldb-command:continue
 
-// lldb-command:v self
-// lldb-check:[...] { x = 2222 y = 3333 }
-// lldb-command:continue
+//@ lldb-command:v self
+//@ lldb-check:[...] { x = 2222 y = 3333 }
+//@ lldb-command:continue
 
-// lldb-command:v self
-// lldb-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
-// lldb-command:continue
+//@ lldb-command:v self
+//@ lldb-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
+//@ lldb-command:continue
 
 trait Trait {
     fn method(self) -> Self;

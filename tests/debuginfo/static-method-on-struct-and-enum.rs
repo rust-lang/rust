@@ -4,44 +4,44 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
 // STRUCT
-// gdb-command:print arg1
-// gdb-check:$1 = 1
-// gdb-command:print arg2
-// gdb-check:$2 = 2
-// gdb-command:continue
+//@ gdb-command:print arg1
+//@ gdb-check:$1 = 1
+//@ gdb-command:print arg2
+//@ gdb-check:$2 = 2
+//@ gdb-command:continue
 
 // ENUM
-// gdb-command:print arg1
-// gdb-check:$3 = -3
-// gdb-command:print arg2
-// gdb-check:$4 = 4.5
-// gdb-command:print arg3
-// gdb-check:$5 = 5
-// gdb-command:continue
+//@ gdb-command:print arg1
+//@ gdb-check:$3 = -3
+//@ gdb-command:print arg2
+//@ gdb-check:$4 = 4.5
+//@ gdb-command:print arg3
+//@ gdb-check:$5 = 5
+//@ gdb-command:continue
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
 // STRUCT
-// lldb-command:v arg1
-// lldb-check:[...] 1
-// lldb-command:v arg2
-// lldb-check:[...] 2
-// lldb-command:continue
+//@ lldb-command:v arg1
+//@ lldb-check:[...] 1
+//@ lldb-command:v arg2
+//@ lldb-check:[...] 2
+//@ lldb-command:continue
 
 // ENUM
-// lldb-command:v arg1
-// lldb-check:[...] -3
-// lldb-command:v arg2
-// lldb-check:[...] 4.5
-// lldb-command:v arg3
-// lldb-check:[...] 5
-// lldb-command:continue
+//@ lldb-command:v arg1
+//@ lldb-check:[...] -3
+//@ lldb-command:v arg2
+//@ lldb-check:[...] 4.5
+//@ lldb-command:v arg3
+//@ lldb-check:[...] 5
+//@ lldb-command:continue
 
 struct Struct {
     x: isize

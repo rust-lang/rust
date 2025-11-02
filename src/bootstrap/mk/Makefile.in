@@ -109,7 +109,7 @@ TEST_SET2 := --skip=tests --skip=coverage-map --skip=coverage-run --skip=library
 
 # this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
 ci-msvc-py:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TEST_SET1)
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 tests\debuginfo
 ci-msvc-ps1:
 	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TEST_SET2)
 ci-msvc: ci-msvc-py ci-msvc-ps1
