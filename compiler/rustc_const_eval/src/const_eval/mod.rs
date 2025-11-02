@@ -13,6 +13,7 @@ mod error;
 mod eval_queries;
 mod fn_queries;
 mod machine;
+mod type_info;
 mod valtrees;
 
 pub use self::dummy_machine::*;
