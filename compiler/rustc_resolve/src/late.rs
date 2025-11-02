@@ -677,7 +677,7 @@ pub(crate) struct DiagMetadata<'ast> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// The current trait (used to suggest).
+    /// The current item being evaluated (used for suggestions and more detail in errors).
     pub(crate) current_item: Option<&'ast Item>,
 
     /// When processing generic arguments and encountering an unresolved ident not found,

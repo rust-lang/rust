@@ -1404,18 +1404,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.descr().to_string()))
+                            Some((span, current_item.kind.clone()))
                         } else {
                             None
                         };
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(
-                                res,
+                            ResolutionError::GenericParamsFromOuterItem {
+                                outer_res: res,
                                 has_generic_params,
                                 def_kind,
-                                item,
-                            ),
+                                inner_item: item,
+                            },
                         );
                     }
                     return Res::Err;
@@ -1492,18 +1492,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 .ident()
                                 .map(|i| i.span)
                                 .unwrap_or(current_item.span);
-                            Some((span, current_item.kind.descr().to_string()))
+                            Some((span, current_item.kind.clone()))
                         } else {
                             None
                         };
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(
-                                res,
+                            ResolutionError::GenericParamsFromOuterItem {
+                                outer_res: res,
                                 has_generic_params,
                                 def_kind,
-                                item,
-                            ),
+                                inner_item: item,
+                            },
                         );
                     }
                     return Res::Err;

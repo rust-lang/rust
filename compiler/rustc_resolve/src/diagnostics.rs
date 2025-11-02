@@ -553,12 +553,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterItem(
+            ResolutionError::GenericParamsFromOuterItem {
                 outer_res,
                 has_generic_params,
                 def_kind,
-                item,
-            ) => {
+                inner_item,
+            } => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
                     DefKind::Static { .. } => {
@@ -576,9 +576,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sugg: None,
                     static_or_const,
                     is_self,
-                    item: item.map(|(span, descr)| errs::GenericParamsFromOuterItemInnerItem {
+                    item: inner_item.map(|(span, kind)| errs::GenericParamsFromOuterItemInnerItem {
                         span,
-                        descr,
+                        descr: kind.descr().to_string(),
                     }),
                 };
 
