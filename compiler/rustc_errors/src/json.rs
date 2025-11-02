@@ -24,6 +24,7 @@ use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use serde::Serialize;
+use tracing::debug;
 
 use crate::diagnostic::IsLint;
 use crate::emitter::{
@@ -543,6 +544,21 @@ impl DiagnosticSpan {
         suggestion
             .substitutions
             .iter()
+            .filter_map(|substitution| {
+                let mut parts = substitution.parts.clone();
+                // check that all spans are distjoint, otherwise rustfix doesn't know what to do.
+                // suggestions that don't have that have a hint about omitted suggestions in them
+                parts.sort_by_key(|part| part.span.lo());
+                // Verify the assumption that all spans are disjoint
+                if parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)).is_some() {
+                    debug!(
+                        "from_suggestion: suggestion contains an invalid span: {substitution:?}"
+                    );
+                    None
+                } else {
+                    Some(substitution)
+                }
+            })
             .flat_map(|substitution| {
                 substitution.parts.iter().map(move |suggestion_inner| {
                     let span_label =

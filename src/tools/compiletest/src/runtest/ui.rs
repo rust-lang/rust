@@ -224,7 +224,10 @@ impl TestCx<'_> {
         self.check_all_error_patterns(&output_to_check, pattern_proc_res);
         self.check_forbid_output(&output_to_check, pattern_proc_res);
 
-        if self.props.run_rustfix && self.config.compare_mode.is_none() {
+        if self.props.run_rustfix
+            && self.config.compare_mode.is_none()
+            && !self.props.rustfix_dont_test_fixed
+        {
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
             let mut rustc = self.make_compile_args(
