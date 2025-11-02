@@ -629,6 +629,18 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     }
 }
 
+impl<T> From<legacy::RangeToInclusive<T>> for RangeToInclusive<T> {
+    fn from(value: legacy::RangeToInclusive<T>) -> Self {
+        Self { last: value.end }
+    }
+}
+
+impl<T> From<RangeToInclusive<T>> for legacy::RangeToInclusive<T> {
+    fn from(value: RangeToInclusive<T>) -> Self {
+        Self { end: value.last }
+    }
+}
+
 // RangeToInclusive<Idx> cannot impl From<RangeTo<Idx>>
 // because underflow would be possible with (..0).into()
 
