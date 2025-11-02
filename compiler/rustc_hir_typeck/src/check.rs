@@ -118,7 +118,6 @@ pub(super) fn check_fn<'a, 'tcx>(
             hir::FnRetTy::DefaultReturn(_) => body.value.span,
             hir::FnRetTy::Return(ty) => ty.span,
         };
-
         fcx.require_type_is_sized(
             declared_ret_ty,
             return_or_body_span,
