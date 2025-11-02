@@ -8,7 +8,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
             let _2: std::ptr::NonNull<[T]>;
             let mut _3: *mut [T];
             let mut _4: *const [T];
-            let _11: ();
+            let _13: ();
             scope 3 {
                 let _8: std::ptr::alignment::AlignmentEnum;
                 scope 4 {
@@ -16,6 +16,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     }
                     scope 13 (inlined Unique::<[T]>::cast::<u8>) {
                         scope 14 (inlined NonNull::<[T]>::cast::<u8>) {
+                            let mut _9: *mut u8;
+                            let mut _10: (*const u8) is !null;
                             scope 15 (inlined NonNull::<[T]>::as_ptr) {
                             }
                         }
@@ -25,13 +27,13 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         }
                     }
                     scope 18 (inlined <std::alloc::Global as Allocator>::deallocate) {
-                        let mut _9: *mut u8;
+                        let mut _11: *mut u8;
                         scope 19 (inlined Layout::size) {
                         }
                         scope 20 (inlined NonNull::<u8>::as_ptr) {
                         }
                         scope 21 (inlined std::alloc::dealloc) {
-                            let mut _10: usize;
+                            let mut _12: usize;
                             scope 22 (inlined Layout::size) {
                             }
                             scope 23 (inlined Layout::align) {
@@ -63,6 +65,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     }
 
     bb0: {
+        StorageLive(_3);
         StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
         StorageLive(_4);
@@ -86,19 +89,24 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
     bb2: {
         StorageLive(_9);
         _9 = copy _3 as *mut u8 (PtrToPtr);
-        StorageLive(_10);
-        _10 = discriminant(_8);
-        _11 = alloc::alloc::__rust_dealloc(move _9, move _5, move _10) -> [return: bb3, unwind unreachable];
+        _10 = copy _9 as (*const u8) is !null (Transmute);
+        StorageDead(_9);
+        StorageLive(_11);
+        _11 = copy _10 as *mut u8 (Transmute);
+        StorageLive(_12);
+        _12 = discriminant(_8);
+        _13 = alloc::alloc::__rust_dealloc(move _11, move _5, move _12) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        StorageDead(_10);
-        StorageDead(_9);
+        StorageDead(_12);
+        StorageDead(_11);
         goto -> bb4;
     }
 
     bb4: {
         StorageDead(_2);
+        StorageDead(_3);
         return;
     }
 }
