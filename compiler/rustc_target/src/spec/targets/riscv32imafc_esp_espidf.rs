@@ -1,4 +1,4 @@
-use crate::spec::{PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 32,
-        arch: "riscv32".into(),
+        arch: Arch::RiscV32,
 
         options: TargetOptions {
             families: cvs!["unix"],

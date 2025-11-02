@@ -883,7 +883,8 @@ fn link_natively(
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
                         let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
-                            find_msvc_tools::find_tool(&sess.target.arch, "link.exe").is_some();
+                            find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
+                                .is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
 
