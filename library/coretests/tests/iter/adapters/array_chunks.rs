@@ -18,10 +18,10 @@ fn test_iterator_array_chunks_clone_and_drop() {
     assert_eq!(count.get(), 3);
     let mut it2 = it.clone();
     assert_eq!(count.get(), 3);
-    assert_eq!(it.into_remainder().unwrap().len(), 2);
+    assert_eq!(it.into_remainder().len(), 2);
     assert_eq!(count.get(), 5);
     assert!(it2.next().is_none());
-    assert_eq!(it2.into_remainder().unwrap().len(), 2);
+    assert_eq!(it2.into_remainder().len(), 2);
     assert_eq!(count.get(), 7);
 }
 
@@ -31,7 +31,7 @@ fn test_iterator_array_chunks_remainder() {
     assert_eq!(it.next(), Some([0, 1, 2, 3]));
     assert_eq!(it.next(), Some([4, 5, 6, 7]));
     assert_eq!(it.next(), None);
-    assert_eq!(it.into_remainder().unwrap().as_slice(), &[8, 9, 10]);
+    assert_eq!(it.into_remainder().as_slice(), &[8, 9, 10]);
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn test_iterator_array_chunks_next_and_next_back() {
     assert_eq!(it.next(), None);
     assert_eq!(it.next_back(), None);
     assert_eq!(it.next(), None);
-    assert_eq!(it.into_remainder().unwrap().as_slice(), &[9, 10]);
+    assert_eq!(it.into_remainder().as_slice(), &[9, 10]);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn test_iterator_array_chunks_rev_remainder() {
         assert_eq!(it.next(), None);
         assert_eq!(it.next(), None);
     }
-    assert_eq!(it.into_remainder().unwrap().as_slice(), &[8, 9, 10]);
+    assert_eq!(it.into_remainder().as_slice(), &[8, 9, 10]);
 }
 
 #[test]
