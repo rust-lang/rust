@@ -24,12 +24,13 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldb-check:[...] Case1(0, Struct { x: 2088533116, y: 2088533116, z: 31868 })
+// lldb-check:[...] Case1(0, {x:2088533116, y:2088533116, z:31868}) { 0 = 0 1 = { x = 2088533116 y = 2088533116 z = 31868 } }
+
 // lldb-command:v case2
-// lldb-check:[...] Case2(0, 1229782938247303441, 4369)
+// lldb-check:[...] Case2(0, 1229782938247303441, 4369) { 0 = 0 1 = 1229782938247303441 2 = 4369 }
 
 // lldb-command:v univariant
-// lldb-check:[...] TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
+// lldb-check:[...] TheOnlyCase({x:123, y:456, z:789}) { 0 = { x = 123 y = 456 z = 789 } }
 
 #![allow(unused_variables)]
 
