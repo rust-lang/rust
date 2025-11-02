@@ -772,11 +772,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
-                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _, _), .. },
                 ..
             })
             | hir::Node::Param(Param {
-                pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
+                pat: hir::Pat { kind: hir::PatKind::Ref(_, _, _), .. },
                 ..
             }) = node
         {
@@ -1494,7 +1494,7 @@ impl<'tcx> Visitor<'tcx> for BindingFinder {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> Self::Result {
-        if let hir::Pat { kind: hir::PatKind::Ref(_, _), span, .. } = param.pat
+        if let hir::Pat { kind: hir::PatKind::Ref(_, _, _), span, .. } = param.pat
             && *span == self.span
         {
             ControlFlow::Break(param.hir_id)

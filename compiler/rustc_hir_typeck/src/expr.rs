@@ -523,7 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::PatKind::TupleStruct(_, _, _)
             | hir::PatKind::Tuple(_, _)
             | hir::PatKind::Box(_)
-            | hir::PatKind::Ref(_, _)
+            | hir::PatKind::Ref(_, _, _)
             | hir::PatKind::Deref(_)
             | hir::PatKind::Expr(_)
             | hir::PatKind::Range(_, _, _)

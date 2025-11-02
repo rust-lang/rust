@@ -1231,7 +1231,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 debug!("pat_ty(pat={:?}) found adjustment `{:?}`", pat, first_adjust);
                 return Ok(first_adjust.source);
             }
-        } else if let PatKind::Ref(subpat, _) = pat.kind
+        } else if let PatKind::Ref(subpat, _, _) = pat.kind
             && self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id)
         {
             return self.pat_ty_adjusted(subpat);
@@ -1817,13 +1817,13 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
-            PatKind::Ref(subpat, _)
+            PatKind::Ref(subpat, _, _)
                 if self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id) =>
             {
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
-            PatKind::Box(subpat) | PatKind::Ref(subpat, _) => {
+            PatKind::Box(subpat) | PatKind::Ref(subpat, _, _) => {
                 // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.

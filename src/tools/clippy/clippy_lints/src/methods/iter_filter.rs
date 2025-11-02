@@ -50,7 +50,7 @@ fn is_method(
     fn pat_is_recv(ident: Ident, param: &hir::Pat<'_>) -> bool {
         match param.kind {
             hir::PatKind::Binding(_, _, other, _) => ident == other,
-            hir::PatKind::Ref(pat, _) => pat_is_recv(ident, pat),
+            hir::PatKind::Ref(pat, _, _) => pat_is_recv(ident, pat),
             _ => false,
         }
     }
