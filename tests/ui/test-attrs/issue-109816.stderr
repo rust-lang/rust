@@ -1,4 +1,4 @@
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/issue-109816.rs:4:5
    |
 LL |     #[test]
