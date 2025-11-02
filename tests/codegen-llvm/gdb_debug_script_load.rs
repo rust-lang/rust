@@ -14,7 +14,7 @@ fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[no_mangle]
+#[lang = "eh_personality"]
 extern "C" fn rust_eh_personality() {
     loop {}
 }
