@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Ctarget-feature=+f,+d
 //@ needs-llvm-components: riscv

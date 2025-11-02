@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: z10 z13_no_vector z13_soft_float
 //@ build-fail
 //@[z10] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target mips-unknown-linux-gnu
 //@ needs-llvm-components: mips
 //@ ignore-backends: gcc

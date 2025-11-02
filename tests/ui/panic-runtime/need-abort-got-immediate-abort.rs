@@ -2,8 +2,8 @@
 //@ aux-build:needs-abort.rs
 //@ compile-flags:-Cpanic=immediate-abort -Zunstable-options
 //@ no-prefer-dynamic
-//@ add-core-stubs
-//@ core-stubs-compile-flags: -Cpanic=immediate-abort -Zunstable-options
+//@ add-minicore
+//@ minicore-compile-flags: -Cpanic=immediate-abort -Zunstable-options
 
 #![feature(no_core)]
 #![no_std]

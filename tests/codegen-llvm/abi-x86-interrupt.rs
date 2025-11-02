@@ -2,7 +2,7 @@
 // llvm. Also checks that the abi_x86_interrupt feature gate allows usage
 // of the x86-interrupt abi.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: x86
 //@ compile-flags: -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu -Copt-level=0
 

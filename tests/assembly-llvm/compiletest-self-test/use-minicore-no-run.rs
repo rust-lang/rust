@@ -1,5 +1,5 @@
-//! `compiletest` self-test to check that `add-core-stubs` is incompatible with run pass modes.
+//! `compiletest` self-test to check that `add-minicore` is incompatible with run pass modes.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ run-pass
 //@ should-fail

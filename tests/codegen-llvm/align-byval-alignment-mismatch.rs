@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions:i686-linux x86_64-linux
 
 //@ compile-flags: -Cno-prepopulate-passes -Copt-level=1 -Cpanic=abort

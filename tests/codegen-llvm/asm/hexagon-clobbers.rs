@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: hexagon
 //@[hexagon] compile-flags: --target hexagon-unknown-linux-musl
 //@[hexagon] needs-llvm-components: hexagon

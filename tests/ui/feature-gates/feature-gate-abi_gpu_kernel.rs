@@ -1,5 +1,5 @@
 //@ revisions: HOST AMDGPU NVPTX
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --crate-type=rlib
 //@[AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx1100
 //@[AMDGPU] needs-llvm-components: amdgpu

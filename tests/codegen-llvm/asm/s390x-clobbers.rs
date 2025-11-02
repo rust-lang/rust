@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: s390x
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10
 //@[s390x] needs-llvm-components: systemz

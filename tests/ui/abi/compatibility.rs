@@ -1,5 +1,5 @@
 //@ check-pass
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: host
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu

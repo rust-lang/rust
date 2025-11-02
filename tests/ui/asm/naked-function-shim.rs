@@ -2,7 +2,7 @@
 // this is handled correctly. See also https://github.com/rust-lang/rust/issues/143266.
 
 //@ build-pass
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: aarch64 x86_64
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64

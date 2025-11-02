@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86 aarch64 thumb7
 //
 //@[x86] compile-flags: --target x86_64-unknown-linux-gnu
