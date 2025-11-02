@@ -1,15 +1,15 @@
 use either::Either;
-use rustc_abi::Endian;
+use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::{Float, Round};
-use rustc_middle::mir::interpret::{InterpErrorKind, UndefinedBehaviorInfo};
-use rustc_middle::ty::FloatTy;
+use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
+use rustc_middle::ty::{FloatTy, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::{
-    ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Provenance, Scalar, Size, interp_ok,
-    throw_ub_format,
+    ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Provenance, Scalar, Size, TyAndLayout,
+    assert_matches, interp_ok, throw_ub_format,
 };
 use crate::interpret::Writeable;
 
@@ -658,6 +658,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
             sym::simd_masked_load => {
+                let dest_layout = dest.layout;
+
                 let (mask, mask_len) = self.project_to_simd(&args[0])?;
                 let ptr = self.read_pointer(&args[1])?;
                 let (default, default_len) = self.project_to_simd(&args[2])?;
@@ -665,6 +667,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 assert_eq!(dest_len, mask_len);
                 assert_eq!(dest_len, default_len);
+
+                self.check_simd_ptr_alignment(
+                    ptr,
+                    dest_layout,
+                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+                        .unwrap_leaf()
+                        .to_simd_alignment(),
+                )?;
 
                 for i in 0..dest_len {
                     let mask = self.read_immediate(&self.project_index(&mask, i)?)?;
@@ -674,7 +684,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let val = if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
                         let ptr = ptr.wrapping_offset(dest.layout.size * i, self);
-                        let place = self.ptr_to_mplace(ptr, dest.layout);
+                        // we have already checked the alignment requirements
+                        let place = self.ptr_to_mplace_unaligned(ptr, dest.layout);
                         self.read_immediate(&place)?
                     } else {
                         default
@@ -689,6 +700,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 assert_eq!(mask_len, vals_len);
 
+                self.check_simd_ptr_alignment(
+                    ptr,
+                    args[2].layout,
+                    generic_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+                        .unwrap_leaf()
+                        .to_simd_alignment(),
+                )?;
+
                 for i in 0..vals_len {
                     let mask = self.read_immediate(&self.project_index(&mask, i)?)?;
                     let val = self.read_immediate(&self.project_index(&vals, i)?)?;
@@ -696,7 +715,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
                         let ptr = ptr.wrapping_offset(val.layout.size * i, self);
-                        let place = self.ptr_to_mplace(ptr, val.layout);
+                        // we have already checked the alignment requirements
+                        let place = self.ptr_to_mplace_unaligned(ptr, val.layout);
                         self.write_immediate(*val, &place)?
                     };
                 }
@@ -747,6 +767,29 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             FloatTy::F128 => unimplemented!("f16_f128"),
         })
+    }
+
+    fn check_simd_ptr_alignment(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+        vector_layout: TyAndLayout<'tcx>,
+        alignment: SimdAlign,
+    ) -> InterpResult<'tcx> {
+        assert_matches!(vector_layout.backend_repr, BackendRepr::SimdVector { .. });
+
+        match alignment {
+            ty::SimdAlign::Unaligned => {
+                // the pointer is supposed to be unaligned, so no check is required
+                interp_ok(())
+            }
+            ty::SimdAlign::Element => {
+                // take the alignment of the only field, which is an array and therefore has the same alignment
+                // as the element type.
+                let elem_align = vector_layout.field(self, 0).align.abi;
+                self.check_ptr_align(ptr, elem_align)
+            }
+            ty::SimdAlign::Vector => self.check_ptr_align(ptr, vector_layout.align.abi),
+        }
     }
 }
 
