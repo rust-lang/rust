@@ -1,0 +1,59 @@
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:56:8
+   |
+LL |     f2(ReprCUnionU64 { _unused: 1 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+   = note: `#[warn(cmse_uninitialized_leak)]` on by default
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:59:8
+   |
+LL |     f3(MaybeUninit::uninit());
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:62:8
+   |
+LL |     f4(MaybeUninit::uninit());
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:65:8
+   |
+LL |     f5((0, MaybeUninit::uninit()));
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:68:8
+   |
+LL |     f6(ReprCAggregate { a: 0, b: ReprCUnionU64 { _unused: 1 } });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:71:8
+   |
+LL |     f7(ReprRustUnionPartiallyUninit { _unused1: 0 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: passing a (partially) uninitialized value across the security boundary may leak information
+  --> $DIR/params-uninitialized.rs:74:8
+   |
+LL |     f8(PaddedStruct { a: 0, b: 0 });
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: padding or fields not used by the current variant of a union may contain stale secure data
+
+warning: 7 warnings emitted
+
