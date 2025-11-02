@@ -635,7 +635,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
 
     // Normally, this shouldn't be required, but trait normalization failure can create a
     // validation ICE.
-    if !validate_types(tcx, inliner.typing_env(), &callee_body, &caller_body).is_empty() {
+    if !validate_types(tcx, inliner.typing_env(), &callee_body, caller_body).is_empty() {
         debug!("failed to validate callee body");
         return Err("implementation limitation -- callee body failed validation");
     }
