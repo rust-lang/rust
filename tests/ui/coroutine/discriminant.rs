@@ -12,35 +12,35 @@ use std::{cmp, ops::*};
 
 macro_rules! yield25 {
     ($e:expr) => {
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
 
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
 
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
 
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
 
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
-        yield $e;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
+        $e.yield;
     };
 }
 
@@ -91,8 +91,8 @@ fn main() {
 
             yield250!(); // 253 variants
 
-            yield; // 254
-            yield; // 255
+            ().yield; // 254
+            ().yield; // 255
         }
     };
 
@@ -103,9 +103,9 @@ fn main() {
 
             yield250!(); // 253 variants
 
-            yield; // 254
-            yield; // 255
-            yield; // 256
+            ().yield; // 254
+            ().yield; // 255
+            ().yield; // 256
         }
     };
 
@@ -116,10 +116,10 @@ fn main() {
 
             yield250!(); // 253 variants
 
-            yield; // 254
-            yield; // 255
-            yield; // 256
-            yield; // 257
+            ().yield; // 254
+            ().yield; // 255
+            ().yield; // 256
+            ().yield; // 257
         }
     };
 

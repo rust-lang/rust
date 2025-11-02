@@ -3,7 +3,7 @@ warning: unused coroutine that must be used
    |
 LL |       #[coroutine] move || {
    |  __________________^
-LL | |         A.test(yield);
+LL | |         A.test(().yield);
 LL | |     };
    | |_____^
    |
@@ -15,7 +15,7 @@ warning: unused coroutine that must be used
    |
 LL |       #[coroutine] static move || {
    |  __________________^
-LL | |         yield *y.borrow();
+LL | |         (*y.borrow()).yield;
 LL | |         return "Done";
 LL | |     };
    | |_____^

@@ -1545,7 +1545,6 @@ impl Expr {
 
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
-            | ExprKind::Yield(YieldKind::Prefix(value))
             | ExprKind::Yeet(value) => match value {
                 Some(_) => ExprPrecedence::Jump,
                 None => prefix_attrs_precedence(&self.attrs),
@@ -2103,8 +2102,6 @@ pub enum MatchKind {
 /// The kind of yield expression
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum YieldKind {
-    /// yield expr { ... }
-    Prefix(Option<Box<Expr>>),
     /// expr.yield { ... }
     Postfix(Box<Expr>),
 }
@@ -2115,7 +2112,6 @@ impl YieldKind {
     /// For postfix yields, this is guaranteed to be `Some`.
     pub const fn expr(&self) -> Option<&Box<Expr>> {
         match self {
-            YieldKind::Prefix(expr) => expr.as_ref(),
             YieldKind::Postfix(expr) => Some(expr),
         }
     }
@@ -2123,7 +2119,6 @@ impl YieldKind {
     /// Returns a mutable reference to the expression being yielded, if any.
     pub const fn expr_mut(&mut self) -> Option<&mut Box<Expr>> {
         match self {
-            YieldKind::Prefix(expr) => expr.as_mut(),
             YieldKind::Postfix(expr) => Some(expr),
         }
     }
@@ -2131,9 +2126,7 @@ impl YieldKind {
     /// Returns true if both yields are prefix or both are postfix.
     pub const fn same_kind(&self, other: &Self) -> bool {
         match (self, other) {
-            (YieldKind::Prefix(_), YieldKind::Prefix(_)) => true,
             (YieldKind::Postfix(_), YieldKind::Postfix(_)) => true,
-            _ => false,
         }
     }
 }

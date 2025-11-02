@@ -34,6 +34,6 @@ const F = S { t: foo };
 //~| HELP: provide a type for the constant
 
 
-const G = #[coroutine] || -> i32 { yield 0; return 1; };
+const G = #[coroutine] || -> i32 { 0.yield; return 1; };
 //~^ ERROR: missing type for `const` item
 //~| NOTE: however, the inferred type

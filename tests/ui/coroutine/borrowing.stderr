@@ -1,12 +1,12 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:9:46
+  --> $DIR/borrowing.rs:9:41
    |
 LL |     let _b = {
    |         -- borrow later stored here
 LL |         let a = 3;
    |             - binding `a` declared here
-LL |         Pin::new(&mut #[coroutine] || yield &a).resume(())
-   |                                    --        ^ borrowed value does not live long enough
+LL |         Pin::new(&mut #[coroutine] || (&a).yield).resume(())
+   |                                    --   ^ borrowed value does not live long enough
    |                                    |
    |                                    value captured here by coroutine
 LL |
@@ -14,7 +14,7 @@ LL |     };
    |     - `a` dropped here while still borrowed
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/borrowing.rs:16:20
+  --> $DIR/borrowing.rs:16:15
    |
 LL |     let _b = {
    |         -- borrow later stored here
@@ -22,8 +22,8 @@ LL |         let a = 3;
    |             - binding `a` declared here
 LL |         #[coroutine] || {
    |                      -- value captured here by coroutine
-LL |             yield &a
-   |                    ^ borrowed value does not live long enough
+LL |             (&a).yield
+   |               ^ borrowed value does not live long enough
 ...
 LL |     };
    |     - `a` dropped here while still borrowed

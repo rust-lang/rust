@@ -20,7 +20,7 @@ impl Drop for Dropper {
 fn main() {
     let mut g = #[coroutine]
     |mut _d| {
-        _d = yield;
+        _d = ().yield;
         _d
     };
 

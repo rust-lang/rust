@@ -24,7 +24,7 @@ fn main() {
     || {
         let a = Foo(5);
         let b = Bar(6);
-        yield;
+        ().yield;
         take(a);
         take(b);
     };

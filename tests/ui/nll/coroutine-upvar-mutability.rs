@@ -9,7 +9,7 @@ fn mutate_upvar() {
     move || {
         x = 1;
         //~^ ERROR
-        yield;
+        ().yield;
     };
 }
 

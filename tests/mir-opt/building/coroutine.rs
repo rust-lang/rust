@@ -16,14 +16,14 @@ use std::pin::Pin;
 fn main() {
     let simple = #[coroutine]
     |arg: String| {
-        yield ("first", arg.clone(), Location::caller());
-        yield ("second", arg.clone(), Location::caller());
+        ("first", arg.clone(), Location::caller()).yield;
+        ("second", arg.clone(), Location::caller()).yield;
     };
 
     let track_caller = #[track_caller]
     #[coroutine]
     |arg: String| {
-        yield ("first", arg.clone(), Location::caller());
-        yield ("second", arg.clone(), Location::caller());
+        ("first", arg.clone(), Location::caller()).yield;
+        ("second", arg.clone(), Location::caller()).yield;
     };
 }

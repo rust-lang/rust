@@ -31,7 +31,7 @@
 //!     1 - Coroutine has returned / is completed
 //!     2 - Coroutine has been poisoned
 //!
-//! It also rewrites `return x` and `yield y` as setting a new coroutine state and returning
+//! It also rewrites `return x` and `y.yield` as setting a new coroutine state and returning
 //! `CoroutineState::Complete(x)` and `CoroutineState::Yielded(y)`,
 //! or `Poll::Ready(x)` and `Poll::Pending` respectively.
 //! MIR locals which are live across a suspension point are moved to the coroutine struct
@@ -1573,7 +1573,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         // Run the transformation which converts Places from Local to coroutine struct
         // accesses for locals in `remap`.
-        // It also rewrites `return x` and `yield y` as writing a new coroutine state and returning
+        // It also rewrites `return x` and `y.yield` as writing a new coroutine state and returning
         // either `CoroutineState::Complete(x)` and `CoroutineState::Yielded(y)`,
         // or `Poll::Ready(x)` and `Poll::Pending` respectively depending on the coroutine kind.
         let mut transform = TransformVisitor {

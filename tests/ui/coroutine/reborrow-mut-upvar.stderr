@@ -5,7 +5,7 @@ LL |       #[coroutine] || {
    |  __________________^
 LL | |         {
 LL | |             let _baz = &*bar;
-LL | |             yield;
+LL | |             ().yield;
 ...  |
 LL | |         *bar = 2;
 LL | |     };

@@ -11,7 +11,7 @@ fn main() {
     |mut x: usize| {
         loop {
             drop(x);
-            x = yield;
+            x = ().yield;
         }
     };
 
@@ -20,7 +20,7 @@ fn main() {
     |mut x: Box<usize>| {
         loop {
             drop(x);
-            x = yield;
+            x = ().yield;
         }
     };
 

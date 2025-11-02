@@ -5,15 +5,15 @@
 use std::ops::Coroutine;
 
 fn foo() -> impl Coroutine<Yield = u32, Return = ()> { //~ ERROR: Coroutine` is not satisfied
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn bar() -> impl Coroutine<Yield = i64, Return = ()> { //~ ERROR: Coroutine` is not satisfied
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn baz() -> impl Coroutine<Yield = i32, Return = ()> { //~ ERROR: Coroutine` is not satisfied
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn main() {}

@@ -7,9 +7,9 @@
 
 fn foo() -> impl Iterator<Item = u32> {
     gen {
-        yield 42;
+        42.yield;
         for x in 3..6 {
-            yield x
+            x.yield;
         }
     }
 }
@@ -17,13 +17,13 @@ fn foo() -> impl Iterator<Item = u32> {
 fn moved() -> impl Iterator<Item = u32> {
     let mut x = "foo".to_string();
     gen move {
-        yield 42;
+        42.yield;
         if x == "foo" {
             return;
         }
         x.clear();
         for x in 3..6 {
-            yield x
+            x.yield;
         }
     }
 }

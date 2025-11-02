@@ -26,7 +26,7 @@ fn main() {
         if true {
             panic!();
         }
-        yield ();
+        ().yield;
     };
     let mut gen = Pin::new(&mut gen);
 

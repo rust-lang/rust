@@ -7,22 +7,22 @@ fn main() {
     || {
         {
             let w: i32 = 4;
-            yield;
+            ().yield;
             println!("{:?}", w);
         }
         {
             let x: i32 = 5;
-            yield;
+            ().yield;
             println!("{:?}", x);
         }
         {
             let y: i32 = 6;
-            yield;
+            ().yield;
             println!("{:?}", y);
         }
         {
             let z: i32 = 7;
-            yield;
+            ().yield;
             println!("{:?}", z);
         }
     };

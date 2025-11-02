@@ -13,7 +13,7 @@ fn foo() {
     static || {
         let x = &mut 0;
         *{
-            yield;
+            ().yield;
             x
         } += match { *"" }.len() {
             //~^ ERROR cannot move a value of type `str` [E0161]

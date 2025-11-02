@@ -16,7 +16,7 @@ fn main() {
     // remains `Unpin`.
     assert_unpin(#[coroutine] || {
         let pinned = PhantomPinned;
-        yield;
+        ().yield;
         drop(pinned);
     });
 }

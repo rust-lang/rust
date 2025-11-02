@@ -6,7 +6,7 @@ LL |       needs_coroutine(
 LL |           #[coroutine]
 LL | /         || {
 LL | |
-LL | |             yield ();
+LL | |             ().yield;
 LL | |         },
    | |_________^ the trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/coroutine.rs:20:9: 20:11}`
    |

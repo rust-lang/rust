@@ -13,7 +13,7 @@ fn rand_coroutine<'a>(rng: &'a ()) -> RandCoroutine<'a> {
     move || {
         let _rng = rng;
         loop {
-            yield 0;
+            0.yield;
         }
     }
 }
@@ -26,7 +26,7 @@ pub fn rand_coroutine_with_indirection<'a>(rng: &'a ()) -> RandCoroutineWithIndi
         move || {
             let _rng = rng;
             loop {
-                yield 0;
+                0.yield;
             }
         }
     }

@@ -794,14 +794,6 @@ impl<'a> State<'a> {
                 self.print_expr(e, FixupContext::default());
                 self.pclose();
             }
-            ast::ExprKind::Yield(YieldKind::Prefix(e)) => {
-                self.word("yield");
-
-                if let Some(expr) = e {
-                    self.space();
-                    self.print_expr(expr, fixup.rightmost_subexpression());
-                }
-            }
             ast::ExprKind::Yield(YieldKind::Postfix(e)) => {
                 self.print_expr_cond_paren(
                     e,

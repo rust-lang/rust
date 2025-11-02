@@ -11,6 +11,6 @@ fn main() {
     let gen_ = #[coroutine]
     || {
         let _s = String::new();
-        yield;
+        ().yield;
     };
 }

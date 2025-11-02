@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 fn dangle(x: &mut i32) -> &'static mut i32 {
     let mut g = #[coroutine] || {
-        yield;
+        ().yield;
         x
     };
     loop {

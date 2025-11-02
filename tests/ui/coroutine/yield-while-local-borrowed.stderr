@@ -6,7 +6,7 @@ LL |     let mut b = #[coroutine] move || {
 LL |         let a = &mut 3;
    |                 ^^^^^^
 LL |
-LL |         yield ();
+LL |         ().yield;
    |         -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable
@@ -23,7 +23,7 @@ LL |     let mut b = #[coroutine] move || {
 LL |             let b = &a;
    |                     ^^
 LL |
-LL |             yield ();
+LL |             ().yield;
    |             -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable

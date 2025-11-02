@@ -233,8 +233,8 @@ fn test_coroutine() {
 
     #[rustfmt::skip]
     let coroutine = #[track_caller] #[coroutine] |arg: String| {
-        yield ("first", arg.clone(), Location::caller());
-        yield ("second", arg.clone(), Location::caller());
+        ("first", arg.clone(), Location::caller()).yield;
+        ("second", arg.clone(), Location::caller()).yield;
     };
 
     let mut pinned = Box::pin(coroutine);

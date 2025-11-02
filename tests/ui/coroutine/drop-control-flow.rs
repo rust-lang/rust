@@ -24,7 +24,7 @@ fn one_armed_if(arg: bool) {
         if arg {
             drop(arr);
         }
-        yield;
+        ().yield;
     };
 }
 
@@ -36,7 +36,7 @@ fn two_armed_if(arg: bool) {
         } else {
             drop(arr);
         }
-        yield;
+        ().yield;
     })
 }
 
@@ -46,7 +46,7 @@ fn if_let(arg: Option<i32>) {
         if let Some(_) = arg {
             drop(arr);
         }
-        yield;
+        ().yield;
     };
 }
 
@@ -57,7 +57,7 @@ fn init_in_if(arg: bool) {
         if arg {
             x = NonSend;
         } else {
-            yield;
+            ().yield;
         }
     })
 }
@@ -68,7 +68,7 @@ fn init_in_match_arm(arg: Option<i32>) {
         drop(x);
         match arg {
             Some(_) => x = NonSend,
-            None => yield,
+            None => ().yield,
         }
     })
 }
@@ -78,7 +78,7 @@ fn reinit() {
         let mut arr = [Ptr];
         drop(arr);
         arr = [Ptr];
-        yield;
+        ().yield;
     };
 }
 
@@ -88,7 +88,7 @@ fn loop_uninit() {
         let mut count = 0;
         drop(arr);
         while count < 3 {
-            yield;
+            ().yield;
             arr = [Ptr];
             count += 1;
         }
@@ -102,7 +102,7 @@ fn nested_loop() {
         drop(arr);
         while count < 3 {
             for _ in 0..3 {
-                yield;
+                ().yield;
             }
             arr = [Ptr];
             count += 1;
@@ -117,7 +117,7 @@ fn loop_continue(b: bool) {
         drop(arr);
         while count < 3 {
             count += 1;
-            yield;
+            ().yield;
             if b {
                 arr = [Ptr];
                 continue;

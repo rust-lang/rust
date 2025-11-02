@@ -7,7 +7,7 @@ fn foo(x: &i32) {
     let mut a = &3;
     let mut b = #[coroutine]
     move || {
-        yield ();
+        ().yield;
         let b = 5;
         a = &b;
         //~^ ERROR borrowed data escapes outside of coroutine

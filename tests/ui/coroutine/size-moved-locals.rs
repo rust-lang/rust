@@ -28,7 +28,7 @@ fn move_before_yield() -> impl Coroutine<Yield = (), Return = ()> {
     static || {
         let first = Foo([0; FOO_SIZE]);
         let _second = first;
-        yield;
+        ().yield;
         // _second dropped here
     }
 }
@@ -41,7 +41,7 @@ fn move_before_yield_with_noop() -> impl Coroutine<Yield = (), Return = ()> {
         let first = Foo([0; FOO_SIZE]);
         noop();
         let _second = first;
-        yield;
+        ().yield;
         // _second dropped here
     }
 }
@@ -52,11 +52,11 @@ fn overlap_move_points() -> impl Coroutine<Yield = (), Return = ()> {
     #[coroutine]
     static || {
         let first = Foo([0; FOO_SIZE]);
-        yield;
+        ().yield;
         let second = first;
-        yield;
+        ().yield;
         let _third = second;
-        yield;
+        ().yield;
     }
 }
 
@@ -64,10 +64,10 @@ fn overlap_x_and_y() -> impl Coroutine<Yield = (), Return = ()> {
     #[coroutine]
     static || {
         let x = Foo([0; FOO_SIZE]);
-        yield;
+        ().yield;
         drop(x);
         let y = Foo([0; FOO_SIZE]);
-        yield;
+        ().yield;
         drop(y);
     }
 }

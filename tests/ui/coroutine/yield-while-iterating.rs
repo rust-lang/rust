@@ -11,7 +11,7 @@ fn yield_during_iter_owned_data(x: Vec<i32>) {
     // reference in scope, and it doesn't live long enough.
     let _b =#[coroutine]  move || {
         for p in &x { //~ ERROR
-            yield();
+            ().yield;
         }
     };
 }
@@ -19,7 +19,7 @@ fn yield_during_iter_owned_data(x: Vec<i32>) {
 fn yield_during_iter_borrowed_slice(x: &[i32]) {
     let _b = #[coroutine] move || {
         for p in x {
-            yield();
+            ().yield;
         }
     };
 }
@@ -28,7 +28,7 @@ fn yield_during_iter_borrowed_slice_2() {
     let mut x = vec![22_i32];
     let _b = #[coroutine] || {
         for p in &x {
-            yield();
+            ().yield;
         }
     };
     println!("{:?}", x);
@@ -40,7 +40,7 @@ fn yield_during_iter_borrowed_slice_3() {
     let mut x = vec![22_i32];
     let mut b = #[coroutine] || {
         for p in &mut x {
-            yield p;
+            p.yield;
         }
     };
     Pin::new(&mut b).resume(());
@@ -52,7 +52,7 @@ fn yield_during_iter_borrowed_slice_4() {
     let mut x = vec![22_i32];
     let mut b = #[coroutine] || {
         for p in &mut x {
-            yield p;
+            p.yield;
         }
     };
     println!("{}", x[0]); //~ ERROR
@@ -66,7 +66,7 @@ fn yield_during_range_iter() {
         let len = v.len();
         for i in 0..len {
             let x = v[i];
-            yield x;
+            x.yield;
         }
     };
     Pin::new(&mut b).resume(());

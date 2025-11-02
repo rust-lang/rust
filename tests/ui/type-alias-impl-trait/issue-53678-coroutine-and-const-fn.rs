@@ -11,7 +11,7 @@ pub type CoroOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
 pub const fn const_coroutine<Y, R>(yielding: Y, returning: R) -> CoroOnce<Y, R> {
     #[coroutine]
     move || {
-        yield yielding;
+        yielding.yield;
 
         return returning;
     }

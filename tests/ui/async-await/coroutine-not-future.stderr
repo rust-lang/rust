@@ -63,7 +63,7 @@ LL |       takes_future(
 LL |           #[coroutine]
 LL | /         |ctx| {
 LL | |
-LL | |             ctx = yield ();
+LL | |             ctx = ().yield;
 LL | |         },
    | |_________^ `{coroutine@$DIR/coroutine-not-future.rs:48:9: 48:14}` is not a future
    |

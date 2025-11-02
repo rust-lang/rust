@@ -12,7 +12,7 @@ fn main() {
         #[coroutine]
         |a: u8| {
             if false {
-                yield ();
+                ().yield;
             } else {
                 a
                 //~^ error: `if` and `else` have incompatible types

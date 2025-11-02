@@ -60,7 +60,7 @@ fn coroutine_capture() -> impl Sized {
 
     #[coroutine]
     move || {
-        yield;
+        ().yield;
         x;
     }
 }

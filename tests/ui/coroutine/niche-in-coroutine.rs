@@ -11,7 +11,7 @@ fn take<T>(_: T) {}
 fn main() {
     let x = false;
     let gen1 = #[coroutine] || {
-        yield;
+        ().yield;
         take(x);
     };
 

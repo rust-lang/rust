@@ -12,21 +12,21 @@ fn main() { }
 
 fn optimize_gen_block() -> impl Iterator<Item = ()> {
     #[optimize(speed)]
-    gen { yield (); }
+    gen { ().yield; }
 }
 
 #[optimize(speed)]
 gen fn optimize_gen_fn() -> i32 {
-    yield 1;
-    yield 2;
-    yield 3;
+    1.yield;
+    2.yield;
+    3.yield;
 }
 
 #[optimize(speed)]
 async gen fn optimize_async_gen_fn() -> i32 {
-    yield 1;
-    yield 2;
-    yield 3;
+    1.yield;
+    2.yield;
+    3.yield;
 }
 
 use std::async_iter::AsyncIterator;
@@ -34,6 +34,6 @@ use std::async_iter::AsyncIterator;
 pub fn deduce() -> impl AsyncIterator<Item = ()> {
     #[optimize(size)]
     async gen {
-        yield ();
+        ().yield;
     }
 }

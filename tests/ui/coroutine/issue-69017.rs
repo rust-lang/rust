@@ -12,7 +12,7 @@ use std::ops::Coroutine;
 fn gen() -> impl Coroutine<usize> {
     #[coroutine]
     |_: usize| {
-        println!("-> {}", yield);
+        println!("-> {}", ().yield);
     }
 }
 

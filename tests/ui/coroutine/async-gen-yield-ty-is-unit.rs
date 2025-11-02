@@ -6,7 +6,7 @@
 use std::{async_iter::AsyncIterator, pin::pin, task::{Context, Waker}};
 
 async gen fn gen_fn() -> &'static str {
-    yield "hello"
+    "hello".yield
 }
 
 pub fn main() {

@@ -4,7 +4,7 @@ warning: unused coroutine that must be used
 LL |       #[coroutine] || {
    |  __________________^
 LL | |         let b = true;
-LL | |         foo(yield, &b);
+LL | |         foo(().yield, &b);
 LL | |     };
    | |_____^
    |

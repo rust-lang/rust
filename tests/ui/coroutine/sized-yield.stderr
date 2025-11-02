@@ -3,7 +3,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
    |
 LL | /     move || {
 LL | |
-LL | |         yield s[..];
+LL | |         s[..].yield;
 LL | |     };
    | |_____^ doesn't have a size known at compile-time
    |

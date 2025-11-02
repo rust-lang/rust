@@ -12,11 +12,11 @@ fn foo(x: &mut u32) {
     #[coroutine]
     move || {
         let s = &mut *x;
-        yield;
+        ().yield;
         *s += 1;
 
         let t = &mut *x;
-        yield;
+        ().yield;
         *t += 1;
     };
 }

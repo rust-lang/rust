@@ -3,7 +3,7 @@ warning: unreachable statement
    |
 LL |         panic!("foo");
    |         ------------- any code following this expression is unreachable
-LL |         yield 69;
+LL |         69.yield;
    |         ^^^^^^^^^ unreachable statement
    |
    = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default

@@ -11,7 +11,7 @@ fn test1() {
     let copyable: u32 = 123;
     let gen_copy_0 = #[coroutine]
     move || {
-        yield;
+        ().yield;
         drop(copyable);
     };
     check_copy(&gen_copy_0);
@@ -28,7 +28,7 @@ fn test2() {
         drop(v);
         drop(n);
         */
-        yield;
+        ().yield;
         let v = vec!['a'];
         let n = NonClone;
         drop(n);
@@ -42,7 +42,7 @@ fn test3_upvars() {
     let clonable_0: Vec<u32> = Vec::new();
     let gen_clone_0 = #[coroutine]
     move || {
-        yield;
+        ().yield;
         drop(clonable_0);
     };
     check_copy(&gen_clone_0);
@@ -54,7 +54,7 @@ fn test3_witness() {
     let gen_clone_1 = #[coroutine]
     move || {
         let v = vec!['a'];
-        yield;
+        ().yield;
         drop(v);
     };
     check_copy(&gen_clone_1);
@@ -66,7 +66,7 @@ fn test4() {
     let clonable_1: Vec<u32> = Vec::new();
     let gen_clone_1 = #[coroutine]
     move || {
-        yield;
+        ().yield;
         let n = NonClone;
         drop(n);
         drop(clonable_1);
@@ -80,7 +80,7 @@ fn test5() {
     let non_clonable: NonClone = NonClone;
     let gen_non_clone = #[coroutine]
     move || {
-        yield;
+        ().yield;
         drop(non_clonable);
     };
     check_copy(&gen_non_clone);

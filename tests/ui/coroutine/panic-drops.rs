@@ -31,7 +31,7 @@ fn main() {
             panic!();
         }
         drop(b);
-        yield;
+        ().yield;
     };
 
     assert_eq!(A.load(Ordering::SeqCst), 0);
@@ -45,7 +45,7 @@ fn main() {
             panic!();
         }
         drop(B);
-        yield;
+        ().yield;
     };
 
     assert_eq!(A.load(Ordering::SeqCst), 1);
