@@ -1063,7 +1063,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
                 target.map(|target| (return_dest, target))
             }
-            CallKind::Tail => None,
+            CallKind::Tail => {
+                if fn_abi.ret.is_indirect() {
+                    match self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs) {
+                        ReturnDest::Nothing => {}
+                        _ => bug!(
+                            "tail calls to functions with indirect returns cannot store into a destination"
+                        ),
+                    }
+                }
+                None
+            }
         };
 
         // Split the rust-call tupled arguments off.
