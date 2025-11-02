@@ -6,8 +6,6 @@ LL |     let &(0 | _) = bad_ref;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/read_from_trivial_switch.rs:LL:CC
 
 Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
 ALLOC DUMP
