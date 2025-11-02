@@ -6,7 +6,6 @@ mod assert {
     pub fn is_transmutable<Src, const ASSUME_ALIGNMENT: bool>()
     where
         Dst: TransmuteFrom<Src, ASSUME_ALIGNMENT>, //~ ERROR cannot find type `Dst` in this scope
-                                                   //~| ERROR the constant `ASSUME_ALIGNMENT` is not of type `Assume`
     {
     }
 }

@@ -8,11 +8,11 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEntries};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
-use rustc_middle::mir::{Body, ConstraintCategory, DefinitionSiteHiddenTypes};
+use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, EarlyBinder, FallibleTypeFolder, GenericArg, GenericArgsRef,
-    OpaqueHiddenType, OpaqueTypeKey, Region, RegionVid, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, fold_regions,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, GenericArg,
+    GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -48,7 +48,7 @@ pub(crate) enum DeferredOpaqueTypeError<'tcx> {
         /// The opaque type.
         opaque_type_key: OpaqueTypeKey<'tcx>,
         /// The hidden type containing the member region.
-        hidden_type: OpaqueHiddenType<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
         /// The unexpected region.
         member_region: Region<'tcx>,
     },
@@ -67,7 +67,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>) {
+) -> (OpaqueTypeStorageEntries, Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>) {
     let opaque_types = infcx.clone_opaque_types();
     let opaque_types_storage_num_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
     let opaque_types = opaque_types
@@ -131,27 +131,26 @@ fn nll_var_to_universal_region<'tcx>(
 /// and errors if we end up with distinct hidden types.
 fn add_hidden_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     def_id: LocalDefId,
-    hidden_ty: OpaqueHiddenType<'tcx>,
+    hidden_ty: ty::DefinitionSiteHiddenType<'tcx>,
 ) {
     // Sometimes two opaque types are the same only after we remap the generic parameters
     // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to
     // `(X, Y)` and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we
     // only know that once we convert the generic parameters to those of the opaque type.
-    if let Some(prev) = hidden_types.0.get_mut(&def_id) {
-        if prev.ty != hidden_ty.ty {
-            let guar = hidden_ty.ty.error_reported().err().unwrap_or_else(|| {
-                let (Ok(e) | Err(e)) = prev.build_mismatch_error(&hidden_ty, tcx).map(|d| d.emit());
-                e
-            });
-            prev.ty = Ty::new_error(tcx, guar);
+    if let Some(prev) = hidden_types.get_mut(&def_id) {
+        if prev.ty == hidden_ty.ty {
+            // Pick a better span if there is one.
+            // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
+            prev.span = prev.span.substitute_dummy(hidden_ty.span);
+        } else {
+            let (Ok(guar) | Err(guar)) =
+                prev.build_mismatch_error(&hidden_ty, tcx).map(|d| d.emit());
+            *prev = ty::DefinitionSiteHiddenType::new_error(tcx, guar);
         }
-        // Pick a better span if there is one.
-        // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
-        prev.span = prev.span.substitute_dummy(hidden_ty.span);
     } else {
-        hidden_types.0.insert(def_id, hidden_ty);
+        hidden_types.insert(def_id, hidden_ty);
     }
 }
 
@@ -162,7 +161,7 @@ struct DefiningUse<'tcx> {
     /// to interact with code outside of `rustc_borrowck`.
     opaque_type_key: OpaqueTypeKey<'tcx>,
     arg_regions: Vec<RegionVid>,
-    hidden_type: OpaqueHiddenType<'tcx>,
+    hidden_type: ProvisionalHiddenType<'tcx>,
 }
 
 /// This computes the actual hidden types of the opaque types and maps them to their
@@ -181,8 +180,8 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
     location_map: Rc<DenseLocationMap>,
-    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let mut errors = Vec::new();
     // When computing the hidden type we need to track member constraints.
@@ -216,8 +215,8 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
 #[instrument(level = "debug", skip_all, ret)]
 fn collect_defining_uses<'tcx>(
     rcx: &mut RegionCtxt<'_, 'tcx>,
-    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) -> Vec<DefiningUse<'tcx>> {
     let infcx = rcx.infcx;
@@ -240,7 +239,7 @@ fn collect_defining_uses<'tcx>(
                         infcx.tcx,
                         hidden_types,
                         opaque_type_key.def_id,
-                        OpaqueHiddenType::new_error(infcx.tcx, guar),
+                        DefinitionSiteHiddenType::new_error(infcx.tcx, guar),
                     ),
                     _ => debug!(?non_nll_opaque_type_key, ?err, "ignoring non-defining use"),
                 }
@@ -276,7 +275,7 @@ fn collect_defining_uses<'tcx>(
 #[instrument(level = "debug", skip(rcx, hidden_types, defining_uses, errors))]
 fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
     rcx: &RegionCtxt<'_, 'tcx>,
-    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     defining_uses: &[DefiningUse<'tcx>],
     errors: &mut Vec<DeferredOpaqueTypeError<'tcx>>,
 ) {
@@ -303,21 +302,20 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
                         hidden_type.span,
                         "opaque type with non-universal region args",
                     );
-                    ty::OpaqueHiddenType::new_error(tcx, guar)
+                    ty::ProvisionalHiddenType::new_error(tcx, guar)
                 }
             };
 
         // Now that we mapped the member regions to their final value,
         // map the arguments of the opaque type key back to the parameters
         // of the opaque type definition.
-        let ty = infcx
+        let hidden_type = infcx
             .infer_opaque_definition_from_instantiation(opaque_type_key, hidden_type)
             .unwrap_or_else(|_| {
-                Ty::new_error_with_message(
-                    rcx.infcx.tcx,
-                    hidden_type.span,
-                    "deferred invalid opaque type args",
-                )
+                let guar = tcx
+                    .dcx()
+                    .span_delayed_bug(hidden_type.span, "deferred invalid opaque type args");
+                DefinitionSiteHiddenType::new_error(tcx, guar)
             });
 
         // Sometimes, when the hidden type is an inference variable, it can happen that
@@ -325,7 +323,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
         // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
         // writeback.
         if !rcx.infcx.tcx.use_typing_mode_borrowck() {
-            if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
+            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.skip_binder().kind()
                 && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
                 && alias_ty.args == opaque_type_key.args
             {
@@ -357,12 +355,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
                 },
             ));
         }
-        add_hidden_type(
-            tcx,
-            hidden_types,
-            opaque_type_key.def_id,
-            OpaqueHiddenType { span: hidden_type.span, ty },
-        );
+        add_hidden_type(tcx, hidden_types, opaque_type_key.def_id, hidden_type);
     }
 }
 
@@ -495,14 +488,13 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     region_bound_pairs: &RegionBoundPairs<'tcx>,
     known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
-    hidden_types: &mut DefinitionSiteHiddenTypes<'tcx>,
-    opaque_types: &[(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)],
+    hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+    opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],
 ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
     let tcx = infcx.tcx;
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
-        let Some(expected) = hidden_types.0.get(&key.def_id).map(|ty| EarlyBinder::bind(*ty))
-        else {
+        let Some(expected) = hidden_types.get(&key.def_id) else {
             if !tcx.use_typing_mode_borrowck() {
                 if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
                     && alias_ty.def_id == key.def_id.to_def_id()
@@ -521,20 +513,26 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
                 hidden_type.span,
                 "non-defining use in the defining scope with no defining uses",
             );
-            add_hidden_type(tcx, hidden_types, key.def_id, OpaqueHiddenType::new_error(tcx, guar));
+            add_hidden_type(
+                tcx,
+                hidden_types,
+                key.def_id,
+                DefinitionSiteHiddenType::new_error(tcx, guar),
+            );
             continue;
         };
 
         // We erase all non-member region of the opaque and need to treat these as existentials.
-        let expected = ty::fold_regions(tcx, expected.instantiate(tcx, key.args), |re, _dbi| {
-            match re.kind() {
-                ty::ReErased => infcx.next_nll_region_var(
-                    NllRegionVariableOrigin::Existential { name: None },
-                    || crate::RegionCtxt::Existential(None),
-                ),
-                _ => re,
-            }
-        });
+        let expected_ty =
+            ty::fold_regions(tcx, expected.ty.instantiate(tcx, key.args), |re, _dbi| {
+                match re.kind() {
+                    ty::ReErased => infcx.next_nll_region_var(
+                        NllRegionVariableOrigin::Existential { name: None },
+                        || crate::RegionCtxt::Existential(None),
+                    ),
+                    _ => re,
+                }
+            });
 
         // We now simply equate the expected with the actual hidden type.
         let locations = Locations::All(hidden_type.span);
@@ -555,13 +553,18 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
                     );
                     // We need to normalize both types in the old solver before equatingt them.
                     let actual_ty = ocx.normalize(&cause, infcx.param_env, hidden_type.ty);
-                    let expected_ty = ocx.normalize(&cause, infcx.param_env, expected.ty);
+                    let expected_ty = ocx.normalize(&cause, infcx.param_env, expected_ty);
                     ocx.eq(&cause, infcx.param_env, actual_ty, expected_ty).map_err(|_| NoSolution)
                 },
                 "equating opaque types",
             ),
         ) {
-            add_hidden_type(tcx, hidden_types, key.def_id, OpaqueHiddenType::new_error(tcx, guar));
+            add_hidden_type(
+                tcx,
+                hidden_types,
+                key.def_id,
+                DefinitionSiteHiddenType::new_error(tcx, guar),
+            );
         }
     }
     errors
@@ -676,8 +679,8 @@ impl<'tcx> InferCtxt<'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: OpaqueHiddenType<'tcx>,
-    ) -> Result<Ty<'tcx>, NonDefiningUseReason<'tcx>> {
+        instantiated_ty: ProvisionalHiddenType<'tcx>,
+    ) -> Result<ty::DefinitionSiteHiddenType<'tcx>, NonDefiningUseReason<'tcx>> {
         opaque_type_has_defining_use_args(
             self,
             opaque_type_key,
@@ -685,15 +688,12 @@ impl<'tcx> InferCtxt<'tcx> {
             DefiningScopeKind::MirBorrowck,
         )?;
 
-        let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(
-                opaque_type_key,
-                self.tcx,
-                DefiningScopeKind::MirBorrowck,
-            )
-            .ty;
-
-        definition_ty.error_reported()?;
+        let definition_ty = instantiated_ty.remap_generic_params_to_declaration_params(
+            opaque_type_key,
+            self.tcx,
+            DefiningScopeKind::MirBorrowck,
+        );
+        definition_ty.ty.skip_binder().error_reported()?;
         Ok(definition_ty)
     }
 }
