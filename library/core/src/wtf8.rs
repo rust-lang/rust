@@ -33,7 +33,8 @@ use crate::{ops, slice, str};
 /// Compares with the `char` type,
 /// which represents a Unicode scalar value:
 /// a code point that is not a surrogate (U+D800 to U+DFFF).
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+#[derive(Clone, Copy)]
+#[derive_const(Eq, PartialEq, Ord, PartialOrd)]
 #[doc(hidden)]
 pub struct CodePoint(CodePointInner);
 
@@ -123,7 +124,7 @@ impl CodePoint {
 ///
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
-#[derive(Eq, Ord, PartialEq, PartialOrd)]
+#[derive_const(Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 #[rustc_has_incoherent_inherent_impls]
 #[doc(hidden)]
