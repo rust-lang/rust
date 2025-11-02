@@ -457,10 +457,13 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.declare_fn(symbol_name, fn_abi)
             }
             _ => {
+                let rust_name;
                 let name = if wants_msvc_seh(self.sess()) {
                     "__CxxFrameHandler3"
                 } else {
-                    "rust_eh_personality"
+                    rust_name =
+                        rustc_symbol_mangling::mangle_internal_symbol(tcx, "rust_eh_personality");
+                    &rust_name
                 };
                 self.declare_func(name, self.type_i32(), &[], true)
             }
