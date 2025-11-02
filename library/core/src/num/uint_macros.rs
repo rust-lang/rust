@@ -1222,10 +1222,10 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(exact_div)]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(2), Some(32));")]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(32), Some(2));")]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_exact_div(0), None);")]
-        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".checked_exact_div(2), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_div_exact(2), Some(32));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_div_exact(32), Some(2));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_div_exact(0), None);")]
+        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".checked_div_exact(2), None);")]
         /// ```
         #[unstable(
             feature = "exact_div",
@@ -1234,7 +1234,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_exact_div(self, rhs: Self) -> Option<Self> {
+        pub const fn checked_div_exact(self, rhs: Self) -> Option<Self> {
             if intrinsics::unlikely(rhs == 0) {
                 None
             } else {
@@ -1259,9 +1259,9 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(exact_div)]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(2), Some(32));")]
-        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".exact_div(32), Some(2));")]
-        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".exact_div(2), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".div_exact(2), Some(32));")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".div_exact(32), Some(2));")]
+        #[doc = concat!("assert_eq!(65", stringify!($SelfT), ".div_exact(2), None);")]
         /// ```
         #[unstable(
             feature = "exact_div",
@@ -1271,7 +1271,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn exact_div(self, rhs: Self) -> Option<Self> {
+        pub const fn div_exact(self, rhs: Self) -> Option<Self> {
             if self % rhs != 0 {
                 None
             } else {
@@ -1284,7 +1284,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when `rhs == 0` or `self % rhs != 0`,
-        /// i.e. when [`checked_exact_div`](Self::checked_exact_div) would return `None`.
+        /// i.e. when [`checked_div_exact`](Self::checked_div_exact) would return `None`.
         #[unstable(
             feature = "exact_div",
             issue = "139911",
@@ -1292,10 +1292,10 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const unsafe fn unchecked_exact_div(self, rhs: Self) -> Self {
+        pub const unsafe fn unchecked_div_exact(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_exact_div divide by zero or leave a remainder"),
+                concat!(stringify!($SelfT), "::unchecked_div_exact divide by zero or leave a remainder"),
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
