@@ -1127,6 +1127,11 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    pub(crate) fn LLVMAddFunction<'a>(
+        Mod: &'a Module,
+        Name: *const c_char,
+        FunctionTy: &'a Type,
+    ) -> &'a Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
@@ -2017,6 +2022,7 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
+    pub(crate) fn LLVMRustOffloadMapper<'a>(M: &'a Module, Fn: &'a Value, Fn: &'a Value);
     pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
         M: &'a Module,
         Name: *const c_char,

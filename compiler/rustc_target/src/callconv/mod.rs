@@ -578,6 +578,7 @@ impl RiscvInterruptKind {
 ///
 /// The signature represented by this type may not match the MIR function signature.
 /// Certain attributes, like `#[track_caller]` can introduce additional arguments, which are present in [`FnAbi`], but not in `FnSig`.
+/// The std::offload module also adds an addition dyn_ptr argument to the GpuKernel ABI.
 /// While this difference is rarely relevant, it should still be kept in mind.
 ///
 /// I will do my best to describe this structure, but these
