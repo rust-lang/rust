@@ -1,8 +1,8 @@
-error[E0277]: the type `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+error[E0277]: the type `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
   --> $DIR/interior-mutability.rs:6:18
    |
 LL |     catch_unwind(|| { x.set(23); });
-   |     ------------ ^^^^^^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
+   |     ------------ ^^^^^^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
    |     |
    |     required by a bound introduced by this call
    |

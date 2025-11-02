@@ -153,6 +153,7 @@ mod handlers {
     mod flip_comma;
     mod flip_or_pattern;
     mod flip_trait_bound;
+    mod generate_blanket_trait_impl;
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
@@ -200,6 +201,7 @@ mod handlers {
     mod qualify_path;
     mod raw_string;
     mod remove_dbg;
+    mod remove_else_branches;
     mod remove_mut;
     mod remove_parentheses;
     mod remove_underscore;
@@ -283,6 +285,7 @@ mod handlers {
             extract_type_alias::extract_type_alias,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
+            flip_binexpr::flip_range_expr,
             flip_comma::flip_comma,
             flip_or_pattern::flip_or_pattern,
             flip_trait_bound::flip_trait_bound,
@@ -308,6 +311,7 @@ mod handlers {
             generate_new::generate_new,
             generate_trait_from_impl::generate_trait_from_impl,
             generate_single_field_struct_from::generate_single_field_struct_from,
+            generate_blanket_trait_impl::generate_blanket_trait_impl,
             inline_call::inline_call,
             inline_call::inline_into_callers,
             inline_const_as_literal::inline_const_as_literal,
@@ -340,6 +344,7 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            remove_else_branches::remove_else_branches,
             remove_parentheses::remove_parentheses,
             remove_underscore::remove_underscore,
             remove_unused_imports::remove_unused_imports,

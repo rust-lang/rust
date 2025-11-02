@@ -1,0 +1,22 @@
+error[E0574]: expected struct, variant or union type, found enum `Option`
+  --> $DIR/struct-fields-ice-147325.rs:9:5
+   |
+LL |     Option { field1: m::Priv1 }
+   |     ^^^^^^ not a struct, variant or union type
+
+error[E0603]: unit struct `Priv1` is private
+  --> $DIR/struct-fields-ice-147325.rs:9:25
+   |
+LL |     Option { field1: m::Priv1 }
+   |                         ^^^^^ private unit struct
+   |
+note: the unit struct `Priv1` is defined here
+  --> $DIR/struct-fields-ice-147325.rs:5:5
+   |
+LL |     struct Priv1;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0574, E0603.
+For more information about an error, try `rustc --explain E0574`.

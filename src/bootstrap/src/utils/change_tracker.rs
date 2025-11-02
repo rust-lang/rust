@@ -556,4 +556,24 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
     },
+    ChangeInfo {
+        change_id: 147046,
+        severity: ChangeSeverity::Warning,
+        summary: "The `rust.use-lld` option has been renamed to `rust.bootstrap-override-lld`. Note that it only serves for overriding the linker used when building Rust code in bootstrap to be LLD.",
+    },
+    ChangeInfo {
+        change_id: 146929,
+        severity: ChangeSeverity::Info,
+        summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
+    },
+    ChangeInfo {
+        change_id: 147157,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.lld = true` no longer automatically causes the `x86_64-unknown-linux-gnu` target to default into using the self-contained LLD linker. This target now uses the LLD linker by default. To opt out, set `target.x86_64-unknown-linux-gnu.default-linker-linux-override = 'off'`.",
+    },
+    ChangeInfo {
+        change_id: 147888,
+        severity: ChangeSeverity::Info,
+        summary: "`llvm.enzyme` now works with `download-ci-llvm=true`.",
+    },
 ];

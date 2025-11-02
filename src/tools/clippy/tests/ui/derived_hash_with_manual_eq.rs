@@ -41,3 +41,19 @@ impl std::hash::Hash for Bah {
 }
 
 fn main() {}
+
+mod issue15708 {
+    // Check that the lint posts on the type definition node
+    #[expect(clippy::derived_hash_with_manual_eq)]
+    #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord, Hash)]
+    pub struct Span {
+        start: usize,
+        end: usize,
+    }
+
+    impl PartialEq for Span {
+        fn eq(&self, other: &Self) -> bool {
+            self.start.cmp(&other.start).then(self.end.cmp(&other.end)).is_eq()
+        }
+    }
+}

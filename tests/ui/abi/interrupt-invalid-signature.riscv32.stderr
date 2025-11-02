@@ -1,5 +1,5 @@
 error: invalid signature for `extern "riscv-interrupt-m"` function
-  --> $DIR/interrupt-invalid-signature.rs:48:43
+  --> $DIR/interrupt-invalid-signature.rs:49:43
    |
 LL | extern "riscv-interrupt-m" fn riscv_m_arg(_byte: u8) {}
    |                                           ^^^^^^^^^
@@ -12,7 +12,7 @@ LL + extern "riscv-interrupt-m" fn riscv_m_arg() {}
    |
 
 error: invalid signature for `extern "riscv-interrupt-s"` function
-  --> $DIR/interrupt-invalid-signature.rs:52:43
+  --> $DIR/interrupt-invalid-signature.rs:53:43
    |
 LL | extern "riscv-interrupt-s" fn riscv_s_arg(_byte: u8) {}
    |                                           ^^^^^^^^^
@@ -25,7 +25,7 @@ LL + extern "riscv-interrupt-s" fn riscv_s_arg() {}
    |
 
 error: invalid signature for `extern "riscv-interrupt-m"` function
-  --> $DIR/interrupt-invalid-signature.rs:71:48
+  --> $DIR/interrupt-invalid-signature.rs:72:48
    |
 LL | extern "riscv-interrupt-m" fn riscv_m_ret() -> u8 {
    |                                                ^^
@@ -38,7 +38,7 @@ LL + extern "riscv-interrupt-m" fn riscv_m_ret() {
    |
 
 error: invalid signature for `extern "riscv-interrupt-s"` function
-  --> $DIR/interrupt-invalid-signature.rs:77:48
+  --> $DIR/interrupt-invalid-signature.rs:78:48
    |
 LL | extern "riscv-interrupt-s" fn riscv_s_ret() -> u8 {
    |                                                ^^

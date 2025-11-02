@@ -536,17 +536,9 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        let to_timestamp = |time: Option<SystemTime>| match time {
-            Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
-            Some(_) => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time",
-            )),
-            None => Ok(0),
-        };
         self.fd.filestat_set_times(
-            to_timestamp(times.accessed)?,
-            to_timestamp(times.modified)?,
+            to_wasi_timestamp_or_now(times.accessed)?,
+            to_wasi_timestamp_or_now(times.modified)?,
             times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
                 | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
         )
@@ -641,6 +633,45 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     // Permissions haven't been fully figured out in wasi yet, so this is
     // likely temporary
     unsupported()
+}
+
+#[inline(always)]
+pub fn set_times(p: &Path, times: FileTimes) -> io::Result<()> {
+    let (dir, file) = open_parent(p)?;
+    set_times_impl(&dir, &file, times, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW)
+}
+
+#[inline(always)]
+pub fn set_times_nofollow(p: &Path, times: FileTimes) -> io::Result<()> {
+    let (dir, file) = open_parent(p)?;
+    set_times_impl(&dir, &file, times, 0)
+}
+
+fn to_wasi_timestamp_or_now(time: Option<SystemTime>) -> io::Result<wasi::Timestamp> {
+    match time {
+        Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
+        Some(_) => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too large to set as a file time",
+        )),
+        None => Ok(0),
+    }
+}
+
+fn set_times_impl(
+    fd: &WasiFd,
+    path: &Path,
+    times: FileTimes,
+    flags: wasi::Lookupflags,
+) -> io::Result<()> {
+    fd.path_filestat_set_times(
+        flags,
+        osstr2str(path.as_ref())?,
+        to_wasi_timestamp_or_now(times.accessed)?,
+        to_wasi_timestamp_or_now(times.modified)?,
+        times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
+            | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
+    )
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {

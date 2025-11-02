@@ -154,7 +154,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         impl1_def_id: DefId,
         impl2_def_id: DefId,
     ) -> Result<(), ErrorGuaranteed> {
-        let maybe_overlap = traits::overlapping_impls(
+        let maybe_overlap = traits::overlapping_inherent_impls(
             self.tcx,
             impl1_def_id,
             impl2_def_id,

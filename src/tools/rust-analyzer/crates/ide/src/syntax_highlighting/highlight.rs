@@ -137,7 +137,7 @@ fn punctuation(
         }
         (T![!], MACRO_RULES) => HlPunct::MacroBang.into(),
         (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
-        (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
+        (T![!], PREFIX_EXPR) => HlOperator::Negation.into(),
         (T![*], PTR_TYPE) => HlTag::Keyword.into(),
         (T![*], PREFIX_EXPR) => {
             let h = HlTag::Operator(HlOperator::Other).into();

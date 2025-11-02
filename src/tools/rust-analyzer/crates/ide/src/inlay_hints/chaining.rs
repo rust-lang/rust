@@ -13,7 +13,7 @@ use super::label_of_ty;
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     expr: &ast::Expr,
 ) -> Option<()> {
@@ -93,7 +93,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_expect_clear_loc(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {

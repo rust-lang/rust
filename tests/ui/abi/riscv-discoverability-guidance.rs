@@ -6,6 +6,7 @@
 //@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf -C target-feature=-unaligned-scalar-mem --crate-type=rlib
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf -C target-feature=-unaligned-scalar-mem --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items, abi_riscv_interrupt)]
 

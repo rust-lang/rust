@@ -5,6 +5,7 @@
 //@ revisions: cfail1 cfail2 cfail3
 //@ compile-flags: -Z query-dep-graph -O
 //@ build-pass
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]

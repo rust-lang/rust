@@ -150,10 +150,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                     {
                         layout.for_variant(self.fx.cx, vidx)
                     }
-                    mir::PlaceElem::Subtype(subtype_ty) => {
-                        let subtype_ty = self.fx.monomorphize(subtype_ty);
-                        self.fx.cx.layout_of(subtype_ty)
-                    }
                     _ => {
                         self.locals[place_ref.local] = LocalKind::Memory;
                         return;
@@ -233,7 +229,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
-                | MutatingUseContext::Deinit
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
@@ -263,6 +258,10 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
 
             PlaceContext::MutatingUse(MutatingUseContext::Yield) => bug!(),
         }
+    }
+
+    fn visit_statement_debuginfo(&mut self, _: &mir::StmtDebugInfo<'tcx>, _: Location) {
+        // Debuginfo does not generate actual code.
     }
 }
 

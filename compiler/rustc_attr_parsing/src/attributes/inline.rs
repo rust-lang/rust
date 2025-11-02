@@ -56,8 +56,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                 }
             }
             ArgParser::NameValue(_) => {
-                let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
-                    .suggestions(cx.attr_style, "inline");
+                let suggestions = cx.suggestions();
                 let span = cx.attr_span;
                 cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                 return None;
@@ -72,7 +71,11 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &'static [Symbol] = &[sym::rustc_force_inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+    ]);
+
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {

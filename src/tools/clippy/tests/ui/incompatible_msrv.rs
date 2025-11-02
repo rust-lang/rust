@@ -168,4 +168,14 @@ fn enum_variant_ok() {
     let _ = const { std::io::ErrorKind::InvalidFilename };
 }
 
+#[clippy::msrv = "1.38.0"]
+const fn uncalled_len() {
+    let _ = Vec::<usize>::len;
+    let x = str::len;
+    let _ = x("");
+    //~^ incompatible_msrv
+    let _ = "".len();
+    //~^ incompatible_msrv
+}
+
 fn main() {}

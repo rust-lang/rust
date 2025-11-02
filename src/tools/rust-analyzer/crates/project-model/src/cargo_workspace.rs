@@ -5,7 +5,7 @@ use std::str::from_utf8;
 
 use anyhow::Context;
 use base_db::Env;
-use cargo_metadata::{CargoOpt, MetadataCommand};
+use cargo_metadata::{CargoOpt, MetadataCommand, PackageId};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -13,11 +13,12 @@ use serde_derive::Deserialize;
 use serde_json::from_value;
 use span::Edition;
 use stdx::process::spawn_with_streaming_output;
-use toolchain::Tool;
+use toolchain::{NO_RUSTUP_AUTO_INSTALL_ENV, Tool};
+use triomphe::Arc;
 
-use crate::cargo_config_file::make_lockfile_copy;
-use crate::{CfgOverrides, InvocationStrategy};
-use crate::{ManifestPath, Sysroot};
+use crate::{
+    CfgOverrides, InvocationStrategy, ManifestPath, Sysroot, cargo_config_file::make_lockfile_copy,
+};
 
 pub(crate) const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH: semver::Version =
     semver::Version {
@@ -48,8 +49,9 @@ pub struct CargoWorkspace {
     is_virtual_workspace: bool,
     /// Whether this workspace represents the sysroot workspace.
     is_sysroot: bool,
-    /// Environment variables set in the `.cargo/config` file.
-    config_env: Env,
+    /// Environment variables set in the `.cargo/config` file and the extraEnv
+    /// configuration option.
+    env: Env,
     requires_rustc_private: bool,
 }
 
@@ -155,8 +157,8 @@ pub struct PackageData {
     pub features: FxHashMap<String, Vec<String>>,
     /// List of features enabled on this package
     pub active_features: Vec<String>,
-    /// String representation of package id
-    pub id: String,
+    /// Package id
+    pub id: Arc<PackageId>,
     /// Authors as given in the `Cargo.toml`
     pub authors: Vec<String>,
     /// Description as given in the `Cargo.toml`
@@ -173,6 +175,10 @@ pub struct PackageData {
     pub rust_version: Option<semver::Version>,
     /// The contents of [package.metadata.rust-analyzer]
     pub metadata: RustAnalyzerPackageMetaData,
+    /// If this package is a member of the workspace, store all direct and transitive
+    /// dependencies as long as they are workspace members, to track dependency relationships
+    /// between members.
+    pub all_member_deps: Option<FxHashSet<Package>>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, Eq, PartialEq)]
@@ -320,7 +326,7 @@ impl CargoWorkspace {
     pub fn new(
         mut meta: cargo_metadata::Metadata,
         ws_manifest_path: ManifestPath,
-        cargo_config_env: Env,
+        cargo_env: Env,
         is_sysroot: bool,
     ) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
@@ -333,6 +339,8 @@ impl CargoWorkspace {
         let target_directory = AbsPathBuf::assert(meta.target_directory);
         let mut is_virtual_workspace = true;
         let mut requires_rustc_private = false;
+
+        let mut members = FxHashSet::default();
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
@@ -356,6 +364,7 @@ impl CargoWorkspace {
                 rust_version,
                 ..
             } = meta_pkg;
+            let id = Arc::new(id);
             let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
             let edition = match edition {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
@@ -375,7 +384,7 @@ impl CargoWorkspace {
             let manifest = ManifestPath::try_from(AbsPathBuf::assert(manifest_path)).unwrap();
             is_virtual_workspace &= manifest != ws_manifest_path;
             let pkg = packages.alloc(PackageData {
-                id: id.repr.clone(),
+                id: id.clone(),
                 name: name.to_string(),
                 version,
                 manifest: manifest.clone(),
@@ -395,7 +404,11 @@ impl CargoWorkspace {
                 features: features.into_iter().collect(),
                 active_features: Vec::new(),
                 metadata: meta.rust_analyzer.unwrap_or_default(),
+                all_member_deps: None,
             });
+            if is_member {
+                members.insert(pkg);
+            }
             let pkg_data = &mut packages[pkg];
             requires_rustc_private |= pkg_data.metadata.rustc_private;
             pkg_by_id.insert(id, pkg);
@@ -440,6 +453,43 @@ impl CargoWorkspace {
                 .extend(node.features.into_iter().map(|it| it.to_string()));
         }
 
+        fn saturate_all_member_deps(
+            packages: &mut Arena<PackageData>,
+            to_visit: Package,
+            visited: &mut FxHashSet<Package>,
+            members: &FxHashSet<Package>,
+        ) {
+            let pkg_data = &mut packages[to_visit];
+
+            if !visited.insert(to_visit) {
+                return;
+            }
+
+            let deps: Vec<_> = pkg_data
+                .dependencies
+                .iter()
+                .filter_map(|dep| {
+                    let pkg = dep.pkg;
+                    if members.contains(&pkg) { Some(pkg) } else { None }
+                })
+                .collect();
+
+            let mut all_member_deps = FxHashSet::from_iter(deps.iter().copied());
+            for dep in deps {
+                saturate_all_member_deps(packages, dep, visited, members);
+                if let Some(transitives) = &packages[dep].all_member_deps {
+                    all_member_deps.extend(transitives);
+                }
+            }
+
+            packages[to_visit].all_member_deps = Some(all_member_deps);
+        }
+
+        let mut visited = FxHashSet::default();
+        for member in members.iter() {
+            saturate_all_member_deps(&mut packages, *member, &mut visited, &members);
+        }
+
         CargoWorkspace {
             packages,
             targets,
@@ -449,7 +499,7 @@ impl CargoWorkspace {
             is_virtual_workspace,
             requires_rustc_private,
             is_sysroot,
-            config_env: cargo_config_env,
+            env: cargo_env,
         }
     }
 
@@ -540,7 +590,7 @@ impl CargoWorkspace {
     }
 
     pub fn env(&self) -> &Env {
-        &self.config_env
+        &self.env
     }
 
     pub fn is_sysroot(&self) -> bool {
@@ -583,6 +633,7 @@ impl FetchMetadata {
     ) -> Self {
         let cargo = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
         let mut command = MetadataCommand::new();
+        command.env(NO_RUSTUP_AUTO_INSTALL_ENV.0, NO_RUSTUP_AUTO_INSTALL_ENV.1);
         command.cargo_path(cargo.get_program());
         cargo.get_envs().for_each(|(var, val)| _ = command.env(var, val.unwrap_or_default()));
         command.manifest_path(cargo_toml.to_path_buf());

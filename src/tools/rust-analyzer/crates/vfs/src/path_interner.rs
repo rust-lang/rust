@@ -28,7 +28,7 @@ impl PathInterner {
     /// - Else, returns a newly allocated id.
     pub(crate) fn intern(&mut self, path: VfsPath) -> FileId {
         let (id, _added) = self.map.insert_full(path);
-        assert!(id < u32::MAX as usize);
+        assert!(id < FileId::MAX as usize);
         FileId(id as u32)
     }
 

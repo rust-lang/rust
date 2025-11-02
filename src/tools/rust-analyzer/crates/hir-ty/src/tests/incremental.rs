@@ -511,7 +511,6 @@ impl SomeStruct {
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
                 "attrs_shim",
-                "type_for_adt_tracked",
             ]
         "#]],
     );
@@ -586,7 +585,7 @@ fn main() {
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "generic_predicates_ns_shim",
+                "generic_predicates_shim",
                 "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_shim",
@@ -609,10 +608,7 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "type_for_adt_tracked",
-                "impl_trait_with_diagnostics_ns_shim",
-                "impl_self_ty_with_diagnostics_ns_shim",
-                "generic_predicates_ns_shim",
+                "generic_predicates_shim",
                 "value_ty_shim",
                 "generic_predicates_shim",
             ]
@@ -686,12 +682,13 @@ fn main() {
                 "attrs_shim",
                 "attrs_shim",
                 "attrs_shim",
-                "generic_predicates_ns_shim",
+                "generic_predicates_shim",
                 "return_type_impl_traits_shim",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
+                "generic_predicates_shim",
                 "VariantFields::query_",
                 "inherent_impls_in_crate_shim",
                 "impl_signature_with_source_map_shim",
@@ -700,9 +697,7 @@ fn main() {
                 "trait_impls_in_crate_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "impl_trait_with_diagnostics_ns_shim",
-                "impl_self_ty_with_diagnostics_ns_shim",
-                "generic_predicates_ns_shim",
+                "generic_predicates_shim",
                 "generic_predicates_shim",
             ]
         "#]],
@@ -715,8 +710,8 @@ fn execute_assert_events(
     required: &[(&str, usize)],
     expect: Expect,
 ) {
-    let (executed, events) = db.log_executed(f);
-    salsa::attach(db, || {
+    crate::attach_db(db, || {
+        let (executed, events) = db.log_executed(f);
         for (event, count) in required {
             let n = executed.iter().filter(|it| it.contains(event)).count();
             assert_eq!(

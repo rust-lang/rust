@@ -348,7 +348,12 @@ pub(crate) fn print_src(
         highlight::write_code(
             fmt,
             s,
-            Some(highlight::HrefContext { context, file_span, root_path, current_href }),
+            Some(highlight::HrefContext {
+                context,
+                file_span: file_span.into(),
+                root_path,
+                current_href,
+            }),
             Some(decoration_info),
             Some(line_info),
         );

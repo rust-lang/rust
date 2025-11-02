@@ -40,8 +40,8 @@ declare_clippy_lint! {
 declare_lint_pass!(SingleCharLifetimeNames => [SINGLE_CHAR_LIFETIME_NAMES]);
 
 impl EarlyLintPass for SingleCharLifetimeNames {
-    fn check_generic_param(&mut self, ctx: &EarlyContext<'_>, param: &GenericParam) {
-        if param.ident.span.in_external_macro(ctx.sess().source_map()) {
+    fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &GenericParam) {
+        if param.ident.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 
@@ -51,7 +51,7 @@ impl EarlyLintPass for SingleCharLifetimeNames {
         {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(
-                ctx,
+                cx,
                 SINGLE_CHAR_LIFETIME_NAMES,
                 param.ident.span,
                 "single-character lifetime names are likely uninformative",

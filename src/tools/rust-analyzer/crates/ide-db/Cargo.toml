@@ -30,6 +30,7 @@ query-group.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
 bitflags.workspace = true
+smallvec.workspace = true
 
 # local deps
 base-db.workspace = true
@@ -42,15 +43,15 @@ vfs.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir.workspace = true
+macros.workspace = true
+
+test-utils.workspace = true
+test-fixture.workspace = true
 
 line-index.workspace = true
 
 [dev-dependencies]
 expect-test = "1.5.1"
-
-# local deps
-test-utils.workspace = true
-test-fixture.workspace = true
 
 [lints]
 workspace = true

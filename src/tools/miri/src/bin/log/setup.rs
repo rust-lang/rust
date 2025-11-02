@@ -2,6 +2,7 @@ use std::env::{self, VarError};
 use std::str::FromStr;
 use std::sync::{Mutex, OnceLock};
 
+use rustc_log::tracing;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 
@@ -72,8 +73,8 @@ fn init_logger_once(early_dcx: &EarlyDiagCtxt) {
                     early_dcx,
                     rustc_logger_config(),
                     || {
-                        tracing_subscriber::layer::SubscriberExt::with(
-                            tracing_subscriber::Registry::default(),
+                        rustc_log::tracing_subscriber::layer::SubscriberExt::with(
+                            rustc_log::tracing_subscriber::Registry::default(),
                             chrome_layer,
                         )
                     },

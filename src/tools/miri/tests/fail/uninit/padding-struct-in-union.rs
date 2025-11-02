@@ -18,7 +18,7 @@ union FooBar {
     bar: Bar,
 }
 
-pub fn main() {
+fn main() {
     // Initialize as u8 to ensure padding bytes are zeroed.
     let mut foobar = FooBar { bar: Bar { bytes: [0u8; 8] } };
     // Reading either field is ok.

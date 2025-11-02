@@ -19,15 +19,13 @@ use rustc_type_ir::{
 };
 use triomphe::Arc;
 
-use crate::utils::ClosureSubst;
 use crate::{
-    Interner, TraitEnvironment,
-    consteval_nextsolver::try_const_usize,
+    TraitEnvironment,
+    consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
-        mapping::{ChalkToNextSolver, convert_args_for_result},
     },
 };
 
@@ -132,7 +130,7 @@ fn layout_of_simd_ty<'db>(
     id: StructId,
     repr_packed: bool,
     args: &GenericArgs<'db>,
-    env: Arc<TraitEnvironment>,
+    env: Arc<TraitEnvironment<'db>>,
     dl: &TargetDataLayout,
 ) -> Result<Arc<Layout>, LayoutError> {
     // Supported SIMD vectors are homogeneous ADTs with exactly one array field:
@@ -140,7 +138,7 @@ fn layout_of_simd_ty<'db>(
     // * #[repr(simd)] struct S([T; 4])
     //
     // where T is a primitive scalar (integer/float/pointer).
-    let fields = db.field_types_ns(id.into());
+    let fields = db.field_types(id.into());
     let mut fields = fields.iter();
     let Some(TyKind::Array(e_ty, e_len)) = fields
         .next()
@@ -160,7 +158,7 @@ fn layout_of_simd_ty<'db>(
 pub fn layout_of_ty_query<'db>(
     db: &'db dyn HirDatabase,
     ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment>,
+    trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let interner = DbInterner::new_with(db, Some(krate), trait_env.block);
@@ -325,19 +323,12 @@ pub fn layout_of_ty_query<'db>(
         TyKind::Closure(id, args) => {
             let def = db.lookup_intern_closure(id.0);
             let infer = db.infer(def.0);
-            let (captures, _) = infer.closure_info(&id.0.into());
+            let (captures, _) = infer.closure_info(id.0);
             let fields = captures
                 .iter()
                 .map(|it| {
-                    let ty = it
-                        .ty
-                        .clone()
-                        .substitute(
-                            Interner,
-                            &ClosureSubst(&convert_args_for_result(interner, args.inner()))
-                                .parent_subst(db),
-                        )
-                        .to_nextsolver(interner);
+                    let ty =
+                        it.ty.instantiate(interner, args.split_closure_args_untupled().parent_args);
                     db.layout_of_ty(ty, trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -371,7 +362,7 @@ pub fn layout_of_ty_query<'db>(
 pub(crate) fn layout_of_ty_cycle_result<'db>(
     _: &dyn HirDatabase,
     _: Ty<'db>,
-    _: Arc<TraitEnvironment>,
+    _: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
@@ -394,7 +385,7 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
             }
         }
         TyKind::Tuple(tys) => {
-            if let Some(last_field_ty) = tys.iter().last() {
+            if let Some(last_field_ty) = tys.iter().next_back() {
                 struct_tail_erasing_lifetimes(db, last_field_ty)
             } else {
                 pointee
@@ -410,7 +401,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: &GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types_ns(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
+    db.field_types(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {

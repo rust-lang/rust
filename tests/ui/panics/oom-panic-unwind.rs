@@ -5,6 +5,7 @@
 //@ no-prefer-dynamic
 //@ needs-unwind
 //@ only-linux
+//@ ignore-backends: gcc
 
 use std::hint::black_box;
 use std::mem::forget;

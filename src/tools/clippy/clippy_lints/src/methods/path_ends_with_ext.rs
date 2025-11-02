@@ -1,8 +1,8 @@
 use super::PATH_ENDS_WITH_EXT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -23,7 +23,11 @@ pub(super) fn check(
     msrv: Msrv,
     allowed_dotfiles: &FxHashSet<&'static str>,
 ) {
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv).peel_refs(), sym::Path)
+    if cx
+        .typeck_results()
+        .expr_ty(recv)
+        .peel_refs()
+        .is_diag_item(cx, sym::Path)
         && !path.span.from_expansion()
         && let ExprKind::Lit(lit) = path.kind
         && let LitKind::Str(path, StrStyle::Cooked) = lit.node

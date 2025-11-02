@@ -590,7 +590,7 @@ fn get_new_lifetime_name<'tcx>(
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
             let mut s = '\''.to_string();
-            s.extend(std::iter::repeat(char::from(c)).take(n));
+            s.extend(std::iter::repeat_n(char::from(c), n));
             s
         })
     };
@@ -847,7 +847,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
             (constness, false, is_auto == hir::IsAuto::Yes, safety)
         }
-        hir::ItemKind::TraitAlias(..) => (hir::Constness::NotConst, true, false, hir::Safety::Safe),
+        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -1140,7 +1140,7 @@ fn recover_infer_ret_ty<'tcx>(
     // recursive function definition to leak out into the fn sig.
     let mut recovered_ret_ty = None;
     if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with the correct return type",
             suggestable_ret_ty,
@@ -1152,7 +1152,7 @@ fn recover_infer_ret_ty<'tcx>(
         tcx.param_env(def_id),
         ret_ty,
     ) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with an appropriate return type",
             sugg,
@@ -1267,7 +1267,7 @@ pub fn suggest_impl_trait<'tcx>(
                 Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args),
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.select_where_possible().is_empty()
+            if ocx.try_evaluate_obligations().is_empty()
                 && let item_ty = infcx.resolve_vars_if_possible(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(
@@ -1291,28 +1291,26 @@ pub fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTraitHeader<'_>> {
+fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
+    let of_trait = impl_
+        .of_trait
+        .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
+    let selfty = tcx.type_of(def_id).instantiate_identity();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    if is_rustc_reservation && impl_.of_trait.is_none() {
-        tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
+
+    check_impl_constness(tcx, of_trait.constness, &of_trait.trait_ref);
+
+    let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
+
+    ty::ImplTraitHeader {
+        trait_ref: ty::EarlyBinder::bind(trait_ref),
+        safety: of_trait.safety,
+        polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
+        constness: of_trait.constness,
     }
-    impl_.of_trait.map(|of_trait| {
-        let selfty = tcx.type_of(def_id).instantiate_identity();
-
-        check_impl_constness(tcx, of_trait.constness, &of_trait.trait_ref);
-
-        let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
-
-        ty::ImplTraitHeader {
-            trait_ref: ty::EarlyBinder::bind(trait_ref),
-            safety: of_trait.safety,
-            polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
-            constness: of_trait.constness,
-        }
-    })
 }
 
 fn check_impl_constness(

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_res_lang_ctor, path_def_id, path_res};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -37,8 +36,8 @@ pub(super) fn check<'tcx>(
     def_arg: &'tcx hir::Expr<'_>,
     map_arg: &'tcx hir::Expr<'_>,
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
+    let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
+    let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
 
     // There are two variants of this `map_or` lint:
     // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
@@ -49,12 +48,12 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if !is_res_lang_ctor(cx, path_res(cx, def_arg), OptionNone) {
+    if !def_arg.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone) {
         // nothing to lint!
         return;
     }
 
-    let f_arg_is_some = is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome);
+    let f_arg_is_some = map_arg.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome);
 
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
@@ -62,7 +61,7 @@ pub(super) fn check<'tcx>(
             && let arg_snippet = snippet(cx, fn_decl_span, "..")
             && let body = cx.tcx.hir_body(body)
             && let Some((func, [arg_char])) = reduce_unit_expression(body.value)
-            && let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id))
+            && let Some(id) = func.res(cx).opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))
             && Some(id) == cx.tcx.lang_items().option_some_variant()
         {
             let func_snippet = snippet(cx, arg_char.span, "..");

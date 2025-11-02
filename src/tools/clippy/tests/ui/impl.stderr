@@ -57,7 +57,7 @@ LL | | }
 error: multiple implementations of this structure
   --> tests/ui/impl.rs:71:1
    |
-LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first implementation here
@@ -66,5 +66,17 @@ note: first implementation here
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: multiple implementations of this structure
+  --> tests/ui/impl.rs:84:1
+   |
+LL | impl OneExpected {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> tests/ui/impl.rs:81:1
+   |
+LL | impl OneExpected {}
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

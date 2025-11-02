@@ -1,18 +1,18 @@
 # Testing with CI
 
 The primary goal of our CI system is to ensure that the `master` branch of
-`rust-lang/rust` is always in a valid state and passes our test suite.
+`rust-lang/rust` is always in a valid state by passing our test suite.
 
 From a high-level point of view, when you open a pull request at
 `rust-lang/rust`, the following will happen:
 
 - A small [subset](#pull-request-builds) of tests and checks are run after each
-  push to the PR. This should help catching common errors.
+  push to the PR. This should help catch common errors.
 - When the PR is approved, the [bors] bot enqueues the PR into a [merge queue].
 - Once the PR gets to the front of the queue, bors will create a merge commit
   and run the [full test suite](#auto-builds) on it. The merge commit either
   contains only one specific PR or it can be a ["rollup"](#rollups) which
-  combines multiple PRs together, to save CI costs.
+  combines multiple PRs together, to reduce CI costs and merge delays.
 - Once the whole test suite finishes, two things can happen. Either CI fails
   with an error that needs to be addressed by the developer, or CI succeeds and
   the merge commit is then pushed to the `master` branch.
@@ -38,12 +38,12 @@ input, which contains a declarative configuration of all our CI jobs.
 > orchestrating the scripts that drive the process.
 
 In essence, all CI jobs run `./x test`, `./x dist` or some other command with
-different configurations, across various operating systems, targets and
+different configurations, across various operating systems, targets, and
 platforms. There are two broad categories of jobs that are executed, `dist` and
 non-`dist` jobs.
 
 - Dist jobs build a full release of the compiler for a specific platform,
-  including all the tools we ship through rustup; Those builds are then uploaded
+  including all the tools we ship through rustup. Those builds are then uploaded
   to the `rust-lang-ci2` S3 bucket and are available to be locally installed
   with the [rustup-toolchain-install-master] tool. The same builds are also used
   for actual releases: our release process basically consists of copying those
@@ -70,7 +70,7 @@ these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `pr-check-1`, `pr-che
 and `tidy` jobs, all running on Linux. These execute a relatively short
 (~40 minutes) and lightweight test suite that should catch common issues. More
 specifically, they run a set of lints, they try to perform a cross-compile check
-build to Windows mingw (without producing any artifacts) and they test the
+build to Windows mingw (without producing any artifacts), and they test the
 compiler using a *system* version of LLVM. Unfortunately, it would take too many
 resources to run the full test suite for each commit on every PR.
 
@@ -95,17 +95,16 @@ jobs that exercise various tests across operating systems and targets. The full
 test suite is quite slow; it can take several hours until all the `auto` CI
 jobs finish.
 
-Most platforms only run the build steps, some run a restricted set of tests,
+Most platforms only run the build steps, some run a restricted set of tests;
 only a subset run the full suite of tests (see Rust's [platform tiers]).
 
 Auto jobs are defined in the `auto` section of [`jobs.yml`]. They are executed
-on the `auto` branch under the `rust-lang/rust` repository and
-their results can be seen [here](https://github.com/rust-lang/rust/actions),
-although usually you will be notified of the result by a comment made by bors on
-the corresponding PR.
+on the `auto` branch under the `rust-lang/rust` repository,
+and the final result will be reported via a comment made by bors on the corresponding PR.
+The live results can be seen on [the GitHub Actions workflows page].
 
 At any given time, at most a single `auto` build is being executed. Find out
-more [here](#merging-prs-serially-with-bors).
+more in [Merging PRs serially with bors](#merging-prs-serially-with-bors).
 
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 
@@ -125,7 +124,7 @@ There are several use-cases for try builds:
   when you start a try build). To create a try build and schedule it for a
   performance benchmark, you can use the `@bors try @rust-timer queue` command
   combination.
-- Check the impact of the PR across the Rust ecosystem, using a [crater] run.
+- Check the impact of the PR across the Rust ecosystem, using a [Crater](crater.md) run.
   Again, a working compiler build is needed for this, which can be produced by
   the [dist-x86_64-linux] CI job.
 - Run a specific CI job (e.g. Windows tests) on a PR, to quickly test if it
@@ -134,11 +133,11 @@ There are several use-cases for try builds:
 By default, if you send a comment with `@bors try`, the jobs defined in the `try` section of
 [`jobs.yml`] will be executed. We call this mode a "fast try build". Such a try build
 will not execute any tests, and it will allow compilation warnings. It is useful when you want to
-get an optimized toolchain as fast as possible, for a crater run or performance benchmarks,
+get an optimized toolchain as fast as possible, for a Crater run or performance benchmarks,
 even if it might not be working fully correctly. If you want to do a full build for the default try job,
 specify its job name in a job pattern (explained below).
 
-If you want to run custom CI job(s) in a try build and make sure that they pass all tests and do
+If you want to run custom CI jobs in a try build and make sure that they pass all tests and do
 not produce any compilation warnings, you can select CI jobs to be executed by specifying a *job pattern*,
 which can be used in one of two ways:
 - You can add a set of `try-job: <job pattern>` directives to the PR description (described below) and then
@@ -151,8 +150,9 @@ which can be used in one of two ways:
 
 Each job pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
-glob patterns, you might want to wrap them in backticks (`` ` ``) to avoid GitHub rendering
-the pattern as Markdown.
+glob patterns in the PR description, you can optionally wrap them in backticks (`` ` ``) to avoid GitHub rendering
+the pattern as Markdown if it contains e.g. an asterisk. Note that this escaping will not work when using
+the `@bors jobs=` parameter.
 
 The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
 of [`jobs.yml`]:
@@ -189,18 +189,17 @@ of [`jobs.yml`]:
 > that are exercised this way.
 
 Try builds are executed on the `try` branch under the `rust-lang/rust` repository and
-their results can be seen [here](https://github.com/rust-lang/rust/actions),
+their results can be seen on [the GitHub Actions workflows page],
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
 Multiple try builds can execute concurrently across different PRs, but there can be at most
 a single try build running on a single PR at any given time.
 
-Note that try builds are handled using the new [bors][new-bors] implementation.
+Note that try builds are handled using the [new bors] implementation.
 
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
-[crater]: https://github.com/rust-lang/crater
-[new-bors]: https://github.com/rust-lang/bors
+[new bors]: https://github.com/rust-lang/bors
 
 ### Modifying CI jobs
 
@@ -210,8 +209,7 @@ If you want to modify what gets executed on our CI, you can simply modify the
 You can also modify what gets executed temporarily, for example to test a
 particular platform or configuration that is challenging to test locally (for
 example, if a Windows build fails, but you don't have access to a Windows
-machine). Don't hesitate to use CI resources in such situations to try out a
-fix!
+machine). Don't hesitate to use CI resources in such situations.
 
 You can perform an arbitrary CI job in two ways:
 - Use the [try build](#try-builds) functionality, and specify the CI jobs that
@@ -254,8 +252,8 @@ purposes.
 </div>
 
 Although you are welcome to use CI, just be conscious that this is a shared
-resource with limited concurrency. Try not to enable too many jobs at once (one
-or two should be sufficient in most cases).
+resource with limited concurrency. Try not to enable too many jobs at once;
+one or two should be sufficient in most cases.
 
 ## Merging PRs serially with bors
 
@@ -279,12 +277,12 @@ by listening for either Commit Statuses or Check Runs. Since the merge commit is
 based on the latest `master` and only one can be tested at the same time, when
 the results are green, `master` is fast-forwarded to that merge commit.
 
-Unfortunately testing a single PR at the time, combined with our long CI (~2
-hours for a full run), means we can’t merge too many PRs in a single day, and a
-single failure greatly impacts our throughput for the day. The maximum number of
+Unfortunately, testing a single PR at a time, combined with our long CI (~2
+hours for a full run), means we can’t merge a lot of PRs in a single day, and a
+single failure greatly impacts our throughput. The maximum number of
 PRs we can merge in a day is around ~10.
 
-The large CI run times and requirement for a large builder pool is largely due
+The long CI run times, and requirement for a large builder pool, is largely due
 to the fact that full release artifacts are built in the `dist-` builders. This
 is worth it because these release artifacts:
 
@@ -297,12 +295,11 @@ is worth it because these release artifacts:
 
 Some PRs don’t need the full test suite to be executed: trivial changes like
 typo fixes or README improvements *shouldn’t* break the build, and testing every
-single one of them for 2+ hours is a big waste of time. To solve this, we
+single one of them for 2+ hours would be wasteful. To solve this, we
 regularly create a "rollup", a PR where we merge several pending trivial PRs so
 they can be tested together. Rollups are created manually by a team member using
 the "create a rollup" button on the [merge queue]. The team member uses their
-judgment to decide if a PR is risky or not, and are the best tool we have at the
-moment to keep the queue in a manageable state.
+judgment to decide if a PR is risky or not.
 
 ## Docker
 
@@ -315,18 +312,22 @@ platform’s custom [Docker container]. This has a lot of advantages for us:
 - We can use ancient build environments to ensure maximum binary compatibility,
   for example [using older CentOS releases][dist-x86_64-linux] on our Linux
   builders.
-- We can avoid reinstalling tools (like QEMU or the Android emulator) every time
+- We can avoid reinstalling tools (like QEMU or the Android emulator) every time,
   thanks to Docker image caching.
-- Users can run the same tests in the same environment locally by just running
-  `cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
+- Users can run the same tests in the same environment locally by just running this command:
+
+      cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
+
+  This is helpful for debugging failures.
+  Note that there are only Linux Docker images available locally due to licensing and
   other restrictions.
 
-The docker images prefixed with `dist-` are used for building artifacts while
+The Docker images prefixed with `dist-` are used for building artifacts while
 those without that prefix run tests and checks.
 
 We also run tests for less common architectures (mainly Tier 2 and Tier 3
-platforms) in CI. Since those platforms are not x86 we either run everything
-inside QEMU or just cross-compile if we don’t want to run the tests for that
+platforms) in CI. Since those platforms are not x86, we either run everything
+inside QEMU, or we just cross-compile if we don’t want to run the tests for that
 platform.
 
 These builders are running on a special pool of builders set up and maintained
@@ -363,41 +364,41 @@ invalidated if one of the following changes:
 [ghcr.io]: https://github.com/rust-lang/rust/pkgs/container/rust-ci
 [Docker registry caching]: https://docs.docker.com/build/cache/backends/registry/
 
-### LLVM caching with sccache
+### LLVM caching with Sccache
 
-We build some C/C++ stuff in various CI jobs, and we rely on [sccache] to cache
+We build some C/C++ stuff in various CI jobs, and we rely on [Sccache] to cache
 the intermediate LLVM artifacts. Sccache is a distributed ccache developed by
 Mozilla, which can use an object storage bucket as the storage backend.
 
-With sccache there's no need to calculate the hash key ourselves. Sccache
+With Sccache there's no need to calculate the hash key ourselves. Sccache
 invalidates the cache automatically when it detects changes to relevant inputs,
 such as the source code, the version of the compiler, and important environment
 variables.
-So we just pass the sccache wrapper on top of cargo and sccache does the rest.
+So we just pass the Sccache wrapper on top of Cargo and Sccache does the rest.
 
-We store the persistent artifacts on the S3 bucket `rust-lang-ci-sccache2`. So
-when the CI runs, if sccache sees that LLVM is being compiled with the same C/C++
-compiler and the LLVM source code is the same, sccache retrieves the individual
+We store the persistent artifacts on the S3 bucket, `rust-lang-ci-sccache2`. So
+when the CI runs, if Sccache sees that LLVM is being compiled with the same C/C++
+compiler and the LLVM source code is the same, Sccache retrieves the individual
 compiled translation units from S3.
 
 [sccache]: https://github.com/mozilla/sccache
 
 ## Custom tooling around CI
 
-During the years we developed some custom tooling to improve our CI experience.
+During the years, we developed some custom tooling to improve our CI experience.
 
 ### Rust Log Analyzer to show the error message in PRs
 
 The build logs for `rust-lang/rust` are huge, and it’s not practical to find
-what caused the build to fail by looking at the logs. To improve the developers’
-experience we developed a bot called [Rust Log Analyzer][rla] (RLA) that
-receives the build logs on failure and extracts the error message automatically,
-posting it on the PR.
+what caused the build to fail by looking at the logs.
+We therefore developed a bot called [Rust Log Analyzer][rla] (RLA) that
+receives the build logs on failure, and extracts the error message automatically,
+posting it on the PR thread.
 
 The bot is not hardcoded to look for error strings, but was trained with a bunch
 of build failures to recognize which lines are common between builds and which
 are not. While the generated snippets can be weird sometimes, the bot is pretty
-good at identifying the relevant lines even if it’s an error we've never seen
+good at identifying the relevant lines, even if it’s an error we've never seen
 before.
 
 [rla]: https://github.com/rust-lang/rust-log-analyzer
@@ -429,11 +430,11 @@ More information is available in the [toolstate documentation].
 
 ## Public CI dashboard
 
-To monitor the Rust CI, you can have a look at the [public dashboard] maintained by the infra-team.
+To monitor the Rust CI, you can have a look at the [public dashboard] maintained by the infra team.
 
 These are some useful panels from the dashboard:
 
-- Pipeline duration: check how long the auto builds takes to run.
+- Pipeline duration: check how long the auto builds take to run.
 - Top slowest jobs: check which jobs are taking the longest to run.
 - Change in median job duration: check what jobs are slowest than before. Useful
   to detect regressions.
@@ -456,8 +457,7 @@ this:
 2. Choose the job you are interested in on the left-hand side.
 3. Click on the gear icon and choose "View raw logs"
 4. Search for the string "Configure the build"
-5. All of the build settings are listed below that starting with the
-   `configure:` prefix.
+5. All of the build settings are listed on the line with the text, `build.configure-args`
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
@@ -467,3 +467,4 @@ this:
 [homu]: https://github.com/rust-lang/homu
 [merge queue]: https://bors.rust-lang.org/queue/rust
 [dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
+[the GitHub Actions workflows page]: https://github.com/rust-lang/rust/actions

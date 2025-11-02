@@ -97,7 +97,7 @@ fn failed_thread_stack() {
     // macOS and Windows weren't fazed, or at least didn't fail the way we want.
     // They work with `isize::MAX`, but 32-bit platforms may feasibly allocate a
     // 2GB stack, so it might not fail until the second thread.
-    let stack_size = ::std::isize::MAX as usize;
+    let stack_size = isize::MAX as usize;
 
     let (start_count, start_handler) = count_handler();
     let (exit_count, exit_handler) = count_handler();

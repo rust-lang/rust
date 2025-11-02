@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 #![feature(pattern_types, pattern_type_macro, generic_pattern_types)]
 #![expect(incomplete_features)]
 

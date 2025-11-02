@@ -1,0 +1,29 @@
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:12:13
+   |
+LL |     let _ = dur1 - dur2 - dur3;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unchecked-time-subtraction` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unchecked_time_subtraction)]`
+
+error: unchecked subtraction between 'Duration' values
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:12:13
+   |
+LL |     let _ = dur1 - dur2 - dur3;
+   |             ^^^^^^^^^^^ help: try: `dur1.checked_sub(dur2).unwrap()`
+
+error: unchecked subtraction of a 'Duration' from an 'Instant'
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:19:13
+   |
+LL |     let _ = instant1 - dur2 - dur3;
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unchecked subtraction of a 'Duration' from an 'Instant'
+  --> tests/ui/unchecked_time_subtraction_unfixable.rs:19:13
+   |
+LL |     let _ = instant1 - dur2 - dur3;
+   |             ^^^^^^^^^^^^^^^ help: try: `instant1.checked_sub(dur2).unwrap()`
+
+error: aborting due to 4 previous errors
+

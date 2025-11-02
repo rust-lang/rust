@@ -117,7 +117,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, source_args);
+        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args);
 
     // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
@@ -164,7 +164,7 @@ fn fulfill_implication<'tcx>(
     let ocx = ObligationCtxt::new(infcx);
     let source_trait_ref = ocx.normalize(cause, param_env, source_trait_ref);
 
-    if !ocx.select_all_or_error().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         infcx.dcx().span_delayed_bug(
             infcx.tcx.def_span(source_impl),
             format!("failed to fully normalize {source_trait_ref}"),
@@ -176,11 +176,7 @@ fn fulfill_implication<'tcx>(
     let target_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx
-            .tcx
-            .impl_trait_ref(target_impl)
-            .expect("expected source impl to be a trait impl")
-            .instantiate(infcx.tcx, target_args),
+        infcx.tcx.impl_trait_ref(target_impl).instantiate(infcx.tcx, target_args),
     );
 
     // do the impls unify? If not, no specialization.
@@ -197,7 +193,7 @@ fn fulfill_implication<'tcx>(
     let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         // no dice!
         debug!(
@@ -256,7 +252,7 @@ pub(super) fn specializes(
         }
     }
 
-    let specializing_impl_trait_header = tcx.impl_trait_header(specializing_impl_def_id).unwrap();
+    let specializing_impl_trait_header = tcx.impl_trait_header(specializing_impl_def_id);
 
     // We determine whether there's a subset relationship by:
     //
@@ -295,7 +291,7 @@ pub(super) fn specializes(
     let ocx = ObligationCtxt::new(&infcx);
     let specializing_impl_trait_ref = ocx.normalize(cause, param_env, specializing_impl_trait_ref);
 
-    if !ocx.select_all_or_error().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         infcx.dcx().span_delayed_bug(
             infcx.tcx.def_span(specializing_impl_def_id),
             format!("failed to fully normalize {specializing_impl_trait_ref}"),
@@ -307,11 +303,7 @@ pub(super) fn specializes(
     let parent_impl_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx
-            .tcx
-            .impl_trait_ref(parent_impl_def_id)
-            .expect("expected source impl to be a trait impl")
-            .instantiate(infcx.tcx, parent_args),
+        infcx.tcx.impl_trait_ref(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
     );
 
     // do the impls unify? If not, no specialization.
@@ -331,7 +323,7 @@ pub(super) fn specializes(
     let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         // no dice!
         debug!(
@@ -367,7 +359,7 @@ pub(super) fn specializes(
             )
         }));
 
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
             // no dice!
             debug!(

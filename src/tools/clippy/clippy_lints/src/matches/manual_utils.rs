@@ -1,11 +1,12 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, is_unsafe_fn, peel_and_count_ty_refs};
+use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
-    path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, peel_blocks,
+    peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -33,8 +34,7 @@ where
     let (scrutinee_ty, ty_ref_count, ty_mutability) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(scrutinee));
     let ty_mutability = ty_mutability.unwrap_or(Mutability::Mut);
 
-    if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::Option)
-        && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Option))
+    if !(scrutinee_ty.is_diag_item(cx, sym::Option) && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Option))
     {
         return None;
     }
@@ -138,7 +138,7 @@ where
         {
             snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
         } else {
-            if path_to_local_id(some_expr.expr, id)
+            if some_expr.expr.res_local_id() == Some(id)
                 && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
                 && binding_ref.is_some()
             {
@@ -190,7 +190,7 @@ pub struct SuggInfo<'a> {
 fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
-            if path_to_local_id(arg, binding)
+            if arg.res_local_id() == Some(binding)
                 && cx.typeck_results().expr_adjustments(arg).is_empty()
                 && !is_unsafe_fn(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
         {
@@ -259,9 +259,19 @@ pub(super) fn try_parse_pattern<'tcx>(
                 kind: PatExprKind::Path(qpath),
                 hir_id,
                 ..
-            }) if is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone) => Some(OptionPat::None),
+            }) if cx
+                .qpath_res(qpath, *hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, OptionNone) =>
+            {
+                Some(OptionPat::None)
+            },
             PatKind::TupleStruct(ref qpath, [pattern], _)
-                if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionSome) && pat.span.ctxt() == ctxt =>
+                if cx
+                    .qpath_res(qpath, pat.hir_id)
+                    .ctor_parent(cx)
+                    .is_lang_item(cx, OptionSome)
+                    && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
@@ -273,5 +283,5 @@ pub(super) fn try_parse_pattern<'tcx>(
 
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
+    peel_blocks(expr).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
 }

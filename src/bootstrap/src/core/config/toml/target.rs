@@ -9,6 +9,9 @@
 //! * [`Target`]: This struct represents the processed and validated configuration for a
 //!   build target, which is is stored in the main `Config` structure.
 
+use std::collections::HashMap;
+
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::{
@@ -24,6 +27,7 @@ define_config! {
         ar: Option<String> = "ar",
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
+        default_linker_linux_override: Option<DefaultLinuxLinkerOverride> = "default-linker-linux-override",
         linker: Option<String> = "linker",
         split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
@@ -60,6 +64,7 @@ pub struct Target {
     pub ar: Option<PathBuf>,
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
+    pub default_linker_linux_override: DefaultLinuxLinkerOverride,
     pub linker: Option<PathBuf>,
     pub split_debuginfo: Option<SplitDebuginfo>,
     pub sanitizers: Option<bool>,
@@ -88,4 +93,61 @@ impl Target {
         }
         target
     }
+}
+
+/// Overrides the default linker used on a Linux target.
+/// On Linux, the linker is usually invoked through `cc`, therefore this exists as a separate
+/// configuration from simply setting `default-linker`, which corresponds to `-Clinker`.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+pub enum DefaultLinuxLinkerOverride {
+    /// Do not apply any override and use the default linker for the given target.
+    #[default]
+    Off,
+    /// Use the self-contained `rust-lld` linker, invoked through `cc`.
+    /// Corresponds to `-Clinker-features=+lld -Clink-self-contained=+linker`.
+    SelfContainedLldCc,
+}
+
+impl<'de> Deserialize<'de> for DefaultLinuxLinkerOverride {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "off" => Ok(Self::Off),
+            "self-contained-lld-cc" => Ok(Self::SelfContainedLldCc),
+            other => Err(D::Error::unknown_variant(other, &["off", "self-contained-lld-cc"])),
+        }
+    }
+}
+
+/// Set of linker overrides for selected Linux targets.
+#[cfg(not(test))]
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
+    [("x86_64-unknown-linux-gnu".to_string(), DefaultLinuxLinkerOverride::SelfContainedLldCc)]
+        .into()
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_LINUX_LINKER_OVERRIDES: std::cell::RefCell<Option<HashMap<String, DefaultLinuxLinkerOverride>>> = std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
+    TEST_LINUX_LINKER_OVERRIDES.with(|cell| cell.borrow().clone()).unwrap_or_default()
+}
+
+#[cfg(test)]
+pub fn with_default_linux_linker_overrides<R>(
+    targets: HashMap<String, DefaultLinuxLinkerOverride>,
+    f: impl FnOnce() -> R,
+) -> R {
+    TEST_LINUX_LINKER_OVERRIDES.with(|cell| {
+        let prev = cell.replace(Some(targets));
+        let result = f();
+        cell.replace(prev);
+        result
+    })
 }

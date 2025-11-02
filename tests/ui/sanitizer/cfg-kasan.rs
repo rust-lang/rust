@@ -13,9 +13,10 @@
 //@[riscv64gc] needs-llvm-components: riscv
 //@[x86_64] compile-flags: --target x86_64-unknown-none
 //@[x86_64] needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
-#![feature(cfg_sanitize, no_core, lang_items)]
+#![feature(cfg_sanitize, no_core)]
 #![no_core]
 
 extern crate minicore;

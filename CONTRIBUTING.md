@@ -31,8 +31,8 @@ bootstrapping, the compiler architecture, source code representation, and more.
 
 ## [Getting help](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions)
 
-There are many ways you can get help when you're stuck. Rust has many platforms for this:
-[internals], [rust-zulip], and [rust-discord]. It is recommended to ask for help on
+There are many ways you can get help when you're stuck. Rust has two platforms for this:
+[internals] and [rust-zulip]. It is recommended to ask for help on
 the [rust-zulip], but any of these platforms are great ways to seek help and even
 find a mentor! You can learn more about asking questions and getting help in the
 [Asking Questions](https://rustc-dev-guide.rust-lang.org/getting-started.html#asking-questions) chapter of the [rustc-dev-guide].
@@ -47,5 +47,4 @@ refer to [this section][contributing-bug-reports] and [open an issue][issue temp
 [contributing-bug-reports]: https://rustc-dev-guide.rust-lang.org/contributing.html#bug-reports
 [issue template]: https://github.com/rust-lang/rust/issues/new/choose
 [internals]: https://internals.rust-lang.org
-[rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com

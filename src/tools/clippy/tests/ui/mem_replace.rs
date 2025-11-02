@@ -179,3 +179,9 @@ fn mem_replace_option_with_some_bad_msrv() {
     let mut an_option = Some(0);
     let replaced = mem::replace(&mut an_option, Some(1));
 }
+
+fn issue15785() {
+    let mut text = String::from("foo");
+    let replaced = std::mem::replace(dbg!(&mut text), String::default());
+    //~^ mem_replace_with_default
+}

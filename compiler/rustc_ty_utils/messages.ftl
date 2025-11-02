@@ -52,8 +52,6 @@ ty_utils_non_primitive_simd_type = monomorphising SIMD type `{$ty}` with a non-p
 
 ty_utils_operation_not_supported = unsupported operation in generic constants
 
-ty_utils_oversized_simd_type = monomorphising SIMD type `{$ty}` of length greater than {$max_lanes}
-
 ty_utils_pointer_not_supported = pointer casts are not allowed in generic constants
 
 ty_utils_tuple_not_supported = tuple construction is not supported in generic constants
@@ -61,5 +59,3 @@ ty_utils_tuple_not_supported = tuple construction is not supported in generic co
 ty_utils_unexpected_fnptr_associated_item = `FnPtr` trait with unexpected associated item
 
 ty_utils_yield_not_supported = coroutine control flow is not allowed in generic constants
-
-ty_utils_zero_length_simd_type = monomorphising SIMD type `{$ty}` of zero length

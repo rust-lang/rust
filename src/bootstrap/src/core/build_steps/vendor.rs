@@ -74,7 +74,7 @@ impl Step for Vendor {
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.info(&format!("Vendoring sources to {:?}", self.root_dir));
+        let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");

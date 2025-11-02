@@ -133,3 +133,9 @@ to Rust 1.80 the `target_env` condition was not set.
 The default set of WebAssembly features enabled for compilation is currently the
 same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
 documentation there for more information.
+
+## Unwinding
+
+This target is compiled with `-Cpanic=abort` by default. For information on
+using `-Cpanic=unwind` see the [documentation about unwinding for
+`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md#unwinding).

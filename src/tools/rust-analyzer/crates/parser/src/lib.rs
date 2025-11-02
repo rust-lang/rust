@@ -26,6 +26,7 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 extern crate rustc_lexer;
 
 mod event;
+mod frontmatter;
 mod grammar;
 mod input;
 mod lexed_str;

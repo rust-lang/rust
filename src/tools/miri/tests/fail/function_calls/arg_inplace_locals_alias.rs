@@ -4,7 +4,9 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // Validation forces more things into memory, which we can't have here.
 //@compile-flags: -Zmiri-disable-validation
+
 #![feature(custom_mir, core_intrinsics)]
+
 use std::intrinsics::mir::*;
 
 pub struct S(i32);
@@ -28,7 +30,8 @@ fn main() {
     }
 }
 
-pub fn callee(x: S, mut y: S) {
+#[expect(unused_variables, unused_assignments)]
+fn callee(x: S, mut y: S) {
     // With the setup above, if `x` and `y` are both moved,
     // then writing to `y` will change the value stored in `x`!
     y.0 = 0;

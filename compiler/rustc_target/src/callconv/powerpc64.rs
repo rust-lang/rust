@@ -89,7 +89,7 @@ where
         // Aggregates larger than i64 should be padded at the tail to fill out a whole number
         // of i64s or i128s, depending on the aggregate alignment. Always use an array for
         // this, even if there is only a single element.
-        let reg = if arg.layout.align.abi.bytes() > 8 { Reg::i128() } else { Reg::i64() };
+        let reg = if arg.layout.align.bytes() > 8 { Reg::i128() } else { Reg::i64() };
         arg.cast_to(Uniform::consecutive(
             reg,
             size.align_to(Align::from_bytes(reg.size.bytes()).unwrap()),

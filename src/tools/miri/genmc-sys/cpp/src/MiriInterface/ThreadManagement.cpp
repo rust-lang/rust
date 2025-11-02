@@ -38,6 +38,7 @@ void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     if (!std::holds_alternative<SVal>(ret)) {
         dec_pos(thread_id);
     }
+    // FIXME(genmc): handle `HandleResult::{Invalid, Reset, VerificationError}` return values.
 
     // NOTE: Thread return value is ignored, since Miri doesn't need it.
 }

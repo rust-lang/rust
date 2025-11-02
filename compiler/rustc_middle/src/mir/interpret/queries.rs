@@ -134,6 +134,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // If we don't *only* FCW anon consts we can wind up incorrectly FCW'ing uses of assoc
                 // consts in pattern positions. #140447
                 && self.def_kind(cid.instance.def_id()) == DefKind::AnonConst
+                && !self.is_trivial_const(cid.instance.def_id())
             {
                 let mir_body = self.mir_for_ctfe(cid.instance.def_id());
                 if mir_body.is_polymorphic {

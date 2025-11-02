@@ -15,7 +15,6 @@
 //! Progress on this is tracked in #84187.
 
 #![allow(missing_docs)]
-#![allow(missing_debug_implementations)]
 
 #[cfg(test)]
 mod tests;

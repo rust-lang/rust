@@ -5,7 +5,7 @@ use std::intrinsics::mir::*;
 
 // Make sure calls with the return place "on the heap" work.
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-pub fn main() {
+fn main() {
     mir! {
         {
             let x = 0;

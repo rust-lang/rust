@@ -19,7 +19,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     InRealFile { file_id, value: node }: InRealFile<SyntaxNode>,
 ) -> Option<()> {
@@ -191,7 +191,7 @@ impl Tr for () {
 //^ impl Tr for ()
 impl dyn Tr {
   }
-//^ impl dyn Tr
+//^ impl dyn Tr + 'static
 
 static S0: () = 0;
 static S1: () = {};

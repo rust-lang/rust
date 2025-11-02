@@ -1259,6 +1259,16 @@ pub(crate) struct CoerceUnsizedNonStruct {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_same_pat_kind)]
+pub(crate) struct CoerceSamePatKind {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+    pub pat_a: String,
+    pub pat_b: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
 pub(crate) struct CoerceSameStruct {
     #[primary_span]
@@ -1616,8 +1626,7 @@ pub(crate) struct InvalidGenericReceiverTy<'tcx> {
 pub(crate) struct CmseInputsStackSpill {
     #[primary_span]
     #[label]
-    pub span: Span,
-    pub plural: bool,
+    pub spans: Vec<Span>,
     pub abi: ExternAbi,
 }
 
@@ -1633,22 +1642,24 @@ pub(crate) struct CmseOutputStackSpill {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_cmse_call_generic, code = E0798)]
-pub(crate) struct CmseCallGeneric {
+#[diag(hir_analysis_cmse_generic, code = E0798)]
+pub(crate) struct CmseGeneric {
     #[primary_span]
     pub span: Span,
+    pub abi: ExternAbi,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_impl_trait, code = E0798)]
+pub(crate) struct CmseImplTrait {
+    #[primary_span]
+    pub span: Span,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_bad_return_type_notation_position)]
 pub(crate) struct BadReturnTypeNotation {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_cmse_entry_generic, code = E0798)]
-pub(crate) struct CmseEntryGeneric {
     #[primary_span]
     pub span: Span,
 }

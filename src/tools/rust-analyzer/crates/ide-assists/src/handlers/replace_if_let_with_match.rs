@@ -328,7 +328,14 @@ fn pick_pattern_and_expr_order(
         (pat, pat2) => match (binds_name(sema, &pat), binds_name(sema, &pat2)) {
             (true, true) => return None,
             (true, false) => (pat, guard, expr, expr2),
-            (false, true) => (pat2, guard2, expr2, expr),
+            (false, true) => {
+                // This pattern triggers an invalid transformation.
+                // See issues #11373, #19443
+                if let ast::Pat::IdentPat(_) = pat2 {
+                    return None;
+                }
+                (pat2, guard2, expr2, expr)
+            }
             _ if is_sad_pat(sema, &pat) => (pat2, guard2, expr2, expr),
             (false, false) => (pat, guard, expr, expr2),
         },
@@ -1890,6 +1897,21 @@ fn main() {
     }
 }
 "#,
+        )
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_not_applicable_pat2_is_ident_pat() {
+        check_assist_not_applicable(
+            replace_match_with_if_let,
+            r"
+fn test(a: i32) {
+    match$0 a {
+        1 => code(),
+        other => code(other),
+    }
+}
+",
         )
     }
 }

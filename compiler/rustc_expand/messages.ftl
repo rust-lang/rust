@@ -49,6 +49,9 @@ expand_feature_removed =
     .note = removed in {$removed_rustc_version}{$pull_note}
     .reason = {$reason}
 
+expand_file_modules_in_proc_macro_input_are_unstable =
+    file modules in proc macro input are unstable
+
 expand_glob_delegation_outside_impls =
     glob delegation is only supported in impls
 
@@ -95,14 +98,14 @@ expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
 
+expand_meta_var_dif_seq_matchers = {$msg}
+
 expand_metavar_still_repeating = variable `{$ident}` is still repeating at this depth
     .label = expected repetition
 
 expand_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
     .binder_label = expected repetition
     .occurrence_label = conflicting repetition
-
-expand_meta_var_dif_seq_matchers = {$msg}
 
 expand_missing_fragment_specifier = missing fragment specifier
     .note = fragment specifiers must be provided
@@ -118,8 +121,9 @@ expand_module_file_not_found =
     .note = if there is a `mod {$name}` elsewhere in the crate already, import it with `use crate::...` instead
 
 expand_module_in_block =
-    cannot declare a non-inline module inside a block unless it has a path attribute
-    .note = maybe `use` the module `{$name}` instead of redeclaring it
+    cannot declare a file module inside a block unless it has a path attribute
+    .help = maybe `use` the module `{$name}` instead of redeclaring it
+    .note = file modules are usually placed outside of blocks, at the top level of the file
 
 expand_module_multiple_candidates =
     file for module `{$name}` found at both "{$default_path}" and "{$secondary_path}"
@@ -156,9 +160,6 @@ expand_mve_unrecognized_expr =
 
 expand_mve_unrecognized_var =
     variable `{$key}` is not recognized in meta-variable expression
-
-expand_non_inline_modules_in_proc_macro_input_are_unstable =
-    non-inline modules in proc macro input are unstable
 
 expand_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics
@@ -198,12 +199,12 @@ expand_trailing_semi_macro = trailing semicolon in macro used in expression posi
 
 expand_unknown_macro_variable = unknown macro variable `{$name}`
 
+expand_unsupported_key_value =
+    key-value macro attributes are not supported
+
 expand_unused_builtin_attribute = unused attribute `{$attr_name}`
     .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
     .suggestion = remove the attribute
-
-expand_unsupported_key_value =
-    key-value macro attributes are not supported
 
 expand_wrong_fragment_kind =
     non-{$kind} macro in {$kind} position: {$name}

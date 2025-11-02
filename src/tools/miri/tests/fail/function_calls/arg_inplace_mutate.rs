@@ -22,7 +22,7 @@ fn main() {
     }
 }
 
-pub fn callee(x: S, ptr: *mut S) {
+fn callee(x: S, ptr: *mut S) {
     // With the setup above, if `x` is indeed moved in
     // (i.e. we actually just get a pointer to the underlying storage),
     // then writing to `ptr` will change the value stored in `x`!

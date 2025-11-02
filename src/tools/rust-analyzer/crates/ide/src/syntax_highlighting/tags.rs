@@ -124,8 +124,10 @@ pub enum HlOperator {
     Bitwise,
     /// +, -, *, /, +=, -=, *=, /=
     Arithmetic,
-    /// &&, ||, !
+    /// &&, ||
     Logical,
+    /// !
+    Negation,
     /// >, <, ==, >=, <=, !=
     Comparison,
     /// Other operators
@@ -194,6 +196,7 @@ impl HlTag {
                 HlOperator::Arithmetic => "arithmetic",
                 HlOperator::Logical => "logical",
                 HlOperator::Comparison => "comparison",
+                HlOperator::Negation => "negation",
                 HlOperator::Other => "operator",
             },
             HlTag::StringLiteral => "string_literal",

@@ -26,15 +26,22 @@ impl Timespec {
     }
 
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+        fn sub_ge_to_unsigned(a: i64, b: i64) -> u64 {
+            debug_assert!(a >= b);
+            a.wrapping_sub(b).cast_unsigned()
+        }
+
         if self >= other {
+            // Logic here is identical to Unix version of `Timestamp::sub_timespec`,
+            // check comments there why operations do not overflow.
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
                 Duration::new(
-                    (self.t.tv_sec - other.t.tv_sec) as u64,
+                    sub_ge_to_unsigned(self.t.tv_sec, other.t.tv_sec),
                     (self.t.tv_nsec - other.t.tv_nsec) as u32,
                 )
             } else {
                 Duration::new(
-                    (self.t.tv_sec - 1 - other.t.tv_sec) as u64,
+                    sub_ge_to_unsigned(self.t.tv_sec - 1, other.t.tv_sec),
                     (self.t.tv_nsec + NSEC_PER_SEC - other.t.tv_nsec) as u32,
                 )
             })

@@ -220,21 +220,21 @@ fn check_struct_for_power_alignment<'tcx>(
     adt_def: AdtDef<'tcx>,
 ) {
     let tcx = cx.tcx;
-    // repr(C) structs also with packed or aligned representation
-    // should be ignored.
-    if adt_def.repr().c()
-        && !adt_def.repr().packed()
-        && adt_def.repr().align.is_none()
-        && tcx.sess.target.os == "aix"
-        && !adt_def.all_fields().next().is_none()
-    {
+
+    // Only consider structs (not enums or unions) on AIX.
+    if tcx.sess.target.os != "aix" || !adt_def.is_struct() {
+        return;
+    }
+
+    // The struct must be repr(C), but ignore it if it explicitly specifies its alignment with
+    // either `align(N)` or `packed(N)`.
+    if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none() {
         let struct_variant_data = item.expect_struct().2;
         for field_def in struct_variant_data.fields().iter().skip(1) {
             // Struct fields (after the first field) are checked for the
             // power alignment rule, as fields after the first are likely
             // to be the fields that are misaligned.
-            let def_id = field_def.def_id;
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(field_def.def_id).instantiate_identity();
             if check_arg_for_power_alignment(cx, ty) {
                 cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
             }

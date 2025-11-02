@@ -495,7 +495,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         .expect("expected diverging var to be unconstrained");
                 }
 
-                ocx.select_where_possible()
+                ocx.try_evaluate_obligations()
             })
         };
 
@@ -671,9 +671,6 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
                 path.segments.last().expect("paths should have a segment")
             }
             hir::QPath::TypeRelative(_, segment) => segment,
-            hir::QPath::LangItem(..) => {
-                return hir::intravisit::walk_qpath(self, qpath, id);
-            }
         };
         // Alternatively, try to turbofish `::<_, (), _>`.
         if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id()

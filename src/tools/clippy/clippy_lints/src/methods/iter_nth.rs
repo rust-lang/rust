@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::sym;
-use clippy_utils::ty::get_type_diagnostic_name;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     iter_span: Span,
     nth_span: Span,
 ) -> bool {
-    let caller_type = match get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(iter_recv).peel_refs()) {
+    let caller_type = match cx.typeck_results().expr_ty(iter_recv).peel_refs().opt_diag_name(cx) {
         Some(sym::Vec) => "`Vec`",
         Some(sym::VecDeque) => "`VecDeque`",
         _ if cx.typeck_results().expr_ty_adjusted(iter_recv).peel_refs().is_slice() => "slice",

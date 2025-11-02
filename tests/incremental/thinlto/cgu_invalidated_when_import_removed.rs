@@ -1,6 +1,7 @@
 //@ revisions: cfail1 cfail2
 //@ compile-flags: -O -Zhuman-readable-cgu-names -Cllvm-args=-import-instr-limit=10
 //@ build-pass
+//@ ignore-backends: gcc
 
 // rust-lang/rust#59535:
 //

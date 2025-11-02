@@ -77,7 +77,7 @@ pub fn call_kind<'tcx>(
         let container_id = assoc.container_id(tcx);
         match assoc.container {
             AssocContainer::InherentImpl => None,
-            AssocContainer::TraitImpl(_) => tcx.trait_id_of_impl(container_id),
+            AssocContainer::TraitImpl(_) => Some(tcx.impl_trait_id(container_id)),
             AssocContainer::Trait => Some(container_id),
         }
     });

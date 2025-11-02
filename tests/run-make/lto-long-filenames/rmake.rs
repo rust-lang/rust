@@ -9,8 +9,6 @@
 
 //@ ignore-cross-compile
 
-use std::fs;
-
 use run_make_support::{rfs, rustc};
 
 // This test make sure we don't get such following error:

@@ -28,7 +28,7 @@ mod downloading {
     /// The GenMC repository the we get our commit from.
     pub(crate) const GENMC_GITHUB_URL: &str = "https://gitlab.inf.ethz.ch/public-plf/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "af9cc9ccd5d412b16defc35dbf36571c63a19c76";
+    pub(crate) const GENMC_COMMIT: &str = "ce775ccd7866db820fa12ffca66463087a11dd96";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
     /// Return the path of the GenMC repo and whether the checked out commit was changed.
@@ -227,12 +227,17 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
     // These definitions are parsed into a cmake list and then printed to the config.h file, so they are ';' separated.
     let definitions = llvm_definitions.split(";");
 
+    // These are all the C++ files we need to compile, which needs to be updated if more C++ files are added to Miri.
+    // We use absolute paths since relative paths can confuse IDEs when attempting to go-to-source on a path in a compiler error.
+    let cpp_files_base_path = Path::new("cpp/src/");
     let cpp_files = [
-        "./cpp/src/MiriInterface/EventHandling.cpp",
-        "./cpp/src/MiriInterface/Exploration.cpp",
-        "./cpp/src/MiriInterface/Setup.cpp",
-        "./cpp/src/MiriInterface/ThreadManagement.cpp",
-    ];
+        "MiriInterface/EventHandling.cpp",
+        "MiriInterface/Exploration.cpp",
+        "MiriInterface/Mutex.cpp",
+        "MiriInterface/Setup.cpp",
+        "MiriInterface/ThreadManagement.cpp",
+    ]
+    .map(|file| std::path::absolute(cpp_files_base_path.join(file)).unwrap());
 
     let mut bridge = cxx_build::bridge("src/lib.rs");
     // FIXME(genmc,cmake): Remove once the GenMC debug setting is available in the config.h file.

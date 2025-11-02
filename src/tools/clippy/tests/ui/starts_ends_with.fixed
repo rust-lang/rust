@@ -1,4 +1,4 @@
-#![allow(clippy::needless_if, dead_code, unused_must_use, clippy::double_ended_iterator_last)]
+#![allow(clippy::needless_ifs, dead_code, unused_must_use, clippy::double_ended_iterator_last)]
 
 fn main() {}
 

@@ -48,7 +48,7 @@ error: `#[macro_use]` attribute cannot be used on where predicates
 LL |     #[macro_use] T: Trait,
    |     ^^^^^^^^^^^^
    |
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 error: `#[macro_use]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:21:5
@@ -56,7 +56,7 @@ error: `#[macro_use]` attribute cannot be used on where predicates
 LL |     #[macro_use] 'a: 'static,
    |     ^^^^^^^^^^^^
    |
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 error: `#[deprecated]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:24:5
@@ -64,7 +64,7 @@ error: `#[deprecated]` attribute cannot be used on where predicates
 LL |     #[deprecated] T: Trait,
    |     ^^^^^^^^^^^^^
    |
-   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, foreign statics, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, and crates
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
 
 error: `#[deprecated]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:25:5
@@ -72,7 +72,7 @@ error: `#[deprecated]` attribute cannot be used on where predicates
 LL |     #[deprecated] 'a: 'static,
    |     ^^^^^^^^^^^^^
    |
-   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, foreign statics, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, and crates
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
 
 error: `#[automatically_derived]` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:26:5

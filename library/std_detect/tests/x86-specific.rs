@@ -76,7 +76,6 @@ fn dump() {
     println!("widekl: {:?}", is_x86_feature_detected!("widekl"));
     println!("movrs: {:?}", is_x86_feature_detected!("movrs"));
     println!("amx-fp8: {:?}", is_x86_feature_detected!("amx-fp8"));
-    println!("amx-transpose: {:?}", is_x86_feature_detected!("amx-transpose"));
     println!("amx-tf32: {:?}", is_x86_feature_detected!("amx-tf32"));
     println!("amx-avx512: {:?}", is_x86_feature_detected!("amx-avx512"));
     println!("amx-movrs: {:?}", is_x86_feature_detected!("amx-movrs"));

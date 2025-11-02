@@ -1,5 +1,8 @@
-use rustc_abi::{Align, Size};
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
+use rustc_ast::expand::allocator::SpecialAllocatorMethod;
+use rustc_middle::ty::Ty;
+use rustc_span::Symbol;
+use rustc_target::callconv::FnAbi;
 
 use crate::*;
 
@@ -54,30 +57,100 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
-    /// Emulates calling the internal __rust_* allocator functions
-    fn emulate_allocator(
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_rust_alloc_request(&self, size: u64, align: u64) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
+        }
+        if size > this.max_size_of_val().bytes() {
+            throw_ub_format!("creating an allocation larger than half the address space");
+        }
+        if let Err(e) = Align::from_bytes(align) {
+            match e {
+                AlignFromBytesError::TooLarge(_) => {
+                    throw_unsup_format!(
+                        "creating allocation with alignment {align} exceeding rustc's maximum \
+                         supported value"
+                    );
+                }
+                AlignFromBytesError::NotPowerOfTwo(_) => {
+                    throw_ub_format!("creating allocation with non-power-of-two alignment {align}");
+                }
+            }
+        }
+
+        interp_ok(())
+    }
+
+    fn rust_special_allocator_method(
         &mut self,
-        default: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, EmulateItemResult> {
+        method: SpecialAllocatorMethod,
+        link_name: Symbol,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        args: &[OpTy<'tcx>],
+        dest: &PlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let Some(allocator_kind) = this.tcx.allocator_kind(()) else {
-            // in real code, this symbol does not exist without an allocator
-            return interp_ok(EmulateItemResult::NotSupported);
-        };
+        match method {
+            SpecialAllocatorMethod::Alloc | SpecialAllocatorMethod::AllocZeroed => {
+                let [size, align] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let size = this.read_target_usize(size)?;
+                let align = this.read_target_usize(align)?;
 
-        match allocator_kind {
-            AllocatorKind::Global => {
-                // When `#[global_allocator]` is used, `__rust_*` is defined by the macro expansion
-                // of this attribute. As such we have to call an exported Rust function,
-                // and not execute any Miri shim. Somewhat unintuitively doing so is done
-                // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
-                // fallback case in `emulate_foreign_item`.
-                interp_ok(EmulateItemResult::NotSupported)
+                this.check_rust_alloc_request(size, align)?;
+
+                let ptr = this.allocate_ptr(
+                    Size::from_bytes(size),
+                    Align::from_bytes(align).unwrap(),
+                    MiriMemoryKind::Rust.into(),
+                    if matches!(method, SpecialAllocatorMethod::AllocZeroed) {
+                        AllocInit::Zero
+                    } else {
+                        AllocInit::Uninit
+                    },
+                )?;
+
+                this.write_pointer(ptr, dest)
             }
-            AllocatorKind::Default => {
-                default(this)?;
-                interp_ok(EmulateItemResult::NeedsReturn)
+            SpecialAllocatorMethod::Dealloc => {
+                let [ptr, old_size, align] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let old_size = this.read_target_usize(old_size)?;
+                let align = this.read_target_usize(align)?;
+
+                // No need to check old_size/align; we anyway check that they match the allocation.
+                this.deallocate_ptr(
+                    ptr,
+                    Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
+                    MiriMemoryKind::Rust.into(),
+                )
+            }
+            SpecialAllocatorMethod::Realloc => {
+                let [ptr, old_size, align, new_size] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let old_size = this.read_target_usize(old_size)?;
+                let align = this.read_target_usize(align)?;
+                let new_size = this.read_target_usize(new_size)?;
+                // No need to check old_size; we anyway check that they match the allocation.
+
+                this.check_rust_alloc_request(new_size, align)?;
+
+                let align = Align::from_bytes(align).unwrap();
+                let new_ptr = this.reallocate_ptr(
+                    ptr,
+                    Some((Size::from_bytes(old_size), align)),
+                    Size::from_bytes(new_size),
+                    align,
+                    MiriMemoryKind::Rust.into(),
+                    AllocInit::Uninit,
+                )?;
+                this.write_pointer(new_ptr, dest)
             }
         }
     }

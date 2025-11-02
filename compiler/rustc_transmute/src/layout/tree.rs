@@ -279,6 +279,7 @@ pub(crate) mod rustc {
                 LayoutError::Unknown(..)
                 | LayoutError::ReferencesError(..)
                 | LayoutError::TooGeneric(..)
+                | LayoutError::InvalidSimd { .. }
                 | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 LayoutError::Cycle(err) => Self::TypeError(*err),
@@ -325,8 +326,7 @@ pub(crate) mod rustc {
                     let inner_layout = layout_of(cx, *inner_ty)?;
                     assert_eq!(*stride, inner_layout.size);
                     let elt = Tree::from_ty(*inner_ty, cx)?;
-                    Ok(std::iter::repeat(elt)
-                        .take(*count as usize)
+                    Ok(std::iter::repeat_n(elt, *count as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
@@ -360,7 +360,7 @@ pub(crate) mod rustc {
 
                 ty::Ref(region, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;
-                    let referent_align = layout.align.abi.bytes_usize();
+                    let referent_align = layout.align.bytes_usize();
                     let referent_size = layout.size.bytes_usize();
 
                     Ok(Tree::Ref(Reference {

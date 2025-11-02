@@ -1,0 +1,29 @@
+error[E0599]: no method named `method` found for reference `&impl Sized` in the current scope
+  --> $DIR/would-constrain-opaque.rs:28:11
+   |
+LL |         x.method();
+   |           ^^^^^^ method not found in `&impl Sized`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `method`, perhaps you need to implement it
+  --> $DIR/would-constrain-opaque.rs:15:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `method` found for reference `&impl Sized` in the current scope
+  --> $DIR/would-constrain-opaque.rs:30:11
+   |
+LL |         x.method();
+   |           ^^^^^^ method not found in `&impl Sized`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `method`, perhaps you need to implement it
+  --> $DIR/would-constrain-opaque.rs:15:1
+   |
+LL | trait Trait: Sized {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

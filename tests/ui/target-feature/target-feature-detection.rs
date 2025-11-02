@@ -2,22 +2,12 @@
 //! specifically `sse2` on x86/x86_64 platforms, and correctly reports absent features.
 
 //@ run-pass
+//@ ignore-i586 (no SSE2)
 
 #![allow(stable_features)]
 #![feature(cfg_target_feature)]
 
-use std::env;
-
 fn main() {
-    match env::var("TARGET") {
-        Ok(s) => {
-            // Skip this tests on i586-unknown-linux-gnu where sse2 is disabled
-            if s.contains("i586") {
-                return;
-            }
-        }
-        Err(_) => return,
-    }
     if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         assert!(
             cfg!(target_feature = "sse2"),

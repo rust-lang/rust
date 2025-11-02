@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/issue-89971-outer-attr-following-inner-attr-ice.rs:11:1
+  --> $DIR/issue-89971-outer-attr-following-inner-attr-ice.rs:12:1
    |
 LL | #![deny(missing_docs)]
    | ^^^^^^^^^^^^^^^^^^^^^^

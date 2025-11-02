@@ -83,6 +83,9 @@ cfg_select! {
     target_os = "hermit" => {
         mod hermit;
     }
+    target_os = "motor" => {
+        mod motor;
+    }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
     }
@@ -91,6 +94,9 @@ cfg_select! {
     }
     target_os = "uefi" => {
         mod uefi;
+    }
+    target_os = "vexos" => {
+        mod vexos;
     }
     target_family = "wasm" => {
         mod wasm;

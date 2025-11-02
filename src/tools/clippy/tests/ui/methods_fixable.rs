@@ -8,4 +8,18 @@ fn main() {
     // Single-line case.
     let _ = v.iter().filter(|&x| *x < 0).next();
     //~^ filter_next
+
+    let _ = v.iter().filter(|&x| *x < 0).next_back();
+    //~^ filter_next
+}
+
+#[clippy::msrv = "1.27"]
+fn msrv_1_27() {
+    let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
+    //~^ filter_next
+}
+
+#[clippy::msrv = "1.26"]
+fn msrv_1_26() {
+    let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
 }

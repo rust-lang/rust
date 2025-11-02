@@ -86,6 +86,17 @@ pub(super) fn post_musl_self_contained() -> CrtObjects {
 
 pub(super) fn pre_mingw_self_contained() -> CrtObjects {
     new(&[
+        (LinkOutputKind::DynamicNoPicExe, &["crt2.o"]),
+        (LinkOutputKind::DynamicPicExe, &["crt2.o"]),
+        (LinkOutputKind::StaticNoPicExe, &["crt2.o"]),
+        (LinkOutputKind::StaticPicExe, &["crt2.o"]),
+        (LinkOutputKind::DynamicDylib, &["dllcrt2.o"]),
+        (LinkOutputKind::StaticDylib, &["dllcrt2.o"]),
+    ])
+}
+
+pub(super) fn pre_i686_mingw_self_contained() -> CrtObjects {
+    new(&[
         (LinkOutputKind::DynamicNoPicExe, &["crt2.o", "rsbegin.o"]),
         (LinkOutputKind::DynamicPicExe, &["crt2.o", "rsbegin.o"]),
         (LinkOutputKind::StaticNoPicExe, &["crt2.o", "rsbegin.o"]),
@@ -95,15 +106,15 @@ pub(super) fn pre_mingw_self_contained() -> CrtObjects {
     ])
 }
 
-pub(super) fn post_mingw_self_contained() -> CrtObjects {
+pub(super) fn post_i686_mingw_self_contained() -> CrtObjects {
     all("rsend.o")
 }
 
-pub(super) fn pre_mingw() -> CrtObjects {
+pub(super) fn pre_i686_mingw() -> CrtObjects {
     all("rsbegin.o")
 }
 
-pub(super) fn post_mingw() -> CrtObjects {
+pub(super) fn post_i686_mingw() -> CrtObjects {
     all("rsend.o")
 }
 

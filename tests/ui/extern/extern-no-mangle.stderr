@@ -19,7 +19,7 @@ LL |     #[no_mangle]
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to methods, functions, and statics
+   = help: `#[no_mangle]` can be applied to functions, methods, and statics
 
 warning: `#[no_mangle]` attribute cannot be used on statements
   --> $DIR/extern-no-mangle.rs:24:5

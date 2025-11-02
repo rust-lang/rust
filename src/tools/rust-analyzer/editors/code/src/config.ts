@@ -4,7 +4,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
-import type { Disposable } from "vscode";
+import { cloneDeep, get, pickBy, set } from "lodash";
 
 export type RunnableEnvCfgItem = {
     mask?: string;
@@ -12,13 +12,25 @@ export type RunnableEnvCfgItem = {
     platform?: string | string[];
 };
 
+export type ConfigurationTree = { [key: string]: ConfigurationValue };
+export type ConfigurationValue =
+    | undefined
+    | null
+    | boolean
+    | number
+    | string
+    | ConfigurationValue[]
+    | ConfigurationTree;
+
 type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSelector };
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
-    configureLang: vscode.Disposable | undefined;
 
-    readonly rootSection = "rust-analyzer";
+    configureLang: vscode.Disposable | undefined;
+    workspaceState: vscode.Memento;
+
+    private readonly rootSection = "rust-analyzer";
     private readonly requiresServerReloadOpts = ["server", "files", "showSyntaxTree"].map(
         (opt) => `${this.rootSection}.${opt}`,
     );
@@ -27,14 +39,57 @@ export class Config {
         (opt) => `${this.rootSection}.${opt}`,
     );
 
-    constructor(disposables: Disposable[]) {
-        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, disposables);
+    constructor(ctx: vscode.ExtensionContext) {
+        this.workspaceState = ctx.workspaceState;
+        vscode.workspace.onDidChangeConfiguration(
+            this.onDidChangeConfiguration,
+            this,
+            ctx.subscriptions,
+        );
         this.refreshLogging();
         this.configureLanguage();
     }
 
     dispose() {
         this.configureLang?.dispose();
+    }
+
+    private readonly extensionConfigurationStateKey = "extensionConfigurations";
+
+    /// Returns the rust-analyzer-specific workspace configuration, incl. any
+    /// configuration items overridden by (present) extensions.
+    get extensionConfigurations(): Record<string, Record<string, unknown>> {
+        return pickBy(
+            this.workspaceState.get<Record<string, ConfigurationTree>>(
+                "extensionConfigurations",
+                {},
+            ),
+            // ignore configurations from disabled/removed extensions
+            (_, extensionId) => vscode.extensions.getExtension(extensionId) !== undefined,
+        );
+    }
+
+    async addExtensionConfiguration(
+        extensionId: string,
+        configuration: Record<string, unknown>,
+    ): Promise<void> {
+        const oldConfiguration = this.cfg;
+
+        const extCfgs = this.extensionConfigurations;
+        extCfgs[extensionId] = configuration;
+        await this.workspaceState.update(this.extensionConfigurationStateKey, extCfgs);
+
+        const newConfiguration = this.cfg;
+        const prefix = `${this.rootSection}.`;
+        await this.onDidChangeConfiguration({
+            affectsConfiguration(section: string, _scope?: vscode.ConfigurationScope): boolean {
+                return (
+                    section.startsWith(prefix) &&
+                    get(oldConfiguration, section.slice(prefix.length)) !==
+                        get(newConfiguration, section.slice(prefix.length))
+                );
+            },
+        });
     }
 
     private refreshLogging() {
@@ -176,8 +231,34 @@ export class Config {
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    private get cfg(): vscode.WorkspaceConfiguration {
+    // Returns the raw configuration for rust-analyzer as returned by vscode. This
+    // should only be used when modifications to the user/workspace configuration
+    // are required.
+    private get rawCfg(): vscode.WorkspaceConfiguration {
         return vscode.workspace.getConfiguration(this.rootSection);
+    }
+
+    // Returns the final configuration to use, with extension configuration overrides merged in.
+    public get cfg(): ConfigurationTree {
+        const finalConfig = cloneDeep<ConfigurationTree>(this.rawCfg);
+        for (const [extensionId, items] of Object.entries(this.extensionConfigurations)) {
+            for (const [k, v] of Object.entries(items)) {
+                const i = this.rawCfg.inspect(k);
+                if (
+                    i?.workspaceValue !== undefined ||
+                    i?.workspaceFolderValue !== undefined ||
+                    i?.globalValue !== undefined
+                ) {
+                    log.trace(
+                        `Ignoring configuration override for ${k} from extension ${extensionId}`,
+                    );
+                    continue;
+                }
+                log.trace(`Extension ${extensionId} overrides configuration ${k} to `, v);
+                set(finalConfig, k, v);
+            }
+        }
+        return finalConfig;
     }
 
     /**
@@ -187,7 +268,6 @@ export class Config {
      * ```ts
      * const nullableNum = vscode
      *  .workspace
-     *  .getConfiguration
      *  .getConfiguration("rust-analyzer")
      *  .get<number | null>(path)!;
      *
@@ -197,7 +277,7 @@ export class Config {
      * So this getter handles this quirk by not requiring the caller to use postfix `!`
      */
     private get<T>(path: string): T | undefined {
-        return prepareVSCodeConfig(this.cfg.get<T>(path));
+        return prepareVSCodeConfig(get(this.cfg, path)) as T;
     }
 
     get serverPath() {
@@ -223,7 +303,7 @@ export class Config {
     }
 
     async toggleCheckOnSave() {
-        const config = this.cfg.inspect<boolean>("checkOnSave") ?? { key: "checkOnSave" };
+        const config = this.rawCfg.inspect<boolean>("checkOnSave") ?? { key: "checkOnSave" };
         let overrideInLanguage;
         let target;
         let value;
@@ -249,7 +329,12 @@ export class Config {
             overrideInLanguage = config.defaultLanguageValue;
             value = config.defaultValue || config.defaultLanguageValue;
         }
-        await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
+        await this.rawCfg.update(
+            "checkOnSave",
+            !(value || false),
+            target || null,
+            overrideInLanguage,
+        );
     }
 
     get problemMatcher(): string[] {
@@ -367,26 +452,24 @@ export class Config {
     }
 
     async setAskBeforeUpdateTest(value: boolean) {
-        await this.cfg.update("runnables.askBeforeUpdateTest", value, true);
+        await this.rawCfg.update("runnables.askBeforeUpdateTest", value, true);
     }
 }
 
-export function prepareVSCodeConfig<T>(resp: T): T {
+export function prepareVSCodeConfig(resp: ConfigurationValue): ConfigurationValue {
     if (Is.string(resp)) {
-        return substituteVSCodeVariableInString(resp) as T;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } else if (resp && Is.array<any>(resp)) {
+        return substituteVSCodeVariableInString(resp);
+    } else if (resp && Is.array(resp)) {
         return resp.map((val) => {
             return prepareVSCodeConfig(val);
-        }) as T;
+        });
     } else if (resp && typeof resp === "object") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res: { [key: string]: any } = {};
+        const res: ConfigurationTree = {};
         for (const key in resp) {
             const val = resp[key];
             res[key] = prepareVSCodeConfig(val);
         }
-        return res as T;
+        return res;
     }
     return resp;
 }

@@ -1,5 +1,4 @@
 #![allow(
-    dead_code,
     clippy::missing_safety_doc,
     clippy::extra_unused_lifetimes,
     clippy::extra_unused_type_parameters,
@@ -263,5 +262,65 @@ where
     pub fn new() -> Self {
         //~^ new_without_default
         Self { _kv: None }
+    }
+}
+
+// From issue #14552, but with `#[cfg]`s that are actually `true` in the uitest context
+
+pub struct NewWithCfg;
+impl NewWithCfg {
+    #[cfg(not(test))]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWith2Cfgs;
+impl NewWith2Cfgs {
+    #[cfg(not(test))]
+    #[cfg(panic = "unwind")]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWithExtraneous;
+impl NewWithExtraneous {
+    #[inline]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+pub struct NewWithCfgAndExtraneous;
+impl NewWithCfgAndExtraneous {
+    #[cfg(not(test))]
+    #[inline]
+    pub fn new() -> Self {
+        //~^ new_without_default
+        unimplemented!()
+    }
+}
+
+mod issue15778 {
+    pub struct Foo(Vec<i32>);
+
+    impl Foo {
+        pub fn new() -> Self {
+            Self(Vec::new())
+        }
+    }
+
+    impl<'a> IntoIterator for &'a Foo {
+        type Item = &'a i32;
+
+        type IntoIter = std::slice::Iter<'a, i32>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.as_slice().iter()
+        }
     }
 }

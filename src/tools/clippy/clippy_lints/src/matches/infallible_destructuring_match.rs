@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{path_to_local_id, peel_blocks, strip_pat_refs};
+use clippy_utils::{peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, LetStmt, MatchSource, PatKind, QPath};
 use rustc_lint::LateContext;
@@ -17,7 +18,7 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
         && args.len() == 1
         && let PatKind::Binding(binding, arg, ..) = strip_pat_refs(&args[0]).kind
         && let body = peel_blocks(arms[0].body)
-        && path_to_local_id(body, arg)
+        && body.res_local_id() == Some(arg)
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(

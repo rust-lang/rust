@@ -303,7 +303,7 @@ pub unsafe fn check_pair_with_bool(x: (u8, bool)) -> (bool, i8) {
 pub unsafe fn check_float_to_pointer(x: f64) -> *const () {
     // CHECK-NOT: alloca
     // CHECK: %0 = bitcast double %x to i64
-    // CHECK: %_0 = getelementptr i8, ptr null, i64 %0
+    // CHECK: %_0 = inttoptr i64 %0 to ptr
     // CHECK: ret ptr %_0
     transmute(x)
 }
@@ -378,7 +378,7 @@ pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
 // CHECK-LABEL: @check_pair_to_dst_ref(
 #[no_mangle]
 pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
-    // CHECK: %_0.0 = getelementptr i8, ptr null, i64 %x.0
+    // CHECK: %_0.0 = inttoptr i64 %x.0 to ptr
     // CHECK: %0 = icmp ne ptr %_0.0, null
     // CHECK: call void @llvm.assume(i1 %0)
     // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0

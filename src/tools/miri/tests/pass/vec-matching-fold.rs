@@ -29,7 +29,7 @@ where
     }
 }
 
-pub fn main() {
+fn main() {
     let x = &[1, 2, 3, 4, 5];
 
     let product = foldl(x, 1, |a, b| a * *b);

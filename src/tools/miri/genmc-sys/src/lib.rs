@@ -45,10 +45,14 @@ pub fn create_genmc_driver_handle(
 }
 
 impl GenmcScalar {
-    pub const UNINIT: Self = Self { value: 0, is_init: false };
+    pub const UNINIT: Self = Self { value: 0, extra: 0, is_init: false };
 
     pub const fn from_u64(value: u64) -> Self {
-        Self { value, is_init: true }
+        Self { value, extra: 0, is_init: true }
+    }
+
+    pub const fn has_provenance(&self) -> bool {
+        self.extra != 0
     }
 }
 
@@ -162,10 +166,16 @@ mod ffi {
     }
 
     /// This type corresponds to `Option<SVal>` (or `std::optional<SVal>`), where `SVal` is the type that GenMC uses for storing values.
-    /// CXX doesn't support `std::optional` currently, so we need to use an extra `bool` to define whether this value is initialized or not.
     #[derive(Debug, Clone, Copy)]
     struct GenmcScalar {
+        /// The raw byte-level value (discarding provenance, if any) of this scalar.
         value: u64,
+        /// This is zero for integer values. For pointers, this encodes the provenance by
+        /// storing the base address of the allocation that this pointer belongs to.
+        /// Operations on `SVal` in GenMC (e.g., `fetch_add`) preserve the `extra` of the left argument (`left.fetch_add(right, ...)`).
+        extra: u64,
+        /// Indicates whether this value is initialized. If this is `false`, the other fields do not matter.
+        /// (Ideally we'd use `std::optional` but CXX does not support that.)
         is_init: bool,
     }
 
@@ -173,6 +183,7 @@ mod ffi {
     #[derive(Debug, Clone, Copy)]
     enum ExecutionState {
         Ok,
+        Error,
         Blocked,
         Finished,
     }
@@ -243,6 +254,17 @@ mod ffi {
         is_coherence_order_maximal_write: bool,
     }
 
+    #[must_use]
+    #[derive(Debug)]
+    struct MutexLockResult {
+        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        error: UniquePtr<CxxString>,
+        /// If true, GenMC determined that we should retry the mutex lock operation once the thread attempting to lock is scheduled again.
+        is_reset: bool,
+        /// Indicate whether the lock was acquired by this thread.
+        is_lock_acquired: bool,
+    }
+
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
     "importing" externally defined C++ types. ****/
 
@@ -258,9 +280,11 @@ mod ffi {
     /// Corresponds to GenMC's type with the same name.
     /// Should only be modified if changed by GenMC.
     enum ActionKind {
-        /// Any Mir terminator that's atomic and has load semantics.
+        /// Any MIR terminator that's atomic and that may have load semantics.
+        /// This includes functions with atomic properties, such as `pthread_create`.
+        /// If the exact type of the terminator cannot be determined, load is a safe default `Load`.
         Load,
-        /// Anything that's not a `Load`.
+        /// Anything that's definitely not a `Load`.
         NonLoad,
     }
 
@@ -292,6 +316,13 @@ mod ffi {
         UMin = 10,
     }
 
+    #[derive(Debug)]
+    enum AssumeType {
+        User = 0,
+        Barrier = 1,
+        Spinloop = 2,
+    }
+
     // # Safety
     //
     // This block is unsafe to allow defining safe methods inside.
@@ -310,6 +341,7 @@ mod ffi {
         (This tells cxx that the enums defined above are already defined on the C++ side;
         it will emit assertions to ensure that the two definitions agree.) ****/
         type ActionKind;
+        type AssumeType;
         type MemOrdering;
         type RMWBinOp;
         type SchedulePolicy;
@@ -404,13 +436,44 @@ mod ffi {
             size: u64,
             alignment: u64,
         ) -> u64;
-        fn handle_free(self: Pin<&mut MiriGenmcShim>, thread_id: i32, address: u64);
+        /// Returns true if an error was found.
+        fn handle_free(self: Pin<&mut MiriGenmcShim>, thread_id: i32, address: u64) -> bool;
 
         /**** Thread management ****/
         fn handle_thread_create(self: Pin<&mut MiriGenmcShim>, thread_id: i32, parent_id: i32);
         fn handle_thread_join(self: Pin<&mut MiriGenmcShim>, thread_id: i32, child_id: i32);
         fn handle_thread_finish(self: Pin<&mut MiriGenmcShim>, thread_id: i32, ret_val: u64);
         fn handle_thread_kill(self: Pin<&mut MiriGenmcShim>, thread_id: i32);
+
+        /**** Blocking instructions ****/
+        /// Inform GenMC that the thread should be blocked.
+        /// Note: this function is currently hardcoded for `AssumeType::User`, corresponding to user supplied assume statements.
+        /// This can become a parameter once more types of assumes are added.
+        fn handle_assume_block(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            assume_type: AssumeType,
+        );
+
+        /**** Mutex handling ****/
+        fn handle_mutex_lock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> MutexLockResult;
+        fn handle_mutex_try_lock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> MutexLockResult;
+        fn handle_mutex_unlock(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+        ) -> StoreResult;
 
         /***** Exploration related functionality *****/
 

@@ -16,7 +16,7 @@ use ide::{
     FilePosition, TextSize,
 };
 use ide_db::{
-    SnippetCap,
+    MiniCore, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use project_model::CargoConfig;
@@ -186,6 +186,7 @@ fn integrated_completion_benchmark() {
             exclude_traits: &[],
             enable_auto_await: true,
             enable_auto_iter: true,
+            minicore: MiniCore::default(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -240,6 +241,7 @@ fn integrated_completion_benchmark() {
             exclude_traits: &[],
             enable_auto_await: true,
             enable_auto_iter: true,
+            minicore: MiniCore::default(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -292,6 +294,7 @@ fn integrated_completion_benchmark() {
             exclude_traits: &[],
             enable_auto_await: true,
             enable_auto_iter: true,
+            minicore: MiniCore::default(),
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

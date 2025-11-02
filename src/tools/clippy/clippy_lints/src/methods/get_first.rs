@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
                 format!("{slice_name}.first()"),
                 app,
             );
-        } else if is_type_diagnostic_item(cx, identity, sym::VecDeque) {
+        } else if identity.is_diag_item(cx, sym::VecDeque) {
             let mut app = Applicability::MachineApplicable;
             let slice_name = snippet_with_applicability(cx, recv.span, "..", &mut app);
             span_lint_and_sugg(

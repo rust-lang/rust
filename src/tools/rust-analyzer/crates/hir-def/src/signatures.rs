@@ -349,6 +349,7 @@ bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
     pub struct ImplFlags: u8 {
         const NEGATIVE = 1 << 1;
+        const DEFAULT = 1 << 2;
         const UNSAFE = 1 << 3;
     }
 }
@@ -374,6 +375,9 @@ impl ImplSignature {
         if src.value.excl_token().is_some() {
             flags.insert(ImplFlags::NEGATIVE);
         }
+        if src.value.default_token().is_some() {
+            flags.insert(ImplFlags::DEFAULT);
+        }
 
         let (store, source_map, self_ty, target_trait, generic_params) =
             crate::expr_store::lower::lower_impl(db, loc.container, src, id);
@@ -388,6 +392,16 @@ impl ImplSignature {
             }),
             Arc::new(source_map),
         )
+    }
+
+    #[inline]
+    pub fn is_negative(&self) -> bool {
+        self.flags.contains(ImplFlags::NEGATIVE)
+    }
+
+    #[inline]
+    pub fn is_default(&self) -> bool {
+        self.flags.contains(ImplFlags::DEFAULT)
     }
 }
 

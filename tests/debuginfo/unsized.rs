@@ -1,6 +1,7 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-gdb-version: 13.1 - 99.0
+//@ ignore-backends: gcc
 // ^ https://sourceware.org/bugzilla/show_bug.cgi?id=30330
 
 // === GDB TESTS ===================================================================================

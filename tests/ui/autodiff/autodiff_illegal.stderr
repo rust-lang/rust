@@ -107,53 +107,24 @@ LL | #[autodiff_reverse(df13, Reverse)]
    |                          ^^^^^^^
 
 error: invalid return activity Active in Forward Mode
-  --> $DIR/autodiff_illegal.rs:147:1
+  --> $DIR/autodiff_illegal.rs:131:1
    |
 LL | #[autodiff_forward(df19, Dual, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Dual in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:153:1
+  --> $DIR/autodiff_illegal.rs:137:1
    |
 LL | #[autodiff_reverse(df20, Active, Dual)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Duplicated in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:160:1
+  --> $DIR/autodiff_illegal.rs:144:1
    |
 LL | #[autodiff_reverse(df21, Active, Duplicated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0433]: failed to resolve: use of undeclared type `MyFloat`
-  --> $DIR/autodiff_illegal.rs:116:1
-   |
-LL | #[autodiff_reverse(df15, Active, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `MyFloat`
+error: aborting due to 18 previous errors
 
-error[E0433]: failed to resolve: use of undeclared type `F64Trans`
-  --> $DIR/autodiff_illegal.rs:140:1
-   |
-LL | #[autodiff_reverse(df18, Active, Active)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of undeclared type `F64Trans`
-
-error[E0599]: the function or associated item `default` exists for tuple `(DoesNotImplDefault, DoesNotImplDefault)`, but its trait bounds were not satisfied
-  --> $DIR/autodiff_illegal.rs:167:1
-   |
-LL | struct DoesNotImplDefault;
-   | ------------------------- doesn't satisfy `DoesNotImplDefault: Default`
-LL | #[autodiff_forward(df22, Dual)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item cannot be called on `(DoesNotImplDefault, DoesNotImplDefault)` due to unsatisfied trait bounds
-   |
-   = note: the following trait bounds were not satisfied:
-           `DoesNotImplDefault: Default`
-           which is required by `(DoesNotImplDefault, DoesNotImplDefault): Default`
-help: consider annotating `DoesNotImplDefault` with `#[derive(Default)]`
-   |
-LL + #[derive(Default)]
-LL | struct DoesNotImplDefault;
-   |
-
-error: aborting due to 21 previous errors
-
-Some errors have detailed explanations: E0428, E0433, E0599, E0658.
+Some errors have detailed explanations: E0428, E0658.
 For more information about an error, try `rustc --explain E0428`.

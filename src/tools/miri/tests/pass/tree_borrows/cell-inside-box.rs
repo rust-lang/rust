@@ -6,7 +6,7 @@ mod utils;
 
 use std::cell::UnsafeCell;
 
-pub fn main() {
+fn main() {
     let cell = UnsafeCell::new(42);
     let box1 = Box::new(cell);
 
@@ -20,7 +20,7 @@ pub fn main() {
         name!(ptr2);
 
         // We perform a write through `x`.
-        // Because `ptr1` is ReservedIM, a child write will make it transition to Active.
+        // Because `ptr1` is ReservedIM, a child write will make it transition to Unique.
         // Because `ptr2` is ReservedIM, a foreign write doesn't have any effect on it.
         let x = (*ptr1).get();
         *x = 1;

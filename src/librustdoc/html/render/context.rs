@@ -30,6 +30,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
+use crate::html::render::span_map::Span;
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
@@ -139,7 +140,7 @@ pub(crate) struct SharedContext<'tcx> {
 
     /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondence_map: FxHashMap<Span, LinkFromSrc>,
     pub(crate) expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,

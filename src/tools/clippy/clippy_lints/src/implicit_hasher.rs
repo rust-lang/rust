@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+use clippy_utils::res::MaybeDef;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_body, walk_expr, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
@@ -14,7 +15,6 @@ use rustc_span::Span;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
 use clippy_utils::sym;
-use clippy_utils::ty::is_type_diagnostic_item;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -227,14 +227,14 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             let ty = lower_ty(cx.tcx, hir_ty);
 
-            if is_type_diagnostic_item(cx, ty, sym::HashMap) && params_len == 2 {
+            if ty.is_diag_item(cx, sym::HashMap) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
                     snippet(cx, params[0].span, "K"),
                     snippet(cx, params[1].span, "V"),
                 ))
-            } else if is_type_diagnostic_item(cx, ty, sym::HashSet) && params_len == 1 {
+            } else if ty.is_diag_item(cx, sym::HashSet) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
                     hir_ty.span,
                     ty,

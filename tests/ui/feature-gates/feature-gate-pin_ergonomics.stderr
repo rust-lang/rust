@@ -148,6 +148,16 @@ LL |         let x: Pin<&_> = &pin const Foo;
    = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: the `#[pin_v2]` attribute is an experimental feature
+  --> $DIR/feature-gate-pin_ergonomics.rs:5:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0382]: use of moved value: `x`
   --> $DIR/feature-gate-pin_ergonomics.rs:28:9
    |
@@ -177,16 +187,16 @@ LL |     x.foo();
    |     ^ value used here after move
    |
 note: `Foo::foo` takes ownership of the receiver `self`, which moves `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:8:12
+  --> $DIR/feature-gate-pin_ergonomics.rs:9:12
    |
-LL |     fn foo(self: Pin<&mut Self>) {
+LL |     fn foo(self: Pin<&mut Self>) {}
    |            ^^^^
 help: consider reborrowing the `Pin` instead of moving it
    |
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
 Some errors have detailed explanations: E0382, E0658.
 For more information about an error, try `rustc --explain E0382`.

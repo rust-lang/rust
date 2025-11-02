@@ -2,8 +2,9 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::paths::{self, PathNS, find_crates, lookup_path_str};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{fn_def_id, is_no_std_crate, path_def_id, sym};
+use clippy_utils::{fn_def_id, is_no_std_crate, sym};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -188,7 +189,7 @@ impl LazyInfo {
     fn from_item(cx: &LateContext<'_>, item: &Item<'_>) -> Option<Self> {
         // Check if item is a `once_cell:sync::Lazy` static.
         if let ItemKind::Static(_, _, ty, body_id) = item.kind
-            && let Some(path_def_id) = path_def_id(cx, ty)
+            && let Some(path_def_id) = ty.basic_res().opt_def_id()
             && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
             && paths::ONCE_CELL_SYNC_LAZY.matches(cx, path_def_id)
         {
@@ -219,7 +220,7 @@ impl LazyInfo {
     fn lint(&self, cx: &LateContext<'_>, sugg_map: &FxIndexMap<DefId, Option<String>>) {
         // Applicability might get adjusted to `Unspecified` later if any calls
         // in `calls_span_and_id` are not replaceable judging by the `sugg_map`.
-        let mut appl = Applicability::MachineApplicable;
+        let mut app = Applicability::MachineApplicable;
         let mut suggs = vec![(self.ty_span_no_args, "std::sync::LazyLock".to_string())];
 
         for (span, def_id) in &self.calls_span_and_id {
@@ -228,7 +229,7 @@ impl LazyInfo {
                 suggs.push((*span, sugg));
             } else {
                 // If NO suggested replacement, not machine applicable
-                appl = Applicability::Unspecified;
+                app = Applicability::Unspecified;
             }
         }
 
@@ -239,7 +240,7 @@ impl LazyInfo {
             self.ty_span_no_args,
             "this type has been superseded by `LazyLock` in the standard library",
             |diag| {
-                diag.multipart_suggestion("use `std::sync::LazyLock` instead", suggs, appl);
+                diag.multipart_suggestion("use `std::sync::LazyLock` instead", suggs, app);
             },
         );
     }

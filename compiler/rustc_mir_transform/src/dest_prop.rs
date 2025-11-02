@@ -146,7 +146,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, Results};
+use rustc_mir_dataflow::{Analysis, EntryStates};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
@@ -173,7 +173,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let points = DenseLocationMap::new(body);
         let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
-        let mut live = save_as_intervals(&points, body, &relevant, live.results);
+        let mut live = save_as_intervals(&points, body, &relevant, live.entry_states);
 
         dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
 
@@ -276,8 +276,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
                 if self.merged_locals.contains(*local) =>
             {
-                statement.make_nop();
-                return;
+                statement.make_nop(true);
             }
             _ => (),
         };
@@ -285,13 +284,12 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
-                    Rvalue::CopyForDeref(place)
-                    | Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                         // These might've been turned into self-assignments by the replacement
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
                             debug!("{:?} turned into self-assignment, deleting", location);
-                            statement.make_nop();
+                            statement.make_nop(true);
                         }
                     }
                     _ => {}
@@ -400,7 +398,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
-            Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
             && let Some(src) = lhs.as_local()
             && let Some(dest) = rhs.as_local()
@@ -508,7 +506,7 @@ fn save_as_intervals<'tcx>(
     elements: &DenseLocationMap,
     body: &Body<'tcx>,
     relevant: &RelevantLocals,
-    results: Results<DenseBitSet<Local>>,
+    entry_states: EntryStates<DenseBitSet<Local>>,
 ) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
     let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
     let mut state = MaybeLiveLocals.bottom_value(body);
@@ -531,7 +529,7 @@ fn save_as_intervals<'tcx>(
             continue;
         }
 
-        state.clone_from(&results[block]);
+        state.clone_from(&entry_states[block]);
 
         let block_data = &body.basic_blocks[block];
         let loc = Location { block, statement_index: block_data.statements.len() };

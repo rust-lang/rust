@@ -208,7 +208,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx| {
+                |selcx, bound, idx, alias_bound_kind| {
                     let Some(bound) = bound.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
@@ -230,12 +230,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             bound.map_bound(|pred| pred.trait_ref),
                         ) {
                             Ok(None) => {
-                                candidates.vec.push(ProjectionCandidate(idx));
+                                candidates
+                                    .vec
+                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
                             }
                             Ok(Some(normalized_trait))
                                 if distinct_normalized_bounds.insert(normalized_trait) =>
                             {
-                                candidates.vec.push(ProjectionCandidate(idx));
+                                candidates
+                                    .vec
+                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
                             }
                             _ => {}
                         }
@@ -600,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
                 if !drcx
                     .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
                 {
@@ -825,7 +829,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, alias) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //

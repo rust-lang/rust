@@ -15,11 +15,11 @@ use crate::core::build_steps::compile::{Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
-use crate::core::build_steps::run::get_completion_paths;
+use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{
-    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType,
-    TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool, ToolTargetBuildMode, get_tool_target_compiler,
+    self, RustcPrivateCompilers, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool,
+    ToolTargetBuildMode, get_tool_target_compiler,
 };
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
@@ -28,7 +28,7 @@ use crate::core::builder::{
     crate_description,
 };
 use crate::core::config::TargetSelection;
-use crate::core::config::flags::{Subcommand, get_completion};
+use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -36,7 +36,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, debug, envify};
+use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -582,11 +582,11 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        builder.verbose(|| println!("running: {cargo:?}"));
+        builder.do_if_verbose(|| println!("running: {cargo:?}"));
         let stdout = cargo.run_capture_stdout(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
-        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+        builder.do_if_verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
         PathBuf::from(sysroot)
     }
 }
@@ -786,26 +786,26 @@ impl Step for CompiletestTest {
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
 
+        // Now that compiletest uses only stable Rust, building it always uses
+        // the stage 0 compiler. However, some of its unit tests need to be able
+        // to query information from an in-tree compiler, so we treat `--stage`
+        // as selecting the stage of that secondary compiler.
+
         if builder.top_stage == 0 && !builder.config.compiletest_allow_stage0 {
             eprintln!("\
-ERROR: `--stage 0` runs compiletest self-tests against the stage0 (precompiled) compiler, not the in-tree compiler, and will almost always cause tests to fail
+ERROR: `--stage 0` causes compiletest to query information from the stage0 (precompiled) compiler, instead of the in-tree compiler, which can cause some tests to fail inappropriately
 NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `--set build.compiletest-allow-stage0=true`."
             );
             crate::exit!(1);
         }
 
-        let compiler = builder.compiler(builder.top_stage, host);
-        debug!(?compiler);
+        let bootstrap_compiler = builder.compiler(0, host);
+        let staged_compiler = builder.compiler(builder.top_stage, host);
 
-        // We need `ToolStd` for the locally-built sysroot because
-        // compiletest uses unstable features of the `test` crate.
-        builder.std(compiler, host);
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
-            // compiletest uses libtest internals; make it use the in-tree std to make sure it never
-            // breaks when std sources change.
-            Mode::ToolStd,
+            bootstrap_compiler,
+            Mode::ToolBootstrap,
             host,
             Kind::Test,
             "src/tools/compiletest",
@@ -816,9 +816,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // Used for `compiletest` self-tests to have the path to the *staged* compiler. Getting this
         // right is important, as `compiletest` is intended to only support one target spec JSON
         // format, namely that of the staged compiler.
-        cargo.env("TEST_RUSTC", builder.rustc(compiler));
+        cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
 
-        cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
 }
@@ -1292,6 +1291,23 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 "x.py completions were changed; run `x.py run generate-completions` to update them"
             );
             crate::exit!(1);
+        }
+
+        builder.info("x.py help check");
+        if builder.config.cmd.bless() {
+            builder.ensure(crate::core::build_steps::run::GenerateHelp);
+        } else {
+            let help_path = get_help_path(builder);
+            let cur_help = std::fs::read_to_string(&help_path).unwrap_or_else(|err| {
+                eprintln!("couldn't read {}: {}", help_path.display(), err);
+                crate::exit!(1);
+            });
+            let new_help = top_level_help();
+
+            if new_help != cur_help {
+                eprintln!("x.py help was changed; run `x.py run generate-help` to update it");
+                crate::exit!(1);
+            }
         }
     }
 
@@ -1926,6 +1942,17 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 );
                 crate::exit!(1);
             }
+
+            if let CodegenBackendKind::Gcc = codegen_backend
+                && builder.config.rustc_debug_assertions
+            {
+                eprintln!(
+                    r#"WARNING: Running tests with the GCC codegen backend while rustc debug assertions are enabled. This might lead to test failures.
+Please disable assertions with `rust.debug-assertions = false`.
+        "#
+                );
+            }
+
             // Tells compiletest that we want to use this codegen in particular and to override
             // the default one.
             cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
@@ -1937,6 +1964,9 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             // It is used to e.g. ignore tests that don't support that codegen backend.
             cmd.arg("--default-codegen-backend")
                 .arg(builder.config.default_codegen_backend(test_compiler.host).name());
+        }
+        if builder.config.cmd.bypass_ignore_backends() {
+            cmd.arg("--bypass-ignore-backends");
         }
 
         if builder.build.config.llvm_enzyme {
@@ -1974,9 +2004,6 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             cmd.arg("--nodejs").arg(nodejs);
         } else if mode == "rustdoc-js" {
             panic!("need nodejs to run rustdoc-js suite");
-        }
-        if let Some(ref npm) = builder.config.npm {
-            cmd.arg("--npm").arg(npm);
         }
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
@@ -2675,7 +2702,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         return true;
     }
 
-    builder.verbose(|| println!("doc tests for: {}", markdown.display()));
+    builder.do_if_verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions
@@ -2964,7 +2991,7 @@ impl Step for Crate {
                         .arg("--manifest-path")
                         .arg(builder.src.join("library/sysroot/Cargo.toml"));
                 } else {
-                    compile::std_cargo(builder, target, &mut cargo);
+                    compile::std_cargo(builder, target, &mut cargo, &[]);
                 }
             }
             Mode::Rustc => {
@@ -3263,6 +3290,8 @@ fn distcheck_plain_source_tarball(builder: &Builder<'_>, plain_src_dir: &Path) {
         .env("GITHUB_ACTIONS", "0")
         .current_dir(plain_src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(plain_src_dir);
 }
 
 /// Check that rust-src has all of libstd's dependencies
@@ -3288,6 +3317,8 @@ fn distcheck_rust_src(builder: &Builder<'_>, src_dir: &Path) {
         .arg(&toml)
         .current_dir(src_dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(src_dir);
 }
 
 /// Check that rustc-dev's compiler crate source code can be loaded with `cargo metadata`
@@ -3312,6 +3343,8 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
         .env("RUSTC", &builder.initial_rustc)
         .current_dir(dir)
         .run(builder);
+    // Mitigate pressure on small-capacity disks.
+    builder.remove_dir(dir);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

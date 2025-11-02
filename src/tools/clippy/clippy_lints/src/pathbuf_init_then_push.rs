@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{path_to_local_id, sym};
+use clippy_utils::sym;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             && let PatKind::Binding(BindingMode::MUT, id, name, None) = local.pat.kind
             && !local.span.in_external_macro(cx.sess().source_map())
             && let ty = cx.typeck_results().pat_ty(local.pat)
-            && is_type_diagnostic_item(cx, ty, sym::PathBuf)
+            && ty.is_diag_item(cx, sym::PathBuf)
         {
             self.searcher = Some(PathbufPushSearcher {
                 local_id: id,
@@ -158,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             && let Res::Local(id) = path.res
             && !expr.span.in_external_macro(cx.sess().source_map())
             && let ty = cx.typeck_results().expr_ty(left)
-            && is_type_diagnostic_item(cx, ty, sym::PathBuf)
+            && ty.is_diag_item(cx, sym::PathBuf)
         {
             self.searcher = Some(PathbufPushSearcher {
                 local_id: id,
@@ -176,7 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
         if let Some(mut searcher) = self.searcher.take()
             && let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::MethodCall(name, self_arg, [arg_expr], _) = expr.kind
-            && path_to_local_id(self_arg, searcher.local_id)
+            && self_arg.res_local_id() == Some(searcher.local_id)
             && name.ident.name == sym::push
         {
             searcher.err_span = searcher.err_span.to(stmt.span);

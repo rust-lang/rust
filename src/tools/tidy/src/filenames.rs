@@ -10,7 +10,10 @@
 use std::path::Path;
 use std::process::Command;
 
-pub fn check(root_path: &Path, bad: &mut bool) {
+use crate::diagnostics::TidyCtx;
+
+pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("filenames");
     let stat_output = Command::new("git")
         .arg("-C")
         .arg(root_path)
@@ -20,20 +23,17 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         .stdout;
     for filename in stat_output.split(|&b| b == 0) {
         match str::from_utf8(filename) {
-            Err(_) => tidy_error!(
-                bad,
+            Err(_) => check.error(format!(
                 r#"non-UTF8 file names are not supported: "{}""#,
                 String::from_utf8_lossy(filename),
-            ),
-            Ok(name) if name.chars().any(|c| c.is_control()) => tidy_error!(
-                bad,
+            )),
+            Ok(name) if name.chars().any(|c| c.is_control()) => check.error(format!(
                 r#"control characters are not supported in file names: "{}""#,
                 String::from_utf8_lossy(filename),
-            ),
-            Ok(name) if name.contains(':') => tidy_error!(
-                bad,
+            )),
+            Ok(name) if name.contains(':') => check.error(format!(
                 r#"":" is not supported in file names because of Windows compatibility: "{name}""#,
-            ),
+            )),
             _ => (),
         }
     }

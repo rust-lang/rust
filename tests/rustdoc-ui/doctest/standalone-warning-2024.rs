@@ -9,6 +9,8 @@
 #![deny(warnings)]
 
 //! ```standalone
+//~^ ERROR unknown attribute `standalone`
+//~| ERROR unknown attribute `standalone-crate`
 //! bla
 //! ```
 //!

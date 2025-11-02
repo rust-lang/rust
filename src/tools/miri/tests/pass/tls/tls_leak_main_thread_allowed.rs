@@ -6,7 +6,7 @@ use std::cell::Cell;
 // as long as the program does), so make sure we treat them the same for leak purposes.
 //
 // The test covers both TLS statics and the TLS macro.
-pub fn main() {
+fn main() {
     #[thread_local]
     static TLS: Cell<Option<&'static i32>> = Cell::new(None);
 

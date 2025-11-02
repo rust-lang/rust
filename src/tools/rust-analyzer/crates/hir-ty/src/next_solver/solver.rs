@@ -1,29 +1,22 @@
 //! Defining `SolverContext` for next-trait-solver.
 
-use hir_def::{AssocItemId, GeneralConstId, TypeAliasId};
+use hir_def::{AssocItemId, GeneralConstId};
 use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::GenericArgKind;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::{
-    InferCtxtLike, Interner, PredicatePolarity, TypeFlags, TypeVisitableExt, UniverseIndex,
-    inherent::{IntoKind, SliceLike, Span as _, Term as _, Ty as _},
+    InferCtxtLike, Interner, PredicatePolarity, TypeFlags, TypeVisitableExt,
+    inherent::{IntoKind, Term as _, Ty as _},
     solve::{Certainty, NoSolution},
 };
 
-use crate::next_solver::mapping::NextSolverToChalk;
 use crate::next_solver::{CanonicalVarKind, ImplIdWrapper};
-use crate::{
-    TraitRefExt,
-    db::HirDatabase,
-    next_solver::{
-        ClauseKind, CoercePredicate, PredicateKind, SubtypePredicate, mapping::ChalkToNextSolver,
-        util::sizedness_fast_path,
-    },
+use crate::next_solver::{
+    ClauseKind, CoercePredicate, PredicateKind, SubtypePredicate, util::sizedness_fast_path,
 };
 
 use super::{
-    Canonical, CanonicalVarValues, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
-    ParamEnv, Predicate, SolverDefId, Span, Ty, UnevaluatedConst,
+    DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
     infer::{DbInternerInferExt, InferCtxt, canonical::instantiate::CanonicalExt},
 };
 
@@ -66,7 +59,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         (SolverContext(infcx), value, vars)
     }
 
-    fn fresh_var_for_kind_with_span(&self, arg: GenericArg<'db>, span: Span) -> GenericArg<'db> {
+    fn fresh_var_for_kind_with_span(&self, arg: GenericArg<'db>, _span: Span) -> GenericArg<'db> {
         match arg.kind() {
             GenericArgKind::Lifetime(_) => self.next_region_var().into(),
             GenericArgKind::Type(_) => self.next_ty_var().into(),
@@ -76,15 +69,15 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn leak_check(
         &self,
-        max_input_universe: rustc_type_ir::UniverseIndex,
+        _max_input_universe: rustc_type_ir::UniverseIndex,
     ) -> Result<(), NoSolution> {
         Ok(())
     }
 
     fn well_formed_goals(
         &self,
-        param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
-        arg: <Self::Interner as rustc_type_ir::Interner>::Term,
+        _param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
+        _arg: <Self::Interner as rustc_type_ir::Interner>::Term,
     ) -> Option<
         Vec<
             rustc_type_ir::solve::Goal<
@@ -123,7 +116,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn instantiate_canonical_var(
         &self,
         kind: CanonicalVarKind<'db>,
-        span: <Self::Interner as Interner>::Span,
+        _span: <Self::Interner as Interner>::Span,
         var_values: &[GenericArg<'db>],
         universe_map: impl Fn(rustc_type_ir::UniverseIndex) -> rustc_type_ir::UniverseIndex,
     ) -> GenericArg<'db> {
@@ -132,11 +125,11 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn add_item_bounds_for_hidden_type(
         &self,
-        def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
-        args: <Self::Interner as rustc_type_ir::Interner>::GenericArgs,
-        param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
-        hidden_ty: <Self::Interner as rustc_type_ir::Interner>::Ty,
-        goals: &mut Vec<
+        _def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
+        _args: <Self::Interner as rustc_type_ir::Interner>::GenericArgs,
+        _param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
+        _hidden_ty: <Self::Interner as rustc_type_ir::Interner>::Ty,
+        _goals: &mut Vec<
             rustc_type_ir::solve::Goal<
                 Self::Interner,
                 <Self::Interner as rustc_type_ir::Interner>::Predicate,
@@ -148,51 +141,65 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn fetch_eligible_assoc_item(
         &self,
-        goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
-        trait_assoc_def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
+        _goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
+        trait_assoc_def_id: SolverDefId,
         impl_id: ImplIdWrapper,
-    ) -> Result<Option<<Self::Interner as rustc_type_ir::Interner>::DefId>, ErrorGuaranteed> {
-        let trait_assoc_id = match trait_assoc_def_id {
-            SolverDefId::TypeAliasId(id) => id,
+    ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
+        let impl_items = impl_id.0.impl_items(self.0.interner.db());
+        let id = match trait_assoc_def_id {
+            SolverDefId::TypeAliasId(trait_assoc_id) => {
+                let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
+                            && *impl_assoc_name == trait_assoc_data.name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(SolverDefId::TypeAliasId)
+            }
+            SolverDefId::ConstId(trait_assoc_id) => {
+                let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
+                let trait_assoc_name = trait_assoc_data
+                    .name
+                    .as_ref()
+                    .expect("unnamed consts should not get passed to the solver");
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
+                            && impl_assoc_name == trait_assoc_name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(SolverDefId::ConstId)
+            }
             _ => panic!("Unexpected SolverDefId"),
         };
-        let trait_ref = self
-            .0
-            .interner
-            .db()
-            .impl_trait(impl_id.0)
-            // ImplIds for impls where the trait ref can't be resolved should never reach solver
-            .expect("invalid impl passed to next-solver")
-            .into_value_and_skipped_binders()
-            .0;
-        let trait_ = trait_ref.hir_trait_id();
-        let trait_data = trait_.trait_items(self.0.interner.db());
-        let id =
-            impl_id.0.impl_items(self.0.interner.db()).items.iter().find_map(|item| -> Option<_> {
-                match item {
-                    (_, AssocItemId::TypeAliasId(type_alias)) => {
-                        let name = &self.0.interner.db().type_alias_signature(*type_alias).name;
-                        let found_trait_assoc_id = trait_data.associated_type_by_name(name)?;
-                        (found_trait_assoc_id == trait_assoc_id).then_some(*type_alias)
-                    }
-                    _ => None,
-                }
-            });
-        Ok(id.map(SolverDefId::TypeAliasId))
+        Ok(id)
     }
 
     fn is_transmutable(
         &self,
-        dst: <Self::Interner as rustc_type_ir::Interner>::Ty,
-        src: <Self::Interner as rustc_type_ir::Interner>::Ty,
-        assume: <Self::Interner as rustc_type_ir::Interner>::Const,
+        _dst: <Self::Interner as rustc_type_ir::Interner>::Ty,
+        _src: <Self::Interner as rustc_type_ir::Interner>::Ty,
+        _assume: <Self::Interner as rustc_type_ir::Interner>::Const,
     ) -> Result<Certainty, NoSolution> {
         unimplemented!()
     }
 
     fn evaluate_const(
         &self,
-        param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
+        _param_env: <Self::Interner as rustc_type_ir::Interner>::ParamEnv,
         uv: rustc_type_ir::UnevaluatedConst<Self::Interner>,
     ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Const> {
         let c = match uv.def {
@@ -200,9 +207,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             SolverDefId::StaticId(c) => GeneralConstId::StaticId(c),
             _ => unreachable!(),
         };
-        let subst = uv.args.to_chalk(self.interner);
+        let subst = uv.args;
         let ec = self.cx().db.const_eval(c, subst, None).ok()?;
-        Some(ec.to_nextsolver(self.interner))
+        Some(ec)
     }
 
     fn compute_goal_fast_path(
@@ -211,7 +218,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             Self::Interner,
             <Self::Interner as rustc_type_ir::Interner>::Predicate,
         >,
-        span: <Self::Interner as rustc_type_ir::Interner>::Span,
+        _span: <Self::Interner as rustc_type_ir::Interner>::Span,
     ) -> Option<Certainty> {
         if let Some(trait_pred) = goal.predicate.as_trait_clause() {
             if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
@@ -254,8 +261,8 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
         let pred = goal.predicate.kind();
         match pred.no_bound_vars()? {
-            PredicateKind::Clause(ClauseKind::RegionOutlives(outlives)) => Some(Certainty::Yes),
-            PredicateKind::Clause(ClauseKind::TypeOutlives(outlives)) => Some(Certainty::Yes),
+            PredicateKind::Clause(ClauseKind::RegionOutlives(_outlives)) => Some(Certainty::Yes),
+            PredicateKind::Clause(ClauseKind::TypeOutlives(_outlives)) => Some(Certainty::Yes),
             PredicateKind::Subtype(SubtypePredicate { a, b, .. })
             | PredicateKind::Coerce(CoercePredicate { a, b }) => {
                 if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {

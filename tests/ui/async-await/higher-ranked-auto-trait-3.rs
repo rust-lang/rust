@@ -1,9 +1,8 @@
 // Repro for <https://github.com/rust-lang/rust/issues/100013#issue-1323807923>.
+//@ check-pass
 //@ edition: 2021
 //@ revisions: assumptions no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
-//@[assumptions] check-pass
-//@[no_assumptions] known-bug: #110338
 
 #![feature(impl_trait_in_assoc_type)]
 

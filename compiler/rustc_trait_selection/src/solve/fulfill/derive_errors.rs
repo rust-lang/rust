@@ -15,7 +15,7 @@ use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt as _}
 use tracing::{instrument, trace};
 
 use crate::solve::delegate::SolverDelegate;
-use crate::solve::inspect::{self, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
 use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
 
@@ -231,7 +231,6 @@ impl<'tcx> BestObligation<'tcx> {
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
-                                            | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
                                     ) && nested_goal.result().is_err()
                                 },
@@ -522,10 +521,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                         parent_host_pred,
                     ));
                     impl_where_bound_count += 1;
-                }
-                // Skip over a higher-ranked predicate.
-                (_, GoalSource::InstantiateHigherRanked) => {
-                    obligation = self.obligation.clone();
                 }
                 (ChildMode::PassThrough, _)
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {

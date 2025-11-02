@@ -1,7 +1,7 @@
 #![allow(clippy::eq_op, clippy::nonminimal_bool)]
+#![warn(clippy::collapsible_if)]
 
 #[rustfmt::skip]
-#[warn(clippy::collapsible_if)]
 fn main() {
     let (x, y) = ("hello", "world");
 
@@ -47,4 +47,21 @@ fn main() {
             println!("Hello world!");
         }
     //~^^^^^^ collapsible_else_if
+}
+
+fn issue_13365() {
+    // the comments don't stop us from linting, so the the `expect` *will* be fulfilled
+    if true {
+    } else {
+        // some other text before
+        #[expect(clippy::collapsible_else_if)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::collapsible_else_if)]
+        // some other text after
+        if false {}
+    }
 }

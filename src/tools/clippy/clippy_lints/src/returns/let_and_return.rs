@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, path_to_local_id, span_contains_cfg};
+use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_cfg};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, PatKind, StmtKind};
@@ -21,7 +22,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
         && cx.tcx.hir_attrs(local.hir_id).is_empty()
         && let Some(initexpr) = &local.init
         && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
-        && path_to_local_id(retexpr, local_id)
+        && retexpr.res_local_id() == Some(local_id)
         && (cx.sess().edition() >= Edition::Edition2024 || !last_statement_borrows(cx, initexpr))
         && !initexpr.span.in_external_macro(cx.sess().source_map())
         && !retexpr.span.in_external_macro(cx.sess().source_map())

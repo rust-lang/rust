@@ -13,6 +13,7 @@
 //@[aarch64] check-fail
 //@[aarch64] needs-llvm-components: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

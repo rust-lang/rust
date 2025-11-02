@@ -31,6 +31,19 @@ LL |     let _ = foo!(warn_in_expr);
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+warning: unused attribute `allow`
+  --> $DIR/semicolon-in-expressions-from-macros.rs:50:13
+   |
+LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
+  --> $DIR/semicolon-in-expressions-from-macros.rs:50:60
+   |
+LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
+   |                                                            ^^^
+   = note: requested on the command line with `-W unused-attributes`
+
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
@@ -44,7 +57,7 @@ LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 3 warnings emitted
+warning: 4 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position

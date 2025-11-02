@@ -29,7 +29,7 @@ pub unsafe fn set(key: Key, value: *mut u8) {
     assert_eq!(r, 0);
 }
 
-pub fn record(r: usize) {
+fn record(r: usize) {
     assert!(r < 10);
     unsafe { RECORD = RECORD * 10 + r };
 }

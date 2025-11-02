@@ -548,6 +548,18 @@ macro_rules! nonzero_integer {
         #[doc = concat!("assert_eq!(align_of::<", stringify!($Ty), ">(), align_of::<Option<", stringify!($Ty), ">>());")]
         /// ```
         ///
+        /// # Compile-time creation
+        ///
+        /// Since both [`Option::unwrap()`] and [`Option::expect()`] are `const`, it is possible to
+        /// define a new
+        #[doc = concat!("`", stringify!($Ty), "`")]
+        /// at compile time via:
+        /// ```
+        #[doc = concat!("use std::num::", stringify!($Ty), ";")]
+        ///
+        #[doc = concat!("const TEN: ", stringify!($Ty), " = ", stringify!($Ty) , r#"::new(10).expect("ten is non-zero");"#)]
+        /// ```
+        ///
         /// [null pointer optimization]: crate::option#representation
         #[$stability]
         pub type $Ty = NonZero<$Int>;
@@ -1361,7 +1373,6 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             /// # Examples
             ///
             /// ```
-            /// # #![feature(unsigned_nonzero_div_ceil)]
             /// # use std::num::NonZero;
             #[doc = concat!("let one = NonZero::new(1", stringify!($Int), ").unwrap();")]
             #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX).unwrap();")]
@@ -1371,7 +1382,8 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
             /// assert_eq!(three.div_ceil(two), two);
             /// ```
-            #[unstable(feature = "unsigned_nonzero_div_ceil", issue = "132968")]
+            #[stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
+            #[rustc_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]

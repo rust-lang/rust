@@ -191,7 +191,7 @@ LL ~     ; 3
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:178:5
+  --> tests/ui/collapsible_if.rs:196:5
    |
 LL | /     if true {
 LL | |         (if true {

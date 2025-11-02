@@ -20,3 +20,15 @@ assert-document-property: {"title": '"another one" Search - Rust'}
 press-key: "Escape"
 
 assert-document-property: {"title": |title|}
+
+// check that all.html does it correctly, too.
+go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
+assert-document-property: {"title": "List of all items in this crate"}
+call-function: ("perform-search", {"query": "verify"})
+assert-document-property: {"title": '"verify" Search - Rust'}
+
+// check that index.html does it correctly, too.
+go-to: "file://" + |DOC_PATH| + "/index.html"
+assert-document-property: {"title": "Index of crates"}
+call-function: ("perform-search", {"query": "verify"})
+assert-document-property: {"title": '"verify" Search - Rust'}

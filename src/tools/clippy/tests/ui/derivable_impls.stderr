@@ -14,7 +14,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct FooDefault<'a> {
+LL | struct FooDefault<'a> {
    |
 
 error: this `impl` can be derived
@@ -31,7 +31,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct TupleDefault(bool, i32, u64);
+LL | struct TupleDefault(bool, i32, u64);
    |
 
 error: this `impl` can be derived
@@ -48,7 +48,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct StrDefault<'a>(&'a str);
+LL | struct StrDefault<'a>(&'a str);
    |
 
 error: this `impl` can be derived
@@ -65,7 +65,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct Y(u32);
+LL | struct Y(u32);
    |
 
 error: this `impl` can be derived
@@ -82,7 +82,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct WithoutSelfCurly {
+LL | struct WithoutSelfCurly {
    |
 
 error: this `impl` can be derived
@@ -99,7 +99,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ struct WithoutSelfParan(bool);
+LL | struct WithoutSelfParan(bool);
    |
 
 error: this `impl` can be derived
@@ -115,7 +115,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ pub struct DirectDefaultDefaultCall {
+LL | pub struct DirectDefaultDefaultCall {
    |
 
 error: this `impl` can be derived
@@ -131,7 +131,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ pub struct EquivalentToDefaultDefaultCallVec {
+LL | pub struct EquivalentToDefaultDefaultCallVec {
    |
 
 error: this `impl` can be derived
@@ -147,7 +147,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ pub struct EquivalentToDefaultDefaultCallLocal {
+LL | pub struct EquivalentToDefaultDefaultCallLocal {
    |
 
 error: this `impl` can be derived
@@ -164,7 +164,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
-LL ~ pub struct RepeatDefault1 {
+LL | pub struct RepeatDefault1 {
    |
 
 error: this `impl` can be derived
@@ -181,7 +181,7 @@ LL | | }
 help: replace the manual implementation with a derive attribute and mark the default variant
    |
 LL + #[derive(Default)]
-LL ~ pub enum SimpleEnum {
+LL | pub enum SimpleEnum {
 LL |     Foo,
 LL ~     #[default]
 LL ~     Bar,

@@ -22,7 +22,7 @@ fn print_s(s: &S) {
     s.print();
 }
 
-pub fn main() {
+fn main() {
     let s: Box<S> = Box::new(S { s: 5 });
     print_s(&*s);
     let t: Box<dyn T> = s as Box<dyn T>;

@@ -3,7 +3,11 @@
 
 use std::path::Path;
 
-pub fn check(librustdoc_path: &Path, bad: &mut bool) {
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
+
+pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_css_themes").path(librustdoc_path));
+
     let rustdoc_css = "html/static/css/rustdoc.css";
     let noscript_css = "html/static/css/noscript.css";
     let rustdoc_css_contents = std::fs::read_to_string(librustdoc_path.join(rustdoc_css))
@@ -14,13 +18,13 @@ pub fn check(librustdoc_path: &Path, bad: &mut bool) {
         "light",
         rustdoc_css_contents.lines().enumerate().map(|(i, l)| (i + 1, l.trim())),
         noscript_css_contents.lines().enumerate().map(|(i, l)| (i + 1, l.trim())),
-        bad,
+        &mut check,
     );
     compare_themes_from_files(
         "dark",
         rustdoc_css_contents.lines().enumerate(),
         noscript_css_contents.lines().enumerate(),
-        bad,
+        &mut check,
     );
 }
 
@@ -28,7 +32,7 @@ fn compare_themes_from_files<'a>(
     name: &str,
     mut rustdoc_css_lines: impl Iterator<Item = (usize, &'a str)>,
     mut noscript_css_lines: impl Iterator<Item = (usize, &'a str)>,
-    bad: &mut bool,
+    check: &mut RunningCheck,
 ) {
     let begin_theme_pat = format!("/* Begin theme: {name}");
     let mut found_theme = None;
@@ -38,10 +42,9 @@ fn compare_themes_from_files<'a>(
             continue;
         }
         if let Some(found_theme) = found_theme {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "rustdoc.css contains two {name} themes on lines {rustdoc_css_line_number} and {found_theme}",
-            );
+            ));
             return;
         }
         found_theme = Some(rustdoc_css_line_number);
@@ -50,14 +53,13 @@ fn compare_themes_from_files<'a>(
                 continue;
             }
             if let Some(found_theme_noscript) = found_theme_noscript {
-                tidy_error!(
-                    bad,
+                check.error(format!(
                     "noscript.css contains two {name} themes on lines {noscript_css_line_number} and {found_theme_noscript}",
-                );
+                ));
                 return;
             }
             found_theme_noscript = Some(noscript_css_line_number);
-            compare_themes(name, &mut rustdoc_css_lines, &mut noscript_css_lines, bad);
+            compare_themes(name, &mut rustdoc_css_lines, &mut noscript_css_lines, check);
         }
     }
 }
@@ -66,7 +68,7 @@ fn compare_themes<'a>(
     name: &str,
     rustdoc_css_lines: impl Iterator<Item = (usize, &'a str)>,
     noscript_css_lines: impl Iterator<Item = (usize, &'a str)>,
-    bad: &mut bool,
+    check: &mut RunningCheck,
 ) {
     let end_theme_pat = format!("/* End theme: {name}");
     for (
@@ -90,12 +92,11 @@ fn compare_themes<'a>(
             break;
         }
         if rustdoc_css_line != noscript_css_line {
-            tidy_error!(
-                bad,
-                "noscript.css:{noscript_css_line_number} and rustdoc.css:{rustdoc_css_line_number} contain copies of {name} theme that are not the same",
-            );
-            eprintln!("- {noscript_css_line}");
-            eprintln!("+ {rustdoc_css_line}");
+            check.error(format!(
+                r#"noscript.css:{noscript_css_line_number} and rustdoc.css:{rustdoc_css_line_number} contain copies of {name} theme that are not the same
+- {noscript_css_line}
++ {rustdoc_css_line}"#,
+            ));
             return;
         }
     }

@@ -346,7 +346,7 @@ fn augment_references_with_imports(
                 ImportScope::find_insert_use_container(name.syntax(), &ctx.sema).and_then(
                     |import_scope| {
                         let cfg =
-                            ctx.config.find_path_confg(ctx.sema.is_nightly(target_module.krate()));
+                            ctx.config.find_path_config(ctx.sema.is_nightly(target_module.krate()));
                         let path = ref_module
                             .find_use_path(
                                 ctx.sema.db,

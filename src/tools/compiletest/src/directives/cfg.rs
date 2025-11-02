@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
 use crate::common::{CompareMode, Config, Debugger};
-use crate::directives::IgnoreDecision;
+use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
-pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "ignore");
+pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(config, line, "ignore-");
+    let line = line.display();
+
     match parsed.outcome {
         MatchOutcome::NoMatch => IgnoreDecision::Continue,
         MatchOutcome::Match => IgnoreDecision::Ignore {
@@ -21,8 +23,10 @@ pub(super) fn handle_ignore(config: &Config, line: &str) -> IgnoreDecision {
     }
 }
 
-pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "only");
+pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(config, line, "only-");
+    let line = line.display();
+
     match parsed.outcome {
         MatchOutcome::Match => IgnoreDecision::Continue,
         MatchOutcome::NoMatch => IgnoreDecision::Ignore {
@@ -43,19 +47,17 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 /// or `only-windows`.
 fn parse_cfg_name_directive<'a>(
     config: &Config,
-    line: &'a str,
+    line: &'a DirectiveLine<'a>,
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
-    if !line.as_bytes().starts_with(prefix.as_bytes()) {
+    let Some(name) = line.name.strip_prefix(prefix) else {
         return ParsedNameDirective::not_a_directive();
-    }
-    if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-        return ParsedNameDirective::not_a_directive();
-    }
-    let line = &line[prefix.len() + 1..];
+    };
 
-    let (name, comment) =
-        line.split_once(&[':', ' ']).map(|(l, c)| (l, Some(c))).unwrap_or((line, None));
+    // FIXME(Zalathar): This currently allows either a space or a colon, and
+    // treats any "value" after a colon as though it were a remark.
+    // We should instead forbid the colon syntax for these directives.
+    let comment = line.remark_after_space().or_else(|| line.value_after_colon());
 
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
@@ -164,6 +166,14 @@ fn parse_cfg_name_directive<'a>(
         message: "when the architecture is part of the Thumb family"
     }
 
+    // The "arch" of `i586-` targets is "x86", so for more specific matching
+    // we have to resort to a string-prefix check.
+    condition! {
+        name: "i586",
+        condition: config.matches_arch("i586"),
+        message: "when the subarchitecture is i586",
+    }
+
     condition! {
         name: "apple",
         condition: config.target.contains("apple"),
@@ -263,7 +273,7 @@ fn parse_cfg_name_directive<'a>(
         message: "when performing tests on dist toolchain"
     }
 
-    if prefix == "ignore" && outcome == MatchOutcome::Invalid {
+    if prefix == "ignore-" && outcome == MatchOutcome::Invalid {
         // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
         if name.starts_with("tidy-") {
             outcome = MatchOutcome::External;

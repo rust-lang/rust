@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::path_to_local_id;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use rustc_errors::Applicability;
@@ -145,7 +145,7 @@ fn check_assign<'tcx>(
         && let Some(expr) = block.stmts.iter().last()
         && let hir::StmtKind::Semi(expr) = expr.kind
         && let hir::ExprKind::Assign(var, value, _) = expr.kind
-        && path_to_local_id(var, decl)
+        && var.res_local_id() == Some(decl)
     {
         if block
             .stmts

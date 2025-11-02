@@ -39,7 +39,7 @@ fn f(ccx: &Ccx) {
     return g(&fcx);
 }
 
-pub fn main() {
+fn main() {
     let ccx = Ccx { x: 0 };
     f(&ccx);
 }

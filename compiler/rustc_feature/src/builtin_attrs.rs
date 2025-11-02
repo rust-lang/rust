@@ -133,24 +133,29 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
-    pub fn suggestions(&self, style: AttrStyle, name: impl std::fmt::Display) -> Vec<String> {
+    pub fn suggestions(
+        &self,
+        style: Option<AttrStyle>,
+        name: impl std::fmt::Display,
+    ) -> Vec<String> {
         let mut suggestions = vec![];
-        let inner = match style {
-            AttrStyle::Outer => "",
-            AttrStyle::Inner => "!",
+        let (start, end) = match style {
+            Some(AttrStyle::Outer) => ("#[", "]"),
+            Some(AttrStyle::Inner) => ("#![", "]"),
+            None => ("", ""),
         };
         if self.word {
-            suggestions.push(format!("#{inner}[{name}]"));
+            suggestions.push(format!("{start}{name}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!("#{inner}[{name}({descr})]"));
+                suggestions.push(format!("{start}{name}({descr}){end}"));
             }
         }
-        suggestions.extend(self.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
+        suggestions.extend(self.one_of.iter().map(|&word| format!("{start}{name}({word}){end}")));
         if let Some(descr) = self.name_value_str {
             for descr in descr {
-                suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+                suggestions.push(format!("{start}{name} = \"{descr}\"{end}"));
             }
         }
         suggestions.sort();
@@ -888,6 +893,15 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, loop_match, experimental!(loop_match)
     ),
 
+    // The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment
+    // that allows structurally pinning, tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/130494
+    gated!(
+        pin_v2, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -1210,6 +1224,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes,
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
         niche optimizations in the standard library",
+    ),
+    rustc_attr!(
+        rustc_simd_monomorphize_lane_limit, Normal, template!(NameValueStr: "N"), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "the `#[rustc_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
+        for better error messages",
     ),
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,

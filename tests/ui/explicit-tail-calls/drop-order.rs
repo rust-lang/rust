@@ -1,4 +1,5 @@
 //@ run-pass
+//@ ignore-backends: gcc
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 use std::cell::RefCell;

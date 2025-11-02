@@ -43,7 +43,7 @@ pub fn unreachable() -> ! {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_ceil(a: f32) -> f32 {
-    unsafe { crate::intrinsics::ceilf32(a) }
+    crate::intrinsics::ceilf32(a)
 }
 
 /// Generates the [`f32.floor`] instruction, returning the largest integer less than or equal to `a`.
@@ -57,7 +57,7 @@ pub fn f32_ceil(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_floor(a: f32) -> f32 {
-    unsafe { crate::intrinsics::floorf32(a) }
+    crate::intrinsics::floorf32(a)
 }
 
 /// Generates the [`f32.trunc`] instruction, roundinging to the nearest integer towards zero.
@@ -71,7 +71,7 @@ pub fn f32_floor(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_trunc(a: f32) -> f32 {
-    unsafe { crate::intrinsics::truncf32(a) }
+    crate::intrinsics::truncf32(a)
 }
 
 /// Generates the [`f32.nearest`] instruction, roundinging to the nearest integer. Rounds half-way
@@ -100,7 +100,7 @@ pub fn f32_nearest(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_sqrt(a: f32) -> f32 {
-    unsafe { crate::intrinsics::sqrtf32(a) }
+    crate::intrinsics::sqrtf32(a)
 }
 
 /// Generates the [`f64.ceil`] instruction, returning the smallest integer greater than or equal to `a`.
@@ -114,7 +114,7 @@ pub fn f32_sqrt(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_ceil(a: f64) -> f64 {
-    unsafe { crate::intrinsics::ceilf64(a) }
+    crate::intrinsics::ceilf64(a)
 }
 
 /// Generates the [`f64.floor`] instruction, returning the largest integer less than or equal to `a`.
@@ -128,7 +128,7 @@ pub fn f64_ceil(a: f64) -> f64 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_floor(a: f64) -> f64 {
-    unsafe { crate::intrinsics::floorf64(a) }
+    crate::intrinsics::floorf64(a)
 }
 
 /// Generates the [`f64.trunc`] instruction, roundinging to the nearest integer towards zero.
@@ -142,7 +142,7 @@ pub fn f64_floor(a: f64) -> f64 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_trunc(a: f64) -> f64 {
-    unsafe { crate::intrinsics::truncf64(a) }
+    crate::intrinsics::truncf64(a)
 }
 
 /// Generates the [`f64.nearest`] instruction, roundinging to the nearest integer. Rounds half-way
@@ -171,37 +171,5 @@ pub fn f64_nearest(a: f64) -> f64 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_sqrt(a: f64) -> f64 {
-    unsafe { crate::intrinsics::sqrtf64(a) }
-}
-
-unsafe extern "C-unwind" {
-    #[link_name = "llvm.wasm.throw"]
-    fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
-}
-
-/// Generates the [`throw`] instruction from the [exception-handling proposal] for WASM.
-///
-/// This function is unlikely to be stabilized until codegen backends have better support.
-///
-/// [`throw`]: https://webassembly.github.io/exception-handling/core/syntax/instructions.html#syntax-instr-control
-/// [exception-handling proposal]: https://github.com/WebAssembly/exception-handling
-// FIXME: wasmtime does not currently support exception-handling, so cannot execute
-//        a wasm module with the throw instruction in it. once it does, we can
-//        reenable this attribute.
-// #[cfg_attr(test, assert_instr(throw, TAG = 0, ptr = core::ptr::null_mut()))]
-#[inline]
-#[unstable(feature = "wasm_exception_handling_intrinsics", issue = "122465")]
-// FIXME: Since this instruction unwinds, `core` built with `-C panic=unwind`
-//        cannot be linked with `-C panic=abort` programs. But that's not
-//        entirely supported anyway, because runtimes without EH support won't
-//        be able to handle `try` blocks in `-C panic=unwind` crates either.
-//        We ship `-C panic=abort` `core`, so this doesn't affect users
-//        directly. Resolving this will likely require patching out both `try`
-//        and `throw` instructions, at which point we can look into whitelisting
-//        this function in the compiler to allow linking.
-//        See https://github.com/rust-lang/rust/issues/118168.
-#[allow(ffi_unwind_calls)]
-pub unsafe fn throw<const TAG: i32>(ptr: *mut u8) -> ! {
-    static_assert!(TAG == 0); // LLVM only supports tag 0 == C++ right now.
-    wasm_throw(TAG, ptr)
+    crate::intrinsics::sqrtf64(a)
 }

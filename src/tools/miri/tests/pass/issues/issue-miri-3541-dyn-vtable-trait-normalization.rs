@@ -25,7 +25,7 @@ where
     }
 }
 
-pub fn box_new_with<T>()
+fn box_new_with<T>()
 where
     T: ?Sized,
 {

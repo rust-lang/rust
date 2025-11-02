@@ -2,6 +2,8 @@
 
 use std::iter;
 
+use rustc_ast_ir::Mutability;
+
 use crate::{
     Adjust, Adjustment, OverloadedDeref,
     autoderef::{Autoderef, AutoderefKind},
@@ -9,7 +11,6 @@ use crate::{
     next_solver::{
         Ty,
         infer::{InferOk, traits::PredicateObligations},
-        mapping::NextSolverToChalk,
     },
 };
 
@@ -21,12 +22,12 @@ impl<'db> InferenceTable<'db> {
 
 impl<'db> Autoderef<'_, 'db> {
     /// Returns the adjustment steps.
-    pub(crate) fn adjust_steps(mut self) -> Vec<Adjustment> {
+    pub(crate) fn adjust_steps(mut self) -> Vec<Adjustment<'db>> {
         let infer_ok = self.adjust_steps_as_infer_ok();
         self.table.register_infer_ok(infer_ok)
     }
 
-    pub(crate) fn adjust_steps_as_infer_ok(&mut self) -> InferOk<'db, Vec<Adjustment>> {
+    pub(crate) fn adjust_steps_as_infer_ok(&mut self) -> InferOk<'db, Vec<Adjustment<'db>>> {
         let steps = self.steps();
         if steps.is_empty() {
             return InferOk { obligations: PredicateObligations::new(), value: vec![] };
@@ -37,16 +38,13 @@ impl<'db> Autoderef<'_, 'db> {
             .iter()
             .map(|&(_source, kind)| {
                 if let AutoderefKind::Overloaded = kind {
-                    Some(OverloadedDeref(Some(chalk_ir::Mutability::Not)))
+                    Some(OverloadedDeref(Some(Mutability::Not)))
                 } else {
                     None
                 }
             })
             .zip(targets)
-            .map(|(autoderef, target)| Adjustment {
-                kind: Adjust::Deref(autoderef),
-                target: target.to_chalk(self.table.interner),
-            })
+            .map(|(autoderef, target)| Adjustment { kind: Adjust::Deref(autoderef), target })
             .collect();
 
         InferOk { obligations: self.take_obligations(), value: steps }

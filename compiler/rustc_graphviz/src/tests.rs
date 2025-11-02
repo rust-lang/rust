@@ -63,10 +63,10 @@ impl NodeLabels<&'static str> {
     }
 
     fn len(&self) -> usize {
-        match self {
-            &UnlabelledNodes(len) => len,
-            &AllNodesLabelled(ref lbls) => lbls.len(),
-            &SomeNodesLabelled(ref lbls) => lbls.len(),
+        match *self {
+            UnlabelledNodes(len) => len,
+            AllNodesLabelled(ref lbls) => lbls.len(),
+            SomeNodesLabelled(ref lbls) => lbls.len(),
         }
     }
 }

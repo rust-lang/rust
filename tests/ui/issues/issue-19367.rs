@@ -1,4 +1,7 @@
 //@ run-pass
+
+#![allow(unused_assignments)]
+
 struct S {
     o: Option<String>
 }

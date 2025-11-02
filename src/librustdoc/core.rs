@@ -19,7 +19,7 @@ use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{
-    self, CrateType, ErrorOutputType, Input, OutFileName, OutputType, OutputTypes, ResolveDocLinks,
+    self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
@@ -213,7 +213,6 @@ pub(crate) fn create_config(
         describe_lints,
         lint_cap,
         scrape_examples_options,
-        expanded_args,
         remap_path_prefix,
         target_modifiers,
         ..
@@ -272,10 +271,7 @@ pub(crate) fn create_config(
         test,
         remap_path_prefix,
         output_types: if let Some(file) = render_options.dep_info() {
-            OutputTypes::new(&[(
-                OutputType::DepInfo,
-                file.map(|f| OutFileName::Real(f.to_path_buf())),
-            )])
+            OutputTypes::new(&[(OutputType::DepInfo, file.cloned())])
         } else {
             OutputTypes::new(&[])
         },
@@ -326,7 +322,6 @@ pub(crate) fn create_config(
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
         using_internal_features: &USING_INTERNAL_FEATURES,
-        expanded_args,
     }
 }
 
@@ -407,6 +402,9 @@ pub(crate) fn run_global_ctxt(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.item_id).unwrap(),
             |lint| {
+                if let Some(local_def_id) = krate.module.item_id.as_local_def_id() {
+                    lint.span(tcx.def_span(local_def_id));
+                }
                 lint.primary_message("no documentation found for this crate's top-level module");
                 lint.help(help);
             },

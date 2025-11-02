@@ -522,3 +522,24 @@ const EXPECTED = [
   },
 ]
 ```
+
+If the [`//@ revisions`] directive is used, the JS file will
+have access to a variable called `REVISION`.
+
+```js
+const EXPECTED = [
+  // This first test targets name-based search.
+  {
+    query: "constructor",
+    others: REVISION === "has_constructor" ?
+      [
+        { path: "constructor_search", name: "constructor" },
+      ] :
+      [],
+    in_args: [],
+    returned: [],
+  },
+];
+```
+
+[`//@ revisions`]: ../tests/compiletest.md#revisions

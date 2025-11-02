@@ -1,7 +1,7 @@
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{self, Debug, Write};
+use std::fmt::{Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -20,6 +20,7 @@ use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
+use crate::core::builder::cli_paths::CLIStepPath;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
@@ -29,7 +30,7 @@ use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linke
 use crate::{Build, Crate, trace};
 
 mod cargo;
-
+mod cli_paths;
 #[cfg(test)]
 mod tests;
 
@@ -424,88 +425,6 @@ impl PathSet {
     }
 }
 
-const PATH_REMAP: &[(&str, &[&str])] = &[
-    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
-    // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
-    // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly-llvm",
-            "tests/codegen-llvm",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/run-make-cargo",
-            "tests/rustdoc",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
-];
-
-fn remap_paths(paths: &mut Vec<PathBuf>) {
-    let mut remove = vec![];
-    let mut add = vec![];
-    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
-    {
-        for &(search, replace) in PATH_REMAP {
-            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
-            if path.trim_matches(std::path::is_separator) == search {
-                remove.push(i);
-                add.extend(replace.iter().map(PathBuf::from));
-                break;
-            }
-        }
-    }
-    remove.sort();
-    remove.dedup();
-    for idx in remove.into_iter().rev() {
-        paths.remove(idx);
-    }
-    paths.append(&mut add);
-}
-
-#[derive(Clone, PartialEq)]
-struct CLIStepPath {
-    path: PathBuf,
-    will_be_executed: bool,
-}
-
-#[cfg(test)]
-impl CLIStepPath {
-    fn will_be_executed(mut self, will_be_executed: bool) -> Self {
-        self.will_be_executed = will_be_executed;
-        self
-    }
-}
-
-impl Debug for CLIStepPath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.path.display())
-    }
-}
-
-impl From<PathBuf> for CLIStepPath {
-    fn from(path: PathBuf) -> Self {
-        Self { path, will_be_executed: false }
-    }
-}
-
 impl StepDescription {
     fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
@@ -545,7 +464,7 @@ impl StepDescription {
         if !builder.config.skip.is_empty()
             && !matches!(builder.config.get_dry_run(), DryRun::SelfCheck)
         {
-            builder.verbose(|| {
+            builder.do_if_verbose(|| {
                 println!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
@@ -553,132 +472,6 @@ impl StepDescription {
             });
         }
         false
-    }
-
-    fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
-        let should_runs = v
-            .iter()
-            .map(|desc| (desc.should_run)(ShouldRun::new(builder, desc.kind)))
-            .collect::<Vec<_>>();
-
-        if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install)
-        {
-            eprintln!(
-                "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
-                builder.kind.as_str()
-            );
-            crate::exit!(1);
-        }
-
-        // sanity checks on rules
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            assert!(
-                !should_run.paths.is_empty(),
-                "{:?} should have at least one pathset",
-                desc.name
-            );
-        }
-
-        if paths.is_empty() || builder.config.include_default_paths {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
-                if desc.default && should_run.is_really_default() {
-                    desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
-                }
-            }
-        }
-
-        // Attempt to resolve paths to be relative to the builder source directory.
-        let mut paths: Vec<PathBuf> = paths
-            .iter()
-            .map(|p| {
-                // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-                if !p.exists() {
-                    return p.clone();
-                }
-
-                // Make the path absolute, strip the prefix, and convert to a PathBuf.
-                match std::path::absolute(p) {
-                    Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
-                    Err(e) => {
-                        eprintln!("ERROR: {e:?}");
-                        panic!("Due to the above error, failed to resolve path: {p:?}");
-                    }
-                }
-            })
-            .collect();
-
-        remap_paths(&mut paths);
-
-        // Handle all test suite paths.
-        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
-        paths.retain(|path| {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(path) {
-                    desc.maybe_run(builder, vec![suite.clone()]);
-                    return false;
-                }
-            }
-            true
-        });
-
-        if paths.is_empty() {
-            return;
-        }
-
-        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
-        let mut path_lookup: Vec<(CLIStepPath, bool)> =
-            paths.clone().into_iter().map(|p| (p, false)).collect();
-
-        // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
-        // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
-        // the steps.
-        let mut steps_to_run = vec![];
-
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
-
-            // This value is used for sorting the step execution order.
-            // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
-            //
-            // If we resolve the step's path from the given CLI input, this value will be updated with
-            // the step's actual index.
-            let mut closest_index = usize::MAX;
-
-            // Find the closest index from the original list of paths given by the CLI input.
-            for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
-                if !*is_used && !paths.contains(path) {
-                    closest_index = index;
-                    *is_used = true;
-                    break;
-                }
-            }
-
-            steps_to_run.push((closest_index, desc, pathsets));
-        }
-
-        // Sort the steps before running them to respect the CLI order.
-        steps_to_run.sort_by_key(|(index, _, _)| *index);
-
-        // Handle all PathSets.
-        for (_index, desc, pathsets) in steps_to_run {
-            if !pathsets.is_empty() {
-                desc.maybe_run(builder, pathsets);
-            }
-        }
-
-        paths.retain(|p| !p.will_be_executed);
-
-        if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
-            eprintln!(
-                "HELP: run `x.py {} --help --verbose` to show a list of available paths",
-                builder.kind.as_str()
-            );
-            eprintln!(
-                "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
-            );
-            crate::exit!(1);
-        }
     }
 }
 
@@ -935,7 +728,7 @@ impl Step for Libdir {
             // Sysroot`).
             if !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
-                builder.verbose(|| {
+                builder.do_if_verbose(|| {
                     eprintln!(
                         "Removing sysroot {} to avoid caching bugs",
                         sysroot_target_libdir.display()
@@ -1059,10 +852,12 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::RustdocGuiTest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
                 check::Linkchecker,
                 check::BumpStage0,
+                check::Tidy,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1133,7 +928,7 @@ impl<'a> Builder<'a> {
                 test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
+            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
             Kind::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
@@ -1209,6 +1004,8 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
+                install::RustcCodegenCranelift,
+                install::LlvmBitcodeLinker
             ),
             Kind::Run => describe!(
                 run::BuildManifest,
@@ -1224,6 +1021,7 @@ impl<'a> Builder<'a> {
                 run::CyclicStep,
                 run::CoverageDump,
                 run::Rustfmt,
+                run::GenerateHelp,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1332,7 +1130,7 @@ impl<'a> Builder<'a> {
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
-        StepDescription::run(v, self, paths);
+        cli_paths::match_paths_to_steps_and_run(self, v, paths);
     }
 
     /// Returns if `std` should be statically linked into `rustc_driver`.
@@ -1589,6 +1387,14 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
+    }
+
+    /// Gets a command to run the compiler specified, including the dynamic library
+    /// path in case the executable has not been build with `rpath` enabled.
+    pub fn rustc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = command(self.rustc(compiler));
+        self.add_rustc_lib_path(compiler, &mut cmd);
+        cmd
     }
 
     /// Gets the paths to all of the compiler's codegen backends.

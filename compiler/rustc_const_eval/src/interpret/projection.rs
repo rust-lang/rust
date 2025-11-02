@@ -2,7 +2,7 @@
 //!
 //! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
 //! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
-//! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
+//! For OpTy, the custom thing on field projections has to be pretty clever (since `Operand::Immediate` can have fields),
 //! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
@@ -395,8 +395,6 @@ where
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
-            // We don't want anything happening here, this is here as a dummy.
-            Subtype(_) => base.transmute(base.layout(), self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
             Deref => self.deref_pointer(&base.to_op(self)?)?.into(),

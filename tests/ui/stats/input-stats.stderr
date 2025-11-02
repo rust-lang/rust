@@ -2,14 +2,14 @@ ast-stats ================================================================
 ast-stats POST EXPANSION AST STATS: input_stats
 ast-stats Name                Accumulated Size         Count     Item Size
 ast-stats ----------------------------------------------------------------
-ast-stats Item                   1_584 (NN.N%)            11           144
-ast-stats - Enum                     144 (NN.N%)             1
-ast-stats - ExternCrate              144 (NN.N%)             1
-ast-stats - ForeignMod               144 (NN.N%)             1
-ast-stats - Impl                     144 (NN.N%)             1
-ast-stats - Trait                    144 (NN.N%)             1
-ast-stats - Fn                       288 (NN.N%)             2
-ast-stats - Use                      576 (NN.N%)             4
+ast-stats Item                   1_496 (NN.N%)            11           136
+ast-stats - Enum                     136 (NN.N%)             1
+ast-stats - ExternCrate              136 (NN.N%)             1
+ast-stats - ForeignMod               136 (NN.N%)             1
+ast-stats - Impl                     136 (NN.N%)             1
+ast-stats - Trait                    136 (NN.N%)             1
+ast-stats - Fn                       272 (NN.N%)             2
+ast-stats - Use                      544 (NN.N%)             4
 ast-stats Ty                       896 (NN.N%)            14            64
 ast-stats - Ptr                       64 (NN.N%)             1
 ast-stats - Ref                       64 (NN.N%)             1
@@ -57,7 +57,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_528                   129
+ast-stats Total                  7_440                   129
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -105,10 +105,10 @@ hir-stats - Semi                      32 (NN.N%)             1
 hir-stats Arm                       80 (NN.N%)             2            40
 hir-stats WherePredicate            72 (NN.N%)             3            24
 hir-stats - BoundPredicate            72 (NN.N%)             3
-hir-stats Local                     72 (NN.N%)             1            72
 hir-stats InlineAsm                 72 (NN.N%)             1            72
 hir-stats Body                      72 (NN.N%)             3            24
 hir-stats Param                     64 (NN.N%)             2            32
+hir-stats Local                     64 (NN.N%)             1            64
 hir-stats GenericArg                64 (NN.N%)             4            16
 hir-stats - Type                      16 (NN.N%)             1
 hir-stats - Lifetime                  48 (NN.N%)             3
@@ -119,5 +119,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_624                   173
+hir-stats Total                  8_616                   173
 hir-stats ================================================================

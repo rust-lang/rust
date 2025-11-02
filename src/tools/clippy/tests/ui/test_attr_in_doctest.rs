@@ -21,7 +21,6 @@
 /// }
 ///
 /// #[test]
-//~^ test_attr_in_doctest
 /// fn should_be_linted_too() {
 ///     assert_eq!("#[test]", "
 ///     #[test]

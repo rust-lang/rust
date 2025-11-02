@@ -2,7 +2,7 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 use std::mem;
 
-pub fn safe(x: &mut i32, y: &mut i32) {
+fn safe(x: &mut i32, y: &mut i32) {
     //~[stack]^ ERROR: protect
     *x = 1; //~[tree] ERROR: /write access through .* is forbidden/
     *y = 2;

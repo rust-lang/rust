@@ -1,67 +1,60 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
-use rustc_ast::Attribute;
+use rustc_ast::ast::NodeId;
+use rustc_ast::{HasNodeId, ItemKind, ast};
+use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::resolve_path;
-use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::{AttributeKind, DebugVisualizer};
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::sym;
+use rustc_span::{DUMMY_SP, Span, sym};
 
-use crate::errors::{DebugVisualizerInvalid, DebugVisualizerUnreadable};
+use crate::errors::DebugVisualizerUnreadable;
 
 impl DebuggerVisualizerCollector<'_> {
-    fn check_for_debugger_visualizer(&mut self, attr: &Attribute) {
-        if attr.has_name(sym::debugger_visualizer) {
-            let Some(hints) = attr.meta_item_list() else {
-                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
-                return;
-            };
+    fn check_for_debugger_visualizer(
+        &mut self,
+        attrs: &[ast::Attribute],
+        span: Span,
+        node_id: NodeId,
+    ) {
+        if let Some(Attribute::Parsed(AttributeKind::DebuggerVisualizer(visualizers))) =
+            AttributeParser::parse_limited(
+                &self.sess,
+                attrs,
+                sym::debugger_visualizer,
+                span,
+                node_id,
+                None,
+            )
+        {
+            for DebugVisualizer { span, visualizer_type, path } in visualizers {
+                let file = match resolve_path(&self.sess, path.as_str(), span) {
+                    Ok(file) => file,
+                    Err(err) => {
+                        err.emit();
+                        return;
+                    }
+                };
 
-            let [hint] = hints.as_slice() else {
-                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
-                return;
-            };
-
-            let Some(meta_item) = hint.meta_item() else {
-                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
-                return;
-            };
-
-            let (visualizer_type, visualizer_path) = match (meta_item.name(), meta_item.value_str())
-            {
-                (Some(sym::natvis_file), Some(value)) => (DebuggerVisualizerType::Natvis, value),
-                (Some(sym::gdb_script_file), Some(value)) => {
-                    (DebuggerVisualizerType::GdbPrettyPrinter, value)
-                }
-                (_, _) => {
-                    self.sess.dcx().emit_err(DebugVisualizerInvalid { span: meta_item.span });
-                    return;
-                }
-            };
-
-            let file = match resolve_path(&self.sess, visualizer_path.as_str(), attr.span) {
-                Ok(file) => file,
-                Err(err) => {
-                    err.emit();
-                    return;
-                }
-            };
-
-            match self.sess.source_map().load_binary_file(&file) {
-                Ok((source, _)) => {
-                    self.visualizers.push(DebuggerVisualizerFile::new(
-                        source,
-                        visualizer_type,
-                        file,
-                    ));
-                }
-                Err(error) => {
-                    self.sess.dcx().emit_err(DebugVisualizerUnreadable {
-                        span: meta_item.span,
-                        file: &file,
-                        error,
-                    });
+                match self.sess.source_map().load_binary_file(&file) {
+                    Ok((source, _)) => {
+                        self.visualizers.push(DebuggerVisualizerFile::new(
+                            source,
+                            visualizer_type,
+                            file,
+                        ));
+                    }
+                    Err(error) => {
+                        self.sess.dcx().emit_err(DebugVisualizerUnreadable {
+                            span,
+                            file: &file,
+                            error,
+                        });
+                    }
                 }
             }
         }
@@ -74,9 +67,15 @@ struct DebuggerVisualizerCollector<'a> {
 }
 
 impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
-    fn visit_attribute(&mut self, attr: &'ast Attribute) {
-        self.check_for_debugger_visualizer(attr);
-        rustc_ast::visit::walk_attribute(self, attr);
+    fn visit_item(&mut self, item: &'ast rustc_ast::Item) -> Self::Result {
+        if let ItemKind::Mod(..) = item.kind {
+            self.check_for_debugger_visualizer(&item.attrs, item.span, item.node_id());
+        }
+        rustc_ast::visit::walk_item(self, item);
+    }
+    fn visit_crate(&mut self, krate: &'ast ast::Crate) -> Self::Result {
+        self.check_for_debugger_visualizer(&krate.attrs, DUMMY_SP, krate.id);
+        rustc_ast::visit::walk_crate(self, krate);
     }
 }
 

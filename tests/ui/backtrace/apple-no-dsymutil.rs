@@ -3,6 +3,7 @@
 //@ compile-flags:-Cstrip=none
 //@ compile-flags:-g -Csplit-debuginfo=unpacked
 //@ only-apple
+//@ ignore-remote needs the compiler-produced `.o` file to be copied to the device
 
 use std::process::Command;
 use std::str;

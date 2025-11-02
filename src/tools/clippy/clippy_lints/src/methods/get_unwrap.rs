@@ -2,7 +2,6 @@ use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -22,16 +21,17 @@ pub(super) fn check<'tcx>(
     let expr_ty = cx.typeck_results().expr_ty(recv);
     let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::Vec) {
-        "Vec"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::VecDeque) {
-        "VecDeque"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::HashMap) {
-        "HashMap"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::BTreeMap) {
-        "BTreeMap"
     } else {
-        return; // caller is not a type that we want to lint
+        match expr_ty
+            .ty_adt_def()
+            .and_then(|def| cx.tcx.get_diagnostic_name(def.did()))
+        {
+            Some(sym::Vec) => "Vec",
+            Some(sym::VecDeque) => "VecDeque",
+            Some(sym::HashMap) if !is_mut => "HashMap",
+            Some(sym::BTreeMap) if !is_mut => "BTreeMap",
+            _ => return, // caller is not a type that we want to lint
+        }
     };
 
     let mut span = expr.span;

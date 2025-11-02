@@ -19,7 +19,7 @@ struct Foo<T: ?Sized> {
     f: T,
 }
 
-pub fn main() {
+fn main() {
     // raw trait object
     let x = A { f: 42 };
     let z: *const dyn Trait = &x;

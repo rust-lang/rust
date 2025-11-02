@@ -1,0 +1,268 @@
+error[E0282]: type annotations needed
+  --> $DIR/duplicate-bound-err.rs:9:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/duplicate-bound-err.rs:13:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/duplicate-bound-err.rs:17:5
+   |
+LL |     iter::empty()
+   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
+   |
+help: consider specifying the generic argument
+   |
+LL |     iter::empty::<T>()
+   |                +++++
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:21:51
+   |
+LL | type Tait1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
+   |                                                   ^^^^^^^^^
+   |
+   = note: `Tait1` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:23:51
+   |
+LL | type Tait2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
+   |                                                   ^^^^^^^^^
+   |
+   = note: `Tait2` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:25:57
+   |
+LL | type Tait3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
+   |                                                         ^^^^^^^^^
+   |
+   = note: `Tait3` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:28:14
+   |
+LL | type Tait4 = impl Iterator<Item: Copy, Item: Send>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Tait4` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:30:14
+   |
+LL | type Tait5 = impl Iterator<Item: Copy, Item: Copy>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Tait5` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/duplicate-bound-err.rs:32:14
+   |
+LL | type Tait6 = impl Iterator<Item: 'static, Item: 'static>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Tait6` must be used in combination with a concrete type within the same crate
+
+error[E0277]: `*const ()` cannot be sent between threads safely
+  --> $DIR/duplicate-bound-err.rs:35:18
+   |
+LL | fn mismatch() -> impl Iterator<Item: Copy, Item: Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*const ()` cannot be sent between threads safely
+LL |
+LL |     iter::empty::<*const ()>()
+   |     -------------------------- return type was inferred to be `std::iter::Empty<*const ()>` here
+   |
+   = help: the trait `Send` is not implemented for `*const ()`
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/duplicate-bound-err.rs:40:20
+   |
+LL | fn mismatch_2() -> impl Iterator<Item: Copy, Item: Send> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+LL |
+LL |     iter::empty::<String>()
+   |     ----------------------- return type was inferred to be `std::iter::Empty<String>` here
+
+error[E0271]: expected `IntoIter<u32, 1>` to be an iterator that yields `i32`, but it yields `u32`
+  --> $DIR/duplicate-bound-err.rs:100:17
+   |
+LL |     fn foo() -> impl Iterator<Item = i32, Item = u32> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
+...
+LL |         [2u32].into_iter()
+   |         ------------------ return type was inferred to be `std::array::IntoIter<u32, 1>` here
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate-bound-err.rs:77:42
+   |
+LL | type MustFail = dyn Iterator<Item = i32, Item = u32>;
+   |                              ----------  ^^^^^^^^^^ re-bound here
+   |                              |
+   |                              `Item` bound here first
+
+error: conflicting associated type bounds for `Item`
+  --> $DIR/duplicate-bound-err.rs:77:17
+   |
+LL | type MustFail = dyn Iterator<Item = i32, Item = u32>;
+   |                 ^^^^^^^^^^^^^----------^^----------^
+   |                              |           |
+   |                              |           `Item` is specified to be `u32` here
+   |                              `Item` is specified to be `i32` here
+
+error[E0719]: the value of the associated type `ASSOC` in trait `Trait2` is already specified
+  --> $DIR/duplicate-bound-err.rs:85:43
+   |
+LL | type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
+   |                             ------------  ^^^^^^^^^^^^ re-bound here
+   |                             |
+   |                             `ASSOC` bound here first
+
+error: conflicting associated type bounds for `ASSOC`
+  --> $DIR/duplicate-bound-err.rs:85:18
+   |
+LL | type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
+   |                  ^^^^^^^^^^^------------^^------------^
+   |                             |             |
+   |                             |             `ASSOC` is specified to be `4` here
+   |                             `ASSOC` is specified to be `3` here
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate-bound-err.rs:89:43
+   |
+LL | type MustFail3 = dyn Iterator<Item = i32, Item = i32>;
+   |                               ----------  ^^^^^^^^^^ re-bound here
+   |                               |
+   |                               `Item` bound here first
+
+error[E0719]: the value of the associated type `ASSOC` in trait `Trait2` is already specified
+  --> $DIR/duplicate-bound-err.rs:92:43
+   |
+LL | type MustFail4 = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
+   |                             ------------  ^^^^^^^^^^^^ re-bound here
+   |                             |
+   |                             `ASSOC` bound here first
+
+error[E0271]: expected `impl Iterator<Item = u32>` to be an iterator that yields `i32`, but it yields `u32`
+  --> $DIR/duplicate-bound-err.rs:100:17
+   |
+LL |     fn foo() -> impl Iterator<Item = i32, Item = u32> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
+   |
+note: required by a bound in `Trait3::foo::{anon_assoc#0}`
+  --> $DIR/duplicate-bound-err.rs:96:31
+   |
+LL |     fn foo() -> impl Iterator<Item = i32, Item = u32>;
+   |                               ^^^^^^^^^^ required by this bound in `Trait3::foo::{anon_assoc#0}`
+
+error[E0271]: expected `Empty<u32>` to be an iterator that yields `i32`, but it yields `u32`
+  --> $DIR/duplicate-bound-err.rs:108:16
+   |
+LL |     uncallable(iter::empty::<u32>());
+   |     ---------- ^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `uncallable`
+  --> $DIR/duplicate-bound-err.rs:71:32
+   |
+LL | fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
+   |                                ^^^^^^^^^^ required by this bound in `uncallable`
+
+error[E0271]: expected `Empty<i32>` to be an iterator that yields `u32`, but it yields `i32`
+  --> $DIR/duplicate-bound-err.rs:109:16
+   |
+LL |     uncallable(iter::empty::<i32>());
+   |     ---------- ^^^^^^^^^^^^^^^^^^^^ expected `u32`, found `i32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `uncallable`
+  --> $DIR/duplicate-bound-err.rs:71:44
+   |
+LL | fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
+   |                                            ^^^^^^^^^^ required by this bound in `uncallable`
+
+error[E0271]: type mismatch resolving `<() as Trait>::ASSOC == 4`
+  --> $DIR/duplicate-bound-err.rs:110:22
+   |
+LL |     uncallable_const(());
+   |     ---------------- ^^ expected `4`, found `3`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `4`
+              found constant `3`
+note: required by a bound in `uncallable_const`
+  --> $DIR/duplicate-bound-err.rs:73:46
+   |
+LL | fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+   |                                              ^^^^^^^^^ required by this bound in `uncallable_const`
+
+error[E0271]: type mismatch resolving `<u32 as Trait>::ASSOC == 3`
+  --> $DIR/duplicate-bound-err.rs:111:22
+   |
+LL |     uncallable_const(4u32);
+   |     ---------------- ^^^^ expected `3`, found `4`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `3`
+              found constant `4`
+note: required by a bound in `uncallable_const`
+  --> $DIR/duplicate-bound-err.rs:73:35
+   |
+LL | fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+   |                                   ^^^^^^^^^ required by this bound in `uncallable_const`
+
+error[E0271]: type mismatch resolving `<() as Trait>::ASSOC == 4`
+  --> $DIR/duplicate-bound-err.rs:112:20
+   |
+LL |     uncallable_rtn(());
+   |     -------------- ^^ expected `4`, found `3`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `4`
+              found constant `3`
+note: required by a bound in `uncallable_rtn`
+  --> $DIR/duplicate-bound-err.rs:75:75
+   |
+LL | fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+   |                                                                           ^^^^^^^^^ required by this bound in `uncallable_rtn`
+
+error[E0271]: type mismatch resolving `<u32 as Trait>::ASSOC == 3`
+  --> $DIR/duplicate-bound-err.rs:113:20
+   |
+LL |     uncallable_rtn(17u32);
+   |     -------------- ^^^^^ expected `3`, found `4`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `3`
+              found constant `4`
+note: required by a bound in `uncallable_rtn`
+  --> $DIR/duplicate-bound-err.rs:75:48
+   |
+LL | fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+   |                                                ^^^^^^^^^ required by this bound in `uncallable_rtn`
+
+error: aborting due to 25 previous errors
+
+Some errors have detailed explanations: E0271, E0277, E0282, E0719.
+For more information about an error, try `rustc --explain E0271`.

@@ -77,7 +77,7 @@ where
         }
     }
 
-    let align = arg.layout.align.abi.bytes();
+    let align = arg.layout.align.bytes();
     let total = arg.layout.size;
     arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }

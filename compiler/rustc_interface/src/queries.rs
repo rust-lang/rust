@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -46,7 +47,14 @@ impl Linker {
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
         let (codegen_results, mut work_products) = sess.time("finish_ongoing_codegen", || {
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
+            match self.ongoing_codegen.downcast::<CodegenResults>() {
+                // This was a check only build
+                Ok(codegen_results) => (*codegen_results, IndexMap::default()),
+
+                Err(ongoing_codegen) => {
+                    codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
+                }
+            }
         });
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
@@ -94,7 +102,7 @@ impl Linker {
                 &rlink_file,
                 &codegen_results,
                 &self.metadata,
-                &*self.output_filenames,
+                &self.output_filenames,
             )
             .unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })

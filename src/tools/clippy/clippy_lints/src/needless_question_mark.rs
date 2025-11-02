@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::path_res;
+use clippy_utils::res::MaybeQPath;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource, QPath};
+use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -94,7 +94,7 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
 
 fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Call(path, [arg]) = expr.kind
-        && let Res::Def(DefKind::Ctor(..), ctor_id) = path_res(cx, path)
+        && let Res::Def(DefKind::Ctor(..), ctor_id) = path.res(cx)
         && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
         && let variant = if cx.tcx.lang_items().option_some_variant() == Some(variant_id) {
             "Some"
@@ -105,7 +105,8 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }
         && let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar(_)) = &arg.kind
         && let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind
-        && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)) = &called.kind
+        && let ExprKind::Path(qpath) = called.kind
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
         && expr.span.eq_ctxt(inner_expr.span)
         && let expr_ty = cx.typeck_results().expr_ty(expr)
         && let inner_ty = cx.typeck_results().expr_ty(inner_expr)

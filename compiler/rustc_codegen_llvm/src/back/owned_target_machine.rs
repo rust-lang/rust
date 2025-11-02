@@ -36,10 +36,8 @@ impl OwnedTargetMachine {
         use_init_array: bool,
         split_dwarf_file: &CStr,
         output_obj_file: &CStr,
-        debug_info_compression: &CStr,
+        debug_info_compression: llvm::CompressionKind,
         use_emulated_tls: bool,
-        argv0: &str,
-        command_line_args: &str,
         use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
@@ -64,12 +62,8 @@ impl OwnedTargetMachine {
                 use_init_array,
                 split_dwarf_file.as_ptr(),
                 output_obj_file.as_ptr(),
-                debug_info_compression.as_ptr(),
+                debug_info_compression,
                 use_emulated_tls,
-                argv0.as_ptr(),
-                argv0.len(),
-                command_line_args.as_ptr(),
-                command_line_args.len(),
                 use_wasm_eh,
             )
         };
@@ -95,8 +89,6 @@ impl Drop for OwnedTargetMachine {
         // SAFETY: constructing ensures we have a valid pointer created by
         // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
         // double free or use after free.
-        unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_ptr());
-        }
+        unsafe { llvm::LLVMDisposeTargetMachine(self.tm_unique) };
     }
 }

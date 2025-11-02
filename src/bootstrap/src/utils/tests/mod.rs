@@ -48,11 +48,20 @@ impl TestCtx {
 pub struct ConfigBuilder {
     args: Vec<String>,
     directory: PathBuf,
+    override_download_ci_llvm: bool,
+    dry_run: bool,
+    explicit_config: bool,
 }
 
 impl ConfigBuilder {
     fn from_args(args: &[&str], directory: PathBuf) -> Self {
-        Self { args: args.iter().copied().map(String::from).collect(), directory }
+        Self {
+            args: args.iter().copied().map(String::from).collect(),
+            directory,
+            override_download_ci_llvm: true,
+            dry_run: true,
+            explicit_config: true,
+        }
     }
 
     pub fn path(mut self, path: &str) -> Self {
@@ -98,18 +107,46 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn create_config(mut self) -> Config {
-        // Run in dry-check, otherwise the test would be too slow
-        self.args.push("--dry-run".to_string());
+    pub fn with_default_toml_config(mut self, config_toml: &str) -> Self {
+        let toml_path = self.directory.join("bootstrap.toml");
+        std::fs::write(&toml_path, config_toml).unwrap();
+        self.explicit_config = false;
+        self.args.push("--config".to_string());
+        self.args.push(toml_path.display().to_string());
+        self
+    }
 
+    pub fn no_override_download_ci_llvm(mut self) -> Self {
+        self.override_download_ci_llvm = false;
+        self
+    }
+
+    pub fn no_dry_run(mut self) -> Self {
+        self.dry_run = false;
+        self
+    }
+
+    pub fn create_config(mut self) -> Config {
+        if self.dry_run {
+            // Run in dry-check, otherwise the test would be too slow
+            self.args.push("--dry-run".to_string());
+        }
         // Ignore submodules
         self.args.push("--set".to_string());
         self.args.push("build.submodules=false".to_string());
 
-        // Override any external LLVM set and inhibit CI LLVM; pretend that we're always building
-        // in-tree LLVM from sources.
-        self.args.push("--set".to_string());
-        self.args.push("llvm.download-ci-llvm=false".to_string());
+        if self.override_download_ci_llvm {
+            // Override any external LLVM set and inhibit CI LLVM; pretend that we're always building
+            // in-tree LLVM from sources.
+            self.args.push("--set".to_string());
+            self.args.push("llvm.download-ci-llvm=false".to_string());
+        }
+
+        // always use the bootstrap toml created in the
+        // temporary directory and not from the <src>
+        if self.explicit_config {
+            self = self.with_default_toml_config("");
+        }
 
         // Do not mess with the local rustc checkout build directory
         self.args.push("--build-dir".to_string());

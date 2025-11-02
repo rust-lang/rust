@@ -106,7 +106,7 @@ unsafe fn configure_llvm(sess: &Session) {
 
         if sess.target.os == "emscripten"
             && !sess.opts.unstable_opts.emscripten_wasm_eh
-            && sess.panic_strategy() == PanicStrategy::Unwind
+            && sess.panic_strategy().unwinds()
         {
             add("-enable-emscripten-cxx-exceptions", false);
         }

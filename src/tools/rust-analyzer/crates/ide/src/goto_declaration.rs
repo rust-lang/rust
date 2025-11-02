@@ -6,8 +6,8 @@ use ide_db::{
 use syntax::{AstNode, SyntaxKind::*, T, ast, match_ast};
 
 use crate::{
-    FilePosition, NavigationTarget, RangeInfo, goto_definition::goto_definition,
-    navigation_target::TryToNav,
+    FilePosition, GotoDefinitionConfig, NavigationTarget, RangeInfo,
+    goto_definition::goto_definition, navigation_target::TryToNav,
 };
 
 // Feature: Go to Declaration
@@ -21,6 +21,7 @@ use crate::{
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
     position @ FilePosition { file_id, offset }: FilePosition,
+    config: &GotoDefinitionConfig<'_>,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
@@ -69,20 +70,27 @@ pub(crate) fn goto_declaration(
         .flatten()
         .collect();
 
-    if info.is_empty() { goto_definition(db, position) } else { Some(RangeInfo::new(range, info)) }
+    if info.is_empty() {
+        goto_definition(db, position, config)
+    } else {
+        Some(RangeInfo::new(range, info))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use ide_db::FileRange;
+    use ide_db::{FileRange, MiniCore};
     use itertools::Itertools;
 
-    use crate::fixture;
+    use crate::{GotoDefinitionConfig, fixture};
+
+    const TEST_CONFIG: GotoDefinitionConfig<'_> =
+        GotoDefinitionConfig { minicore: MiniCore::default() };
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis
-            .goto_declaration(position)
+            .goto_declaration(position, &TEST_CONFIG)
             .unwrap()
             .expect("no declaration or definition found")
             .info;

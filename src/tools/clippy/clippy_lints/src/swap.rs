@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, path_to_local, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
 use itertools::Itertools;
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for Swap {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn generate_swap_warning<'tcx>(
     block: &'tcx Block<'tcx>,
     cx: &LateContext<'tcx>,
@@ -110,8 +110,8 @@ fn generate_swap_warning<'tcx>(
 
             if matches!(ty.kind(), ty::Slice(_))
                 || matches!(ty.kind(), ty::Array(_, _))
-                || is_type_diagnostic_item(cx, ty, sym::Vec)
-                || is_type_diagnostic_item(cx, ty, sym::VecDeque)
+                || ty.is_diag_item(cx, sym::Vec)
+                || ty.is_diag_item(cx, sym::VecDeque)
             {
                 let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
 
@@ -361,7 +361,8 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 // - Variable declaration is outside the suggestion span
                 // - Variable is not used as an index or elsewhere later
                 if !self.suggest_span.contains(init.span)
-                    || path_to_local(expr)
+                    || expr
+                        .res_local_id()
                         .is_some_and(|hir_id| !self.suggest_span.contains(self.cx.tcx.hir_span(hir_id)))
                     || !self.is_used_other_than_swapping(first_segment.ident)
                 {

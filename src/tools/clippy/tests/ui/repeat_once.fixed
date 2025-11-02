@@ -10,8 +10,7 @@ fn main() {
     //~^ repeat_once
     let b = slice.to_vec();
     //~^ repeat_once
-    let c = "hello".to_string();
-    //~^ repeat_once
+    let c = "hello".repeat(N);
     let d = "hi".to_string();
     //~^ repeat_once
     let e = s.to_string();

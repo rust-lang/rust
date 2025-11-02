@@ -13,6 +13,7 @@ use libc::{gid_t, uid_t};
 use super::common::*;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
+use crate::process::StdioPipes;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
 use crate::sys::pal::linux::pidfd::PidFd;

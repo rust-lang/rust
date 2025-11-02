@@ -31,8 +31,8 @@ where
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 const fn slice_index_fail(start: usize, end: usize, len: usize) -> ! {
     if start > len {
@@ -233,7 +233,7 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
     #[track_caller]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_language_ub, // okay because of the `assume` below
             "slice::get_unchecked requires that the index is within the slice",
             (this: usize = self, len: usize = slice.len()) => this < len
         );
@@ -564,7 +564,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &*get_offset_len_noubcheck(slice, self.start, new_len)
+        }
     }
 
     #[inline]
@@ -573,7 +576,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &mut *get_offset_len_mut_noubcheck(slice, self.start, new_len)
+        }
     }
 }
 

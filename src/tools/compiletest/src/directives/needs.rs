@@ -1,10 +1,10 @@
 use crate::common::{Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer};
-use crate::directives::{IgnoreDecision, llvm_has_libzstd};
+use crate::directives::{DirectiveLine, IgnoreDecision, llvm_has_libzstd};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
     config: &Config,
-    ln: &str,
+    ln: &DirectiveLine<'_>,
 ) -> IgnoreDecision {
     // Note that we intentionally still put the needs- prefix here to make the file show up when
     // grepping for a directive name, even though we could technically strip that.
@@ -181,15 +181,10 @@ pub(super) fn handle_needs(
         },
     ];
 
-    let (name, rest) = match ln.split_once([':', ' ']) {
-        Some((name, rest)) => (name, Some(rest)),
-        None => (ln, None),
-    };
+    let &DirectiveLine { name, .. } = ln;
 
-    // FIXME(jieyouxu): tighten up this parsing to reject using both `:` and ` ` as means to
-    // delineate value.
     if name == "needs-target-has-atomic" {
-        let Some(rest) = rest else {
+        let Some(rest) = ln.value_after_colon() else {
             return IgnoreDecision::Error {
                 message: "expected `needs-target-has-atomic` to have a comma-separated list of atomic widths".to_string(),
             };
@@ -231,7 +226,7 @@ pub(super) fn handle_needs(
 
     // FIXME(jieyouxu): share multi-value directive logic with `needs-target-has-atomic` above.
     if name == "needs-crate-type" {
-        let Some(rest) = rest else {
+        let Some(rest) = ln.value_after_colon() else {
             return IgnoreDecision::Error {
                 message:
                     "expected `needs-crate-type` to have a comma-separated list of crate types"
@@ -279,10 +274,7 @@ pub(super) fn handle_needs(
 
     // Handled elsewhere.
     if name == "needs-llvm-components" {
-        if config.default_codegen_backend.is_llvm() {
-            return IgnoreDecision::Continue;
-        }
-        return IgnoreDecision::Ignore { reason: "LLVM specific test".into() };
+        return IgnoreDecision::Continue;
     }
 
     let mut found_valid = false;
@@ -293,7 +285,7 @@ pub(super) fn handle_needs(
                 break;
             } else {
                 return IgnoreDecision::Ignore {
-                    reason: if let Some(comment) = rest {
+                    reason: if let Some(comment) = ln.remark_after_space() {
                         format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()

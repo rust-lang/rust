@@ -125,7 +125,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
         extCtx.subscriptions.push(this);
         this.version = extCtx.extension.packageJSON.version ?? "<unknown>";
         this._serverVersion = "<not running>";
-        this.config = new Config(extCtx.subscriptions);
+        this.config = new Config(extCtx);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this.updateStatusBarVisibility(vscode.window.activeTextEditor);
         this.statusBarActiveEditorListener = vscode.window.onDidChangeActiveTextEditor((editor) =>
@@ -148,6 +148,13 @@ export class Ctx implements RustAnalyzerExtensionApi {
         this.setServerStatus({
             health: "stopped",
         });
+    }
+
+    async addConfiguration(
+        extensionId: string,
+        configuration: Record<string, unknown>,
+    ): Promise<void> {
+        await this.config.addExtensionConfiguration(extensionId, configuration);
     }
 
     dispose() {
@@ -230,7 +237,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 debug: run,
             };
 
-            let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
+            let rawInitializationOptions = this.config.cfg;
 
             if (this.workspace.kind === "Detached Files") {
                 rawInitializationOptions = {

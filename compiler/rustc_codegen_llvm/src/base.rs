@@ -28,10 +28,10 @@ use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;
+use crate::attributes;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::value::Value;
-use crate::{attributes, llvm};
+use crate::llvm::{self, Value};
 
 pub(crate) struct ValueIter<'ll> {
     cur: Option<&'ll Value>,
@@ -105,7 +105,7 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let attrs = attributes::sanitize_attrs(&cx, SanitizerSet::empty());
+                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerSet::empty());
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 

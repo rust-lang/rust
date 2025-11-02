@@ -6,6 +6,7 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 //@ proc-macro: unsafe-attributes-pm.rs
+//@ ignore-backends: gcc
 
 unsafe_attributes_pm::missing_unsafe!();
 

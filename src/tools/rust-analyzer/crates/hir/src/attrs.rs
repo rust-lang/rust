@@ -14,11 +14,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use hir_ty::{
-    db::HirDatabase,
-    method_resolution,
-    next_solver::{DbInterner, mapping::ChalkToNextSolver},
-};
+use hir_ty::{db::HirDatabase, method_resolution};
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -261,7 +257,7 @@ fn resolve_impl_trait_item<'db>(
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    let canonical = ty.canonical();
+    let canonical = ty.canonical(db);
     let krate = ty.krate(db);
     let environment = resolver
         .generic_def()
@@ -275,11 +271,7 @@ fn resolve_impl_trait_item<'db>(
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
     _ = method_resolution::iterate_path_candidates(
-        &canonical.to_nextsolver(DbInterner::new_with(
-            db,
-            Some(environment.krate),
-            environment.block,
-        )),
+        &canonical,
         db,
         environment,
         &traits_in_scope,

@@ -71,3 +71,22 @@ mod issue15691 {
         };
     }
 }
+
+fn recv_requiring_parens() {
+    struct S;
+
+    impl std::ops::Not for S {
+        type Output = Option<u64>;
+        fn not(self) -> Self::Output {
+            None
+        }
+    }
+
+    let _ = (!S).as_ref();
+}
+
+fn issue15932() {
+    let _: Option<&u32> = Some(0).as_ref();
+
+    let _: Option<&dyn std::fmt::Debug> = Some(0).as_ref().map(|x| x as _);
+}

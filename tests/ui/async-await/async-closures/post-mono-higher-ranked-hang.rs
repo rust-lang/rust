@@ -2,6 +2,10 @@
 //@ aux-build:block-on.rs
 //@ edition:2021
 
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 // Regression test for <https://github.com/rust-lang/rust/issues/135780>.
 
 extern crate block_on;

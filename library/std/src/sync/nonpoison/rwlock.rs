@@ -495,8 +495,70 @@ impl<T: ?Sized> RwLock<T> {
     /// or written through after the lock is dropped.
     #[unstable(feature = "rwlock_data_ptr", issue = "140368")]
     // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
+    }
+
+    /// Locks this `RwLock` with shared read access to the underlying data by passing
+    /// a reference to the given closure.
+    ///
+    /// This method acquires the lock, calls the provided closure with a reference
+    /// to the data, and returns the result of the closure. The lock is released after
+    /// the closure completes, even if it panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors, nonpoison_rwlock)]
+    ///
+    /// use std::sync::nonpoison::RwLock;
+    ///
+    /// let rwlock = RwLock::new(2);
+    /// let result = rwlock.with(|data| *data + 3);
+    ///
+    /// assert_eq!(result, 5);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
+    pub fn with<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&T) -> R,
+    {
+        f(&self.read())
+    }
+
+    /// Locks this `RwLock` with exclusive write access to the underlying data by passing
+    /// a mutable reference to the given closure.
+    ///
+    /// This method acquires the lock, calls the provided closure with a mutable reference
+    /// to the data, and returns the result of the closure. The lock is released after
+    /// the closure completes, even if it panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors, nonpoison_rwlock)]
+    ///
+    /// use std::sync::nonpoison::RwLock;
+    ///
+    /// let rwlock = RwLock::new(2);
+    ///
+    /// let result = rwlock.with_mut(|data| {
+    ///     *data += 3;
+    ///
+    ///     *data + 5
+    /// });
+    ///
+    /// assert_eq!(*rwlock.read(), 5);
+    /// assert_eq!(result, 10);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
+    pub fn with_mut<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        f(&mut self.write())
     }
 }
 
@@ -638,7 +700,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     ///
     /// ```
     /// #![feature(nonpoison_rwlock)]
-    /// #![feature(rwlock_downgrade)]
     ///
     /// use std::sync::nonpoison::{RwLock, RwLockWriteGuard};
     ///
@@ -657,7 +718,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     ///
     /// ```
     /// #![feature(nonpoison_rwlock)]
-    /// #![feature(rwlock_downgrade)]
     ///
     /// use std::sync::Arc;
     /// use std::sync::nonpoison::{RwLock, RwLockWriteGuard};
@@ -690,8 +750,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// # let final_check = rw.read();
     /// # assert_eq!(*final_check, 3);
     /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
-    // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
+    #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'rwlock, T> {
         let lock = s.lock;
 

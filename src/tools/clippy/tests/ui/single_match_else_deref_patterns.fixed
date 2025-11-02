@@ -5,7 +5,7 @@
     clippy::op_ref,
     clippy::deref_addrof,
     clippy::borrow_deref_ref,
-    clippy::needless_if
+    clippy::needless_ifs
 )]
 #![deny(clippy::single_match_else)]
 

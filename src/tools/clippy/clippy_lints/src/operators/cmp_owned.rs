@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::path_def_id;
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
@@ -47,11 +47,14 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             (arg, arg.span)
         },
         ExprKind::Call(path, [arg])
-            if path_def_id(cx, path).is_some_and(|did| match cx.tcx.get_diagnostic_name(did) {
-                Some(sym::from_str_method) => true,
-                Some(sym::from_fn) => !is_copy(cx, typeck.expr_ty(expr)),
-                _ => false,
-            }) =>
+            if path
+                .res(cx)
+                .opt_def_id()
+                .is_some_and(|did| match cx.tcx.get_diagnostic_name(did) {
+                    Some(sym::from_str_method) => true,
+                    Some(sym::from_fn) => !is_copy(cx, typeck.expr_ty(expr)),
+                    _ => false,
+                }) =>
         {
             (arg, arg.span)
         },

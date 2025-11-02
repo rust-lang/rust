@@ -2,7 +2,7 @@
 #![allow(
     clippy::match_like_matches_macro,
     clippy::needless_bool,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::uninlined_format_args
 )]
 

@@ -14,13 +14,12 @@ use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::translation::Translator;
-use rustc_errors::{DiagCtxt, MultiSpan, PResult};
+use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{
     BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
 };
-use termcolor::WriteColor;
 
 use crate::lexer::StripTokens;
 use crate::parser::{ForceCollect, Parser};
@@ -44,9 +43,10 @@ fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mut
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let translator = Translator::with_fallback_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
-    let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), translator)
-        .sm(Some(source_map.clone()))
-        .diagnostic_width(Some(140));
+    let mut emitter =
+        HumanEmitter::new(AutoStream::never(Box::new(Shared { data: output.clone() })), translator)
+            .sm(Some(source_map.clone()))
+            .diagnostic_width(Some(140));
     emitter = emitter.theme(theme);
     let dcx = DiagCtxt::new(Box::new(emitter));
     (dcx, source_map, output)
@@ -158,20 +158,6 @@ struct SpanLabel {
 
 struct Shared<T: Write> {
     data: Arc<Mutex<T>>,
-}
-
-impl<T: Write> WriteColor for Shared<T> {
-    fn supports_color(&self) -> bool {
-        false
-    }
-
-    fn set_color(&mut self, _spec: &termcolor::ColorSpec) -> io::Result<()> {
-        Ok(())
-    }
-
-    fn reset(&mut self) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 impl<T: Write> Write for Shared<T> {

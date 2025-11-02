@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
-use clippy_utils::{is_diag_item_method, is_diag_trait_item, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -10,12 +11,12 @@ use rustc_span::Symbol;
 use super::IMPLICIT_CLONE;
 
 pub fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
-    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && is_clone_like(cx, method_name, method_def_id)
+    if let Some(method_parent_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id).opt_parent(cx)
+        && is_clone_like(cx, method_name, method_parent_id)
         && let return_type = cx.typeck_results().expr_ty(expr)
         && let input_type = cx.typeck_results().expr_ty(recv)
         && let (input_type, ref_count, _) = peel_and_count_ty_refs(input_type)
-        && !(ref_count > 0 && is_diag_trait_item(cx, method_def_id, sym::ToOwned))
+        && !(ref_count > 0 && method_parent_id.is_diag_item(cx, sym::ToOwned))
         && let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did()))
         && return_type == input_type
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
@@ -40,19 +41,15 @@ pub fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &hir::Expr<'_>, re
 }
 
 /// Returns true if the named method can be used to clone the receiver.
-pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: hir::def_id::DefId) -> bool {
+pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_parent_id: hir::def_id::DefId) -> bool {
     match method_name {
-        sym::to_os_string => is_diag_item_method(cx, method_def_id, sym::OsStr),
-        sym::to_owned => is_diag_trait_item(cx, method_def_id, sym::ToOwned),
-        sym::to_path_buf => is_diag_item_method(cx, method_def_id, sym::Path),
-        sym::to_string => is_diag_trait_item(cx, method_def_id, sym::ToString),
-        sym::to_vec => cx
-            .tcx
-            .impl_of_assoc(method_def_id)
-            .filter(|&impl_did| {
-                cx.tcx.type_of(impl_did).instantiate_identity().is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none()
-            })
-            .is_some(),
+        sym::to_os_string => method_parent_id.opt_impl_ty(cx).is_diag_item(cx, sym::OsStr),
+        sym::to_owned => method_parent_id.is_diag_item(cx, sym::ToOwned),
+        sym::to_path_buf => method_parent_id.opt_impl_ty(cx).is_diag_item(cx, sym::Path),
+        sym::to_string => method_parent_id.is_diag_item(cx, sym::ToString),
+        sym::to_vec => method_parent_id
+            .opt_impl_ty(cx)
+            .is_some_and(|ty| ty.instantiate_identity().is_slice()),
         _ => false,
     }
 }

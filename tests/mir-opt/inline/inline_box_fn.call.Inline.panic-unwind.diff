@@ -9,8 +9,8 @@
       let mut _4: (i32,);
 +     scope 1 (inlined <Box<dyn Fn(i32)> as Fn<(i32,)>>::call) {
 +         let mut _5: &dyn std::ops::Fn(i32);
-+         let mut _6: std::boxed::Box<dyn std::ops::Fn(i32)>;
-+         let mut _7: *const dyn std::ops::Fn(i32);
++         let mut _6: *const dyn std::ops::Fn(i32);
++         let mut _7: std::ptr::NonNull<dyn std::ops::Fn(i32)>;
 +     }
   
       bb0: {
@@ -23,9 +23,9 @@
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         StorageLive(_5);
-+         _6 = copy (*_3);
-+         _7 = copy ((_6.0: std::ptr::Unique<dyn std::ops::Fn(i32)>).0: std::ptr::NonNull<dyn std::ops::Fn(i32)>) as *const dyn std::ops::Fn(i32) (Transmute);
-+         _5 = &(*_7);
++         _7 = copy (((*_3).0: std::ptr::Unique<dyn std::ops::Fn(i32)>).0: std::ptr::NonNull<dyn std::ops::Fn(i32)>);
++         _6 = copy _7 as *const dyn std::ops::Fn(i32) (Transmute);
++         _5 = &(*_6);
 +         _2 = <dyn Fn(i32) as Fn<(i32,)>>::call(move _5, move _4) -> [return: bb4, unwind: bb2];
       }
   

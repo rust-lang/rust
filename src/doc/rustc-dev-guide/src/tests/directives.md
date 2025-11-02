@@ -163,8 +163,10 @@ Some examples of `X` in `ignore-X` or `only-X`:
 The following directives will check rustc build settings and target
 settings:
 
-- `needs-asm-support` — ignores if it is running on a target that doesn't have
-  stable support for `asm!`
+- `needs-asm-support` — ignores if the **host** architecture doesn't have
+  stable support for `asm!`. For tests that cross-compile to explicit targets
+  via `--target`, use `needs-llvm-components` instead to ensure the appropriate
+  backend is available.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target
   (`build.profiler = true` in rustc's `bootstrap.toml`)
@@ -205,7 +207,9 @@ settings:
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
 - `needs-target-std` — ignores if target platform does not have std support.
-- `ignore-backends` — ignores the listed backends, separated by whitespace characters.
+- `ignore-backends` — ignores the listed backends, separated by whitespace characters. Please note
+  that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
+  flag. 
 - `needs-backends` — only runs the test if current codegen backend is listed.
 
 The following directives will check LLVM support:
@@ -261,6 +265,28 @@ must instead use the `//@ incremental` directive.
 Consider writing the test as a proper incremental test instead.
 
 </div>
+
+#### The edition directive
+
+The `//@ edition` directive can take an exact edition, a bounded range of editions,
+or a left-bounded half-open range of editions.
+This affects which edition is used by `./x test` to run the test.
+
+For example:
+
+- A test with the `//@ edition: 2018` directive will only run under the 2018 edition.
+- A test with the `//@ edition: 2015..2021` directive can be run under the 2015, 2018, and 2021 editions.
+  However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
+- A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
+  However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
+
+You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument.
+However, tests with the `//@ edition` directive will clamp the value passed to the argument.
+For example, if we run `./x test -- --edition=2015`:
+
+- A test with the `//@ edition: 2018` will run with the 2018 edition. 
+- A test with the `//@ edition: 2015..2021` will be run with the 2015 edition. 
+- A test with the `//@ edition: 2018..` will run with the 2018 edition. 
 
 ### Rustdoc
 

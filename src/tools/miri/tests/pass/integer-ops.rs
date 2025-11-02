@@ -56,7 +56,7 @@ fn basic() {
     assert_eq!(match_int_range(), 4);
 }
 
-pub fn main() {
+fn main() {
     basic();
 
     // This tests that we do (not) do sign extension properly when loading integers

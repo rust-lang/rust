@@ -187,11 +187,19 @@ pub fn is_upper_snake_case(s: &str) -> bool {
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {
-    if !buf.contains(from) {
+    let replace_count = buf.chars().filter(|&ch| ch == from).count();
+    if replace_count == 0 {
         return;
     }
-    // FIXME: do this in place.
-    *buf = buf.replace(from, to);
+    let from_len = from.len_utf8();
+    let additional = to.len().saturating_sub(from_len);
+    buf.reserve(additional * replace_count);
+
+    let mut end = buf.len();
+    while let Some(i) = buf[..end].rfind(from) {
+        buf.replace_range(i..i + from_len, to);
+        end = i;
+    }
 }
 
 #[must_use]
@@ -342,5 +350,35 @@ mod tests {
             ),
             "fn main() {\n    return 92;\n}\n"
         );
+    }
+
+    #[test]
+    fn test_replace() {
+        #[track_caller]
+        fn test_replace(src: &str, from: char, to: &str, expected: &str) {
+            let mut s = src.to_owned();
+            replace(&mut s, from, to);
+            assert_eq!(s, expected, "from: {from:?}, to: {to:?}");
+        }
+
+        test_replace("", 'a', "b", "");
+        test_replace("", 'a', "😀", "");
+        test_replace("", '😀', "a", "");
+        test_replace("a", 'a', "b", "b");
+        test_replace("aa", 'a', "b", "bb");
+        test_replace("ada", 'a', "b", "bdb");
+        test_replace("a", 'a', "😀", "😀");
+        test_replace("😀", '😀', "a", "a");
+        test_replace("😀x", '😀', "a", "ax");
+        test_replace("y😀x", '😀', "a", "yax");
+        test_replace("a,b,c", ',', ".", "a.b.c");
+        test_replace("a,b,c", ',', "..", "a..b..c");
+        test_replace("a.b.c", '.', "..", "a..b..c");
+        test_replace("a.b.c", '.', "..", "a..b..c");
+        test_replace("a😀b😀c", '😀', ".", "a.b.c");
+        test_replace("a.b.c", '.', "😀", "a😀b😀c");
+        test_replace("a.b.c", '.', "😀😀", "a😀😀b😀😀c");
+        test_replace(".a.b.c.", '.', "()", "()a()b()c()");
+        test_replace(".a.b.c.", '.', "", "abc");
     }
 }

@@ -10,6 +10,7 @@ use rustc_span::Span;
 
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
+use crate::traits::solve;
 pub use crate::traits::solve::NoSolution;
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
@@ -67,7 +68,16 @@ pub mod type_op {
 pub type CanonicalAliasGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
 
-pub type CanonicalTyGoal<'tcx> = CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
+pub type CanonicalMethodAutoderefStepsGoal<'tcx> =
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, MethodAutoderefSteps<'tcx>>>;
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+pub struct MethodAutoderefSteps<'tcx> {
+    /// The list of opaque types currently in the storage.
+    ///
+    /// Only used by the new solver for now.
+    pub predefined_opaques_in_body: solve::PredefinedOpaques<'tcx>,
+    pub self_ty: Ty<'tcx>,
+}
 
 pub type CanonicalPredicateGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
@@ -144,6 +154,7 @@ impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
 #[derive(Debug, HashStable)]
 pub struct CandidateStep<'tcx> {
     pub self_ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+    pub self_ty_is_opaque: bool,
     pub autoderefs: usize,
     /// `true` if the type results from a dereference of a raw pointer.
     /// when assembling candidates, we include these steps, but not when

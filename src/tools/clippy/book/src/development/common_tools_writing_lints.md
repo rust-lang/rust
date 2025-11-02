@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MyStructLint {
         // Check our expr is calling a method
         if let hir::ExprKind::MethodCall(path, _, _self_arg, ..) = &expr.kind
             // Check the name of this method is `some_method`
-            && path.ident.name.as_str() == "some_method"
+            && path.ident.name == sym::some_method
             // Optionally, check the type of the self argument.
             // - See "Checking for a specific type"
         {
@@ -85,9 +85,8 @@ to check for. All of these methods only check for the base type, generic
 arguments have to be checked separately.
 
 ```rust
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::paths;
-use rustc_span::symbol::sym;
+use clippy_utils::{paths, sym};
+use clippy_utils::res::MaybeDef;
 use rustc_hir::LangItem;
 
 impl LateLintPass<'_> for MyStructLint {
@@ -97,12 +96,12 @@ impl LateLintPass<'_> for MyStructLint {
 
         // 1. Using diagnostic items
         // The last argument is the diagnostic item to check for
-        if is_type_diagnostic_item(cx, ty, sym::Option) {
+        if ty.is_diag_item(cx, sym::Option) {
             // The type is an `Option`
         }
 
         // 2. Using lang items
-        if is_type_lang_item(cx, ty, LangItem::RangeFull) {
+        if ty.is_lang_item(cx, LangItem::RangeFull) {
             // The type is a full range like `.drain(..)`
         }
 
@@ -123,27 +122,29 @@ There are three ways to do this, depending on if the target trait has a
 diagnostic item, lang item or neither.
 
 ```rust
+use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::is_trait_method;
-use rustc_span::symbol::sym;
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        // 1. Using diagnostic items with the expression
-        // we use `is_trait_method` function from Clippy's utils
-        if is_trait_method(cx, expr, sym::Iterator) {
-            // method call in `expr` belongs to `Iterator` trait
+
+        // 1. Get the `DefId` of the trait.
+        // via lang items
+        let trait_id = cx.tcx.lang_items().drop_trait();
+        // via diagnostic items
+        let trait_id = cx.tcx.get_diagnostic_item(sym::Eq);
+
+        // 2. Check for the trait implementation via the `implements_trait` util.
+        let ty = cx.typeck_results().expr_ty(expr);
+        if trait_id.is_some_and(|id| implements_trait(cx, ty, id, &[])) {
+            // `ty` implements the trait.
         }
 
-        // 2. Using lang items with the expression type
-        let ty = cx.typeck_results().expr_ty(expr);
-        if cx.tcx.lang_items()
-            // we are looking for the `DefId` of `Drop` trait in lang items
-            .drop_trait()
-            // then we use it with our type `ty` by calling `implements_trait` from Clippy's utils
-            .is_some_and(|id| implements_trait(cx, ty, id, &[])) {
-                // `expr` implements `Drop` trait
-            }
+        // 3. If the trait requires additional generic arguments
+        let trait_id = cx.tcx.lang_items().eq_trait();
+        if trait_id.is_some_and(|id| implements_trait(cx, ty, id, &[ty])) {
+            // `ty` implements `PartialEq<Self>`
+        }
     }
 }
 ```
@@ -173,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go further and even check if its return type is `String`
-            && is_type_lang_item(cx, return_ty(cx, impl_item.hir_id), LangItem::String)
+            && return_ty(cx, impl_item.hir_id).is_lang_item(cx, LangItem::String)
         {
             // ...
         }

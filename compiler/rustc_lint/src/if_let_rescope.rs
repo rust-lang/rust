@@ -1,4 +1,4 @@
-use std::iter::repeat;
+use std::iter::repeat_n;
 use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
@@ -351,7 +351,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .then_some(" _ => {}".chars())
                 .into_iter()
                 .flatten()
-                .chain(repeat('}').take(closing_brackets.count))
+                .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));
         let msg = diag.eagerly_translate(crate::fluent_generated::lint_suggestion);

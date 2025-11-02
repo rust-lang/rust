@@ -125,7 +125,7 @@ impl Barrier {
         let local_gen = lock.generation_id;
         lock.count += 1;
         if lock.count < self.num_threads {
-            let _guard = self.cvar.wait_while(lock, |state| local_gen == state.generation_id);
+            self.cvar.wait_while(&mut lock, |state| local_gen == state.generation_id);
             BarrierWaitResult(false)
         } else {
             lock.count = 0;

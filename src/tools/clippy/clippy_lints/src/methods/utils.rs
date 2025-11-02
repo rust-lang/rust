@@ -1,5 +1,5 @@
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{get_parent_expr, path_to_local_id, usage};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::{get_parent_expr, usage};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, QPath, Stmt, StmtKind};
 use rustc_lint::LateContext;
@@ -20,7 +20,7 @@ pub(super) fn derefs_to_slice<'tcx>(
         match ty.kind() {
             ty::Slice(_) => true,
             ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => may_slice(cx, boxed),
-            ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::Vec),
+            ty::Adt(..) => ty.is_diag_item(cx, sym::Vec),
             ty::Array(_, size) => size.try_to_target_usize(cx.tcx).is_some(),
             ty::Ref(_, inner, _) => may_slice(cx, *inner),
             _ => false,
@@ -130,7 +130,7 @@ impl<'tcx> CloneOrCopyVisitor<'_, 'tcx> {
     fn is_binding(&self, expr: &Expr<'tcx>) -> bool {
         self.binding_hir_ids
             .iter()
-            .any(|hir_id| path_to_local_id(expr, *hir_id))
+            .any(|&hir_id| expr.res_local_id() == Some(hir_id))
     }
 }
 

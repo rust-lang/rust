@@ -306,34 +306,6 @@ fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSe
     s
 }
 
-fn with_elements_standard(elements: &[usize], domain_size: usize) -> DenseBitSet<usize> {
-    let mut s = DenseBitSet::new_empty(domain_size);
-    for &e in elements {
-        assert!(s.insert(e));
-    }
-    s
-}
-
-#[test]
-fn chunked_bitset_into_bitset_operations() {
-    let a = vec![1, 5, 7, 11, 15, 2000, 3000];
-    let b = vec![3, 4, 11, 3000, 4000];
-    let aub = vec![1, 3, 4, 5, 7, 11, 15, 2000, 3000, 4000];
-    let aib = vec![11, 3000];
-
-    let b = with_elements_chunked(&b, 9876);
-
-    let mut union = with_elements_standard(&a, 9876);
-    assert!(union.union(&b));
-    assert!(!union.union(&b));
-    assert!(union.iter().eq(aub.iter().copied()));
-
-    let mut intersection = with_elements_standard(&a, 9876);
-    assert!(intersection.intersect(&b));
-    assert!(!intersection.intersect(&b));
-    assert!(intersection.iter().eq(aib.iter().copied()));
-}
-
 #[test]
 fn chunked_bitset_iter() {
     fn check_iter(bit: &ChunkedBitSet<usize>, vec: &Vec<usize>) {

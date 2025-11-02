@@ -397,13 +397,6 @@ fn operands(_1: u8) -> () {
         _89 = core::panicking::assert_failed::<usize, usize>(move _90, move _91, move _93, move _95) -> unwind unreachable;
     }
 }
-fn operands::{constant#0}() -> usize {
-    let mut _0: usize;
-    bb0: {
-        _0 = 10_usize;
-        return;
-    }
-}
 fn more_operands() -> [Ctors; 3] {
     let mut _0: [Ctors; 3];
     let  _1: Dummy;
@@ -444,13 +437,6 @@ fn more_operands() -> [Ctors; 3] {
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);
-        return;
-    }
-}
-fn more_operands::{constant#0}() -> usize {
-    let mut _0: usize;
-    bb0: {
-        _0 = 3_usize;
         return;
     }
 }

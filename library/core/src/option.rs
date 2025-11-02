@@ -118,9 +118,14 @@
 //!
 //! # Representation
 //!
-//! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`. In some
-//! of these cases, Rust further guarantees the following:
+//! Rust guarantees to optimize the following types `T` such that [`Option<T>`]
+//! has the same size, alignment, and [function call ABI] as `T`. It is
+//! therefore sound, when `T` is one of these types, to transmute a value `t` of
+//! type `T` to type `Option<T>` (producing the value `Some(t)`) and to
+//! transmute a value `Some(t)` of type `Option<T>` to type `T` (producing the
+//! value `t`).
+//!
+//! In some of these cases, Rust further guarantees the following:
 //! - `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and produces
 //!   `Option::<T>::None`
 //! - `transmute::<_, [u8; size_of::<T>()]>(Option::<T>::None)` is sound and produces
@@ -2161,8 +2166,8 @@ impl<T, E> Option<Result<T, E>> {
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[cold]
 #[track_caller]
 const fn unwrap_failed() -> ! {
@@ -2170,8 +2175,8 @@ const fn unwrap_failed() -> ! {
 }
 
 // This is a separate function to reduce the code size of .expect() itself.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[cold]
 #[track_caller]
 const fn expect_failed(msg: &str) -> ! {

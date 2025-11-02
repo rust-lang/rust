@@ -56,7 +56,7 @@ pub fn ensure_wf<'tcx>(
         pred,
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(errors);
         false

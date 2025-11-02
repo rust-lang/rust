@@ -9,7 +9,7 @@ fn outer(_1: u8) -> u8 {
     }
 
     bb0: {
-        _2 = &_1;                        // scope 0 at $DIR/spans.rs:11:11: 11:13
+        // DBG: _2 = &_1;
         _0 = copy _1;                    // scope 1 at $DIR/spans.rs:15:5: 15:7
         return;                          // scope 0 at $DIR/spans.rs:12:2: 12:2
     }

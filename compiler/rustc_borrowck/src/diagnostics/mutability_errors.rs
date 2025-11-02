@@ -192,7 +192,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     [
                         ..,
                         ProjectionElem::Index(_)
-                        | ProjectionElem::Subtype(_)
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Subslice { .. }
@@ -336,8 +335,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
                             binding_mode: BindingMode(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
-                            opt_match_place: _,
-                            pat_span: _,
+                            ..
                         })) => {
                             if suggest {
                                 err.span_note(sp, "the binding is already a mutable borrow");
@@ -710,8 +708,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return (false, false, None);
         }
         let my_def = self.body.source.def_id();
-        let Some(td) =
-            tcx.trait_impl_of_assoc(my_def).and_then(|id| self.infcx.tcx.trait_id_of_impl(id))
+        let Some(td) = tcx.trait_impl_of_assoc(my_def).map(|id| self.infcx.tcx.impl_trait_id(id))
         else {
             return (false, false, None);
         };
@@ -751,6 +748,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span,
+                introductions: _,
             })) => pat_span,
             _ => local_decl.source_info.span,
         };
@@ -1190,7 +1188,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingMode(ByRef::Yes(_), _),
+                binding_mode: BindingMode(ByRef::Yes(..), _),
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;

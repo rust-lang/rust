@@ -85,7 +85,11 @@ pub(crate) trait SourceRoot {
 }
 "#,
         expect![[r#"
+            bn &mut self
+            bn &self
             bn file_id: usize
+            bn mut self
+            bn self
             kw mut
             kw ref
         "#]],
@@ -176,6 +180,44 @@ impl A {
         expect![[r#"
             sp Self
             st A
+            bn file_id: usize
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
+fn in_trait_only_param() {
+    check(
+        r#"
+trait A {
+    fn foo(file_id: usize) {}
+    fn new($0) {}
+}
+"#,
+        expect![[r#"
+            bn &mut self
+            bn &self
+            bn file_id: usize
+            bn mut self
+            bn self
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
+fn in_trait_after_self() {
+    check(
+        r#"
+trait A {
+    fn foo(file_id: usize) {}
+    fn new(self, $0) {}
+}
+"#,
+        expect![[r#"
             bn file_id: usize
             kw mut
             kw ref

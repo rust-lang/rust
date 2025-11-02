@@ -25,7 +25,7 @@ impl Node for Stuff {
 
 fn iterate<N: Node, G: Graph<N>>(graph: &G) {
     for node in graph.iter() { //~ ERROR no method named `iter` found
-        node.zomg();
+        node.zomg(); //~ ERROR type annotations needed
     }
 }
 

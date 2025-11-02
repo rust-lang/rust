@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use super::UNNECESSARY_MIN_OR_MAX;
-use clippy_utils::consts::{ConstEvalCtxt, Constant, ConstantSource, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 
@@ -25,8 +25,9 @@ pub(super) fn check<'tcx>(
         && let Some(fn_name) = cx.tcx.get_diagnostic_name(id)
         && matches!(fn_name, sym::cmp_ord_min | sym::cmp_ord_max)
     {
-        if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(recv)
-            && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(arg)
+        let ctxt = expr.span.ctxt();
+        if let Some(left) = ecx.eval_local(recv, ctxt)
+            && let Some(right) = ecx.eval_local(arg, ctxt)
         {
             let Some(ord) = Constant::partial_cmp(cx.tcx, typeck_results.expr_ty(recv), &left, &right) else {
                 return;

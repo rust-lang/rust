@@ -110,7 +110,7 @@ declare_clippy_lint! {
     /// } if bar { // looks like an `else` is missing here
     /// }
     /// ```
-    #[clippy::version = "1.90.0"]
+    #[clippy::version = "1.91.0"]
     pub POSSIBLE_MISSING_ELSE,
     suspicious,
     "possibly missing `else`"

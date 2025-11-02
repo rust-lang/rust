@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_inside_always_const_context;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, QPath, UnsafeSource};
 use rustc_lint::LateContext;
@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, func: &Expr<'
         && segment.ident.name == sym::new_unchecked
         && let [init_arg] = args
         && is_inside_always_const_context(cx.tcx, expr.hir_id)
-        && is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::NonZero)
+        && cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, sym::NonZero)
         && msrv.meets(cx, msrvs::CONST_UNWRAP)
     {
         let mut app = Applicability::MachineApplicable;

@@ -11,6 +11,7 @@
 //@[error] compile-flags: -Zreg-struct-return=true
 //@[ok] check-pass
 //@[ok_explicit] check-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 //[error]~^ ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `defaults_check`

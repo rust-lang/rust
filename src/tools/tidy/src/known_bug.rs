@@ -2,9 +2,11 @@
 
 use std::path::Path;
 
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::*;
 
-pub fn check(filepath: &Path, bad: &mut bool) {
+pub fn check(filepath: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("known_bug").path(filepath));
     walk(filepath, |path, _is_dir| filter_not_rust(path), &mut |entry, contents| {
         let file: &Path = entry.path();
 
@@ -19,11 +21,10 @@ pub fn check(filepath: &Path, bad: &mut bool) {
             [.., "tests", "crashes", "auxiliary", _aux_file_rs]
         ) && !contents.lines().any(|line| line.starts_with("//@ known-bug: "))
         {
-            tidy_error!(
-                bad,
+            check.error(format!(
                 "{} crash/ice test does not have a \"//@ known-bug: \" directive",
                 file.display()
-            );
+            ));
         }
     });
 }

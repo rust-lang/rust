@@ -42,3 +42,5 @@ impl fmt::Display for SyntaxError {
         self.0.fmt(f)
     }
 }
+
+impl std::error::Error for SyntaxError {}

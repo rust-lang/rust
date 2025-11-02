@@ -1,5 +1,5 @@
 error: this function depends on never type fallback being `()`
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:10:1
+  --> $DIR/lint-breaking-2024-assign-underscore.rs:8:1
    |
 LL | fn test() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,15 +8,11 @@ LL | fn test() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:13:9
+  --> $DIR/lint-breaking-2024-assign-underscore.rs:11:9
    |
 LL |     _ = foo()?;
    |         ^^^^^
-note: the lint level is defined here
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:4:9
-   |
-LL | #![deny(dependency_on_unit_never_type_fallback)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     _ = foo::<()>()?;
@@ -26,7 +22,7 @@ error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:10:1
+  --> $DIR/lint-breaking-2024-assign-underscore.rs:8:1
    |
 LL | fn test() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,15 +31,11 @@ LL | fn test() -> Result<(), ()> {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:13:9
+  --> $DIR/lint-breaking-2024-assign-underscore.rs:11:9
    |
 LL |     _ = foo()?;
    |         ^^^^^
-note: the lint level is defined here
-  --> $DIR/lint-breaking-2024-assign-underscore.rs:4:9
-   |
-LL | #![deny(dependency_on_unit_never_type_fallback)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     _ = foo::<()>()?;

@@ -701,6 +701,8 @@ mod issue_11709_regression {
     const UNIX_EPOCH_JULIAN_DAY: i32 =
         unsafe { Date::__from_ordinal_date_unchecked(1970, 1) }.into_julian_day_just_make_this_line_longer();
     //~[disabled]^ undocumented_unsafe_blocks
+    // This shouldn't be linted, Issue #15755
+    //~[default]^^^^ unnecessary_safety_comment
 }
 
 fn issue_13039() {
@@ -732,6 +734,66 @@ fn rfl_issue15034() -> i32 {
     #[allow(clippy::unnecessary_cast)]
     return unsafe { h() };
     //~[disabled]^ ERROR: unsafe block missing a safety comment
+}
+
+mod issue_14555 {
+    // SAFETY: ...
+    mod x {}
+    //~^ unnecessary_safety_comment
+
+    // SAFETY: ...
+    #[doc(hidden)]
+    mod y {}
+    //~[default]^ unnecessary_safety_comment
+
+    #[doc(hidden)]
+    // SAFETY: ...
+    mod z {}
+    //~^ unnecessary_safety_comment
+}
+
+mod issue_15754 {
+    #[must_use]
+    // SAFETY: ...
+    #[doc(hidden)]
+    mod y {}
+    //~[default]^ unnecessary_safety_comment
+
+    fn foo() {
+        #[doc(hidden)]
+        // SAFETY: unnecessary_safety_comment should not trigger here
+        #[allow(unsafe_code)]
+        unsafe {}
+        //~[disabled]^ undocumented_unsafe_blocks
+    }
+
+    fn bar() {
+        #[doc(hidden)]
+        // SAFETY: ...
+        #[allow(clippy::unnecessary_cast)]
+        let x = 34;
+        //~[default]^ unnecessary_safety_comment
+    }
+}
+
+mod unsafe_fns {
+    // SAFETY: Bla
+    unsafe fn unsafe_comment() {}
+    //~^ unnecessary_safety_comment
+
+    /*
+       SAFETY: Bla
+    */
+    unsafe fn unsafe_block_comment() {}
+    //~^ unnecessary_safety_comment
+
+    // SAFETY: Bla
+    fn safe_comment() {}
+    //~^ unnecessary_safety_comment
+
+    /// SAFETY: Bla
+    fn safe_doc_comment() {}
+    //~^ unnecessary_safety_comment
 }
 
 fn main() {}

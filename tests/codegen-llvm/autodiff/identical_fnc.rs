@@ -32,9 +32,9 @@ fn square2(x: &f64) -> f64 {
 // CHECK-NOT:br
 // CHECK-NOT:ret
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square[[HASH:.+]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx1)
 // CHECK:; call identical_fnc::d_square
-// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square17hcb5768e95528c35fE(double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
+// CHECK-NEXT:call fastcc void @_ZN13identical_fnc8d_square[[HASH]](double %x.val, ptr noalias noundef align 8 dereferenceable(8) %dx2)
 
 fn main() {
     let x = std::hint::black_box(3.0);

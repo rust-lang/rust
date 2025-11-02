@@ -1,5 +1,5 @@
 error[E0703]: invalid ABI: found `riscv-interrupt`
-  --> $DIR/riscv-discoverability-guidance.rs:15:8
+  --> $DIR/riscv-discoverability-guidance.rs:16:8
    |
 LL | extern "riscv-interrupt" fn isr() {}
    |        ^^^^^^^^^^^^^^^^^ invalid ABI
@@ -11,7 +11,7 @@ LL | extern "riscv-interrupt-m" fn isr() {}
    |                        ++
 
 error[E0703]: invalid ABI: found `riscv-interrupt-u`
-  --> $DIR/riscv-discoverability-guidance.rs:20:8
+  --> $DIR/riscv-discoverability-guidance.rs:21:8
    |
 LL | extern "riscv-interrupt-u" fn isr_U() {}
    |        ^^^^^^^^^^^^^^^^^^^ invalid ABI

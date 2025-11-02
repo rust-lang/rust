@@ -8,11 +8,6 @@
     rustc::untranslatable_diagnostic
 )]
 
-// Some "regular" crates we want to share with rustc
-extern crate tracing;
-#[cfg(feature = "tracing")]
-extern crate tracing_subscriber;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_data_structures;
@@ -48,6 +43,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
+use rustc_log::tracing::debug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -60,7 +56,6 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_span::def_id::DefId;
-use tracing::debug;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -188,6 +183,11 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         // Run in GenMC mode if enabled.
         if config.genmc_config.is_some() {
+            // Validate GenMC settings.
+            if let Err(err) = GenmcConfig::validate(&mut config, tcx) {
+                fatal_error!("Invalid settings: {err}");
+            }
+
             // This is the entry point used in GenMC mode.
             // This closure will be called multiple times to explore the concurrent execution space of the program.
             let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
@@ -352,6 +352,7 @@ fn fatal_error_(msg: &impl std::fmt::Display) -> ! {
 macro_rules! fatal_error {
     ($($tt:tt)*) => { $crate::fatal_error_(&format_args!($($tt)*)) };
 }
+#[allow(unused)] // use depends on cfg
 use fatal_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
@@ -743,11 +744,6 @@ fn main() {
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
-
-    // Validate settings for data race detection and GenMC mode.
-    if let Err(err) = GenmcConfig::validate_genmc_mode_settings(&mut miri_config) {
-        fatal_error!("Invalid settings: {err}");
-    }
 
     if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(

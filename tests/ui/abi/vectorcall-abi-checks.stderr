@@ -1,5 +1,5 @@
 error: this function definition uses ABI "vectorcall" which requires the `sse2` target feature, which is not enabled
-  --> $DIR/vectorcall-abi-checks.rs:13:1
+  --> $DIR/vectorcall-abi-checks.rs:14:1
    |
 LL | pub extern "vectorcall" fn f() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -7,7 +7,7 @@ LL | pub extern "vectorcall" fn f() {
    = help: consider enabling it globally (`-C target-feature=+sse2`) or locally (`#[target_feature(enable="sse2")]`)
 
 error: this function call uses ABI "vectorcall" which requires the `sse2` target feature, which is not enabled in the caller
-  --> $DIR/vectorcall-abi-checks.rs:19:5
+  --> $DIR/vectorcall-abi-checks.rs:20:5
    |
 LL |     f();
    |     ^^^ function called here

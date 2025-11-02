@@ -21,6 +21,7 @@ use minicore::*;
 // CHECK: .functype nop () -> ()
 // CHECK-NOT: .size
 // CHECK: end_function
+// CHECK-LABEL: .Lfunc_end_nop:
 #[no_mangle]
 #[unsafe(naked)]
 extern "C" fn nop() {

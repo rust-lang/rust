@@ -1,4 +1,4 @@
-#![allow(unused, clippy::diverging_sub_expression, clippy::needless_if)]
+#![allow(unused, clippy::diverging_sub_expression, clippy::needless_ifs)]
 #![warn(clippy::nonminimal_bool)]
 
 fn methods_with_negation() {

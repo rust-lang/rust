@@ -8,7 +8,7 @@
 fn f() {}
 static mut CLOSURES: &'static mut [fn()] = &mut [f as fn(), f as fn()];
 
-pub fn main() {
+fn main() {
     unsafe {
         for closure in &mut *CLOSURES {
             (*closure)()

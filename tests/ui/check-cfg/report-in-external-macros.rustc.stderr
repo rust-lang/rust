@@ -18,7 +18,7 @@ warning: unexpected `cfg` condition value: `UNEXPECTED_VALUE`
 LL |     cfg_macro::my_lib_macro_value!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `panic` are: `abort` and `unwind`
+   = note: expected values for `panic` are: `abort`, `immediate-abort`, and `unwind`
    = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
    = help: try referring to `cfg_macro::my_lib_macro_value` crate for guidance on how handle this unexpected cfg
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration

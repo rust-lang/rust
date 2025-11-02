@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, lis
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
@@ -72,16 +72,13 @@ pub(crate) enum DivergingBlockBehavior {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
-        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
-        // when writing to `self.param_env`.
-        let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
-
+        let mut deferred_cast_checks = self.root_ctxt.deferred_cast_checks.borrow_mut();
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
+            let body_id = std::mem::replace(&mut self.body_id, cast.body_id);
             cast.check(self);
+            self.body_id = body_id;
         }
-
-        *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
     pub(in super::super) fn check_asms(&self) {
@@ -255,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No argument expectations are produced if unification fails.
                     let origin = self.misc(call_span);
                     ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
 
@@ -1112,8 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 hir::Stmt {
                                                     kind:
                                                         hir::StmtKind::Let(hir::LetStmt {
-                                                            source:
-                                                                hir::LocalSource::AssignDesugar(_),
+                                                            source: hir::LocalSource::AssignDesugar,
                                                             ..
                                                         }),
                                                     ..
@@ -1290,10 +1286,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_resolution(hir_id, result);
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
-            }
-            QPath::LangItem(lang_item, span) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
-                (res, LoweredTy::from_raw(self, path_span, ty))
             }
         }
     }
@@ -2052,8 +2044,9 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
     fn detect_dotdot(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'tcx>) {
         if let ty::Adt(adt, _) = ty.kind()
             && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
-            && let hir::ExprKind::Struct(hir::QPath::LangItem(hir::LangItem::RangeFull, _), [], _) =
-                expr.kind
+            && is_range_literal(expr)
+            && let hir::ExprKind::Struct(&path, [], _) = expr.kind
+            && self.tcx().qpath_is_lang_item(path, hir::LangItem::RangeFull)
         {
             // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
             // from default field values, which is not supported on tuples.
@@ -2803,9 +2796,7 @@ impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
         if let Some((assoc, fn_sig)) = self.similar_assoc(call_name)
             && fn_sig.inputs()[1..]
                 .iter()
-                .zip(input_types.iter())
-                .all(|(expected, found)| self.may_coerce(*expected, *found))
-            && fn_sig.inputs()[1..].len() == input_types.len()
+                .eq_by(input_types, |expected, found| self.may_coerce(*expected, found))
         {
             let assoc_name = assoc.name();
             err.span_suggestion_verbose(

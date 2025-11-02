@@ -2,7 +2,6 @@
 
 pub mod os;
 pub mod pipe;
-pub mod thread;
 pub mod time;
 
 mod common;

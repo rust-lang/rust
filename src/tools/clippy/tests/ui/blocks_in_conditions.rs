@@ -4,7 +4,7 @@
 #![allow(
     unused,
     unnecessary_transmutes,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::missing_transmute_annotations
 )]
 #![warn(clippy::nonminimal_bool)]

@@ -45,7 +45,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             // are recursive (given some generic parameters of the opaque's type variables).
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
-            let errors = ocx.select_where_possible();
+            let errors = ocx.try_evaluate_obligations();
             if !errors.is_empty() {
                 // Rustdoc may attempt to normalize type alias types which are not
                 // well-formed. Rustdoc also normalizes types that are just not

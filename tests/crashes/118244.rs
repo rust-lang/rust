@@ -1,5 +1,6 @@
 //@ known-bug: #118244
 //@ compile-flags: -Cdebuginfo=2
+//@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]

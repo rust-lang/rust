@@ -112,19 +112,19 @@ use crate::sys_common::{FromInner, IntoInner};
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
-/// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
-/// | Darwin    | [clock_gettime (Monotonic Clock)]                                    |
-/// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
+/// | UNIX      | [clock_gettime] with `CLOCK_MONOTONIC`                               |
+/// | Darwin    | [clock_gettime] with `CLOCK_UPTIME_RAW`                              |
+/// | VXWorks   | [clock_gettime] with `CLOCK_MONOTONIC`                               |
 /// | SOLID     | `get_tim`                                                            |
-/// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
+/// | WASI      | [__wasi_clock_time_get] with `monotonic`                             |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
-/// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
-/// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
+/// [__wasi_clock_time_get]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
+/// [clock_gettime]: https://linux.die.net/man/3/clock_gettime
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///

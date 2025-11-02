@@ -24,6 +24,7 @@ use std::str::FromStr;
 use std::{fmt, fs, io};
 
 use crate::CiInfo;
+use crate::diagnostics::TidyCtx;
 
 mod rustdoc_js;
 
@@ -51,11 +52,12 @@ pub fn check(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
-    bad: &mut bool,
+    tidy_ctx: TidyCtx,
 ) {
+    let mut check = tidy_ctx.start_check("extra_checks");
+
     if let Err(e) = check_impl(
         root_path,
         outdir,
@@ -64,11 +66,11 @@ pub fn check(
         tools_path,
         npm,
         cargo,
-        bless,
         extra_checks,
         pos_args,
+        &tidy_ctx,
     ) {
-        tidy_error!(bad, "{e}");
+        check.error(e);
     }
 }
 
@@ -80,12 +82,13 @@ fn check_impl(
     tools_path: &Path,
     npm: &Path,
     cargo: &Path,
-    bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
+    tidy_ctx: &TidyCtx,
 ) -> Result<(), Error> {
     let show_diff =
         std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
+    let bless = tidy_ctx.is_bless_enabled();
 
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
@@ -618,7 +621,7 @@ fn spellcheck_runner(
     args: &[&str],
 ) -> Result<(), Error> {
     let bin_path =
-        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
+        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.38.1")?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {

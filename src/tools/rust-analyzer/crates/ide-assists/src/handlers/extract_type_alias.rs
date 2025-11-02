@@ -61,11 +61,13 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 generics.map(|it| make::generic_param_list(it.into_iter().cloned()));
 
             // Replace original type with the alias
-            let ty_args = generic_params
-                .as_ref()
-                .map_or(String::new(), |it| it.to_generic_args().to_string());
-            // FIXME: replace with a `ast::make` constructor
-            let new_ty = make::ty(&format!("Type{ty_args}")).clone_for_update();
+            let ty_args = generic_params.as_ref().map(|it| it.to_generic_args().generic_args());
+            let new_ty = if let Some(ty_args) = ty_args {
+                make::generic_ty_path_segment(make::name_ref("Type"), ty_args)
+            } else {
+                make::path_segment(make::name_ref("Type"))
+            }
+            .clone_for_update();
             edit.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias

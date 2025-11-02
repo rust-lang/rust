@@ -1,5 +1,6 @@
 //@ build-pass
 //@ aux-build:def-site-async-await.rs
+//@ ignore-backends: gcc
 
 // Regression test for issue #77523
 // Tests that we don't ICE when an unusual combination

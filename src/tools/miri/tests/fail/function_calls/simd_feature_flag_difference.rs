@@ -9,7 +9,7 @@ pub unsafe extern "C" fn foo(_y: f32, x: __m256) -> __m256 {
     x
 }
 
-pub fn bar(x: __m256) -> __m256 {
+fn bar(x: __m256) -> __m256 {
     // The first and second argument get mixed up here since caller
     // and callee do not have the same feature flags.
     // In Miri, we don't have a concept of "dynamically available feature flags",

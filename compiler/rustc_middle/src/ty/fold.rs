@@ -125,7 +125,9 @@ where
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
                 ty::shift_vars(self.tcx, ty, self.current_index.as_u32())
@@ -146,9 +148,11 @@ where
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
-            ty::ReBound(debruijn, br) if debruijn == self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+                if debruijn == self.current_index =>
+            {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReBound(debruijn1, br) = region.kind() {
+                if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1), br) = region.kind() {
                     // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
@@ -165,7 +169,9 @@ where
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn == self.current_index =>
+            {
                 let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
                 ty::shift_vars(self.tcx, ct, self.current_index.as_u32())

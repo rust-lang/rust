@@ -122,7 +122,7 @@ impl<'a> PanicHookInfo<'a> {
     /// ```
     #[must_use]
     #[inline]
-    #[stable(feature = "panic_payload_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "panic_payload_as_str", since = "1.91.0")]
     pub fn payload_as_str(&self) -> Option<&str> {
         if let Some(s) = self.payload.downcast_ref::<&str>() {
             Some(s)

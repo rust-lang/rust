@@ -1,3 +1,4 @@
+use clippy_utils::res::MaybeDef;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Node};
 use rustc_lint::LateContext;
@@ -7,7 +8,6 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
-use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::visitors::for_each_unconsumed_temporary;
 use clippy_utils::{peel_blocks, potential_return_of_enclosing_body};
 
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
     }
 
     let recv_type = cx.typeck_results().expr_ty(recv);
-    if !matches!(get_type_diagnostic_name(cx, recv_type), Some(sym::Option | sym::Result)) {
+    if !matches!(recv_type.opt_diag_name(cx), Some(sym::Option | sym::Result)) {
         return;
     }
 

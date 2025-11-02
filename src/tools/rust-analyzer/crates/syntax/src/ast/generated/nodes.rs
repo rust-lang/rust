@@ -2,9 +2,9 @@
 
 #![allow(non_snake_case)]
 use crate::{
-    ast::{self, support, AstChildren, AstNode},
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
+    ast::{self, AstChildren, AstNode, support},
 };
 use std::{fmt, hash};
 pub struct Abi {
@@ -2262,11 +2262,7 @@ impl AstNode for Abi {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ABI }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2298,11 +2294,7 @@ impl AstNode for ArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARG_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2334,11 +2326,7 @@ impl AstNode for ArrayExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARRAY_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2370,11 +2358,7 @@ impl AstNode for ArrayType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARRAY_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2406,11 +2390,7 @@ impl AstNode for AsmClobberAbi {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_CLOBBER_ABI }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2442,11 +2422,7 @@ impl AstNode for AsmConst {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_CONST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2478,11 +2454,7 @@ impl AstNode for AsmDirSpec {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_DIR_SPEC }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2514,11 +2486,7 @@ impl AstNode for AsmExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2550,11 +2518,7 @@ impl AstNode for AsmLabel {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_LABEL }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2586,11 +2550,7 @@ impl AstNode for AsmOperandExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPERAND_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2622,11 +2582,7 @@ impl AstNode for AsmOperandNamed {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPERAND_NAMED }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2658,11 +2614,7 @@ impl AstNode for AsmOption {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPTION }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2694,11 +2646,7 @@ impl AstNode for AsmOptions {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_OPTIONS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2730,11 +2678,7 @@ impl AstNode for AsmRegOperand {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_REG_OPERAND }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2766,11 +2710,7 @@ impl AstNode for AsmRegSpec {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_REG_SPEC }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2802,11 +2742,7 @@ impl AstNode for AsmSym {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASM_SYM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2838,11 +2774,7 @@ impl AstNode for AssocItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_ITEM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2874,11 +2806,7 @@ impl AstNode for AssocTypeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_TYPE_ARG }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2910,11 +2838,7 @@ impl AstNode for Attr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ATTR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2946,11 +2870,7 @@ impl AstNode for AwaitExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == AWAIT_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -2982,11 +2902,7 @@ impl AstNode for BecomeExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BECOME_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3018,11 +2934,7 @@ impl AstNode for BinExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BIN_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3054,11 +2966,7 @@ impl AstNode for BlockExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3090,11 +2998,7 @@ impl AstNode for BoxPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BOX_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3126,11 +3030,7 @@ impl AstNode for BreakExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BREAK_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3162,11 +3062,7 @@ impl AstNode for CallExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CALL_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3198,11 +3094,7 @@ impl AstNode for CastExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CAST_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3234,11 +3126,7 @@ impl AstNode for ClosureExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3270,11 +3158,7 @@ impl AstNode for Const {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3306,11 +3190,7 @@ impl AstNode for ConstArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3342,11 +3222,7 @@ impl AstNode for ConstBlockPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_BLOCK_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3378,11 +3254,7 @@ impl AstNode for ConstParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_PARAM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3414,11 +3286,7 @@ impl AstNode for ContinueExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONTINUE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3450,11 +3318,7 @@ impl AstNode for DynTraitType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == DYN_TRAIT_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3486,11 +3350,7 @@ impl AstNode for Enum {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3522,11 +3382,7 @@ impl AstNode for ExprStmt {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXPR_STMT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3558,11 +3414,7 @@ impl AstNode for ExternBlock {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_BLOCK }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3594,11 +3446,7 @@ impl AstNode for ExternCrate {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3630,11 +3478,7 @@ impl AstNode for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3666,11 +3510,7 @@ impl AstNode for FieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FIELD_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3702,11 +3542,7 @@ impl AstNode for Fn {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FN }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3738,11 +3574,7 @@ impl AstNode for FnPtrType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FN_PTR_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3774,11 +3606,7 @@ impl AstNode for ForBinder {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_BINDER }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3810,11 +3638,7 @@ impl AstNode for ForExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3846,11 +3670,7 @@ impl AstNode for ForType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3882,11 +3702,7 @@ impl AstNode for FormatArgsArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FORMAT_ARGS_ARG }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3918,11 +3734,7 @@ impl AstNode for FormatArgsExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FORMAT_ARGS_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3954,11 +3766,7 @@ impl AstNode for GenericArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_ARG_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -3990,11 +3798,7 @@ impl AstNode for GenericParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_PARAM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4026,11 +3830,7 @@ impl AstNode for IdentPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IDENT_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4062,11 +3862,7 @@ impl AstNode for IfExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IF_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4098,11 +3894,7 @@ impl AstNode for Impl {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4134,11 +3926,7 @@ impl AstNode for ImplTraitType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_TRAIT_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4170,11 +3958,7 @@ impl AstNode for IndexExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == INDEX_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4206,11 +3990,7 @@ impl AstNode for InferType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == INFER_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4242,11 +4022,7 @@ impl AstNode for ItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4278,11 +4054,7 @@ impl AstNode for Label {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LABEL }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4314,11 +4086,7 @@ impl AstNode for LetElse {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_ELSE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4350,11 +4118,7 @@ impl AstNode for LetExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4386,11 +4150,7 @@ impl AstNode for LetStmt {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_STMT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4422,11 +4182,7 @@ impl AstNode for Lifetime {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4458,11 +4214,7 @@ impl AstNode for LifetimeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_ARG }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4494,11 +4246,7 @@ impl AstNode for LifetimeParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_PARAM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4530,11 +4278,7 @@ impl AstNode for Literal {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4566,11 +4310,7 @@ impl AstNode for LiteralPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4602,11 +4342,7 @@ impl AstNode for LoopExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LOOP_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4638,11 +4374,7 @@ impl AstNode for MacroCall {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4674,11 +4406,7 @@ impl AstNode for MacroDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4710,11 +4438,7 @@ impl AstNode for MacroExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4746,11 +4470,7 @@ impl AstNode for MacroItems {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4782,11 +4502,7 @@ impl AstNode for MacroPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4818,11 +4534,7 @@ impl AstNode for MacroRules {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_RULES }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4854,11 +4566,7 @@ impl AstNode for MacroStmts {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4890,11 +4598,7 @@ impl AstNode for MacroType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4926,11 +4630,7 @@ impl AstNode for MatchArm {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_ARM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4962,11 +4662,7 @@ impl AstNode for MatchArmList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_ARM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -4998,11 +4694,7 @@ impl AstNode for MatchExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5034,11 +4726,7 @@ impl AstNode for MatchGuard {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_GUARD }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5070,11 +4758,7 @@ impl AstNode for Meta {
     fn can_cast(kind: SyntaxKind) -> bool { kind == META }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5106,11 +4790,7 @@ impl AstNode for MethodCallExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == METHOD_CALL_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5142,11 +4822,7 @@ impl AstNode for Module {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MODULE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5178,11 +4854,7 @@ impl AstNode for Name {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5214,11 +4886,7 @@ impl AstNode for NameRef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5250,11 +4918,7 @@ impl AstNode for NeverType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NEVER_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5286,11 +4950,7 @@ impl AstNode for OffsetOfExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == OFFSET_OF_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5322,11 +4982,7 @@ impl AstNode for OrPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == OR_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5358,11 +5014,7 @@ impl AstNode for Param {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5394,11 +5046,7 @@ impl AstNode for ParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5430,11 +5078,7 @@ impl AstNode for ParenExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5466,11 +5110,7 @@ impl AstNode for ParenPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5502,11 +5142,7 @@ impl AstNode for ParenType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5538,11 +5174,7 @@ impl AstNode for ParenthesizedArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARENTHESIZED_ARG_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5574,11 +5206,7 @@ impl AstNode for Path {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5610,11 +5238,7 @@ impl AstNode for PathExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5646,11 +5270,7 @@ impl AstNode for PathPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5682,11 +5302,7 @@ impl AstNode for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5718,11 +5334,7 @@ impl AstNode for PathType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5754,11 +5366,7 @@ impl AstNode for PrefixExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PREFIX_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5790,11 +5398,7 @@ impl AstNode for PtrType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PTR_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5826,11 +5430,7 @@ impl AstNode for RangeExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5862,11 +5462,7 @@ impl AstNode for RangePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5898,11 +5494,7 @@ impl AstNode for RecordExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5934,11 +5526,7 @@ impl AstNode for RecordExprField {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR_FIELD }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -5970,11 +5558,7 @@ impl AstNode for RecordExprFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR_FIELD_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6006,11 +5590,7 @@ impl AstNode for RecordField {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6042,11 +5622,7 @@ impl AstNode for RecordFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6078,11 +5654,7 @@ impl AstNode for RecordPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6114,11 +5686,7 @@ impl AstNode for RecordPatField {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6150,11 +5718,7 @@ impl AstNode for RecordPatFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6186,11 +5750,7 @@ impl AstNode for RefExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REF_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6222,11 +5782,7 @@ impl AstNode for RefPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REF_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6258,11 +5814,7 @@ impl AstNode for RefType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REF_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6294,11 +5846,7 @@ impl AstNode for Rename {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6330,11 +5878,7 @@ impl AstNode for RestPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REST_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6366,11 +5910,7 @@ impl AstNode for RetType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RET_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6402,11 +5942,7 @@ impl AstNode for ReturnExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6438,11 +5974,7 @@ impl AstNode for ReturnTypeSyntax {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_TYPE_SYNTAX }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6474,11 +6006,7 @@ impl AstNode for SelfParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_PARAM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6510,11 +6038,7 @@ impl AstNode for SlicePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6546,11 +6070,7 @@ impl AstNode for SliceType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6582,11 +6102,7 @@ impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6618,11 +6134,7 @@ impl AstNode for Static {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6654,11 +6166,7 @@ impl AstNode for StmtList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STMT_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6690,11 +6198,7 @@ impl AstNode for Struct {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STRUCT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6726,11 +6230,7 @@ impl AstNode for TokenTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6762,11 +6262,7 @@ impl AstNode for Trait {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6798,11 +6294,7 @@ impl AstNode for TryExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6834,11 +6326,7 @@ impl AstNode for TupleExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6870,11 +6358,7 @@ impl AstNode for TupleField {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6906,11 +6390,7 @@ impl AstNode for TupleFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6942,11 +6422,7 @@ impl AstNode for TuplePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -6978,11 +6454,7 @@ impl AstNode for TupleStructPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_STRUCT_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7014,11 +6486,7 @@ impl AstNode for TupleType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_TYPE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7050,11 +6518,7 @@ impl AstNode for TypeAlias {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7086,11 +6550,7 @@ impl AstNode for TypeAnchor {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ANCHOR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7122,11 +6582,7 @@ impl AstNode for TypeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7158,11 +6614,7 @@ impl AstNode for TypeBound {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7194,11 +6646,7 @@ impl AstNode for TypeBoundList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7230,11 +6678,7 @@ impl AstNode for TypeParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7266,11 +6710,7 @@ impl AstNode for UnderscoreExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == UNDERSCORE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7302,11 +6742,7 @@ impl AstNode for Union {
     fn can_cast(kind: SyntaxKind) -> bool { kind == UNION }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7338,11 +6774,7 @@ impl AstNode for Use {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7374,11 +6806,7 @@ impl AstNode for UseBoundGenericArgs {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_BOUND_GENERIC_ARGS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7410,11 +6838,7 @@ impl AstNode for UseTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7446,11 +6870,7 @@ impl AstNode for UseTreeList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7482,11 +6902,7 @@ impl AstNode for Variant {
     fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7518,11 +6934,7 @@ impl AstNode for VariantList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7554,11 +6966,7 @@ impl AstNode for Visibility {
     fn can_cast(kind: SyntaxKind) -> bool { kind == VISIBILITY }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7590,11 +6998,7 @@ impl AstNode for WhereClause {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_CLAUSE }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7626,11 +7030,7 @@ impl AstNode for WherePred {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_PRED }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7662,11 +7062,7 @@ impl AstNode for WhileExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHILE_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7698,11 +7094,7 @@ impl AstNode for WildcardPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WILDCARD_PAT }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7734,11 +7126,7 @@ impl AstNode for YeetExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == YEET_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
@@ -7770,11 +7158,7 @@ impl AstNode for YieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == YIELD_EXPR }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }

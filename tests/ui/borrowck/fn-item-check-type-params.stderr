@@ -27,6 +27,12 @@ LL |     want(&String::new(), extend_lt);
    |     |     |
    |     |     creates a temporary value which is freed while still in use
    |     argument requires that borrow lasts for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/fn-item-check-type-params.rs:47:33
+   |
+LL |     fn want<I, O>(_: I, _: impl Fn(I) -> O) {}
+   |                                 ^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/fn-item-check-type-params.rs:54:26
@@ -36,6 +42,12 @@ LL |     let val = extend_lt(&String::from("blah blah blah"));
    |               |          |
    |               |          creates a temporary value which is freed while still in use
    |               argument requires that borrow lasts for `'static`
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/fn-item-check-type-params.rs:22:21
+   |
+LL |     (T, Option<U>): Displayable,
+   |                     ^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

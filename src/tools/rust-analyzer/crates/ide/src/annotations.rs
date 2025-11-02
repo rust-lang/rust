@@ -1,6 +1,6 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    FileId, FilePosition, FileRange, FxIndexSet, RootDatabase, defs::Definition,
+    FileId, FilePosition, FileRange, FxIndexSet, MiniCore, RootDatabase, defs::Definition,
     helpers::visit_file_defs,
 };
 use itertools::Itertools;
@@ -11,7 +11,7 @@ use crate::{
     annotations::fn_references::find_all_methods,
     goto_implementation::goto_implementation,
     navigation_target,
-    references::find_all_refs,
+    references::{FindAllRefsConfig, find_all_refs},
     runnables::{Runnable, runnables},
 };
 
@@ -36,7 +36,7 @@ pub enum AnnotationKind {
     HasReferences { pos: FilePosition, data: Option<Vec<FileRange>> },
 }
 
-pub struct AnnotationConfig {
+pub struct AnnotationConfig<'a> {
     pub binary_target: bool,
     pub annotate_runnables: bool,
     pub annotate_impls: bool,
@@ -44,6 +44,7 @@ pub struct AnnotationConfig {
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
     pub location: AnnotationLocation,
+    pub minicore: MiniCore<'a>,
 }
 
 pub enum AnnotationLocation {
@@ -53,7 +54,7 @@ pub enum AnnotationLocation {
 
 pub(crate) fn annotations(
     db: &RootDatabase,
-    config: &AnnotationConfig,
+    config: &AnnotationConfig<'_>,
     file_id: FileId,
 ) -> Vec<Annotation> {
     let mut annotations = FxIndexSet::default();
@@ -196,13 +197,22 @@ pub(crate) fn annotations(
         .collect()
 }
 
-pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) -> Annotation {
+pub(crate) fn resolve_annotation(
+    db: &RootDatabase,
+    config: &AnnotationConfig<'_>,
+    mut annotation: Annotation,
+) -> Annotation {
     match annotation.kind {
         AnnotationKind::HasImpls { pos, ref mut data } => {
             *data = goto_implementation(db, pos).map(|range| range.info);
         }
         AnnotationKind::HasReferences { pos, ref mut data } => {
-            *data = find_all_refs(&Semantics::new(db), pos, None).map(|result| {
+            *data = find_all_refs(
+                &Semantics::new(db),
+                pos,
+                &FindAllRefsConfig { search_scope: None, minicore: config.minicore },
+            )
+            .map(|result| {
                 result
                     .into_iter()
                     .flat_map(|res| res.references)
@@ -228,12 +238,13 @@ fn should_skip_runnable(kind: &RunnableKind, binary_target: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
+    use ide_db::MiniCore;
 
     use crate::{Annotation, AnnotationConfig, fixture};
 
     use super::AnnotationLocation;
 
-    const DEFAULT_CONFIG: AnnotationConfig = AnnotationConfig {
+    const DEFAULT_CONFIG: AnnotationConfig<'_> = AnnotationConfig {
         binary_target: true,
         annotate_runnables: true,
         annotate_impls: true,
@@ -241,12 +252,13 @@ mod tests {
         annotate_method_references: true,
         annotate_enum_variant_references: true,
         location: AnnotationLocation::AboveName,
+        minicore: MiniCore::default(),
     };
 
     fn check_with_config(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
-        config: &AnnotationConfig,
+        config: &AnnotationConfig<'_>,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
@@ -254,7 +266,7 @@ mod tests {
             .annotations(config, file_id)
             .unwrap()
             .into_iter()
-            .map(|annotation| analysis.resolve_annotation(annotation).unwrap())
+            .map(|annotation| analysis.resolve_annotation(&DEFAULT_CONFIG, annotation).unwrap())
             .collect();
 
         expect.assert_debug_eq(&annotations);

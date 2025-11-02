@@ -24,8 +24,6 @@ oorandom = "11.1.5"
 tracing.workspace = true
 rustc-hash.workspace = true
 scoped-tls = "1.0.1"
-chalk-ir.workspace = true
-chalk-derive.workspace = true
 la-arena.workspace = true
 triomphe.workspace = true
 typed-arena = "2.0.2"
@@ -34,6 +32,7 @@ rustc_apfloat = "0.2.3"
 query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
+petgraph.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
@@ -49,6 +48,7 @@ tracing-tree.workspace = true
 
 # local deps
 stdx.workspace = true
+macros.workspace = true
 intern.workspace = true
 hir-def.workspace = true
 hir-expand.workspace = true

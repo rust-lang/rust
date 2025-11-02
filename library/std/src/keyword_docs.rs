@@ -1,6 +1,8 @@
 #[doc(keyword = "as")]
 //
-/// Cast between types, or rename an import.
+/// Cast between types, rename an import, or qualify paths to associated items.
+///
+/// # Type casting
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -30,6 +32,8 @@
 /// `as *mut _` though the [`cast`][const-cast] method is recommended over `as *const _` and it is
 /// [the same][mut-cast] for `as *mut _`: those methods make the intent clearer.
 ///
+/// # Renaming imports
+///
 /// `as` is also used to rename imports in [`use`] and [`extern crate`][`crate`] statements:
 ///
 /// ```
@@ -37,9 +41,34 @@
 /// use std::{mem as memory, net as network};
 /// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
 /// ```
-/// For more information on what `as` is capable of, see the [Reference].
 ///
-/// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// # Qualifying paths
+///
+/// You'll also find with `From` and `Into`, and indeed all traits, that `as` is used for the
+/// _fully qualified path_, a means of disambiguating associated items, i.e. functions,
+/// constants, and types.  For example, if you have a type which implements two traits with identical
+/// method names (e.g. `Into::<u32>::into` and `Into::<u64>::into`), you can clarify which method
+/// you'll use with `<MyThing as Into<u32>>::into(my_thing)`[^as-use-from].  This is quite verbose,
+/// but fortunately, Rust's type inference usually saves you from needing this, although it is
+/// occasionally necessary, especially with methods that return a generic type like `Into::into` or
+/// methods that don't take `self`.  It's more common to use in macros where it can provide necessary
+/// hygiene.
+///
+/// [^as-use-from]: You should probably never use this syntax with `Into` and instead write
+/// `T::from(my_thing)`.  It just happens that there aren't any great examples for this syntax in
+/// the standard library.  Also, at time of writing, the compiler tends to suggest fully-qualified
+/// paths to fix ambiguous `Into::into` calls, so the example should hopefully be familiar.
+///
+/// # Further reading
+///
+/// For more information on what `as` is capable of, see the Reference on [type cast expressions],
+/// [renaming imported entities], [renaming `extern` crates]
+/// and [qualified paths].
+///
+/// [type cast expressions]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// [renaming imported entities]: https://doc.rust-lang.org/reference/items/use-declarations.html#as-renames
+/// [renaming `extern` crates]: https://doc.rust-lang.org/reference/items/extern-crates.html#r-items.extern-crate.as
+/// [qualified paths]: ../reference/paths.html#qualified-paths
 /// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
 /// [const-cast]: pointer::cast

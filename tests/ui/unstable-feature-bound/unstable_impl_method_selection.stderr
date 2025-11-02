@@ -7,7 +7,7 @@ LL |     vec![].foo();
    = note: multiple `impl`s satisfying `Vec<_>: Trait` found in the `unstable_impl_method_selection_aux` crate:
            - impl Trait for Vec<u32>;
            - impl Trait for Vec<u64>
-             where unstable feature: `bar`;
+             where feature(bar) is enabled;
 
 error: aborting due to 1 previous error
 

@@ -11,7 +11,7 @@ macro_rules! assert_approx_eq {
 }
 
 fn main() {
-    unsafe {
+    {
         let nan: f32 = f32::NAN;
         let inf: f32 = f32::INFINITY;
         let neg_inf: f32 = f32::NEG_INFINITY;
@@ -25,7 +25,7 @@ fn main() {
         assert_eq!(fmuladdf32(8.9, inf, 3.2), inf);
         assert_eq!(fmuladdf32(-3.2, 2.4, neg_inf), neg_inf);
     }
-    unsafe {
+    {
         let nan: f64 = f64::NAN;
         let inf: f64 = f64::INFINITY;
         let neg_inf: f64 = f64::NEG_INFINITY;

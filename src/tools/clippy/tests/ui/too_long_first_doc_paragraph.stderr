@@ -42,7 +42,7 @@ LL | | /// gravida non lacinia at, rhoncus eu lacus.
 error: first doc comment paragraph is too long
   --> tests/ui/too_long_first_doc_paragraph.rs:65:1
    |
-LL | / /// Some function. This doc-string paragraph is too long. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lore...
+LL | / /// Some function. This doc-string paragraph is too long. Lorem Ipsum is simply dummy text of the printing and typesetting industr...
 LL | |
 LL | | ///
 LL | | /// Here's a second paragraph. It would be preferable to put the details here.

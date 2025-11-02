@@ -61,4 +61,4 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 rust-analyzer is primarily distributed under the terms of both the MIT
 license and the Apache License (Version 2.0).
 
-See LICENSE-APACHE and LICENSE-MIT for details.
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.

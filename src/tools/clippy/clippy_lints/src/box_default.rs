@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_default_equivalent;
 use clippy_utils::macros::macro_backtrace;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::ty::expr_sig;
-use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
-use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LetStmt, Node, QPath, Ty, TyKind};
+use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LangItem, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
@@ -44,7 +45,7 @@ impl LateLintPass<'_> for BoxDefault {
             // And that method is `new`
             && seg.ident.name == sym::new
             // And the call is that of a `Box` method
-            && path_def_id(cx, ty).is_some_and(|id| Some(id) == cx.tcx.lang_items().owned_box())
+            && ty.basic_res().is_lang_item(cx, LangItem::OwnedBox)
             // And the single argument to the call is another function call
             // This is the `T::default()` (or default equivalent) of `Box::new(T::default())`
             && let ExprKind::Call(arg_path, _) = arg.kind

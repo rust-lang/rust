@@ -2,6 +2,7 @@
 //@ compile-flags: -C lto
 //@ no-prefer-dynamic
 //@ needs-threads
+//@ ignore-backends: gcc
 
 // FIXME(static_mut_refs): this could use an atomic
 #![allow(static_mut_refs)]

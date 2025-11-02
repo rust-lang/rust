@@ -6,6 +6,10 @@ cfg_select! {
         mod unsupported;
         pub use unsupported::{current_os_id, set_name};
     }
+    target_os = "motor" => {
+        mod motor;
+        pub use motor::*;
+    }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         pub use sgx::{Thread, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
@@ -81,6 +85,13 @@ cfg_select! {
         ))]
         pub use unsupported::set_name;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        pub use vexos::{sleep, yield_now};
+        #[expect(dead_code)]
+        mod unsupported;
+        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
+    }
     all(target_os = "wasi", target_env = "p1") => {
         mod wasip1;
         pub use wasip1::{DEFAULT_MIN_STACK_SIZE, sleep, yield_now};
@@ -92,7 +103,7 @@ cfg_select! {
         #[cfg(not(target_feature = "atomics"))]
         pub use unsupported::{Thread, available_parallelism};
     }
-    all(target_os = "wasi", target_env = "p2") => {
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
         mod wasip2;
         pub use wasip2::{sleep, sleep_until};
         #[expect(dead_code)]
@@ -139,7 +150,7 @@ cfg_select! {
     target_os = "hurd",
     target_os = "fuchsia",
     target_os = "vxworks",
-    all(target_os = "wasi", target_env = "p2"),
+    all(target_os = "wasi", not(target_env = "p1")),
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

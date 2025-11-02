@@ -20,7 +20,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     pat: &ast::IdentPat,
 ) -> Option<()> {
@@ -380,7 +380,7 @@ fn main() {
     let foo = foo4();
      // ^^^ &dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+     // ^^^ &dyn Fn(&(dyn Fn(f64, f64) -> u32 + 'static), f64) -> u32
     let foo = foo6();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
@@ -646,9 +646,9 @@ auto trait Sync {}
 fn main() {
     // The block expression wrapping disables the constructor hint hiding logic
     let _v = { Vec::<Box<&(dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<&(dyn Display + Sync)>>
+      //^^ Vec<Box<&(dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<*const (dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<*const (dyn Display + Sync)>>
+      //^^ Vec<Box<*const (dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<dyn Display + Sync + 'static>>::new() };
       //^^ Vec<Box<dyn Display + Sync + 'static>>
 }

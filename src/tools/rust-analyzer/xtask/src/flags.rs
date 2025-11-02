@@ -49,6 +49,9 @@ xflags::xflags! {
             /// build in release with debug info set to 2.
             optional --dev-rel
 
+            /// Make `never!()`, `always!()` etc. panic instead of just logging an error.
+            optional --force-always-assert
+
             /// Apply PGO optimizations
             optional --pgo pgo: PgoTrainingCrate
         }
@@ -124,6 +127,7 @@ pub struct Install {
     pub jemalloc: bool,
     pub proc_macro_server: bool,
     pub dev_rel: bool,
+    pub force_always_assert: bool,
     pub pgo: Option<PgoTrainingCrate>,
 }
 
@@ -300,7 +304,12 @@ impl Install {
         } else {
             Malloc::System
         };
-        Some(ServerOpt { malloc, dev_rel: self.dev_rel, pgo: self.pgo.clone() })
+        Some(ServerOpt {
+            malloc,
+            dev_rel: self.dev_rel,
+            pgo: self.pgo.clone(),
+            force_always_assert: self.force_always_assert,
+        })
     }
     pub(crate) fn proc_macro_server(&self) -> Option<ProcMacroServerOpt> {
         if !self.proc_macro_server {

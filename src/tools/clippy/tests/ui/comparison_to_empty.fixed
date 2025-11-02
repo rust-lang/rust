@@ -1,5 +1,5 @@
 #![warn(clippy::comparison_to_empty)]
-#![allow(clippy::borrow_deref_ref, clippy::needless_if, clippy::useless_vec)]
+#![allow(clippy::borrow_deref_ref, clippy::needless_ifs, clippy::useless_vec)]
 
 fn main() {
     // Disallow comparisons to empty

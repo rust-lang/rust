@@ -1,8 +1,8 @@
 error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
   --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
    |
-LL | pub fn safe(x: &mut i32, y: &mut i32) {
-   |                          ^ Undefined Behavior occurred here
+LL | fn safe(x: &mut i32, y: &mut i32) {
+   |                      ^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
@@ -14,8 +14,8 @@ LL |     let xraw: *mut i32 = unsafe { mem::transmute(&mut x) };
 help: <TAG> is this argument
   --> tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
    |
-LL | pub fn safe(x: &mut i32, y: &mut i32) {
-   |             ^
+LL | fn safe(x: &mut i32, y: &mut i32) {
+   |         ^
    = note: BACKTRACE (of the first span):
    = note: inside `safe` at tests/fail/both_borrows/aliasing_mut1.rs:LL:CC
 note: inside `main`

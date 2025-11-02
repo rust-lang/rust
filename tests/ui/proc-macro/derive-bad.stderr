@@ -1,5 +1,5 @@
 error: expected `:`, found `}`
-  --> $DIR/derive-bad.rs:6:10
+  --> $DIR/derive-bad.rs:7:10
    |
 LL | #[derive(A)]
    |          ^
@@ -10,13 +10,13 @@ LL | #[derive(A)]
    = note: this error originates in the derive macro `A` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: proc-macro derive produced unparsable tokens
-  --> $DIR/derive-bad.rs:6:10
+  --> $DIR/derive-bad.rs:7:10
    |
 LL | #[derive(A)]
    |          ^
 
 error[E0428]: the name `A` is defined multiple times
-  --> $DIR/derive-bad.rs:9:1
+  --> $DIR/derive-bad.rs:10:1
    |
 LL | #[derive(A)]
    |          - previous definition of the type `A` here

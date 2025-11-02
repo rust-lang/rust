@@ -253,6 +253,53 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         spill_slot
     }
 
+    // Indicates that local is set to a new value. The `layout` and `projection` are used to
+    // calculate the offset.
+    pub(crate) fn debug_new_val_to_local(
+        &self,
+        bx: &mut Bx,
+        local: mir::Local,
+        base: PlaceRef<'tcx, Bx::Value>,
+        projection: &[mir::PlaceElem<'tcx>],
+    ) {
+        let full_debug_info = bx.sess().opts.debuginfo == DebugInfo::Full;
+        if !full_debug_info {
+            return;
+        }
+
+        let vars = match &self.per_local_var_debug_info {
+            Some(per_local) => &per_local[local],
+            None => return,
+        };
+
+        let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+            calculate_debuginfo_offset(bx, projection, base.layout);
+        for var in vars.iter() {
+            let Some(dbg_var) = var.dbg_var else {
+                continue;
+            };
+            let Some(dbg_loc) = self.dbg_loc(var.source_info) else {
+                continue;
+            };
+            bx.dbg_var_value(
+                dbg_var,
+                dbg_loc,
+                base.val.llval,
+                direct_offset,
+                &indirect_offsets,
+                &var.fragment,
+            );
+        }
+    }
+
+    pub(crate) fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
+        let ty = self.monomorphize(self.mir.local_decls[local].ty);
+        let layout = bx.cx().layout_of(ty);
+        let to_backend_ty = bx.cx().immediate_backend_type(layout);
+        let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
+        self.debug_new_val_to_local(bx, local, place_ref, &[]);
+    }
+
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
     /// or initializing the local with an operand (whichever applies).
     pub(crate) fn debug_introduce_local(&self, bx: &mut Bx, local: mir::Local) {
@@ -424,7 +471,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 alloca.val.llval,
                 Size::ZERO,
                 &[Size::ZERO],
-                var.fragment,
+                &var.fragment,
             );
         } else {
             bx.dbg_var_addr(
@@ -433,7 +480,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 base.val.llval,
                 direct_offset,
                 &indirect_offsets,
-                var.fragment,
+                &var.fragment,
             );
         }
     }
@@ -455,7 +502,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let base = FunctionCx::spill_operand_to_stack(operand, Some(name), bx);
                 bx.clear_dbg_loc();
 
-                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], fragment);
+                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], &fragment);
             }
         }
     }

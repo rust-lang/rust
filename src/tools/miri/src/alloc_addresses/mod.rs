@@ -13,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 pub use self::address_generator::AddressGenerator;
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
+use crate::diagnostics::SpanDedupDiagnostic;
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -42,20 +43,19 @@ pub struct GlobalStateInner {
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
     base_addr: FxHashMap<AllocId, u64>,
-    /// Temporarily store prepared memory space for global allocations the first time their memory
-    /// address is required. This is used to ensure that the memory is allocated before Miri assigns
-    /// it an internal address, which is important for matching the internal address to the machine
-    /// address so FFI can read from pointers.
-    prepared_alloc_bytes: FxHashMap<AllocId, MiriAllocBytes>,
-    /// A pool of addresses we can reuse for future allocations.
-    reuse: ReusePool,
-    /// Whether an allocation has been exposed or not. This cannot be put
+    /// The set of exposed allocations. This cannot be put
     /// into `AllocExtra` for the same reason as `base_addr`.
     exposed: FxHashSet<AllocId>,
-    /// The generator for new addresses in a given range.
-    address_generator: AddressGenerator,
     /// The provenance to use for int2ptr casts
     provenance_mode: ProvenanceMode,
+    /// The generator for new addresses in a given range, and a pool for address reuse. This is
+    /// `None` if addresses are generated elsewhere (in native-lib mode or with GenMC).
+    address_generation: Option<(AddressGenerator, ReusePool)>,
+    /// Native-lib mode only: Temporarily store prepared memory space for global allocations the
+    /// first time their memory address is required. This is used to ensure that the memory is
+    /// allocated before Miri assigns it an internal address, which is important for matching the
+    /// internal address to the machine address so FFI can read from pointers.
+    prepared_alloc_bytes: Option<FxHashMap<AllocId, MiriAllocBytes>>,
 }
 
 impl VisitProvenance for GlobalStateInner {
@@ -64,9 +64,8 @@ impl VisitProvenance for GlobalStateInner {
             int_to_ptr_map: _,
             base_addr: _,
             prepared_alloc_bytes: _,
-            reuse: _,
             exposed: _,
-            address_generator: _,
+            address_generation: _,
             provenance_mode: _,
         } = self;
         // Though base_addr, int_to_ptr_map, and exposed contain AllocIds, we do not want to visit them.
@@ -83,11 +82,16 @@ impl GlobalStateInner {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
-            prepared_alloc_bytes: FxHashMap::default(),
-            reuse: ReusePool::new(config),
             exposed: FxHashSet::default(),
-            address_generator: AddressGenerator::new(stack_addr..tcx.target_usize_max()),
             provenance_mode: config.provenance_mode,
+            address_generation: (config.native_lib.is_empty() && config.genmc_config.is_none())
+                .then(|| {
+                    (
+                        AddressGenerator::new(stack_addr..tcx.target_usize_max()),
+                        ReusePool::new(config),
+                    )
+                }),
+            prepared_alloc_bytes: (!config.native_lib.is_empty()).then(FxHashMap::default),
         }
     }
 
@@ -147,6 +151,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // Store prepared allocation to be picked up for use later.
                         global_state
                             .prepared_alloc_bytes
+                            .as_mut()
+                            .unwrap()
                             .try_insert(alloc_id, prepared_bytes)
                             .unwrap();
                         ptr
@@ -173,29 +179,25 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
             return interp_ok(base_ptr.addr().to_u64());
         }
-        // We are not in native lib mode, so we control the addresses ourselves.
+        // We are not in native lib or genmc mode, so we control the addresses ourselves.
+        let (addr_gen, reuse) = global_state.address_generation.as_mut().unwrap();
         let mut rng = this.machine.rng.borrow_mut();
-        if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
-            &mut *rng,
-            info.size,
-            info.align,
-            memory_kind,
-            this.active_thread(),
-        ) {
+        if let Some((reuse_addr, clock)) =
+            reuse.take_addr(&mut *rng, info.size, info.align, memory_kind, this.active_thread())
+        {
             if let Some(clock) = clock {
                 this.acquire_clock(&clock)?;
             }
             interp_ok(reuse_addr)
         } else {
             // We have to pick a fresh address.
-            let new_addr =
-                global_state.address_generator.generate(info.size, info.align, &mut rng)?;
+            let new_addr = addr_gen.generate(info.size, info.align, &mut rng)?;
 
             // If we filled up more than half the address space, start aggressively reusing
             // addresses to avoid running out.
-            let remaining_range = global_state.address_generator.get_remaining();
+            let remaining_range = addr_gen.get_remaining();
             if remaining_range.start > remaining_range.end / 2 {
-                global_state.reuse.address_space_shortage();
+                reuse.address_space_shortage();
             }
 
             interp_ok(new_addr)
@@ -207,13 +209,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Returns the `AllocId` that corresponds to the specified addr,
     // or `None` if the addr is out of bounds.
-    // Setting `only_exposed_allocations` selects whether only exposed allocations are considered.
-    fn alloc_id_from_addr(
-        &self,
-        addr: u64,
-        size: i64,
-        only_exposed_allocations: bool,
-    ) -> Option<AllocId> {
+    fn alloc_id_from_addr(&self, addr: u64, size: i64) -> Option<AllocId> {
         let this = self.eval_context_ref();
         let global_state = this.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
@@ -242,13 +238,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }?;
 
-        // We only use this provenance if it has been exposed, or if the caller requested also non-exposed allocations
-        if !only_exposed_allocations || global_state.exposed.contains(&alloc_id) {
+        // We only use this provenance if it has been exposed.
+        if global_state.exposed.contains(&alloc_id) {
             // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
-            // In GenMC mode, we keep all allocations, so this check doesn't apply there.
-            if this.machine.data_race.as_genmc_ref().is_none() {
-                debug_assert!(this.is_alloc_live(alloc_id));
-            }
+            debug_assert!(this.is_alloc_live(alloc_id));
             Some(alloc_id)
         } else {
             None
@@ -349,12 +342,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
-                let first = int2ptr_warned.is_empty();
-                if int2ptr_warned.insert(this.cur_span()) {
-                    // Newly inserted, so first time we see this span.
-                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                }
+                static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
+                this.dedup_diagnostic(&DEDUP, |first| {
+                    NonHaltingDiagnostic::Int2Ptr { details: first }
+                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);
@@ -414,6 +405,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut global_state = this.machine.alloc_addresses.borrow_mut();
             let mut prepared_alloc_bytes = global_state
                 .prepared_alloc_bytes
+                .as_mut()
+                .unwrap()
                 .remove(&id)
                 .unwrap_or_else(|| panic!("alloc bytes for {id:?} have not been prepared"));
             // Sanity-check that the prepared allocation has the right size and alignment.
@@ -443,8 +436,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             alloc_id
         } else {
             // A wildcard pointer.
-            let only_exposed_allocations = true;
-            this.alloc_id_from_addr(addr.bytes(), size, only_exposed_allocations)?
+            this.alloc_id_from_addr(addr.bytes(), size)?
         };
 
         // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
@@ -465,13 +457,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> MiriMachine<'tcx> {
     pub fn free_alloc_id(&mut self, dead_id: AllocId, size: Size, align: Align, kind: MemoryKind) {
-        // In GenMC mode, we can't remove dead allocation info since such pointers can
-        // still be stored in atomics and we need this info to convert GenMC pointers to Miri pointers.
-        // `global_state.reuse` is also unused so we can just skip this entire function.
-        if self.data_race.as_genmc_ref().is_some() {
-            return;
-        }
-
         let global_state = self.alloc_addresses.get_mut();
         let rng = self.rng.get_mut();
 
@@ -496,15 +481,17 @@ impl<'tcx> MiriMachine<'tcx> {
         // `alloc_id_from_addr` any more.
         global_state.exposed.remove(&dead_id);
         // Also remember this address for future reuse.
-        let thread = self.threads.active_thread();
-        global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
-            // We already excluded GenMC above. We cannot use `self.release_clock` as
-            // `self.alloc_addresses` is borrowed.
-            if let Some(data_race) = self.data_race.as_vclocks_ref() {
-                data_race.release_clock(&self.threads, |clock| clock.clone())
-            } else {
-                VClock::default()
-            }
-        })
+        if let Some((_addr_gen, reuse)) = global_state.address_generation.as_mut() {
+            let thread = self.threads.active_thread();
+            reuse.add_addr(rng, addr, size, align, kind, thread, || {
+                // We cannot be in GenMC mode as then `address_generation` is `None`. We cannot use
+                // `self.release_clock` as `self.alloc_addresses` is borrowed.
+                if let Some(data_race) = self.data_race.as_vclocks_ref() {
+                    data_race.release_clock(&self.threads, |clock| clock.clone())
+                } else {
+                    VClock::default()
+                }
+            })
+        }
     }
 }

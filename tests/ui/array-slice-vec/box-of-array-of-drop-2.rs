@@ -1,6 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
+//@ ignore-backends: gcc
 
 #![allow(overflowing_literals)]
 

@@ -60,8 +60,7 @@ fn main() {
         fn inner(x: &mut u8, b: IdxBarrier) {
             *x = 42; // activate immediately
             synchronized!(b, "[lazy] retag y (&mut, protect, IM)");
-            // A spurious write should be valid here because `x` is
-            // `Active` and protected.
+            // A spurious write should be valid here because `x` is `Unique` and protected.
             if cfg!(with) {
                 synchronized!(b, "spurious write x (executed)");
                 *x = 64;

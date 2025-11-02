@@ -41,6 +41,7 @@ mod produce_ice;
 mod symbols;
 mod unnecessary_def_path;
 mod unsorted_clippy_utils_paths;
+mod unusual_names;
 
 use rustc_lint::{Lint, LintStore};
 
@@ -59,6 +60,7 @@ static LINTS: &[&Lint] = &[
     symbols::SYMBOL_AS_STR,
     unnecessary_def_path::UNNECESSARY_DEF_PATH,
     unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS,
+    unusual_names::UNUSUAL_NAMES,
 ];
 
 pub fn register_lints(store: &mut LintStore) {
@@ -74,4 +76,5 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_late_pass(|_| Box::new(outer_expn_data_pass::OuterExpnDataPass));
     store.register_late_pass(|_| Box::new(msrv_attr_impl::MsrvAttrImpl));
     store.register_late_pass(|_| Box::new(almost_standard_lint_formulation::AlmostStandardFormulation::new()));
+    store.register_late_pass(|_| Box::new(unusual_names::UnusualNames));
 }

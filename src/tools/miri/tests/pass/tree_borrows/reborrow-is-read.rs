@@ -6,7 +6,7 @@
 mod utils;
 
 // To check that a reborrow is counted as a Read access, we use a reborrow
-// with no additional Read to Freeze an Active pointer.
+// with no additional Read to Freeze an Unique pointer.
 
 fn main() {
     unsafe {
@@ -15,7 +15,7 @@ fn main() {
         let alloc_id = alloc_id!(parent);
         let x = &mut *parent;
         name!(x);
-        *x = 0; // x is now Active
+        *x = 0; // x is now Unique
         print_state!(alloc_id);
         let y = &mut *parent;
         name!(y);

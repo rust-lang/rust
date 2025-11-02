@@ -1,5 +1,5 @@
 error: invalid signature for `extern "msp430-interrupt"` function
-  --> $DIR/interrupt-invalid-signature.rs:40:41
+  --> $DIR/interrupt-invalid-signature.rs:41:41
    |
 LL | extern "msp430-interrupt" fn msp430_arg(_byte: u8) {}
    |                                         ^^^^^^^^^
@@ -12,7 +12,7 @@ LL + extern "msp430-interrupt" fn msp430_arg() {}
    |
 
 error: invalid signature for `extern "msp430-interrupt"` function
-  --> $DIR/interrupt-invalid-signature.rs:65:46
+  --> $DIR/interrupt-invalid-signature.rs:66:46
    |
 LL | extern "msp430-interrupt" fn msp430_ret() -> u8 {
    |                                              ^^

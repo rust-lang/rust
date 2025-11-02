@@ -1,5 +1,3 @@
-use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
-
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -26,30 +24,12 @@ pub(crate) enum CounterKind {
 pub(crate) struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
     pub(crate) kind: CounterKind,
-    id: u32,
+    pub(crate) id: u32,
 }
 
 impl Counter {
     /// A `Counter` of kind `Zero`. For this counter kind, the `id` is not used.
     pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
-
-    /// Constructs a new `Counter` of kind `CounterValueReference`.
-    pub(crate) fn counter_value_reference(counter_id: CounterId) -> Self {
-        Self { kind: CounterKind::CounterValueReference, id: counter_id.as_u32() }
-    }
-
-    /// Constructs a new `Counter` of kind `Expression`.
-    pub(crate) fn expression(expression_id: ExpressionId) -> Self {
-        Self { kind: CounterKind::Expression, id: expression_id.as_u32() }
-    }
-
-    pub(crate) fn from_term(term: CovTerm) -> Self {
-        match term {
-            CovTerm::Zero => Self::ZERO,
-            CovTerm::Counter(id) => Self::counter_value_reference(id),
-            CovTerm::Expression(id) => Self::expression(id),
-        }
-    }
 }
 
 /// Corresponds to enum `llvm::coverage::CounterExpression::ExprKind`.
@@ -92,29 +72,6 @@ pub(crate) struct CoverageSpan {
     pub(crate) end_line: u32,
     /// 1-based ending column of the source code span. High bit must be unset.
     pub(crate) end_col: u32,
-}
-
-/// Holds tables of the various region types in one struct.
-///
-/// Don't pass this struct across FFI; pass the individual region tables as
-/// pointer/length pairs instead.
-///
-/// Each field name has a `_regions` suffix for improved readability after
-/// exhaustive destructing, which ensures that all region types are handled.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Regions {
-    pub(crate) code_regions: Vec<CodeRegion>,
-    pub(crate) expansion_regions: Vec<ExpansionRegion>,
-    pub(crate) branch_regions: Vec<BranchRegion>,
-}
-
-impl Regions {
-    /// Returns true if none of this structure's tables contain any regions.
-    pub(crate) fn has_no_regions(&self) -> bool {
-        let Self { code_regions, expansion_regions, branch_regions } = self;
-
-        code_regions.is_empty() && expansion_regions.is_empty() && branch_regions.is_empty()
-    }
 }
 
 /// Must match the layout of `LLVMRustCoverageCodeRegion`.

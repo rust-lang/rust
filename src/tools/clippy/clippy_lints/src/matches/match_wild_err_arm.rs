@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::macros::{is_panic, root_macro_call};
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_in_const_context, is_wild, peel_blocks_with_stmt};
 use rustc_hir::{Arm, Expr, PatKind};
@@ -16,7 +16,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
     }
 
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
-    if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
+    if ex_ty.is_diag_item(cx, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
                 let path_str = rustc_hir_pretty::qpath_to_string(&cx.tcx, path);

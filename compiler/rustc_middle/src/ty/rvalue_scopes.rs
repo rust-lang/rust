@@ -31,12 +31,10 @@ impl RvalueScopes {
             return (s, None);
         }
 
-        // Otherwise, locate the innermost terminating scope
-        // if there's one. Static items, for instance, won't
-        // have an enclosing scope, hence no scope will be
-        // returned.
-        region_scope_tree
-            .default_temporary_scope(Scope { local_id: expr_id, data: ScopeData::Node })
+        // Otherwise, locate the innermost terminating scope.
+        let (scope, backward_incompatible) = region_scope_tree
+            .default_temporary_scope(Scope { local_id: expr_id, data: ScopeData::Node });
+        (Some(scope), backward_incompatible)
     }
 
     /// Make an association between a sub-expression and an extended lifetime

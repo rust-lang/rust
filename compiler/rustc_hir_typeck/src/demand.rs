@@ -792,7 +792,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(_, lhs, rhs), .. }),
                 Some(TypeError::Sorts(ExpectedFound { expected, .. })),
             ) if rhs.hir_id == expr.hir_id
-                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
+                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected)
+                // let expressions being marked as `bool` is confusing (see issue #147665)
+                && !matches!(lhs.kind, hir::ExprKind::Let(..)) =>
             {
                 err.span_label(lhs.span, format!("expected because this is `{expected}`"));
             }
@@ -1194,6 +1196,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::Node::Expr(parent_expr) = self.tcx.parent_hir_node(expr.hir_id) else {
             return;
         };
+        if parent_expr.span.desugaring_kind().is_some() {
+            return;
+        }
         enum CallableKind {
             Function,
             Method,

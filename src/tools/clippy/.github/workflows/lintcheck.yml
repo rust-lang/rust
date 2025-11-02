@@ -126,7 +126,7 @@ jobs:
         fail-on-cache-miss: true
 
     - name: Download JSON
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
 
     - name: Store PR number
       run: echo ${{ github.event.pull_request.number }} > pr.txt

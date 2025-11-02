@@ -99,7 +99,12 @@ impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedEntry<'_,
 ///
 /// Contains the occupied entry, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
-pub struct OccupiedError<'a, K: 'a, V: 'a, A: Allocator + Clone = Global> {
+pub struct OccupiedError<
+    'a,
+    K: 'a,
+    V: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
+> {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
     /// The value which was not inserted, because the entry was already occupied.
@@ -279,7 +284,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[stable(feature = "btree_entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "btree_entry_insert", since = "1.92.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, A> {
         match self {
             Occupied(mut entry) => {
@@ -389,7 +394,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```
-    #[stable(feature = "btree_entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "btree_entry_insert", since = "1.92.0")]
     pub fn insert_entry(mut self, value: V) -> OccupiedEntry<'a, K, V, A> {
         let handle = match self.handle {
             None => {

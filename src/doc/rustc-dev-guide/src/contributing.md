@@ -52,9 +52,9 @@ channels: stable, beta, and nightly.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
-- **Nightly**: follows the `master` branch of the repo. This is the only
-  channel where unstable, incomplete, or experimental features are usable with
-  feature gates.
+- **Nightly**: follows the `master` branch of the repo.
+  This is the only channel where unstable features are intended to be used,
+  which happens via opt-in feature gates.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
@@ -461,7 +461,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
 [the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
-### Rfcbot labels
+### rfcbot labels
 
 [rfcbot] uses its own labels for tracking the process of coordinating
 asynchronous decisions, such as approving or rejecting a change.

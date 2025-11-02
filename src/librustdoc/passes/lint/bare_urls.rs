@@ -5,10 +5,10 @@ use core::ops::Range;
 use std::mem;
 use std::sync::LazyLock;
 
-use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
 use rustc_hir::HirId;
+use rustc_resolve::rustdoc::pulldown_cmark::{Event, Parser, Tag};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use tracing::trace;
 

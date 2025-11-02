@@ -2,111 +2,121 @@ use expect_test::{Expect, expect};
 use hir_def::db::DefDatabase;
 use hir_expand::{HirFileId, files::InFileWrapper};
 use itertools::Itertools;
-use salsa::plumbing::FromId;
 use span::TextRange;
 use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
-use crate::db::{HirDatabase, InternedClosureId};
-use crate::display::{DisplayTarget, HirDisplay};
-use crate::mir::MirSpan;
-use crate::test_db::TestDB;
+use crate::{
+    db::HirDatabase,
+    display::{DisplayTarget, HirDisplay},
+    mir::MirSpan,
+    test_db::TestDB,
+};
 
 use super::{setup_tracing, visit_module};
 
 fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let _tracing = setup_tracing();
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let module = db.module_for_file(file_id.file_id(&db));
-    let def_map = module.def_map(&db);
+    crate::attach_db(&db, || {
+        let module = db.module_for_file(file_id.file_id(&db));
+        let def_map = module.def_map(&db);
 
-    let mut defs = Vec::new();
-    visit_module(&db, def_map, module.local_id, &mut |it| defs.push(it));
+        let mut defs = Vec::new();
+        visit_module(&db, def_map, module.local_id, &mut |it| defs.push(it));
 
-    let mut captures_info = Vec::new();
-    for def in defs {
-        let def = match def {
-            hir_def::ModuleDefId::FunctionId(it) => it.into(),
-            hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
-            hir_def::ModuleDefId::ConstId(it) => it.into(),
-            hir_def::ModuleDefId::StaticId(it) => it.into(),
-            _ => continue,
-        };
-        let infer = db.infer(def);
-        let db = &db;
-        captures_info.extend(infer.closure_info.iter().flat_map(|(closure_id, (captures, _))| {
-            let closure = db.lookup_intern_closure(InternedClosureId::from_id(closure_id.0));
-            let source_map = db.body_with_source_map(closure.0).1;
-            let closure_text_range = source_map
-                .expr_syntax(closure.1)
-                .expect("failed to map closure to SyntaxNode")
-                .value
-                .text_range();
-            captures.iter().map(move |capture| {
-                fn text_range<N: AstNode>(
-                    db: &TestDB,
-                    syntax: InFileWrapper<HirFileId, AstPtr<N>>,
-                ) -> TextRange {
-                    let root = syntax.file_syntax(db);
-                    syntax.value.to_node(&root).syntax().text_range()
-                }
-
-                // FIXME: Deduplicate this with hir::Local::sources().
-                let (body, source_map) = db.body_with_source_map(closure.0);
-                let local_text_range = match body.self_param.zip(source_map.self_param_syntax()) {
-                    Some((param, source)) if param == capture.local() => {
-                        format!("{:?}", text_range(db, source))
-                    }
-                    _ => source_map
-                        .patterns_for_binding(capture.local())
-                        .iter()
-                        .map(|&definition| {
-                            text_range(db, source_map.pat_syntax(definition).unwrap())
-                        })
-                        .map(|it| format!("{it:?}"))
-                        .join(", "),
-                };
-                let place = capture.display_place(closure.0, db);
-                let capture_ty = salsa::attach(db, || {
-                    capture
-                        .ty
-                        .skip_binders()
-                        .display_test(db, DisplayTarget::from_crate(db, module.krate()))
-                        .to_string()
-                });
-                let spans = capture
-                    .spans()
-                    .iter()
-                    .flat_map(|span| match *span {
-                        MirSpan::ExprId(expr) => {
-                            vec![text_range(db, source_map.expr_syntax(expr).unwrap())]
+        let mut captures_info = Vec::new();
+        for def in defs {
+            let def = match def {
+                hir_def::ModuleDefId::FunctionId(it) => it.into(),
+                hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
+                hir_def::ModuleDefId::ConstId(it) => it.into(),
+                hir_def::ModuleDefId::StaticId(it) => it.into(),
+                _ => continue,
+            };
+            let infer = db.infer(def);
+            let db = &db;
+            captures_info.extend(infer.closure_info.iter().flat_map(
+                |(closure_id, (captures, _))| {
+                    let closure = db.lookup_intern_closure(*closure_id);
+                    let source_map = db.body_with_source_map(closure.0).1;
+                    let closure_text_range = source_map
+                        .expr_syntax(closure.1)
+                        .expect("failed to map closure to SyntaxNode")
+                        .value
+                        .text_range();
+                    captures.iter().map(move |capture| {
+                        fn text_range<N: AstNode>(
+                            db: &TestDB,
+                            syntax: InFileWrapper<HirFileId, AstPtr<N>>,
+                        ) -> TextRange {
+                            let root = syntax.file_syntax(db);
+                            syntax.value.to_node(&root).syntax().text_range()
                         }
-                        MirSpan::PatId(pat) => {
-                            vec![text_range(db, source_map.pat_syntax(pat).unwrap())]
-                        }
-                        MirSpan::BindingId(binding) => source_map
-                            .patterns_for_binding(binding)
+
+                        // FIXME: Deduplicate this with hir::Local::sources().
+                        let (body, source_map) = db.body_with_source_map(closure.0);
+                        let local_text_range =
+                            match body.self_param.zip(source_map.self_param_syntax()) {
+                                Some((param, source)) if param == capture.local() => {
+                                    format!("{:?}", text_range(db, source))
+                                }
+                                _ => source_map
+                                    .patterns_for_binding(capture.local())
+                                    .iter()
+                                    .map(|&definition| {
+                                        text_range(db, source_map.pat_syntax(definition).unwrap())
+                                    })
+                                    .map(|it| format!("{it:?}"))
+                                    .join(", "),
+                            };
+                        let place = capture.display_place(closure.0, db);
+                        let capture_ty = capture
+                            .ty
+                            .skip_binder()
+                            .display_test(db, DisplayTarget::from_crate(db, module.krate()))
+                            .to_string();
+                        let spans = capture
+                            .spans()
                             .iter()
-                            .map(|pat| text_range(db, source_map.pat_syntax(*pat).unwrap()))
-                            .collect(),
-                        MirSpan::SelfParam => {
-                            vec![text_range(db, source_map.self_param_syntax().unwrap())]
-                        }
-                        MirSpan::Unknown => Vec::new(),
+                            .flat_map(|span| match *span {
+                                MirSpan::ExprId(expr) => {
+                                    vec![text_range(db, source_map.expr_syntax(expr).unwrap())]
+                                }
+                                MirSpan::PatId(pat) => {
+                                    vec![text_range(db, source_map.pat_syntax(pat).unwrap())]
+                                }
+                                MirSpan::BindingId(binding) => source_map
+                                    .patterns_for_binding(binding)
+                                    .iter()
+                                    .map(|pat| text_range(db, source_map.pat_syntax(*pat).unwrap()))
+                                    .collect(),
+                                MirSpan::SelfParam => {
+                                    vec![text_range(db, source_map.self_param_syntax().unwrap())]
+                                }
+                                MirSpan::Unknown => Vec::new(),
+                            })
+                            .sorted_by_key(|it| it.start())
+                            .map(|it| format!("{it:?}"))
+                            .join(",");
+
+                        (
+                            closure_text_range,
+                            local_text_range,
+                            spans,
+                            place,
+                            capture_ty,
+                            capture.kind(),
+                        )
                     })
-                    .sorted_by_key(|it| it.start())
-                    .map(|it| format!("{it:?}"))
-                    .join(",");
+                },
+            ));
+        }
+        captures_info.sort_unstable_by_key(|(closure_text_range, local_text_range, ..)| {
+            (closure_text_range.start(), local_text_range.clone())
+        });
 
-                (closure_text_range, local_text_range, spans, place, capture_ty, capture.kind())
-            })
-        }));
-    }
-    captures_info.sort_unstable_by_key(|(closure_text_range, local_text_range, ..)| {
-        (closure_text_range.start(), local_text_range.clone())
-    });
-
-    let rendered = captures_info
+        let rendered = captures_info
         .iter()
         .map(|(closure_text_range, local_text_range, spans, place, capture_ty, capture_kind)| {
             format!(
@@ -115,7 +125,8 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
         })
         .join("\n");
 
-    expect.assert_eq(&rendered);
+        expect.assert_eq(&rendered);
+    })
 }
 
 #[test]

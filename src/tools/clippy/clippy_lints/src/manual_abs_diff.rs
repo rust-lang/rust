@@ -2,9 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::HasSession as _;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, peel_and_count_ty_refs};
+use clippy_utils::ty::peel_and_count_ty_refs;
 use clippy_utils::{eq_expr_value, peel_blocks, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -104,7 +105,7 @@ impl ManualAbsDiff {
     fn are_ty_eligible<'tcx>(&self, cx: &LateContext<'tcx>, a: &Expr<'_>, b: &Expr<'_>) -> Option<(Ty<'tcx>, usize)> {
         let is_int = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(_) | ty::Int(_)) && self.msrv.meets(cx, msrvs::ABS_DIFF);
         let is_duration =
-            |ty| is_type_diagnostic_item(cx, ty, sym::Duration) && self.msrv.meets(cx, msrvs::DURATION_ABS_DIFF);
+            |ty: Ty<'_>| ty.is_diag_item(cx, sym::Duration) && self.msrv.meets(cx, msrvs::DURATION_ABS_DIFF);
 
         let a_ty = cx.typeck_results().expr_ty(a).peel_refs();
         let (b_ty, b_n_refs, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(b));

@@ -5,7 +5,7 @@ LL |     let var_fn = Value::wrap();
    |         ^^^^^^
 ...
 LL |     let _ = var_fn.clone();
-   |                    ----- type must be known at this point
+   |             ------ type must be known at this point
    |
 help: consider giving `var_fn` an explicit type, where the placeholders `_` are specified
    |

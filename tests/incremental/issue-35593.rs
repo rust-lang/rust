@@ -3,6 +3,7 @@
 
 //@ revisions:rpass1 rpass2
 //@ compile-flags: -Z query-dep-graph
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![rustc_partition_reused(module="issue_35593", cfg="rpass2")]

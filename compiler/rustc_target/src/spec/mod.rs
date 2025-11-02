@@ -834,6 +834,7 @@ crate::target_spec_enum! {
     pub enum PanicStrategy {
         Unwind = "unwind",
         Abort = "abort",
+        ImmediateAbort = "immediate-abort",
     }
 
     parse_error_type = "panic strategy";
@@ -852,11 +853,12 @@ impl PanicStrategy {
         match *self {
             PanicStrategy::Unwind => sym::unwind,
             PanicStrategy::Abort => sym::abort,
+            PanicStrategy::ImmediateAbort => sym::immediate_abort,
         }
     }
 
-    pub const fn all() -> [Symbol; 2] {
-        [Self::Abort.desc_symbol(), Self::Unwind.desc_symbol()]
+    pub fn unwinds(self) -> bool {
+        matches!(self, PanicStrategy::Unwind)
     }
 }
 
@@ -973,18 +975,6 @@ impl RelocModel {
             RelocModel::Rwpi => sym::rwpi,
             RelocModel::RopiRwpi => sym::ropi_rwpi,
         }
-    }
-
-    pub const fn all() -> [Symbol; 7] {
-        [
-            RelocModel::Static.desc_symbol(),
-            RelocModel::Pic.desc_symbol(),
-            RelocModel::Pie.desc_symbol(),
-            RelocModel::DynamicNoPic.desc_symbol(),
-            RelocModel::Ropi.desc_symbol(),
-            RelocModel::Rwpi.desc_symbol(),
-            RelocModel::RopiRwpi.desc_symbol(),
-        ]
     }
 }
 
@@ -1544,6 +1534,12 @@ supported_targets! {
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
+    ("aarch64-unknown-helenos", aarch64_unknown_helenos),
+    ("i686-unknown-helenos", i686_unknown_helenos),
+    ("powerpc-unknown-helenos", powerpc_unknown_helenos),
+    ("sparc64-unknown-helenos", sparc64_unknown_helenos),
+    ("x86_64-unknown-helenos", x86_64_unknown_helenos),
+
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
     ("x86_64-unknown-hurd-gnu", x86_64_unknown_hurd_gnu),
 
@@ -1563,6 +1559,7 @@ supported_targets! {
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
     ("i586-unknown-redox", i586_unknown_redox),
+    ("riscv64gc-unknown-redox", riscv64gc_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("x86_64-unknown-managarm-mlibc", x86_64_unknown_managarm_mlibc),
@@ -1634,6 +1631,7 @@ supported_targets! {
     ("wasm32v1-none", wasm32v1_none),
     ("wasm32-wasip1", wasm32_wasip1),
     ("wasm32-wasip2", wasm32_wasip2),
+    ("wasm32-wasip3", wasm32_wasip3),
     ("wasm32-wasip1-threads", wasm32_wasip1_threads),
     ("wasm32-wali-linux-musl", wasm32_wali_linux_musl),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
@@ -1658,6 +1656,7 @@ supported_targets! {
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("riscv64gc-unknown-hermit", riscv64gc_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
+    ("x86_64-unknown-motor", x86_64_unknown_motor),
 
     ("x86_64-unikraft-linux-musl", x86_64_unikraft_linux_musl),
 
@@ -3191,6 +3190,7 @@ impl Target {
             "avr" => (Architecture::Avr, None),
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
+            "xtensa" => (Architecture::Xtensa, None),
             "bpf" => (Architecture::Bpf, None),
             "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),

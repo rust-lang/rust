@@ -104,7 +104,6 @@ note: if you're trying to build a new `Box<_, _>` consider using one of the foll
       Box::<T>::new_uninit
       Box::<T>::new_zeroed
       Box::<T>::try_new
-      and 22 others
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error: aborting due to 11 previous errors

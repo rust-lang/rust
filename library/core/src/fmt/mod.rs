@@ -115,6 +115,7 @@ pub struct Error;
 /// [`std::io::Write`]: ../../std/io/trait.Write.html
 /// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FmtWrite"]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write
     /// succeeded.
@@ -386,8 +387,8 @@ impl FormattingOptions {
     /// used. The alternate forms are:
     /// - [`Debug`] : pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
     /// - [`LowerHex`] as well as [`UpperHex`] - precedes the argument with a `0x`
-    /// - [`Octal`] - precedes the argument with a `0b`
-    /// - [`Binary`] - precedes the argument with a `0o`
+    /// - [`Octal`] - precedes the argument with a `0o`
+    /// - [`Binary`] - precedes the argument with a `0b`
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn alternate(&mut self, alternate: bool) -> &mut Self {
         if alternate {

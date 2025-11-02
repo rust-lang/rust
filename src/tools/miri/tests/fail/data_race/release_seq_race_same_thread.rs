@@ -12,7 +12,7 @@ unsafe impl<T> Sync for EvilSend<T> {}
 
 static SYNC: AtomicUsize = AtomicUsize::new(0);
 
-pub fn main() {
+fn main() {
     let mut a = 0u32;
     let b = &mut a as *mut u32;
     let c = EvilSend(b);

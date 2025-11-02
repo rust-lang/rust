@@ -86,7 +86,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, _ty) => {
+            mir::Rvalue::Cast(
+                mir::CastKind::Transmute | mir::CastKind::Subtype,
+                ref operand,
+                _ty,
+            ) => {
                 let src = self.codegen_operand(bx, operand);
                 self.codegen_transmute(bx, src, dest);
             }
@@ -486,7 +490,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bug!("Unsupported cast of {operand:?} to {cast:?}");
                             })
                     }
-                    mir::CastKind::Transmute => {
+                    mir::CastKind::Transmute | mir::CastKind::Subtype => {
                         self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };
@@ -500,9 +504,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::CopyForDeref(place) => {
-                self.codegen_operand(bx, &mir::Operand::Copy(place))
-            }
             mir::Rvalue::RawPtr(kind, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
@@ -610,16 +611,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ty = self.monomorphize(ty);
                 let layout = bx.cx().layout_of(ty);
                 let val = match null_op {
-                    mir::NullOp::SizeOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.size.bytes();
-                        bx.cx().const_usize(val)
-                    }
-                    mir::NullOp::AlignOf => {
-                        assert!(bx.cx().type_is_sized(ty));
-                        let val = layout.align.abi.bytes();
-                        bx.cx().const_usize(val)
-                    }
                     mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()
@@ -723,21 +714,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
-                let operand = self.codegen_operand(bx, operand);
-                let val = operand.immediate();
-
-                let content_ty = self.monomorphize(content_ty);
-                let box_layout = bx.cx().layout_of(Ty::new_box(bx.tcx(), content_ty));
-
-                OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
-            }
             mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
                 let operand = self.codegen_operand(bx, operand);
                 let binder_ty = self.monomorphize(binder_ty);
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout }
             }
+            mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
+            mir::Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in codegen"),
         }
     }
 
@@ -1006,14 +990,14 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
         (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-        (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
+        (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
         (Pointer(..), Int(..)) => {
             // FIXME: this exposes the provenance, which shouldn't be necessary.
             bx.ptrtoint(imm, to_backend_ty)
         }
         (Float(_), Pointer(..)) => {
             let int_imm = bx.bitcast(imm, bx.cx().type_isize());
-            bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
+            bx.inttoptr(int_imm, to_backend_ty)
         }
         (Pointer(..), Float(_)) => {
             // FIXME: this exposes the provenance, which shouldn't be necessary.

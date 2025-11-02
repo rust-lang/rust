@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `*x` which is behind a shared reference
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:22:13
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:25:13
    |
 LL |     let x = *x;
    |             ^^ move occurs because `*x` has type `<X as Trait<'_>>::Out<Foo>`, which does not implement the `Copy` trait

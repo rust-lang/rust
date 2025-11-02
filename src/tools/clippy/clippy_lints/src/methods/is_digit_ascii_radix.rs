@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let Some(radix_val) = ConstEvalCtxt::new(cx).eval_full_int(radix) {
+    if let Some(radix_val) = ConstEvalCtxt::new(cx).eval_full_int(radix, expr.span.ctxt()) {
         let (num, replacement) = match radix_val {
             FullInt::S(10) | FullInt::U(10) => (10, "is_ascii_digit"),
             FullInt::S(16) | FullInt::U(16) => (16, "is_ascii_hexdigit"),

@@ -1,9 +1,10 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
 //@ add-core-stubs
-//@ revisions: BTI PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
+//@ revisions: BTI GCS PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
 //@ needs-llvm-components: aarch64
 //@ [BTI] compile-flags: -Z branch-protection=bti
+//@ [GCS] compile-flags: -Z branch-protection=gcs
 //@ [PACRET] compile-flags: -Z branch-protection=pac-ret
 //@ [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
 //@ [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
@@ -31,6 +32,9 @@ pub fn test() {}
 // BTI: !"branch-protection-pauth-lr", i32 0
 // BTI: !"sign-return-address-all", i32 0
 // BTI: !"sign-return-address-with-bkey", i32 0
+
+// GCS: attributes [[ATTR]] = {{.*}} "guarded-control-stack"
+// GCS: !"guarded-control-stack", i32 1
 
 // PACRET: attributes [[ATTR]] = {{.*}} "sign-return-address"="non-leaf"
 // PACRET-SAME: "sign-return-address-key"="a_key"

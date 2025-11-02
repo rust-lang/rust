@@ -1,8 +1,8 @@
 use super::ITER_KV_MAP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{pat_is_wild, sym};
 use rustc_hir::{Body, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
             _ => return,
         }
         && let ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
-        && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
+        && (ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap))
     {
         let mut applicability = rustc_errors::Applicability::MachineApplicable;
         let recv_snippet = snippet_with_applicability(cx, recv.span, "map", &mut applicability);

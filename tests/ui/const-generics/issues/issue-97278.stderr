@@ -4,10 +4,10 @@ error[E0741]: `Bar` must implement `ConstParamTy` to be used as the type of a co
 LL | fn test<const BAR: Bar>() {}
    |                    ^^^
    |
-help: add `#[derive(ConstParamTy)]` to the struct
+help: add `#[derive(ConstParamTy)]` to the enum
    |
-LL - enum Bar {
 LL + #[derive(ConstParamTy)]
+LL | enum Bar {
    |
 
 error: aborting due to 1 previous error

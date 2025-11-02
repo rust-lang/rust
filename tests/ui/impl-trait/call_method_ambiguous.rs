@@ -1,6 +1,6 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
-//@[current] run-pass
+//@ run-pass
 
 trait Get {
     fn get(&mut self) -> u32;
@@ -24,7 +24,6 @@ where
 fn foo(n: usize, m: &mut ()) -> impl Get + use<'_> {
     if n > 0 {
         let mut iter = foo(n - 1, m);
-        //[next]~^ ERROR type annotations needed
         assert_eq!(iter.get(), 1);
     }
     m

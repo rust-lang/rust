@@ -233,7 +233,7 @@ pub(super) fn from_casted_value<'tcx>(
         // It may also be smaller for example when the type is a wrapper around an integer with a
         // larger alignment than the integer.
         std::cmp::max(abi_param_size, layout_size),
-        u32::try_from(layout.align.abi.bytes()).unwrap(),
+        u32::try_from(layout.align.bytes()).unwrap(),
     );
     let mut block_params_iter = block_params.iter().copied();
     for (offset, _) in abi_params {

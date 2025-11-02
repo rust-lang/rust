@@ -1,6 +1,7 @@
 //@ compile-flags: --target x86_64-unknown-uefi
 //@ needs-llvm-components: x86
 //@ rustc-env:CARGO_CRATE_NAME=foo
+//@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]
 extern crate core;

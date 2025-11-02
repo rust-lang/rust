@@ -101,12 +101,15 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 }
 
 fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrategy> {
+    let local_strategy = tcx.sess.panic_strategy();
+
     if tcx.is_panic_runtime(LOCAL_CRATE) {
-        return Some(tcx.sess.panic_strategy());
+        return Some(local_strategy);
     }
 
-    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
-        return Some(PanicStrategy::Abort);
+    match local_strategy {
+        PanicStrategy::Abort | PanicStrategy::ImmediateAbort => return Some(local_strategy),
+        _ => {}
     }
 
     for def_id in tcx.hir_body_owners() {

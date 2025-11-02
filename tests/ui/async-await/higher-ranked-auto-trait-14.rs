@@ -1,9 +1,8 @@
 // Repro for <https://github.com/rust-lang/rust/issues/124757#issue-2279603232>.
+//@ check-pass
 //@ edition: 2021
 //@ revisions: assumptions no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
-//@[assumptions] check-pass
-//@[no_assumptions] known-bug: #110338
 
 use std::collections::HashSet;
 use std::future::Future;

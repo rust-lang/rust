@@ -134,7 +134,7 @@ pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
 }
 
 /// Returns the `mir::Body` containing the node associated with `hir_id`.
-#[allow(clippy::module_name_repetitions)]
+#[expect(clippy::module_name_repetitions)]
 pub fn enclosing_mir(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<&Body<'_>> {
     let body_owner_local_def_id = tcx.hir_enclosing_body_owner(hir_id);
     if tcx.hir_body_owner_kind(body_owner_local_def_id).is_fn_or_closure() {

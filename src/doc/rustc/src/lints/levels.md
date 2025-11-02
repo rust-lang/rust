@@ -38,7 +38,7 @@ talk about later in this section.
 
 Sometimes, it can be helpful to suppress lints, but at the same time ensure that
 the code in question still emits them. The 'expect' level does exactly this. If
-the lint in question is not emitted, the `unfulfilled_lint_expectation` lint
+the lint in question is not emitted, the `unfulfilled_lint_expectations` lint
 triggers on the `expect` attribute, notifying you that the expectation is no
 longer fulfilled.
 

@@ -4,39 +4,24 @@ SOURCE_FILE
     WHITESPACE " "
     NAME
       IDENT "C"
-  ERROR
-    L_ANGLE "<"
-  ERROR
-    PATH
-      PATH_SEGMENT
-        NAME_REF
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
           IDENT "i32"
-  ERROR
-    R_ANGLE ">"
-  ERROR
+      R_ANGLE ">"
     COLON ":"
-  WHITESPACE " "
-  ERROR
-    PATH
-      PATH_SEGMENT
-        NAME_REF
-          IDENT "u32"
-  WHITESPACE " "
-  ERROR
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
     EQ "="
-  WHITESPACE " "
-  ERROR
-    INT_NUMBER "0"
-  ERROR
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 8: missing type for `const` or `static`
-error 8: expected SEMICOLON
-error 8: expected an item
-error 12: expected an item
-error 12: expected an item
-error 13: expected an item
-error 18: expected an item
-error 19: expected an item
-error 21: expected an item
-error 22: expected an item
+error 8: `static` may not have generic parameters

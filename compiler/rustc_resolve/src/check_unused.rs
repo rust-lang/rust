@@ -507,7 +507,7 @@ impl Resolver<'_, '_> {
 
         let unused_imports = visitor.unused_imports;
         let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 if let Some(binding) = resolution.borrow().best_binding()
                     && let NameBindingKind::Import { import, .. } = binding.kind

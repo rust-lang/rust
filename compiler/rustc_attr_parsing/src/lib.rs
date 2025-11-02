@@ -105,7 +105,9 @@ mod session_diagnostics;
 mod target_checking;
 pub mod validate_attr;
 
-pub use attributes::cfg::{CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg_attr};
+pub use attributes::cfg::{
+    CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr,
+};
 pub use attributes::cfg_old::*;
 pub use attributes::util::{is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version};
 pub use context::{Early, Late, OmitDoc, ShouldEmit};

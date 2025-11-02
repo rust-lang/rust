@@ -93,7 +93,6 @@ features! {
     /// * `"amx-fp8"`
     /// * `"amx-movrs"`
     /// * `"amx-tf32"`
-    /// * `"amx-transpose"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -231,8 +230,6 @@ features! {
     /// AMX-MOVRS (Matrix MOVERS operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tf32: "amx-tf32";
     /// AMX-TF32 (TensorFloat32 Operations)
-    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_transpose: "amx-transpose";
-    /// AMX-TRANSPOSE (Matrix Transpose Operations)
     @FEATURE: #[unstable(feature = "apx_target_feature", issue = "139284")] apxf: "apxf";
     /// APX-F (Advanced Performance Extensions - Foundation)
     @FEATURE: #[unstable(feature = "avx10_target_feature", issue = "138843")] avx10_1: "avx10.1";

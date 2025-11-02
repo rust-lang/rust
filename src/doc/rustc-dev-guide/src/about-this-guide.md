@@ -48,9 +48,9 @@ In addition, many of the ideas discussed throughout this guide are idealized des
 that are not fully realized yet.
 All this makes keeping this guide completely up to date on everything very hard!
 
-The Guide itself is of course open-source as well,
-and the sources can be found at the [GitHub repository].
-If you find any mistakes in the guide, please file an issue about it.
+The guide itself is of course open source as well,
+and the sources are hosted on [a GitHub repository].
+If you find any mistakes in the guide, please file an issue.
 Even better, open a PR with a correction!
 
 If you do contribute to the guide,
@@ -105,7 +105,7 @@ You might also find the following sites useful:
 [cheatsheet]: https://bors.rust-lang.org/
 [Miri]: https://github.com/rust-lang/miri
 [@bors]: https://github.com/bors
-[GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
+[a GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
 [rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/

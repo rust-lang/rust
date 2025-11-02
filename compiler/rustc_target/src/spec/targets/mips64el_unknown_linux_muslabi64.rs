@@ -5,13 +5,11 @@ pub(crate) fn target() -> Target {
     base.cpu = "mips64r2".into();
     base.features = "+mips64r2,+xgot".into();
     base.max_atomic_width = Some(64);
-    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
-    base.crt_static_default = true;
     Target {
         // LLVM doesn't recognize "muslabi64" yet.
         llvm_target: "mips64el-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("MIPS64 Linux, N64 ABI, musl 1.2.3".into()),
+            description: Some("MIPS64 Linux, N64 ABI, musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

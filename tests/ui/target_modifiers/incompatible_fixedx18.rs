@@ -8,6 +8,7 @@
 // [error_generated] no extra compile-flags
 //@[allow_mismatch] check-pass
 //@[allow_match] check-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 //[error_generated]~^ ERROR mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`

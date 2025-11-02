@@ -152,10 +152,6 @@ impl Config {
     }
 
     pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-        #[cfg(test)]
-        return Ok(TomlConfig::default());
-
-        #[cfg(not(test))]
         Self::get_toml_inner(file)
     }
 

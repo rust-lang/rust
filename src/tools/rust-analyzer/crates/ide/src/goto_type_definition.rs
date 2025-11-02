@@ -88,7 +88,7 @@ pub(crate) fn goto_type_definition(
                             ast::Pat(it) => sema.type_of_pat(&it)?.original,
                             ast::SelfParam(it) => sema.type_of_self(&it)?,
                             ast::Type(it) => sema.resolve_type(&it)?,
-                            ast::RecordField(it) => sema.to_def(&it)?.ty(db),
+                            ast::RecordField(it) => sema.to_def(&it)?.ty(db).to_type(db),
                             // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
                             ast::NameRef(it) => {
                                 if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {

@@ -12,6 +12,7 @@
 //@[error_explicit] compile-flags: -Zreg-struct-return=false
 //@[ok] check-pass
 //@[ok_explicit] check-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 //[error]~^ ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`

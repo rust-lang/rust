@@ -6,18 +6,18 @@ use std::marker::PhantomData;
 use ena::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir::{ConstVid, RegionKind, RegionVid, UniverseIndex, inherent::IntoKind};
 
-use crate::next_solver::{Const, Region, SolverDefId, Ty};
+use crate::next_solver::{Const, Region};
 
 #[derive(Clone, Debug)]
-pub enum RegionVariableValue<'db> {
+pub(crate) enum RegionVariableValue<'db> {
     Known { value: Region<'db> },
     Unknown { universe: UniverseIndex },
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct RegionVidKey<'db> {
-    pub vid: RegionVid,
-    pub phantom: PhantomData<RegionVariableValue<'db>>,
+pub(crate) struct RegionVidKey<'db> {
+    pub(crate) vid: RegionVid,
+    pub(crate) phantom: PhantomData<RegionVariableValue<'db>>,
 }
 
 impl<'db> From<RegionVid> for RegionVidKey<'db> {
@@ -41,7 +41,7 @@ impl<'db> UnifyKey for RegionVidKey<'db> {
     }
 }
 
-pub struct RegionUnificationError;
+pub(crate) struct RegionUnificationError;
 impl<'db> UnifyValue for RegionVariableValue<'db> {
     type Error = RegionUnificationError;
 
@@ -90,15 +90,10 @@ impl<'db> UnifyValue for RegionVariableValue<'db> {
 // Generic consts.
 
 #[derive(Copy, Clone, Debug)]
-pub struct ConstVariableOrigin {
-    /// `DefId` of the const parameter this was instantiated for, if any.
-    ///
-    /// This should only be used for diagnostics.
-    pub param_def_id: Option<SolverDefId>,
-}
+pub struct ConstVariableOrigin {}
 
 #[derive(Clone, Debug)]
-pub enum ConstVariableValue<'db> {
+pub(crate) enum ConstVariableValue<'db> {
     Known { value: Const<'db> },
     Unknown { origin: ConstVariableOrigin, universe: UniverseIndex },
 }
@@ -106,7 +101,7 @@ pub enum ConstVariableValue<'db> {
 impl<'db> ConstVariableValue<'db> {
     /// If this value is known, returns the const it is known to be.
     /// Otherwise, `None`.
-    pub fn known(&self) -> Option<Const<'db>> {
+    pub(crate) fn known(&self) -> Option<Const<'db>> {
         match self {
             ConstVariableValue::Unknown { .. } => None,
             ConstVariableValue::Known { value } => Some(*value),
@@ -115,9 +110,9 @@ impl<'db> ConstVariableValue<'db> {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct ConstVidKey<'db> {
-    pub vid: ConstVid,
-    pub phantom: PhantomData<Const<'db>>,
+pub(crate) struct ConstVidKey<'db> {
+    pub(crate) vid: ConstVid,
+    pub(crate) phantom: PhantomData<Const<'db>>,
 }
 
 impl<'db> From<ConstVid> for ConstVidKey<'db> {

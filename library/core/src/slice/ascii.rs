@@ -9,6 +9,8 @@ use crate::{ascii, iter, ops};
 
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
+    ///
+    /// An empty slice returns `true`.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_slice_is_ascii", since = "1.74.0")]
     #[must_use]

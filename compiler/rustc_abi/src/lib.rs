@@ -229,7 +229,7 @@ pub struct PointerSpec {
     /// The size of the bitwise representation of the pointer.
     pointer_size: Size,
     /// The alignment of pointers for this address space
-    pointer_align: AbiAlign,
+    pointer_align: Align,
     /// The size of the value a pointer can be offset by in this address space.
     pointer_offset: Size,
     /// Pointers into this address space contain extra metadata
@@ -242,20 +242,20 @@ pub struct PointerSpec {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TargetDataLayout {
     pub endian: Endian,
-    pub i1_align: AbiAlign,
-    pub i8_align: AbiAlign,
-    pub i16_align: AbiAlign,
-    pub i32_align: AbiAlign,
-    pub i64_align: AbiAlign,
-    pub i128_align: AbiAlign,
-    pub f16_align: AbiAlign,
-    pub f32_align: AbiAlign,
-    pub f64_align: AbiAlign,
-    pub f128_align: AbiAlign,
-    pub aggregate_align: AbiAlign,
+    pub i1_align: Align,
+    pub i8_align: Align,
+    pub i16_align: Align,
+    pub i32_align: Align,
+    pub i64_align: Align,
+    pub i128_align: Align,
+    pub f16_align: Align,
+    pub f32_align: Align,
+    pub f64_align: Align,
+    pub f128_align: Align,
+    pub aggregate_align: Align,
 
     /// Alignments for vector types.
-    pub vector_align: Vec<(Size, AbiAlign)>,
+    pub vector_align: Vec<(Size, Align)>,
 
     pub default_address_space: AddressSpace,
     pub default_address_space_pointer_spec: PointerSpec,
@@ -282,25 +282,25 @@ impl Default for TargetDataLayout {
         let align = |bits| Align::from_bits(bits).unwrap();
         TargetDataLayout {
             endian: Endian::Big,
-            i1_align: AbiAlign::new(align(8)),
-            i8_align: AbiAlign::new(align(8)),
-            i16_align: AbiAlign::new(align(16)),
-            i32_align: AbiAlign::new(align(32)),
-            i64_align: AbiAlign::new(align(32)),
-            i128_align: AbiAlign::new(align(32)),
-            f16_align: AbiAlign::new(align(16)),
-            f32_align: AbiAlign::new(align(32)),
-            f64_align: AbiAlign::new(align(64)),
-            f128_align: AbiAlign::new(align(128)),
-            aggregate_align: AbiAlign { abi: align(8) },
+            i1_align: align(8),
+            i8_align: align(8),
+            i16_align: align(16),
+            i32_align: align(32),
+            i64_align: align(32),
+            i128_align: align(32),
+            f16_align: align(16),
+            f32_align: align(32),
+            f64_align: align(64),
+            f128_align: align(128),
+            aggregate_align: align(8),
             vector_align: vec![
-                (Size::from_bits(64), AbiAlign::new(align(64))),
-                (Size::from_bits(128), AbiAlign::new(align(128))),
+                (Size::from_bits(64), align(64)),
+                (Size::from_bits(128), align(128)),
             ],
             default_address_space: AddressSpace::ZERO,
             default_address_space_pointer_spec: PointerSpec {
                 pointer_size: Size::from_bits(64),
-                pointer_align: AbiAlign::new(align(64)),
+                pointer_align: align(64),
                 pointer_offset: Size::from_bits(64),
                 _is_fat: false,
             },
@@ -360,7 +360,7 @@ impl TargetDataLayout {
                     .map_err(|err| TargetDataLayoutErrors::InvalidAlignment { cause, err })
             };
             let abi = parse_bits(s, "alignment", cause)?;
-            Ok(AbiAlign::new(align_from_bits(abi)?))
+            Ok(align_from_bits(abi)?)
         };
 
         // Parse an alignment sequence, possibly in the form `<align>[:<preferred_alignment>]`,
@@ -596,7 +596,7 @@ impl TargetDataLayout {
 
     /// psABI-mandated alignment for a vector type, if any
     #[inline]
-    fn cabi_vector_align(&self, vec_size: Size) -> Option<AbiAlign> {
+    fn cabi_vector_align(&self, vec_size: Size) -> Option<Align> {
         self.vector_align
             .iter()
             .find(|(size, _align)| *size == vec_size)
@@ -605,10 +605,9 @@ impl TargetDataLayout {
 
     /// an alignment resembling the one LLVM would pick for a vector
     #[inline]
-    pub fn llvmlike_vector_align(&self, vec_size: Size) -> AbiAlign {
-        self.cabi_vector_align(vec_size).unwrap_or(AbiAlign::new(
-            Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap(),
-        ))
+    pub fn llvmlike_vector_align(&self, vec_size: Size) -> Align {
+        self.cabi_vector_align(vec_size)
+            .unwrap_or(Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap())
     }
 
     /// Get the pointer size in the default data address space.
@@ -654,21 +653,19 @@ impl TargetDataLayout {
     /// Get the pointer alignment in the default data address space.
     #[inline]
     pub fn pointer_align(&self) -> AbiAlign {
-        self.default_address_space_pointer_spec.pointer_align
+        AbiAlign::new(self.default_address_space_pointer_spec.pointer_align)
     }
 
     /// Get the pointer alignment in a specific address space.
     #[inline]
     pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
-        if c == self.default_address_space {
-            return self.default_address_space_pointer_spec.pointer_align;
-        }
-
-        if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
+        AbiAlign::new(if c == self.default_address_space {
+            self.default_address_space_pointer_spec.pointer_align
+        } else if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
             e.1.pointer_align
         } else {
             panic!("Use of unknown address space {c:?}");
-        }
+        })
     }
 }
 
@@ -1185,13 +1182,13 @@ impl Integer {
         use Integer::*;
         let dl = cx.data_layout();
 
-        match self {
+        AbiAlign::new(match self {
             I8 => dl.i8_align,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
             I128 => dl.i128_align,
-        }
+        })
     }
 
     /// Returns the largest signed value that can be represented by this Integer.
@@ -1311,12 +1308,12 @@ impl Float {
         use Float::*;
         let dl = cx.data_layout();
 
-        match self {
+        AbiAlign::new(match self {
             F16 => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
-        }
+        })
     }
 }
 
@@ -2159,7 +2156,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
     pub fn is_1zst(&self) -> bool {
-        self.is_sized() && self.size.bytes() == 0 && self.align.abi.bytes() == 1
+        self.is_sized() && self.size.bytes() == 0 && self.align.bytes() == 1
     }
 
     /// Returns `true` if the type is a ZST and not unsized.

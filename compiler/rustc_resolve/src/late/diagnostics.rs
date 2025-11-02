@@ -180,6 +180,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
+
         if let Some(res) = res {
             BaseError {
                 msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
@@ -821,12 +822,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     args_snippet = snippet;
                 }
 
-                err.span_suggestion(
-                    call_span,
-                    format!("try calling `{ident}` as a method"),
-                    format!("self.{path_str}({args_snippet})"),
-                    Applicability::MachineApplicable,
-                );
+                if let Some(Res::Def(DefKind::Struct, def_id)) = res {
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                    err.note("constructor is not visible here due to private fields");
+                } else {
+                    err.span_suggestion(
+                        call_span,
+                        format!("try calling `{ident}` as a method"),
+                        format!("self.{path_str}({args_snippet})"),
+                        Applicability::MachineApplicable,
+                    );
+                }
+
                 return (true, suggested_candidates, candidates);
             }
         }
@@ -1611,6 +1618,47 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn update_err_for_private_tuple_struct_fields(
+        &mut self,
+        err: &mut Diag<'_>,
+        source: &PathSource<'_, '_, '_>,
+        def_id: DefId,
+    ) -> Option<Vec<Span>> {
+        match source {
+            // e.g. `if let Enum::TupleVariant(field1, field2) = _`
+            PathSource::TupleStruct(_, pattern_spans) => {
+                err.primary_message(
+                    "cannot match against a tuple struct which contains private fields",
+                );
+
+                // Use spans of the tuple struct pattern.
+                Some(Vec::from(*pattern_spans))
+            }
+            // e.g. `let _ = Enum::TupleVariant(field1, field2);`
+            PathSource::Expr(Some(Expr {
+                kind: ExprKind::Call(path, args),
+                span: call_span,
+                ..
+            })) => {
+                err.primary_message(
+                    "cannot initialize a tuple struct which contains private fields",
+                );
+                self.suggest_alternative_construction_methods(
+                    def_id,
+                    err,
+                    path.span,
+                    *call_span,
+                    &args[..],
+                );
+                // Use spans of the tuple struct definition.
+                self.r
+                    .field_idents(def_id)
+                    .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+            }
+            _ => None,
+        }
+    }
+
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
     /// function.
     /// Returns `true` if able to provide context-dependent help.
@@ -1943,43 +1991,41 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 };
 
                 let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
+                if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
+                    && is_accessible
+                {
+                    err.span_note(
+                        *use_span,
+                        "the type is accessed through this re-export, but the type's constructor \
+                         is not visible in this import's scope due to private fields",
+                    );
+                    if is_accessible
+                        && fields
+                            .iter()
+                            .all(|vis| self.r.is_accessible_from(*vis, self.parent_scope.module))
+                    {
+                        err.span_suggestion_verbose(
+                            span,
+                            "the type can be constructed directly, because its fields are \
+                             available from the current scope",
+                            // Using `tcx.def_path_str` causes the compiler to hang.
+                            // We don't need to handle foreign crate types because in that case you
+                            // can't access the ctor either way.
+                            format!(
+                                "crate{}", // The method already has leading `::`.
+                                self.r.tcx.def_path(def_id).to_string_no_crate_verbose(),
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                }
                 if !is_expected(ctor_def) || is_accessible {
                     return true;
                 }
 
-                let field_spans = match source {
-                    // e.g. `if let Enum::TupleVariant(field1, field2) = _`
-                    PathSource::TupleStruct(_, pattern_spans) => {
-                        err.primary_message(
-                            "cannot match against a tuple struct which contains private fields",
-                        );
-
-                        // Use spans of the tuple struct pattern.
-                        Some(Vec::from(pattern_spans))
-                    }
-                    // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                    PathSource::Expr(Some(Expr {
-                        kind: ExprKind::Call(path, args),
-                        span: call_span,
-                        ..
-                    })) => {
-                        err.primary_message(
-                            "cannot initialize a tuple struct which contains private fields",
-                        );
-                        self.suggest_alternative_construction_methods(
-                            def_id,
-                            err,
-                            path.span,
-                            *call_span,
-                            &args[..],
-                        );
-                        // Use spans of the tuple struct definition.
-                        self.r
-                            .field_idents(def_id)
-                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
-                    }
-                    _ => None,
-                };
+                let field_spans =
+                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
 
                 if let Some(spans) =
                     field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
@@ -2181,10 +2227,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .collect::<Vec<_>>();
         items.sort_by_key(|(order, _, _)| *order);
         let suggestion = |name, args| {
-            format!(
-                "::{name}({})",
-                std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
-            )
+            format!("::{name}({})", std::iter::repeat_n("_", args).collect::<Vec<_>>().join(", "))
         };
         match &items[..] {
             [] => {}
@@ -3135,6 +3178,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     {
                         continue;
                     }
+                    if let LifetimeBinderKind::ImplAssocType = kind {
+                        continue;
+                    }
 
                     if !span.can_be_used_for_suggestions()
                         && suggest_note
@@ -3452,17 +3498,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (lt.span.shrink_to_hi(), format!("{existing_name} "))
             }
             MissingLifetimeKind::Comma => {
-                let sugg: String = std::iter::repeat([existing_name.as_str(), ", "])
-                    .take(lt.count)
+                let sugg: String = std::iter::repeat_n([existing_name.as_str(), ", "], lt.count)
                     .flatten()
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)
             }
             MissingLifetimeKind::Brackets => {
                 let sugg: String = std::iter::once("<")
-                    .chain(
-                        std::iter::repeat(existing_name.as_str()).take(lt.count).intersperse(", "),
-                    )
+                    .chain(std::iter::repeat_n(existing_name.as_str(), lt.count).intersperse(", "))
                     .chain([">"])
                     .collect();
                 (lt.span.shrink_to_hi(), sugg)

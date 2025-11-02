@@ -497,12 +497,12 @@ pub enum ValidationErrorKind<'tcx> {
     MutableRefToImmutable,
     UnsafeCellInImmutable,
     MutableRefInConst,
-    NullFnPtr,
-    NeverVal,
-    NullablePtrOutOfRange {
-        range: WrappingRange,
-        max_value: u128,
+    NullFnPtr {
+        /// Records whether this pointer is definitely null or just may be null.
+        maybe: bool,
     },
+    NeverVal,
+    NonnullPtrMaybeNull,
     PtrOutOfRange {
         range: WrappingRange,
         max_value: u128,
@@ -544,6 +544,8 @@ pub enum ValidationErrorKind<'tcx> {
     },
     NullPtr {
         ptr_kind: PointerKind,
+        /// Records whether this pointer is definitely null or just may be null.
+        maybe: bool,
     },
     DanglingPtrNoProvenance {
         ptr_kind: PointerKind,

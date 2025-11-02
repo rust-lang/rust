@@ -2,6 +2,7 @@
 //@ proc-macro: span-api-tests.rs
 //@ aux-build:span-test-macros.rs
 //@ compile-flags: -Ztranslate-remapped-path-to-local-path=yes
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate span_test_macros;

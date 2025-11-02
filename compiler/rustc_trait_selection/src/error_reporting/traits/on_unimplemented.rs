@@ -44,8 +44,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             self.tcx.for_each_relevant_impl(trait_pred.def_id(), trait_self_ty, |def_id| {
                 let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
-                let impl_trait_ref =
-                    tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
+                let impl_trait_ref = tcx.impl_trait_ref(def_id).instantiate(tcx, impl_args);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
@@ -309,7 +308,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 pub struct OnUnimplementedFormatString {
     /// Symbol of the format string, i.e. `"content"`
     symbol: Symbol,
-    ///The span of the format string, i.e. `"content"`
+    /// The span of the format string, i.e. `"content"`
     span: Span,
     is_diagnostic_namespace_variant: bool,
 }

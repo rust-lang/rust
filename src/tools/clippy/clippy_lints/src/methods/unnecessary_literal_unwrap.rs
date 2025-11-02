@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{MaybePath, is_res_lang_ctor, last_path_segment, path_res, sym};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::{last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::LateContext;
@@ -37,21 +38,23 @@ pub(super) fn check(
     }
 
     let (constructor, call_args, ty) = if let hir::ExprKind::Call(call, call_args) = init.kind {
-        let Some(qpath) = call.qpath_opt() else { return };
+        let Some((qpath, hir_id)) = call.opt_qpath() else {
+            return;
+        };
 
         let args = last_path_segment(qpath).args.map(|args| args.args);
-        let res = cx.qpath_res(qpath, call.hir_id());
+        let res = cx.qpath_res(qpath, hir_id);
 
-        if is_res_lang_ctor(cx, res, hir::LangItem::OptionSome) {
+        if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::OptionSome) {
             (sym::Some, call_args, get_ty_from_args(args, 0))
-        } else if is_res_lang_ctor(cx, res, hir::LangItem::ResultOk) {
+        } else if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultOk) {
             (sym::Ok, call_args, get_ty_from_args(args, 0))
-        } else if is_res_lang_ctor(cx, res, hir::LangItem::ResultErr) {
+        } else if res.ctor_parent(cx).is_lang_item(cx, hir::LangItem::ResultErr) {
             (sym::Err, call_args, get_ty_from_args(args, 1))
         } else {
             return;
         }
-    } else if is_res_lang_ctor(cx, path_res(cx, init), hir::LangItem::OptionNone) {
+    } else if init.res(cx).ctor_parent(cx).is_lang_item(cx, hir::LangItem::OptionNone) {
         let call_args: &[hir::Expr<'_>] = &[];
         (sym::None, call_args, None)
     } else {

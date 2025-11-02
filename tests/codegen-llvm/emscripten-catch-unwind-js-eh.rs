@@ -25,7 +25,7 @@ trait Copy {}
 impl<T> Copy for *mut T {}
 
 #[rustc_intrinsic]
-fn size_of<T>() -> usize {
+const fn size_of<T>() -> usize {
     loop {}
 }
 
@@ -40,7 +40,7 @@ unsafe fn catch_unwind(
 #[no_mangle]
 pub fn ptr_size() -> usize {
     // CHECK: ret [[PTR_SIZE:.*]]
-    size_of::<*mut u8>()
+    const { size_of::<*mut u8>() }
 }
 
 // CHECK-LABEL: @test_catch_unwind

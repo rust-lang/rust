@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 #![feature(autodiff)]

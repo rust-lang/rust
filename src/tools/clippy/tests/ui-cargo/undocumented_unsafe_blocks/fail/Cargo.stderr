@@ -5,10 +5,10 @@ error: module has unnecessary safety comment
   | ^^^^^^^^
   |
 help: consider removing the safety comment
- --> src/main.rs:1:1
+ --> src/main.rs:1:4
   |
 1 | // SAFETY: ...
-  | ^^^^^^^^^^^^^^
+  |    ^^^^^^^
   = note: requested on the command line with `-D clippy::unnecessary-safety-comment`
 
 error: module has unnecessary safety comment
@@ -18,9 +18,9 @@ error: module has unnecessary safety comment
   | ^^^^^^^^
   |
 help: consider removing the safety comment
- --> src/main.rs:4:1
+ --> src/main.rs:4:4
   |
 4 | // SAFETY: ...
-  | ^^^^^^^^^^^^^^
+  |    ^^^^^^^
 
 error: could not compile `undocumented_unsafe_blocks` (bin "undocumented_unsafe_blocks") due to 2 previous errors

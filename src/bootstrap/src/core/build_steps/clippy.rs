@@ -195,11 +195,7 @@ impl Step for Std {
             Kind::Clippy,
         );
 
-        std_cargo(builder, target, &mut cargo);
-
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        std_cargo(builder, target, &mut cargo, &self.crates);
 
         let _guard = builder.msg(
             Kind::Clippy,
@@ -564,6 +560,7 @@ impl Step for CI {
                 "clippy::same_item_push".into(),
                 "clippy::single_char_add_str".into(),
                 "clippy::to_string_in_format_args".into(),
+                "clippy::unconditional_recursion".into(),
             ],
             forbid: vec![],
         };
@@ -591,6 +588,7 @@ impl Step for CI {
                 "clippy::same_item_push".into(),
                 "clippy::single_char_add_str".into(),
                 "clippy::to_string_in_format_args".into(),
+                "clippy::unconditional_recursion".into(),
             ],
             forbid: vec![],
         };

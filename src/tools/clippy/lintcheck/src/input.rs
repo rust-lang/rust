@@ -180,7 +180,7 @@ impl CrateWithSource {
     /// copies a local folder
     #[expect(clippy::too_many_lines)]
     fn download_and_extract(&self) -> Crate {
-        #[allow(clippy::result_large_err)]
+        #[expect(clippy::result_large_err)]
         fn get(path: &str) -> Result<ureq::Response, ureq::Error> {
             const MAX_RETRIES: u8 = 4;
             let mut retries = 0;

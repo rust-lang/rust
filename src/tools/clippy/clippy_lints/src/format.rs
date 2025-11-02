@@ -39,7 +39,6 @@ declare_clippy_lint! {
     "useless use of `format!`"
 }
 
-#[allow(clippy::module_name_repetitions)]
 pub struct UselessFormat {
     format_args: FormatArgsStorage,
 }

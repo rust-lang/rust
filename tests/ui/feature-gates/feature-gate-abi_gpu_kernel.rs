@@ -5,6 +5,7 @@
 //@[AMDGPU] needs-llvm-components: amdgpu
 //@[NVPTX]  compile-flags: --target nvptx64-nvidia-cuda
 //@[NVPTX] needs-llvm-components: nvptx
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
 #![no_core]

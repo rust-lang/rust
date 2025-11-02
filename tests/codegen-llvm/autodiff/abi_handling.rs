@@ -1,7 +1,7 @@
 //@ revisions: debug release
 
-//@[debug] compile-flags: -Zautodiff=Enable -C opt-level=0 -Clto=fat
-//@[release] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=fat
+//@[debug] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=0 -Clto=fat
+//@[release] compile-flags: -Zautodiff=Enable,NoTT -C opt-level=3 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 

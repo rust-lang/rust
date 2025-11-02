@@ -4,10 +4,10 @@
 #![feature(custom_mir, core_intrinsics)]
 
 fn unsized_params() {
-    pub fn f0(_f: dyn FnOnce()) {}
-    pub fn f1(_s: str) {}
-    pub fn f2(_x: i32, _y: [i32]) {}
-    pub fn f3(_p: dyn Send) {}
+    fn f0(_f: dyn FnOnce()) {}
+    fn f1(_s: str) {}
+    fn f2(_x: i32, _y: [i32]) {}
+    fn f3(_p: dyn Send) {}
 
     let c: Box<dyn FnOnce()> = Box::new(|| {});
     f0(*c);

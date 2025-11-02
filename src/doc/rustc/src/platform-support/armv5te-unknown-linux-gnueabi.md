@@ -5,6 +5,9 @@
 This target supports Linux programs with glibc on ARMv5TE CPUs without
 floating-point units.
 
+See [`arm-linux`](arm-linux.md) for information applicable to all Arm Linux
+targets.
+
 ## Target maintainers
 
 There are currently no formally documented target maintainers.

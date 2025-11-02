@@ -1,4 +1,4 @@
-#![allow(clippy::needless_if)]
+#![allow(clippy::needless_ifs)]
 
 fn main() {
     let x = 1;

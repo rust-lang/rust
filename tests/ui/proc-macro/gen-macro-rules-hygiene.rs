@@ -3,6 +3,7 @@
 // `$crate` refers to the crate that defines `macro_rules` and not the outer transparent macro.
 
 //@ proc-macro: gen-macro-rules-hygiene.rs
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate gen_macro_rules_hygiene;

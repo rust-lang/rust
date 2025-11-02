@@ -6,13 +6,13 @@
 
 use hir::FindPathConfig;
 use ide_db::{
-    SnippetCap,
+    MiniCore, SnippetCap,
     imports::{import_assets::ImportPathConfig, insert_use::InsertUseConfig},
 };
 
 use crate::{CompletionFieldsToResolve, snippet::Snippet};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct CompletionConfig<'a> {
     pub enable_postfix_completions: bool,
     pub enable_imports_on_the_fly: bool,
@@ -35,6 +35,7 @@ pub struct CompletionConfig<'a> {
     pub fields_to_resolve: CompletionFieldsToResolve,
     pub exclude_flyimport: Vec<(String, AutoImportExclusionType)>,
     pub exclude_traits: &'a [String],
+    pub minicore: MiniCore<'a>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

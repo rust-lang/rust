@@ -451,23 +451,22 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
-        });
+        let output_is_sized_pred =
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = tupled_inputs_and_output
-            .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(
-                    cx,
-                    goal.predicate.def_id(),
-                    [goal.predicate.self_ty(), inputs],
-                ),
-                term: output.into(),
-            })
-            .upcast(cx);
+        let pred = ty::ProjectionPredicate {
+            projection_term: ty::AliasTerm::new(
+                cx,
+                goal.predicate.def_id(),
+                [goal.predicate.self_ty(), inputs],
+            ),
+            term: output.into(),
+        }
+        .upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,
@@ -497,76 +496,56 @@ where
                 goal_kind,
                 env_region,
             )?;
+        let AsyncCallableRelevantTypes {
+            tupled_inputs_ty,
+            output_coroutine_ty,
+            coroutine_return_ty,
+        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
-            |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_trait_lang_item(SolverTraitLangItem::Sized),
-                    [output_ty],
-                )
-            },
+        let output_is_sized_pred = ty::TraitRef::new(
+            cx,
+            cx.require_trait_lang_item(SolverTraitLangItem::Sized),
+            [output_coroutine_ty],
         );
 
-        let pred = tupled_inputs_and_output_and_coroutine
-            .map_bound(
-                |AsyncCallableRelevantTypes {
-                     tupled_inputs_ty,
-                     output_coroutine_ty,
-                     coroutine_return_ty,
-                 }| {
-                    let (projection_term, term) = if cx
-                        .is_lang_item(goal.predicate.def_id(), SolverLangItem::CallOnceFuture)
-                    {
-                        (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [goal.predicate.self_ty(), tupled_inputs_ty],
-                            ),
-                            output_coroutine_ty.into(),
-                        )
-                    } else if cx
-                        .is_lang_item(goal.predicate.def_id(), SolverLangItem::CallRefFuture)
-                    {
-                        (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [
-                                    I::GenericArg::from(goal.predicate.self_ty()),
-                                    tupled_inputs_ty.into(),
-                                    env_region.into(),
-                                ],
-                            ),
-                            output_coroutine_ty.into(),
-                        )
-                    } else if cx
-                        .is_lang_item(goal.predicate.def_id(), SolverLangItem::AsyncFnOnceOutput)
-                    {
-                        (
-                            ty::AliasTerm::new(
-                                cx,
-                                goal.predicate.def_id(),
-                                [
-                                    I::GenericArg::from(goal.predicate.self_ty()),
-                                    tupled_inputs_ty.into(),
-                                ],
-                            ),
-                            coroutine_return_ty.into(),
-                        )
-                    } else {
-                        panic!(
-                            "no such associated type in `AsyncFn*`: {:?}",
-                            goal.predicate.def_id()
-                        )
-                    };
-                    ty::ProjectionPredicate { projection_term, term }
-                },
-            )
-            .upcast(cx);
+        let (projection_term, term) =
+            if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CallOnceFuture) {
+                (
+                    ty::AliasTerm::new(
+                        cx,
+                        goal.predicate.def_id(),
+                        [goal.predicate.self_ty(), tupled_inputs_ty],
+                    ),
+                    output_coroutine_ty.into(),
+                )
+            } else if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CallRefFuture) {
+                (
+                    ty::AliasTerm::new(
+                        cx,
+                        goal.predicate.def_id(),
+                        [
+                            I::GenericArg::from(goal.predicate.self_ty()),
+                            tupled_inputs_ty.into(),
+                            env_region.into(),
+                        ],
+                    ),
+                    output_coroutine_ty.into(),
+                )
+            } else if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::AsyncFnOnceOutput) {
+                (
+                    ty::AliasTerm::new(
+                        cx,
+                        goal.predicate.def_id(),
+                        [goal.predicate.self_ty(), tupled_inputs_ty],
+                    ),
+                    coroutine_return_ty.into(),
+                )
+            } else {
+                panic!("no such associated type in `AsyncFn*`: {:?}", goal.predicate.def_id())
+            };
+        let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,

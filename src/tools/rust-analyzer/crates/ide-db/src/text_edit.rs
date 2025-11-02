@@ -5,6 +5,7 @@
 //! rust-analyzer.
 
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 pub use span::{TextRange, TextSize};
 use std::cmp::max;
 
@@ -13,14 +14,14 @@ use crate::source_change::ChangeAnnotationId;
 /// `InsertDelete` -- a single "atomic" change to text
 ///
 /// Must not overlap with other `InDel`s
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, UpmapFromRaFixture)]
 pub struct Indel {
     pub insert: String,
     /// Refers to offsets in the original text
     pub delete: TextRange,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, UpmapFromRaFixture)]
 pub struct TextEdit {
     /// Invariant: disjoint and sorted by `delete`.
     indels: Vec<Indel>,

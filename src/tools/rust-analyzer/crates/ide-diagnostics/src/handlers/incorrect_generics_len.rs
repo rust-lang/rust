@@ -207,4 +207,21 @@ impl WithSignals for Player {
         "#,
         );
     }
+
+    #[test]
+    fn enum_type_alias_default_param() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+
+struct Error;
+
+type Result<T, E = Error> = core::result::Result<T, E>;
+
+fn main() {
+    let _ = Result::<()>::Ok(());
+}
+        "#,
+        );
+    }
 }

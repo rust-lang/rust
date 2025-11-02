@@ -3,7 +3,7 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::bug;
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -492,14 +492,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         _ => Err(Determinacy::Determined),
                     },
                     Scope::Module(module, derive_fallback_lint_id) => {
-                        // FIXME: use `finalize_scope` here.
                         let (adjusted_parent_scope, adjusted_finalize) =
                             if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
-                                (parent_scope, finalize)
+                                (parent_scope, finalize_scope!())
                             } else {
                                 (
                                     &ParentScope { module, ..*parent_scope },
-                                    finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                                    finalize_scope!().map(|f| Finalize { used: Used::Scope, ..f }),
                                 )
                             };
                         let binding = this.reborrow().resolve_ident_in_module_unadjusted(
@@ -557,8 +556,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => Err(Determinacy::Determined),
                     },
                     Scope::ExternPreludeItems => {
-                        // FIXME: use `finalize_scope` here.
-                        match this.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
+                        match this
+                            .reborrow()
+                            .extern_prelude_get_item(ident, finalize_scope!().is_some())
+                        {
                             Some(binding) => {
                                 extern_prelude_item_binding = Some(binding);
                                 Ok((binding, Flags::empty()))
@@ -676,14 +677,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         innermost_binding,
                                         binding,
                                     )
-                                    || flags.contains(Flags::MACRO_RULES)
-                                        && innermost_flags.contains(Flags::MODULE)
-                                        && !this.disambiguate_macro_rules_vs_modularized(
-                                            binding,
-                                            innermost_binding,
-                                        )
                                 {
                                     Some(AmbiguityKind::MacroRulesVsModularized)
+                                } else if flags.contains(Flags::MACRO_RULES)
+                                    && innermost_flags.contains(Flags::MODULE)
+                                {
+                                    // should be impossible because of visitation order in
+                                    // visit_scopes
+                                    //
+                                    // we visit all macro_rules scopes (e.g. textual scope macros)
+                                    // before we visit any modules (e.g. path-based scope macros)
+                                    span_bug!(
+                                        orig_ident.span,
+                                        "ambiguous scoped macro resolutions with path-based \
+                                        scope resolution as first candidate"
+                                    )
                                 } else if innermost_binding.is_glob_import() {
                                     Some(AmbiguityKind::GlobVsOuter)
                                 } else if innermost_binding
@@ -883,7 +891,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
             .resolution_or_default(module, key)
-            .try_borrow_mut()
+            .try_borrow_mut_unchecked()
             .map_err(|_| (Determined, Weak::No))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
@@ -900,6 +908,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 binding,
                 if resolution.non_glob_binding.is_some() { resolution.glob_binding } else { None },
                 parent_scope,
+                module,
                 finalize,
                 shadowing,
             );
@@ -1024,6 +1033,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         binding: Option<NameBinding<'ra>>,
         shadowed_glob: Option<NameBinding<'ra>>,
         parent_scope: &ParentScope<'ra>,
+        module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
@@ -1073,6 +1083,37 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && matches!(import.kind, ImportKind::MacroExport)
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+        }
+
+        // If we encounter a re-export for a type with private fields, it will not be able to
+        // be constructed through this re-export. We track that case here to expand later
+        // privacy errors with appropriate information.
+        if let Res::Def(_, def_id) = binding.res() {
+            let struct_ctor = match def_id.as_local() {
+                Some(def_id) => self.struct_constructors.get(&def_id).cloned(),
+                None => {
+                    let ctor = self.cstore().ctor_untracked(def_id);
+                    ctor.map(|(ctor_kind, ctor_def_id)| {
+                        let ctor_res = Res::Def(
+                            DefKind::Ctor(rustc_hir::def::CtorOf::Struct, ctor_kind),
+                            ctor_def_id,
+                        );
+                        let ctor_vis = self.tcx.visibility(ctor_def_id);
+                        let field_visibilities = self
+                            .tcx
+                            .associated_item_def_ids(def_id)
+                            .iter()
+                            .map(|field_id| self.tcx.visibility(field_id))
+                            .collect();
+                        (ctor_res, ctor_vis, field_visibilities)
+                    })
+                }
+            };
+            if let Some((_, _, fields)) = struct_ctor
+                && fields.iter().any(|vis| !self.is_accessible_from(*vis, module))
+            {
+                self.inaccessible_ctor_reexport.insert(path_span, binding.span);
+            }
         }
 
         self.record_use(ident, binding, used);

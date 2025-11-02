@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/invalid-sugg-for-derive-macro-issue-136343.rs:6:10
+  --> $DIR/invalid-sugg-for-derive-macro-issue-136343.rs:7:10
    |
 LL | #[derive(Sample)]
    |          ^^^^^^

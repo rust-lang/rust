@@ -200,10 +200,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
         let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
-            Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
+            Some(bx.tcx().codegen_instance_attrs(fx.instance.def))
         } else {
             None
         };
+        let fn_attrs = fn_attrs.as_deref();
 
         if !fn_abi.can_unwind {
             unwind = mir::UnwindAction::Unreachable;
@@ -1320,6 +1321,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             for statement in &data.statements {
                 self.codegen_statement(bx, statement);
             }
+            self.codegen_stmt_debuginfos(bx, &data.after_last_stmt_debuginfos);
 
             let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
             if let MergingSucc::False = merging_succ {
@@ -1626,6 +1628,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
+                    None,
                 );
                 // ...and then load it with the ABI type.
                 llval = load_cast(bx, cast, llscratch, scratch_align);

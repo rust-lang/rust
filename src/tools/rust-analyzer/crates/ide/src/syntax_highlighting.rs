@@ -1,7 +1,6 @@
 pub(crate) mod tags;
 
 mod highlights;
-mod injector;
 
 mod escape;
 mod format;
@@ -16,7 +15,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, base_db::salsa};
+use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -44,8 +43,8 @@ pub struct HlRange {
     pub binding_hash: Option<u64>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct HighlightConfig {
+#[derive(Copy, Clone, Debug)]
+pub struct HighlightConfig<'a> {
     /// Whether to highlight strings
     pub strings: bool,
     /// Whether to highlight comments
@@ -64,6 +63,7 @@ pub struct HighlightConfig {
     pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
+    pub minicore: MiniCore<'a>,
 }
 
 // Feature: Semantic Syntax Highlighting
@@ -116,7 +116,7 @@ pub struct HighlightConfig {
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
 // |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operatos `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
 //
 // - For punctuation:
 //
@@ -191,7 +191,7 @@ pub struct HighlightConfig {
 // ![Semantic Syntax Highlighting](https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png)
 pub(crate) fn highlight(
     db: &RootDatabase,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
@@ -226,7 +226,7 @@ pub(crate) fn highlight(
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     InRealFile { file_id, value: root }: InRealFile<&SyntaxNode>,
     krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
@@ -437,7 +437,7 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = salsa::attach(sema.db, || {
+                let hl = hir::attach_db(sema.db, || {
                     highlight::name_like(
                         sema,
                         krate,
@@ -455,7 +455,7 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => salsa::attach(sema.db, || {
+            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
             }),
@@ -491,7 +491,7 @@ fn traverse(
 fn string_injections(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: EditionedFileId,
     krate: Option<hir::Crate>,
     token: SyntaxToken,
@@ -588,7 +588,7 @@ fn descend_token(
     })
 }
 
-fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
+fn filter_by_config(highlight: &mut Highlight, config: &HighlightConfig<'_>) -> bool {
     match &mut highlight.tag {
         HlTag::StringLiteral if !config.strings => return false,
         HlTag::Comment if !config.comments => return false,

@@ -180,6 +180,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let llfn = cx.get_fn(instance);
 
     let mut mir = tcx.instance_mir(instance.def);
+    // Note that the ABI logic has deduced facts about the functions' parameters based on the MIR we
+    // got here (`deduce_param_attrs`). That means we can *not* apply arbitrary further MIR
+    // transforms as that may invalidate those deduced facts!
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
@@ -317,6 +320,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+/// Replace `clone` calls that come from `use` statements with direct copies if possible.
 // FIXME: Move this function to mir::transform when post-mono MIR passes land.
 fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,

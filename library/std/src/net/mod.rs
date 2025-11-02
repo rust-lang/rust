@@ -1,7 +1,8 @@
 //! Networking primitives for TCP/UDP communication.
 //!
 //! This module provides networking functionality for the Transmission Control and User
-//! Datagram Protocols, as well as types for IP and socket addresses.
+//! Datagram Protocols, as well as types for IP and socket addresses and functions related
+//! to network properties.
 //!
 //! # Organization
 //!
@@ -24,6 +25,8 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::net::AddrParseError;
 
+#[unstable(feature = "gethostname", issue = "135142")]
+pub use self::hostname::hostname;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -35,6 +38,7 @@ pub use self::tcp::{Incoming, TcpListener, TcpStream};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
 
+mod hostname;
 mod ip_addr;
 mod socket_addr;
 mod tcp;

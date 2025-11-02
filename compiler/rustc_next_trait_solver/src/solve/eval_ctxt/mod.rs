@@ -194,7 +194,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn evaluate_root_goal(
         &self,
         goal: Goal<I, I::Predicate>,
@@ -206,6 +206,7 @@ where
         })
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn root_goal_may_hold_opaque_types_jank(
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
@@ -296,9 +297,6 @@ where
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.
             GoalSource::TypeRelating => PathKind::Inductive,
-            // Instantiating a higher ranked goal can never cause the recursion to be
-            // guarded and is therefore unproductive.
-            GoalSource::InstantiateHigherRanked => PathKind::Inductive,
             // These goal sources are likely unproductive and can be changed to
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
@@ -357,7 +355,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
-        for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
+        for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
             // with the same key after resolving contained inference variables.
@@ -467,7 +465,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, opaque_types);
+        let (orig_values, canonical_goal) = canonicalize_goal(self.delegate, goal, &opaque_types);
         let canonical_result = self.search_graph.evaluate_goal(
             self.cx(),
             canonical_goal,
@@ -548,7 +546,6 @@ where
                             .canonical
                             .value
                             .predefined_opaques_in_body
-                            .opaque_types
                             .len(),
                         stalled_vars,
                         sub_roots,
@@ -567,94 +564,75 @@ where
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        if let Some(kind) = kind.no_bound_vars() {
-            match kind {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                    self.compute_host_effect_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
-                    self.compute_projection_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
-                    self.compute_type_outlives_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(predicate)) => {
-                    self.compute_region_outlives_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
-                    self.compute_unstable_feature_goal(param_env, symbol)
-                }
-                ty::PredicateKind::Subtype(predicate) => {
-                    self.compute_subtype_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::Coerce(predicate) => {
-                    self.compute_coerce_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::DynCompatible(trait_def_id) => {
-                    self.compute_dyn_compatible_goal(trait_def_id)
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
-                    self.compute_well_formed_goal(Goal { param_env, predicate: term })
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
-                    self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
-                }
-                ty::PredicateKind::ConstEquate(_, _) => {
-                    panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
-                }
-                ty::PredicateKind::NormalizesTo(predicate) => {
-                    self.compute_normalizes_to_goal(Goal { param_env, predicate })
-                }
-                ty::PredicateKind::AliasRelate(lhs, rhs, direction) => self
-                    .compute_alias_relate_goal(Goal {
-                        param_env,
-                        predicate: (lhs, rhs, direction),
-                    }),
-                ty::PredicateKind::Ambiguous => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
+        self.enter_forall(kind, |ecx, kind| match kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
+                ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
             }
-        } else {
-            self.enter_forall(kind, |ecx, kind| {
-                let goal = goal.with(ecx.cx(), ty::Binder::dummy(kind));
-                ecx.add_goal(GoalSource::InstantiateHigherRanked, goal);
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })
-        }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                ecx.compute_host_effect_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
+                ecx.compute_projection_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(predicate)) => {
+                ecx.compute_type_outlives_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(predicate)) => {
+                ecx.compute_region_outlives_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                ecx.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(symbol)) => {
+                ecx.compute_unstable_feature_goal(param_env, symbol)
+            }
+            ty::PredicateKind::Subtype(predicate) => {
+                ecx.compute_subtype_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::Coerce(predicate) => {
+                ecx.compute_coerce_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::DynCompatible(trait_def_id) => {
+                ecx.compute_dyn_compatible_goal(trait_def_id)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                ecx.compute_well_formed_goal(Goal { param_env, predicate: term })
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
+                ecx.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
+            }
+            ty::PredicateKind::ConstEquate(_, _) => {
+                panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
+            }
+            ty::PredicateKind::NormalizesTo(predicate) => {
+                ecx.compute_normalizes_to_goal(Goal { param_env, predicate })
+            }
+            ty::PredicateKind::AliasRelate(lhs, rhs, direction) => {
+                ecx.compute_alias_relate_goal(Goal { param_env, predicate: (lhs, rhs, direction) })
+            }
+            ty::PredicateKind::Ambiguous => {
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+        })
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
     // the certainty of all the goals.
     #[instrument(level = "trace", skip(self))]
     pub(super) fn try_evaluate_added_goals(&mut self) -> Result<Certainty, NoSolution> {
-        let mut response = Ok(Certainty::overflow(false));
         for _ in 0..FIXPOINT_STEP_LIMIT {
-            // FIXME: This match is a bit ugly, it might be nice to change the inspect
-            // stuff to use a closure instead. which should hopefully simplify this a bit.
             match self.evaluate_added_goals_step() {
-                Ok(Some(cert)) => {
-                    response = Ok(cert);
-                    break;
-                }
                 Ok(None) => {}
+                Ok(Some(cert)) => return Ok(cert),
                 Err(NoSolution) => {
-                    response = Err(NoSolution);
-                    break;
+                    self.tainted = Err(NoSolution);
+                    return Err(NoSolution);
                 }
             }
         }
 
-        if response.is_err() {
-            self.tainted = Err(NoSolution);
-        }
-
-        response
+        debug!("try_evaluate_added_goals: encountered overflow");
+        Ok(Certainty::overflow(false))
     }
 
     /// Iterate over all added goals: returning `Ok(Some(_))` in case we can stop rerunning.
@@ -1002,7 +980,7 @@ where
         }
     }
 
-    /// This sohuld only be used when we're either instantiating a previously
+    /// This should only be used when we're either instantiating a previously
     /// unconstrained "return value" or when we're sure that all aliases in
     /// the types are rigid.
     #[instrument(level = "trace", skip(self, param_env), ret)]
@@ -1330,36 +1308,6 @@ where
             },
         );
 
-        // HACK: We bail with overflow if the response would have too many non-region
-        // inference variables. This tends to only happen if we encounter a lot of
-        // ambiguous alias types which get replaced with fresh inference variables
-        // during generalization. This prevents hangs caused by an exponential blowup,
-        // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
-        match self.current_goal_kind {
-            // We don't do so for `NormalizesTo` goals as we erased the expected term and
-            // bailing with overflow here would prevent us from detecting a type-mismatch,
-            // causing a coherence error in diesel, see #131969. We still bail with overflow
-            // when later returning from the parent AliasRelate goal.
-            CurrentGoalKind::NormalizesTo => {}
-            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
-                let num_non_region_vars = canonical
-                    .variables
-                    .iter()
-                    .filter(|c| !c.is_region() && c.is_existential())
-                    .count();
-                if num_non_region_vars > self.cx().recursion_limit() {
-                    debug!(?num_non_region_vars, "too many inference variables -> overflow");
-                    return Ok(self.make_ambiguous_response_no_constraints(
-                        MaybeCause::Overflow {
-                            suggest_increasing_limit: true,
-                            keep_constraints: false,
-                        },
-                        OpaqueTypesJank::AllGood,
-                    ));
-                }
-            }
-        }
-
         Ok(canonical)
     }
 
@@ -1557,7 +1505,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(delegate, (goal, opaque_types));
 
-    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, opaque_types);
+    let (orig_values, canonical_goal) = canonicalize_goal(delegate, goal, &opaque_types);
 
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);

@@ -1,14 +1,11 @@
 //! Automatic migration of Rust 2021 patterns to a form valid in both Editions 2021 and 2024.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::MultiSpan;
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, pluralize};
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
 use rustc_lint as lint;
 use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, TyCtxt};
 use rustc_span::{Ident, Span};
-
-use crate::errors::{Rust2024IncompatiblePat, Rust2024IncompatiblePatSugg};
-use crate::fluent_generated as fluent;
 
 /// For patterns flagged for migration during HIR typeck, this handles constructing and emitting
 /// a diagnostic suggestion.
@@ -49,39 +46,90 @@ impl<'a> PatMigration<'a> {
         for (span, label) in self.info.primary_labels.iter() {
             spans.push_span_label(*span, label.clone());
         }
-        let sugg = Rust2024IncompatiblePatSugg {
-            suggest_eliding_modes: self.info.suggest_eliding_modes,
-            suggestion: self.suggestion,
-            ref_pattern_count: self.ref_pattern_count,
-            binding_mode_count: self.binding_mode_count,
-            default_mode_labels: self.default_mode_labels,
-        };
         // If a relevant span is from at least edition 2024, this is a hard error.
         let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
+        let primary_message = self.primary_message(is_hard_error);
         if is_hard_error {
-            let mut err =
-                tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
-            if let Some(info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
-                // provide the same reference link as the lint
-                err.note(format!("for more information, see {}", info.reference));
-            }
-            err.arg("bad_modifiers", self.info.bad_modifiers);
-            err.arg("bad_ref_pats", self.info.bad_ref_pats);
-            err.arg("is_hard_error", true);
-            err.subdiagnostic(sugg);
+            let mut err = tcx.dcx().struct_span_err(spans, primary_message);
+            err.note("for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>");
+            self.format_subdiagnostics(&mut err);
             err.emit();
         } else {
-            tcx.emit_node_span_lint(
-                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
-                pat_id,
-                spans,
-                Rust2024IncompatiblePat {
-                    sugg,
-                    bad_modifiers: self.info.bad_modifiers,
-                    bad_ref_pats: self.info.bad_ref_pats,
-                    is_hard_error,
-                },
-            );
+            tcx.node_span_lint(lint::builtin::RUST_2024_INCOMPATIBLE_PAT, pat_id, spans, |diag| {
+                diag.primary_message(primary_message);
+                self.format_subdiagnostics(diag);
+            });
+        }
+    }
+
+    fn primary_message(&self, is_hard_error: bool) -> String {
+        let verb1 = match (self.info.bad_mut_modifiers, self.info.bad_ref_modifiers) {
+            (true, true) => "write explicit binding modifiers",
+            (true, false) => "mutably bind by value",
+            (false, true) => "explicitly borrow",
+            (false, false) => "explicitly dereference",
+        };
+        let or_verb2 = match (
+            self.info.bad_mut_modifiers,
+            self.info.bad_ref_modifiers,
+            self.info.bad_ref_pats,
+        ) {
+            // We only need two verb phrases if mentioning both modifiers and reference patterns.
+            (false, false, _) | (_, _, false) => "",
+            // If mentioning `mut`, we don't have an "explicitly" yet.
+            (true, _, true) => " or explicitly dereference",
+            // If mentioning `ref`/`ref mut` but not `mut`, we already have an "explicitly".
+            (false, true, true) => " or dereference",
+        };
+        let in_rust_2024 = if is_hard_error { "" } else { " in Rust 2024" };
+        format!("cannot {verb1}{or_verb2} within an implicitly-borrowing pattern{in_rust_2024}")
+    }
+
+    fn format_subdiagnostics(self, diag: &mut Diag<'_, impl EmissionGuarantee>) {
+        // Format and emit explanatory notes about default binding modes. Reversing the spans' order
+        // means if we have nested spans, the innermost ones will be visited first.
+        for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
+            // Don't point to a macro call site.
+            if !span.from_expansion() {
+                let note_msg = "matching on a reference type with a non-reference pattern implicitly borrows the contents";
+                let label_msg = format!(
+                    "this non-reference pattern matches on a reference type `{}_`",
+                    def_br_mutbl.ref_prefix_str()
+                );
+                let mut label = MultiSpan::from(span);
+                label.push_span_label(span, label_msg);
+                diag.span_note(label, note_msg);
+            }
+        }
+
+        // Format and emit the suggestion.
+        let applicability =
+            if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+        let plural_modes = pluralize!(self.binding_mode_count);
+        let msg = if self.info.suggest_eliding_modes {
+            format!("remove the unnecessary binding modifier{plural_modes}")
+        } else {
+            let match_on_these_references = if self.ref_pattern_count == 1 {
+                "match on the reference with a reference pattern"
+            } else {
+                "match on these references with reference patterns"
+            };
+            let and_explain_modes = if self.binding_mode_count > 0 {
+                let a = if self.binding_mode_count == 1 { "a " } else { "" };
+                format!(" and borrow explicitly using {a}variable binding mode{plural_modes}")
+            } else {
+                " to avoid implicitly borrowing".to_owned()
+            };
+            format!("{match_on_these_references}{and_explain_modes}")
+        };
+        // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
+        debug_assert!(!self.suggestion.is_empty());
+        if !self.suggestion.is_empty() {
+            diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
         }
     }
 
@@ -164,7 +212,7 @@ impl<'a> PatMigration<'a> {
         }
         if !self.info.suggest_eliding_modes
             && explicit_ba.0 == ByRef::No
-            && let ByRef::Yes(mutbl) = mode.0
+            && let ByRef::Yes(_, mutbl) = mode.0
         {
             // If we can't fix the pattern by eliding modifiers, we'll need to make the pattern
             // fully explicit. i.e. we'll need to suggest reference patterns for this.

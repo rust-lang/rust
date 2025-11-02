@@ -18,6 +18,7 @@
 
 //@ build-pass
 //@ needs-asm-support
+//@ ignore-backends: gcc
 
 use std::arch::global_asm;
 

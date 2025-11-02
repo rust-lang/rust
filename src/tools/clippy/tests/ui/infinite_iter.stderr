@@ -30,8 +30,8 @@ LL | |
 LL | |         .rev()
 LL | |         .cycle()
 LL | |         .map(|x| x + 1_u32)
-LL | |         .for_each(|x| println!("{}", x));
-   | |________________________________________^
+LL | |         .for_each(|x| println!("{x}"));
+   | |______________________________________^
 
 error: infinite iteration detected
   --> tests/ui/infinite_iter.rs:37:5

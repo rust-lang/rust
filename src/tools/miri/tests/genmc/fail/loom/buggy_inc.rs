@@ -42,9 +42,6 @@ impl BuggyInc {
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     unsafe {
         static BUGGY_INC: BuggyInc = BuggyInc::new();
-        // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-        BUGGY_INC.num.store(0, Relaxed);
-
         let ids = [
             spawn_pthread_closure(|| {
                 BUGGY_INC.inc();

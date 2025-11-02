@@ -631,8 +631,8 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::from_octets([13u8, 12u8, 11u8, 10u8]);
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
-    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_from", since = "1.91.0")]
+    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
@@ -1478,8 +1478,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_from", since = "1.91.0")]
+    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
@@ -2043,8 +2043,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ip_from", since = "1.91.0")]
+    #[rustc_const_stable(feature = "ip_from", since = "1.91.0")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {

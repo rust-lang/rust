@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
-use cc::windows_registry;
+use find_msvc_tools;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
@@ -17,7 +17,6 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
@@ -52,8 +51,9 @@ pub(crate) fn get_linker<'a>(
     flavor: LinkerFlavor,
     self_contained: bool,
     target_cpu: &'a str,
+    codegen_backend: &'static str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
+    let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -117,7 +117,6 @@ pub(crate) fn get_linker<'a>(
     if sess.target.is_like_msvc
         && let Some(ref tool) = msvc_tool
     {
-        cmd.args(tool.args());
         for (k, v) in tool.env() {
             if k == "PATH" {
                 new_path.extend(env::split_paths(v));
@@ -155,6 +154,7 @@ pub(crate) fn get_linker<'a>(
             is_ld: cc == Cc::No,
             is_gnu: flavor.is_gnu(),
             uses_lld: flavor.uses_lld(),
+            codegen_backend,
         }) as Box<dyn Linker>,
         LinkerFlavor::Msvc(..) => Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
@@ -368,6 +368,7 @@ struct GccLinker<'a> {
     is_ld: bool,
     is_gnu: bool,
     uses_lld: bool,
+    codegen_backend: &'static str,
 }
 
 impl<'a> GccLinker<'a> {
@@ -424,9 +425,15 @@ impl<'a> GccLinker<'a> {
         if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
             self.link_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
+        let prefix = if self.codegen_backend == "gcc" {
+            // The GCC linker plugin requires a leading dash.
+            "-"
+        } else {
+            ""
+        };
         self.link_args(&[
-            &format!("-plugin-opt={opt_level}"),
-            &format!("-plugin-opt=mcpu={}", self.target_cpu),
+            &format!("-plugin-opt={prefix}{opt_level}"),
+            &format!("-plugin-opt={prefix}mcpu={}", self.target_cpu),
         ]);
     }
 
@@ -845,6 +852,11 @@ impl<'a> Linker for GccLinker<'a> {
                 self.sess.dcx().emit_fatal(errors::VersionScriptWriteFailure { error });
             }
             self.link_arg("--dynamic-list").link_arg(path);
+        } else if self.sess.target.is_like_wasm {
+            self.link_arg("--no-export-dynamic");
+            for (sym, _) in symbols {
+                self.link_arg("--export").link_arg(sym);
+            }
         } else {
             // Write an LD version script
             let res: io::Result<()> = try {
@@ -1311,37 +1323,7 @@ struct WasmLd<'a> {
 
 impl<'a> WasmLd<'a> {
     fn new(cmd: Command, sess: &'a Session) -> WasmLd<'a> {
-        // If the atomics feature is enabled for wasm then we need a whole bunch
-        // of flags:
-        //
-        // * `--shared-memory` - the link won't even succeed without this, flags
-        //   the one linear memory as `shared`
-        //
-        // * `--max-memory=1G` - when specifying a shared memory this must also
-        //   be specified. We conservatively choose 1GB but users should be able
-        //   to override this with `-C link-arg`.
-        //
-        // * `--import-memory` - it doesn't make much sense for memory to be
-        //   exported in a threaded module because typically you're
-        //   sharing memory and instantiating the module multiple times. As a
-        //   result if it were exported then we'd just have no sharing.
-        //
-        // On wasm32-unknown-unknown, we also export symbols for glue code to use:
-        //    * `--export=*tls*` - when `#[thread_local]` symbols are used these
-        //      symbols are how the TLS segments are initialized and configured.
-        let mut wasm_ld = WasmLd { cmd, sess };
-        if sess.target_features.contains(&sym::atomics) {
-            wasm_ld.link_args(&["--shared-memory", "--max-memory=1073741824", "--import-memory"]);
-            if sess.target.os == "unknown" || sess.target.os == "none" {
-                wasm_ld.link_args(&[
-                    "--export=__wasm_init_tls",
-                    "--export=__tls_size",
-                    "--export=__tls_align",
-                    "--export=__tls_base",
-                ]);
-            }
-        }
-        wasm_ld
+        WasmLd { cmd, sess }
     }
 }
 

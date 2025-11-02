@@ -21,7 +21,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
 
 /// the pass mode used for aggregates in arg and ret position
 fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    let align_bytes = arg.layout.align.abi.bytes();
+    let align_bytes = arg.layout.align.bytes();
     let size = arg.layout.size;
 
     let reg = match align_bytes {
@@ -60,7 +60,7 @@ where
     //     "`extern \"ptx-kernel\"` doesn't allow passing types other than primitives and structs"
     // );
 
-    let align_bytes = arg.layout.align.abi.bytes();
+    let align_bytes = arg.layout.align.bytes();
 
     let unit = match align_bytes {
         1 => Reg::i8(),

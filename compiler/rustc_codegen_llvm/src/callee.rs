@@ -10,8 +10,7 @@ use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
 
 use crate::context::CodegenCx;
-use crate::llvm;
-use crate::value::Value;
+use crate::llvm::{self, Value};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

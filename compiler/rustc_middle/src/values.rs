@@ -63,7 +63,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         };
 
         let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-            std::iter::repeat(err).take(arity),
+            std::iter::repeat_n(err, arity),
             err,
             false,
             rustc_hir::Safety::Safe,

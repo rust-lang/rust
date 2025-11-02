@@ -18,7 +18,7 @@ help: the conflicting tag <TAG> was created here, in the initial state Reserved
    |
 LL |     let ret = unsafe { &mut (*xraw).1 };
    |                        ^^^^^^^^^^^^^^
-help: the conflicting tag <TAG> later transitioned to Active due to a child write access at offsets [0x4..0x8]
+help: the conflicting tag <TAG> later transitioned to Unique due to a child write access at offsets [0x4..0x8]
   --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
    |
 LL |     *ret = *ret; // activate

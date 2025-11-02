@@ -25,7 +25,7 @@ fn set_discriminant(ptr: &mut Option<NonZero<i32>>) {
     }
 }
 
-pub fn main() {
+fn main() {
     let mut v = None;
     set_discriminant(&mut v);
 }

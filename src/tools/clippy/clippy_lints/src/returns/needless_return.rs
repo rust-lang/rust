@@ -7,7 +7,7 @@ use clippy_utils::{
 use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, QPath, StmtKind};
+use rustc_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, StmtKind};
 use rustc_lint::{LateContext, Level, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{BytePos, Pos, Span};
@@ -134,7 +134,8 @@ fn check_final_expr<'tcx>(
             let replacement = if let Some(inner_expr) = inner {
                 // if desugar of `do yeet`, don't lint
                 if let ExprKind::Call(path_expr, [_]) = inner_expr.kind
-                    && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, ..)) = path_expr.kind
+                    && let ExprKind::Path(qpath) = path_expr.kind
+                    && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitFromYeet)
                 {
                     return;
                 }

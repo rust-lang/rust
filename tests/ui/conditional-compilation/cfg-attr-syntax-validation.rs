@@ -22,10 +22,16 @@ struct S3;
 //~| NOTE for more information, visit
 struct S4;
 
-#[cfg("str")] //~ ERROR `cfg` predicate key must be an identifier
+#[cfg("str")]
+//~^ ERROR malformed `cfg` attribute input
+//~| NOTE expected a valid identifier here
+//~| NOTE for more information, visit
 struct S5;
 
-#[cfg(a::b)] //~ ERROR `cfg` predicate key must be an identifier
+#[cfg(a::b)]
+//~^ ERROR malformed `cfg` attribute input
+//~| NOTE expected a valid identifier here
+//~| NOTE for more information, visit
 struct S6;
 
 #[cfg(a())] //~ ERROR invalid predicate `a`

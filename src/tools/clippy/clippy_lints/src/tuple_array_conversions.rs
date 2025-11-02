@@ -1,8 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{is_from_proc_macro, path_to_local};
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, Node, PatKind};
@@ -152,7 +153,7 @@ fn all_bindings_are_for_conv<'tcx>(
     locals: &[&Expr<'_>],
     kind: ToType,
 ) -> bool {
-    let Some(locals) = locals.iter().map(|e| path_to_local(e)).collect::<Option<Vec<_>>>() else {
+    let Some(locals) = locals.iter().map(|e| e.res_local_id()).collect::<Option<Vec<_>>>() else {
         return false;
     };
     let local_parents = locals.iter().map(|l| cx.tcx.parent_hir_node(*l)).collect::<Vec<_>>();

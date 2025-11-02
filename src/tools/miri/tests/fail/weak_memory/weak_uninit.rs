@@ -34,7 +34,7 @@ fn relaxed() {
     j2.join().unwrap();
 }
 
-pub fn main() {
+fn main() {
     // If we try often enough, we should hit UB.
     for _ in 0..100 {
         relaxed();

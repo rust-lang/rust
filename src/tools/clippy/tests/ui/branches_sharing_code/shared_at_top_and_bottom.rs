@@ -1,6 +1,5 @@
 #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
 #![allow(dead_code)]
-#![allow(clippy::uninlined_format_args)]
 //@no-rustfix
 // branches_sharing_code at the top and bottom of the if blocks
 
@@ -70,7 +69,7 @@ fn complexer_example() {
         let b = 0xffff00ff;
         let e_id = gen_id(a, b);
 
-        println!("From the a `{}` to the b `{}`", a, b);
+        println!("From the a `{a}` to the b `{b}`");
 
         let pack = DataPack {
             id: e_id,
@@ -83,7 +82,7 @@ fn complexer_example() {
         let b = 0xffff00ff;
         let e_id = gen_id(a, b);
 
-        println!("The new ID is '{}'", e_id);
+        println!("The new ID is '{e_id}'");
 
         let pack = DataPack {
             id: e_id,

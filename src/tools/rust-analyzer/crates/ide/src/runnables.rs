@@ -8,15 +8,17 @@ use hir::{
     sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
+use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
-    base_db::{RootQueryDb, salsa},
+    base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
 };
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use smallvec::SmallVec;
 use span::{Edition, TextSize};
 use stdx::format_to;
@@ -28,7 +30,7 @@ use syntax::{
 
 use crate::{FileId, NavigationTarget, ToNav, TryToNav, references};
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, UpmapFromRaFixture)]
 pub struct Runnable {
     pub use_name_in_title: bool,
     pub nav: NavigationTarget,
@@ -36,6 +38,8 @@ pub struct Runnable {
     pub cfg: Option<CfgExpr>,
     pub update_test: UpdateTest,
 }
+
+impl_empty_upmap_from_ra_fixture!(RunnableKind, UpdateTest);
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum TestId {
@@ -413,7 +417,7 @@ pub(crate) fn runnable_impl(
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
-    let params = salsa::attach(sema.db, || {
+    let params = hir::attach_db(sema.db, || {
         if ty_args.peek().is_some() {
             format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
         } else {
@@ -522,7 +526,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
             let mut ty_args = ty.generic_parameters(db, display_target).peekable();
             format_to!(path, "{}", name.display(db, edition));
             if ty_args.peek().is_some() {
-                salsa::attach(db, || {
+                hir::attach_db(db, || {
                     format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
                 });
             }

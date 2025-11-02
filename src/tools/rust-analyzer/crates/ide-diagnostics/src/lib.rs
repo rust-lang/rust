@@ -253,7 +253,7 @@ impl DiagnosticsConfig {
             style_lints: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                granularity: ImportGranularity::Preserve,
+                granularity: ImportGranularity::Item,
                 enforce_granularity: false,
                 prefix_kind: PrefixKind::Plain,
                 group: false,

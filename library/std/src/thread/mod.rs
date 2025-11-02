@@ -183,7 +183,9 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
-pub(crate) use current::{current_id, current_or_unnamed, current_os_id, drop_current};
+#[unstable(feature = "current_thread_id", issue = "147194")]
+pub use current::current_id;
+pub(crate) use current::{current_or_unnamed, current_os_id, drop_current};
 use current::{set_current, try_with_current};
 
 mod spawnhook;
@@ -205,6 +207,7 @@ pub use self::local::{AccessError, LocalKey};
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals", issue = "none")]
 pub mod local_impl {
+    pub use super::local::thread_local_process_attrs;
     pub use crate::sys::thread_local::*;
 }
 
@@ -617,9 +620,8 @@ impl Builder {
 /// (It is the responsibility of the program to either eventually join threads it
 /// creates or detach them; otherwise, a resource leak will result.)
 ///
-/// This call will create a thread using default parameters of [`Builder`], if you
-/// want to specify the stack size or the name of the thread, use this API
-/// instead.
+/// This function creates a thread with the default parameters of [`Builder`].
+/// To specify the new thread's stack size or the name, use [`Builder::spawn`].
 ///
 /// As you can see in the signature of `spawn` there are two constraints on
 /// both the closure given to `spawn` and its return value, let's explain them:

@@ -9,6 +9,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
 };
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use smallvec::SmallVec;
 use stdx::{format_to, impl_from, never};
 use syntax::{Edition, SmolStr, TextRange, TextSize, format_smolstr};
@@ -23,7 +24,7 @@ use crate::{
 ///
 /// It is basically a POD with various properties. To construct a [`CompletionItem`],
 /// use [`Builder::new`] method and the [`Builder`] struct.
-#[derive(Clone)]
+#[derive(Clone, UpmapFromRaFixture)]
 #[non_exhaustive]
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.

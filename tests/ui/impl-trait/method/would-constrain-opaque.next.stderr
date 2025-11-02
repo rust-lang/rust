@@ -1,0 +1,27 @@
+error[E0599]: no method named `method` found for reference `&_` in the current scope
+  --> $DIR/would-constrain-opaque.rs:28:11
+   |
+LL |         x.method();
+   |           ^^^^^^ method not found in `&_`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use Trait;
+   |
+
+error[E0599]: no method named `method` found for reference `&_` in the current scope
+  --> $DIR/would-constrain-opaque.rs:30:11
+   |
+LL |         x.method();
+   |           ^^^^^^ method not found in `&_`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use Trait;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

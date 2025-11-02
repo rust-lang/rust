@@ -210,8 +210,7 @@ pub(super) fn check_meta_variables(
     guar.map_or(Ok(()), Err)
 }
 
-/// Checks `lhs` as part of the LHS of a macro definition, extends `binders` with new binders, and
-/// sets `valid` to false in case of errors.
+/// Checks `lhs` as part of the LHS of a macro definition.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -306,8 +305,7 @@ fn get_binder_info<'a>(
     binders.get(&name).or_else(|| macros.find_map(|state| state.binders.get(&name)))
 }
 
-/// Checks `rhs` as part of the RHS of a macro definition and sets `valid` to false in case of
-/// errors.
+/// Checks `rhs` as part of the RHS of a macro definition.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -372,7 +370,7 @@ enum NestedMacroState {
 }
 
 /// Checks `tts` as part of the RHS of a macro definition, tries to recognize nested macro
-/// definitions, and sets `valid` to false in case of errors.
+/// definitions.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -491,8 +489,7 @@ fn check_nested_occurrences(
     }
 }
 
-/// Checks the body of nested macro, returns where the check stopped, and sets `valid` to false in
-/// case of errors.
+/// Checks the body of nested macro, returns where the check stopped.
 ///
 /// The token trees are checked as long as they look like a list of (LHS) => {RHS} token trees. This
 /// check is a best-effort to detect a macro definition. It returns the position in `tts` where we

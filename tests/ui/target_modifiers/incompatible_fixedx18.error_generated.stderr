@@ -1,5 +1,5 @@
 error: mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`
-  --> $DIR/incompatible_fixedx18.rs:12:1
+  --> $DIR/incompatible_fixedx18.rs:13:1
    |
 LL | #![feature(no_core)]
    | ^

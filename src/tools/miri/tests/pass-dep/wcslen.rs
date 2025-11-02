@@ -13,7 +13,7 @@ fn to_c_wchar_t_str(s: &str) -> Vec<libc::wchar_t> {
     r
 }
 
-pub fn main() {
+fn main() {
     let s = to_c_wchar_t_str("Rust");
     let len = unsafe { libc::wcslen(s.as_ptr()) };
     assert_eq!(len, 4);

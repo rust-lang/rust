@@ -406,8 +406,10 @@ pub trait ChildExt: Sealed {
     /// use libc::SIGTERM;
     ///
     /// fn main() -> io::Result<()> {
+    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
     ///     let child = Command::new("cat").stdin(Stdio::piped()).spawn()?;
     ///     child.send_signal(SIGTERM)?;
+    ///     # }
     ///     Ok(())
     /// }
     /// ```

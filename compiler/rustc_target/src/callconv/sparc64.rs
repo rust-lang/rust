@@ -29,7 +29,7 @@ where
 
     data.has_float = true;
 
-    if !data.last_offset.is_aligned(dl.f64_align.abi) && data.last_offset < offset {
+    if !data.last_offset.is_aligned(dl.f64_align) && data.last_offset < offset {
         if data.prefix_index == data.prefix.len() {
             return data;
         }

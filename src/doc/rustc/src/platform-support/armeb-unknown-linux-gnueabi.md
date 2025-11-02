@@ -3,6 +3,9 @@
 
 Target for cross-compiling Linux user-mode applications targeting the Arm BE8 architecture.
 
+See [`arm-linux`](arm-linux.md) for information applicable to all Arm Linux
+targets.
+
 ## Overview
 BE8 architecture retains the same little-endian ordered code-stream used by conventional little endian Arm systems, however the data accesses are in big-endian. BE8 is used primarily in high-performance networking applications where the ability to read packets in their native "Network Byte Order" is important (many network protocols transmit data in big-endian byte order for their wire formats).
 

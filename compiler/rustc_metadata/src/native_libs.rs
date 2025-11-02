@@ -218,7 +218,7 @@ impl<'tcx> Collector<'tcx> {
                 .flatten()
         {
             let dll_imports = match attr.kind {
-                NativeLibKind::RawDylib => foreign_items
+                NativeLibKind::RawDylib { .. } => foreign_items
                     .iter()
                     .map(|&child_item| {
                         self.build_dll_import(

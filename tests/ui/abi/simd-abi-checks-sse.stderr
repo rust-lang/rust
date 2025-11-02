@@ -1,5 +1,5 @@
 error: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-sse.rs:19:1
+  --> $DIR/simd-abi-checks-sse.rs:20:1
    |
 LL | pub unsafe extern "C" fn f(_: SseVector) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here

@@ -10,7 +10,7 @@ use base_db::{
 use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
 use hir_expand::EditionedFileId;
 use rustc_hash::FxHashMap;
-use salsa::{AsDynDatabase, Durability};
+use salsa::Durability;
 use span::FileId;
 use syntax::TextRange;
 use test_utils::extract_annotations;
@@ -191,8 +191,7 @@ impl TestDB {
                 // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
                 salsa::EventKind::WillExecute { database_key } => {
-                    let ingredient = self
-                        .as_dyn_database()
+                    let ingredient = (self as &dyn salsa::Database)
                         .ingredient_debug_name(database_key.ingredient_index());
                     Some(ingredient.to_string())
                 }

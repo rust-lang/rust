@@ -26,13 +26,12 @@ extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
+extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
-#[macro_use]
-extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -46,6 +45,7 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, TargetConfig};
+use rustc_log::tracing::info;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
@@ -163,6 +163,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn locale_resource(&self) -> &'static str {
         // FIXME(rust-lang/rust#100717) - cranelift codegen backend is not yet translated
         ""
+    }
+
+    fn name(&self) -> &'static str {
+        "cranelift"
     }
 
     fn init(&self, sess: &Session) {

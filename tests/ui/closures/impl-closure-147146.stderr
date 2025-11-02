@@ -1,0 +1,15 @@
+error[E0516]: `typeof` is a reserved keyword but unimplemented
+  --> $DIR/impl-closure-147146.rs:1:6
+   |
+LL | impl typeof(|| {}) {}
+   |      ^^^^^^^^^^^^^ reserved keyword
+
+error[E0516]: `typeof` is a reserved keyword but unimplemented
+  --> $DIR/impl-closure-147146.rs:4:22
+   |
+LL | unsafe impl Send for typeof(|| {}) {}
+   |                      ^^^^^^^^^^^^^ reserved keyword
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0516`.

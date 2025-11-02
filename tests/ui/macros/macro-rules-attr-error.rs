@@ -50,3 +50,22 @@ macro_rules! forward_referenced_attr {
 macro_rules! cyclic_attr {
     attr() {} => {}
 }
+
+macro_rules! attr_with_safety {
+    unsafe attr() { struct RequiresUnsafe; } => {};
+    attr() { struct SafeInvocation; } => {};
+}
+
+#[attr_with_safety]
+struct SafeInvocation;
+
+//~v ERROR: unnecessary `unsafe` on safe attribute invocation
+#[unsafe(attr_with_safety)]
+struct SafeInvocation;
+
+//~v ERROR: unsafe attribute invocation requires `unsafe`
+#[attr_with_safety]
+struct RequiresUnsafe;
+
+#[unsafe(attr_with_safety)]
+struct RequiresUnsafe;

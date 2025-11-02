@@ -237,7 +237,7 @@ pub fn output_largest_duration_changes(
     println!("# Job duration changes");
     for (index, entry) in changes.into_iter().take(10).enumerate() {
         println!(
-            "{}. {}: {:.1}s -> {:.1}s ({:.1}%)",
+            "{}. {}: {:.1}s -> {:.1}s ({:+.1}%)",
             index + 1,
             format_job_link(job_info_resolver, job_metrics, entry.job),
             entry.before.as_secs_f64(),

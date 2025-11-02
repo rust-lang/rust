@@ -6,7 +6,6 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::Arc;
 use std::{env, fmt, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
@@ -110,7 +109,7 @@ fn dylib_name(name: &str) -> String {
 }
 
 pub fn run(
-    config: Arc<Config>,
+    config: &Config,
     stdout: &dyn ConsoleOut,
     stderr: &dyn ConsoleOut,
     testpaths: &TestPaths,
@@ -878,6 +877,21 @@ impl<'test> TestCx<'test> {
                     prefix = self.error_prefix(),
                     n = not_found.len(),
                 );
+
+                // FIXME: Ideally, we should check this at the place where we actually parse error annotations.
+                // it's better to use (negated) heuristic inside normalize_output if possible
+                if let Some(human_format) = self.props.compile_flags.iter().find(|flag| {
+                    // `human`, `human-unicode`, `short` will not generate JSON output
+                    flag.contains("error-format")
+                        && (flag.contains("short") || flag.contains("human"))
+                }) {
+                    let msg = format!(
+                        "tests with compile flag `{}` should not have error annotations such as `//~ ERROR`",
+                        human_format
+                    ).color(Color::Red);
+                    writeln!(self.stdout, "{}", msg);
+                }
+
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
@@ -985,8 +999,15 @@ impl<'test> TestCx<'test> {
 
     /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
-    fn document(&self, root_out_dir: &Utf8Path, root_testpaths: &TestPaths) -> ProcRes {
+    fn document(
+        &self,
+        root_out_dir: &Utf8Path,
+        root_testpaths: &TestPaths,
+        kind: DocKind,
+    ) -> ProcRes {
         if self.props.build_aux_docs {
+            assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
+
             for rel_ab in &self.props.aux.builds {
                 let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
                 let props_for_aux =
@@ -1003,7 +1024,7 @@ impl<'test> TestCx<'test> {
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
                 // use root_testpaths here, because aux-builds should have the
                 // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document(&root_out_dir, root_testpaths);
+                let auxres = aux_cx.document(&root_out_dir, root_testpaths, kind);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1048,8 +1069,11 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
-        if self.config.mode == TestMode::RustdocJson {
-            rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+        match kind {
+            DocKind::Html => {}
+            DocKind::Json => {
+                rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+            }
         }
 
         if let Some(ref linker) = self.config.target_linker {
@@ -1322,6 +1346,7 @@ impl<'test> TestCx<'test> {
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
+        rustc.args(self.props.core_stubs_compile_flags.clone());
 
         let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
         if !res.status.success() {
@@ -1431,6 +1456,12 @@ impl<'test> TestCx<'test> {
         }
 
         aux_rustc.arg("-L").arg(&aux_dir);
+
+        if aux_props.add_core_stubs {
+            let minicore_path = self.build_minicore();
+            aux_rustc.arg("--extern");
+            aux_rustc.arg(&format!("minicore={}", minicore_path));
+        }
 
         let auxres = aux_cx.compose_and_run(
             aux_rustc,
@@ -1816,8 +1847,9 @@ impl<'test> TestCx<'test> {
 
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
         // overwrite this.
+        // Don't allow `unused_attributes` since these are usually actual mistakes, rather than just unused code.
         if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
+            rustc.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
         // Allow tests to use internal features.
@@ -1858,20 +1890,21 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        rustc.args(&self.props.compile_flags);
-
         // FIXME(jieyouxu): we should report a fatal error or warning if user wrote `-Cpanic=` with
-        // something that's not `abort` and `-Cforce-unwind-tables` with a value that is not `yes`,
-        // however, by moving this last we should override previous `-Cpanic`s and
-        // `-Cforce-unwind-tables`s. Note that checking here is very fragile, because we'd have to
-        // account for all possible compile flag splittings (they have some... intricacies and are
-        // not yet normalized).
+        // something that's not `abort` and `-Cforce-unwind-tables` with a value that is not `yes`.
+        //
+        // We could apply these last and override any provided flags. That would ensure that the
+        // build works, but some tests want to exercise that mixing panic modes in specific ways is
+        // rejected. So we enable aborting panics and unwind tables before adding flags, just to
+        // change the default.
         //
         // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
         if self.props.add_core_stubs {
             rustc.arg("-Cpanic=abort");
             rustc.arg("-Cforce-unwind-tables=yes");
         }
+
+        rustc.args(&self.props.compile_flags);
 
         rustc
     }
@@ -2179,7 +2212,7 @@ impl<'test> TestCx<'test> {
         let aux_dir = new_rustdoc.aux_output_dir();
         new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
+        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths, DocKind::Html);
         if !proc_res.status.success() {
             writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
@@ -2655,7 +2688,7 @@ impl<'test> TestCx<'test> {
 
             // The alloc-id appears in pretty-printed allocations.
             normalized = static_regex!(
-                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
+                r"╾─*a(lloc)?([0-9]+)(\+0x[0-9a-f]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼"
             )
             .replace_all(&normalized, |caps: &Captures<'_>| {
                 // Renumber the captured index.
@@ -2973,7 +3006,7 @@ impl<'test> TestCx<'test> {
                         self.delete_file(&examined_path);
                     }
                     // If we want them to be the same, but they are different, then error.
-                    // We do this wether we bless or not
+                    // We do this whether we bless or not
                     (_, true, false) => {
                         self.fatal_proc_rec(
                             &format!("`{}` should not have different output from base test!", kind),
@@ -3095,6 +3128,12 @@ enum CompareOutcome {
     Blessed,
     /// Outputs differed and an error should be emitted
     Differed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DocKind {
+    Html,
+    Json,
 }
 
 impl CompareOutcome {

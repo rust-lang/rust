@@ -11,7 +11,6 @@ fn main() {
     let b = slice.repeat(1);
     //~^ repeat_once
     let c = "hello".repeat(N);
-    //~^ repeat_once
     let d = "hi".repeat(1);
     //~^ repeat_once
     let e = s.repeat(1);

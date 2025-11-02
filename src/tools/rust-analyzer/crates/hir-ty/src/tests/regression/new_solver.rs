@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use crate::tests::{check_infer, check_no_mismatches};
+use crate::tests::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn regression_20365() {
@@ -84,7 +84,7 @@ fn test() -> i32 {
             307..359 'core::...n Foo)': DynMetadata<dyn Foo + '?>
             327..328 '0': usize
             327..340 '0 as *const F': *const F
-            327..358 '0 as *...yn Foo': *const (dyn Foo + '?)
+            327..358 '0 as *...yn Foo': *const (dyn Foo + 'static)
             370..371 'f': F
             374..378 'F {}': F
             388..395 'fat_ptr': *const (dyn Foo + '?)
@@ -416,5 +416,111 @@ fn foo() {
             249..259 'to_bytes()': [u8; _]
             249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
         "#]],
+    );
+}
+
+#[test]
+fn regression_19637() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+pub trait Any {}
+
+impl<T: 'static> Any for T {}
+
+pub trait Trait: Any {
+    type F;
+}
+
+pub struct TT {}
+
+impl Trait for TT {
+    type F = f32;
+}
+
+pub fn coercion(x: &mut dyn Any) -> &mut dyn Any {
+    x
+}
+
+fn main() {
+    let mut t = TT {};
+    let tt = &mut t as &mut dyn Trait<F = f32>;
+    let st = coercion(tt);
+}
+    "#,
+    );
+}
+
+#[test]
+fn double_into_iter() {
+    check_types(
+        r#"
+//- minicore: iterator
+
+fn intoiter_issue<A, B>(foo: A)
+where
+    A: IntoIterator<Item = B>,
+    B: IntoIterator<Item = usize>,
+{
+    for x in foo {
+    //  ^ B
+        for m in x {
+        //  ^ usize
+        }
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn regression_16282() {
+    check_infer(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn
+trait MapLookup<Q> {
+    type MapValue;
+}
+
+impl<K> MapLookup<K> for K {
+    type MapValue = K;
+}
+
+trait Map: MapLookup<<Self as Map>::Key> {
+    type Key;
+}
+
+impl<K> Map for K {
+    type Key = K;
+}
+
+
+fn main() {
+    let _ = &()
+        as &dyn Map<Key=u32,MapValue=u32>;
+}
+"#,
+        expect![[r#"
+            210..272 '{     ...32>; }': ()
+            220..221 '_': &'? (dyn Map<MapValue = u32, Key = u32> + '?)
+            224..227 '&()': &'? ()
+            224..269 '&()   ...e=u32>': &'? (dyn Map<MapValue = u32, Key = u32> + 'static)
+            225..227 '()': ()
+        "#]],
+    );
+}
+
+#[test]
+fn regression_18692() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn, send
+trait Trait: Send {}
+
+fn f(_: *const (dyn Trait + Send)) {}
+fn g(it: *const (dyn Trait)) {
+    f(it);
+}
+"#,
     );
 }

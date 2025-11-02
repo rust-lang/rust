@@ -42,11 +42,16 @@ LL | #[cfg(target(true))]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
-error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-target-compact-errors.rs:21:14
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-target-compact-errors.rs:21:1
    |
 LL | #[cfg(target(clippy::os = "linux"))]
-   |              ^^^^^^^^^^
+   | ^^^^^^^^^^^^^----------^^^^^^^^^^^^^
+   | |            |
+   | |            expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: aborting due to 5 previous errors
 

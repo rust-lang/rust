@@ -1,10 +1,10 @@
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:33:5
+  --> tests/ui/match_single_binding.rs:32:5
    |
 LL | /     match (a, b, c) {
 LL | |
 LL | |         (x, y, z) => {
-LL | |             println!("{} {} {}", x, y, z);
+LL | |             println!("{x} {y} {z}");
 LL | |         },
 LL | |     }
    | |_____^
@@ -15,27 +15,27 @@ help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);
 LL +     {
-LL +         println!("{} {} {}", x, y, z);
+LL +         println!("{x} {y} {z}");
 LL +     }
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:40:5
+  --> tests/ui/match_single_binding.rs:39:5
    |
 LL | /     match (a, b, c) {
 LL | |
-LL | |         (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |         (x, y, z) => println!("{x} {y} {z}"),
 LL | |     }
    | |_____^
    |
 help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);
-LL +     println!("{} {} {}", x, y, z);
+LL +     println!("{x} {y} {z}");
    |
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:58:5
+  --> tests/ui/match_single_binding.rs:57:5
    |
 LL | /     match a {
 LL | |
@@ -44,13 +44,13 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("whatever");`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:63:5
+  --> tests/ui/match_single_binding.rs:62:5
    |
 LL | /     match a {
 LL | |
 LL | |         _ => {
 LL | |             let x = 29;
-LL | |             println!("x has a value of {}", x);
+LL | |             println!("x has a value of {x}");
 LL | |         },
 LL | |     }
    | |_____^
@@ -59,12 +59,12 @@ help: consider using the match body instead
    |
 LL ~     {
 LL +         let x = 29;
-LL +         println!("x has a value of {}", x);
+LL +         println!("x has a value of {x}");
 LL +     }
    |
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:71:5
+  --> tests/ui/match_single_binding.rs:70:5
    |
 LL | /     match a {
 LL | |
@@ -86,67 +86,67 @@ LL +     }
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:82:5
+  --> tests/ui/match_single_binding.rs:81:5
    |
 LL | /     match p {
 LL | |
-LL | |         Point { x, y } => println!("Coords: ({}, {})", x, y),
+LL | |         Point { x, y } => println!("Coords: ({x}, {y})"),
 LL | |     }
    | |_____^
    |
 help: consider using a `let` statement
    |
 LL ~     let Point { x, y } = p;
-LL +     println!("Coords: ({}, {})", x, y);
+LL +     println!("Coords: ({x}, {y})");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:87:5
+  --> tests/ui/match_single_binding.rs:86:5
    |
 LL | /     match p {
 LL | |
-LL | |         Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
+LL | |         Point { x: x1, y: y1 } => println!("Coords: ({x1}, {y1})"),
 LL | |     }
    | |_____^
    |
 help: consider using a `let` statement
    |
 LL ~     let Point { x: x1, y: y1 } = p;
-LL +     println!("Coords: ({}, {})", x1, y1);
+LL +     println!("Coords: ({x1}, {y1})");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:93:5
+  --> tests/ui/match_single_binding.rs:92:5
    |
 LL | /     match x {
 LL | |
-LL | |         ref r => println!("Got a reference to {}", r),
+LL | |         ref r => println!("Got a reference to {r}"),
 LL | |     }
    | |_____^
    |
 help: consider using a `let` statement
    |
 LL ~     let ref r = x;
-LL +     println!("Got a reference to {}", r);
+LL +     println!("Got a reference to {r}");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:99:5
+  --> tests/ui/match_single_binding.rs:98:5
    |
 LL | /     match x {
 LL | |
-LL | |         ref mut mr => println!("Got a mutable reference to {}", mr),
+LL | |         ref mut mr => println!("Got a mutable reference to {mr}"),
 LL | |     }
    | |_____^
    |
 help: consider using a `let` statement
    |
 LL ~     let ref mut mr = x;
-LL +     println!("Got a mutable reference to {}", mr);
+LL +     println!("Got a mutable reference to {mr}");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:104:5
+  --> tests/ui/match_single_binding.rs:103:5
    |
 LL | /     let product = match coords() {
 LL | |
@@ -161,7 +161,7 @@ LL +     let product = x * y;
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:113:18
+  --> tests/ui/match_single_binding.rs:112:18
    |
 LL |           .map(|i| match i.unwrap() {
    |  __________________^
@@ -179,7 +179,7 @@ LL ~         })
    |
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:140:5
+  --> tests/ui/match_single_binding.rs:139:5
    |
 LL | /     match x {
 LL | |
@@ -189,12 +189,12 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("Not an array index start")`
 
 error: this assignment could be simplified
-  --> tests/ui/match_single_binding.rs:150:5
+  --> tests/ui/match_single_binding.rs:149:5
    |
 LL | /     val = match val.split_at(idx) {
 LL | |
 LL | |         (pre, suf) => {
-LL | |             println!("{}", pre);
+LL | |             println!("{pre}");
 LL | |             suf
 LL | |         },
 LL | |     };
@@ -204,13 +204,13 @@ help: consider removing the `match` expression
    |
 LL ~     let (pre, suf) = val.split_at(idx);
 LL +     val = {
-LL +         println!("{}", pre);
+LL +         println!("{pre}");
 LL +         suf
 LL ~     };
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:164:16
+  --> tests/ui/match_single_binding.rs:163:16
    |
 LL |       let _ = || match side_effects() {
    |  ________________^
@@ -228,7 +228,7 @@ LL ~     };
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:171:5
+  --> tests/ui/match_single_binding.rs:170:5
    |
 LL | /     match r {
 LL | |
@@ -253,7 +253,7 @@ LL ~     };
    |
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:185:5
+  --> tests/ui/match_single_binding.rs:184:5
    |
 LL | /     match 1 {
 LL | |
@@ -262,7 +262,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `();`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:190:13
+  --> tests/ui/match_single_binding.rs:189:13
    |
 LL |       let a = match 1 {
    |  _____________^
@@ -272,7 +272,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `()`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:195:5
+  --> tests/ui/match_single_binding.rs:194:5
    |
 LL | /     match 1 {
 LL | |
@@ -281,7 +281,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `side_effects();`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:200:13
+  --> tests/ui/match_single_binding.rs:199:13
    |
 LL |       let b = match 1 {
    |  _____________^
@@ -291,7 +291,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `side_effects()`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:205:5
+  --> tests/ui/match_single_binding.rs:204:5
    |
 LL | /     match 1 {
 LL | |
@@ -300,7 +300,7 @@ LL | |     }
    | |_____^ help: consider using the match body instead: `println!("1");`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:210:13
+  --> tests/ui/match_single_binding.rs:209:13
    |
 LL |       let c = match 1 {
    |  _____________^
@@ -310,7 +310,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `println!("1")`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:216:9
+  --> tests/ui/match_single_binding.rs:215:9
    |
 LL | /         match 1 {
 LL | |
@@ -319,7 +319,7 @@ LL | |         },
    | |_________^ help: consider using the match body instead: `()`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:220:9
+  --> tests/ui/match_single_binding.rs:219:9
    |
 LL | /         match 1 {
 LL | |
@@ -328,7 +328,7 @@ LL | |         },
    | |_________^ help: consider using the match body instead: `side_effects()`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:224:9
+  --> tests/ui/match_single_binding.rs:223:9
    |
 LL | /         match 1 {
 LL | |
@@ -337,7 +337,7 @@ LL | |         },
    | |_________^ help: consider using the match body instead: `println!("1")`
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding.rs:239:5
+  --> tests/ui/match_single_binding.rs:238:5
    |
 LL | /     match dbg!(3) {
 LL | |         _ => println!("here"),
@@ -351,7 +351,7 @@ LL +     println!("here");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:243:5
+  --> tests/ui/match_single_binding.rs:242:5
    |
 LL | /     match dbg!(3) {
 LL | |         id!(a) => println!("found {a}"),
@@ -365,7 +365,7 @@ LL +     println!("found {a}");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:247:5
+  --> tests/ui/match_single_binding.rs:246:5
    |
 LL | /     let id!(_a) = match dbg!(3) {
 LL | |         id!(b) => dbg!(b + 1),
@@ -379,7 +379,7 @@ LL +     let id!(_a) = dbg!(b + 1);
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:255:21
+  --> tests/ui/match_single_binding.rs:254:21
    |
 LL |           inner: [(); match 1 {
    |  _____________________^
@@ -397,7 +397,7 @@ LL ~         }],
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:263:13
+  --> tests/ui/match_single_binding.rs:262:13
    |
 LL | /             match 1 {
 LL | |
@@ -412,11 +412,11 @@ LL +             42
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:274:9
+  --> tests/ui/match_single_binding.rs:273:9
    |
 LL | /         match (a, b, c) {
 LL | |
-LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             (x, y, z) => println!("{x} {y} {z}"),
 LL | |         }
    | |_________^
    |
@@ -424,61 +424,61 @@ help: consider using a `let` statement
    |
 LL ~         {
 LL +             let (x, y, z) = (a, b, c);
-LL +             println!("{} {} {}", x, y, z);
+LL +             println!("{x} {y} {z}");
 LL +         }
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:282:9
+  --> tests/ui/match_single_binding.rs:281:9
    |
 LL | /         match (a, b, c) {
 LL | |
-LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             (x, y, z) => println!("{x} {y} {z}"),
 LL | |         }
    | |_________^
    |
 help: consider using a `let` statement
    |
 LL ~         let (x, y, z) = (a, b, c);
-LL +         println!("{} {} {}", x, y, z)
+LL +         println!("{x} {y} {z}")
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:290:9
+  --> tests/ui/match_single_binding.rs:289:9
    |
 LL | /         match (a, b, c) {
 LL | |
-LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             (x, y, z) => println!("{x} {y} {z}"),
 LL | |         }
    | |_________^
    |
 help: consider using a `let` statement
    |
 LL ~         let (x, y, z) = (a, b, c);
-LL +         println!("{} {} {}", x, y, z);
+LL +         println!("{x} {y} {z}");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:300:9
+  --> tests/ui/match_single_binding.rs:299:9
    |
 LL | /         match (a, b, c) {
 LL | |
-LL | |             (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |             (x, y, z) => println!("{x} {x} {y}"),
 LL | |         }
    | |_________^
    |
 help: consider using a `let` statement
    |
 LL ~         let (x, y, z) = (a, b, c);
-LL +         println!("{} {} {}", x, y, z);
+LL +         println!("{x} {x} {y}");
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:310:13
+  --> tests/ui/match_single_binding.rs:309:13
    |
 LL | /             match (a, b, c) {
 LL | |
-LL | |                 (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |                 (x, y, z) => println!("{x} {y} {z}"),
 LL | |             }
    | |_____________^
    |
@@ -486,27 +486,27 @@ help: consider using a `let` statement
    |
 LL ~             {
 LL +                 let (x, y, z) = (a, b, c);
-LL +                 println!("{} {} {}", x, y, z);
+LL +                 println!("{x} {y} {z}");
 LL +             }
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding.rs:320:13
+  --> tests/ui/match_single_binding.rs:319:13
    |
 LL | /             match (a, b, c) {
 LL | |
-LL | |                 (x, y, z) => println!("{} {} {}", x, y, z),
+LL | |                 (x, y, z) => println!("{x} {y} {z}"),
 LL | |             }
    | |_____________^
    |
 help: consider using a `let` statement
    |
 LL ~             let (x, y, z) = (a, b, c);
-LL +             println!("{} {} {}", x, y, z);
+LL +             println!("{x} {y} {z}");
    |
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:335:12
+  --> tests/ui/match_single_binding.rs:334:12
    |
 LL |           && match b {
    |  ____________^
@@ -516,7 +516,7 @@ LL | |         };
    | |_________^ help: consider using the match body instead: `b < c`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/match_single_binding.rs:341:12
+  --> tests/ui/match_single_binding.rs:340:12
    |
 LL |           && match (a, b) {
    |  ____________^

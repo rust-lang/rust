@@ -50,7 +50,7 @@ macro_rules! define_reify_functions {
         >(f: F) -> $(extern $abi)? fn($($arg_ty),*) -> $ret_ty {
             // FIXME(eddyb) describe the `F` type (e.g. via `type_name::<F>`) once panic
             // formatting becomes possible in `const fn`.
-            assert!(size_of::<F>() == 0, "selfless_reify: closure must be zero-sized");
+            const { assert!(size_of::<F>() == 0, "selfless_reify: closure must be zero-sized"); }
 
             $(extern $abi)? fn wrapper<
                 $($($param,)*)?

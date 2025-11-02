@@ -37,8 +37,9 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
             && let ecx = ConstEvalCtxt::new(cx)
-            && let Some(lhs_value) = ecx.eval_simple(left)
-            && let Some(rhs_value) = ecx.eval_simple(right)
+            && let ctxt = expr.span.ctxt()
+            && let Some(lhs_value) = ecx.eval_local(left, ctxt)
+            && let Some(rhs_value) = ecx.eval_local(right, ctxt)
             // FIXME(f16_f128): add these types when eq is available on all platforms
             && (Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value)
             && (Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value)

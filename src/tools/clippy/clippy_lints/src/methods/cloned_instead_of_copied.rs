@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::{get_iterator_item_ty, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -19,7 +19,9 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span,
         {
             subst.type_at(0)
         },
-        _ if is_trait_method(cx, expr, sym::Iterator) && msrv.meets(cx, msrvs::ITERATOR_COPIED) => {
+        _ if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
+            && msrv.meets(cx, msrvs::ITERATOR_COPIED) =>
+        {
             match get_iterator_item_ty(cx, recv_ty) {
                 // <T as Iterator>::Item
                 Some(ty) => ty,

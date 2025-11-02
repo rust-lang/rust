@@ -2,9 +2,10 @@ use std::fmt::Display;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::paths;
 use clippy_utils::paths::PathLookup;
+use clippy_utils::res::MaybeQPath;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{path_def_id, paths};
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
@@ -138,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(fun, [arg]) = expr.kind
-            && let Some(def_id) = path_def_id(cx, fun)
+            && let Some(def_id) = fun.res(cx).opt_def_id()
             && let Some(regex_kind) = self.definitions.get(&def_id)
         {
             if let Some(&(loop_item_id, loop_span)) = self.loop_stack.last()

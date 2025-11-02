@@ -17,9 +17,9 @@ jobs:
         persist-credentials: false
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
-        node-version: '18.x'
+        node-version: '20.x'
 
     - name: Install remark
       run: npm install remark-cli remark-lint remark-lint-maximum-line-length@^3.1.3 remark-preset-lint-recommended remark-gfm

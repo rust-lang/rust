@@ -422,6 +422,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Use a different codegen backend when running tests.
         test_codegen_backend: Option<CodegenBackendKind>,
+        #[arg(long)]
+        /// Ignore `//@ ignore-backends` directives.
+        bypass_ignore_backends: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -668,6 +671,13 @@ impl Subcommand {
             _ => None,
         }
     }
+
+    pub fn bypass_ignore_backends(&self) -> bool {
+        match self {
+            Subcommand::Test { bypass_ignore_backends, .. } => *bypass_ignore_backends,
+            _ => false,
+        }
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current
@@ -700,4 +710,10 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
         return None;
     }
     Some(String::from_utf8(buf).expect("completion script should be UTF-8"))
+}
+
+/// Return the top level help of the bootstrap.
+pub fn top_level_help() -> String {
+    let mut cmd = Flags::command();
+    cmd.render_help().to_string()
 }

@@ -5,8 +5,20 @@ mod reuse;
 use std::path::PathBuf;
 
 use anyhow::{Context, Error};
+use similar::{ChangeTag, TextDiff};
 
 use crate::licenses::LicensesInterner;
+
+fn diff_text(expected: &str, actual: &str) {
+    for change in TextDiff::from_lines(expected, actual).iter_all_changes() {
+        let sign = match change.tag() {
+            ChangeTag::Delete => "-",
+            ChangeTag::Insert => "+",
+            ChangeTag::Equal => " ",
+        };
+        print!("{}{}", sign, change);
+    }
+}
 
 /// The entry point to the binary.
 ///
@@ -41,6 +53,8 @@ fn main() -> Result<(), Error> {
         if existing_json != output {
             eprintln!("The existing {} file is out of date.", dest.display());
             eprintln!("Run ./x run collect-license-metadata to update it.");
+            eprintln!("Diff:");
+            diff_text(&existing, &serde_json::to_string_pretty(&output).unwrap());
             anyhow::bail!("The existing {} file doesn't match what REUSE reports.", dest.display());
         }
         println!("license information matches");

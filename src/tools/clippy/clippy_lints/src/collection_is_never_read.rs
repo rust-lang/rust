@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
+use clippy_utils::get_enclosing_block;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::visitors::{Visitable, for_each_expr};
-use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
 fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
     matches!(
-        get_type_diagnostic_name(cx, ty),
+        ty.opt_diag_name(cx),
         Some(
             sym::BTreeMap
                 | sym::BTreeSet
@@ -71,7 +71,7 @@ fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
                 | sym::Vec
                 | sym::VecDeque
         )
-    ) || is_type_lang_item(cx, ty, LangItem::String)
+    ) || ty.is_lang_item(cx, LangItem::String)
 }
 
 fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirId, block: T) -> bool {
@@ -81,7 +81,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
     // Inspect all expressions and sub-expressions in the block.
     for_each_expr(cx, block, |expr| {
         // Ignore expressions that are not simply `id`.
-        if !path_to_local_id(expr, id) {
+        if expr.res_local_id() != Some(id) {
             return ControlFlow::Continue(());
         }
 
@@ -93,7 +93,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
         // id = ...; // Not reading `id`.
         if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
             && let ExprKind::Assign(lhs, ..) = parent.kind
-            && path_to_local_id(lhs, id)
+            && lhs.res_local_id() == Some(id)
         {
             return ControlFlow::Continue(());
         }
@@ -107,7 +107,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
         // have side effects, so consider them a read.
         if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
             && let ExprKind::MethodCall(_, receiver, args, _) = parent.kind
-            && path_to_local_id(receiver, id)
+            && receiver.res_local_id() == Some(id)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
             && !method_def_id.is_local()
         {

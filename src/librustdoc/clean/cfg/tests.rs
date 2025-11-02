@@ -1,8 +1,8 @@
 use rustc_ast::ast::LitIntType;
 use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, StrStyle};
+use rustc_data_structures::thin_vec::thin_vec;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, create_default_session_globals_then};
-use thin_vec::thin_vec;
 
 use super::*;
 

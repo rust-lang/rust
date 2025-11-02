@@ -9,6 +9,8 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
+extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+
 /// Any toolchain less than this version will likely not work with rust-analyzer built from this revision.
 pub const MINIMUM_SUPPORTED_TOOLCHAIN_VERSION: semver::Version = semver::Version {
     major: 1,

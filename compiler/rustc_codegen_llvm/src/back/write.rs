@@ -6,9 +6,6 @@ use std::sync::Arc;
 use std::{fs, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
-use llvm::{
-    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
-};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
@@ -31,7 +28,6 @@ use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
-use crate::back::command_line_args::quote_command_line_args;
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -44,7 +40,7 @@ use crate::errors::{
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
-use crate::type_::Type;
+use crate::type_::llvm_type_ptr;
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
@@ -204,6 +200,9 @@ pub(crate) fn target_machine_factory(
     optlvl: config::OptLevel,
     target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
+    // Self-profile timer for creating a _factory_.
+    let _prof_timer = sess.prof.generic_activity("target_machine_factory");
+
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
@@ -250,38 +249,36 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    // Command-line information to be included in the target machine.
-    // This seems to only be used for embedding in PDB debuginfo files.
-    // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
-
-    let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
-    match sess.opts.debuginfo_compression {
-        rustc_session::config::DebugInfoCompression::Zlib => {
-            if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
+    let debuginfo_compression = match sess.opts.debuginfo_compression {
+        config::DebugInfoCompression::None => llvm::CompressionKind::None,
+        config::DebugInfoCompression::Zlib => {
+            if llvm::LLVMRustLLVMHasZlibCompression() {
+                llvm::CompressionKind::Zlib
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::Zstd => {
-            if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
+        config::DebugInfoCompression::Zstd => {
+            if llvm::LLVMRustLLVMHasZstdCompression() {
+                llvm::CompressionKind::Zstd
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::None => {}
     };
-    let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
     let file_name_display_preference =
         sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
 
     let use_wasm_eh = wants_wasm_eh(sess);
 
+    let prof = SelfProfilerRef::clone(&sess.prof);
     Arc::new(move |config: TargetMachineFactoryConfig| {
+        // Self-profile timer for invoking a factory to create a target machine.
+        let _prof_timer = prof.generic_activity("target_machine_factory_inner");
+
         let path_to_cstring_helper = |path: Option<PathBuf>| -> CString {
             let path = path.unwrap_or_default();
             let path = path_mapping
@@ -314,10 +311,8 @@ pub(crate) fn target_machine_factory(
             use_init_array,
             &split_dwarf_file,
             &output_obj_file,
-            &debuginfo_compression,
+            debuginfo_compression,
             use_emulated_tls,
-            &argv0,
-            &command_line_args,
             use_wasm_eh,
         )
     })
@@ -348,7 +343,7 @@ fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
     }
 }
 
-/// In what context is a dignostic handler being attached to a codegen unit?
+/// In what context is a diagnostic handler being attached to a codegen unit?
 pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,
@@ -1150,7 +1145,7 @@ fn create_msvc_imps(
     // underscores added in front).
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
-    let ptr_ty = Type::ptr_llcx(llcx);
+    let ptr_ty = llvm_type_ptr(llcx);
     let globals = base::iter_globals(llmod)
         .filter(|&val| {
             llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage && !llvm::is_declaration(val)

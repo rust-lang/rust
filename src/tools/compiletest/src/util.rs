@@ -102,7 +102,9 @@ macro_rules! string_enum {
         }
 
         impl $name {
+            #[allow(dead_code)]
             $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+            #[allow(dead_code)]
             $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
 
             $vis const fn to_str(&self) -> &'static str {

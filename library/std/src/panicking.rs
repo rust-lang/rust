@@ -331,7 +331,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
 
 #[cfg(not(test))]
 #[doc(hidden)]
-#[cfg(feature = "panic_immediate_abort")]
+#[cfg(panic = "immediate-abort")]
 #[unstable(feature = "update_panic_count", issue = "none")]
 pub mod panic_count {
     /// A reason for forcing an immediate abort on panic.
@@ -371,7 +371,7 @@ pub mod panic_count {
 
 #[cfg(not(test))]
 #[doc(hidden)]
-#[cfg(not(feature = "panic_immediate_abort"))]
+#[cfg(not(panic = "immediate-abort"))]
 #[unstable(feature = "update_panic_count", issue = "none")]
 pub mod panic_count {
     use crate::cell::Cell;
@@ -499,13 +499,13 @@ pub mod panic_count {
 pub use realstd::rt::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
-#[cfg(feature = "panic_immediate_abort")]
+#[cfg(panic = "immediate-abort")]
 pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     Ok(f())
 }
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
-#[cfg(not(feature = "panic_immediate_abort"))]
+#[cfg(not(panic = "immediate-abort"))]
 pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     union Data<F, R> {
         f: ManuallyDrop<F>,
@@ -720,14 +720,14 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
 #[cfg_attr(not(any(test, doctest)), lang = "begin_panic")]
 // lang item for CTFE panic support
-// never inline unless panic_immediate_abort to avoid code
+// never inline unless panic=immediate-abort to avoid code
 // bloat at the call sites as much as possible
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(panic = "immediate-abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(panic = "immediate-abort", inline)]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
+    if cfg!(panic = "immediate-abort") {
         intrinsics::abort()
     }
 
@@ -861,7 +861,7 @@ fn panic_with_hook(
 
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(panic = "immediate-abort", inline)]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panic_count::increase(false);
 
@@ -890,16 +890,14 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 /// on which to slap yer breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(not(feature = "panic_immediate_abort"))]
+#[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
 }
 
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-#[cfg(feature = "panic_immediate_abort")]
+#[cfg(panic = "immediate-abort")]
 fn rust_panic(_: &mut dyn PanicPayload) -> ! {
-    unsafe {
-        crate::intrinsics::abort();
-    }
+    crate::intrinsics::abort();
 }

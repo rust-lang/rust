@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::is_expr_unsafe;
 use clippy_utils::{match_libc_symbol, sym};
 use rustc_errors::Applicability;
@@ -61,9 +61,9 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             let mut app = Applicability::MachineApplicable;
             let val_name = snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0;
-            let method_name = if is_type_diagnostic_item(cx, ty, sym::cstring_type) {
+            let method_name = if ty.is_diag_item(cx, sym::cstring_type) {
                 "as_bytes"
-            } else if is_type_lang_item(cx, ty, LangItem::CStr) {
+            } else if ty.is_lang_item(cx, LangItem::CStr) {
                 "to_bytes"
             } else {
                 return;

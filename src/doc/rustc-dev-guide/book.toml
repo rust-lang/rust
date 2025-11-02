@@ -11,7 +11,7 @@ command = "mdbook-mermaid"
 
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
-edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/master/{path}"
+edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/main/{path}"
 additional-js = [
   "mermaid.min.js",
   "mermaid-init.js",

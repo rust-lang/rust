@@ -20,7 +20,7 @@ use crate::{
     config::Config,
     diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    flycheck::{self, ClearDiagnosticsKind, FlycheckMessage},
+    flycheck::{self, ClearDiagnosticsKind, ClearScope, FlycheckMessage},
     global_state::{
         FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
         file_id_to_url, url_to_file_id,
@@ -847,6 +847,13 @@ impl GlobalState {
                 self.debounce_workspace_fetch();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
+                    if matches!(path.name_and_extension(), Some(("minicore", Some("rs")))) {
+                        // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
+                        self.minicore.minicore_text = contents
+                            .as_ref()
+                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                    }
+
                     let path = VfsPath::from(path);
                     // if the file is in mem docs, it's managed by the client via notifications
                     // so only set it if its not in there
@@ -1042,17 +1049,22 @@ impl GlobalState {
                     };
                 }
             }
-            FlycheckMessage::ClearDiagnostics { id, kind: ClearDiagnosticsKind::All } => {
-                self.diagnostics.clear_check(id)
-            }
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::OlderThan(generation),
+                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+            } => self.diagnostics.clear_check(id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_for_package(id, package_id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Workspace),
             } => self.diagnostics.clear_check_older_than(id, generation),
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::Package(package_id),
-            } => self.diagnostics.clear_check_for_package(id, package_id),
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),

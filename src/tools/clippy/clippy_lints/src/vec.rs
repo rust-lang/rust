@@ -10,7 +10,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_in_test, is_trait_method, span_contains_comment, sym};
+use clippy_utils::{get_parent_expr, higher, is_in_test, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -124,7 +124,7 @@ impl UselessVec {
                     if let Some(parent) = get_parent_expr(cx, expr)
                         && (adjusts_to_slice(cx, expr)
                             || matches!(parent.kind, ExprKind::Index(..))
-                            || is_allowed_vec_method(cx, parent))
+                            || is_allowed_vec_method(parent))
                     {
                         ControlFlow::Continue(())
                     } else {
@@ -304,11 +304,11 @@ fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Checks if the given expression is a method call to a `Vec` method
 /// that also exists on slices. If this returns true, it means that
 /// this expression does not actually require a `Vec` and could just work with an array.
-pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+pub fn is_allowed_vec_method(e: &Expr<'_>) -> bool {
     if let ExprKind::MethodCall(path, _, [], _) = e.kind {
         matches!(path.ident.name, sym::as_ptr | sym::is_empty | sym::len)
     } else {
-        is_trait_method(cx, e, sym::IntoIterator)
+        false
     }
 }
 

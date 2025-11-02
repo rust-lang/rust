@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -46,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
             && let ExprKind::Path(QPath::TypeRelative(func_ty, func_name)) = func.kind
             && func_name.ident.name == sym::new
             && !expr.span.from_expansion()
-            && is_type_diagnostic_item(cx, cx.typeck_results().node_type(func_ty.hir_id), sym::Arc)
+            && cx.typeck_results().node_type(func_ty.hir_id).is_diag_item(cx, sym::Arc)
             && let arg_ty = cx.typeck_results().expr_ty(arg)
             // make sure that the type is not and does not contain any type parameters
             && arg_ty.walk().all(|arg| {

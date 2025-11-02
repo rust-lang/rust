@@ -4,6 +4,7 @@
 //@ edition:2018
 //@ proc-macro: issue-59191.rs
 //@ needs-unwind (affects error output)
+//@ ignore-backends: gcc
 
 #![feature(custom_inner_attributes)]
 #![issue_59191::no_main]

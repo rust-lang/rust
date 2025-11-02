@@ -15,7 +15,7 @@ fn sp(a: u32, b: u32) -> Span {
 }
 
 fn cmp_token_stream(a: &TokenStream, b: &TokenStream) -> bool {
-    a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| x.eq_unspanned(y))
+    a.iter().eq_by(b.iter(), |x, y| x.eq_unspanned(y))
 }
 
 #[test]

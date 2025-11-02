@@ -125,5 +125,11 @@ error: manually reimplementing `div_ceil`
 LL |     let _ = (7 + x) / 8;
    |             ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
 
-error: aborting due to 19 previous errors
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:105:13
+   |
+LL |     let _ = (size + c - 1) / c;
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `size.div_ceil(*c)`
+
+error: aborting due to 20 previous errors
 

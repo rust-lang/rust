@@ -2,6 +2,8 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+extern crate self as ide_db;
+
 mod apply_change;
 
 pub mod active_parameter;
@@ -14,6 +16,8 @@ pub mod items_locator;
 pub mod label;
 pub mod path_transform;
 pub mod prime_caches;
+pub mod ra_fixture;
+pub mod range_mapper;
 pub mod rename;
 pub mod rust_doc;
 pub mod search;
@@ -363,4 +367,26 @@ pub enum Severity {
     Warning,
     WeakWarning,
     Allow,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MiniCore<'a>(&'a str);
+
+impl<'a> MiniCore<'a> {
+    #[inline]
+    pub fn new(minicore: &'a str) -> Self {
+        Self(minicore)
+    }
+
+    #[inline]
+    pub const fn default() -> Self {
+        Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl<'a> Default for MiniCore<'a> {
+    #[inline]
+    fn default() -> Self {
+        Self::default()
+    }
 }

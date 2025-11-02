@@ -5,6 +5,7 @@
 #![allow(unused_must_use)]
 
 //@ needs-threads
+//@ ignore-backends: gcc
 
 #![feature(std_panic)]
 

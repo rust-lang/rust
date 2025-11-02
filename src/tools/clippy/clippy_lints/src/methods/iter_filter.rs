@@ -1,3 +1,4 @@
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::ty::get_iterator_item_ty;
 use hir::ExprKind;
 use rustc_lint::{LateContext, LintContext};
@@ -6,7 +7,7 @@ use super::{ITER_FILTER_IS_OK, ITER_FILTER_IS_SOME};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline};
-use clippy_utils::{get_parent_expr, is_trait_method, peel_blocks, span_contains_comment, sym};
+use clippy_utils::{get_parent_expr, peel_blocks, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::QPath;
@@ -107,7 +108,7 @@ fn parent_is_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if let Some(expr) = get_parent_expr(cx, expr)
         && let ExprKind::MethodCall(path, _, [_], _) = expr.kind
         && path.ident.name == sym::map
-        && is_trait_method(cx, expr, sym::Iterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
     {
         return true;
     }
@@ -141,7 +142,7 @@ fn expression_type(
     filter_arg: &hir::Expr<'_>,
     filter_span: Span,
 ) -> Option<FilterType> {
-    if !is_trait_method(cx, expr, sym::Iterator)
+    if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         || parent_is_map(cx, expr)
         || span_contains_comment(cx.sess().source_map(), filter_span.with_hi(expr.span.hi()))
     {

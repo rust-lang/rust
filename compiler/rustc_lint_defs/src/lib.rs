@@ -403,7 +403,7 @@ pub enum FutureIncompatibilityReason {
     ///
     /// After a lint has been in this state for a while and you feel like it is ready to graduate
     /// to warning everyone, consider setting [`FutureIncompatibleInfo::report_in_deps`] to true.
-    /// (see it's documentation for more guidance)
+    /// (see its documentation for more guidance)
     ///
     /// After some period of time, lints with this variant can be turned into
     /// hard errors (and the lint removed). Preferably when there is some

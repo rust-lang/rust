@@ -7,6 +7,12 @@ LL |     f(x);
    |     ---- argument requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/static-region-bound.rs:3:8
+   |
+LL | fn f<T:'static>(_: T) {}
+   |        ^^^^^^^
 
 error: aborting due to 1 previous error
 

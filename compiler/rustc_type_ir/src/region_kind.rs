@@ -7,7 +7,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 
 use self::RegionKind::*;
-use crate::{DebruijnIndex, Interner};
+use crate::{BoundVarIndexKind, Interner};
 
 rustc_index::newtype_index! {
     /// A **region** **v**ariable **ID**.
@@ -147,7 +147,7 @@ pub enum RegionKind<I: Interner> {
     /// Bound regions inside of types **must not** be erased, as they impact trait
     /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
     /// `fn(&'static ())` are different types and have to be treated as such.
-    ReBound(DebruijnIndex, I::BoundRegion),
+    ReBound(BoundVarIndexKind, I::BoundRegion),
 
     /// Late-bound function parameters are represented using a `ReBound`. When
     /// inside of a function, we convert these bound variables to placeholder

@@ -115,6 +115,13 @@ impl CfgOptions {
     pub fn shrink_to_fit(&mut self) {
         self.enabled.shrink_to_fit();
     }
+
+    pub fn append(&mut self, other: CfgOptions) {
+        // Do not call `insert_any_atom()`, as it'll check for `true` and `false`, but this is not
+        // needed since we already checked for that when constructing `other`. Furthermore, this
+        // will always err, as `other` inevitably contains `true` (just as we do).
+        self.enabled.extend(other.enabled);
+    }
 }
 
 impl Extend<CfgAtom> for CfgOptions {

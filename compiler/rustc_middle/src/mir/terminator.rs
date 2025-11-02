@@ -444,6 +444,14 @@ impl<'tcx> Terminator<'tcx> {
         self.kind.successors()
     }
 
+    /// Return `Some` if all successors are identical.
+    #[inline]
+    pub fn identical_successor(&self) -> Option<BasicBlock> {
+        let mut successors = self.successors();
+        let first_succ = successors.next()?;
+        if successors.all(|succ| first_succ == succ) { Some(first_succ) } else { None }
+    }
+
     #[inline]
     pub fn successors_mut<'a>(&'a mut self, f: impl FnMut(&'a mut BasicBlock)) {
         self.kind.successors_mut(f)
@@ -495,29 +503,35 @@ mod helper {
     use super::*;
     pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
 
+    // Note: this method ensures all paths below produce an iterator with the same concrete type.
+    #[inline]
+    #[define_opaque(Successors)]
+    fn mk_successors(
+        slice: &[BasicBlock],
+        option1: Option<BasicBlock>,
+        option2: Option<BasicBlock>,
+    ) -> Successors<'_> {
+        slice.iter().copied().chain(option1.into_iter().chain(option2))
+    }
+
     impl SwitchTargets {
         /// Like [`SwitchTargets::target_for_value`], but returning the same type as
         /// [`Terminator::successors`].
         #[inline]
-        #[define_opaque(Successors)]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            (&[]).into_iter().copied().chain(Some(target).into_iter().chain(None))
+            mk_successors(&[], Some(target), None)
         }
     }
 
     impl<'tcx> TerminatorKind<'tcx> {
         #[inline]
-        #[define_opaque(Successors)]
         pub fn successors(&self) -> Successors<'_> {
             use self::TerminatorKind::*;
             match *self {
                 // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
                 Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
-                    slice::from_ref(t)
-                        .into_iter()
-                        .copied()
-                        .chain(Some(u).into_iter().chain(Some(d)))
+                    mk_successors(slice::from_ref(t), Some(u), Some(d))
                 }
                 // 2-successors
                 Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
@@ -526,7 +540,7 @@ mod helper {
                 | Drop { target: ref t, unwind: _, drop: Some(u), .. }
                 | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
                 | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    slice::from_ref(t).into_iter().copied().chain(Some(u).into_iter().chain(None))
+                    mk_successors(slice::from_ref(t), Some(u), None)
                 }
                 // single successor
                 Goto { target: ref t }
@@ -536,7 +550,7 @@ mod helper {
                 | Drop { target: ref t, unwind: _, .. }
                 | Assert { target: ref t, unwind: _, .. }
                 | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    slice::from_ref(t).into_iter().copied().chain(None.into_iter().chain(None))
+                    mk_successors(slice::from_ref(t), None, None)
                 }
                 // No successors
                 UnwindResume
@@ -545,24 +559,17 @@ mod helper {
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => {
-                    (&[]).into_iter().copied().chain(None.into_iter().chain(None))
-                }
+                | Call { target: None, unwind: _, .. } => mk_successors(&[], None, None),
                 // Multiple successors
                 InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    targets.iter().copied().chain(Some(u).into_iter().chain(None))
+                    mk_successors(targets, Some(u), None)
                 }
-                InlineAsm { ref targets, unwind: _, .. } => {
-                    targets.iter().copied().chain(None.into_iter().chain(None))
-                }
-                SwitchInt { ref targets, .. } => {
-                    targets.targets.iter().copied().chain(None.into_iter().chain(None))
-                }
+                InlineAsm { ref targets, unwind: _, .. } => mk_successors(targets, None, None),
+                SwitchInt { ref targets, .. } => mk_successors(&targets.targets, None, None),
                 // FalseEdge
-                FalseEdge { ref real_target, imaginary_target } => slice::from_ref(real_target)
-                    .into_iter()
-                    .copied()
-                    .chain(Some(imaginary_target).into_iter().chain(None)),
+                FalseEdge { ref real_target, imaginary_target } => {
+                    mk_successors(slice::from_ref(real_target), Some(imaginary_target), None)
+                }
             }
         }
 
@@ -686,6 +693,28 @@ impl<'tcx> TerminatorKind<'tcx> {
         match self {
             TerminatorKind::Goto { target } => Some(*target),
             _ => None,
+        }
+    }
+
+    /// Returns true if the terminator can write to memory.
+    pub fn can_write_to_memory(&self) -> bool {
+        match self {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::UnwindTerminate(_)
+            | TerminatorKind::Return
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::CoroutineDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::Unreachable => false,
+            TerminatorKind::Call { .. }
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::TailCall { .. }
+            // Yield writes to the resume_arg place.
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::InlineAsm { .. } => true,
         }
     }
 }

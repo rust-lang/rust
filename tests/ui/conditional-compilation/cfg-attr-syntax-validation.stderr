@@ -42,26 +42,36 @@ LL | #[cfg(a, b)]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
-error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-attr-syntax-validation.rs:25:7
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-attr-syntax-validation.rs:25:1
    |
 LL | #[cfg("str")]
-   |       ^^^^^
+   | ^^^^^^-----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
-error: `cfg` predicate key must be an identifier
-  --> $DIR/cfg-attr-syntax-validation.rs:28:7
+error[E0539]: malformed `cfg` attribute input
+  --> $DIR/cfg-attr-syntax-validation.rs:31:1
    |
 LL | #[cfg(a::b)]
-   |       ^^^^
+   | ^^^^^^----^^
+   | |     |
+   | |     expected a valid identifier here
+   | help: must be of the form: `#[cfg(predicate)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0537]: invalid predicate `a`
-  --> $DIR/cfg-attr-syntax-validation.rs:31:7
+  --> $DIR/cfg-attr-syntax-validation.rs:37:7
    |
 LL | #[cfg(a())]
    |       ^^^
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:34:1
+  --> $DIR/cfg-attr-syntax-validation.rs:40:1
    |
 LL | #[cfg(a = 10)]
    | ^^^^^^^^^^--^^
@@ -72,7 +82,7 @@ LL | #[cfg(a = 10)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
-  --> $DIR/cfg-attr-syntax-validation.rs:39:1
+  --> $DIR/cfg-attr-syntax-validation.rs:45:1
    |
 LL | #[cfg(a = b"hi")]
    | ^^^^^^^^^^-^^^^^^
@@ -82,7 +92,7 @@ LL | #[cfg(a = b"hi")]
    = note: expected a normal string literal, not a byte string literal
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/cfg-attr-syntax-validation.rs:45:25
+  --> $DIR/cfg-attr-syntax-validation.rs:51:25
    |
 LL |         #[cfg(feature = $expr)]
    |                         ^^^^^

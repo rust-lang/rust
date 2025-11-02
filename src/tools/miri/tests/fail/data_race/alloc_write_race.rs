@@ -11,7 +11,7 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
-pub fn main() {
+fn main() {
     // Shared atomic pointer
     let pointer = AtomicPtr::new(null_mut::<usize>());
     let ptr = EvilSend(&pointer as *const AtomicPtr<usize>);

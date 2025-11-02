@@ -9,15 +9,15 @@ use rustc_next_trait_solver::solve::{GoalEvaluation, SolverDelegateEvalExt};
 use rustc_type_ir::{
     AliasRelationDirection, AliasTermKind, HostEffectPredicate, Interner, PredicatePolarity,
     error::ExpectedFound,
-    inherent::{IntoKind, PlaceholderConst, SliceLike, Span as _},
+    inherent::{IntoKind, SliceLike, Span as _},
     lang_items::SolverTraitLangItem,
-    solve::{CandidateSource, Certainty, GoalSource, MaybeCause, NoSolution},
+    solve::{Certainty, GoalSource, MaybeCause, NoSolution},
 };
 use tracing::{instrument, trace};
 
 use crate::next_solver::{
     AliasTerm, Binder, ClauseKind, Const, ConstKind, DbInterner, PolyTraitPredicate, PredicateKind,
-    SolverContext, SolverDefId, Span, Term, TraitPredicate, Ty, TyKind, TypeError,
+    SolverContext, Span, Term, TraitPredicate, Ty, TyKind, TypeError,
     fulfill::NextSolverError,
     infer::{
         InferCtxt,
@@ -529,7 +529,6 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
             }
         }
 
-        let mut impl_where_bound_count = 0;
         for nested_goal in nested_goals {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
@@ -542,34 +541,27 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
                 recursion_depth: self.obligation.recursion_depth + 1,
             };
 
-            let obligation;
-            match (child_mode, nested_goal.source()) {
+            let obligation = match (child_mode, nested_goal.source()) {
                 (
                     ChildMode::Trait(_) | ChildMode::Host(_),
                     GoalSource::Misc | GoalSource::TypeRelating | GoalSource::NormalizeGoal(_),
                 ) => {
                     continue;
                 }
-                (ChildMode::Trait(parent_trait_pred), GoalSource::ImplWhereBound) => {
-                    obligation = make_obligation();
-                    impl_where_bound_count += 1;
+                (ChildMode::Trait(_parent_trait_pred), GoalSource::ImplWhereBound) => {
+                    make_obligation()
                 }
                 (
-                    ChildMode::Host(parent_host_pred),
+                    ChildMode::Host(_parent_host_pred),
                     GoalSource::ImplWhereBound | GoalSource::AliasBoundConstCondition,
-                ) => {
-                    obligation = make_obligation();
-                    impl_where_bound_count += 1;
-                }
+                ) => make_obligation(),
                 // Skip over a higher-ranked predicate.
-                (_, GoalSource::InstantiateHigherRanked) => {
-                    obligation = self.obligation.clone();
-                }
+                (_, GoalSource::InstantiateHigherRanked) => self.obligation.clone(),
                 (ChildMode::PassThrough, _)
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
-                    obligation = make_obligation();
+                    make_obligation()
                 }
-            }
+            };
 
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
         }
@@ -628,35 +620,29 @@ impl<'db> NextSolverError<'db> {
 }
 
 mod wf {
-    use std::iter;
-
     use hir_def::ItemContainerId;
     use rustc_type_ir::inherent::{
-        AdtDef, BoundExistentialPredicates, GenericArg, GenericArgs as _, IntoKind, SliceLike,
-        Term as _, Ty as _,
+        AdtDef, BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Term as _,
+        Ty as _,
     };
     use rustc_type_ir::lang_items::SolverTraitLangItem;
     use rustc_type_ir::{
-        Interner, PredicatePolarity, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
-        TypeVisitor,
+        Interner, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     };
-    use tracing::{debug, instrument, trace};
+    use tracing::{debug, instrument};
 
     use crate::next_solver::infer::InferCtxt;
-    use crate::next_solver::infer::traits::{
-        Obligation, ObligationCause, PredicateObligation, PredicateObligations,
-    };
+    use crate::next_solver::infer::traits::{Obligation, ObligationCause, PredicateObligations};
     use crate::next_solver::{
-        AliasTerm, Binder, ClauseKind, Const, ConstKind, Ctor, DbInterner, ExistentialPredicate,
-        GenericArgs, ParamEnv, Predicate, PredicateKind, Region, SolverDefId, Term, TraitPredicate,
-        TraitRef, Ty, TyKind,
+        Binder, ClauseKind, Const, ConstKind, Ctor, DbInterner, ExistentialPredicate, GenericArgs,
+        ParamEnv, Predicate, PredicateKind, Region, SolverDefId, Term, TraitRef, Ty, TyKind,
     };
 
     /// Compute the predicates that are required for a type to be well-formed.
     ///
     /// This is only intended to be used in the new solver, since it does not
     /// take into account recursion depth or proper error-reporting spans.
-    pub fn unnormalized_obligations<'db>(
+    pub(crate) fn unnormalized_obligations<'db>(
         infcx: &InferCtxt<'db>,
         param_env: ParamEnv<'db>,
         term: Term<'db>,
@@ -683,156 +669,9 @@ mod wf {
         recursion_depth: usize,
     }
 
-    /// Controls whether we "elaborate" supertraits and so forth on the WF
-    /// predicates. This is a kind of hack to address #43784. The
-    /// underlying problem in that issue was a trait structure like:
-    ///
-    /// ```ignore (illustrative)
-    /// trait Foo: Copy { }
-    /// trait Bar: Foo { }
-    /// impl<T: Bar> Foo for T { }
-    /// impl<T> Bar for T { }
-    /// ```
-    ///
-    /// Here, in the `Foo` impl, we will check that `T: Copy` holds -- but
-    /// we decide that this is true because `T: Bar` is in the
-    /// where-clauses (and we can elaborate that to include `T:
-    /// Copy`). This wouldn't be a problem, except that when we check the
-    /// `Bar` impl, we decide that `T: Foo` must hold because of the `Foo`
-    /// impl. And so nowhere did we check that `T: Copy` holds!
-    ///
-    /// To resolve this, we elaborate the WF requirements that must be
-    /// proven when checking impls. This means that (e.g.) the `impl Bar
-    /// for T` will be forced to prove not only that `T: Foo` but also `T:
-    /// Copy` (which it won't be able to do, because there is no `Copy`
-    /// impl for `T`).
-    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-    enum Elaborate {
-        All,
-        None,
-    }
-
     impl<'a, 'db> WfPredicates<'a, 'db> {
         fn interner(&self) -> DbInterner<'db> {
             self.infcx.interner
-        }
-
-        /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
-        fn add_wf_preds_for_trait_pred(
-            &mut self,
-            trait_pred: TraitPredicate<'db>,
-            elaborate: Elaborate,
-        ) {
-            let tcx = self.interner();
-            let trait_ref = trait_pred.trait_ref;
-
-            // Negative trait predicates don't require supertraits to hold, just
-            // that their args are WF.
-            if trait_pred.polarity == PredicatePolarity::Negative {
-                self.add_wf_preds_for_negative_trait_pred(trait_ref);
-                return;
-            }
-
-            // if the trait predicate is not const, the wf obligations should not be const as well.
-            let obligations = self.nominal_obligations(trait_ref.def_id.0.into(), trait_ref.args);
-
-            debug!("compute_trait_pred obligations {:?}", obligations);
-            let param_env = self.param_env;
-            let depth = self.recursion_depth;
-
-            let extend = |PredicateObligation { predicate, mut cause, .. }| {
-                Obligation::with_depth(tcx, cause, depth, param_env, predicate)
-            };
-
-            if let Elaborate::All = elaborate {
-                let implied_obligations = rustc_type_ir::elaborate::elaborate(tcx, obligations);
-                let implied_obligations = implied_obligations.map(extend);
-                self.out.extend(implied_obligations);
-            } else {
-                self.out.extend(obligations);
-            }
-
-            self.out.extend(
-                trait_ref
-                    .args
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, arg)| arg.as_term().map(|t| (i, t)))
-                    .filter(|(_, term)| !term.has_escaping_bound_vars())
-                    .map(|(i, term)| {
-                        let mut cause = ObligationCause::misc();
-                        // The first arg is the self ty - use the correct span for it.
-                        Obligation::with_depth(
-                            tcx,
-                            cause,
-                            depth,
-                            param_env,
-                            ClauseKind::WellFormed(term),
-                        )
-                    }),
-            );
-        }
-
-        // Compute the obligations that are required for `trait_ref` to be WF,
-        // given that it is a *negative* trait predicate.
-        fn add_wf_preds_for_negative_trait_pred(&mut self, trait_ref: TraitRef<'db>) {
-            for arg in trait_ref.args {
-                if let Some(term) = arg.as_term() {
-                    self.add_wf_preds_for_term(term);
-                }
-            }
-        }
-
-        /// Pushes the obligations required for an alias (except inherent) to be WF
-        /// into `self.out`.
-        fn add_wf_preds_for_alias_term(&mut self, data: AliasTerm<'db>) {
-            // A projection is well-formed if
-            //
-            // (a) its predicates hold (*)
-            // (b) its args are wf
-            //
-            // (*) The predicates of an associated type include the predicates of
-            //     the trait that it's contained in. For example, given
-            //
-            // trait A<T>: Clone {
-            //     type X where T: Copy;
-            // }
-            //
-            // The predicates of `<() as A<i32>>::X` are:
-            // [
-            //     `(): Sized`
-            //     `(): Clone`
-            //     `(): A<i32>`
-            //     `i32: Sized`
-            //     `i32: Clone`
-            //     `i32: Copy`
-            // ]
-            let obligations = self.nominal_obligations(data.def_id, data.args);
-            self.out.extend(obligations);
-
-            self.add_wf_preds_for_projection_args(data.args);
-        }
-
-        fn add_wf_preds_for_projection_args(&mut self, args: GenericArgs<'db>) {
-            let tcx = self.interner();
-            let cause = ObligationCause::new();
-            let param_env = self.param_env;
-            let depth = self.recursion_depth;
-
-            self.out.extend(
-                args.iter()
-                    .filter_map(|arg| arg.as_term())
-                    .filter(|term| !term.has_escaping_bound_vars())
-                    .map(|term| {
-                        Obligation::with_depth(
-                            tcx,
-                            cause.clone(),
-                            depth,
-                            param_env,
-                            ClauseKind::WellFormed(term),
-                        )
-                    }),
-            );
         }
 
         fn require_sized(&mut self, subty: Ty<'db>) {
@@ -895,7 +734,7 @@ mod wf {
 
         fn add_wf_preds_for_dyn_ty(
             &mut self,
-            ty: Ty<'db>,
+            _ty: Ty<'db>,
             data: &[Binder<'db, ExistentialPredicate<'db>>],
             region: Region<'db>,
         ) {
@@ -1013,7 +852,7 @@ mod wf {
                     ));
                 }
 
-                TyKind::Pat(base_ty, pat) => {
+                TyKind::Pat(base_ty, _pat) => {
                     self.require_sized(base_ty);
                 }
 
@@ -1036,7 +875,7 @@ mod wf {
                     let obligations = self.nominal_obligations(data.def_id, data.args);
                     self.out.extend(obligations);
                 }
-                TyKind::Alias(rustc_type_ir::Inherent, data) => {
+                TyKind::Alias(rustc_type_ir::Inherent, _data) => {
                     return;
                 }
 
@@ -1148,7 +987,7 @@ mod wf {
                     // Let the visitor iterate into the argument/return
                     // types appearing in the fn signature.
                 }
-                TyKind::UnsafeBinder(ty) => {}
+                TyKind::UnsafeBinder(_ty) => {}
 
                 TyKind::Dynamic(data, r) => {
                     // WfObject
@@ -1291,7 +1130,7 @@ mod wf {
     ///
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
-    pub fn object_region_bounds<'db>(
+    pub(crate) fn object_region_bounds<'db>(
         interner: DbInterner<'db>,
         existential_predicates: &[Binder<'db, ExistentialPredicate<'db>>],
     ) -> Vec<Region<'db>> {

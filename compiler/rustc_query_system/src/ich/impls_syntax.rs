@@ -22,7 +22,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
         let filtered: SmallVec<[&hir::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_doc_comment()
+                attr.is_doc_comment().is_none()
                     // FIXME(jdonszelmann) have a better way to handle ignored attrs
                     && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
             })

@@ -57,7 +57,7 @@ fn check_dyn_compatibility<'a>(
         };
         let mut osvs = FxHashSet::default();
         let db = &db;
-        salsa::attach(db, || {
+        crate::attach_db(db, || {
             _ = dyn_compatibility_with_callback(db, trait_id, &mut |osv| {
                 osvs.insert(match osv {
                     DynCompatibilityViolation::SizedSelf => SizedSelf,

@@ -1057,6 +1057,21 @@ fn test_string_suffix() {
     assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
+/// Calculate the string literal prefix length
+pub(crate) fn string_prefix(s: &str) -> Option<&str> {
+    s.split_once(['"', '\'', '#']).map(|(prefix, _)| prefix)
+}
+#[test]
+fn test_string_prefix() {
+    assert_eq!(Some(""), string_prefix(r#""abc""#));
+    assert_eq!(Some(""), string_prefix(r#""""#));
+    assert_eq!(Some(""), string_prefix(r#"""suffix"#));
+    assert_eq!(Some("c"), string_prefix(r#"c"""#));
+    assert_eq!(Some("r"), string_prefix(r#"r"""#));
+    assert_eq!(Some("cr"), string_prefix(r#"cr"""#));
+    assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
@@ -1118,6 +1133,28 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
     tt_stack.pop().expect("parent token tree was closed before it was completed").1
 }
 
+pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<ast::Expr> {
+    if !expr.syntax().text_range().contains_range(range) {
+        return None;
+    }
+    loop {
+        let (chain_expr, rest) = if let ast::Expr::BinExpr(bin_expr) = &expr
+            && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
+        {
+            (bin_expr.rhs(), bin_expr.lhs())
+        } else {
+            (Some(expr), None)
+        };
+
+        if let Some(chain_expr) = chain_expr
+            && chain_expr.syntax().text_range().contains_range(range)
+        {
+            break Some(chain_expr);
+        }
+        expr = rest?;
+    }
+}
+
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
     let mut is_const = true;
     preorder_expr(expr, &mut |ev| {
@@ -1149,4 +1186,20 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+// FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
+pub(crate) fn is_never_block(
+    sema: &Semantics<'_, RootDatabase>,
+    block_expr: &ast::BlockExpr,
+) -> bool {
+    if let Some(tail_expr) = block_expr.tail_expr() {
+        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
+    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
+        && let Some(expr) = expr_stmt.expr()
+    {
+        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
+    } else {
+        false
+    }
 }

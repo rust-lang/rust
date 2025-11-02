@@ -1,0 +1,78 @@
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:80:5
+   |
+LL |     result_unit_unit();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+note: the lint level is defined here
+  --> $DIR/must_use-result-unit-uninhabited.rs:4:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = result_unit_unit();
+   |     +++++++
+
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:84:5
+   |
+LL |     result_unit_myuninhabited_nonexhaustive();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = result_unit_myuninhabited_nonexhaustive();
+   |     +++++++
+
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:86:5
+   |
+LL |     result_unit_assoctype(S2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = result_unit_assoctype(S2);
+   |     +++++++
+
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:88:5
+   |
+LL |     S2.method_use_assoc_type();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = S2.method_use_assoc_type();
+   |     +++++++
+
+error: unused `ControlFlow` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:90:5
+   |
+LL |     controlflow_unit();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = controlflow_unit();
+   |     +++++++
+
+error: unused `Result` that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:99:9
+   |
+LL |         self.generate();
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = self.generate();
+   |         +++++++
+
+error: aborting due to 6 previous errors
+

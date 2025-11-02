@@ -265,6 +265,7 @@ pub(crate) struct ModuleCircular {
 
 #[derive(Diagnostic)]
 #[diag(expand_module_in_block)]
+#[note]
 pub(crate) struct ModuleInBlock {
     #[primary_span]
     pub span: Span,
@@ -273,7 +274,7 @@ pub(crate) struct ModuleInBlock {
 }
 
 #[derive(Subdiagnostic)]
-#[note(expand_note)]
+#[help(expand_help)]
 pub(crate) struct ModuleInBlockName {
     #[primary_span]
     pub span: Span,

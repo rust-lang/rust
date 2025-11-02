@@ -1,5 +1,6 @@
 //@ check-pass
 //@ proc-macro: call-site.rs
+//@ ignore-backends: gcc
 
 extern crate call_site;
 

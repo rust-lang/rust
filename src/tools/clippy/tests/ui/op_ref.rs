@@ -111,7 +111,7 @@ mod issue_2597 {
     }
 }
 
-#[allow(clippy::needless_if)]
+#[allow(clippy::needless_ifs)]
 fn issue15063() {
     use std::ops::BitAnd;
 

@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::peel_blocks;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
-use clippy_utils::{is_diag_trait_item, peel_blocks};
+use clippy_utils::ty::{is_copy, should_call_clone_as_function};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -18,14 +19,13 @@ use super::MAP_CLONE;
 // If this `map` is called on an `Option` or a `Result` and the previous call is `as_ref`, we don't
 // run this lint because it would overlap with `useless_asref` which provides a better suggestion
 // in this case.
-fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) -> bool {
-    if is_diag_trait_item(cx, method_id, sym::Iterator) {
+fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_parent_id: DefId) -> bool {
+    if method_parent_id.is_diag_item(cx, sym::Iterator) {
         return true;
     }
     // We check if it's an `Option` or a `Result`.
-    if let Some(id) = cx.tcx.impl_of_assoc(method_id) {
-        let identity = cx.tcx.type_of(id).instantiate_identity();
-        if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
+    if let Some(ty) = method_parent_id.opt_impl_ty(cx) {
+        if !ty.is_diag_item(cx, sym::Option) && !ty.is_diag_item(cx, sym::Result) {
             return false;
         }
     } else {
@@ -42,8 +42,8 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
 }
 
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: Msrv) {
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && should_run_lint(cx, e, method_id)
+    if let Some(parent_id) = cx.typeck_results().type_dependent_def_id(e.hir_id).opt_parent(cx)
+        && should_run_lint(cx, e, parent_id)
     {
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {

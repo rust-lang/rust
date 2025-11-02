@@ -1,19 +1,19 @@
 //! Definition of `InferCtxtLike` from the librarified type layer.
 
 use rustc_type_ir::{
-    ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy, IntTy, IntVarValue,
-    IntVid, RegionVid, TyVid, TypeFoldable, TypingMode, UniverseIndex,
-    inherent::{Const as _, IntoKind, Span as _, Ty as _},
+    ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy, IntVarValue, IntVid,
+    RegionVid, TyVid, TypeFoldable, TypingMode, UniverseIndex,
+    inherent::{Const as _, IntoKind, Ty as _},
     relate::combine::PredicateEmittingRelation,
 };
 
 use crate::next_solver::{
-    Binder, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, OpaqueTypeKey, ParamEnv,
-    Region, SolverDefId, Span, Ty, TyKind,
+    Binder, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, OpaqueTypeKey, Region,
+    SolverDefId, Span, Ty, TyKind,
     infer::opaque_types::{OpaqueHiddenType, table::OpaqueTypeStorageEntries},
 };
 
-use super::{BoundRegionConversionTime, InferCtxt, relate::RelateResult, traits::ObligationCause};
+use super::{BoundRegionConversionTime, InferCtxt, relate::RelateResult};
 
 impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
     type Interner = DbInterner<'db>;
@@ -250,16 +250,16 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         self.probe(|_| probe())
     }
 
-    fn sub_regions(&self, sub: Region<'db>, sup: Region<'db>, span: Span) {
+    fn sub_regions(&self, sub: Region<'db>, sup: Region<'db>, _span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(sub, sup);
     }
 
-    fn equate_regions(&self, a: Region<'db>, b: Region<'db>, span: Span) {
+    fn equate_regions(&self, a: Region<'db>, b: Region<'db>, _span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(a, b);
     }
 
-    fn register_ty_outlives(&self, ty: Ty<'db>, r: Region<'db>, span: Span) {
-        //self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(Span::dummy()));
+    fn register_ty_outlives(&self, _ty: Ty<'db>, _r: Region<'db>, _span: Span) {
+        // self.register_type_outlives_constraint(ty, r, &ObligationCause::dummy());
     }
 
     type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;

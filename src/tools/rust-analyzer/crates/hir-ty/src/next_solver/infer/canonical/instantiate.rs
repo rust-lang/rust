@@ -6,24 +6,15 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::next_solver::BoundConst;
 use crate::next_solver::{
-    AliasTy, Binder, BoundRegion, BoundTy, Canonical, CanonicalVarValues, Const, DbInterner, Goal,
-    ParamEnv, Predicate, PredicateKind, Region, Ty, TyKind,
-    fold::FnMutDelegate,
-    infer::{
-        DefineOpaqueTypes, InferCtxt, TypeTrace,
-        traits::{Obligation, PredicateObligations},
-    },
+    BoundConst, BoundRegion, BoundTy, Canonical, CanonicalVarValues, Clauses, Const, ConstKind,
+    DbInterner, GenericArg, Predicate, Region, RegionKind, Ty, TyKind, fold::FnMutDelegate,
 };
+use rustc_hash::FxHashMap;
 use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, BoundVar, GenericArgKind, InferTy, TypeFoldable, Upcast,
-    Variance,
-    inherent::{IntoKind, SliceLike},
-    relate::{
-        Relate, TypeRelation, VarianceDiagInfo,
-        combine::{super_combine_consts, super_combine_tys},
-    },
+    BoundVarIndexKind, GenericArgKind, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
+    inherent::{GenericArg as _, IntoKind, SliceLike},
 };
 
 pub trait CanonicalExt<'db, V> {
@@ -102,6 +93,79 @@ where
             },
         };
 
-        tcx.replace_escaping_bound_vars_uncached(value, delegate)
+        let value = tcx.replace_escaping_bound_vars_uncached(value, delegate);
+        value.fold_with(&mut CanonicalInstantiator {
+            tcx,
+            var_values: var_values.var_values.as_slice(),
+            cache: Default::default(),
+        })
+    }
+}
+
+/// Replaces the bound vars in a canonical binder with var values.
+struct CanonicalInstantiator<'db, 'a> {
+    tcx: DbInterner<'db>,
+
+    // The values that the bound vars are being instantiated with.
+    var_values: &'a [GenericArg<'db>],
+
+    // Because we use `BoundVarIndexKind::Canonical`, we can cache
+    // based only on the entire ty, not worrying about a `DebruijnIndex`
+    cache: FxHashMap<Ty<'db>, Ty<'db>>,
+}
+
+impl<'db, 'a> TypeFolder<DbInterner<'db>> for CanonicalInstantiator<'db, 'a> {
+    fn cx(&self) -> DbInterner<'db> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
+        match t.kind() {
+            TyKind::Bound(BoundVarIndexKind::Canonical, bound_ty) => {
+                self.var_values[bound_ty.var.as_usize()].expect_ty()
+            }
+            _ => {
+                if !t.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
+                    t
+                } else if let Some(&t) = self.cache.get(&t) {
+                    t
+                } else {
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert(t, res).is_none());
+                    res
+                }
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
+        match r.kind() {
+            RegionKind::ReBound(BoundVarIndexKind::Canonical, br) => {
+                self.var_values[br.var.as_usize()].expect_region()
+            }
+            _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
+        match ct.kind() {
+            ConstKind::Bound(BoundVarIndexKind::Canonical, bound_const) => {
+                self.var_values[bound_const.var.as_usize()].expect_const()
+            }
+            _ => ct.super_fold_with(self),
+        }
+    }
+
+    fn fold_predicate(&mut self, p: Predicate<'db>) -> Predicate<'db> {
+        if p.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: Clauses<'db>) -> Clauses<'db> {
+        if !c.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
+            return c;
+        }
+
+        // FIXME: We might need cache here for perf like rustc
+        c.super_fold_with(self)
     }
 }

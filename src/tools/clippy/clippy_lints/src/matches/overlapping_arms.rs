@@ -1,4 +1,4 @@
-use clippy_utils::consts::{ConstEvalCtxt, FullInt, mir_to_const};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_note;
 use core::cmp::Ordering;
 use rustc_hir::{Arm, Expr, PatKind, RangeEnd};
@@ -35,12 +35,12 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     let lhs_const = if let Some(lhs) = lhs {
                         ConstEvalCtxt::new(cx).eval_pat_expr(lhs)?
                     } else {
-                        mir_to_const(cx.tcx, ty.numeric_min_val(cx.tcx)?)?
+                        Constant::new_numeric_min(cx.tcx, ty)?
                     };
                     let rhs_const = if let Some(rhs) = rhs {
                         ConstEvalCtxt::new(cx).eval_pat_expr(rhs)?
                     } else {
-                        mir_to_const(cx.tcx, ty.numeric_max_val(cx.tcx)?)?
+                        Constant::new_numeric_max(cx.tcx, ty)?
                     };
                     let lhs_val = lhs_const.int_value(cx.tcx, ty)?;
                     let rhs_val = rhs_const.int_value(cx.tcx, ty)?;

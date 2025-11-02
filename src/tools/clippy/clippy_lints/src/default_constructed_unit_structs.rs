@@ -75,7 +75,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             && !base.is_suggestable_infer_ty()
         {
             let mut removals = vec![(expr.span.with_lo(qpath.qself_span().hi()), String::new())];
-            if expr.span.with_source_text(cx, |s| s.starts_with('<')) == Some(true) {
+            if expr.span.check_source_text(cx, |s| s.starts_with('<')) {
                 // Remove `<`, '>` has already been removed by the existing removal expression.
                 removals.push((expr.span.with_hi(qpath.qself_span().lo()), String::new()));
             }

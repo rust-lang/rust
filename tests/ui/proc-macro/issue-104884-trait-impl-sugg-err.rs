@@ -1,4 +1,5 @@
 //@ proc-macro: issue-104884.rs
+//@ ignore-backends: gcc
 
 use std::collections::BinaryHeap;
 

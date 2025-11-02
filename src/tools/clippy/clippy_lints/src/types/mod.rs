@@ -655,7 +655,6 @@ impl Types {
                             }
                         }
                     },
-                    QPath::LangItem(..) => {},
                 }
             },
             TyKind::Path(ref qpath) => {
@@ -693,7 +692,7 @@ impl Types {
     }
 }
 
-#[allow(clippy::struct_excessive_bools, clippy::struct_field_names)]
+#[expect(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Default)]
 struct CheckTyContext {
     is_in_trait_impl: bool,

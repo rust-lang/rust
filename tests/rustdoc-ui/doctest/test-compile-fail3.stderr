@@ -1,8 +1,9 @@
 error[E0765]: unterminated double quote string
- --> $DIR/test-compile-fail3.rs:3:1
-  |
-3 | "fail
-  | ^^^^^
+  --> $DIR/test-compile-fail3.rs:3:1
+   |
+LL | / "fail
+LL | |
+   | |___________^
 
 error: aborting due to 1 previous error
 

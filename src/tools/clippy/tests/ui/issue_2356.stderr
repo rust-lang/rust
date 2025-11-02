@@ -1,5 +1,5 @@
 error: this loop could be written as a `for` loop
-  --> tests/ui/issue_2356.rs:17:9
+  --> tests/ui/issue_2356.rs:16:9
    |
 LL |         while let Some(e) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for e in it`

@@ -196,13 +196,20 @@ impl DebruijnIndex {
 
 pub fn debug_bound_var<T: std::fmt::Write>(
     fmt: &mut T,
-    debruijn: DebruijnIndex,
+    bound_index: BoundVarIndexKind,
     var: impl std::fmt::Debug,
 ) -> Result<(), std::fmt::Error> {
-    if debruijn == INNERMOST {
-        write!(fmt, "^{var:?}")
-    } else {
-        write!(fmt, "^{}_{:?}", debruijn.index(), var)
+    match bound_index {
+        BoundVarIndexKind::Bound(debruijn) => {
+            if debruijn == INNERMOST {
+                write!(fmt, "^{var:?}")
+            } else {
+                write!(fmt, "^{}_{:?}", debruijn.index(), var)
+            }
+        }
+        BoundVarIndexKind::Canonical => {
+            write!(fmt, "^c_{:?}", var)
+        }
     }
 }
 

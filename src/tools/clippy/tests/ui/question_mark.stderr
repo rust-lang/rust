@@ -313,5 +313,25 @@ LL | |         Err(err) => return Err(<&str as Into<String>>::into(err)),
 LL | |     };
    | |_____^ help: try instead: `some_result?`
 
-error: aborting due to 33 previous errors
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:596:17
+   |
+LL |           let x = match result {
+   |  _________________^
+LL | |
+LL | |             Ok(v) => v,
+LL | |             Err(e) => return Err(e),
+LL | |         };
+   | |_________^ help: try instead: `result?`
+
+error: this block may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:609:9
+   |
+LL | /         if let Err(reason) = result {
+LL | |
+LL | |             return Err(reason);
+LL | |         }
+   | |_________^ help: replace it with: `result?;`
+
+error: aborting due to 35 previous errors
 

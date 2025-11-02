@@ -97,9 +97,9 @@ codegen_ssa_invalid_literal_value = invalid literal value
 
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
-codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer type, found `{$ty}`
-
 codegen_ssa_invalid_monomorphization_basic_integer_or_ptr_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer or pointer type, found `{$ty}`
+
+codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer type, found `{$ty}`
 
 codegen_ssa_invalid_monomorphization_cannot_return = invalid monomorphization of `{$name}` intrinsic: cannot return `{$ret_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
@@ -222,8 +222,6 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
     .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
 codegen_ssa_no_field = no field `{$name}`
-
-codegen_ssa_no_mangle_nameless = `#[no_mangle]` cannot be used on {$definition} as it has no name
 
 codegen_ssa_no_module_named =
     no module named `{$user_path}` (mangled: {$cgu_name}). available modules: {$cgu_names}

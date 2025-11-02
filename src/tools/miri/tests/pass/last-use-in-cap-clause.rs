@@ -12,6 +12,6 @@ fn foo() -> Box<dyn FnMut() -> isize + 'static> {
     Box::new(result)
 }
 
-pub fn main() {
+fn main() {
     assert_eq!(foo()(), 22);
 }

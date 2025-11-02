@@ -7,7 +7,7 @@
 //@ build-pass
 #![no_core]
 #![crate_type = "rlib"]
-#![feature(intrinsics, rustc_attrs, no_core, lang_items, staged_api)]
+#![feature(intrinsics, rustc_attrs, no_core, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]
 
 extern crate minicore;

@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::{has_drop, is_copy, is_type_lang_item, peel_and_count_ty_refs};
+use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -100,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
             let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
                 || fn_name == Some(sym::to_owned_method)
-                || (fn_name == Some(sym::to_string_method) && is_type_lang_item(cx, arg_ty, LangItem::String));
+                || (fn_name == Some(sym::to_string_method) && arg_ty.is_lang_item(cx, LangItem::String));
 
             let from_deref = !from_borrow && matches!(fn_name, Some(sym::path_to_pathbuf | sym::os_str_to_os_string));
 

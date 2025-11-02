@@ -1,0 +1,18 @@
+warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/requires-bool-expr-with-semicolon.rs:3:12
+   |
+LL | #![feature(contracts)]
+   |            ^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/requires-bool-expr-with-semicolon.rs:9:1
+   |
+LL | #[requires(true;)]
+   | ^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

@@ -72,7 +72,7 @@ The following test suites are available, with links for more information:
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
 | [`coverage`](#coverage-tests)             | Check coverage instrumentation                                                                                      |
 | [`coverage-run-rustdoc`](#coverage-tests) | `coverage` tests that also run instrumented doctests                                                                |
-| [`crashes`](#crashes-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
+| [`crashes`](#crash-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
 
 ### General purpose test suite
 
@@ -557,7 +557,7 @@ only running the main `coverage` suite.
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
 
-### Crashes tests
+### Crash tests
 
 [`tests/crashes`] serve as a collection of tests that are expected to cause the
 compiler to ICE, panic or crash in some other way, so that accidental fixes are
@@ -580,13 +580,13 @@ recommended to include test cases from several issues in a single PR.
 When you do so, each issue number should be noted in the file name (`12345.rs`
 should suffice) and also inside the file by means of a `//@ known-bug: #12345`
 directive. Please [label][labeling] the relevant issues with `S-bug-has-test`
-afterwards.
+once your PR is merged.
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name. Please add a doc
 comment at the top of the file explaining why this test exists, even better if
 you can briefly explain how the example causes rustc to crash previously and
-what was done to prevent rustc to ICE/panic/crash.
+what was done to prevent rustc to ICE / panic / crash.
 
 Adding
 

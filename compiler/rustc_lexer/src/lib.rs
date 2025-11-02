@@ -599,14 +599,16 @@ impl Cursor<'_> {
             if potential_closing.is_none() {
                 // a less fortunate recovery if all else fails which finds any dashes preceded by whitespace
                 // on a standalone line. Might be wrong.
+                let mut base_index = 0;
                 while let Some(closing) = rest.find("---") {
                     let preceding_chars_start = rest[..closing].rfind("\n").map_or(0, |i| i + 1);
                     if rest[preceding_chars_start..closing].chars().all(is_horizontal_whitespace) {
                         // candidate found
-                        potential_closing = Some(closing);
+                        potential_closing = Some(closing + base_index);
                         break;
                     } else {
                         rest = &rest[closing + 3..];
+                        base_index += closing + 3;
                     }
                 }
             }

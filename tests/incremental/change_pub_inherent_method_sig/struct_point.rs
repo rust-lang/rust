@@ -3,6 +3,7 @@
 //@ revisions:cfail1 cfail2
 //@ compile-flags: -Z query-dep-graph
 //@ build-pass
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]

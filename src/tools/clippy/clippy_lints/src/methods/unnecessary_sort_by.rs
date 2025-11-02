@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::std_or_core;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_trait_method, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
@@ -138,7 +139,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         ] = &closure_body.params
         && let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind
         && method_path.ident.name == sym::cmp
-        && is_trait_method(cx, closure_body.value, sym::Ord)
+        && cx
+            .ty_based_def(closure_body.value)
+            .opt_parent(cx)
+            .is_diag_item(cx, sym::Ord)
     {
         let (closure_body, closure_arg, reverse) = if mirrored_exprs(left_expr, left_ident, right_expr, right_ident) {
             (

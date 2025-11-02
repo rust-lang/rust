@@ -56,6 +56,13 @@ fn main() {
 unsafe extern "C" {
     pub fn kernel_1(array_b: *mut [f64; 256]);
 }
+
+#[cfg(not(target_os = "linux"))]
+#[unsafe(no_mangle)]
+#[inline(never)]
+pub extern "gpu-kernel" fn kernel_1(x: *mut [f64; 256]) {
+    unsafe { (*x)[0] = 21.0 };
+}
 ```
 
 ## Compile instructions

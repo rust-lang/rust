@@ -70,7 +70,6 @@ use std::sync::Arc;
 use rustc_abi::Align;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
@@ -88,9 +87,7 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{
-    QueryCache, QueryMode, QueryStackDeferred, QueryState, try_get_cached,
-};
+use rustc_query_system::query::{QueryMode, QueryStackDeferred, QueryState};
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{
@@ -103,11 +100,14 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, SanitizerSet};
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
+pub use self::keys::{AsLocalKey, Key, LocalCrate};
+pub use self::plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -117,14 +117,14 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstInput,
 };
-use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions};
-use crate::query::erase::{Erase, erase, restore};
-use crate::query::plumbing::{
-    CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
+use crate::mir::mono::{
+    CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
 };
+use crate::query::erase::{Erase, erase, restore};
+use crate::query::plumbing::{CyclePlaceholder, DynamicQuery};
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalDropckOutlivesGoal, CanonicalImpliedOutlivesBoundsGoal,
-    CanonicalPredicateGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
+    CanonicalMethodAutoderefStepsGoal, CanonicalPredicateGoal, CanonicalTypeOpAscribeUserTypeGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, DropckConstraint,
     DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
     OutlivesBound,
@@ -145,12 +145,11 @@ use crate::{dep_graph, mir, thir};
 
 mod arena_cached;
 pub mod erase;
+pub(crate) mod inner;
 mod keys;
-pub use keys::{AsLocalKey, Key, LocalCrate};
 pub mod on_disk_cache;
 #[macro_use]
 pub mod plumbing;
-pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -1106,8 +1105,7 @@ rustc_queries! {
     }
 
     /// Given an `impl_id`, return the trait it implements along with some header information.
-    /// Return `None` if this is an inherent impl.
-    query impl_trait_header(impl_id: DefId) -> Option<ty::ImplTraitHeader<'tcx>> {
+    query impl_trait_header(impl_id: DefId) -> ty::ImplTraitHeader<'tcx> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
@@ -1195,17 +1193,19 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
-    query check_liveness(key: LocalDefId) {
-        desc { |tcx| "checking liveness of variables in `{}`", tcx.def_path_str(key) }
+    query check_liveness(key: LocalDefId) -> &'tcx rustc_index::bit_set::DenseBitSet<abi::FieldIdx> {
+        arena_cache
+        desc { |tcx| "checking liveness of variables in `{}`", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
     /// Return the live symbols in the crate for dead code check.
     ///
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
-    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
+    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<(
         LocalDefIdSet,
         LocalDefIdMap<FxIndexSet<DefId>>,
-    ) {
+    ), ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
@@ -1244,7 +1244,7 @@ rustc_queries! {
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
-    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::ConcreteOpaqueTypes<'tcx>, ErrorGuaranteed> {
+    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
     }
 
@@ -2559,9 +2559,9 @@ rustc_queries! {
     }
 
     query method_autoderef_steps(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalMethodAutoderefStepsGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
-        desc { "computing autoderef types for `{}`", goal.canonical.value.value }
+        desc { "computing autoderef types for `{}`", goal.canonical.value.value.self_ty }
     }
 
     /// Used by `-Znext-solver` to compute proof trees.
@@ -2657,7 +2657,7 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
+    query deduced_param_attrs(def_id: DefId) -> &'tcx [DeducedParamAttrs] {
         desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -2704,7 +2704,7 @@ rustc_queries! {
         desc { "functions to skip for move-size check" }
     }
 
-    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {
         desc { "collecting items used by `{}`", key.0 }
         cache_on_disk_if { true }
     }
@@ -2716,6 +2716,12 @@ rustc_queries! {
 
     query anon_const_kind(def_id: DefId) -> ty::AnonConstKind {
         desc { |tcx| "looking up anon const kind of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
+    query trivial_const(def_id: DefId) -> Option<(mir::ConstValue, Ty<'tcx>)> {
+        desc { |tcx| "checking if `{}` is a trivial const", tcx.def_path_str(def_id) }
+        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 

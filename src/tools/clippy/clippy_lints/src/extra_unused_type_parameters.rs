@@ -157,6 +157,11 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
             let spans = if explicit_params.len() == extra_params.len() {
                 vec![self.generics.span] // Remove the entire list of generics
             } else {
+                // 1. Start from the last extra param
+                // 2. While the params preceding it are also extra, construct spans going from the current param to
+                //    the comma before it
+                // 3. Once this chain of extra params stops, switch to constructing spans going from the current
+                //    param to the comma _after_ it
                 let mut end: Option<LocalDefId> = None;
                 extra_params
                     .iter()

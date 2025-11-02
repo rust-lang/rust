@@ -339,9 +339,34 @@ results.  The Docker image is set up to launch `remote-test-server` and the
 build tools use `remote-test-client` to communicate with the server to
 coordinate running tests (see [src/bootstrap/src/core/build_steps/test.rs]).
 
-> **TODO**
->
-> - Is there any support for using an iOS emulator?
+To run on the iOS/tvOS/watchOS/visionOS simulator, we can similarly treat it as
+a "remote" machine. A curious detail here is that the network is shared between
+the simulator instance and the host macOS, so we can use the local loopback
+address `127.0.0.1`. Something like the following should work:
+
+```sh
+# Build the test server for the iOS simulator:
+./x build src/tools/remote-test-server --target aarch64-apple-ios-sim
+
+# If you already have a simulator instance open, copy the device UUID from:
+xcrun simctl list devices booted
+UDID=01234567-89AB-CDEF-0123-456789ABCDEF
+
+# Alternatively, create and boot a new simulator instance:
+xcrun simctl list runtimes
+xcrun simctl list devicetypes
+UDID=$(xcrun simctl create $CHOSEN_DEVICE_TYPE $CHOSEN_RUNTIME)
+xcrun simctl boot $UDID
+# See https://nshipster.com/simctl/ for details.
+
+# Spawn the runner on port 12345:
+xcrun simctl spawn $UDID ./build/host/stage2-tools/aarch64-apple-ios-sim/release/remote-test-server -v --bind 127.0.0.1:12345
+
+# In a new terminal, run tests via the runner:
+export TEST_DEVICE_ADDR="127.0.0.1:12345"
+./x test --host='' --target aarch64-apple-ios-sim --skip tests/debuginfo
+# FIXME(madsmtm): Allow debuginfo tests to work (maybe needs `.dSYM` folder to be copied to the target?).
+```
 
 [armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
@@ -370,40 +395,5 @@ Now, tests should just run, you don't have to set up anything else.
 [wasi sdk repository]: https://github.com/WebAssembly/wasi-sdk
 [wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
 
-
-## Running rustc_codegen_gcc tests
-
-First thing to know is that it only supports linux x86_64 at the moment. We will
-extend its support later on.
-
-You need to update `codegen-backends` value in your `bootstrap.toml` file in the
-`[rust]` section and add "gcc" in the array:
-
-```toml
-codegen-backends = ["llvm", "gcc"]
-```
-
-Then you need to install libgccjit 12. For example with `apt`:
-
-```text
-apt install libgccjit-12-dev
-```
-
-Now you can run the following command:
-
-```text
-./x test compiler/rustc_codegen_gcc/
-```
-
-If it cannot find the `.so` library (if you installed it with `apt` for example), you
-need to pass the library file path with `LIBRARY_PATH`:
-
-```text
-LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
-```
-
-If you encounter bugs or problems, don't hesitate to open issues on the
-[`rustc_codegen_gcc`
-repository](https://github.com/rust-lang/rustc_codegen_gcc/).
 
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui

@@ -2,7 +2,7 @@
 
 //! This snippet causes the type length to blowup exponentially,
 //! so check that we don't accidentally exceed the type length limit.
-// FIXME: Once the size of iterator adaptors is further reduced,
+// FIXME: Once the size of iterator adapters is further reduced,
 // increase the complexity of this test.
 use std::collections::VecDeque;
 

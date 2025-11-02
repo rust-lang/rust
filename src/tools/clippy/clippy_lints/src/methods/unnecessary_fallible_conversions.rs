@@ -181,7 +181,6 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Exp
             QPath::TypeRelative(_, seg) => Some(SpansKind::Fn {
                 fn_span: seg.ident.span,
             }),
-            QPath::LangItem(_, _) => unreachable!("`TryFrom` and `TryInto` are not lang items"),
         };
 
         check(

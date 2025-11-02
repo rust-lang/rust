@@ -1,8 +1,6 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-#[cfg(any(miri, target_has_reliable_f128_math))]
-use super::assert_approx_eq;
 use super::assert_biteq;
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
@@ -19,34 +17,6 @@ const TOL_PRECISE: f128 = 1e-28;
 
 // FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
 // the intrinsics.
-
-#[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-fn test_mul_add() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(12.3f128.mul_add(4.5, 6.7), 62.0500000000000000000000000000000037);
-    assert_biteq!((-12.3f128).mul_add(-4.5, -6.7), 48.6500000000000000000000000000000049);
-    assert_biteq!(0.0f128.mul_add(8.9, 1.2), 1.2);
-    assert_biteq!(3.4f128.mul_add(-0.0, 5.6), 5.6);
-    assert!(nan.mul_add(7.8, 9.0).is_nan());
-    assert_biteq!(inf.mul_add(7.8, 9.0), inf);
-    assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
-    assert_biteq!(8.9f128.mul_add(inf, 3.2), inf);
-    assert_biteq!((-3.2f128).mul_add(2.4, neg_inf), neg_inf);
-}
-
-#[test]
-#[cfg(any(miri, target_has_reliable_f128_math))]
-fn test_max_recip() {
-    assert_approx_eq!(
-        f128::MAX.recip(),
-        8.40525785778023376565669454330438228902076605e-4933,
-        1e-4900
-    );
-}
 
 #[test]
 fn test_from() {

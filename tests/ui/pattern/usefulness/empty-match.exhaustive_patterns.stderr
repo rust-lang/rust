@@ -346,8 +346,8 @@ LL +                 NonEmptyEnum2::Foo(_) | NonEmptyEnum2::Bar => todo!()
 error[E0004]: non-exhaustive patterns: `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
   --> $DIR/empty-match.rs:71:24
    |
-LL |     match_guarded_arm!(NonEmptyEnum5::V1);
-   |                        ^^^^^^^^^^^^^^^^^ patterns `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
+LL | ...ded_arm!(NonEmptyEnum5::V1);
+   |             ^^^^^^^^^^^^^^^^^ patterns `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
    |
 note: `NonEmptyEnum5` defined here
   --> $DIR/empty-match.rs:38:10

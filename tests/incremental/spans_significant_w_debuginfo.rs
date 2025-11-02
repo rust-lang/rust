@@ -4,6 +4,7 @@
 //@ revisions:rpass1 rpass2
 
 //@ compile-flags: -g -Z query-dep-graph
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![rustc_partition_codegened(module = "spans_significant_w_debuginfo", cfg = "rpass2")]

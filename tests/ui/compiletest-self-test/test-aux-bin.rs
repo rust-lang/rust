@@ -1,4 +1,5 @@
 //@ ignore-cross-compile because aux-bin does not yet support it
+//@ ignore-remote because aux-bin does not yet support it
 //@ aux-bin: print-it-works.rs
 //@ run-pass
 

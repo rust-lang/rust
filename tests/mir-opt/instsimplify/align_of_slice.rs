@@ -7,6 +7,6 @@
 // EMIT_MIR align_of_slice.of_val_slice.InstSimplify-after-simplifycfg.diff
 pub fn of_val_slice<T>(slice: &[T]) -> usize {
     // CHECK-LABEL: fn of_val_slice(_1: &[T])
-    // CHECK: _0 = AlignOf(T);
+    // CHECK: _0 = const <T as std::mem::SizedTypeProperties>::ALIGN;
     unsafe { core::intrinsics::align_of_val(slice) }
 }

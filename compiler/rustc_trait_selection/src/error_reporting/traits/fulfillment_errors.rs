@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
 use std::path::PathBuf;
@@ -467,7 +468,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_trait_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_adt_version_mismatch(&mut err, leaf_trait_predicate);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
@@ -1305,8 +1307,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
                         diag.span_suggestion(
-                            span,
-                            "add `#[derive(ConstParamTy)]` to the struct",
+                            span.shrink_to_lo(),
+                            format!("add `#[derive(ConstParamTy)]` to the {}", def.descr()),
                             "#[derive(ConstParamTy)]\n",
                             Applicability::MachineApplicable,
                         );
@@ -1314,8 +1316,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // FIXME(adt_const_params): We should check there's not already an
                         // overlapping `Eq`/`PartialEq` impl.
                         diag.span_suggestion(
-                            span,
-                            "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct",
+                            span.shrink_to_lo(),
+                            format!(
+                                "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the {}",
+                                def.descr()
+                            ),
                             "#[derive(ConstParamTy, PartialEq, Eq)]\n",
                             Applicability::MachineApplicable,
                         );
@@ -1466,7 +1471,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //
                     // we intentionally drop errors from normalization here,
                     // since the normalization is just done to improve the error message.
-                    let _ = ocx.select_where_possible();
+                    let _ = ocx.try_evaluate_obligations();
 
                     if let Err(new_err) =
                         ocx.eq(&obligation.cause, obligation.param_env, data.term, normalized_term)
@@ -1863,7 +1868,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                let imp = self.tcx.impl_trait_header(def_id).unwrap();
+                let imp = self.tcx.impl_trait_header(def_id);
                 if imp.polarity != ty::ImplPolarity::Positive
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
@@ -1894,6 +1899,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         other: bool,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        let parent_map = self.tcx.visible_parent_map(());
         let alternative_candidates = |def_id: DefId| {
             let mut impl_candidates: Vec<_> = self
                 .tcx
@@ -1901,13 +1907,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // ignore `do_not_recommend` items
                 .filter(|def_id| !self.tcx.do_not_recommend_impl(*def_id))
                 // Ignore automatically derived impls and `!Trait` impls.
-                .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
-                .filter_map(|header| {
-                    (header.polarity != ty::ImplPolarity::Negative
+                .map(|def_id| (self.tcx.impl_trait_header(def_id), def_id))
+                .filter_map(|(header, def_id)| {
+                    (header.polarity == ty::ImplPolarity::Positive
                         || self.tcx.is_automatically_derived(def_id))
-                    .then(|| header.trait_ref.instantiate_identity())
+                    .then(|| (header.trait_ref.instantiate_identity(), def_id))
                 })
-                .filter(|trait_ref| {
+                .filter(|(trait_ref, _)| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.
                     if let ty::Param(_) = self_ty.kind() {
@@ -1918,14 +1924,28 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): This could be generalized, both to
                         // be more granular, and probably look past other `#[fundamental]`
                         // types, too.
-                        self.tcx.visibility(def.did()).is_accessible_from(body_def_id, self.tcx)
+                        let mut did = def.did();
+                        if self.tcx.visibility(did).is_accessible_from(body_def_id, self.tcx) {
+                            // don't suggest foreign `#[doc(hidden)]` types
+                            if !did.is_local() {
+                                while let Some(parent) = parent_map.get(&did) {
+                                    if self.tcx.is_doc_hidden(did) {
+                                        return false;
+                                    }
+                                    did = *parent;
+                                }
+                            }
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         true
                     }
                 })
                 .collect();
 
-            impl_candidates.sort_by_key(|tr| tr.to_string());
+            impl_candidates.sort_by_key(|(tr, _)| tr.to_string());
             impl_candidates.dedup();
             impl_candidates
         };
@@ -1953,7 +1973,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let candidates = if impl_candidates.is_empty() {
                 alternative_candidates(trait_def_id)
             } else {
-                impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
+                impl_candidates.into_iter().map(|cand| (cand.trait_ref, cand.impl_def_id)).collect()
             };
             let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
             span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
@@ -1985,7 +2005,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.def_span(found_type),
                     "this type doesn't implement the required trait",
                 );
-                for trait_ref in candidates {
+                for (trait_ref, _) in candidates {
                     if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
                         && let candidate_def_id = def.did()
                         && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
@@ -2067,7 +2087,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 )
                             }),
                     );
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return false;
                     }
 
@@ -2083,7 +2103,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             terrs.push(terr);
                         }
-                        if !ocx.select_where_possible().is_empty() {
+                        if !ocx.try_evaluate_obligations().is_empty() {
                             return false;
                         }
                     }
@@ -2172,7 +2192,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         msg.extend(types.1.0);
                         msg.push(StringPart::normal("`"));
                     }
-                    err.highlighted_help(msg);
+                    err.highlighted_span_help(self.tcx.def_span(single.impl_def_id), msg);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
@@ -2198,12 +2218,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let other = if other { "other " } else { "" };
-        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diag<'_>| {
-            candidates.retain(|tr| !tr.references_error());
+        let report = |mut candidates: Vec<(TraitRef<'tcx>, DefId)>, err: &mut Diag<'_>| {
+            candidates.retain(|(tr, _)| !tr.references_error());
             if candidates.is_empty() {
                 return false;
             }
-            if let &[cand] = &candidates[..] {
+            if let &[(cand, def_id)] = &candidates[..] {
                 if self.tcx.is_diagnostic_item(sym::FromResidual, cand.def_id)
                     && !self.tcx.features().enabled(sym::try_trait_v2)
                 {
@@ -2219,56 +2239,87 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                 let trait_ = self.tcx.short_string(cand.print_trait_sugared(), err.long_ty_path());
                 let self_ty = self.tcx.short_string(cand.self_ty(), err.long_ty_path());
-                err.highlighted_help(vec![
-                    StringPart::normal(format!("the trait `{trait_}` ",)),
-                    StringPart::highlighted("is"),
-                    StringPart::normal(desc),
-                    StringPart::highlighted(self_ty),
-                    StringPart::normal("`"),
-                    StringPart::normal(mention_castable),
-                ]);
+                err.highlighted_span_help(
+                    self.tcx.def_span(def_id),
+                    vec![
+                        StringPart::normal(format!("the trait `{trait_}` ",)),
+                        StringPart::highlighted("is"),
+                        StringPart::normal(desc),
+                        StringPart::highlighted(self_ty),
+                        StringPart::normal("`"),
+                        StringPart::normal(mention_castable),
+                    ],
+                );
                 return true;
             }
-            let trait_ref = TraitRef::identity(self.tcx, candidates[0].def_id);
+            let trait_ref = TraitRef::identity(self.tcx, candidates[0].0.def_id);
             // Check if the trait is the same in all cases. If so, we'll only show the type.
             let mut traits: Vec<_> =
-                candidates.iter().map(|c| c.print_only_trait_path().to_string()).collect();
+                candidates.iter().map(|(c, _)| c.print_only_trait_path().to_string()).collect();
             traits.sort();
             traits.dedup();
             // FIXME: this could use a better heuristic, like just checking
             // that args[1..] is the same.
             let all_traits_equal = traits.len() == 1;
 
-            let candidates: Vec<String> = candidates
-                .into_iter()
-                .map(|c| {
-                    if all_traits_equal {
-                        format!("\n  {}", self.tcx.short_string(c.self_ty(), err.long_ty_path()))
-                    } else {
-                        format!(
-                            "\n  `{}` implements `{}`",
-                            self.tcx.short_string(c.self_ty(), err.long_ty_path()),
-                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path()),
-                        )
-                    }
-                })
-                .collect();
-
             let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
                 candidates.len()
             } else {
                 8
             };
-            err.help(format!(
-                "the following {other}types implement trait `{}`:{}{}",
-                trait_ref.print_trait_sugared(),
-                candidates[..end].join(""),
-                if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
-                    format!("\nand {} others", candidates.len() - 8)
-                } else {
-                    String::new()
+            if candidates.len() < 5 {
+                let spans: Vec<_> =
+                    candidates.iter().map(|(_, def_id)| self.tcx.def_span(def_id)).collect();
+                let mut span: MultiSpan = spans.into();
+                for (c, def_id) in &candidates {
+                    let msg = if all_traits_equal {
+                        format!("`{}`", self.tcx.short_string(c.self_ty(), err.long_ty_path()))
+                    } else {
+                        format!(
+                            "`{}` implements `{}`",
+                            self.tcx.short_string(c.self_ty(), err.long_ty_path()),
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path()),
+                        )
+                    };
+                    span.push_span_label(self.tcx.def_span(def_id), msg);
                 }
-            ));
+                err.span_help(
+                    span,
+                    format!(
+                        "the following {other}types implement trait `{}`",
+                        trait_ref.print_trait_sugared(),
+                    ),
+                );
+            } else {
+                let candidate_names: Vec<String> = candidates
+                    .iter()
+                    .map(|(c, _)| {
+                        if all_traits_equal {
+                            format!(
+                                "\n  {}",
+                                self.tcx.short_string(c.self_ty(), err.long_ty_path())
+                            )
+                        } else {
+                            format!(
+                                "\n  `{}` implements `{}`",
+                                self.tcx.short_string(c.self_ty(), err.long_ty_path()),
+                                self.tcx
+                                    .short_string(c.print_only_trait_path(), err.long_ty_path()),
+                            )
+                        }
+                    })
+                    .collect();
+                err.help(format!(
+                    "the following {other}types implement trait `{}`:{}{}",
+                    trait_ref.print_trait_sugared(),
+                    candidate_names[..end].join(""),
+                    if candidates.len() > 9 && !self.tcx.sess.opts.verbose {
+                        format!("\nand {} others", candidates.len() - 8)
+                    } else {
+                        String::new()
+                    }
+                ));
+            }
             true
         };
 
@@ -2330,7 +2381,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (cand.similarity, len, cand.trait_ref.to_string())
         });
         let mut impl_candidates: Vec<_> =
-            impl_candidates.into_iter().map(|cand| cand.trait_ref).collect();
+            impl_candidates.into_iter().map(|cand| (cand.trait_ref, cand.impl_def_id)).collect();
         impl_candidates.dedup();
 
         report(impl_candidates, err)
@@ -2406,7 +2457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
     /// a probable version mismatch is added to `err`
-    fn note_version_mismatch(
+    fn note_trait_version_mismatch(
         &self,
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
@@ -2446,13 +2497,85 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 impl_spans,
                 format!("trait impl{} with same name found", pluralize!(trait_impls.len())),
             );
-            let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
-            let crate_msg =
-                format!("perhaps two different versions of crate `{trait_crate}` are being used?");
-            err.note(crate_msg);
+            self.note_two_crate_versions(trait_with_same_path, err);
             suggested = true;
         }
         suggested
+    }
+
+    fn note_two_crate_versions(&self, did: DefId, err: &mut Diag<'_>) {
+        let crate_name = self.tcx.crate_name(did.krate);
+        let crate_msg =
+            format!("perhaps two different versions of crate `{crate_name}` are being used?");
+        err.note(crate_msg);
+    }
+
+    fn note_adt_version_mismatch(
+        &self,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let ty::Adt(impl_self_def, _) = trait_pred.self_ty().skip_binder().peel_refs().kind()
+        else {
+            return;
+        };
+
+        let impl_self_did = impl_self_def.did();
+
+        // We only want to warn about different versions of a dependency.
+        // If no dependency is involved, bail.
+        if impl_self_did.krate == LOCAL_CRATE {
+            return;
+        }
+
+        let impl_self_path = self.comparable_path(impl_self_did);
+        let impl_self_crate_name = self.tcx.crate_name(impl_self_did.krate);
+        let similar_items: UnordSet<_> = self
+            .tcx
+            .visible_parent_map(())
+            .items()
+            .filter_map(|(&item, _)| {
+                // If we found ourselves, ignore.
+                if impl_self_did == item {
+                    return None;
+                }
+                // We only want to warn about different versions of a dependency.
+                // Ignore items from our own crate.
+                if item.krate == LOCAL_CRATE {
+                    return None;
+                }
+                // We want to warn about different versions of a dependency.
+                // So make sure the crate names are the same.
+                if impl_self_crate_name != self.tcx.crate_name(item.krate) {
+                    return None;
+                }
+                // Filter out e.g. constructors that often have the same path
+                // str as the relevant ADT.
+                if !self.tcx.def_kind(item).is_adt() {
+                    return None;
+                }
+                let path = self.comparable_path(item);
+                // We don't know if our item or the one we found is the re-exported one.
+                // Check both cases.
+                let is_similar = path.ends_with(&impl_self_path) || impl_self_path.ends_with(&path);
+                is_similar.then_some((item, path))
+            })
+            .collect();
+
+        let mut similar_items =
+            similar_items.into_items().into_sorted_stable_ord_by_key(|(_, path)| path);
+        similar_items.dedup();
+
+        for (similar_item, _) in similar_items {
+            err.span_help(self.tcx.def_span(similar_item), "item with same name found");
+            self.note_two_crate_versions(similar_item, err);
+        }
+    }
+
+    /// Add a `::` prefix when comparing paths so that paths with just one item
+    /// like "Foo" does not equal the end of "OtherFoo".
+    fn comparable_path(&self, did: DefId) -> String {
+        format!("::{}", self.tcx.def_path_str(did))
     }
 
     /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
@@ -3349,7 +3472,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation);
-                if ocx.select_all_or_error().is_empty() {
+                if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                     return Ok((
                         self.tcx
                             .fn_trait_kind_from_def_id(trait_def_id)

@@ -24,7 +24,7 @@ where
     }
     let dl = cx.data_layout();
     let size = arg.layout.size;
-    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align).abi;
+    let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.is_aggregate() {
         let pad_i32 = !offset.is_aligned(align);

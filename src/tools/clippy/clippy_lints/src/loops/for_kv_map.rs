@@ -1,7 +1,7 @@
 use super::FOR_KV_MAP;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{pat_is_wild, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
             _ => arg,
         };
 
-        if is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
+        if ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap) {
             span_lint_and_then(
                 cx,
                 FOR_KV_MAP,

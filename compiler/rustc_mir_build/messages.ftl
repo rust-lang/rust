@@ -322,17 +322,6 @@ mir_build_pointer_pattern = function pointers and raw pointers not derived from 
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 
-mir_build_rust_2024_incompatible_pat = {$bad_modifiers ->
-        *[true] binding modifiers{$bad_ref_pats ->
-            *[true] {" "}and reference patterns
-            [false] {""}
-        }
-        [false] reference patterns
-    } may only be written when the default binding mode is `move`{$is_hard_error ->
-        *[true] {""}
-        [false] {" "}in Rust 2024
-    }
-
 mir_build_static_in_pattern = statics cannot be referenced in patterns
     .label = can't be used in patterns
 mir_build_static_in_pattern_def = `static` defined here
@@ -382,6 +371,11 @@ mir_build_union_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_union_pattern = cannot use unions in constant patterns
     .label = can't use a `union` here
+
+mir_build_unreachable_due_to_uninhabited = unreachable {$descr}
+    .label = unreachable {$descr}
+    .label_orig = any code following this expression is unreachable
+    .note = this expression has type `{$ty}`, which is uninhabited
 
 mir_build_unreachable_making_this_unreachable = collectively making this unreachable
 

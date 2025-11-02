@@ -53,6 +53,10 @@ impl Config {
             batch: false,
             bind: if cfg!(target_os = "android") || cfg!(windows) {
                 ([0, 0, 0, 0], 12345).into()
+            } else if cfg!(target_env = "sim") {
+                // iOS/tvOS/watchOS/visionOS simulators share network device
+                // with the host machine.
+                ([127, 0, 0, 1], 12345).into()
             } else {
                 ([10, 0, 2, 15], 12345).into()
             },
@@ -262,10 +266,17 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     cmd.args(args);
     cmd.envs(env);
 
-    // On windows, libraries are just searched in the executable directory,
-    // system directories, PWD, and PATH, in that order. PATH is the only one
-    // we can change for this.
-    let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
+    let library_path = if cfg!(windows) {
+        // On windows, libraries are just searched in the executable directory,
+        // system directories, PWD, and PATH, in that order. PATH is the only
+        // one we can change for this.
+        "PATH"
+    } else if cfg!(target_vendor = "apple") {
+        // On Apple platforms, the environment variable is named differently.
+        "DYLD_LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    };
 
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have

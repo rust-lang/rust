@@ -10,7 +10,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
@@ -202,6 +202,20 @@ impl<'tcx> TyCtxt<'tcx> {
                 delayed_lints_hash: Some(h3),
             }
         })
+    }
+
+    pub fn qpath_is_lang_item(self, qpath: QPath<'_>, lang_item: LangItem) -> bool {
+        self.qpath_lang_item(qpath) == Some(lang_item)
+    }
+
+    /// This does not use typeck results since this is intended to be used with generated code.
+    pub fn qpath_lang_item(self, qpath: QPath<'_>) -> Option<LangItem> {
+        if let QPath::Resolved(_, path) = qpath
+            && let Res::Def(_, def_id) = path.res
+        {
+            return self.lang_items().from_def_id(def_id);
+        }
+        None
     }
 }
 

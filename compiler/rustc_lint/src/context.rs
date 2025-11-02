@@ -718,7 +718,7 @@ impl<'tcx> LateContext<'tcx> {
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
+            hir::QPath::TypeRelative(..) => self
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {

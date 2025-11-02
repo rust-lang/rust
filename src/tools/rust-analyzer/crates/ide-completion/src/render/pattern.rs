@@ -163,6 +163,7 @@ fn render_pat(
         PatternContext {
             param_ctx: Some(ParamContext { kind: ParamKind::Function(_), .. }),
             has_type_ascription: false,
+            parent_pat: None,
             ..
         }
     );

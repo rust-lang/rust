@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::{is_never_like, is_type_diagnostic_item};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::is_never_like;
 use clippy_utils::{is_in_test, is_inside_always_const_context, is_lint_allowed};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, Lint};
@@ -45,9 +46,9 @@ pub(super) fn check(
 ) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
 
-    let (kind, none_value, none_prefix) = if is_type_diagnostic_item(cx, ty, sym::Option) && !is_err {
+    let (kind, none_value, none_prefix) = if ty.is_diag_item(cx, sym::Option) && !is_err {
         ("an `Option`", "None", "")
-    } else if is_type_diagnostic_item(cx, ty, sym::Result)
+    } else if ty.is_diag_item(cx, sym::Result)
         && let ty::Adt(_, substs) = ty.kind()
         && let Some(t_or_e_ty) = substs[usize::from(!is_err)].as_type()
     {

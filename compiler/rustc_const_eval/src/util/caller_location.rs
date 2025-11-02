@@ -61,7 +61,7 @@ pub(crate) fn const_caller_location_provider(
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx_to_read_const_val(
         tcx,
-        rustc_span::DUMMY_SP, // FIXME: use a proper span here?
+        rustc_span::DUMMY_SP, // This interpreter cannot fail, so the span is irrelevant.
         ty::TypingEnv::fully_monomorphized(),
         CanAccessMutGlobal::No,
     );

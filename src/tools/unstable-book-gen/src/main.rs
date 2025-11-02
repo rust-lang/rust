@@ -5,6 +5,7 @@ use std::env;
 use std::fs::{self, write};
 use std::path::Path;
 
+use tidy::diagnostics::RunningCheck;
 use tidy::features::{Features, collect_env_vars, collect_lang_features, collect_lib_features};
 use tidy::t;
 use tidy::unstable_book::{
@@ -122,7 +123,7 @@ fn main() {
     let src_path = Path::new(&src_path_str);
     let dest_path = Path::new(&dest_path_str);
 
-    let lang_features = collect_lang_features(compiler_path, &mut false);
+    let lang_features = collect_lang_features(compiler_path, &mut RunningCheck::new_noop());
     let lib_features = collect_lib_features(library_path)
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))
