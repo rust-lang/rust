@@ -1,9 +1,9 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
-use crate::ptr;
 use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
+use crate::{hint, ptr};
 
-pub unsafe trait DestroyedState: Sized + Copy {
+pub unsafe trait DestroyedState: Eq + Copy {
     fn register_dtor<T>(s: &Storage<T, Self>);
 }
 
@@ -19,7 +19,7 @@ unsafe impl DestroyedState for () {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 enum State<D> {
     Uninitialized,
     Alive,
@@ -56,27 +56,30 @@ where
     /// The `self` reference must remain valid until the TLS destructor is run.
     #[inline]
     pub unsafe fn get_or_init(&self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
-        if let State::Alive = self.state.get() {
+        let state = self.state.get();
+        if state == State::Alive {
             self.value.get().cast()
         } else {
-            unsafe { self.get_or_init_slow(i, f) }
+            // This uses an `if`/`else` structure instead of a match to make
+            // sure that these two cases are outlined.
+            hint::cold_path();
+            if state == State::Uninitialized {
+                unsafe { self.get_or_init_slow(i, f) }
+            } else {
+                ptr::null()
+            }
         }
     }
 
     /// # Safety
-    /// The `self` reference must remain valid until the TLS destructor is run.
+    /// * The state of `self` must be `Uninitialized`.
+    /// * The `self` reference must remain valid until the TLS destructor is run.
     #[cold]
     unsafe fn get_or_init_slow(
         &self,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
     ) -> *const T {
-        match self.state.get() {
-            State::Uninitialized => {}
-            State::Alive => return self.value.get().cast(),
-            State::Destroyed(_) => return ptr::null(),
-        }
-
         let v = i.and_then(Option::take).unwrap_or_else(f);
 
         // SAFETY: we cannot be inside a `LocalKey::with` scope, as the initializer
