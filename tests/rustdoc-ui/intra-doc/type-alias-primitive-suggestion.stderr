@@ -1,0 +1,39 @@
+error: `f32` is both a type alias and a primitive type
+  --> $DIR/type-alias-primitive-suggestion.rs:11:29
+   |
+LL | /// This function returns [`f32`].
+   |                             ^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/type-alias-primitive-suggestion.rs:4:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the type alias, prefix with `tyalias@`
+   |
+LL | /// This function returns [`tyalias@f32`].
+   |                             ++++++++
+help: to link to the primitive type, prefix with `prim@`
+   |
+LL | /// This function returns [`prim@f32`].
+   |                             +++++
+
+error: `f32` is both a type alias and a primitive type
+  --> $DIR/type-alias-primitive-suggestion.rs:17:28
+   |
+LL | /// This function returns [type@f32].
+   |                            ^^^^^^^^ ambiguous link
+   |
+help: to link to the type alias, prefix with `tyalias@`
+   |
+LL - /// This function returns [type@f32].
+LL + /// This function returns [tyalias@f32].
+   |
+help: to link to the primitive type, prefix with `prim@`
+   |
+LL - /// This function returns [type@f32].
+LL + /// This function returns [prim@f32].
+   |
+
+error: aborting due to 2 previous errors
+

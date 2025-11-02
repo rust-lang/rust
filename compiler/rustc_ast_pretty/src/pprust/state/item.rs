@@ -1,8 +1,6 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
-use rustc_ast as ast;
-use rustc_ast::ModKind;
-use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, ModKind, TraitAlias};
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -60,14 +58,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                where_clauses,
+                after_where_clause,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    *where_clauses,
+                    after_where_clause,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -128,14 +126,12 @@ impl<'a> State<'a> {
         &mut self,
         ident: Ident,
         generics: &ast::Generics,
-        where_clauses: ast::TyAliasWhereClauses,
+        after_where_clause: &ast::WhereClause,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
         vis: &ast::Visibility,
         defaultness: ast::Defaultness,
     ) {
-        let (before_predicates, after_predicates) =
-            generics.where_clause.predicates.split_at(where_clauses.split);
         let (cb, ib) = self.head("");
         self.print_visibility(vis);
         self.print_defaultness(defaultness);
@@ -146,13 +142,13 @@ impl<'a> State<'a> {
             self.word_nbsp(":");
             self.print_type_bounds(bounds);
         }
-        self.print_where_clause_parts(where_clauses.before.has_where_token, before_predicates);
+        self.print_where_clause(&generics.where_clause);
         if let Some(ty) = ty {
             self.space();
             self.word_space("=");
             self.print_type(ty);
         }
-        self.print_where_clause_parts(where_clauses.after.has_where_token, after_predicates);
+        self.print_where_clause(&after_where_clause);
         self.word(";");
         self.end(ib);
         self.end(cb);
@@ -284,14 +280,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                where_clauses,
+                after_where_clause,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    *where_clauses,
+                    after_where_clause,
                     bounds,
                     ty.as_deref(),
                     &item.vis,
@@ -309,39 +305,41 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Impl(box ast::Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
-                generics,
-                of_trait,
-                self_ty,
-                items,
-            }) => {
+            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
-                self.print_defaultness(*defaultness);
-                self.print_safety(*safety);
-                self.word("impl");
 
-                if generics.params.is_empty() {
-                    self.nbsp();
-                } else {
-                    self.print_generic_params(&generics.params);
-                    self.space();
-                }
+                let impl_generics = |this: &mut Self| {
+                    this.word("impl");
 
-                self.print_constness(*constness);
+                    if generics.params.is_empty() {
+                        this.nbsp();
+                    } else {
+                        this.print_generic_params(&generics.params);
+                        this.space();
+                    }
+                };
 
-                if let ast::ImplPolarity::Negative(_) = polarity {
-                    self.word("!");
-                }
-
-                if let Some(t) = of_trait {
-                    self.print_trait_ref(t);
+                if let Some(box of_trait) = of_trait {
+                    let ast::TraitImplHeader {
+                        defaultness,
+                        safety,
+                        constness,
+                        polarity,
+                        ref trait_ref,
+                    } = *of_trait;
+                    self.print_defaultness(defaultness);
+                    self.print_safety(safety);
+                    impl_generics(self);
+                    self.print_constness(constness);
+                    if let ast::ImplPolarity::Negative(_) = polarity {
+                        self.word("!");
+                    }
+                    self.print_trait_ref(trait_ref);
                     self.space();
                     self.word_space("for");
+                } else {
+                    impl_generics(self);
                 }
 
                 self.print_type(self_ty);
@@ -387,8 +385,11 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::TraitAlias(ident, generics, bounds) => {
-                let (cb, ib) = self.head(visibility_qualified(&item.vis, "trait"));
+            ast::ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+                let (cb, ib) = self.head("");
+                self.print_visibility(&item.vis);
+                self.print_constness(*constness);
+                self.word_nbsp("trait");
                 self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
                 self.nbsp();
@@ -584,14 +585,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                where_clauses,
+                after_where_clause,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    *where_clauses,
+                    after_where_clause,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -628,10 +629,10 @@ impl<'a> State<'a> {
         &mut self,
         attrs: &[ast::Attribute],
         vis: &ast::Visibility,
-        qself: &Option<P<ast::QSelf>>,
+        qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
         kind: DelegationKind<'_>,
-        body: &Option<P<ast::Block>>,
+        body: &Option<Box<ast::Block>>,
     ) {
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
         self.print_visibility(vis);
@@ -758,14 +759,7 @@ impl<'a> State<'a> {
     }
 
     fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        self.print_where_clause_parts(where_clause.has_where_token, &where_clause.predicates);
-    }
-
-    fn print_where_clause_parts(
-        &mut self,
-        has_where_token: bool,
-        predicates: &[ast::WherePredicate],
-    ) {
+        let ast::WhereClause { has_where_token, ref predicates, span: _ } = *where_clause;
         if predicates.is_empty() && !has_where_token {
             return;
         }

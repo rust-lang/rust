@@ -1,4 +1,4 @@
-error: malformed `crate_name` attribute input
+error[E0539]: malformed `crate_name` attribute input
   --> $DIR/print-file-names-request-malformed-crate-name-1.rs:4:1
    |
 LL | #![crate_name]
@@ -6,3 +6,4 @@ LL | #![crate_name]
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.

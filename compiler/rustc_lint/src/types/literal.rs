@@ -1,11 +1,11 @@
-use hir::{ExprKind, Node, is_range_literal};
+use hir::{ExprKind, Node};
 use rustc_abi::{Integer, Size};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, attrs};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::LateContext;
 use crate::context::LintContext;
@@ -44,7 +44,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else {
         return false;
     };
-    if !is_range_literal(struct_expr) {
+    let Some(range_span) = struct_expr.range_span() else {
         return false;
     };
     let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else {
@@ -71,7 +71,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
             return false;
         };
         UseInclusiveRange::WithoutParen {
-            sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
+            sugg: range_span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
             literal: lit_val - 1,
             suffix,
@@ -87,7 +87,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     cx.emit_span_lint(
         OVERFLOWING_LITERALS,
-        struct_expr.span,
+        range_span,
         RangeEndpointOutOfRange { ty, sub: sub_sugg },
     );
 
@@ -272,7 +272,7 @@ fn lint_int_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attrs::IntType::SignedInt(ty::ast_int_ty(t)),
+                attrs::IntType::SignedInt(t),
                 Integer::from_int_ty(cx, t).size(),
                 repr_str,
                 v,
@@ -358,7 +358,7 @@ fn lint_uint_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attrs::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                attrs::IntType::UnsignedInt(t),
                 Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,

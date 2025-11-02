@@ -1,6 +1,8 @@
 //@ min-lldb-version: 1800
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -30,8 +32,6 @@
 // lldb-check:[...] TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2};
 use self::Univariant::TheOnlyCase;

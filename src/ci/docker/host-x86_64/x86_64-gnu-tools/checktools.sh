@@ -30,3 +30,10 @@ cat /tmp/toolstate/toolstates.json
 python3 "$X_PY" test --stage 2 check-tools
 python3 "$X_PY" test --stage 2 src/tools/clippy
 python3 "$X_PY" test --stage 2 src/tools/rustfmt
+
+# The below is a regression test for https://github.com/rust-lang/rust/pull/146501#issuecomment-3292608398.
+# The bug caused 0 tests to run. By grepping on that 1 test is run we prevent regressing.
+# Any test can be used. We arbitrarily chose `tests/ui/lint/unused/unused-result.rs`.
+python3 "$X_PY" test tests/ui --test-args tests/ui/lint/unused/unused-result.rs --force-rerun |
+grep --fixed-strings 'test result: ok. 1 passed; 0 failed; 0 ignored;' ||
+( echo "ERROR: --test-args functionality is broken" && exit 1 )

@@ -6,8 +6,9 @@ LL |     type Item = IteratorChunk<T, S>;
    |
 help: consider introducing a named lifetime parameter
    |
-LL |     type Item<'a> = IteratorChunk<'a, T, S>;
-   |              ++++                 +++
+LL ~ impl<'a, T, S: Iterator<Item = T>> Iterator for ChunkingIterator<T, S> {
+LL ~     type Item = IteratorChunk<'a, T, S>;
+   |
 
 error: aborting due to 1 previous error
 

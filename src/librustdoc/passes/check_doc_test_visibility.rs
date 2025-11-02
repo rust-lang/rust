@@ -67,6 +67,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
                 | clean::KeywordItem
+                | clean::AttributeItem
                 | clean::ModuleItem(_)
                 | clean::TraitAliasItem(_)
                 | clean::ForeignFunctionItem(..)

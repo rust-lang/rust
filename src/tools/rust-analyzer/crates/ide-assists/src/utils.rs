@@ -23,12 +23,11 @@ use syntax::{
     ast::{
         self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit_in_place::AttrsOwnerEdit,
         make,
         syntax_factory::SyntaxFactory,
     },
-    syntax_editor::SyntaxEditor,
-    ted,
+    syntax_editor::{Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -131,10 +130,10 @@ pub fn filter_assoc_items(
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).has_doc_hidden()
             {
-                if let hir::AssocItem::Function(f) = assoc_item {
-                    if !f.has_body(sema.db) {
-                        return true;
-                    }
+                if let hir::AssocItem::Function(f) = assoc_item
+                    && !f.has_body(sema.db)
+                {
+                    return true;
                 }
                 return false;
             }
@@ -207,7 +206,7 @@ pub fn add_trait_assoc_items_to_impl(
                         stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
                     }
                 }
-                original_item.clone_for_update()
+                original_item
             }
             .reset_indent();
 
@@ -221,31 +220,37 @@ pub fn add_trait_assoc_items_to_impl(
             cloned_item.remove_attrs_and_docs();
             cloned_item
         })
-        .map(|item| {
-            match &item {
-                ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                    let body = AstNodeEdit::indent(
-                        &make::block_expr(
-                            None,
-                            Some(match config.expr_fill_default {
-                                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                                ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                            }),
-                        ),
-                        IndentLevel::single(),
-                    );
-                    ted::replace(fn_.get_or_create_body().syntax(), body.syntax());
-                }
-                ast::AssocItem::TypeAlias(type_alias) => {
-                    if let Some(type_bound_list) = type_alias.type_bound_list() {
-                        type_bound_list.remove()
-                    }
-                }
-                _ => {}
+        .filter_map(|item| match item {
+            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+                let fn_ = fn_.clone_subtree();
+                let new_body = &make::block_expr(
+                    None,
+                    Some(match config.expr_fill_default {
+                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                    }),
+                );
+                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
+                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
+                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                let new_fn_ = fn_editor.finish().new_root().clone();
+                ast::AssocItem::cast(new_fn_)
             }
-            AstNodeEdit::indent(&item, new_indent_level)
+            ast::AssocItem::TypeAlias(type_alias) => {
+                let type_alias = type_alias.clone_subtree();
+                if let Some(type_bound_list) = type_alias.type_bound_list() {
+                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
+                    type_bound_list.remove(&mut type_alias_editor);
+                    let type_alias = type_alias_editor.finish().new_root().clone();
+                    ast::AssocItem::cast(type_alias)
+                } else {
+                    Some(ast::AssocItem::TypeAlias(type_alias))
+                }
+            }
+            item => Some(item),
         })
+        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
         .collect()
 }
 
@@ -514,10 +519,10 @@ pub(crate) fn find_struct_impl(
         if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
-    if let Some(ref impl_blk) = block {
-        if has_any_fn(impl_blk, names) {
-            return None;
-        }
+    if let Some(ref impl_blk) = block
+        && has_any_fn(impl_blk, names)
+    {
+        return None;
     }
 
     Some(block)
@@ -526,12 +531,11 @@ pub(crate) fn find_struct_impl(
 fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
-            if let ast::AssocItem::Fn(f) = item {
-                if let Some(name) = f.name() {
-                    if names.iter().any(|n| n.eq_ignore_ascii_case(&name.text())) {
-                        return true;
-                    }
-                }
+            if let ast::AssocItem::Fn(f) = item
+                && let Some(name) = f.name()
+                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+            {
+                return true;
             }
         }
     }
@@ -732,8 +736,11 @@ fn generate_impl_inner(
         generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
-    let impl_ = match trait_ {
+    let cfg_attrs =
+        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    match trait_ {
         Some(trait_) => make::impl_trait(
+            cfg_attrs,
             is_unsafe,
             None,
             None,
@@ -746,26 +753,9 @@ fn generate_impl_inner(
             adt.where_clause(),
             body,
         ),
-        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), body),
+        None => make::impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
     }
-    .clone_for_update();
-
-    // Copy any cfg attrs from the original adt
-    add_cfg_attrs_to(adt, &impl_);
-
-    impl_
-}
-
-pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
-where
-    T: HasAttrs,
-    U: AttrsOwnerEdit,
-{
-    let cfg_attrs =
-        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
-    for attr in cfg_attrs {
-        to.add_attr(attr.clone_for_update());
-    }
+    .clone_for_update()
 }
 
 pub(crate) fn add_method_to_adt(
@@ -1021,12 +1011,12 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
-        if let Some(ast::Pat::IdentPat(pat)) = param.pat() {
-            if let Some(name) = pat.name() {
-                let name = name.to_string();
-                let expr = make::expr_path(make::ext::ident_path(&name));
-                args.push(expr);
-            }
+        if let Some(ast::Pat::IdentPat(pat)) = param.pat()
+            && let Some(name) = pat.name()
+        {
+            let name = name.to_string();
+            let expr = make::expr_path(make::ext::ident_path(&name));
+            args.push(expr);
         }
     }
     make::arg_list(args)
@@ -1065,6 +1055,21 @@ fn test_string_suffix() {
     assert_eq!(Some("i32"), string_suffix(r#"""i32"#));
     assert_eq!(Some("i32"), string_suffix(r#"r""i32"#));
     assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
+}
+
+/// Calculate the string literal prefix length
+pub(crate) fn string_prefix(s: &str) -> Option<&str> {
+    s.split_once(['"', '\'', '#']).map(|(prefix, _)| prefix)
+}
+#[test]
+fn test_string_prefix() {
+    assert_eq!(Some(""), string_prefix(r#""abc""#));
+    assert_eq!(Some(""), string_prefix(r#""""#));
+    assert_eq!(Some(""), string_prefix(r#"""suffix"#));
+    assert_eq!(Some("c"), string_prefix(r#"c"""#));
+    assert_eq!(Some("r"), string_prefix(r#"r"""#));
+    assert_eq!(Some("cr"), string_prefix(r#"cr"""#));
+    assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
 }
 
 /// Replaces the record expression, handling field shorthands including inside macros.
@@ -1128,6 +1133,28 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
     tt_stack.pop().expect("parent token tree was closed before it was completed").1
 }
 
+pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<ast::Expr> {
+    if !expr.syntax().text_range().contains_range(range) {
+        return None;
+    }
+    loop {
+        let (chain_expr, rest) = if let ast::Expr::BinExpr(bin_expr) = &expr
+            && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
+        {
+            (bin_expr.rhs(), bin_expr.lhs())
+        } else {
+            (Some(expr), None)
+        };
+
+        if let Some(chain_expr) = chain_expr
+            && chain_expr.syntax().text_range().contains_range(range)
+        {
+            break Some(chain_expr);
+        }
+        expr = rest?;
+    }
+}
+
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
     let mut is_const = true;
     preorder_expr(expr, &mut |ev| {
@@ -1138,12 +1165,11 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         };
         match expr {
             ast::Expr::CallExpr(call) => {
-                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr() {
-                    if let Some(PathResolution::Def(ModuleDef::Function(func))) =
+                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr()
+                    && let Some(PathResolution::Def(ModuleDef::Function(func))) =
                         path_expr.path().and_then(|path| sema.resolve_path(&path))
-                    {
-                        is_const &= func.is_const(sema.db);
-                    }
+                {
+                    is_const &= func.is_const(sema.db);
                 }
             }
             ast::Expr::MethodCallExpr(call) => {
@@ -1160,4 +1186,20 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+// FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
+pub(crate) fn is_never_block(
+    sema: &Semantics<'_, RootDatabase>,
+    block_expr: &ast::BlockExpr,
+) -> bool {
+    if let Some(tail_expr) = block_expr.tail_expr() {
+        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
+    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
+        && let Some(expr) = expr_stmt.expr()
+    {
+        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
+    } else {
+        false
+    }
 }

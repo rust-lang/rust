@@ -1,6 +1,7 @@
 # `thumbv7em-none-eabi` and `thumbv7em-none-eabihf`
 
-**Tier: 2**
+* **Tier: 2**
+* **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the [Armv7E-M] architecture family, supporting a
 subset of the [T32 ISA][t32-isa].
@@ -21,7 +22,11 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target maintainers
 
-* [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+
+[arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
+[arm_email]: mailto:rust@arm.com
 
 ## Target CPU and Target Feature options
 

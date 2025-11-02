@@ -1,0 +1,12 @@
+  --> $DIR/cycle_crash-issue-135870.rs:6:1
+   |
+LL | const FOO: usize = FOO;
+   | ^^^^^^^^^^^^^^^^
+   |
+   |
+LL | const FOO: usize = FOO;
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -7,7 +7,7 @@ LL |     projection_bound::<T>();
    = note: expected associated type `<T as Trait<'static>>::Assoc`
               found associated type `<T as Trait<'a>>::Assoc`
 note: the lifetime requirement is introduced here
-  --> $DIR/candidate-from-env-universe-err-project.rs:18:42
+  --> $DIR/candidate-from-env-universe-err-project.rs:19:42
    |
 LL | fn projection_bound<T: for<'a> Trait<'a, Assoc = usize>>() {}
    |                                          ^^^^^^^^^^^^^

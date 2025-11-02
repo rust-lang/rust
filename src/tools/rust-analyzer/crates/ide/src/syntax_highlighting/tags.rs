@@ -124,8 +124,10 @@ pub enum HlOperator {
     Bitwise,
     /// +, -, *, /, +=, -=, *=, /=
     Arithmetic,
-    /// &&, ||, !
+    /// &&, ||
     Logical,
+    /// !
+    Negation,
     /// >, <, ==, >=, <=, !=
     Comparison,
     /// Other operators
@@ -160,7 +162,6 @@ impl HlTag {
                 SymbolKind::Struct => "struct",
                 SymbolKind::ToolModule => "tool_module",
                 SymbolKind::Trait => "trait",
-                SymbolKind::TraitAlias => "trait_alias",
                 SymbolKind::TypeAlias => "type_alias",
                 SymbolKind::TypeParam => "type_param",
                 SymbolKind::Union => "union",
@@ -195,6 +196,7 @@ impl HlTag {
                 HlOperator::Arithmetic => "arithmetic",
                 HlOperator::Logical => "logical",
                 HlOperator::Comparison => "comparison",
+                HlOperator::Negation => "negation",
                 HlOperator::Other => "operator",
             },
             HlTag::StringLiteral => "string_literal",

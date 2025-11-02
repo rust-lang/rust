@@ -1,10 +1,10 @@
 //@aux-build:proc_macro_suspicious_else_formatting.rs
 
-#![warn(clippy::suspicious_else_formatting)]
+#![warn(clippy::suspicious_else_formatting, clippy::possible_missing_else)]
 #![allow(
     clippy::if_same_then_else,
     clippy::let_unit_value,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::needless_else
 )]
 
@@ -20,12 +20,12 @@ fn main() {
     // weird `else` formatting:
     if foo() {
     } {
-    //~^ suspicious_else_formatting
+    //~^ possible_missing_else
     }
 
     if foo() {
     } if foo() {
-    //~^ suspicious_else_formatting
+    //~^ possible_missing_else
     }
 
     let _ = { // if as the last expression
@@ -33,7 +33,7 @@ fn main() {
 
         if foo() {
         } if foo() {
-        //~^ suspicious_else_formatting
+        //~^ possible_missing_else
         }
         else {
         }
@@ -42,7 +42,7 @@ fn main() {
     let _ = { // if in the middle of a block
         if foo() {
         } if foo() {
-        //~^ suspicious_else_formatting
+        //~^ possible_missing_else
         }
         else {
         }

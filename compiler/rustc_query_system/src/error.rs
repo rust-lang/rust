@@ -1,6 +1,6 @@
 use rustc_errors::codes::*;
+use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(Subdiagnostic)]
@@ -69,9 +69,10 @@ pub(crate) struct Reentrant;
 
 #[derive(Diagnostic)]
 #[diag(query_system_increment_compilation)]
-#[help]
 #[note(query_system_increment_compilation_note1)]
 #[note(query_system_increment_compilation_note2)]
+#[note(query_system_increment_compilation_note3)]
+#[note(query_system_increment_compilation_note4)]
 pub(crate) struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,

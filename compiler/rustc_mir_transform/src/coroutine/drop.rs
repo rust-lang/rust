@@ -126,6 +126,7 @@ fn build_pin_fut<'tcx>(
 //     Ready() => ready_block
 //     Pending => yield_block
 //}
+#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
 fn build_poll_switch<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
@@ -179,6 +180,7 @@ fn build_poll_switch<'tcx>(
 }
 
 // Gather blocks, reachable through 'drop' targets of Yield and Drop terminators (chained)
+#[tracing::instrument(level = "trace", skip(body), ret)]
 fn gather_dropline_blocks<'tcx>(body: &mut Body<'tcx>) -> DenseBitSet<BasicBlock> {
     let mut dropline: DenseBitSet<BasicBlock> = DenseBitSet::new_empty(body.basic_blocks.len());
     for (bb, data) in traversal::reverse_postorder(body) {
@@ -249,6 +251,7 @@ pub(super) fn has_expandable_async_drops<'tcx>(
 }
 
 /// Expand Drop terminator for async drops into mainline poll-switch and dropline poll-switch
+#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
 pub(super) fn expand_async_drops<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
@@ -259,6 +262,7 @@ pub(super) fn expand_async_drops<'tcx>(
     let dropline = gather_dropline_blocks(body);
     // Clean drop and async_fut fields if potentially async drop is not expanded (stays sync)
     let remove_asyncness = |block: &mut BasicBlockData<'tcx>| {
+        tracing::trace!("remove_asyncness");
         if let TerminatorKind::Drop {
             place: _,
             target: _,
@@ -461,6 +465,7 @@ pub(super) fn expand_async_drops<'tcx>(
     }
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, body))]
 pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     use crate::elaborate_drop::{Unwind, elaborate_drop};
     use crate::patch::MirPatch;
@@ -519,6 +524,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     elaborator.patch.apply(body);
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
 pub(super) fn insert_clean_drop<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
@@ -550,6 +556,7 @@ pub(super) fn insert_clean_drop<'tcx>(
         .push(BasicBlockData::new(Some(Terminator { source_info, kind: term }), false))
 }
 
+#[tracing::instrument(level = "trace", skip(tcx, transform, body))]
 pub(super) fn create_coroutine_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
@@ -605,7 +612,9 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
     body.source.instance = coroutine_instance;
-    dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop", &body) {
+        dumper.dump_mir(&body);
+    }
     body.source.instance = drop_instance;
 
     // Creating a coroutine drop shim happens on `Analysis(PostCleanup) -> Runtime(Initial)`
@@ -619,6 +628,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
 }
 
 // Create async drop shim function to drop coroutine itself
+#[tracing::instrument(level = "trace", skip(tcx, transform, body))]
 pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
@@ -674,12 +684,13 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
-    make_coroutine_state_argument_indirect(tcx, &mut body);
-
     match transform.coroutine_kind {
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
-        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+            make_coroutine_state_argument_indirect(tcx, &mut body);
+        }
+
         _ => {
             make_coroutine_state_argument_pinned(tcx, &mut body);
         }
@@ -696,7 +707,9 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
         None,
     );
 
-    dump_mir(tcx, false, "coroutine_drop_async", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }
@@ -741,7 +754,9 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
 
-    dump_mir(tcx, false, "coroutine_drop_proxy_async", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }

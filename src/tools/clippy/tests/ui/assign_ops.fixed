@@ -1,8 +1,9 @@
 #![allow(clippy::useless_vec)]
 #![warn(clippy::assign_op_pattern)]
-#![feature(const_trait_impl, const_ops)]
+#![feature(const_ops)]
+#![feature(const_trait_impl)]
 
-use core::num::Wrapping;
+use std::num::Wrapping;
 use std::ops::{Mul, MulAssign};
 
 fn main() {
@@ -82,6 +83,18 @@ mod issue14871 {
     pub trait Number: Copy + Add<Self, Output = Self> + AddAssign {
         const ZERO: Self;
         const ONE: Self;
+
+        fn non_constant(value: usize) -> Self {
+            let mut res = Self::ZERO;
+            let mut count = 0;
+            while count < value {
+                res += Self::ONE;
+                //~^ assign_op_pattern
+                count += 1;
+                //~^ assign_op_pattern
+            }
+            res
+        }
     }
 
     #[rustfmt::skip] // rustfmt doesn't understand the order of pub const on traits (yet)
@@ -91,7 +104,7 @@ mod issue14871 {
 
     impl<T> const NumberConstants for T
     where
-        T: Number + [const] core::ops::Add,
+        T: Number + [const] std::ops::Add,
     {
         fn constant(value: usize) -> Self {
             let mut res = Self::ZERO;
@@ -99,8 +112,28 @@ mod issue14871 {
             while count < value {
                 res = res + Self::ONE;
                 count += 1;
+                //~^ assign_op_pattern
             }
             res
         }
+    }
+
+    pub struct S;
+
+    impl const std::ops::Add for S {
+        type Output = S;
+        fn add(self, _rhs: S) -> S {
+            S
+        }
+    }
+
+    impl const std::ops::AddAssign for S {
+        fn add_assign(&mut self, rhs: S) {}
+    }
+
+    const fn do_add() {
+        let mut s = S;
+        s += S;
+        //~^ assign_op_pattern
     }
 }

@@ -1,6 +1,7 @@
 # `thumbv7m-none-eabi`
 
-**Tier: 2**
+* **Tier: 2**
+* **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the [Armv7-M] architecture family, supporting a
 subset of the [T32 ISA][t32-isa].
@@ -22,7 +23,11 @@ only option because there is no FPU support in [Armv7-M].
 
 ## Target maintainers
 
-* [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [Rust Embedded Devices Working Group Arm Team](https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team)
+- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+
+[arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
+[arm_email]: mailto:rust@arm.com
 
 ## Target CPU and Target Feature options
 

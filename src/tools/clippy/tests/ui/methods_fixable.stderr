@@ -7,5 +7,17 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: `-D clippy::filter-next` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
 
-error: aborting due to 1 previous error
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+  --> tests/ui/methods_fixable.rs:12:13
+   |
+LL |     let _ = v.iter().filter(|&x| *x < 0).next_back();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `v.iter().rfind(|&x| *x < 0)`
+
+error: called `filter(..).next_back()` on an `DoubleEndedIterator`. This is more succinctly expressed by calling `.rfind(..)` instead
+  --> tests/ui/methods_fixable.rs:18:13
+   |
+LL |     let _ = vec![1].into_iter().filter(|&x| x < 0).next_back();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec![1].into_iter().rfind(|&x| x < 0)`
+
+error: aborting due to 3 previous errors
 

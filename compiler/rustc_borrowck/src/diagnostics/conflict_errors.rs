@@ -410,18 +410,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
-                let (def_id, call_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
+                let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                 {
                     let def_id = typeck.type_dependent_def_id(parent_expr.hir_id);
-                    (def_id, Some(parent_expr.hir_id), args, 1)
+                    (def_id, args, 1)
                 } else if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (Some(*def_id), Some(call.hir_id), args, 0)
+                    (Some(*def_id), args, 0)
                 } else {
-                    (None, None, &[][..], 0)
+                    (None, &[][..], 0)
                 };
                 let ty = place.ty(self.body, self.infcx.tcx).ty;
 
@@ -459,11 +459,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // If the moved place is used generically by the callee and a reference to it
                     // would still satisfy any bounds on its type, suggest borrowing.
                     if let Some(&param) = arg_param
-                        && let Some(generic_args) = call_id.and_then(|id| typeck.node_args_opt(id))
+                        && let hir::Node::Expr(call_expr) = parent
                         && let Some(ref_mutability) = self.suggest_borrow_generic_arg(
                             err,
+                            typeck,
+                            call_expr,
                             def_id,
-                            generic_args,
                             param,
                             moved_place,
                             pos + offset,
@@ -502,8 +503,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =
-                        call_expr.kind
+                    && let hir::ExprKind::Path(qpath) = call_expr.kind
+                    && tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
                 {
                     // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
                 } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } = move_spans
@@ -627,8 +628,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_borrow_generic_arg(
         &self,
         err: &mut Diag<'_>,
+        typeck: &ty::TypeckResults<'tcx>,
+        call_expr: &hir::Expr<'tcx>,
         callee_did: DefId,
-        generic_args: ty::GenericArgsRef<'tcx>,
         param: ty::ParamTy,
         moved_place: PlaceRef<'tcx>,
         moved_arg_pos: usize,
@@ -638,6 +640,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
         let clauses = tcx.predicates_of(callee_did);
+
+        let generic_args = match call_expr.kind {
+            // For method calls, generic arguments are attached to the call node.
+            hir::ExprKind::MethodCall(..) => typeck.node_args_opt(call_expr.hir_id)?,
+            // For normal calls, generic arguments are in the callee's type.
+            // This diagnostic is only run for `FnDef` callees.
+            hir::ExprKind::Call(callee, _)
+                if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
+            {
+                args
+            }
+            _ => return None,
+        };
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
@@ -1298,7 +1313,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let ocx = ObligationCtxt::new_with_diagnostics(self.infcx);
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if errors.iter().all(|error| {
                 match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
                     Some(clause) => match clause.self_ty().skip_binder().kind() {
@@ -1482,7 +1497,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let cause = ObligationCause::misc(span, self.mir_def_id());
 
         ocx.register_bound(cause, self.infcx.param_env, ty, def_id);
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors
@@ -2297,6 +2312,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let typeck_results = tcx.typeck(self.mir_def_id());
 
         struct ExprFinder<'hir> {
+            tcx: TyCtxt<'hir>,
             issue_span: Span,
             expr_span: Span,
             body_expr: Option<&'hir hir::Expr<'hir>>,
@@ -2321,9 +2337,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // };
                 // corresponding to the desugaring of a for loop `for <pat> in <head> { <body> }`.
                 if let hir::ExprKind::Call(path, [arg]) = ex.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =
-                        path.kind
+                    && let hir::ExprKind::Path(qpath) = path.kind
+                    && self.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
                     && arg.span.contains(self.issue_span)
+                    && ex.span.desugaring_kind() == Some(DesugaringKind::ForLoop)
                 {
                     // Find `IntoIterator::into_iter(<head>)`
                     self.head = Some(arg);
@@ -2340,10 +2357,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ..
                     }) = stmt.kind
                     && let hir::ExprKind::Call(path, _args) = call.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IteratorNext, _)) =
-                        path.kind
-                    && let hir::PatKind::Struct(path, [field, ..], _) = bind.pat.kind
-                    && let hir::QPath::LangItem(LangItem::OptionSome, pat_span) = path
+                    && let hir::ExprKind::Path(qpath) = path.kind
+                    && self.tcx.qpath_is_lang_item(qpath, LangItem::IteratorNext)
+                    && let hir::PatKind::Struct(qpath, [field, ..], _) = bind.pat.kind
+                    && self.tcx.qpath_is_lang_item(qpath, LangItem::OptionSome)
                     && call.span.contains(self.issue_span)
                 {
                     // Find `<pat>` and the span for the whole `for` loop.
@@ -2355,7 +2372,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.loop_bind = Some(ident);
                     }
                     self.head_span = Some(*head_span);
-                    self.pat_span = Some(pat_span);
+                    self.pat_span = Some(bind.pat.span);
                     self.loop_span = Some(stmt.span);
                 }
 
@@ -2370,6 +2387,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
         let mut finder = ExprFinder {
+            tcx,
             expr_span: span,
             issue_span,
             loop_bind: None,
@@ -2977,6 +2995,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.buffer_error(err);
     }
 
+    #[tracing::instrument(level = "debug", skip(self, explanation))]
     fn report_local_value_does_not_live_long_enough(
         &self,
         location: Location,
@@ -2986,13 +3005,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        debug!(
-            "report_local_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, name, borrow, drop_span, borrow_spans
-        );
-
         let borrow_span = borrow_spans.var_or_use_path_span();
         if let BorrowExplanation::MustBeValidFor {
             category,
@@ -3959,7 +3971,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         }
                         ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Subslice { .. }
-                        | ProjectionElem::Subtype(_)
                         | ProjectionElem::Index(_)
                         | ProjectionElem::UnwrapUnsafeBinder(_) => kind,
                     },

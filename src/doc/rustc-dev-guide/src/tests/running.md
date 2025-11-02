@@ -1,7 +1,5 @@
 # Running tests
 
-<!-- toc -->
-
 You can run the entire test collection using `x`. But note that running the
 *entire* test collection is almost never what you want to do during local
 development because it takes a really long time. For local development, see the
@@ -341,10 +339,34 @@ results.  The Docker image is set up to launch `remote-test-server` and the
 build tools use `remote-test-client` to communicate with the server to
 coordinate running tests (see [src/bootstrap/src/core/build_steps/test.rs]).
 
-> **TODO**
->
-> - Is there any support for using an iOS emulator?
-> - It's also unclear to me how the wasm or asm.js tests are run.
+To run on the iOS/tvOS/watchOS/visionOS simulator, we can similarly treat it as
+a "remote" machine. A curious detail here is that the network is shared between
+the simulator instance and the host macOS, so we can use the local loopback
+address `127.0.0.1`. Something like the following should work:
+
+```sh
+# Build the test server for the iOS simulator:
+./x build src/tools/remote-test-server --target aarch64-apple-ios-sim
+
+# If you already have a simulator instance open, copy the device UUID from:
+xcrun simctl list devices booted
+UDID=01234567-89AB-CDEF-0123-456789ABCDEF
+
+# Alternatively, create and boot a new simulator instance:
+xcrun simctl list runtimes
+xcrun simctl list devicetypes
+UDID=$(xcrun simctl create $CHOSEN_DEVICE_TYPE $CHOSEN_RUNTIME)
+xcrun simctl boot $UDID
+# See https://nshipster.com/simctl/ for details.
+
+# Spawn the runner on port 12345:
+xcrun simctl spawn $UDID ./build/host/stage2-tools/aarch64-apple-ios-sim/release/remote-test-server -v --bind 127.0.0.1:12345
+
+# In a new terminal, run tests via the runner:
+export TEST_DEVICE_ADDR="127.0.0.1:12345"
+./x test --host='' --target aarch64-apple-ios-sim --skip tests/debuginfo
+# FIXME(madsmtm): Allow debuginfo tests to work (maybe needs `.dSYM` folder to be copied to the target?).
+```
 
 [armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
@@ -352,39 +374,26 @@ coordinate running tests (see [src/bootstrap/src/core/build_steps/test.rs]).
 [remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
 [src/bootstrap/src/core/build_steps/test.rs]: https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/core/build_steps/test.rs
 
-## Running rustc_codegen_gcc tests
+## Testing tests on wasi (wasm32-wasip1)
 
-First thing to know is that it only supports linux x86_64 at the moment. We will
-extend its support later on.
+Some tests are specific to wasm targets.
+To run theste tests, you have to pass `--target wasm32-wasip1` to `x test`.
+Additionally, you need the wasi sdk.
+Follow the install instructions from the [wasi sdk repository] to get a sysroot on your computer.
+On the [wasm32-wasip1 target support page] a minimum version is specified that your sdk must be able to build.
+Some cmake commands that take a while and give a lot of very concerning c++ warnings...
+Then, in `bootstrap.toml`, point to the sysroot like so:
 
-You need to update `codegen-backends` value in your `bootstrap.toml` file in the
-`[rust]` section and add "gcc" in the array:
-
-```toml
-codegen-backends = ["llvm", "gcc"]
+```
+[target.wasm32-wasip1]
+wasi-root = "<wasi-sdk location>/build/sysroot/install/share/wasi-sysroot"
 ```
 
-Then you need to install libgccjit 12. For example with `apt`:
+In my case I git-cloned it next to my rust folder, so it was `../wasi-sdk/build/....`
+Now, tests should just run, you don't have to set up anything else.
 
-```text
-apt install libgccjit-12-dev
-```
+[wasi sdk repository]: https://github.com/WebAssembly/wasi-sdk
+[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
 
-Now you can run the following command:
-
-```text
-./x test compiler/rustc_codegen_gcc/
-```
-
-If it cannot find the `.so` library (if you installed it with `apt` for example), you
-need to pass the library file path with `LIBRARY_PATH`:
-
-```text
-LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
-```
-
-If you encounter bugs or problems, don't hesitate to open issues on the
-[`rustc_codegen_gcc`
-repository](https://github.com/rust-lang/rustc_codegen_gcc/).
 
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui

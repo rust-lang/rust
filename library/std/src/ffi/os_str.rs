@@ -137,7 +137,7 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_pathbuf_osstring_new", issue = "141520")]
+    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
     pub const fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
@@ -828,7 +828,8 @@ impl OsStr {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn new<S: [const] AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
 
@@ -876,14 +877,16 @@ impl OsStr {
     }
 
     #[inline]
-    fn from_inner(inner: &Slice) -> &OsStr {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn from_inner(inner: &Slice) -> &OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
         // therefore converting &Slice to &OsStr is safe.
         unsafe { &*(inner as *const Slice as *const OsStr) }
     }
 
     #[inline]
-    fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
         // therefore converting &mut Slice to &mut OsStr is safe.
         // Any method that mutates OsStr must be careful not to
@@ -1211,6 +1214,8 @@ impl OsStr {
     }
 
     /// Checks if all characters in this string are within the ASCII range.
+    ///
+    /// An empty string returns `true`.
     ///
     /// # Examples
     ///
@@ -1681,7 +1686,8 @@ impl ToOwned for OsStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for OsStr {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<OsStr> for OsStr {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         self

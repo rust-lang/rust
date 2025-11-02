@@ -9,6 +9,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
 };
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use smallvec::SmallVec;
 use stdx::{format_to, impl_from, never};
 use syntax::{Edition, SmolStr, TextRange, TextSize, format_smolstr};
@@ -23,7 +24,7 @@ use crate::{
 ///
 /// It is basically a POD with various properties. To construct a [`CompletionItem`],
 /// use [`Builder::new`] method and the [`Builder`] struct.
-#[derive(Clone)]
+#[derive(Clone, UpmapFromRaFixture)]
 #[non_exhaustive]
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.
@@ -399,7 +400,6 @@ impl CompletionItemKind {
                 SymbolKind::Struct => "st",
                 SymbolKind::ToolModule => "tm",
                 SymbolKind::Trait => "tt",
-                SymbolKind::TraitAlias => "tr",
                 SymbolKind::TypeAlias => "ta",
                 SymbolKind::TypeParam => "tp",
                 SymbolKind::Union => "un",
@@ -636,10 +636,10 @@ impl Builder {
     }
     pub(crate) fn set_detail(&mut self, detail: Option<impl Into<String>>) -> &mut Builder {
         self.detail = detail.map(Into::into);
-        if let Some(detail) = &self.detail {
-            if never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
-                self.detail = Some(detail.split('\n').next().unwrap().to_owned());
-            }
+        if let Some(detail) = &self.detail
+            && never!(detail.contains('\n'), "multiline detail:\n{}", detail)
+        {
+            self.detail = Some(detail.split('\n').next().unwrap().to_owned());
         }
         self
     }

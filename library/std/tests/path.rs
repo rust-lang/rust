@@ -1,10 +1,9 @@
-#![feature(
-    clone_to_uninit,
-    path_add_extension,
-    path_file_prefix,
-    maybe_uninit_slice,
-    normalize_lexically
-)]
+// tidy-alphabetical-start
+#![feature(clone_to_uninit)]
+#![feature(maybe_uninit_slice)]
+#![feature(normalize_lexically)]
+#![feature(path_trailing_sep)]
+// tidy-alphabetical-end
 
 use std::clone::CloneToUninit;
 use std::ffi::OsStr;
@@ -2530,5 +2529,52 @@ fn normalize_lexically() {
 
         check_err(r"\\?\UNC\server\share\..");
         check_err(r"\\?\UNC\server\share\a\..\..");
+    }
+}
+
+#[test]
+/// See issue#146183 and issue#146940
+fn compare_path_like_to_str_like() {
+    let path_buf = PathBuf::from("x");
+    let path = Path::new("x");
+    let s = String::from("x");
+    assert!(path == "x");
+    assert!("x" == path);
+    assert!(path == &s);
+    assert!(&s == path);
+    assert!(&path_buf == "x");
+    assert!("x" == &path_buf);
+    assert!(path_buf == s);
+    assert!(s == path_buf);
+}
+
+#[test]
+fn test_trim_trailing_sep() {
+    assert_eq!(Path::new("/").trim_trailing_sep().as_os_str(), OsStr::new("/"));
+    assert_eq!(Path::new("//").trim_trailing_sep().as_os_str(), OsStr::new("//"));
+    assert_eq!(Path::new("").trim_trailing_sep().as_os_str(), OsStr::new(""));
+    assert_eq!(Path::new(".").trim_trailing_sep().as_os_str(), OsStr::new("."));
+    assert_eq!(Path::new("./").trim_trailing_sep().as_os_str(), OsStr::new("."));
+    assert_eq!(Path::new(".//").trim_trailing_sep().as_os_str(), OsStr::new("."));
+    assert_eq!(Path::new("..").trim_trailing_sep().as_os_str(), OsStr::new(".."));
+    assert_eq!(Path::new("../").trim_trailing_sep().as_os_str(), OsStr::new(".."));
+    assert_eq!(Path::new("..//").trim_trailing_sep().as_os_str(), OsStr::new(".."));
+
+    #[cfg(any(windows, target_os = "cygwin"))]
+    {
+        assert_eq!(Path::new("\\").trim_trailing_sep().as_os_str(), OsStr::new("\\"));
+        assert_eq!(Path::new("\\\\").trim_trailing_sep().as_os_str(), OsStr::new("\\\\"));
+        assert_eq!(Path::new("c:/").trim_trailing_sep().as_os_str(), OsStr::new("c:/"));
+        assert_eq!(Path::new("c://").trim_trailing_sep().as_os_str(), OsStr::new("c://"));
+        assert_eq!(Path::new("c:./").trim_trailing_sep().as_os_str(), OsStr::new("c:."));
+        assert_eq!(Path::new("c:.//").trim_trailing_sep().as_os_str(), OsStr::new("c:."));
+        assert_eq!(Path::new("c:../").trim_trailing_sep().as_os_str(), OsStr::new("c:.."));
+        assert_eq!(Path::new("c:..//").trim_trailing_sep().as_os_str(), OsStr::new("c:.."));
+        assert_eq!(Path::new("c:\\").trim_trailing_sep().as_os_str(), OsStr::new("c:\\"));
+        assert_eq!(Path::new("c:\\\\").trim_trailing_sep().as_os_str(), OsStr::new("c:\\\\"));
+        assert_eq!(Path::new("c:.\\").trim_trailing_sep().as_os_str(), OsStr::new("c:."));
+        assert_eq!(Path::new("c:.\\\\").trim_trailing_sep().as_os_str(), OsStr::new("c:."));
+        assert_eq!(Path::new("c:..\\").trim_trailing_sep().as_os_str(), OsStr::new("c:.."));
+        assert_eq!(Path::new("c:..\\\\").trim_trailing_sep().as_os_str(), OsStr::new("c:.."));
     }
 }

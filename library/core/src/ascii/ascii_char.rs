@@ -54,7 +54,8 @@ use crate::{assert_unsafe_precondition, fmt};
 /// [chart]: https://www.unicode.org/charts/PDF/U0000.pdf
 /// [NIST FIPS 1-2]: https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub1-2-1977.pdf
 /// [NamesList]: https://www.unicode.org/Public/15.0.0/ucd/NamesList.txt
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Hash)]
+#[derive_const(Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
@@ -445,7 +446,15 @@ pub enum AsciiChar {
 }
 
 impl AsciiChar {
-    /// Creates an ascii character from the byte `b`,
+    /// The character with the lowest ASCII code.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    pub const MIN: Self = Self::Null;
+
+    /// The character with the highest ASCII code.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    pub const MAX: Self = Self::Delete;
+
+    /// Creates an ASCII character from the byte `b`,
     /// or returns `None` if it's too large.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
@@ -506,7 +515,7 @@ impl AsciiChar {
     #[track_caller]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
-            check_language_ub,
+            check_library_ub,
             "`ascii::Char::digit_unchecked` input cannot exceed 9.",
             (d: u8 = d) => d < 10
         );
@@ -540,13 +549,615 @@ impl AsciiChar {
     pub const fn as_str(&self) -> &str {
         crate::slice::from_ref(self).as_str()
     }
+
+    /// Makes a copy of the value in its upper case equivalent.
+    ///
+    /// Letters 'a' to 'z' are mapped to 'A' to 'Z'.
+    ///
+    /// To uppercase the value in-place, use [`make_uppercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let lowercase_a = ascii::Char::SmallA;
+    ///
+    /// assert_eq!(
+    ///     ascii::Char::CapitalA,
+    ///     lowercase_a.to_uppercase(),
+    /// );
+    /// ```
+    ///
+    /// [`make_uppercase`]: Self::make_uppercase
+    #[must_use = "to uppercase the value in-place, use `make_uppercase()`"]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn to_uppercase(self) -> Self {
+        let uppercase_byte = self.to_u8().to_ascii_uppercase();
+        // SAFETY: Toggling the 6th bit won't convert ASCII to non-ASCII.
+        unsafe { Self::from_u8_unchecked(uppercase_byte) }
+    }
+
+    /// Makes a copy of the value in its lower case equivalent.
+    ///
+    /// Letters 'A' to 'Z' are mapped to 'a' to 'z'.
+    ///
+    /// To lowercase the value in-place, use [`make_lowercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    ///
+    /// assert_eq!(
+    ///     ascii::Char::SmallA,
+    ///     uppercase_a.to_lowercase(),
+    /// );
+    /// ```
+    ///
+    /// [`make_lowercase`]: Self::make_lowercase
+    #[must_use = "to lowercase the value in-place, use `make_lowercase()`"]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn to_lowercase(self) -> Self {
+        let lowercase_byte = self.to_u8().to_ascii_lowercase();
+        // SAFETY: Setting the 6th bit won't convert ASCII to non-ASCII.
+        unsafe { Self::from_u8_unchecked(lowercase_byte) }
+    }
+
+    /// Checks that two values are a case-insensitive match.
+    ///
+    /// This is equivalent to `to_lowercase(a) == to_lowercase(b)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let lowercase_a = ascii::Char::SmallA;
+    /// let uppercase_a = ascii::Char::CapitalA;
+    ///
+    /// assert!(lowercase_a.eq_ignore_case(uppercase_a));
+    /// ```
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn eq_ignore_case(self, other: Self) -> bool {
+        // FIXME(const-hack) `arg.to_u8().to_ascii_lowercase()` -> `arg.to_lowercase()`
+        // once `PartialEq` is const for `Self`.
+        self.to_u8().to_ascii_lowercase() == other.to_u8().to_ascii_lowercase()
+    }
+
+    /// Converts this value to its upper case equivalent in-place.
+    ///
+    /// Letters 'a' to 'z' are mapped to 'A' to 'Z'.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_uppercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let mut letter_a = ascii::Char::SmallA;
+    ///
+    /// letter_a.make_uppercase();
+    ///
+    /// assert_eq!(ascii::Char::CapitalA, letter_a);
+    /// ```
+    ///
+    /// [`to_uppercase`]: Self::to_uppercase
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn make_uppercase(&mut self) {
+        *self = self.to_uppercase();
+    }
+
+    /// Converts this value to its lower case equivalent in-place.
+    ///
+    /// Letters 'A' to 'Z' are mapped to 'a' to 'z'.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_lowercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let mut letter_a = ascii::Char::CapitalA;
+    ///
+    /// letter_a.make_lowercase();
+    ///
+    /// assert_eq!(ascii::Char::SmallA, letter_a);
+    /// ```
+    ///
+    /// [`to_lowercase`]: Self::to_lowercase
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn make_lowercase(&mut self) {
+        *self = self.to_lowercase();
+    }
+
+    /// Checks if the value is an alphabetic character:
+    ///
+    /// - 0x41 'A' ..= 0x5A 'Z', or
+    /// - 0x61 'a' ..= 0x7A 'z'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(uppercase_a.is_alphabetic());
+    /// assert!(uppercase_g.is_alphabetic());
+    /// assert!(a.is_alphabetic());
+    /// assert!(g.is_alphabetic());
+    /// assert!(!zero.is_alphabetic());
+    /// assert!(!percent.is_alphabetic());
+    /// assert!(!space.is_alphabetic());
+    /// assert!(!lf.is_alphabetic());
+    /// assert!(!esc.is_alphabetic());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_alphabetic(self) -> bool {
+        self.to_u8().is_ascii_alphabetic()
+    }
+
+    /// Checks if the value is an uppercase character:
+    /// 0x41 'A' ..= 0x5A 'Z'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(uppercase_a.is_uppercase());
+    /// assert!(uppercase_g.is_uppercase());
+    /// assert!(!a.is_uppercase());
+    /// assert!(!g.is_uppercase());
+    /// assert!(!zero.is_uppercase());
+    /// assert!(!percent.is_uppercase());
+    /// assert!(!space.is_uppercase());
+    /// assert!(!lf.is_uppercase());
+    /// assert!(!esc.is_uppercase());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_uppercase(self) -> bool {
+        self.to_u8().is_ascii_uppercase()
+    }
+
+    /// Checks if the value is a lowercase character:
+    /// 0x61 'a' ..= 0x7A 'z'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_lowercase());
+    /// assert!(!uppercase_g.is_lowercase());
+    /// assert!(a.is_lowercase());
+    /// assert!(g.is_lowercase());
+    /// assert!(!zero.is_lowercase());
+    /// assert!(!percent.is_lowercase());
+    /// assert!(!space.is_lowercase());
+    /// assert!(!lf.is_lowercase());
+    /// assert!(!esc.is_lowercase());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_lowercase(self) -> bool {
+        self.to_u8().is_ascii_lowercase()
+    }
+
+    /// Checks if the value is an alphanumeric character:
+    ///
+    /// - 0x41 'A' ..= 0x5A 'Z', or
+    /// - 0x61 'a' ..= 0x7A 'z', or
+    /// - 0x30 '0' ..= 0x39 '9'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(uppercase_a.is_alphanumeric());
+    /// assert!(uppercase_g.is_alphanumeric());
+    /// assert!(a.is_alphanumeric());
+    /// assert!(g.is_alphanumeric());
+    /// assert!(zero.is_alphanumeric());
+    /// assert!(!percent.is_alphanumeric());
+    /// assert!(!space.is_alphanumeric());
+    /// assert!(!lf.is_alphanumeric());
+    /// assert!(!esc.is_alphanumeric());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_alphanumeric(self) -> bool {
+        self.to_u8().is_ascii_alphanumeric()
+    }
+
+    /// Checks if the value is a decimal digit:
+    /// 0x30 '0' ..= 0x39 '9'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_digit());
+    /// assert!(!uppercase_g.is_digit());
+    /// assert!(!a.is_digit());
+    /// assert!(!g.is_digit());
+    /// assert!(zero.is_digit());
+    /// assert!(!percent.is_digit());
+    /// assert!(!space.is_digit());
+    /// assert!(!lf.is_digit());
+    /// assert!(!esc.is_digit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_digit(self) -> bool {
+        self.to_u8().is_ascii_digit()
+    }
+
+    /// Checks if the value is an octal digit:
+    /// 0x30 '0' ..= 0x37 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants, is_ascii_octdigit)]
+    ///
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let a = ascii::Char::SmallA;
+    /// let zero = ascii::Char::Digit0;
+    /// let seven = ascii::Char::Digit7;
+    /// let eight = ascii::Char::Digit8;
+    /// let percent = ascii::Char::PercentSign;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_octdigit());
+    /// assert!(!a.is_octdigit());
+    /// assert!(zero.is_octdigit());
+    /// assert!(seven.is_octdigit());
+    /// assert!(!eight.is_octdigit());
+    /// assert!(!percent.is_octdigit());
+    /// assert!(!lf.is_octdigit());
+    /// assert!(!esc.is_octdigit());
+    /// ```
+    #[must_use]
+    // This is blocked on two unstable features. Please ensure both are
+    // stabilized before marking this method as stable.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    // #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_octdigit(self) -> bool {
+        self.to_u8().is_ascii_octdigit()
+    }
+
+    /// Checks if the value is a hexadecimal digit:
+    ///
+    /// - 0x30 '0' ..= 0x39 '9', or
+    /// - 0x41 'A' ..= 0x46 'F', or
+    /// - 0x61 'a' ..= 0x66 'f'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(uppercase_a.is_hexdigit());
+    /// assert!(!uppercase_g.is_hexdigit());
+    /// assert!(a.is_hexdigit());
+    /// assert!(!g.is_hexdigit());
+    /// assert!(zero.is_hexdigit());
+    /// assert!(!percent.is_hexdigit());
+    /// assert!(!space.is_hexdigit());
+    /// assert!(!lf.is_hexdigit());
+    /// assert!(!esc.is_hexdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_hexdigit(self) -> bool {
+        self.to_u8().is_ascii_hexdigit()
+    }
+
+    /// Checks if the value is a punctuation character:
+    ///
+    /// - 0x21 ..= 0x2F `! " # $ % & ' ( ) * + , - . /`, or
+    /// - 0x3A ..= 0x40 `: ; < = > ? @`, or
+    /// - 0x5B ..= 0x60 `` [ \ ] ^ _ ` ``, or
+    /// - 0x7B ..= 0x7E `{ | } ~`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_punctuation());
+    /// assert!(!uppercase_g.is_punctuation());
+    /// assert!(!a.is_punctuation());
+    /// assert!(!g.is_punctuation());
+    /// assert!(!zero.is_punctuation());
+    /// assert!(percent.is_punctuation());
+    /// assert!(!space.is_punctuation());
+    /// assert!(!lf.is_punctuation());
+    /// assert!(!esc.is_punctuation());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_punctuation(self) -> bool {
+        self.to_u8().is_ascii_punctuation()
+    }
+
+    /// Checks if the value is a graphic character:
+    /// 0x21 '!' ..= 0x7E '~'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(uppercase_a.is_graphic());
+    /// assert!(uppercase_g.is_graphic());
+    /// assert!(a.is_graphic());
+    /// assert!(g.is_graphic());
+    /// assert!(zero.is_graphic());
+    /// assert!(percent.is_graphic());
+    /// assert!(!space.is_graphic());
+    /// assert!(!lf.is_graphic());
+    /// assert!(!esc.is_graphic());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_graphic(self) -> bool {
+        self.to_u8().is_ascii_graphic()
+    }
+
+    /// Checks if the value is a whitespace character:
+    /// 0x20 SPACE, 0x09 HORIZONTAL TAB, 0x0A LINE FEED,
+    /// 0x0C FORM FEED, or 0x0D CARRIAGE RETURN.
+    ///
+    /// Rust uses the WhatWG Infra Standard's [definition of ASCII
+    /// whitespace][infra-aw]. There are several other definitions in
+    /// wide use. For instance, [the POSIX locale][pct] includes
+    /// 0x0B VERTICAL TAB as well as all the above characters,
+    /// but—from the very same specification—[the default rule for
+    /// "field splitting" in the Bourne shell][bfs] considers *only*
+    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
+    ///
+    /// If you are writing a program that will process an existing
+    /// file format, check what that format's definition of whitespace is
+    /// before using this function.
+    ///
+    /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_whitespace());
+    /// assert!(!uppercase_g.is_whitespace());
+    /// assert!(!a.is_whitespace());
+    /// assert!(!g.is_whitespace());
+    /// assert!(!zero.is_whitespace());
+    /// assert!(!percent.is_whitespace());
+    /// assert!(space.is_whitespace());
+    /// assert!(lf.is_whitespace());
+    /// assert!(!esc.is_whitespace());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_whitespace(self) -> bool {
+        self.to_u8().is_ascii_whitespace()
+    }
+
+    /// Checks if the value is a control character:
+    /// 0x00 NUL ..= 0x1F UNIT SEPARATOR, or 0x7F DELETE.
+    /// Note that most whitespace characters are control
+    /// characters, but SPACE is not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let uppercase_a = ascii::Char::CapitalA;
+    /// let uppercase_g = ascii::Char::CapitalG;
+    /// let a = ascii::Char::SmallA;
+    /// let g = ascii::Char::SmallG;
+    /// let zero = ascii::Char::Digit0;
+    /// let percent = ascii::Char::PercentSign;
+    /// let space = ascii::Char::Space;
+    /// let lf = ascii::Char::LineFeed;
+    /// let esc = ascii::Char::Escape;
+    ///
+    /// assert!(!uppercase_a.is_control());
+    /// assert!(!uppercase_g.is_control());
+    /// assert!(!a.is_control());
+    /// assert!(!g.is_control());
+    /// assert!(!zero.is_control());
+    /// assert!(!percent.is_control());
+    /// assert!(!space.is_control());
+    /// assert!(lf.is_control());
+    /// assert!(esc.is_control());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const fn is_control(self) -> bool {
+        self.to_u8().is_ascii_control()
+    }
+
+    /// Returns an iterator that produces an escaped version of a
+    /// character.
+    ///
+    /// The behavior is identical to
+    /// [`ascii::escape_default`](crate::ascii::escape_default).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use std::ascii;
+    ///
+    /// let zero = ascii::Char::Digit0;
+    /// let tab = ascii::Char::CharacterTabulation;
+    /// let cr = ascii::Char::CarriageReturn;
+    /// let lf = ascii::Char::LineFeed;
+    /// let apostrophe = ascii::Char::Apostrophe;
+    /// let double_quote = ascii::Char::QuotationMark;
+    /// let backslash = ascii::Char::ReverseSolidus;
+    ///
+    /// assert_eq!("0", zero.escape_ascii().to_string());
+    /// assert_eq!("\\t", tab.escape_ascii().to_string());
+    /// assert_eq!("\\r", cr.escape_ascii().to_string());
+    /// assert_eq!("\\n", lf.escape_ascii().to_string());
+    /// assert_eq!("\\'", apostrophe.escape_ascii().to_string());
+    /// assert_eq!("\\\"", double_quote.escape_ascii().to_string());
+    /// assert_eq!("\\\\", backslash.escape_ascii().to_string());
+    /// ```
+    #[must_use = "this returns the escaped character as an iterator, \
+                  without modifying the original"]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub fn escape_ascii(self) -> super::EscapeDefault {
+        super::escape_default(self.to_u8())
+    }
 }
 
 macro_rules! into_int_impl {
     ($($ty:ty)*) => {
         $(
             #[unstable(feature = "ascii_char", issue = "110998")]
-            #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+            #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             impl const From<AsciiChar> for $ty {
                 #[inline]
                 fn from(chr: AsciiChar) -> $ty {

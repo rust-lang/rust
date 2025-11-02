@@ -365,12 +365,11 @@ impl HirFileId {
                 HirFileId::FileId(id) => break id,
                 HirFileId::MacroFile(file) => {
                     let loc = db.lookup_intern_macro_call(file);
-                    if loc.def.is_include() {
-                        if let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind {
-                            if let Ok(it) = include_input_to_file_id(db, file, &eager.arg) {
-                                break it;
-                            }
-                        }
+                    if loc.def.is_include()
+                        && let MacroCallKind::FnLike { eager: Some(eager), .. } = &loc.kind
+                        && let Ok(it) = include_input_to_file_id(db, file, &eager.arg)
+                    {
+                        break it;
                     }
                     self = loc.kind.file_id();
                 }
@@ -648,12 +647,11 @@ impl MacroCallLoc {
         db: &dyn ExpandDatabase,
         macro_call_id: MacroCallId,
     ) -> Option<EditionedFileId> {
-        if self.def.is_include() {
-            if let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind {
-                if let Ok(it) = include_input_to_file_id(db, macro_call_id, &eager.arg) {
-                    return Some(it);
-                }
-            }
+        if self.def.is_include()
+            && let MacroCallKind::FnLike { eager: Some(eager), .. } = &self.kind
+            && let Ok(it) = include_input_to_file_id(db, macro_call_id, &eager.arg)
+        {
+            return Some(it);
         }
 
         None

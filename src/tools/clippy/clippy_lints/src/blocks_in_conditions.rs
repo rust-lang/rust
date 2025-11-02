@@ -100,8 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                             cond.span,
                             BRACED_EXPR_MESSAGE,
                             "try",
-                            snippet_block_with_applicability(cx, ex.span, "..", Some(expr.span), &mut applicability)
-                                .to_string(),
+                            snippet_block_with_applicability(cx, ex.span, "..", Some(expr.span), &mut applicability),
                             applicability,
                         );
                     }

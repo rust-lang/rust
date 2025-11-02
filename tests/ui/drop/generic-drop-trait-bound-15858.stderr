@@ -1,0 +1,12 @@
+warning: method `do_something` is never used
+  --> $DIR/generic-drop-trait-bound-15858.rs:9:8
+   |
+LL | trait Bar {
+   |       --- method in this trait
+LL |     fn do_something(&mut self);
+   |        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

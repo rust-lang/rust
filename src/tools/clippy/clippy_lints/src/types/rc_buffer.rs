@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::qpath_generic_tys;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath, TyKind};
@@ -11,7 +12,8 @@ use super::RC_BUFFER;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     let app = Applicability::Unspecified;
-    if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
+    let name = cx.tcx.get_diagnostic_name(def_id);
+    if name == Some(sym::Rc) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(
@@ -27,8 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             let Some(ty) = qpath_generic_tys(qpath).next() else {
                 return false;
             };
-            let Some(id) = path_def_id(cx, ty) else { return false };
-            if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
+            if !ty.basic_res().is_diag_item(cx, sym::Vec) {
                 return false;
             }
             let TyKind::Path(qpath) = &ty.kind else { return false };
@@ -56,7 +57,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             );
             return true;
         }
-    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
+    } else if name == Some(sym::Arc) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(
@@ -69,8 +70,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 },
             );
         } else if let Some(ty) = qpath_generic_tys(qpath).next() {
-            let Some(id) = path_def_id(cx, ty) else { return false };
-            if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
+            if !ty.basic_res().is_diag_item(cx, sym::Vec) {
                 return false;
             }
             let TyKind::Path(qpath) = &ty.kind else { return false };
@@ -105,7 +105,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
     let ty = qpath_generic_tys(qpath).next()?;
-    let id = path_def_id(cx, ty)?;
+    let id = ty.basic_res().opt_def_id()?;
     let path = match cx.tcx.get_diagnostic_name(id) {
         Some(sym::OsString) => "std::ffi::OsStr",
         Some(sym::PathBuf) => "std::path::Path",

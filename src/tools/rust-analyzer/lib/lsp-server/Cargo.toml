@@ -1,6 +1,6 @@
 [package]
 name = "lsp-server"
-version = "0.7.8"
+version = "0.7.9"
 description = "Generic LSP server scaffold."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/lsp-server"
@@ -16,9 +16,9 @@ crossbeam-channel.workspace = true
 [dev-dependencies]
 lsp-types = "=0.95"
 ctrlc = "3.4.7"
-anyhow.workspace     = true
+anyhow.workspace = true
 rustc-hash.workspace = true
-toolchain.workspace  = true
+toolchain.workspace = true
 
 [lints]
 workspace = true

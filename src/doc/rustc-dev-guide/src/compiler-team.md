@@ -1,10 +1,14 @@
 # About the compiler team
 
+> NOTE:
+> There exists much detail about the team [on Forge], making most of the following obsolete.
+
 rustc is maintained by the [Rust compiler team][team]. The people who belong to
 this team collectively work to track regressions and implement new features.
 Members of the Rust compiler team are people who have made significant
 contributions to rustc and its design.
 
+[on Forge]: https://forge.rust-lang.org/compiler
 [team]: https://www.rust-lang.org/governance/teams/compiler
 
 ## Discussion
@@ -12,7 +16,7 @@ contributions to rustc and its design.
 Currently the compiler team chats in Zulip:
 
 - Team chat occurs in the [`t-compiler`][zulip-t-compiler] stream on the Zulip instance
-- There are also a number of other associated Zulip streams,
+- There are also a number of other associated Zulip channels,
   such as [`t-compiler/help`][zulip-help], where people can ask for help
   with rustc development, or [`t-compiler/meetings`][zulip-meetings],
   where the team holds their weekly triage and steering meetings.
@@ -50,8 +54,8 @@ They are held on [Zulip][zulip-meetings]. It works roughly as follows:
   those that are sufficiently important for us to actively track
   progress. P-critical and P-high bugs should ideally always have an
   assignee.
-- **Check S-waiting-on-team and I-nominated issues:** These are issues where feedback from
-  the team is desired.
+- **Check `S-waiting-on-t-compiler` and `I-compiler-nominated` issues:** These are issues where
+  feedback from the team is desired.
 - **Look over the performance triage report:** We check for PRs that made the
     performance worse and try to decide if it's worth reverting the performance regression or if
     the regression can be addressed in a future PR.
@@ -130,12 +134,3 @@ Getting on the reviewer rotation is much appreciated as it lowers the
 review burden for all of us! However, if you don't have time to give
 people timely feedback on their PRs, it may be better that you don't
 get on the list.
-
-### Full team membership
-
-Full team membership is typically extended once someone made many
-contributions to the Rust compiler over time, ideally (but not
-necessarily) to multiple areas. Sometimes this might be implementing a
-new feature, but it is also important — perhaps more important! — to
-have time and willingness to help out with general upkeep such as
-bugfixes, tracking regressions, and other less glamorous work.

@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -43,8 +45,6 @@
 // lldb-check:[...] { x = { x = 25 } y = { x = { x = 26 y = 27 } y = { x = 28 y = 29 } z = { x = 30 y = 31 } } z = { x = { x = { x = 32 } } } }
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Simple {
     x: i32

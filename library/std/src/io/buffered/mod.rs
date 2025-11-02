@@ -179,12 +179,7 @@ impl<W> From<IntoInnerError<W>> for Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        error::Error::description(self.error())
-    }
-}
+impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W> fmt::Display for IntoInnerError<W> {

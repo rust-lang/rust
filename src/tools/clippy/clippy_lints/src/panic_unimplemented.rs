@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_in_test;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
+use clippy_utils::{is_in_test, is_inside_always_const_context};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr) {
             if is_panic(cx, macro_call.def_id) {
-                if cx.tcx.hir_is_inside_const_context(expr.hir_id)
+                if is_inside_always_const_context(cx.tcx, expr.hir_id)
                     || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)
                 {
                     return;
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
             && let Res::Def(DefKind::Fn, def_id) = expr_path.res
             && cx.tcx.is_diagnostic_item(sym::panic_any, def_id)
         {
-            if cx.tcx.hir_is_inside_const_context(expr.hir_id)
+            if is_inside_always_const_context(cx.tcx, expr.hir_id)
                 || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)
             {
                 return;

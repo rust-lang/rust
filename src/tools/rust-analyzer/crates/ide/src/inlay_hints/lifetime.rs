@@ -21,7 +21,7 @@ pub(super) fn fn_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: ast::Fn,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -70,7 +70,7 @@ pub(super) fn fn_ptr_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: ast::FnPtrType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -135,7 +135,7 @@ pub(super) fn fn_path_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: &ast::PathType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -196,7 +196,7 @@ fn hints_(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     FamousDefs(_, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     params: impl Iterator<Item = (Option<ast::Name>, ast::Type)>,
     generic_param_list: Option<ast::GenericParamList>,
     ret_type: Option<ast::RetType>,
@@ -324,35 +324,35 @@ fn hints_(
 
     // apply hints
     // apply output if required
-    if let (Some(output_lt), Some(r)) = (&output, ret_type) {
-        if let Some(ty) = r.ty() {
-            walk_ty(&ty, &mut |ty| match ty {
-                ast::Type::RefType(ty) if ty.lifetime().is_none() => {
-                    if let Some(amp) = ty.amp_token() {
-                        is_trivial = false;
-                        acc.push(mk_lt_hint(amp, output_lt.to_string()));
-                    }
-                    false
+    if let (Some(output_lt), Some(r)) = (&output, ret_type)
+        && let Some(ty) = r.ty()
+    {
+        walk_ty(&ty, &mut |ty| match ty {
+            ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                if let Some(amp) = ty.amp_token() {
+                    is_trivial = false;
+                    acc.push(mk_lt_hint(amp, output_lt.to_string()));
                 }
-                ast::Type::FnPtrType(_) => {
+                false
+            }
+            ast::Type::FnPtrType(_) => {
+                is_trivial = false;
+                true
+            }
+            ast::Type::PathType(t) => {
+                if t.path()
+                    .and_then(|it| it.segment())
+                    .and_then(|it| it.parenthesized_arg_list())
+                    .is_some()
+                {
                     is_trivial = false;
                     true
+                } else {
+                    false
                 }
-                ast::Type::PathType(t) => {
-                    if t.path()
-                        .and_then(|it| it.segment())
-                        .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            })
-        }
+            }
+            _ => false,
+        })
     }
 
     if config.lifetime_elision_hints == LifetimeElisionHints::SkipTrivial && is_trivial {

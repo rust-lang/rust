@@ -8,11 +8,6 @@
     rustc::untranslatable_diagnostic
 )]
 
-// Some "regular" crates we want to share with rustc
-extern crate tracing;
-#[cfg(feature = "tracing")]
-extern crate tracing_subscriber;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_data_structures;
@@ -39,7 +34,7 @@ use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode,
+    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -48,6 +43,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
+use rustc_log::tracing::debug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -60,7 +56,6 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_span::def_id::DefId;
-use tracing::debug;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -186,10 +181,23 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
-        if let Some(_genmc_config) = &config.genmc_config {
-            let _genmc_ctx = Rc::new(GenmcCtx::new(&config));
+        // Run in GenMC mode if enabled.
+        if config.genmc_config.is_some() {
+            // Validate GenMC settings.
+            if let Err(err) = GenmcConfig::validate(&mut config, tcx) {
+                fatal_error!("Invalid settings: {err}");
+            }
 
-            todo!("GenMC mode not yet implemented");
+            // This is the entry point used in GenMC mode.
+            // This closure will be called multiple times to explore the concurrent execution space of the program.
+            let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
+                miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
+            };
+            let return_code = run_genmc_mode(&config, eval_entry_once, tcx).unwrap_or_else(|| {
+                tcx.dcx().abort_if_errors();
+                rustc_driver::EXIT_FAILURE
+            });
+            exit(return_code);
         };
 
         if let Some(many_seeds) = self.many_seeds.take() {
@@ -344,6 +352,7 @@ fn fatal_error_(msg: &impl std::fmt::Display) -> ! {
 macro_rules! fatal_error {
     ($($tt:tt)*) => { $crate::fatal_error_(&format_args!($($tt)*)) };
 }
+#[allow(unused)] // use depends on cfg
 use fatal_error;
 
 /// Execute a compiler with the given CLI arguments and callbacks.
@@ -556,7 +565,11 @@ fn main() {
         } else if arg == "-Zmiri-deterministic-floats" {
             miri_config.float_nondet = false;
         } else if arg == "-Zmiri-no-extra-rounding-error" {
-            miri_config.float_rounding_error = false;
+            miri_config.float_rounding_error = miri::FloatRoundingErrorMode::None;
+        } else if arg == "-Zmiri-max-extra-rounding-error" {
+            miri_config.float_rounding_error = miri::FloatRoundingErrorMode::Max;
+        } else if arg == "-Zmiri-no-short-fd-operations" {
+            miri_config.short_fd_operations = false;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
@@ -732,20 +745,7 @@ fn main() {
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
-    // Validate settings for data race detection and GenMC mode.
-    if miri_config.genmc_config.is_some() {
-        if !miri_config.data_race_detector {
-            fatal_error!("Cannot disable data race detection in GenMC mode (currently)");
-        } else if !miri_config.weak_memory_emulation {
-            fatal_error!("Cannot disable weak memory emulation in GenMC mode");
-        }
-        if miri_config.borrow_tracker.is_some() {
-            eprintln!(
-                "warning: borrow tracking has been disabled, it is not (yet) supported in GenMC mode."
-            );
-            miri_config.borrow_tracker = None;
-        }
-    } else if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
+    if miri_config.weak_memory_emulation && !miri_config.data_race_detector {
         fatal_error!(
             "Weak memory emulation cannot be enabled when the data race detector is disabled"
         );

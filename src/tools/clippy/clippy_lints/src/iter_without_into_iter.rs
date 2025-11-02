@@ -125,8 +125,9 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
         if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
-            && let Some(trait_ref) = imp.of_trait
-            && trait_ref
+            && let Some(of_trait) = imp.of_trait
+            && of_trait
+                .trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && !item.span.in_external_macro(cx.sess().source_map())

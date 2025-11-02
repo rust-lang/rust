@@ -18,7 +18,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive_where(Clone, Copy, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic)]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
@@ -38,7 +38,7 @@ pub enum TypeError<I: Interner> {
 
     Sorts(ExpectedFound<I::Ty>),
     ArgumentSorts(ExpectedFound<I::Ty>, usize),
-    Traits(ExpectedFound<I::DefId>),
+    Traits(ExpectedFound<I::TraitId>),
     VariadicMismatch(ExpectedFound<bool>),
 
     /// Instantiating a type variable with the given type would have
@@ -57,6 +57,8 @@ pub enum TypeError<I: Interner> {
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(I::DefId),
 }
+
+impl<I: Interner> Eq for TypeError<I> {}
 
 impl<I: Interner> TypeError<I> {
     pub fn involves_regions(self) -> bool {

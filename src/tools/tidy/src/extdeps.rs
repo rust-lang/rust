@@ -3,6 +3,9 @@
 use std::fs;
 use std::path::Path;
 
+use crate::deps::WorkspaceInfo;
+use crate::diagnostics::TidyCtx;
+
 /// List of allowed sources for packages.
 const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
@@ -12,23 +15,25 @@ const ALLOWED_SOURCES: &[&str] = &[
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
-pub fn check(root: &Path, bad: &mut bool) {
-    for &(workspace, _, _, submodules) in crate::deps::WORKSPACES {
+pub fn check(root: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("extdeps");
+
+    for &WorkspaceInfo { path, submodules, .. } in crate::deps::WORKSPACES {
         if crate::deps::has_missing_submodule(root, submodules) {
             continue;
         }
 
         // FIXME check other workspaces too
         // `Cargo.lock` of rust.
-        let path = root.join(workspace).join("Cargo.lock");
+        let lockfile = root.join(path).join("Cargo.lock");
 
-        if !path.exists() {
-            tidy_error!(bad, "the `{workspace}` workspace doesn't have a Cargo.lock");
+        if !lockfile.exists() {
+            check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
             continue;
         }
 
         // Open and read the whole file.
-        let cargo_lock = t!(fs::read_to_string(&path));
+        let cargo_lock = t!(fs::read_to_string(&lockfile));
 
         // Process each line.
         for line in cargo_lock.lines() {
@@ -42,7 +47,7 @@ pub fn check(root: &Path, bad: &mut bool) {
 
             // Ensure source is allowed.
             if !ALLOWED_SOURCES.contains(&source) {
-                tidy_error!(bad, "invalid source: {}", source);
+                check.error(format!("invalid source: {}", source));
             }
         }
     }

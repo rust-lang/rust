@@ -1,0 +1,36 @@
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations_unfixable.rs:12:29
+   |
+LL |     yy = unsafe { std::mem::transmute(std::ptr::read(&x())) };
+   |                             ^^^^^^^^^
+   |
+   = help: consider giving the source and destination types a name, and adding missing type annotations
+   = note: `-D clippy::missing-transmute-annotations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_transmute_annotations)]`
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations_unfixable.rs:16:29
+   |
+LL |     zz = unsafe { std::mem::transmute(std::ptr::read(&x())) };
+   |                             ^^^^^^^^^
+   |
+   = help: consider giving the origin type a name, and adding missing type annotations
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations_unfixable.rs:19:29
+   |
+LL |     yy = unsafe { std::mem::transmute(zz) };
+   |                             ^^^^^^^^^
+   |
+   = help: consider giving the destination type a name, and adding missing type annotations
+
+error: transmute used without annotations
+  --> tests/ui/missing_transmute_annotations_unfixable.rs:27:28
+   |
+LL |     b = unsafe { std::mem::transmute(a()) };
+   |                            ^^^^^^^^^
+   |
+   = help: consider giving `a()`'s type a name, and adding missing type annotations
+
+error: aborting due to 4 previous errors
+

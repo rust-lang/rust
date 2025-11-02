@@ -1,4 +1,5 @@
 //@ revisions: z10 z10_vector z13 z13_no_vector
+//@ add-core-stubs
 // ignore-tidy-linelength
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
@@ -18,24 +19,8 @@
 // Cases where vector feature is disabled are rejected.
 // See tests/ui/simd-abi-checks-s390x.rs for test for them.
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
-#[lang = "copy"]
-pub trait Copy {}
-#[lang = "freeze"]
-pub trait Freeze {}
-
-impl<T: Copy, const N: usize> Copy for [T; N] {}
-
-#[lang = "phantom_data"]
-pub struct PhantomData<T: ?Sized>;
-impl<T: ?Sized> Copy for PhantomData<T> {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i8x8([i8; 8]);
@@ -52,8 +37,6 @@ pub struct WrapperWithZst<T>(T, PhantomData<()>);
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
 
-impl Copy for i8 {}
-impl Copy for i64 {}
 impl Copy for i8x8 {}
 impl Copy for i8x16 {}
 impl Copy for i8x32 {}
@@ -221,7 +204,7 @@ unsafe extern "C" fn vector_transparent_wrapper_ret_large(
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_arg_small(x: i8x8) -> i64 {
-    unsafe { *(&x as *const i8x8 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_arg:
 // CHECK: vlgvg %r2, %v24, 0
@@ -229,7 +212,7 @@ unsafe extern "C" fn vector_arg_small(x: i8x8) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_arg(x: i8x16) -> i64 {
-    unsafe { *(&x as *const i8x16 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_arg_large:
 // CHECK: lg %r2, 0(%r2)
@@ -237,7 +220,7 @@ unsafe extern "C" fn vector_arg(x: i8x16) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_arg_large(x: i8x32) -> i64 {
-    unsafe { *(&x as *const i8x32 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 // CHECK-LABEL: vector_wrapper_arg_small:
@@ -246,7 +229,7 @@ unsafe extern "C" fn vector_arg_large(x: i8x32) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
-    unsafe { *(&x as *const Wrapper<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_wrapper_arg:
 // CHECK: vlgvg %r2, %v24, 0
@@ -254,7 +237,7 @@ unsafe extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
-    unsafe { *(&x as *const Wrapper<i8x16> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_wrapper_arg_large:
 // CHECK: lg %r2, 0(%r2)
@@ -262,7 +245,7 @@ unsafe extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
-    unsafe { *(&x as *const Wrapper<i8x32> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 // https://github.com/rust-lang/rust/pull/131586#discussion_r1837071121
@@ -272,7 +255,7 @@ unsafe extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_padding_arg(x: WrapperAlign16<i8x8>) -> i64 {
-    unsafe { *(&x as *const WrapperAlign16<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 // CHECK-LABEL: vector_wrapper_with_zst_arg_small:
@@ -282,7 +265,7 @@ unsafe extern "C" fn vector_wrapper_padding_arg(x: WrapperAlign16<i8x8>) -> i64 
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_with_zst_arg_small(x: WrapperWithZst<i8x8>) -> i64 {
-    unsafe { *(&x as *const WrapperWithZst<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_wrapper_with_zst_arg:
 // CHECK: lg %r2, 0(%r2)
@@ -290,7 +273,7 @@ unsafe extern "C" fn vector_wrapper_with_zst_arg_small(x: WrapperWithZst<i8x8>) 
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_with_zst_arg(x: WrapperWithZst<i8x16>) -> i64 {
-    unsafe { *(&x as *const WrapperWithZst<i8x16> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_wrapper_with_zst_arg_large:
 // CHECK: lg %r2, 0(%r2)
@@ -298,7 +281,7 @@ unsafe extern "C" fn vector_wrapper_with_zst_arg(x: WrapperWithZst<i8x16>) -> i6
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_with_zst_arg_large(x: WrapperWithZst<i8x32>) -> i64 {
-    unsafe { *(&x as *const WrapperWithZst<i8x32> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 // CHECK-LABEL: vector_transparent_wrapper_arg_small:
@@ -307,7 +290,7 @@ unsafe extern "C" fn vector_wrapper_with_zst_arg_large(x: WrapperWithZst<i8x32>)
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
-    unsafe { *(&x as *const TransparentWrapper<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_transparent_wrapper_arg:
 // CHECK: vlgvg %r2, %v24, 0
@@ -315,7 +298,7 @@ unsafe extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
-    unsafe { *(&x as *const TransparentWrapper<i8x16> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 // CHECK-LABEL: vector_transparent_wrapper_arg_large:
 // CHECK: lg %r2, 0(%r2)
@@ -323,5 +306,5 @@ unsafe extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_transparent_wrapper_arg_large(x: TransparentWrapper<i8x32>) -> i64 {
-    unsafe { *(&x as *const TransparentWrapper<i8x32> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }

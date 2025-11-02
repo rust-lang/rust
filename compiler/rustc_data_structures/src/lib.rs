@@ -34,6 +34,7 @@
 #![feature(sized_hierarchy)]
 #![feature(test)]
 #![feature(thread_id_value)]
+#![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
@@ -43,6 +44,8 @@ use std::fmt;
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};
 pub use rustc_index::static_assert_size;
+// Re-export some data-structure crates which are part of our public API.
+pub use {either, indexmap, smallvec, thin_vec};
 
 pub mod aligned;
 pub mod base_n;
@@ -77,6 +80,7 @@ pub mod thinvec;
 pub mod thousands;
 pub mod transitive_relation;
 pub mod unhash;
+pub mod union_find;
 pub mod unord;
 pub mod vec_cache;
 pub mod work_queue;

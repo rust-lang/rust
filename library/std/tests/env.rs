@@ -16,7 +16,7 @@ fn test_self_exe_path() {
 
 #[test]
 fn test() {
-    assert!((!Path::new("test-path").is_absolute()));
+    assert!(!Path::new("test-path").is_absolute());
 
     #[cfg(not(target_env = "sgx"))]
     current_dir().unwrap();

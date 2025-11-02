@@ -9,10 +9,7 @@ use core::intrinsics;
 
 intrinsics! {
     #[unsafe(naked)]
-    #[cfg(all(
-        any(all(windows, target_env = "gnu"), target_os = "uefi"),
-        not(feature = "no-asm")
-    ))]
+    #[cfg(any(all(windows, target_env = "gnu"), target_os = "uefi"))]
     pub unsafe extern "custom" fn __chkstk() {
         core::arch::naked_asm!(
             "jmp {}", // Jump to __alloca since fallthrough may be unreliable"
@@ -21,10 +18,7 @@ intrinsics! {
     }
 
     #[unsafe(naked)]
-    #[cfg(all(
-        any(all(windows, target_env = "gnu"), target_os = "uefi"),
-        not(feature = "no-asm")
-    ))]
+    #[cfg(any(all(windows, target_env = "gnu"), target_os = "uefi"))]
     pub unsafe extern "custom" fn _alloca() {
         // __chkstk and _alloca are the same function
         core::arch::naked_asm!(

@@ -42,6 +42,11 @@ pub(crate) fn complete_pattern(
         }
     }
 
+    if pattern_ctx.after_if_expr {
+        add_keyword("else", "else {\n    $0\n}");
+        add_keyword("else if", "else if $1 {\n    $0\n}");
+    }
+
     if pattern_ctx.record_pat.is_some() {
         return;
     }
@@ -64,18 +69,17 @@ pub(crate) fn complete_pattern(
 
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+        && (refutable || single_variant_enum(e))
     {
-        if refutable || single_variant_enum(e) {
-            super::enum_variants_with_paths(
-                acc,
-                ctx,
-                e,
-                &pattern_ctx.impl_,
-                |acc, ctx, variant, path| {
-                    acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
-                },
-            );
-        }
+        super::enum_variants_with_paths(
+            acc,
+            ctx,
+            e,
+            pattern_ctx.impl_or_trait.as_ref().and_then(|it| it.as_ref().left()),
+            |acc, ctx, variant, path| {
+                acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
+            },
+        );
     }
 
     // FIXME: ideally, we should look at the type we are matching against and

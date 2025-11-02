@@ -8,6 +8,7 @@
 //@ [aarch64] needs-llvm-components: aarch64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]

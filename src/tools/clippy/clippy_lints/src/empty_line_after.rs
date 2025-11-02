@@ -442,7 +442,7 @@ impl EmptyLineAfter {
                 None => span.shrink_to_lo(),
             },
             mod_items: match kind {
-                ItemKind::Mod(_, _, ModKind::Loaded(items, _, _, _)) => items
+                ItemKind::Mod(_, _, ModKind::Loaded(items, _, _)) => items
                     .iter()
                     .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
                     .map(|i| i.id)

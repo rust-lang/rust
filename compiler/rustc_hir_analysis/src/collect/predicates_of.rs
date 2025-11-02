@@ -1,11 +1,12 @@
 use std::assert_matches::assert_matches;
 
 use hir::Node;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::find_attr;
 use rustc_middle::ty::{
     self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
@@ -17,7 +18,10 @@ use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
-use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
+    RegionInferReason,
+};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
 /// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
@@ -110,14 +114,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
 
         Some(ImplTraitInTraitData::Impl { fn_def_id }) => {
-            let assoc_item = tcx.associated_item(def_id);
-            let trait_assoc_predicates =
-                tcx.explicit_predicates_of(assoc_item.trait_item_def_id.unwrap());
+            let trait_item_def_id = tcx.trait_item_of(def_id).unwrap();
+            let trait_assoc_predicates = tcx.explicit_predicates_of(trait_item_def_id);
 
             let impl_assoc_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
             let impl_def_id = tcx.parent(fn_def_id);
-            let impl_trait_ref_args =
-                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity().args;
+            let impl_trait_ref_args = tcx.impl_trait_ref(impl_def_id).instantiate_identity().args;
 
             let impl_assoc_args =
                 impl_assoc_identity_args.rebase_onto(tcx, impl_def_id, impl_trait_ref_args);
@@ -157,25 +159,20 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Node::Item(item) = node {
         match item.kind {
             ItemKind::Impl(impl_) => {
-                if impl_.defaultness.is_default() {
-                    is_default_impl_trait = tcx
-                        .impl_trait_ref(def_id)
-                        .map(|t| ty::Binder::dummy(t.instantiate_identity()));
+                if let Some(of_trait) = impl_.of_trait
+                    && of_trait.defaultness.is_default()
+                {
+                    is_default_impl_trait =
+                        Some(ty::Binder::dummy(tcx.impl_trait_ref(def_id).instantiate_identity()));
                 }
             }
             ItemKind::Trait(_, _, _, _, _, self_bounds, ..)
-            | ItemKind::TraitAlias(_, _, self_bounds) => {
+            | ItemKind::TraitAlias(_, _, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
             _ => {}
         }
     };
-
-    if let Node::TraitItem(item) = node {
-        let mut bounds = Vec::new();
-        icx.lowerer().add_default_trait_item_bounds(item, &mut bounds);
-        predicates.extend(bounds);
-    }
 
     let generics = tcx.generics_of(def_id);
 
@@ -191,20 +188,20 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::All,
+            OverlappingAsssocItemConstraints::Allowed,
         );
-        icx.lowerer().add_sizedness_bounds(
+        icx.lowerer().add_implicit_sizedness_bounds(
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
-            None,
-            Some(def_id),
+            ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
-        icx.lowerer().add_default_super_traits(
-            def_id,
+        icx.lowerer().add_default_traits(
             &mut bounds,
+            tcx.types.self_param,
             self_bounds,
-            hir_generics,
+            ImpliedBoundsContext::TraitDef(def_id),
             span,
         );
         predicates.extend(bounds);
@@ -232,19 +229,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_sizedness_bounds(
+                icx.lowerer().add_implicit_sizedness_bounds(
                     &mut bounds,
                     param_ty,
                     &[],
-                    Some((param.def_id, hir_generics.predicates)),
-                    None,
+                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
                 );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
                     &[],
-                    Some((param.def_id, hir_generics.predicates)),
+                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
                 );
                 trace!(?bounds);
@@ -293,6 +289,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &mut bounds,
                     bound_vars,
                     PredicateFilter::All,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
                 predicates.extend(bounds);
             }
@@ -350,9 +347,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // before uses of `U`. This avoids false ambiguity errors
     // in trait checking. See `setup_constraining_predicates`
     // for details.
-    if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
+    if let Node::Item(&Item { kind: ItemKind::Impl(impl_), .. }) = node {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
-        let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::instantiate_identity);
+        let trait_ref =
+            impl_.of_trait.is_some().then(|| tcx.impl_trait_ref(def_id).instantiate_identity());
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
@@ -460,11 +458,12 @@ fn const_evaluatable_predicates_of<'tcx>(
     }
 
     if let hir::Node::Item(item) = node
-        && let hir::ItemKind::Impl(_) = item.kind
+        && let hir::ItemKind::Impl(impl_) = item.kind
     {
-        if let Some(of_trait) = tcx.impl_trait_ref(def_id) {
+        if impl_.of_trait.is_some() {
             debug!("visit impl trait_ref");
-            of_trait.instantiate_identity().visit_with(&mut collector);
+            let trait_ref = tcx.impl_trait_ref(def_id);
+            trait_ref.instantiate_identity().visit_with(&mut collector);
         }
 
         debug!("visit self_ty");
@@ -516,8 +515,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 projection.args == trait_identity_args
                     // FIXME(return_type_notation): This check should be more robust
                     && !tcx.is_impl_trait_in_trait(projection.def_id)
-                    && tcx.associated_item(projection.def_id).container_id(tcx)
-                        == def_id.to_def_id()
+                    && tcx.parent(projection.def_id) == def_id.to_def_id()
             } else {
                 false
             }
@@ -656,7 +654,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(_, _, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
 
@@ -664,17 +662,31 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
-    icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
+    icx.lowerer().lower_bounds(
+        self_param_ty,
+        superbounds,
+        &mut bounds,
+        ty::List::empty(),
+        filter,
+        OverlappingAsssocItemConstraints::Allowed,
+    );
     match filter {
         PredicateFilter::All
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_default_super_traits(
-                trait_def_id,
+            icx.lowerer().add_implicit_sizedness_bounds(
                 &mut bounds,
+                self_param_ty,
                 superbounds,
-                generics,
+                ImpliedBoundsContext::TraitDef(trait_def_id),
+                item.span,
+            );
+            icx.lowerer().add_default_traits(
+                &mut bounds,
+                self_param_ty,
+                superbounds,
+                ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
             );
         }
@@ -989,6 +1001,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 &mut bounds,
                 bound_vars,
                 filter,
+                OverlappingAsssocItemConstraints::Allowed,
             );
         }
 
@@ -1019,7 +1032,10 @@ pub(super) fn const_conditions<'tcx>(
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
             hir::ItemKind::Trait(_, _, _, _, generics, supertraits, _) => {
-                (generics, Some((item.owner_id.def_id, supertraits)), false)
+                (generics, Some((Some(item.owner_id.def_id), supertraits)), false)
+            }
+            hir::ItemKind::TraitAlias(_, _, generics, supertraits) => {
+                (generics, Some((None, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
@@ -1068,6 +1084,7 @@ pub(super) fn const_conditions<'tcx>(
                     &mut bounds,
                     bound_vars,
                     PredicateFilter::ConstIfConst,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
             }
             _ => {}
@@ -1075,12 +1092,14 @@ pub(super) fn const_conditions<'tcx>(
     }
 
     if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
-        // We've checked above that the trait is conditionally const.
-        bounds.push((
-            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
-                .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
-            DUMMY_SP,
-        ));
+        if let Some(def_id) = def_id {
+            // We've checked above that the trait is conditionally const.
+            bounds.push((
+                ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
+                    .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
+                DUMMY_SP,
+            ));
+        }
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
@@ -1088,6 +1107,7 @@ pub(super) fn const_conditions<'tcx>(
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::ConstIfConst,
+            OverlappingAsssocItemConstraints::Allowed,
         );
     }
 
@@ -1128,13 +1148,14 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
             span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
         }
         None => match tcx.hir_node_by_def_id(def_id) {
-            Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
-                implied_predicates_with_filter(
-                    tcx,
-                    def_id.to_def_id(),
-                    PredicateFilter::SelfConstIfConst,
-                )
-            }
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                ..
+            }) => implied_predicates_with_filter(
+                tcx,
+                def_id.to_def_id(),
+                PredicateFilter::SelfConstIfConst,
+            ),
             Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
             | Node::OpaqueTy(_) => {
                 explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)

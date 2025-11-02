@@ -7,12 +7,15 @@
 //! (`git log -- path/to/tracing_chrome.rs`), but in summary:
 //! - the file attributes were changed and `extern crate` was added at the top
 //! - if a tracing span has a field called "tracing_separate_thread", it will be given a separate
-//! span ID even in [TraceStyle::Threaded] mode, to make it appear on a separate line when viewing
-//! the trace in <https://ui.perfetto.dev>. This is the syntax to trigger this behavior:
+//!   span ID even in [TraceStyle::Threaded] mode, to make it appear on a separate line when viewing
+//!   the trace in <https://ui.perfetto.dev>. This is the syntax to trigger this behavior:
 //!   ```rust
 //!   tracing::info_span!("my_span", tracing_separate_thread = tracing::field::Empty, /* ... */)
 //!   ```
-//! - use i64 instead of u64 for the "id" in [ChromeLayer::get_root_id] to be compatible with Perfetto
+//! - use i64 instead of u64 for the "id" in [ChromeLayer::get_root_id] to be compatible with
+//!   Perfetto
+//! - use [ChromeLayer::with_elapsed_micros_subtracting_tracing] to make time measurements faster on
+//!   Linux x86/x86_64 and to subtract time spent tracing from the timestamps in the trace file
 //!
 //! Depending on the tracing-chrome crate from crates.io is unfortunately not possible, since it
 //! depends on `tracing_core` which conflicts with rustc_private's `tracing_core` (meaning it would
@@ -21,12 +24,9 @@
 #![allow(warnings)]
 #![cfg(feature = "tracing")]
 
-// This is here and not in src/lib.rs since it is a direct dependency of tracing_chrome.rs and
-// should not be included if the "tracing" feature is disabled.
-extern crate tracing_core;
-
-use tracing_core::{field::Field, span, Event, Subscriber};
-use tracing_subscriber::{
+use rustc_log::tracing_core::{field::Field, span, Event, Subscriber};
+use rustc_log::tracing_subscriber::{
+    self,
     layer::Context,
     registry::{LookupSpan, SpanRef},
     Layer,
@@ -50,9 +50,22 @@ use std::{
     thread::JoinHandle,
 };
 
+use crate::log::tracing_chrome_instant::TracingChromeInstant;
+
+/// Contains thread-local data for threads that send tracing spans or events.
+struct ThreadData {
+    /// A unique ID for this thread, will populate "tid" field in the output trace file.
+    tid: usize,
+    /// A clone of [ChromeLayer::out] to avoid the expensive operation of accessing a mutex
+    /// every time. This is used to send [Message]s to the thread that saves trace data to file.
+    out: Sender<Message>,
+    /// The instant in time this thread was started. All events happening on this thread will be
+    /// saved to the trace file with a timestamp (the "ts" field) measured relative to this instant.
+    start: TracingChromeInstant,
+}
+
 thread_local! {
-    static OUT: RefCell<Option<Sender<Message>>> = const { RefCell::new(None) };
-    static TID: RefCell<Option<usize>> = const { RefCell::new(None) };
+    static THREAD_DATA: RefCell<Option<ThreadData>> = const { RefCell::new(None) };
 }
 
 type NameFn<S> = Box<dyn Fn(&EventOrSpan<'_, '_, S>) -> String + Send + Sync>;
@@ -64,7 +77,6 @@ where
     S: Subscriber + for<'span> LookupSpan<'span> + Send + Sync,
 {
     out: Arc<Mutex<Sender<Message>>>,
-    start: std::time::Instant,
     max_tid: AtomicUsize,
     include_args: bool,
     include_locations: bool,
@@ -323,7 +335,6 @@ where
 {
     fn new(mut builder: ChromeLayerBuilder<S>) -> (ChromeLayer<S>, FlushGuard) {
         let (tx, rx) = mpsc::channel();
-        OUT.with(|val| val.replace(Some(tx.clone())));
 
         let out_writer = builder
             .out_writer
@@ -443,7 +454,6 @@ where
         };
         let layer = ChromeLayer {
             out: Arc::new(Mutex::new(tx)),
-            start: std::time::Instant::now(),
             max_tid: AtomicUsize::new(0),
             name_fn: builder.name_fn.take(),
             cat_fn: builder.cat_fn.take(),
@@ -456,22 +466,7 @@ where
         (layer, guard)
     }
 
-    fn get_tid(&self) -> (usize, bool) {
-        TID.with(|value| {
-            let tid = *value.borrow();
-            match tid {
-                Some(tid) => (tid, false),
-                None => {
-                    let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
-                    value.replace(Some(tid));
-                    (tid, true)
-                }
-            }
-        })
-    }
-
-    fn get_callsite(&self, data: EventOrSpan<S>) -> Callsite {
-        let (tid, new_thread) = self.get_tid();
+    fn get_callsite(&self, data: EventOrSpan<S>, tid: usize) -> Callsite {
         let name = self.name_fn.as_ref().map(|name_fn| name_fn(&data));
         let target = self.cat_fn.as_ref().map(|cat_fn| cat_fn(&data));
         let meta = match data {
@@ -501,14 +496,6 @@ where
         } else {
             (None, None)
         };
-
-        if new_thread {
-            let name = match std::thread::current().name() {
-                Some(name) => name.to_owned(),
-                None => tid.to_string(),
-            };
-            self.send_message(Message::NewThread(tid, name));
-        }
 
         Callsite {
             tid,
@@ -548,31 +535,55 @@ where
         }
     }
 
-    fn enter_span(&self, span: SpanRef<S>, ts: f64) {
-        let callsite = self.get_callsite(EventOrSpan::Span(&span));
+    fn enter_span(&self, span: SpanRef<S>, ts: f64, tid: usize, out: &Sender<Message>) {
+        let callsite = self.get_callsite(EventOrSpan::Span(&span), tid);
         let root_id = self.get_root_id(span);
-        self.send_message(Message::Enter(ts, callsite, root_id));
+        let _ignored = out.send(Message::Enter(ts, callsite, root_id));
     }
 
-    fn exit_span(&self, span: SpanRef<S>, ts: f64) {
-        let callsite = self.get_callsite(EventOrSpan::Span(&span));
+    fn exit_span(&self, span: SpanRef<S>, ts: f64, tid: usize, out: &Sender<Message>) {
+        let callsite = self.get_callsite(EventOrSpan::Span(&span), tid);
         let root_id = self.get_root_id(span);
-        self.send_message(Message::Exit(ts, callsite, root_id));
+        let _ignored = out.send(Message::Exit(ts, callsite, root_id));
     }
 
-    fn get_ts(&self) -> f64 {
-        self.start.elapsed().as_nanos() as f64 / 1000.0
-    }
+    /// Helper function that measures how much time is spent while executing `f` and accounts for it
+    /// in subsequent calls, with the aim to reduce biases in the data collected by `tracing_chrome`
+    /// by subtracting the time spent inside tracing functions from the timeline. This makes it so
+    /// that the time spent inside the `tracing_chrome` functions does not impact the timestamps
+    /// inside the trace file (i.e. `ts`), even if such functions are slow (e.g. because they need
+    /// to format arguments on the same thread those arguments are collected on, otherwise memory
+    /// safety would be broken).
+    ///
+    /// `f` is called with the microseconds elapsed since the current thread was started (**not**
+    /// since the program start!), with the current thread ID (i.e. `tid`), and with a [Sender] that
+    /// can be used to send a [Message] to the thread that collects [Message]s and saves them to the
+    /// trace file.
+    #[inline(always)]
+    fn with_elapsed_micros_subtracting_tracing(&self, f: impl Fn(f64, usize, &Sender<Message>)) {
+        THREAD_DATA.with(|value| {
+            let mut thread_data = value.borrow_mut();
+            let (ThreadData { tid, out, start }, new_thread) = match thread_data.as_mut() {
+                Some(thread_data) => (thread_data, false),
+                None => {
+                    let tid = self.max_tid.fetch_add(1, Ordering::SeqCst);
+                    let out = self.out.lock().unwrap().clone();
+                    let start = TracingChromeInstant::setup_for_thread_and_start(tid);
+                    *thread_data = Some(ThreadData { tid, out, start });
+                    (thread_data.as_mut().unwrap(), true)
+                }
+            };
 
-    fn send_message(&self, message: Message) {
-        OUT.with(move |val| {
-            if val.borrow().is_some() {
-                let _ignored = val.borrow().as_ref().unwrap().send(message);
-            } else {
-                let out = self.out.lock().unwrap().clone();
-                let _ignored = out.send(message);
-                val.replace(Some(out));
-            }
+            start.with_elapsed_micros_subtracting_tracing(|ts| {
+                if new_thread {
+                    let name = match std::thread::current().name() {
+                        Some(name) => name.to_owned(),
+                        None => tid.to_string(),
+                    };
+                    let _ignored = out.send(Message::NewThread(*tid, name));
+                }
+                f(ts, *tid, out);
+            });
         });
     }
 }
@@ -586,52 +597,58 @@ where
             return;
         }
 
-        let ts = self.get_ts();
-        self.enter_span(ctx.span(id).expect("Span not found."), ts);
+        self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
+            self.enter_span(ctx.span(id).expect("Span not found."), ts, tid, out);
+        });
     }
 
     fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
         if self.include_args {
-            let span = ctx.span(id).unwrap();
-            let mut exts = span.extensions_mut();
+            self.with_elapsed_micros_subtracting_tracing(|_, _, _| {
+                let span = ctx.span(id).unwrap();
+                let mut exts = span.extensions_mut();
 
-            let args = exts.get_mut::<ArgsWrapper>();
+                let args = exts.get_mut::<ArgsWrapper>();
 
-            if let Some(args) = args {
-                let args = Arc::make_mut(&mut args.args);
-                values.record(&mut JsonVisitor { object: args });
-            }
+                if let Some(args) = args {
+                    let args = Arc::make_mut(&mut args.args);
+                    values.record(&mut JsonVisitor { object: args });
+                }
+            });
         }
     }
 
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let ts = self.get_ts();
-        let callsite = self.get_callsite(EventOrSpan::Event(event));
-        self.send_message(Message::Event(ts, callsite));
+        self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
+            let callsite = self.get_callsite(EventOrSpan::Event(event), tid);
+            let _ignored = out.send(Message::Event(ts, callsite));
+        });
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
         if let TraceStyle::Async = self.trace_style {
             return;
         }
-        let ts = self.get_ts();
-        self.exit_span(ctx.span(id).expect("Span not found."), ts);
+        self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
+            self.exit_span(ctx.span(id).expect("Span not found."), ts, tid, out);
+        });
     }
 
     fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        if self.include_args {
-            let mut args = Object::new();
-            attrs.record(&mut JsonVisitor { object: &mut args });
-            ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper {
-                args: Arc::new(args),
-            });
-        }
-        if let TraceStyle::Threaded = self.trace_style {
-            return;
-        }
+        self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
+            if self.include_args {
+                let mut args = Object::new();
+                attrs.record(&mut JsonVisitor { object: &mut args });
+                ctx.span(id).unwrap().extensions_mut().insert(ArgsWrapper {
+                    args: Arc::new(args),
+                });
+            }
+            if let TraceStyle::Threaded = self.trace_style {
+                return;
+            }
 
-        let ts = self.get_ts();
-        self.enter_span(ctx.span(id).expect("Span not found."), ts);
+            self.enter_span(ctx.span(id).expect("Span not found."), ts, tid, out);
+        });
     }
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
@@ -639,8 +656,9 @@ where
             return;
         }
 
-        let ts = self.get_ts();
-        self.exit_span(ctx.span(&id).expect("Span not found."), ts);
+        self.with_elapsed_micros_subtracting_tracing(|ts, tid, out| {
+            self.exit_span(ctx.span(&id).expect("Span not found."), ts, tid, out);
+        });
     }
 }
 

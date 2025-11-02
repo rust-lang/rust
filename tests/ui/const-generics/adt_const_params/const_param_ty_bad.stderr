@@ -2,15 +2,15 @@ error[E0277]: `fn() {main}` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:7:11
    |
 LL |     check(main);
-   |     ----- ^^^^ the trait `UnsizedConstParamTy` is not implemented for fn item `fn() {main}`
+   |     ----- ^^^^ the trait `ConstParamTy_` is not implemented for fn item `fn() {main}`
    |     |
    |     required by a bound introduced by this call
    |
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 help: use parentheses to call this function
    |
 LL |     check(main());
@@ -24,30 +24,31 @@ LL |     check(|| {});
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `UnsizedConstParamTy` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
+   = help: the trait `ConstParamTy_` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 help: use parentheses to call this closure
    |
-LL |     check(|| {}());
-   |                ++
+LL -     check(|| {});
+LL +     check((|| {})());
+   |
 
 error[E0277]: `fn()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:9:11
    |
 LL |     check(main as fn());
-   |     ----- ^^^^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `fn()`
+   |     ----- ^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `fn()`
    |     |
    |     required by a bound introduced by this call
    |
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 help: use parentheses to call this function pointer
    |
 LL |     check(main as fn()());
@@ -57,16 +58,16 @@ error[E0277]: `&mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:10:11
    |
 LL |     check(&mut ());
-   |     ----- ^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `&mut ()`
+   |     ----- ^^^^^^^ the trait `ConstParamTy_` is not implemented for `&mut ()`
    |     |
    |     required by a bound introduced by this call
    |
-   = note: `UnsizedConstParamTy` is implemented for `&()`, but not for `&mut ()`
+   = note: `ConstParamTy_` is implemented for `&()`, but not for `&mut ()`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
 help: consider removing the leading `&`-reference
    |
 LL -     check(&mut ());
@@ -77,31 +78,35 @@ error[E0277]: `*mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:11:11
    |
 LL |     check(&mut () as *mut ());
-   |     ----- ^^^^^^^^^^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `*mut ()`
+   |     ----- ^^^^^^^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `*mut ()`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `UnsizedConstParamTy` is implemented for `()`
+help: the trait `ConstParamTy_` is implemented for `()`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `*const ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:12:11
    |
 LL |     check(&() as *const ());
-   |     ----- ^^^^^^^^^^^^^^^^ the trait `UnsizedConstParamTy` is not implemented for `*const ()`
+   |     ----- ^^^^^^^^^^^^^^^^ the trait `ConstParamTy_` is not implemented for `*const ()`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `UnsizedConstParamTy` is implemented for `()`
+help: the trait `ConstParamTy_` is implemented for `()`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
-LL | fn check(_: impl std::marker::UnsizedConstParamTy) {}
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | fn check(_: impl std::marker::ConstParamTy_) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

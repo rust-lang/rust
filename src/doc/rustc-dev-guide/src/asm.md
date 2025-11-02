@@ -1,7 +1,5 @@
 # Inline assembly
 
-<!-- toc -->
-
 ## Overview
 
 Inline assembly in rustc mostly revolves around taking an `asm!` macro invocation and plumbing it

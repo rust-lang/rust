@@ -7,8 +7,16 @@ LL |
 LL |     Bar
    |     --- return type was inferred to be `Bar` here
    |
-   = help: the trait `PartialEq<(Foo, i32)>` is not implemented for `Bar`
-   = help: the trait `PartialEq<(Bar, i32)>` is implemented for `Bar`
+help: the trait `PartialEq<(Foo, i32)>` is not implemented for `Bar`
+  --> $DIR/recursive-type-alias-impl-trait-declaration.rs:5:1
+   |
+LL | struct Bar;
+   | ^^^^^^^^^^
+help: the trait `PartialEq<(Bar, i32)>` is implemented for `Bar`
+  --> $DIR/recursive-type-alias-impl-trait-declaration.rs:7:1
+   |
+LL | impl PartialEq<(Bar, i32)> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

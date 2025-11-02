@@ -2,6 +2,7 @@
 
 mod overly_long_real_world_cases;
 
+use hir::setup_tracing;
 use ide_db::{
     LineIndexDatabase, RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
@@ -73,14 +74,16 @@ fn check_nth_fix_with_config(
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let diagnostic = super::full_diagnostics(
-        &db,
-        &config,
-        &AssistResolveStrategy::All,
-        file_position.file_id.file_id(&db),
-    )
-    .pop()
-    .expect("no diagnostics");
+    let diagnostic = hir::attach_db(&db, || {
+        super::full_diagnostics(
+            &db,
+            &config,
+            &AssistResolveStrategy::All,
+            file_position.file_id.file_id(&db),
+        )
+        .pop()
+        .expect("no diagnostics")
+    });
     let fix = &diagnostic
         .fixes
         .unwrap_or_else(|| panic!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
@@ -126,12 +129,14 @@ pub(crate) fn check_has_fix(
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
     let mut conf = DiagnosticsConfig::test_sample();
     conf.expr_fill_default = ExprFillDefaultMode::Default;
-    let fix = super::full_diagnostics(
-        &db,
-        &conf,
-        &AssistResolveStrategy::All,
-        file_position.file_id.file_id(&db),
-    )
+    let fix = hir::attach_db(&db, || {
+        super::full_diagnostics(
+            &db,
+            &conf,
+            &AssistResolveStrategy::All,
+            file_position.file_id.file_id(&db),
+        )
+    })
     .into_iter()
     .find(|d| {
         d.fixes
@@ -165,12 +170,14 @@ pub(crate) fn check_has_fix(
 /// Checks that there's a diagnostic *without* fix at `$0`.
 pub(crate) fn check_no_fix(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
-    let diagnostic = super::full_diagnostics(
-        &db,
-        &DiagnosticsConfig::test_sample(),
-        &AssistResolveStrategy::All,
-        file_position.file_id.file_id(&db),
-    )
+    let diagnostic = hir::attach_db(&db, || {
+        super::full_diagnostics(
+            &db,
+            &DiagnosticsConfig::test_sample(),
+            &AssistResolveStrategy::All,
+            file_position.file_id.file_id(&db),
+        )
+    })
     .pop()
     .unwrap();
     assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
@@ -198,12 +205,20 @@ pub(crate) fn check_diagnostics_with_config(
     config: DiagnosticsConfig,
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
 ) {
+    let _tracing = setup_tracing();
+
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     let mut annotations = files
         .iter()
         .copied()
         .flat_map(|file_id| {
-            super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id.file_id(&db))
+            hir::attach_db(&db, || {
+                super::full_diagnostics(
+                    &db,
+                    &config,
+                    &AssistResolveStrategy::All,
+                    file_id.file_id(&db),
+                )
                 .into_iter()
                 .map(|d| {
                     let mut annotation = String::new();
@@ -221,6 +236,7 @@ pub(crate) fn check_diagnostics_with_config(
                     annotation.push_str(&d.message);
                     (d.range, annotation)
                 })
+            })
         })
         .map(|(diagnostic, annotation)| (diagnostic.file_id, (diagnostic.range, annotation)))
         .into_group_map();
@@ -229,7 +245,7 @@ pub(crate) fn check_diagnostics_with_config(
         let line_index = db.line_index(file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
-        let mut expected = extract_annotations(&db.file_text(file_id).text(&db));
+        let mut expected = extract_annotations(db.file_text(file_id).text(&db));
         expected.sort_by_key(|(range, s)| (range.start(), s.clone()));
         actual.sort_by_key(|(range, s)| (range.start(), s.clone()));
         // FIXME: We should panic on duplicates instead, but includes currently cause us to report
@@ -272,15 +288,19 @@ fn test_disabled_diagnostics() {
     let (db, file_id) = RootDatabase::with_single_file(r#"mod foo;"#);
     let file_id = file_id.file_id(&db);
 
-    let diagnostics = super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
+    let diagnostics = hir::attach_db(&db, || {
+        super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id)
+    });
     assert!(diagnostics.is_empty());
 
-    let diagnostics = super::full_diagnostics(
-        &db,
-        &DiagnosticsConfig::test_sample(),
-        &AssistResolveStrategy::All,
-        file_id,
-    );
+    let diagnostics = hir::attach_db(&db, || {
+        super::full_diagnostics(
+            &db,
+            &DiagnosticsConfig::test_sample(),
+            &AssistResolveStrategy::All,
+            file_id,
+        )
+    });
     assert!(!diagnostics.is_empty());
 }
 
@@ -291,7 +311,7 @@ fn minicore_smoke_test() {
     }
 
     fn check(minicore: MiniCore) {
-        let source = minicore.source_code();
+        let source = minicore.source_code(MiniCore::RAW_SOURCE);
         let mut config = DiagnosticsConfig::test_sample();
         // This should be ignored since we conditionally remove code which creates single item use with braces
         config.disabled.insert("unused_braces".to_owned());
@@ -301,7 +321,7 @@ fn minicore_smoke_test() {
     }
 
     // Checks that there is no diagnostic in minicore for each flag.
-    for flag in MiniCore::available_flags() {
+    for flag in MiniCore::available_flags(MiniCore::RAW_SOURCE) {
         if flag == "clone" {
             // Clone without copy has `moved-out-of-ref`, so ignoring.
             // FIXME: Maybe we should merge copy and clone in a single flag?
@@ -312,5 +332,5 @@ fn minicore_smoke_test() {
     }
     // And one time for all flags, to check codes which are behind multiple flags + prevent name collisions
     eprintln!("Checking all minicore flags");
-    check(MiniCore::from_flags(MiniCore::available_flags()))
+    check(MiniCore::from_flags(MiniCore::available_flags(MiniCore::RAW_SOURCE)))
 }

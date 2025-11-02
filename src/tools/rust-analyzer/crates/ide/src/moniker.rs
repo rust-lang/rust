@@ -209,7 +209,6 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
         Definition::Const(..) => Constant,
         Definition::Static(..) => StaticVariable,
         Definition::Trait(..) => Trait,
-        Definition::TraitAlias(..) => Trait,
         Definition::TypeAlias(it) => {
             if it.as_assoc_item(db).is_some() {
                 AssociatedType
@@ -385,7 +384,7 @@ fn def_to_non_local_moniker(
     })
 }
 
-fn display<T: HirDisplay>(db: &RootDatabase, module: hir::Module, it: T) -> String {
+fn display<'db, T: HirDisplay<'db>>(db: &'db RootDatabase, module: hir::Module, it: T) -> String {
     match it.display_source_code(db, module.into(), true) {
         Ok(result) => result,
         // Fallback on display variant that always succeeds

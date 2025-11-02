@@ -536,17 +536,9 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        let to_timestamp = |time: Option<SystemTime>| match time {
-            Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
-            Some(_) => Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time",
-            )),
-            None => Ok(0),
-        };
         self.fd.filestat_set_times(
-            to_timestamp(times.accessed)?,
-            to_timestamp(times.modified)?,
+            to_wasi_timestamp_or_now(times.accessed)?,
+            to_wasi_timestamp_or_now(times.modified)?,
             times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
                 | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
         )
@@ -641,6 +633,45 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     // Permissions haven't been fully figured out in wasi yet, so this is
     // likely temporary
     unsupported()
+}
+
+#[inline(always)]
+pub fn set_times(p: &Path, times: FileTimes) -> io::Result<()> {
+    let (dir, file) = open_parent(p)?;
+    set_times_impl(&dir, &file, times, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW)
+}
+
+#[inline(always)]
+pub fn set_times_nofollow(p: &Path, times: FileTimes) -> io::Result<()> {
+    let (dir, file) = open_parent(p)?;
+    set_times_impl(&dir, &file, times, 0)
+}
+
+fn to_wasi_timestamp_or_now(time: Option<SystemTime>) -> io::Result<wasi::Timestamp> {
+    match time {
+        Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
+        Some(_) => Err(io::const_error!(
+            io::ErrorKind::InvalidInput,
+            "timestamp is too large to set as a file time",
+        )),
+        None => Ok(0),
+    }
+}
+
+fn set_times_impl(
+    fd: &WasiFd,
+    path: &Path,
+    times: FileTimes,
+    flags: wasi::Lookupflags,
+) -> io::Result<()> {
+    fd.path_filestat_set_times(
+        flags,
+        osstr2str(path.as_ref())?,
+        to_wasi_timestamp_or_now(times.accessed)?,
+        to_wasi_timestamp_or_now(times.modified)?,
+        times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
+            | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
+    )
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
@@ -848,7 +879,14 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
 
     // Iterate over all the entries in this directory, and travel recursively if
     // necessary
-    for entry in ReadDir::new(fd, dummy_root) {
+    //
+    // Note that all directory entries for this directory are read first before
+    // any removal is done. This works around the fact that the WASIp1 API for
+    // reading directories is not well-designed for handling mutations between
+    // invocations of reading a directory. By reading all the entries at once
+    // this ensures that, at least without concurrent modifications, it should
+    // be possible to delete everything.
+    for entry in ReadDir::new(fd, dummy_root).collect::<Vec<_>>() {
         let entry = entry?;
         let path = crate::str::from_utf8(&entry.name).map_err(|_| {
             io::const_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")

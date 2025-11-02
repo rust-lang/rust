@@ -2,14 +2,26 @@ error[E0277]: the trait bound `Tuple: From<u8>` is not satisfied
   --> $DIR/suggest_tuple_wrap_root_obligation.rs:22:24
    |
 LL |     convert_into_tuple(42_u8);
-   |     ------------------ ^^^^^ the trait `From<u8>` is not implemented for `Tuple`
+   |     ------------------ ^^^^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following other types implement trait `From<T>`:
-             `Tuple` implements `From<(u8, u8)>`
-             `Tuple` implements `From<(u8, u8, u8)>`
-             `Tuple` implements `From<(u8,)>`
+help: the trait `From<u8>` is not implemented for `Tuple`
+  --> $DIR/suggest_tuple_wrap_root_obligation.rs:1:1
+   |
+LL | struct Tuple;
+   | ^^^^^^^^^^^^
+help: the following other types implement trait `From<T>`
+  --> $DIR/suggest_tuple_wrap_root_obligation.rs:3:1
+   |
+LL | impl From<(u8,)> for Tuple {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `Tuple` implements `From<(u8,)>`
+...
+LL | impl From<(u8, u8)> for Tuple {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Tuple` implements `From<(u8, u8)>`
+...
+LL | impl From<(u8, u8, u8)> for Tuple {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Tuple` implements `From<(u8, u8, u8)>`
    = note: required for `u8` to implement `Into<Tuple>`
 note: required by a bound in `convert_into_tuple`
   --> $DIR/suggest_tuple_wrap_root_obligation.rs:19:32

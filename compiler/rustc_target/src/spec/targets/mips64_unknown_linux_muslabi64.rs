@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
         // LLVM doesn't recognize "muslabi64" yet.
         llvm_target: "mips64-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("MIPS64 Linux, N64 ABI, musl 1.2.3".into()),
+            description: Some("MIPS64 Linux, N64 ABI, musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
@@ -23,8 +23,6 @@ pub(crate) fn target() -> Target {
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
-            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
-            crt_static_default: true,
             llvm_abiname: "n64".into(),
             ..base
         },

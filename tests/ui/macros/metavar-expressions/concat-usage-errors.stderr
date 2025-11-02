@@ -130,7 +130,7 @@ error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `t
 LL |         ${concat($ex, aaaa)}
    |                   ^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
 
 error: variable `foo` is not recognized in meta-variable expression
   --> $DIR/concat-usage-errors.rs:37:30
@@ -276,7 +276,7 @@ error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `t
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
   --> $DIR/concat-usage-errors.rs:138:31
@@ -284,7 +284,7 @@ error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `t
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
@@ -293,7 +293,7 @@ error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `t
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
@@ -302,43 +302,45 @@ error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `t
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
+error: floats are not supported as metavariables of `${concat(..)}`
+  --> $DIR/concat-usage-errors.rs:138:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+
+error: integer metavariables of `${concat(..)}` must not be suffixed
+  --> $DIR/concat-usage-errors.rs:138:31
+   |
+LL |         const ${concat(_foo, $literal)}: () = ();
+   |                               ^^^^^^^
+
+error: integer metavariables of `${concat(..)}` must not be suffixed
   --> $DIR/concat-usage-errors.rs:138:31
    |
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                               ^^^^^^^
    |
-   = note: currently only string literals are supported
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
+  --> $DIR/concat-usage-errors.rs:151:31
    |
 LL |         const ${concat(_foo, $tt)}: () = ();
    |                               ^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
+  --> $DIR/concat-usage-errors.rs:151:31
    |
 LL |         const ${concat(_foo, $tt)}: () = ();
    |                               ^^
    |
-   = note: currently only string literals are supported
+   = note: currently only string and integer literals are supported
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
-  --> $DIR/concat-usage-errors.rs:149:31
-   |
-LL |         const ${concat(_foo, $tt)}: () = ();
-   |                               ^^
-   |
-   = note: currently only string literals are supported
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 43 previous errors
+error: aborting due to 44 previous errors
 

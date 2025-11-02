@@ -1,21 +1,45 @@
-error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
+error[E0539]: malformed `link` attribute input
   --> $DIR/link-attr-validation-early.rs:2:1
    |
 LL | #[link]
-   | ^^^^^^^
+   | ^^^^^^^ expected this to be a list
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[link(name = "...")]
+   |       ++++++++++++++
+LL | #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...")]
+   |       +++++++++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   = and 1 other candidate
 
-error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
-  --> $DIR/link-attr-validation-early.rs:4:1
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-early.rs:3:1
    |
 LL | #[link = "foo"]
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ expected this to be a list
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link = "foo"]
+LL + #[link(name = "...")]
+   |
+LL - #[link = "foo"]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link = "foo"]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link = "foo"]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0539`.

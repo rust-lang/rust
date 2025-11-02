@@ -6,17 +6,18 @@ description = "A guide to developing the Rust compiler (rustc)"
 [build]
 create-missing = false
 
-[preprocessor.toc]
-command = "mdbook-toc"
-renderer = ["html"]
-
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
-edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/master/{path}"
-additional-js = ["mermaid.min.js", "mermaid-init.js"]
+edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/edit/main/{path}"
+additional-js = [
+  "mermaid.min.js",
+  "mermaid-init.js",
+  "pagetoc.js",
+]
+additional-css = ["pagetoc.css"]
 
 [output.html.search]
 use-boolean-and = true

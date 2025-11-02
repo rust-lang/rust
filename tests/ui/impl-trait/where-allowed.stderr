@@ -311,10 +311,10 @@ LL | type InTypeAliasGenericParamDefault<T = impl Debug> = T;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:239:11
+  --> $DIR/where-allowed.rs:240:10
    |
-LL | impl <T = impl Debug> T {}
-   |           ^^^^^^^^^^
+LL | impl<T = impl Debug> T {}
+   |          ^^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
@@ -327,7 +327,7 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/where-allowed.rs:252:29
+  --> $DIR/where-allowed.rs:250:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
@@ -338,7 +338,7 @@ LL |     let _in_local_variable: impl Fn() = || {};
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in closure return types
-  --> $DIR/where-allowed.rs:254:46
+  --> $DIR/where-allowed.rs:252:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
@@ -368,25 +368,6 @@ LL -     fn in_trait_impl_return() -> impl Debug { () }
 LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
    |
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:246:36
-   |
-LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
-   |                                    ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
-
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:239:7
-   |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:46:57
    |
@@ -406,12 +387,14 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
              where A: Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+           - impl<F, Args> Fn<Args> for Exclusive<F>
+             where F: Sync, F: Fn<Args>, Args: Tuple;
 
 error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:239:1
+  --> $DIR/where-allowed.rs:240:1
    |
-LL | impl <T = impl Debug> T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+LL | impl<T = impl Debug> T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 
@@ -431,29 +414,21 @@ LL | type InTypeAlias<R> = impl Debug;
    |
    = note: `InTypeAlias` must be used in combination with a concrete type within the same crate
 
-error: aborting due to 50 previous errors
+error: aborting due to 48 previous errors
 
 Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0658, E0666.
 For more information about an error, try `rustc --explain E0053`.
 Future incompatibility report: Future breakage diagnostic:
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+warning: defaults for generic parameters are not allowed here
   --> $DIR/where-allowed.rs:246:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
 
 Future breakage diagnostic:
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:239:7
+warning: defaults for generic parameters are not allowed here
+  --> $DIR/where-allowed.rs:240:6
    |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+LL | impl<T = impl Debug> T {}
+   |      ^^^^^^^^^^^^^^
 

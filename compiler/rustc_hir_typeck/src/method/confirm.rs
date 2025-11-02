@@ -18,8 +18,8 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, UserArgs,
+    self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -116,7 +116,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
         // wanted to make a static dispatch on it but forgot to import the trait.
-        // See test `tests/ui/issue-35976.rs`.
+        // See test `tests/ui/issues/issue-35976.rs`.
         //
         // In that case, we'll error anyway, but we'll also re-run the search with all traits
         // in scope, and if we find another method which can be used, we'll output an
@@ -142,7 +142,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         let (method_sig, method_predicates) =
             self.normalize(self.span, (method_sig, method_predicates));
-        let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
@@ -154,20 +153,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            self.add_obligations(
-                Ty::new_fn_ptr(self.tcx, method_sig),
-                all_args,
-                method_predicates,
-                pick.item.def_id,
-            );
+            self.add_obligations(method_sig, all_args, method_predicates, pick.item.def_id);
         }
 
         // Create the final `MethodCallee`.
-        let callee = MethodCallee {
-            def_id: pick.item.def_id,
-            args: all_args,
-            sig: method_sig.skip_binder(),
-        };
+        let callee = MethodCallee { def_id: pick.item.def_id, args: all_args, sig: method_sig };
         ConfirmResult { callee, illegal_sized_bound }
     }
 
@@ -182,7 +172,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
-        let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
+        let Some((mut target, n)) = autoderef.nth(pick.autoderefs) else {
             return Ty::new_error_with_message(
                 self.tcx,
                 DUMMY_SP,
@@ -192,8 +182,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
-        let mut target = self.structurally_resolve_type(autoderef.span(), ty);
-
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
                 let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
@@ -284,7 +272,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
-                    self.tcx.impl_trait_ref(impl_def_id).is_none(),
+                    matches!(pick.item.container, AssocContainer::InherentImpl),
                     "impl {impl_def_id:?} is not an inherent impl"
                 );
                 self.fresh_args_for_item(self.span, impl_def_id)
@@ -601,14 +589,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn add_obligations(
         &mut self,
-        fty: Ty<'tcx>,
+        sig: ty::FnSig<'tcx>,
         all_args: GenericArgsRef<'tcx>,
         method_predicates: ty::InstantiatedPredicates<'tcx>,
         def_id: DefId,
     ) {
         debug!(
-            "add_obligations: fty={:?} all_args={:?} method_predicates={:?} def_id={:?}",
-            fty, all_args, method_predicates, def_id
+            "add_obligations: sig={:?} all_args={:?} method_predicates={:?} def_id={:?}",
+            sig, all_args, method_predicates, def_id
         );
 
         // FIXME: could replace with the following, but we already calculated `method_predicates`,
@@ -637,7 +625,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
         // impls and late-bound regions - see issue #28609).
-        self.register_wf_obligation(fty.into(), self.span, ObligationCauseCode::WellFormed(None));
+        for ty in sig.inputs_and_output {
+            self.register_wf_obligation(
+                ty.into(),
+                self.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////

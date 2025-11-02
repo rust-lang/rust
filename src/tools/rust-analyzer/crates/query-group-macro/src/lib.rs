@@ -278,15 +278,15 @@ pub(crate) fn query_group_impl(
                 return Err(syn::Error::new(signature.span(), "Queries must have a return type"));
             };
 
-            if let syn::Type::Path(ref ty_path) = *return_ty {
-                if matches!(query_kind, QueryKind::Input) {
-                    let field = InputStructField {
-                        name: method_name.to_token_stream(),
-                        ty: ty_path.path.to_token_stream(),
-                    };
+            if let syn::Type::Path(ref ty_path) = *return_ty
+                && matches!(query_kind, QueryKind::Input)
+            {
+                let field = InputStructField {
+                    name: method_name.to_token_stream(),
+                    ty: ty_path.path.to_token_stream(),
+                };
 
-                    input_struct_fields.push(field);
-                }
+                input_struct_fields.push(field);
             }
 
             if let Some(block) = &mut method.default {

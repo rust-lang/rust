@@ -21,7 +21,7 @@ bitflags! {
         const GENERALIZE_REPR_C = 2;
         /// Normalizes integers for compatibility with Clang
         /// `-fsanitize-cfi-icall-experimental-normalize-integers` option for cross-language LLVM
-        /// CFI and  KCFI support.
+        /// CFI and KCFI support.
         const NORMALIZE_INTEGERS = 4;
         /// Do not perform self type erasure for attaching a secondary type id to methods with their
         /// concrete self so they can be used as function pointers.

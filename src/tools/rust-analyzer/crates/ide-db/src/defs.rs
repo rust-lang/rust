@@ -16,7 +16,7 @@ use hir::{
     ExternCrateDecl, Field, Function, GenericDef, GenericParam, GenericSubstitution, HasContainer,
     HasVisibility, HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module,
     ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait,
-    TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -40,7 +40,6 @@ pub enum Definition {
     Const(Const),
     Static(Static),
     Trait(Trait),
-    TraitAlias(TraitAlias),
     TypeAlias(TypeAlias),
     SelfType(Impl),
     GenericParam(GenericParam),
@@ -83,7 +82,6 @@ impl Definition {
             Definition::Const(it) => it.module(db),
             Definition::Static(it) => it.module(db),
             Definition::Trait(it) => it.module(db),
-            Definition::TraitAlias(it) => it.module(db),
             Definition::TypeAlias(it) => it.module(db),
             Definition::Variant(it) => it.module(db),
             Definition::SelfType(it) => it.module(db),
@@ -122,7 +120,6 @@ impl Definition {
             Definition::Const(it) => container_to_definition(it.container(db)),
             Definition::Static(it) => container_to_definition(it.container(db)),
             Definition::Trait(it) => container_to_definition(it.container(db)),
-            Definition::TraitAlias(it) => container_to_definition(it.container(db)),
             Definition::TypeAlias(it) => container_to_definition(it.container(db)),
             Definition::Variant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
             Definition::SelfType(it) => Some(it.module(db).into()),
@@ -151,7 +148,6 @@ impl Definition {
             Definition::Const(it) => it.visibility(db),
             Definition::Static(it) => it.visibility(db),
             Definition::Trait(it) => it.visibility(db),
-            Definition::TraitAlias(it) => it.visibility(db),
             Definition::TypeAlias(it) => it.visibility(db),
             Definition::Variant(it) => it.visibility(db),
             Definition::ExternCrateDecl(it) => it.visibility(db),
@@ -185,7 +181,6 @@ impl Definition {
             Definition::Const(it) => it.name(db)?,
             Definition::Static(it) => it.name(db),
             Definition::Trait(it) => it.name(db),
-            Definition::TraitAlias(it) => it.name(db),
             Definition::TypeAlias(it) => it.name(db),
             Definition::BuiltinType(it) => it.name(),
             Definition::TupleField(it) => it.name(),
@@ -230,7 +225,6 @@ impl Definition {
             Definition::Const(it) => it.docs_with_rangemap(db),
             Definition::Static(it) => it.docs_with_rangemap(db),
             Definition::Trait(it) => it.docs_with_rangemap(db),
-            Definition::TraitAlias(it) => it.docs_with_rangemap(db),
             Definition::TypeAlias(it) => {
                 it.docs_with_rangemap(db).or_else(|| {
                     // docs are missing, try to fall back to the docs of the aliased item.
@@ -265,8 +259,8 @@ impl Definition {
             Definition::ExternCrateDecl(it) => it.docs_with_rangemap(db),
 
             Definition::BuiltinAttr(it) => {
-                let name = it.name(db);
-                let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
+                let name = it.name();
+                let AttributeTemplate { word, list, name_value_str } = it.template()?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
                     format_to!(docs, "\n - #\\[{}]", name.display(db, display_target.edition));
@@ -321,7 +315,6 @@ impl Definition {
             Definition::Const(it) => it.display(db, display_target).to_string(),
             Definition::Static(it) => it.display(db, display_target).to_string(),
             Definition::Trait(it) => it.display(db, display_target).to_string(),
-            Definition::TraitAlias(it) => it.display(db, display_target).to_string(),
             Definition::TypeAlias(it) => it.display(db, display_target).to_string(),
             Definition::BuiltinType(it) => {
                 it.name().display(db, display_target.edition).to_string()
@@ -355,7 +348,7 @@ impl Definition {
             Definition::Label(it) => it.name(db).display(db, display_target.edition).to_string(),
             Definition::ExternCrateDecl(it) => it.display(db, display_target).to_string(),
             Definition::BuiltinAttr(it) => {
-                format!("#[{}]", it.name(db).display(db, display_target.edition))
+                format!("#[{}]", it.name().display(db, display_target.edition))
             }
             Definition::ToolModule(it) => {
                 it.name(db).display(db, display_target.edition).to_string()
@@ -370,7 +363,7 @@ impl Definition {
     }
 }
 
-fn find_std_module(
+pub fn find_std_module(
     famous_defs: &FamousDefs<'_, '_>,
     name: &str,
     edition: Edition,
@@ -589,7 +582,6 @@ impl<'db> NameClass<'db> {
                 ast::Item::Module(it) => Definition::Module(sema.to_def(&it)?),
                 ast::Item::Static(it) => Definition::Static(sema.to_def(&it)?),
                 ast::Item::Trait(it) => Definition::Trait(sema.to_def(&it)?),
-                ast::Item::TraitAlias(it) => Definition::TraitAlias(sema.to_def(&it)?),
                 ast::Item::TypeAlias(it) => Definition::TypeAlias(sema.to_def(&it)?),
                 ast::Item::Enum(it) => Definition::Adt(hir::Adt::Enum(sema.to_def(&it)?)),
                 ast::Item::Struct(it) => Definition::Adt(hir::Adt::Struct(sema.to_def(&it)?)),
@@ -610,18 +602,16 @@ impl<'db> NameClass<'db> {
 
             let local = sema.to_def(&ident_pat)?;
             let pat_parent = ident_pat.syntax().parent();
-            if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
-                if record_pat_field.name_ref().is_none() {
-                    if let Some((field, _, adt_subst)) =
-                        sema.resolve_record_pat_field_with_subst(&record_pat_field)
-                    {
-                        return Some(NameClass::PatFieldShorthand {
-                            local_def: local,
-                            field_ref: field,
-                            adt_subst,
-                        });
-                    }
-                }
+            if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast)
+                && record_pat_field.name_ref().is_none()
+                && let Some((field, _, adt_subst)) =
+                    sema.resolve_record_pat_field_with_subst(&record_pat_field)
+            {
+                return Some(NameClass::PatFieldShorthand {
+                    local_def: local,
+                    field_ref: field,
+                    adt_subst,
+                });
             }
             Some(NameClass::Definition(Definition::Local(local)))
         }
@@ -755,30 +745,27 @@ impl<'db> NameRefClass<'db> {
 
         let parent = name_ref.syntax().parent()?;
 
-        if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
-            if let Some((field, local, _, adt_subst)) =
+        if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref)
+            && let Some((field, local, _, adt_subst)) =
                 sema.resolve_record_field_with_substitution(&record_field)
-            {
-                let res = match local {
-                    None => NameRefClass::Definition(Definition::Field(field), Some(adt_subst)),
-                    Some(local) => NameRefClass::FieldShorthand {
-                        field_ref: field,
-                        local_ref: local,
-                        adt_subst,
-                    },
-                };
-                return Some(res);
-            }
+        {
+            let res = match local {
+                None => NameRefClass::Definition(Definition::Field(field), Some(adt_subst)),
+                Some(local) => {
+                    NameRefClass::FieldShorthand { field_ref: field, local_ref: local, adt_subst }
+                }
+            };
+            return Some(res);
         }
 
         if let Some(path) = ast::PathSegment::cast(parent.clone()).map(|it| it.parent_path()) {
-            if path.parent_path().is_none() {
-                if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-                    // Only use this to resolve to macro calls for last segments as qualifiers resolve
-                    // to modules below.
-                    if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
-                        return Some(NameRefClass::Definition(Definition::Macro(macro_def), None));
-                    }
+            if path.parent_path().is_none()
+                && let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast)
+            {
+                // Only use this to resolve to macro calls for last segments as qualifiers resolve
+                // to modules below.
+                if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
+                    return Some(NameRefClass::Definition(Definition::Macro(macro_def), None));
                 }
             }
             return sema
@@ -820,8 +807,8 @@ impl<'db> NameRefClass<'db> {
                     //        ^^^^^
                     let containing_path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
                     let resolved = sema.resolve_path(&containing_path)?;
-                    if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
-                        if let Some(ty) = tr
+                    if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved
+                        && let Some(ty) = tr
                             .items_with_supertraits(sema.db)
                             .iter()
                             .filter_map(|&assoc| match assoc {
@@ -833,7 +820,6 @@ impl<'db> NameRefClass<'db> {
                             // No substitution, this can only occur in type position.
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty), None));
                         }
-                    }
                     None
                 },
                 ast::UseBoundGenericArgs(_) => {
@@ -901,7 +887,7 @@ impl<'db> NameRefClass<'db> {
 }
 
 impl_from!(
-    Field, Module, Function, Adt, Variant, Const, Static, Trait, TraitAlias, TypeAlias, BuiltinType, Local,
+    Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
     GenericParam, Label, Macro, ExternCrateDecl
     for Definition
 );
@@ -981,7 +967,6 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Const(it) => Definition::Const(it),
             ModuleDef::Static(it) => Definition::Static(it),
             ModuleDef::Trait(it) => Definition::Trait(it),
-            ModuleDef::TraitAlias(it) => Definition::TraitAlias(it),
             ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
             ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
@@ -1023,7 +1008,6 @@ impl From<GenericDef> for Definition {
             GenericDef::Function(it) => it.into(),
             GenericDef::Adt(it) => it.into(),
             GenericDef::Trait(it) => it.into(),
-            GenericDef::TraitAlias(it) => it.into(),
             GenericDef::TypeAlias(it) => it.into(),
             GenericDef::Impl(it) => it.into(),
             GenericDef::Const(it) => it.into(),
@@ -1039,7 +1023,6 @@ impl TryFrom<Definition> for GenericDef {
             Definition::Function(it) => Ok(it.into()),
             Definition::Adt(it) => Ok(it.into()),
             Definition::Trait(it) => Ok(it.into()),
-            Definition::TraitAlias(it) => Ok(it.into()),
             Definition::TypeAlias(it) => Ok(it.into()),
             Definition::SelfType(it) => Ok(it.into()),
             Definition::Const(it) => Ok(it.into()),

@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -43,9 +45,6 @@
 // lldb-command:v *t1
 // lldb-check:[...] { a = 6 b = 7.5 }
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 #[derive(Clone)]
 struct Struct {

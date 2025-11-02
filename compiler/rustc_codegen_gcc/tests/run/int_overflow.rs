@@ -12,7 +12,7 @@ fn main() {
 
     let arg_count = std::env::args().count();
     let int = isize::MAX;
-    let _int = int + arg_count as isize;  // overflow
+    let _int = int + arg_count as isize; // overflow
 
     // If overflow checking is disabled, we should reach here.
     #[cfg(not(debug_assertions))]

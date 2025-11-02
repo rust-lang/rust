@@ -3,8 +3,8 @@
 use std::cmp::min;
 
 use itertools::Itertools;
+use rustc_ast::ast;
 use rustc_ast::token::Delimiter;
-use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 use tracing::debug;
 
@@ -219,7 +219,7 @@ pub(crate) trait IntoOverflowableItem<'a>: Rewrite + Spanned {
     fn into_overflowable_item(&'a self) -> OverflowableItem<'a>;
 }
 
-impl<'a, T: 'a + IntoOverflowableItem<'a>> IntoOverflowableItem<'a> for ptr::P<T> {
+impl<'a, T: 'a + IntoOverflowableItem<'a>> IntoOverflowableItem<'a> for Box<T> {
     fn into_overflowable_item(&'a self) -> OverflowableItem<'a> {
         (**self).into_overflowable_item()
     }

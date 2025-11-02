@@ -62,13 +62,13 @@ impl TestCx<'_> {
         if !missing.is_empty() {
             missing.sort();
 
-            println!("\nThese items should have been contained but were not:\n");
+            writeln!(self.stdout, "\nThese items should have been contained but were not:\n");
 
             for item in &missing {
-                println!("{}", item);
+                writeln!(self.stdout, "{}", item);
             }
 
-            println!("\n");
+            writeln!(self.stdout, "\n");
         }
 
         if !unexpected.is_empty() {
@@ -78,24 +78,32 @@ impl TestCx<'_> {
                 sorted
             };
 
-            println!("\nThese items were contained but should not have been:\n");
+            writeln!(self.stdout, "\nThese items were contained but should not have been:\n");
 
             for item in sorted {
-                println!("{}", item);
+                writeln!(self.stdout, "{}", item);
             }
 
-            println!("\n");
+            writeln!(self.stdout, "\n");
         }
 
         if !wrong_cgus.is_empty() {
             wrong_cgus.sort_by_key(|pair| pair.0.name.clone());
-            println!("\nThe following items were assigned to wrong codegen units:\n");
+            writeln!(self.stdout, "\nThe following items were assigned to wrong codegen units:\n");
 
             for &(ref expected_item, ref actual_item) in &wrong_cgus {
-                println!("{}", expected_item.name);
-                println!("  expected: {}", codegen_units_to_str(&expected_item.codegen_units));
-                println!("  actual:   {}", codegen_units_to_str(&actual_item.codegen_units));
-                println!();
+                writeln!(self.stdout, "{}", expected_item.name);
+                writeln!(
+                    self.stdout,
+                    "  expected: {}",
+                    codegen_units_to_str(&expected_item.codegen_units)
+                );
+                writeln!(
+                    self.stdout,
+                    "  actual:   {}",
+                    codegen_units_to_str(&actual_item.codegen_units)
+                );
+                writeln!(self.stdout);
             }
         }
 

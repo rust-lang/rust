@@ -5,7 +5,6 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_attr_data_structures::{AttributeKind, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{join, par_for_each_in};
@@ -13,18 +12,19 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
+use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
+use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
@@ -1254,8 +1254,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => true,
+                ty::AssocContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
         DefKind::TyParam => {
@@ -1725,24 +1725,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
 
-        self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
-        self.tables.assoc_container.set_some(def_id.index, item.container);
+        if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
+            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+        }
 
-        match item.container {
-            AssocItemContainer::Trait => {
-                if item.is_type() {
-                    self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_self_bounds(def_id);
-                    if tcx.is_conditionally_const(def_id) {
-                        record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
-                            <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
-                    }
-                }
-            }
-            AssocItemContainer::Impl => {
-                if let Some(trait_item_def_id) = item.trait_item_def_id {
-                    self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
-                }
+        record!(self.tables.assoc_container[def_id] <- item.container);
+
+        if let AssocContainer::Trait = item.container
+            && item.is_type()
+        {
+            self.encode_explicit_item_bounds(def_id);
+            self.encode_explicit_item_self_bounds(def_id);
+            if tcx.is_conditionally_const(def_id) {
+                record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                    <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
             }
         }
         if let ty::AssocKind::Type { data: ty::AssocTypeData::Rpitit(rpitit_info) } = item.kind {
@@ -1795,8 +1791,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
+            let mut is_trivial = false;
             if encode_const {
-                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
+                if let Some((val, ty)) = tcx.trivial_const(def_id) {
+                    is_trivial = true;
+                    record!(self.tables.trivial_const[def_id.to_def_id()] <- (val, ty));
+                } else {
+                    is_trivial = false;
+                    record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
+                }
 
                 // FIXME(generic_const_exprs): this feels wrong to have in `encode_mir`
                 let abstract_const = tcx.thir_abstract_const(def_id);
@@ -1814,7 +1817,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+            if !is_trivial {
+                record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+            }
 
             if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
@@ -1981,7 +1986,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
+                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
@@ -2119,7 +2124,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
             let def_id = id.owner_id.to_def_id();
 
-            if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
+            if of_trait {
+                let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
                 self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
@@ -2206,19 +2212,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
     ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
         empty_proc_macro!(self);
-        // The metadata symbol name is special. It should not show up in
-        // downstream crates.
-        let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
-        self.lazy_array(
-            exported_symbols
-                .iter()
-                .filter(|&(exported_symbol, _)| match *exported_symbol {
-                    ExportedSymbol::NoDefId(symbol_name) => symbol_name != metadata_symbol_name,
-                    _ => true,
-                })
-                .cloned(),
-        )
+        self.lazy_array(exported_symbols.iter().cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
@@ -2248,6 +2243,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 
     let reachable_set = tcx.reachable_set(());
     par_for_each_in(tcx.mir_keys(()), |&&def_id| {
+        if tcx.is_trivial_const(def_id) {
+            return;
+        }
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
@@ -2600,8 +2598,6 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
             // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
             //        contains const arguments. Is there a *concise* way to check for this?
             hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
-            // FIXME: Can they contain const arguments and thus leak private struct fields?
-            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
             _ => Complex,
         }
     }

@@ -9,10 +9,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
+use ide_db::{
+    MiniCore,
+    base_db::{Crate, ProcMacroPaths, SourceDatabase},
+};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -183,6 +187,18 @@ pub(crate) struct GlobalState {
     /// this queue should run only *after* [`GlobalState::process_changes`] has
     /// been called.
     pub(crate) deferred_task_queue: TaskQueue,
+    /// HACK: Workaround for https://github.com/rust-lang/rust-analyzer/issues/19709
+    /// This is marked true if we failed to load a crate root file at crate graph creation,
+    /// which will usually end up causing a bunch of incorrect diagnostics on startup.
+    pub(crate) incomplete_crate_graph: bool,
+
+    pub(crate) minicore: MiniCoreRustAnalyzerInternalOnly,
+}
+
+// FIXME: This should move to the VFS once the rewrite is done.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct MiniCoreRustAnalyzerInternalOnly {
+    pub(crate) minicore_text: Option<String>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -199,6 +215,7 @@ pub(crate) struct GlobalStateSnapshot {
     // FIXME: Can we derive this from somewhere else?
     pub(crate) proc_macros_loaded: bool,
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
+    minicore: MiniCoreRustAnalyzerInternalOnly,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -298,6 +315,9 @@ impl GlobalState {
             discover_workspace_queue: OpQueue::default(),
 
             deferred_task_queue: task_queue,
+            incomplete_crate_graph: false,
+
+            minicore: MiniCoreRustAnalyzerInternalOnly::default(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -448,7 +468,7 @@ impl GlobalState {
                     tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
                         tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
-                        change.change_user_config(Some(db.file_text(file_id).text(db)));
+                        change.change_user_config(Some(db.file_text(file_id).text(db).clone()));
                     }
 
                     // If change has been made to a ratoml file that
@@ -462,14 +482,14 @@ impl GlobalState {
                             change.change_workspace_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         } else {
                             tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
                                 source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id).text(db)),
+                                Some(db.file_text(file_id).text(db).clone()),
                             )
                         };
 
@@ -544,6 +564,7 @@ impl GlobalState {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
+            minicore: self.minicore.clone(),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
@@ -591,10 +612,10 @@ impl GlobalState {
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
-            if let Some(err) = &response.error {
-                if err.message.starts_with("server panicked") {
-                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
-                }
+            if let Some(err) = &response.error
+                && err.message.starts_with("server panicked")
+            {
+                self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
             }
 
             let duration = start.elapsed();
@@ -663,18 +684,18 @@ impl GlobalState {
 
     pub(crate) fn check_workspaces_msrv(&self) -> impl Iterator<Item = String> + '_ {
         self.workspaces.iter().filter_map(|ws| {
-            if let Some(toolchain) = &ws.toolchain {
-                if *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION {
-                    return Some(format!(
-                        "Workspace `{}` is using an outdated toolchain version `{}` but \
+            if let Some(toolchain) = &ws.toolchain
+                && *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION
+            {
+                return Some(format!(
+                    "Workspace `{}` is using an outdated toolchain version `{}` but \
                         rust-analyzer only supports `{}` and higher.\n\
                         Consider using the rust-analyzer rustup component for your toolchain or
                         upgrade your toolchain to a supported version.\n\n",
-                        ws.manifest_or_root(),
-                        toolchain,
-                        crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
-                    ));
-                }
+                    ws.manifest_or_root(),
+                    toolchain,
+                    crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
+                ));
             }
             None
         })
@@ -779,6 +800,7 @@ impl GlobalStateSnapshot {
                         cargo_toml: package_data.manifest.clone(),
                         crate_id,
                         package: cargo.package_flag(package_data),
+                        package_id: package_data.id.clone(),
                         target: target_data.name.clone(),
                         target_kind: target_data.kind,
                         required_features: target_data.required_features.clone(),
@@ -807,8 +829,37 @@ impl GlobalStateSnapshot {
         None
     }
 
+    pub(crate) fn all_workspace_dependencies_for_package(
+        &self,
+        package: &Arc<PackageId>,
+    ) -> Option<FxHashSet<Arc<PackageId>>> {
+        for workspace in self.workspaces.iter() {
+            match &workspace.kind {
+                ProjectWorkspaceKind::Cargo { cargo, .. }
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                    let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+
+                    return cargo[package]
+                        .all_member_deps
+                        .as_ref()
+                        .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
     pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
         self.vfs.read().0.exists(file_id)
+    }
+
+    #[inline]
+    pub(crate) fn minicore(&self) -> MiniCore<'_> {
+        match &self.minicore.minicore_text {
+            Some(minicore) => MiniCore::new(minicore),
+            None => MiniCore::default(),
+        }
     }
 }
 

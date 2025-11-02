@@ -93,7 +93,6 @@ features! {
     /// * `"amx-fp8"`
     /// * `"amx-movrs"`
     /// * `"amx-tf32"`
-    /// * `"amx-transpose"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -231,8 +230,12 @@ features! {
     /// AMX-MOVRS (Matrix MOVERS operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tf32: "amx-tf32";
     /// AMX-TF32 (TensorFloat32 Operations)
-    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_transpose: "amx-transpose";
-    /// AMX-TRANSPOSE (Matrix Transpose Operations)
+    @FEATURE: #[unstable(feature = "apx_target_feature", issue = "139284")] apxf: "apxf";
+    /// APX-F (Advanced Performance Extensions - Foundation)
+    @FEATURE: #[unstable(feature = "avx10_target_feature", issue = "138843")] avx10_1: "avx10.1";
+    /// AVX10.1
+    @FEATURE: #[unstable(feature = "avx10_target_feature", issue = "138843")] avx10_2: "avx10.2";
+    /// AVX10.2
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";

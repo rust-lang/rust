@@ -1,12 +1,11 @@
 // LLVM does not support some atomic RMW operations on pointers, so inside codegen we lower those
-// to integer atomics, surrounded by casts to and from integer type.
+// to integer atomics, followed by an inttoptr cast.
 // This test ensures that we do the round-trip correctly for AtomicPtr::fetch_byte_add, and also
 // ensures that we do not have such a round-trip for AtomicPtr::swap, because LLVM supports pointer
 // arguments to `atomicrmw xchg`.
 
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 #![crate_type = "lib"]
-#![feature(strict_provenance_atomic_ptr)]
 
 use std::ptr::without_provenance_mut;
 use std::sync::atomic::AtomicPtr;
@@ -20,8 +19,8 @@ pub fn helper(_: usize) {}
 // CHECK-LABEL: @atomicptr_fetch_byte_add
 #[no_mangle]
 pub fn atomicptr_fetch_byte_add(a: &AtomicPtr<u8>, v: usize) -> *mut u8 {
-    // CHECK: %[[INTPTR:.*]] = ptrtoint ptr %{{.*}} to [[USIZE]]
-    // CHECK-NEXT: %[[RET:.*]] = atomicrmw add ptr %{{.*}}, [[USIZE]] %[[INTPTR]]
+    // CHECK: llvm.lifetime.start
+    // CHECK-NEXT: %[[RET:.*]] = atomicrmw add ptr %{{.*}}, [[USIZE]] %v
     // CHECK-NEXT: inttoptr [[USIZE]] %[[RET]] to ptr
     a.fetch_byte_add(v, Relaxed)
 }

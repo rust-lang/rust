@@ -2,6 +2,8 @@
 // compiled with multiple codegen units. (see #39160)
 
 //@ compile-flags:-g -Ccodegen-units=2
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===============================================================
 
@@ -28,9 +30,6 @@
 // lldb-check:[...] 67890
 // lldb-command:continue
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 mod a {
     pub fn foo(xxx: u32) {

@@ -1,13 +1,15 @@
-error[E0283]: type annotations needed: cannot satisfy `(dyn Object<&(), &()> + 'static): Trait<&()>`
-  --> $DIR/ambiguity-due-to-uniquification-3.rs:28:17
+error[E0283]: type annotations needed: cannot satisfy `dyn Object<&(), &()>: Trait<&()>`
+  --> $DIR/ambiguity-due-to-uniquification-3.rs:28:5
    |
 LL |     impls_trait(obj, t);
-   |     ----------- ^^^
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: cannot satisfy `(dyn Object<&(), &()> + 'static): Trait<&()>`
-   = help: the trait `Trait<T>` is implemented for `()`
+   = note: cannot satisfy `dyn Object<&(), &()>: Trait<&()>`
+help: the trait `Trait<T>` is implemented for `()`
+  --> $DIR/ambiguity-due-to-uniquification-3.rs:17:1
+   |
+LL | impl<T> Trait<T> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `impls_trait`
   --> $DIR/ambiguity-due-to-uniquification-3.rs:24:19
    |

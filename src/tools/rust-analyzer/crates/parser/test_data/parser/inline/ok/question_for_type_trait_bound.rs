@@ -1,1 +1,1 @@
-fn f<T>() where T: ?for<> Sized {}
+fn f<T>() where T: for<> ?Sized {}

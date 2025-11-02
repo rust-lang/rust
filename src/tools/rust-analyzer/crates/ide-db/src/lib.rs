@@ -2,6 +2,8 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+extern crate self as ide_db;
+
 mod apply_change;
 
 pub mod active_parameter;
@@ -14,6 +16,8 @@ pub mod items_locator;
 pub mod label;
 pub mod path_transform;
 pub mod prime_caches;
+pub mod ra_fixture;
+pub mod range_mapper;
 pub mod rename;
 pub mod rust_doc;
 pub mod search;
@@ -51,7 +55,7 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, RootQueryDb,
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, query_group,
 };
 use hir::{
@@ -66,12 +70,8 @@ pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 pub use ::line_index;
 
 /// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
-pub use base_db;
+pub use base_db::{self, FxIndexMap, FxIndexSet};
 pub use span::{self, FileId};
-
-pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
-pub type FxIndexMap<K, V> =
-    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
@@ -87,6 +87,7 @@ pub struct RootDatabase {
     storage: ManuallyDrop<salsa::Storage<Self>>,
     files: Arc<Files>,
     crates_map: Arc<CratesMap>,
+    nonce: Nonce,
 }
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
@@ -106,6 +107,7 @@ impl Clone for RootDatabase {
             storage: self.storage.clone(),
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
+            nonce: Nonce::new(),
         }
     }
 }
@@ -169,6 +171,10 @@ impl SourceDatabase for RootDatabase {
     fn crates_map(&self) -> Arc<CratesMap> {
         self.crates_map.clone()
     }
+
+    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
+        (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
+    }
 }
 
 impl Default for RootDatabase {
@@ -183,6 +189,7 @@ impl RootDatabase {
             storage: ManuallyDrop::new(salsa::Storage::default()),
             files: Default::default(),
             crates_map: Default::default(),
+            nonce: Nonce::new(),
         };
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
         db.set_all_crates(Arc::new(Box::new([])));
@@ -244,7 +251,7 @@ pub trait LineIndexDatabase: base_db::RootQueryDb {
 
 fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id).text(db);
-    Arc::new(LineIndex::new(&text))
+    Arc::new(LineIndex::new(text))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -273,7 +280,6 @@ pub enum SymbolKind {
     Struct,
     ToolModule,
     Trait,
-    TraitAlias,
     TypeAlias,
     TypeParam,
     Union,
@@ -306,7 +312,6 @@ impl From<hir::ModuleDef> for SymbolKind {
             hir::ModuleDef::Adt(hir::Adt::Enum(..)) => SymbolKind::Enum,
             hir::ModuleDef::Adt(hir::Adt::Union(..)) => SymbolKind::Union,
             hir::ModuleDef::Trait(..) => SymbolKind::Trait,
-            hir::ModuleDef::TraitAlias(..) => SymbolKind::TraitAlias,
             hir::ModuleDef::TypeAlias(..) => SymbolKind::TypeAlias,
             hir::ModuleDef::BuiltinType(..) => SymbolKind::TypeAlias,
         }
@@ -362,4 +367,26 @@ pub enum Severity {
     Warning,
     WeakWarning,
     Allow,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MiniCore<'a>(&'a str);
+
+impl<'a> MiniCore<'a> {
+    #[inline]
+    pub fn new(minicore: &'a str) -> Self {
+        Self(minicore)
+    }
+
+    #[inline]
+    pub const fn default() -> Self {
+        Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl<'a> Default for MiniCore<'a> {
+    #[inline]
+    fn default() -> Self {
+        Self::default()
+    }
 }

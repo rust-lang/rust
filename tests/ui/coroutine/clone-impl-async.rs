@@ -9,7 +9,7 @@ use std::future::ready;
 
 struct NonClone;
 
-fn main() {
+fn local() {
     let inner_non_clone = async {
         let non_clone = NonClone;
         let () = ready(()).await;
@@ -34,7 +34,9 @@ fn main() {
     //~^ ERROR : Copy` is not satisfied
     check_clone(&maybe_copy_clone);
     //~^ ERROR : Clone` is not satisfied
+}
 
+fn non_local() {
     let inner_non_clone_fn = the_inner_non_clone_fn();
     check_copy(&inner_non_clone_fn);
     //~^ ERROR : Copy` is not satisfied
@@ -69,3 +71,5 @@ async fn the_maybe_copy_clone_fn() {}
 
 fn check_copy<T: Copy>(_x: &T) {}
 fn check_clone<T: Clone>(_x: &T) {}
+
+fn main() {}

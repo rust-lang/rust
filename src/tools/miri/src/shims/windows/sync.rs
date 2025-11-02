@@ -60,7 +60,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 true
             }
             InitOnceStatus::Complete => {
-                this.init_once_observe_completed(init_once_ref);
+                this.init_once_observe_completed(init_once_ref)?;
                 this.write_scalar(this.eval_windows("c", "FALSE"), pending_place)?;
                 this.write_scalar(this.eval_windows("c", "TRUE"), dest)?;
                 true

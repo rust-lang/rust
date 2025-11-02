@@ -110,9 +110,7 @@ float_bench! {
 pub fn float_extend() {
     let mut criterion = Criterion::default().configure_from_args();
 
-    // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
     #[cfg(f16_enabled)]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
     {
         extend_f16_f32(&mut criterion);
         extend_f16_f64(&mut criterion);

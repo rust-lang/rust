@@ -131,6 +131,15 @@ impl<I: Idx, T> IntoSliceIdx<I, [T]> for core::range::RangeInclusive<I> {
     type Output = core::range::RangeInclusive<usize>;
     #[inline]
     fn into_slice_idx(self) -> Self::Output {
-        core::range::RangeInclusive { start: self.start.index(), end: self.end.index() }
+        core::range::RangeInclusive { start: self.start.index(), last: self.last.index() }
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<I: Idx, T> IntoSliceIdx<I, [T]> for core::range::RangeToInclusive<I> {
+    type Output = core::range::RangeToInclusive<usize>;
+    #[inline]
+    fn into_slice_idx(self) -> Self::Output {
+        core::range::RangeToInclusive { last: self.last.index() }
     }
 }

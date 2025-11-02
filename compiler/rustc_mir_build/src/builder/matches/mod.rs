@@ -5,20 +5,21 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
-use std::assert_matches::assert_matches;
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_abi::VariantIdx;
+use itertools::{Itertools, Position};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
-use rustc_middle::bug;
+use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node, Pinnedness};
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, *};
+use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
+use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -69,18 +70,6 @@ pub(crate) enum DeclareLetBindings {
     LetNotPermitted,
 }
 
-/// Used by [`Builder::bind_matched_candidate_for_arm_body`] to determine
-/// whether or not to call [`Builder::storage_live_binding`] to emit
-/// [`StatementKind::StorageLive`].
-#[derive(Clone, Copy)]
-pub(crate) enum EmitStorageLive {
-    /// Yes, emit `StorageLive` as normal.
-    Yes,
-    /// No, don't emit `StorageLive`. The caller has taken responsibility for
-    /// emitting `StorageLive` as appropriate.
-    No,
-}
-
 /// Used by [`Builder::storage_live_binding`] and [`Builder::bind_matched_candidate_for_arm_body`]
 /// to decide whether to schedule drops.
 #[derive(Clone, Copy, Debug)]
@@ -125,15 +114,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
 
         match expr.kind {
-            ExprKind::LogicalOp { op: op @ LogicalOp::And, lhs, rhs } => {
-                this.visit_coverage_branch_operation(op, expr_span);
+            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
                 let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
                 let rhs_then_block =
                     this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
-            ExprKind::LogicalOp { op: op @ LogicalOp::Or, lhs, rhs } => {
-                this.visit_coverage_branch_operation(op, expr_span);
+            ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
                 let local_scope = this.local_scope();
                 let (lhs_success_block, failure_block) =
                     this.in_if_then_scope(local_scope, expr_span, |this| {
@@ -207,16 +194,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
-                EmitStorageLive::Yes,
             ),
             _ => {
                 let mut block = block;
                 let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
 
-                // Increment the decision depth, in case we encounter boolean expressions
-                // further down.
-                this.mcdc_increment_depth_if_enabled();
                 let place = unpack!(
                     block = this.as_temp(
                         block,
@@ -228,7 +211,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         mutability
                     )
                 );
-                this.mcdc_decrement_depth_if_enabled();
 
                 let operand = Operand::Move(Place::from(place));
 
@@ -407,7 +389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Evaluate the scrutinee and add the PlaceMention for it.
-    fn lower_scrutinee(
+    pub(crate) fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
         scrutinee_id: ExprId,
@@ -447,48 +429,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
+                let guard_scope = arm
+                    .guard
+                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let old_dedup_scope =
-                        mem::replace(&mut this.fixed_temps_scope, Some(arm.scope));
+                    this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
+                        // `if let` guard temps needing deduplicating will be in the guard scope.
+                        let old_dedup_scope =
+                            mem::replace(&mut this.fixed_temps_scope, guard_scope);
 
-                    // `try_to_place` may fail if it is unable to resolve the given
-                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                    // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
-                    // if the only match arm is a wildcard (`_`).
-                    // Example:
-                    // ```
-                    // let foo = (0, 1);
-                    // let c = || {
-                    //    match foo { _ => () };
-                    // };
-                    // ```
-                    let scrutinee_place = scrutinee_place_builder.try_to_place(this);
-                    let opt_scrutinee_place =
-                        scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
-                    let scope = this.declare_bindings(
-                        None,
-                        arm.span,
-                        &arm.pattern,
-                        arm.guard,
-                        opt_scrutinee_place,
-                    );
+                        // `try_to_place` may fail if it is unable to resolve the given
+                        // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                        // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
+                        // if the only match arm is a wildcard (`_`).
+                        // Example:
+                        // ```
+                        // let foo = (0, 1);
+                        // let c = || {
+                        //    match foo { _ => () };
+                        // };
+                        // ```
+                        let scrutinee_place = scrutinee_place_builder.try_to_place(this);
+                        let opt_scrutinee_place =
+                            scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
+                        let scope = this.declare_bindings(
+                            None,
+                            arm.span,
+                            &arm.pattern,
+                            arm.guard,
+                            opt_scrutinee_place,
+                        );
 
-                    let arm_block = this.bind_pattern(
-                        outer_source_info,
-                        branch,
-                        &built_match_tree.fake_borrow_temps,
-                        scrutinee_span,
-                        Some((arm, match_scope)),
-                        EmitStorageLive::Yes,
-                    );
+                        let arm_block = this.bind_pattern(
+                            outer_source_info,
+                            branch,
+                            &built_match_tree.fake_borrow_temps,
+                            scrutinee_span,
+                            Some((arm, match_scope)),
+                        );
 
-                    this.fixed_temps_scope = old_dedup_scope;
+                        this.fixed_temps_scope = old_dedup_scope;
 
-                    if let Some(source_scope) = scope {
-                        this.source_scope = source_scope;
-                    }
+                        if let Some(source_scope) = scope {
+                            this.source_scope = source_scope;
+                        }
 
-                    this.expr_into_dest(destination, arm_block, arm.body)
+                        this.expr_into_dest(destination, arm_block, arm.body)
+                    })
                 })
                 .into_block()
             })
@@ -533,7 +520,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
-        emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         if branch.sub_branches.len() == 1 {
             let [sub_branch] = branch.sub_branches.try_into().unwrap();
@@ -544,7 +530,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 scrutinee_span,
                 arm_match_scope,
                 ScheduleDrops::Yes,
-                emit_storage_live,
             )
         } else {
             // It's helpful to avoid scheduling drops multiple times to save
@@ -561,27 +546,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // return: it isn't bound by move until right before enter the arm.
             // To handle this we instead unschedule it's drop after each time
             // we lower the guard.
+            // As a result, we end up with the drop order of the last sub-branch we lower. To use
+            // the drop order for the first sub-branch, we lower sub-branches in reverse (#142163).
             let target_block = self.cfg.start_new_block();
-            let mut schedule_drops = ScheduleDrops::Yes;
-            let arm = arm_match_scope.unzip().0;
-            // We keep a stack of all of the bindings and type ascriptions
-            // from the parent candidates that we visit, that also need to
-            // be bound for each candidate.
-            for sub_branch in branch.sub_branches {
-                if let Some(arm) = arm {
-                    self.clear_top_scope(arm.scope);
-                }
+            for (pos, sub_branch) in branch.sub_branches.into_iter().rev().with_position() {
+                debug_assert!(pos != Position::Only);
+                let schedule_drops =
+                    if pos == Position::Last { ScheduleDrops::Yes } else { ScheduleDrops::No };
                 let binding_end = self.bind_and_guard_matched_candidate(
                     sub_branch,
                     fake_borrow_temps,
                     scrutinee_span,
                     arm_match_scope,
                     schedule_drops,
-                    emit_storage_live,
                 );
-                if arm.is_none() {
-                    schedule_drops = ScheduleDrops::No;
-                }
                 self.cfg.goto(binding_end, outer_source_info, target_block);
             }
 
@@ -602,6 +580,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -631,6 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -741,7 +721,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             &[],
             irrefutable_pat.span,
             None,
-            EmitStorageLive::Yes,
         )
         .unit()
     }
@@ -763,6 +742,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             pattern,
             &ProjectedUserTypesNode::None,
             &mut |this, name, mode, var, span, ty, user_tys| {
+                let saved_scope = this.source_scope;
+                this.set_correct_source_scope_for_arg(var.0, saved_scope, span);
                 let vis_scope = *visibility_scope
                     .get_or_insert_with(|| this.new_source_scope(scope_span, LintLevel::Inherited));
                 let source_info = SourceInfo { span, scope: this.source_scope };
@@ -780,6 +761,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
+                this.source_scope = saved_scope;
             },
         );
         if let Some(guard_expr) = guard {
@@ -823,6 +805,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         var: LocalVarId,
         span: Span,
+        is_shorthand: bool,
         for_guard: ForGuard,
         schedule_drop: ScheduleDrops,
     ) -> Place<'tcx> {
@@ -835,6 +818,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && matches!(schedule_drop, ScheduleDrops::Yes)
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        }
+        let local_info = self.local_decls[local_id].local_info.as_mut().unwrap_crate_local();
+        if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
+            var_info.introductions.push(VarBindingIntroduction { span, is_shorthand });
         }
         Place::from(local_id)
     }
@@ -931,6 +918,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visit_subpat(self, subpattern, &user_tys.deref(), f);
             }
 
+            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
+                visit_subpat(self, subpattern, &user_tys.leaf(FieldIdx::ZERO).deref(), f);
+            }
+
             PatKind::DerefPattern { ref subpattern, .. } => {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
@@ -996,7 +987,7 @@ struct PatternExtraData<'tcx> {
     span: Span,
 
     /// Bindings that must be established.
-    bindings: Vec<Binding<'tcx>>,
+    bindings: Vec<SubpatternBindings<'tcx>>,
 
     /// Types that must be asserted.
     ascriptions: Vec<Ascription<'tcx>>,
@@ -1009,6 +1000,15 @@ impl<'tcx> PatternExtraData<'tcx> {
     fn is_empty(&self) -> bool {
         self.bindings.is_empty() && self.ascriptions.is_empty()
     }
+}
+
+#[derive(Debug, Clone)]
+enum SubpatternBindings<'tcx> {
+    /// A single binding.
+    One(Binding<'tcx>),
+    /// Holds the place for an or-pattern's bindings. This ensures their drops are scheduled in the
+    /// order the primary bindings appear. See rust-lang/rust#142163 for more information.
+    FromOrPattern,
 }
 
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
@@ -1226,12 +1226,13 @@ fn traverse_candidate<'tcx, C, T, I>(
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
     var_id: LocalVarId,
     binding_mode: BindingMode,
+    is_shorthand: bool,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -1260,7 +1261,7 @@ struct Ascription<'tcx> {
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: mir::Const<'tcx> },
+    Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1331,13 +1332,13 @@ enum TestKind<'tcx> {
     If,
 
     /// Test for equality with value, possibly after an unsizing coercion to
-    /// `ty`,
+    /// `cast_ty`,
     Eq {
-        value: Const<'tcx>,
+        value: ty::Value<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
         // types and `&[T]` types are converted back into patterns, so this can
-        // only be `&str`, `f32` or `f64`.
-        ty: Ty<'tcx>,
+        // only be `&str` or floats.
+        cast_ty: Ty<'tcx>,
     },
 
     /// Test whether the value falls within an inclusive or exclusive range.
@@ -1372,8 +1373,8 @@ pub(crate) struct Test<'tcx> {
 enum TestBranch<'tcx> {
     /// Success branch, used for tests with two possible outcomes.
     Success,
-    /// Branch corresponding to this constant.
-    Constant(Const<'tcx>, u128),
+    /// Branch corresponding to this constant. Must be a scalar.
+    Constant(ty::Value<'tcx>),
     /// Branch corresponding to this variant.
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
@@ -1381,8 +1382,8 @@ enum TestBranch<'tcx> {
 }
 
 impl<'tcx> TestBranch<'tcx> {
-    fn as_constant(&self) -> Option<&Const<'tcx>> {
-        if let Self::Constant(v, _) = self { Some(v) } else { None }
+    fn as_constant(&self) -> Option<ty::Value<'tcx>> {
+        if let Self::Constant(v) = self { Some(*v) } else { None }
     }
 }
 
@@ -1452,12 +1453,7 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
             span: candidate.extra_data.span,
             success_block: candidate.pre_binding_block.unwrap(),
             otherwise_block: candidate.otherwise_block.unwrap(),
-            bindings: parent_data
-                .iter()
-                .flat_map(|d| &d.bindings)
-                .chain(&candidate.extra_data.bindings)
-                .cloned()
-                .collect(),
+            bindings: sub_branch_bindings(parent_data, &candidate.extra_data.bindings),
             ascriptions: parent_data
                 .iter()
                 .flat_map(|d| &d.ascriptions)
@@ -1487,6 +1483,68 @@ impl<'tcx> MatchTreeBranch<'tcx> {
             },
         );
         MatchTreeBranch { sub_branches }
+    }
+}
+
+/// Collects the bindings for a [`MatchTreeSubBranch`], preserving the order they appear in the
+/// pattern, as though the or-alternatives chosen in this sub-branch were inlined.
+fn sub_branch_bindings<'tcx>(
+    parents: &[PatternExtraData<'tcx>],
+    leaf_bindings: &[SubpatternBindings<'tcx>],
+) -> Vec<Binding<'tcx>> {
+    // In the common case, all bindings will be in leaves. Allocate to fit the leaf's bindings.
+    let mut all_bindings = Vec::with_capacity(leaf_bindings.len());
+    let mut remainder = parents
+        .iter()
+        .map(|parent| parent.bindings.as_slice())
+        .chain([leaf_bindings])
+        // Skip over unsimplified or-patterns without bindings.
+        .filter(|bindings| !bindings.is_empty());
+    if let Some(candidate_bindings) = remainder.next() {
+        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+    }
+    // Make sure we've included all bindings. For ill-formed patterns like `(x, _ | y)`, we may not
+    // have collected all bindings yet, since we only check the first alternative when determining
+    // whether to inline subcandidates' bindings.
+    // FIXME(@dianne): prevent ill-formed patterns from getting here
+    while let Some(candidate_bindings) = remainder.next() {
+        ty::tls::with(|tcx| {
+            tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+        });
+        // To recover, we collect the rest in an arbitrary order.
+        push_sub_branch_bindings(&mut all_bindings, candidate_bindings, &mut remainder);
+    }
+    all_bindings
+}
+
+/// Helper for [`sub_branch_bindings`]. Collects bindings from `candidate_bindings` into
+/// `flattened`. Bindings in or-patterns are collected recursively from `remainder`.
+fn push_sub_branch_bindings<'c, 'tcx: 'c>(
+    flattened: &mut Vec<Binding<'tcx>>,
+    candidate_bindings: &'c [SubpatternBindings<'tcx>],
+    remainder: &mut impl Iterator<Item = &'c [SubpatternBindings<'tcx>]>,
+) {
+    for subpat_bindings in candidate_bindings {
+        match subpat_bindings {
+            SubpatternBindings::One(binding) => flattened.push(*binding),
+            SubpatternBindings::FromOrPattern => {
+                // Inline bindings from an or-pattern. By construction, this always
+                // corresponds to a subcandidate and its closest descendants (i.e. those
+                // from nested or-patterns, but not adjacent or-patterns). To handle
+                // adjacent or-patterns, e.g. `(x | x, y | y)`, we update the `remainder` to
+                // point to the first descendant candidate from outside this or-pattern.
+                if let Some(subcandidate_bindings) = remainder.next() {
+                    push_sub_branch_bindings(flattened, subcandidate_bindings, remainder);
+                } else {
+                    // For ill-formed patterns like `x | _`, we may not have any subcandidates left
+                    // to inline bindings from.
+                    // FIXME(@dianne): prevent ill-formed patterns from getting here
+                    ty::tls::with(|tcx| {
+                        tcx.dcx().delayed_bug("mismatched or-pattern bindings but no error emitted")
+                    });
+                };
+            }
+        }
     }
 }
 
@@ -2364,7 +2422,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_scope: Option<SourceScope>,
         scope_span: Span,
         declare_let_bindings: DeclareLetBindings,
-        emit_storage_live: EmitStorageLive,
     ) -> BlockAnd<()> {
         let expr_span = self.thir[expr_id].span;
         let scrutinee = unpack!(block = self.lower_scrutinee(block, expr_id, expr_span));
@@ -2398,14 +2455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let success = self.bind_pattern(
-            self.source_info(pat.span),
-            branch,
-            &[],
-            expr_span,
-            None,
-            emit_storage_live,
-        );
+        let success = self.bind_pattern(self.source_info(pat.span), branch, &[], expr_span, None);
 
         // If branch coverage is enabled, record this branch.
         self.visit_coverage_conditional_let(pat, success, built_tree.otherwise_block);
@@ -2428,7 +2478,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: ScheduleDrops,
-        emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(subbranch={:?})", sub_branch);
 
@@ -2453,11 +2502,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
-            self.bind_matched_candidate_for_guard(
-                block,
-                schedule_drops,
-                sub_branch.bindings.iter(),
-            );
+            // This always schedules storage drops, so we may need to unschedule them below.
+            self.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
             let guard_frame = GuardFrame {
                 locals: sub_branch
                     .bindings
@@ -2488,6 +2534,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         DeclareLetBindings::No, // For guards, `let` bindings are declared separately
                     )
                 });
+
+            // If this isn't the final sub-branch being lowered, we need to unschedule drops of
+            // bindings and temporaries created for and by the guard. As a result, the drop order
+            // for the arm will correspond to the binding order of the final sub-branch lowered.
+            if matches!(schedule_drops, ScheduleDrops::No) {
+                self.clear_match_arm_and_guard_scopes(arm.scope);
+            }
 
             let source_info = self.source_info(guard_span);
             let guard_end = self.source_info(tcx.sess.source_map().end_point(guard_span));
@@ -2538,16 +2591,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cause = FakeReadCause::ForGuardBinding;
                 self.cfg.push_fake_read(post_guard_block, guard_end, cause, Place::from(local_id));
             }
-            assert_matches!(
-                schedule_drops,
-                ScheduleDrops::Yes,
-                "patterns with guards must schedule drops"
-            );
+            // Only schedule drops for the last sub-branch we lower.
             self.bind_matched_candidate_for_arm_body(
                 post_guard_block,
-                ScheduleDrops::Yes,
+                schedule_drops,
                 by_value_bindings,
-                emit_storage_live,
             );
 
             post_guard_block
@@ -2559,7 +2607,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 schedule_drops,
                 sub_branch.bindings.iter(),
-                emit_storage_live,
             );
             block
         }
@@ -2671,7 +2718,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bind_matched_candidate_for_guard<'b>(
         &mut self,
         block: BasicBlock,
-        schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
     ) where
         'tcx: 'b,
@@ -2690,12 +2736,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // a reference R: &T pointing to the location matched by
             // the pattern, and every occurrence of P within a guard
             // denotes *R.
+            // Drops must be scheduled to emit `StorageDead` on the guard's failure/break branches.
             let ref_for_guard = self.storage_live_binding(
                 block,
                 binding.var_id,
                 binding.span,
+                binding.is_shorthand,
                 RefWithinGuard,
-                schedule_drops,
+                ScheduleDrops::Yes,
             );
             match binding.binding_mode.0 {
                 ByRef::No => {
@@ -2704,18 +2752,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
-                ByRef::Yes(mutbl) => {
-                    // The arm binding will be by reference, so eagerly create it now.
+                ByRef::Yes(pinnedness, mutbl) => {
+                    // The arm binding will be by reference, so eagerly create it now // be scheduled to emit `StorageDead` on the guard's failure/break branches.
                     let value_for_arm = self.storage_live_binding(
                         block,
                         binding.var_id,
                         binding.span,
+                        binding.is_shorthand,
                         OutsideGuard,
-                        schedule_drops,
+                        ScheduleDrops::Yes,
                     );
 
                     let rvalue =
                         Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);
+                    let rvalue = match pinnedness {
+                        ty::Pinnedness::Not => rvalue,
+                        ty::Pinnedness::Pinned => {
+                            self.pin_borrowed_local(block, value_for_arm.local, rvalue, source_info)
+                        }
+                    };
                     self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
                     // For the guard binding, take a shared reference to that reference.
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
@@ -2730,7 +2785,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         schedule_drops: ScheduleDrops,
         bindings: impl IntoIterator<Item = &'b Binding<'tcx>>,
-        emit_storage_live: EmitStorageLive,
     ) where
         'tcx: 'b,
     {
@@ -2740,30 +2794,70 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
             let source_info = self.source_info(binding.span);
-            let local = match emit_storage_live {
-                // Here storages are already alive, probably because this is a binding
-                // from let-else.
-                // We just need to schedule drop for the value.
-                EmitStorageLive::No => self.var_local_id(binding.var_id, OutsideGuard).into(),
-                EmitStorageLive::Yes => self.storage_live_binding(
-                    block,
-                    binding.var_id,
-                    binding.span,
-                    OutsideGuard,
-                    schedule_drops,
-                ),
-            };
+            let local = self.storage_live_binding(
+                block,
+                binding.var_id,
+                binding.span,
+                binding.is_shorthand,
+                OutsideGuard,
+                schedule_drops,
+            );
             if matches!(schedule_drops, ScheduleDrops::Yes) {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
             let rvalue = match binding.binding_mode.0 {
                 ByRef::No => Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
-                ByRef::Yes(mutbl) => {
-                    Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source)
+                ByRef::Yes(pinnedness, mutbl) => {
+                    let rvalue =
+                        Rvalue::Ref(re_erased, util::ref_pat_borrow_kind(mutbl), binding.source);
+                    match pinnedness {
+                        ty::Pinnedness::Not => rvalue,
+                        ty::Pinnedness::Pinned => {
+                            self.pin_borrowed_local(block, local.local, rvalue, source_info)
+                        }
+                    }
                 }
             };
             self.cfg.push_assign(block, source_info, local, rvalue);
         }
+    }
+
+    /// Given an rvalue `&[mut]borrow` and a local `local`, generate the pinned borrow for it:
+    /// ```ignore (illustrative)
+    /// pinned_temp = &borrow;
+    /// local = Pin { __pointer: move pinned_temp };
+    /// ```
+    fn pin_borrowed_local(
+        &mut self,
+        block: BasicBlock,
+        local: Local,
+        borrow: Rvalue<'tcx>,
+        source_info: SourceInfo,
+    ) -> Rvalue<'tcx> {
+        debug_assert_matches!(borrow, Rvalue::Ref(..));
+
+        let local_ty = self.local_decls[local].ty;
+
+        let pinned_ty = local_ty.pinned_ty().unwrap_or_else(|| {
+            span_bug!(
+                source_info.span,
+                "expect type `Pin` for a pinned binding, found type {:?}",
+                local_ty
+            )
+        });
+        let pinned_temp =
+            Place::from(self.local_decls.push(LocalDecl::new(pinned_ty, source_info.span)));
+        self.cfg.push_assign(block, source_info, pinned_temp, borrow);
+        Rvalue::Aggregate(
+            Box::new(AggregateKind::Adt(
+                self.tcx.require_lang_item(LangItem::Pin, source_info.span),
+                FIRST_VARIANT,
+                self.tcx.mk_args(&[pinned_ty.into()]),
+                None,
+                None,
+            )),
+            std::iter::once(Operand::Move(pinned_temp)).collect(),
+        )
     }
 
     /// Each binding (`ref mut var`/`ref var`/`mut var`/`var`, where the bound
@@ -2802,6 +2896,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_ty_info: None,
                     opt_match_place,
                     pat_span,
+                    introductions: Vec::new(),
                 },
             )))),
         };
@@ -2824,7 +2919,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(
-                    BindingForm::RefForGuard,
+                    BindingForm::RefForGuard(for_arm_body),
                 ))),
             });
             if self.should_emit_debug_info_for_binding(name, var_id) {
@@ -2857,8 +2952,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for (_, node) in tcx.hir_parent_iter(var_id.0) {
             // FIXME(khuey) at what point is it safe to bail on the iterator?
             // Can we stop at the first non-Pat node?
-            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar(_), .. }))
-            {
+            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar, .. })) {
                 return false;
             }
         }

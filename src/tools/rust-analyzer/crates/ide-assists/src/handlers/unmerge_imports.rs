@@ -1,9 +1,6 @@
 use syntax::{
     AstNode, SyntaxKind,
-    ast::{
-        self, HasAttrs, HasVisibility, edit::IndentLevel, edit_in_place::AttrsOwnerEdit, make,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, HasAttrs, HasVisibility, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
     syntax_editor::{Element, Position, Removable},
 };
 
@@ -46,13 +43,10 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     acc.add(AssistId::refactor_rewrite("unmerge_imports"), label, target, |builder| {
         let make = SyntaxFactory::with_mappings();
         let new_use = make.use_(
+            use_.attrs(),
             use_.visibility(),
             make.use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),
         );
-        // Add any attributes that are present on the use tree
-        use_.attrs().for_each(|attr| {
-            new_use.add_attr(attr.clone_for_update());
-        });
 
         let mut editor = builder.make_editor(use_.syntax());
         // Remove the use tree from the current use item

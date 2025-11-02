@@ -3,7 +3,8 @@ use std::{env, iter};
 
 use super::*;
 use crate::core::config::{Target, TargetSelection};
-use crate::{Build, Config, Flags};
+use crate::utils::tests::TestCtx;
+use crate::{Build, Config, Flags, t};
 
 #[test]
 fn test_ndk_compiler_c() {
@@ -68,7 +69,8 @@ fn test_language_clang() {
 
 #[test]
 fn test_new_cc_build() {
-    let build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let cfg = new_cc_build(&build, target.clone());
     let compiler = cfg.get_compiler();
@@ -77,7 +79,8 @@ fn test_new_cc_build() {
 
 #[test]
 fn test_default_compiler_wasi() {
-    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let mut build = Build::new(config);
     let target = TargetSelection::from_user("wasm32-wasi");
     let wasi_sdk = PathBuf::from("/wasi-sdk");
     build.wasi_sdk_path = Some(wasi_sdk.clone());
@@ -98,7 +101,8 @@ fn test_default_compiler_wasi() {
 
 #[test]
 fn test_default_compiler_fallback() {
-    let build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let mut cfg = cc::Build::new();
     let result = default_compiler(&mut cfg, Language::C, target, &build);
@@ -107,7 +111,8 @@ fn test_default_compiler_fallback() {
 
 #[test]
 fn test_find_target_with_config() {
-    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let mut build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let mut target_config = Target::default();
     target_config.cc = Some(PathBuf::from("dummy-cc"));
@@ -128,7 +133,8 @@ fn test_find_target_with_config() {
 
 #[test]
 fn test_find_target_without_config() {
-    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let mut build = Build::new(config);
     let target = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     build.config.target_config.clear();
     fill_target_compiler(&mut build, target.clone());
@@ -141,7 +147,8 @@ fn test_find_target_without_config() {
 
 #[test]
 fn test_find() {
-    let mut build = Build::new(Config { ..Config::parse(Flags::parse(&["build".to_owned()])) });
+    let config = TestCtx::new().config("build").create_config();
+    let mut build = Build::new(config);
     let target1 = TargetSelection::from_user("x86_64-unknown-linux-gnu");
     let target2 = TargetSelection::from_user("x86_64-unknown-openbsd");
     build.targets.push(target1.clone());

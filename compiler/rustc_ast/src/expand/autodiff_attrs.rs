@@ -6,8 +6,8 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
+use crate::expand::typetree::TypeTree;
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
-use crate::ptr::P;
 use crate::{Ty, TyKind};
 
 /// Forward and Reverse Mode are well known names for automatic differentiation implementations.
@@ -85,6 +85,8 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
+    pub inputs: Vec<TypeTree>,
+    pub output: TypeTree,
 }
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -162,7 +164,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
 /// since Duplicated expects a mutable ref/ptr and we would thus end up with a shadow value
 /// who is an indirect type, which doesn't match the primal scalar type. We can't prevent
 /// users here from marking scalars as Duplicated, due to type aliases.
-pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
+pub fn valid_ty_for_activity(ty: &Box<Ty>, activity: DiffActivity) -> bool {
     use DiffActivity::*;
     // It's always allowed to mark something as Const, since we won't compute derivatives wrt. it.
     // Dual variants also support all types.
@@ -276,14 +278,22 @@ impl AutoDiffAttrs {
         !matches!(self.mode, DiffMode::Error | DiffMode::Source)
     }
 
-    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
-        AutoDiffItem { source, target, attrs: self }
+    pub fn into_item(
+        self,
+        source: String,
+        target: String,
+        inputs: Vec<TypeTree>,
+        output: TypeTree,
+    ) -> AutoDiffItem {
+        AutoDiffItem { source, target, inputs, output, attrs: self }
     }
 }
 
 impl fmt::Display for AutoDiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Differentiating {} -> {}", self.source, self.target)?;
-        write!(f, " with attributes: {:?}", self.attrs)
+        write!(f, " with attributes: {:?}", self.attrs)?;
+        write!(f, " with inputs: {:?}", self.inputs)?;
+        write!(f, " with output: {:?}", self.output)
     }
 }

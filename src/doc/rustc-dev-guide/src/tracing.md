@@ -1,7 +1,5 @@
 # Using tracing to debug the compiler
 
-<!-- toc -->
-
 The compiler has a lot of [`debug!`] (or `trace!`) calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
@@ -111,7 +109,7 @@ Miri, use `MIRI_LOG` instead. You get the idea :)
 
 See the [`tracing`] crate's docs, and specifically the docs for [`debug!`] to
 see the full syntax you can use. (Note: unlike the compiler, the [`tracing`]
-crate and its examples use the `RUST_LOG` environment variable. rustc, rustdoc,
+crate and its examples use the `RUSTC_LOG` environment variable. rustc, rustdoc,
 and other tools set custom environment variables.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of

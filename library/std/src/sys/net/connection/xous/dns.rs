@@ -1,14 +1,7 @@
-use core::convert::{TryFrom, TryInto};
-
 use crate::io;
 use crate::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use crate::os::xous::ffi::lend_mut;
 use crate::os::xous::services::{DnsLendMut, dns_server};
-
-pub struct DnsError {
-    #[allow(dead_code)]
-    pub code: u8,
-}
 
 #[repr(C, align(4096))]
 struct LookupHostQuery([u8; 4096]);
@@ -18,12 +11,6 @@ pub struct LookupHost {
     port: u16,
     offset: usize,
     count: usize,
-}
-
-impl LookupHost {
-    pub fn port(&self) -> u16 {
-        self.port
-    }
 }
 
 impl Iterator for LookupHost {
@@ -72,7 +59,7 @@ impl Iterator for LookupHost {
     }
 }
 
-pub fn lookup(query: &str, port: u16) -> Result<LookupHost, DnsError> {
+pub fn lookup_host(query: &str, port: u16) -> io::Result<LookupHost> {
     let mut result = LookupHost { data: LookupHostQuery([0u8; 4096]), offset: 0, count: 0, port };
 
     // Copy the query into the message that gets sent to the DNS server
@@ -89,7 +76,7 @@ pub fn lookup(query: &str, port: u16) -> Result<LookupHost, DnsError> {
     )
     .unwrap();
     if result.data.0[0] != 0 {
-        return Err(DnsError { code: result.data.0[1] });
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "DNS failure"));
     }
     assert_eq!(result.offset, 0);
     result.count = result.data.0[1] as usize;
@@ -97,32 +84,4 @@ pub fn lookup(query: &str, port: u16) -> Result<LookupHost, DnsError> {
     // Advance the offset to the first record
     result.offset = 2;
     Ok(result)
-}
-
-impl TryFrom<&str> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(s: &str) -> io::Result<LookupHost> {
-        macro_rules! try_opt {
-            ($e:expr, $msg:expr) => {
-                match $e {
-                    Some(r) => r,
-                    None => return Err(io::const_error!(io::ErrorKind::InvalidInput, &$msg)),
-                }
-            };
-        }
-
-        // split the string by ':' and convert the second part to u16
-        let (host, port_str) = try_opt!(s.rsplit_once(':'), "invalid socket address");
-        let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
-        (host, port).try_into()
-    }
-}
-
-impl TryFrom<(&str, u16)> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(v: (&str, u16)) -> io::Result<LookupHost> {
-        lookup(v.0, v.1).map_err(|_e| io::const_error!(io::ErrorKind::InvalidInput, "DNS failure"))
-    }
 }

@@ -705,7 +705,8 @@ impl dyn Any + Send + Sync {
 ///     std::mem::forget(fake_one_ring);
 /// }
 /// ```
-#[derive(Clone, Copy, Eq, PartialOrd, Ord)]
+#[derive(Copy, PartialOrd, Ord)]
+#[derive_const(Clone, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "type_id"]
 pub struct TypeId {
@@ -725,7 +726,7 @@ unsafe impl Send for TypeId {}
 unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -773,7 +774,7 @@ impl TypeId {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+    #[rustc_const_stable(feature = "const_type_id", since = "1.91.0")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         const { intrinsics::type_id::<T>() }
     }
@@ -835,9 +836,9 @@ impl fmt::Debug for TypeId {
 ///
 /// The returned string must not be considered to be a unique identifier of a
 /// type as multiple types may map to the same type name. Similarly, there is no
-/// guarantee that all parts of a type will appear in the returned string: for
-/// example, lifetime specifiers are currently not included. In addition, the
-/// output may change between versions of the compiler.
+/// guarantee that all parts of a type will appear in the returned string. In
+/// addition, the output may change between versions of the compiler. For
+/// example, lifetime specifiers were omitted in some earlier versions.
 ///
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.

@@ -132,12 +132,9 @@ pub(crate) fn desugar_async_into_impl_future(
 
     let scope = ctx.sema.scope(function.syntax())?;
     let module = scope.module();
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
     let future_trait = FamousDefs(&ctx.sema, scope.krate()).core_future_Future()?;
-    let trait_path = module.find_path(
-        ctx.db(),
-        ModuleDef::Trait(future_trait),
-        ctx.config.import_path_config(),
-    )?;
+    let trait_path = module.find_path(ctx.db(), ModuleDef::Trait(future_trait), cfg)?;
     let edition = scope.krate().edition(ctx.db());
     let trait_path = trait_path.display(ctx.db(), edition);
 

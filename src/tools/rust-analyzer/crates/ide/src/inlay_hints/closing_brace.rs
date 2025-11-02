@@ -19,7 +19,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     InRealFile { file_id, value: node }: InRealFile<SyntaxNode>,
 ) -> Option<()> {
@@ -120,11 +120,11 @@ pub(super) fn hints(
     };
 
     if let Some(mut next) = closing_token.next_token() {
-        if next.kind() == T![;] {
-            if let Some(tok) = next.next_token() {
-                closing_token = next;
-                next = tok;
-            }
+        if next.kind() == T![;]
+            && let Some(tok) = next.next_token()
+        {
+            closing_token = next;
+            next = tok;
         }
         if !(next.kind() == SyntaxKind::WHITESPACE && next.text().contains('\n')) {
             // Only display the hint if the `}` is the last token on the line
@@ -191,7 +191,7 @@ impl Tr for () {
 //^ impl Tr for ()
 impl dyn Tr {
   }
-//^ impl dyn Tr
+//^ impl dyn Tr + 'static
 
 static S0: () = 0;
 static S1: () = {};

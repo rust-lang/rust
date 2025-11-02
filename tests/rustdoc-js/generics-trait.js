@@ -25,8 +25,25 @@ const EXPECTED = [
     },
     {
         'query': 'Resulx<SomeTrait>',
-        'in_args': [],
-        'returned': [],
+        'correction': 'Result',
+        'in_args': [
+            {
+                'path': 'generics_trait',
+                'name': 'beta',
+                'displayType': '`Result`<`T`, ()> -> ()',
+                'displayMappedNames': '',
+                'displayWhereClause': 'T: `SomeTrait`',
+            },
+        ],
+        'returned': [
+            {
+                'path': 'generics_trait',
+                'name': 'bet',
+                'displayType': ' -> `Result`<`T`, ()>',
+                'displayMappedNames': '',
+                'displayWhereClause': 'T: `SomeTrait`',
+            },
+        ],
     },
     {
         'query': 'Result<SomeTraiz>',

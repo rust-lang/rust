@@ -221,10 +221,13 @@ cleanPackages() {
         )
     fi
 
-    sudo apt-get -qq remove -y --fix-missing "${packages[@]}"
+    WAIT_DPKG_LOCK="-o DPkg::Lock::Timeout=60"
+    sudo apt-get ${WAIT_DPKG_LOCK} -qq remove -y --fix-missing "${packages[@]}"
 
-    sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
-    sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
+    sudo apt-get ${WAIT_DPKG_LOCK} autoremove -y \
+        || echo "::warning::The command [sudo apt-get autoremove -y] failed"
+    sudo apt-get ${WAIT_DPKG_LOCK} clean \
+        || echo "::warning::The command [sudo apt-get clean] failed"
 }
 
 # Remove Docker images.

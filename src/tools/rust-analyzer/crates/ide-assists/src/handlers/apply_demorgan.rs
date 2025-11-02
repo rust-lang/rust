@@ -6,7 +6,7 @@ use ide_db::{
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
 use syntax::{
-    SyntaxKind, T,
+    NodeOrToken, SyntaxKind, T,
     ast::{
         self, AstNode,
         Expr::BinExpr,
@@ -38,14 +38,26 @@ use crate::{AssistContext, AssistId, Assists, utils::invert_boolean_expression};
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let mut bin_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
+    let mut bin_expr = if let Some(not) = ctx.find_token_syntax_at_offset(T![!])
+        && let Some(NodeOrToken::Node(next)) = not.next_sibling_or_token()
+        && let Some(paren) = ast::ParenExpr::cast(next)
+        && let Some(ast::Expr::BinExpr(bin_expr)) = paren.expr()
+    {
+        bin_expr
+    } else {
+        let bin_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
+        let op_range = bin_expr.op_token()?.text_range();
+
+        // Is the cursor on the expression's logical operator?
+        if !op_range.contains_range(ctx.selection_trimmed()) {
+            return None;
+        }
+
+        bin_expr
+    };
+
     let op = bin_expr.op_kind()?;
     let op_range = bin_expr.op_token()?.text_range();
-
-    // Is the cursor on the expression's logical operator?
-    if !op_range.contains_range(ctx.selection_trimmed()) {
-        return None;
-    }
 
     // Walk up the tree while we have the same binary operator
     while let Some(parent_expr) = bin_expr.syntax().parent().and_then(ast::BinExpr::cast) {
@@ -207,10 +219,10 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
             // negate all tail expressions in the closure body
             let tail_cb = &mut |e: &_| tail_cb_impl(&mut editor, &make, e);
             walk_expr(&closure_body, &mut |expr| {
-                if let ast::Expr::ReturnExpr(ret_expr) = expr {
-                    if let Some(ret_expr_arg) = &ret_expr.expr() {
-                        for_each_tail_expr(ret_expr_arg, tail_cb);
-                    }
+                if let ast::Expr::ReturnExpr(ret_expr) = expr
+                    && let Some(ret_expr_arg) = &ret_expr.expr()
+                {
+                    for_each_tail_expr(ret_expr_arg, tail_cb);
                 }
             });
             for_each_tail_expr(&closure_body, tail_cb);
@@ -363,6 +375,15 @@ fn f() { !(S <= S || S < S) }
             apply_demorgan,
             "fn f() { 1 || 3 &&$0 4 || 5 }",
             "fn f() { 1 || !(!3 || !4) || 5 }",
+        )
+    }
+
+    #[test]
+    fn demorgan_on_not() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { $0!(1 || 3 && 4 || 5) }",
+            "fn f() { !1 && !(3 && 4) && !5 }",
         )
     }
 

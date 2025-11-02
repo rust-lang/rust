@@ -30,11 +30,6 @@ fn miri_path() -> PathBuf {
     PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
-pub fn flagsplit(flags: &str) -> Vec<String> {
-    // This code is taken from `RUSTFLAGS` handling in cargo.
-    flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
-}
-
 // Build the shared object file for testing native function calls.
 fn build_native_lib(target: &str) -> PathBuf {
     // Loosely follow the logic of the `cc` crate for finding the compiler.
@@ -60,6 +55,7 @@ fn build_native_lib(target: &str) -> PathBuf {
             native_lib_path.to_str().unwrap(),
             // FIXME: Automate gathering of all relevant C source files in the directory.
             "tests/native-lib/scalar_arguments.c",
+            "tests/native-lib/aggregate_arguments.c",
             "tests/native-lib/ptr_read_access.c",
             "tests/native-lib/ptr_write_access.c",
             // Ensure we notice serious problems in the C code.
@@ -248,7 +244,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
@@ -275,6 +272,8 @@ regexes! {
     r"\bsys/([a-z_]+)/[a-z]+\b"     => "sys/$1/PLATFORM",
     // erase paths into the crate registry
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
+    // remove time print from GenMC estimation mode output.
+    "\nExpected verification time: .* ± .*" => "\nExpected verification time: [MEAN] ± [SD]",
 }
 
 enum Dependencies {

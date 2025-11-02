@@ -1,6 +1,6 @@
+use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, NonterminalKind, NtExprKind::*, NtPatKind::*, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{ast, ptr};
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_session::parse::ParseSess;
@@ -49,26 +49,26 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         Expr,
         NonterminalKind::Expr(Expr),
         |parser: &mut Parser<'b>| parser.parse_expr(),
-        |x: ptr::P<ast::Expr>| Some(x)
+        |x: Box<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
         Ty,
         NonterminalKind::Ty,
         |parser: &mut Parser<'b>| parser.parse_ty(),
-        |x: ptr::P<ast::Ty>| Some(x)
+        |x: Box<ast::Ty>| Some(x)
     );
     parse_macro_arg!(
         Pat,
         NonterminalKind::Pat(PatParam { inferred: false }),
         |parser: &mut Parser<'b>| parser.parse_pat_no_top_alt(None, None),
-        |x: ptr::P<ast::Pat>| Some(x)
+        |x: ast::Pat| Some(Box::new(x))
     );
-    // `parse_item` returns `Option<ptr::P<ast::Item>>`.
+    // `parse_item` returns `Option<Box<ast::Item>>`.
     parse_macro_arg!(
         Item,
         NonterminalKind::Item,
         |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No),
-        |x: Option<ptr::P<ast::Item>>| x
+        |x: Option<Box<ast::Item>>| x
     );
 
     None
@@ -164,7 +164,7 @@ pub(crate) fn parse_macro_args(
 pub(crate) fn parse_expr(
     context: &RewriteContext<'_>,
     tokens: TokenStream,
-) -> Option<ptr::P<ast::Expr>> {
+) -> Option<Box<ast::Expr>> {
     let mut parser = build_parser(context, tokens);
     parser.parse_expr().ok()
 }

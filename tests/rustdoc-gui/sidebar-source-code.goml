@@ -71,7 +71,7 @@ assert: "//*[@class='dir-entry' and @open]/*[normalize-space()='sub_mod']"
 // Only "another_folder" should be "open" in "lib2".
 assert: "//*[@class='dir-entry' and not(@open)]/*[normalize-space()='another_mod']"
 // All other trees should be collapsed.
-assert-count: ("//*[@id='src-sidebar']/details[not(normalize-space()='lib2') and not(@open)]", 11)
+assert-count: ("//*[@id='src-sidebar']/details[not(normalize-space()='lib2') and not(@open)]", 13)
 
 // We now switch to mobile mode.
 set-window-size: (600, 600)
@@ -85,4 +85,4 @@ assert-false: ".src-sidebar-expanded"
 assert: "nav.sidebar"
 
 // Check that the topbar is not visible
-assert-false: ".mobile-topbar"
+assert-false: "rustdoc-topbar"

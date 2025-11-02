@@ -94,7 +94,7 @@ fn discover_tests_in_module(
         if !f.is_test(db) {
             continue;
         }
-        let nav = f.try_to_nav(db).map(|r| r.call_site);
+        let nav = f.try_to_nav(&sema).map(|r| r.call_site);
         let fn_name = f.name(db).as_str().to_owned();
         r.push(TestItem {
             id: format!("{prefix_id}::{fn_name}"),

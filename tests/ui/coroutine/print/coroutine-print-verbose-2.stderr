@@ -9,7 +9,11 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Sync`
    |
-   = help: within `{main::{closure#0} upvar_tys=() resume_ty=() yield_ty=() return_ty=() witness={main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`
+help: within `{main::{closure#0} upvar_tys=() resume_ty=() yield_ty=() return_ty=()}`, the trait `Sync` is not implemented for `NotSync`
+  --> $DIR/coroutine-print-verbose-2.rs:8:1
+   |
+LL | struct NotSync;
+   | ^^^^^^^^^^^^^^
 note: coroutine is not `Sync` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:20:9
    |
@@ -34,7 +38,11 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Send`
    |
-   = help: within `{main::{closure#1} upvar_tys=() resume_ty=() yield_ty=() return_ty=() witness={main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`
+help: within `{main::{closure#1} upvar_tys=() resume_ty=() yield_ty=() return_ty=()}`, the trait `Send` is not implemented for `NotSend`
+  --> $DIR/coroutine-print-verbose-2.rs:7:1
+   |
+LL | struct NotSend;
+   | ^^^^^^^^^^^^^^
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:27:9
    |

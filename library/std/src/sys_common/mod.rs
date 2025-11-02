@@ -15,13 +15,11 @@
 //! Progress on this is tracked in #84187.
 
 #![allow(missing_docs)]
-#![allow(missing_debug_implementations)]
 
 #[cfg(test)]
 mod tests;
 
 pub mod wstr;
-pub mod wtf8;
 
 // common error constructors
 
@@ -51,17 +49,16 @@ pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }
 
-// Computes (value*numer)/denom without overflow, as long as both
-// (numer*denom) and the overall result fit into i64 (which is the case
-// for our time conversions).
+// Computes (value*numerator)/denom without overflow, as long as both (numerator*denom) and the
+// overall result fit into i64 (which is the case for our time conversions).
 #[allow(dead_code)] // not used on all platforms
-pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
+pub fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
     let q = value / denom;
     let r = value % denom;
     // Decompose value as (value/denom*denom + value%denom),
-    // substitute into (value*numer)/denom and simplify.
-    // r < denom, so (denom*numer) is the upper bound of (r*numer)
-    q * numer + r * numer / denom
+    // substitute into (value*numerator)/denom and simplify.
+    // r < denom, so (denom*numerator) is the upper bound of (r*numerator)
+    q * numerator + r * numerator / denom
 }
 
 pub fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {

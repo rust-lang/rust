@@ -9,7 +9,7 @@ use rustc_ast::{
     FormatPlaceholder, FormatTrait,
 };
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, Impl, Item, ItemKind};
+use rustc_hir::{Expr, Impl, Item, ItemKind, OwnerId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -240,7 +240,8 @@ declare_clippy_lint! {
 
 pub struct Write {
     format_args: FormatArgsStorage,
-    in_debug_impl: bool,
+    // The outermost `impl Debug` we're currently in. While we're in one, `USE_DEBUG` is deactivated
+    outermost_debug_impl: Option<OwnerId>,
     allow_print_in_tests: bool,
 }
 
@@ -248,9 +249,13 @@ impl Write {
     pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            in_debug_impl: false,
+            outermost_debug_impl: None,
             allow_print_in_tests: conf.allow_print_in_tests,
         }
+    }
+
+    fn in_debug_impl(&self) -> bool {
+        self.outermost_debug_impl.is_some()
     }
 }
 
@@ -268,14 +273,16 @@ impl_lint_pass!(Write => [
 
 impl<'tcx> LateLintPass<'tcx> for Write {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if is_debug_impl(cx, item) {
-            self.in_debug_impl = true;
+        // Only check for `impl Debug`s if we're not already in one
+        if self.outermost_debug_impl.is_none() && is_debug_impl(cx, item) {
+            self.outermost_debug_impl = Some(item.owner_id);
         }
     }
 
-    fn check_item_post(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if is_debug_impl(cx, item) {
-            self.in_debug_impl = false;
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+        // Only clear `self.outermost_debug_impl` if we're escaping the _outermost_ debug impl
+        if self.outermost_debug_impl == Some(item.owner_id) {
+            self.outermost_debug_impl = None;
         }
     }
 
@@ -329,7 +336,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 
             check_literal(cx, format_args, name);
 
-            if !self.in_debug_impl {
+            if !self.in_debug_impl() {
                 for piece in &format_args.template {
                     if let &FormatArgsPiece::Placeholder(FormatPlaceholder {
                         span: Some(span),
@@ -347,10 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 
 fn is_debug_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Impl(Impl {
-        of_trait: Some(trait_ref),
+        of_trait: Some(of_trait),
         ..
     }) = &item.kind
-        && let Some(trait_id) = trait_ref.trait_def_id()
+        && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
     {
         cx.tcx.is_diagnostic_item(sym::Debug, trait_id)
     } else {
@@ -537,7 +544,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
 
             sug_span = Some(sug_span.unwrap_or(arg.expr.span).to(arg.expr.span));
 
-            if let Some((_, index)) = positional_arg_piece_span(piece) {
+            if let Some((_, index)) = format_arg_piece_span(piece) {
                 replaced_position.push(index);
             }
 
@@ -569,16 +576,11 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
     }
 }
 
-/// Extract Span and its index from the given `piece`, if it's positional argument.
-fn positional_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
+/// Extract Span and its index from the given `piece`
+fn format_arg_piece_span(piece: &FormatArgsPiece) -> Option<(Span, usize)> {
     match piece {
         FormatArgsPiece::Placeholder(FormatPlaceholder {
-            argument:
-                FormatArgPosition {
-                    index: Ok(index),
-                    kind: FormatArgPositionKind::Number,
-                    ..
-                },
+            argument: FormatArgPosition { index: Ok(index), .. },
             span: Some(span),
             ..
         }) => Some((*span, *index)),

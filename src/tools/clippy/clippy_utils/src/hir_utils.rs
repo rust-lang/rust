@@ -258,7 +258,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         })
     }
 
-    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+    fn should_ignore(&self, expr: &Expr<'_>) -> bool {
         macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
@@ -290,8 +290,10 @@ impl HirEqInterExpr<'_, '_, '_> {
         if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
             && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
             && let (Some(l), Some(r)) = (
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs).eval_simple(left),
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs).eval_simple(right),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs)
+                    .eval_local(left, self.left_ctxt),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs)
+                    .eval_local(right, self.right_ctxt),
             )
             && l == r
         {
@@ -553,7 +555,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (QPath::TypeRelative(lty, lseg), QPath::TypeRelative(rty, rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
-            (QPath::LangItem(llang_item, ..), QPath::LangItem(rlang_item, ..)) => llang_item == rlang_item,
             _ => false,
         }
     }
@@ -757,7 +758,7 @@ pub fn both_some_and<X, Y>(l: Option<X>, r: Option<Y>, mut pred: impl FnMut(X, Y
 }
 
 /// Checks if two slices are equal as per `eq_fn`.
-pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
+pub fn over<X, Y>(left: &[X], right: &[Y], mut eq_fn: impl FnMut(&X, &Y) -> bool) -> bool {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 
@@ -842,7 +843,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     #[expect(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self.maybe_typeck_results.and_then(|typeck_results| {
-            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_simple(e)
+            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_local(e, e.span.ctxt())
         });
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
@@ -1090,9 +1091,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             QPath::TypeRelative(_, path) => {
                 self.hash_name(path.ident.name);
             },
-            QPath::LangItem(lang_item, ..) => {
-                std::mem::discriminant(lang_item).hash(&mut self.s);
-            },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
@@ -1121,7 +1119,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty_pat(variant);
                 }
             },
-            TyPatKind::Err(_) => {},
+            TyPatKind::NotNull | TyPatKind::Err(_) => {},
         }
     }
 

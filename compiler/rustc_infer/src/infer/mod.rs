@@ -131,23 +131,6 @@ pub struct InferCtxtInner<'tcx> {
     /// `$0: 'static`. This will get checked later by regionck. (We
     /// can't generally check these things right away because we have
     /// to wait until types are resolved.)
-    ///
-    /// These are stored in a map keyed to the id of the innermost
-    /// enclosing fn body / static initializer expression. This is
-    /// because the location where the obligation was incurred can be
-    /// relevant with respect to which sublifetime assumptions are in
-    /// place. The reason that we store under the fn-id, and not
-    /// something more fine-grained, is so that it is easier for
-    /// regionck to be sure that it has found *all* the region
-    /// obligations (otherwise, it's easy to fail to walk to a
-    /// particular node-id).
-    ///
-    /// Before running `resolve_regions_and_report_errors`, the creator
-    /// of the inference context is expected to invoke
-    /// [`InferCtxt::process_registered_region_obligations`]
-    /// for each body-id in this map, which will process the
-    /// obligations within. This is expected to be done 'late enough'
-    /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
 
     /// The outlives bounds that we assume must hold about placeholders that
@@ -158,7 +141,8 @@ pub struct InferCtxtInner<'tcx> {
     region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 
     /// `-Znext-solver`: Successfully proven goals during HIR typeck which
-    /// reference inference variables and get reproven after writeback.
+    /// reference inference variables and get reproven in case MIR type check
+    /// fails to prove something.
     ///
     /// See the documentation of `InferCtxt::in_hir_typeck` for more details.
     hir_typeck_potentially_region_dependent_goals: Vec<PredicateObligation<'tcx>>,
@@ -484,17 +468,7 @@ pub enum NllRegionVariableOrigin {
     Placeholder(ty::PlaceholderRegion),
 
     Existential {
-        /// If this is true, then this variable was created to represent a lifetime
-        /// bound in a `for` binder. For example, it might have been created to
-        /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
-        /// Such variables are created when we are trying to figure out if there
-        /// is any valid instantiation of `'a` that could fit into some scenario.
-        ///
-        /// This is used to inform error reporting: in the case that we are trying to
-        /// determine whether there is any valid instantiation of a `'a` variable that meets
-        /// some constraint C, we want to blame the "source" of that `for` type,
-        /// rather than blaming the source of the constraint C.
-        from_forall: bool,
+        name: Option<Symbol>,
     },
 }
 
@@ -773,6 +747,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                self.sub_unify_ty_vids_raw(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -792,22 +767,30 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().num_vars()
     }
 
+    pub fn next_ty_vid(&self, span: Span) -> TyVid {
+        self.next_ty_vid_with_origin(TypeVariableOrigin { span, param_def_id: None })
+    }
+
+    pub fn next_ty_vid_with_origin(&self, origin: TypeVariableOrigin) -> TyVid {
+        self.inner.borrow_mut().type_variables().new_var(self.universe(), origin)
+    }
+
+    pub fn next_ty_vid_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> TyVid {
+        let origin = TypeVariableOrigin { span, param_def_id: None };
+        self.inner.borrow_mut().type_variables().new_var(universe, origin)
+    }
+
     pub fn next_ty_var(&self, span: Span) -> Ty<'tcx> {
         self.next_ty_var_with_origin(TypeVariableOrigin { span, param_def_id: None })
     }
 
     pub fn next_ty_var_with_origin(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables().new_var(self.universe(), origin);
+        let vid = self.next_ty_vid_with_origin(origin);
         Ty::new_var(self.tcx, vid)
     }
 
-    pub fn next_ty_var_id_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> TyVid {
-        let origin = TypeVariableOrigin { span, param_def_id: None };
-        self.inner.borrow_mut().type_variables().new_var(universe, origin)
-    }
-
     pub fn next_ty_var_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> Ty<'tcx> {
-        let vid = self.next_ty_var_id_in_universe(span, universe);
+        let vid = self.next_ty_vid_in_universe(span, universe);
         Ty::new_var(self.tcx, vid)
     }
 
@@ -990,6 +973,10 @@ impl<'tcx> InferCtxt<'tcx> {
         storage.var_infos.clone()
     }
 
+    pub fn has_opaque_types_in_storage(&self) -> bool {
+        !self.inner.borrow().opaque_type_storage.is_empty()
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
@@ -998,6 +985,60 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn clone_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
+    }
+
+    pub fn has_opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> bool {
+        if !self.next_trait_solver() {
+            return false;
+        }
+
+        let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        inner.opaque_type_storage.iter_opaque_types().any(|(_, hidden_ty)| {
+            if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
+                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                if opaque_sub_vid == ty_sub_vid {
+                    return true;
+                }
+            }
+
+            false
+        })
+    }
+
+    /// Searches for an opaque type key whose hidden type is related to `ty_vid`.
+    ///
+    /// This only checks for a subtype relation, it does not require equality.
+    pub fn opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> Vec<ty::AliasTy<'tcx>> {
+        // Avoid accidentally allowing more code to compile with the old solver.
+        if !self.next_trait_solver() {
+            return vec![];
+        }
+
+        let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        // This is iffy, can't call `type_variables()` as we're already
+        // borrowing the `opaque_type_storage` here.
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        inner
+            .opaque_type_storage
+            .iter_opaque_types()
+            .filter_map(|(key, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
+                    let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                    if opaque_sub_vid == ty_sub_vid {
+                        return Some(ty::AliasTy::new_from_args(
+                            self.tcx,
+                            key.def_id.into(),
+                            key.args,
+                        ));
+                    }
+                }
+
+                None
+            })
+            .collect()
     }
 
     #[inline(always)]
@@ -1123,6 +1164,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
+    }
+
+    pub fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.inner.borrow_mut().type_variables().sub_unify(a, b);
+    }
+
+    pub fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.inner.borrow_mut().type_variables().sub_unification_table_root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
@@ -1265,8 +1314,8 @@ impl<'tcx> InferCtxt<'tcx> {
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                self.args[bv.index()].expect_const()
+            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+                self.args[bc.var.index()].expect_const()
             }
         }
         let delegate = ToFreshVars { args };

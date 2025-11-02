@@ -1,10 +1,11 @@
 //! A set of high-level utility fixture methods to use in tests.
 use std::{any::TypeId, mem, str::FromStr, sync};
 
+use base_db::target::TargetData;
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
-    DependencyBuilder, Env, FileChange, FileSet, LangCrateOrigin, SourceDatabase, SourceRoot,
-    Version, VfsPath, salsa,
+    DependencyBuilder, Env, FileChange, FileSet, FxIndexMap, LangCrateOrigin, SourceDatabase,
+    SourceRoot, Version, VfsPath, salsa,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -20,11 +21,10 @@ use hir_expand::{
 };
 use intern::{Symbol, sym};
 use paths::AbsPathBuf;
-use rustc_hash::FxHashMap;
 use span::{Edition, FileId, Span};
 use stdx::itertools::Itertools;
 use test_utils::{
-    CURSOR_MARKER, ESCAPED_CURSOR_MARKER, Fixture, FixtureWithProjectMeta, RangeOrOffset,
+    CURSOR_MARKER, ESCAPED_CURSOR_MARKER, Fixture, FixtureWithProjectMeta, MiniCore, RangeOrOffset,
     extract_range_or_offset,
 };
 use triomphe::Arc;
@@ -69,7 +69,12 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
         proc_macros: Vec<(String, ProcMacro)>,
     ) -> Self {
         let mut db = Self::default();
-        let fixture = ChangeFixture::parse_with_proc_macros(&db, ra_fixture, proc_macros);
+        let fixture = ChangeFixture::parse_with_proc_macros(
+            &db,
+            ra_fixture,
+            MiniCore::RAW_SOURCE,
+            proc_macros,
+        );
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         db
@@ -112,8 +117,10 @@ impl<DB: ExpandDatabase + SourceDatabase + Default + 'static> WithFixture for DB
 
 pub struct ChangeFixture {
     pub file_position: Option<(EditionedFileId, RangeOrOffset)>,
+    pub file_lines: Vec<usize>,
     pub files: Vec<EditionedFileId>,
     pub change: ChangeWithProcMacros,
+    pub sysroot_files: Vec<FileId>,
 }
 
 const SOURCE_ROOT_PREFIX: &str = "/";
@@ -123,12 +130,13 @@ impl ChangeFixture {
         db: &dyn salsa::Database,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> ChangeFixture {
-        Self::parse_with_proc_macros(db, ra_fixture, Vec::new())
+        Self::parse_with_proc_macros(db, ra_fixture, MiniCore::RAW_SOURCE, Vec::new())
     }
 
     pub fn parse_with_proc_macros(
         db: &dyn salsa::Database,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        minicore_raw: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
         let FixtureWithProjectMeta {
@@ -137,8 +145,11 @@ impl ChangeFixture {
             proc_macro_names,
             toolchain,
             target_data_layout,
+            target_arch,
         } = FixtureWithProjectMeta::parse(ra_fixture);
-        let target_data_layout = Ok(target_data_layout.into());
+        let target_data_layout = target_data_layout.into();
+        let target_arch = parse_target_arch(&target_arch);
+        let target = Ok(TargetData { arch: target_arch, data_layout: target_data_layout });
         let toolchain = Some({
             let channel = toolchain.as_deref().unwrap_or("stable");
             Version::parse(&format!("1.76.0-{channel}")).unwrap()
@@ -146,8 +157,10 @@ impl ChangeFixture {
         let mut source_change = FileChange::default();
 
         let mut files = Vec::new();
+        let mut sysroot_files = Vec::new();
+        let mut file_lines = Vec::new();
         let mut crate_graph = CrateGraphBuilder::default();
-        let mut crates = FxHashMap::default();
+        let mut crates = FxIndexMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
         let mut default_edition = Edition::CURRENT;
@@ -164,13 +177,14 @@ impl ChangeFixture {
 
         let mut file_position = None;
 
-        let crate_ws_data =
-            Arc::new(CrateWorkspaceData { data_layout: target_data_layout, toolchain });
+        let crate_ws_data = Arc::new(CrateWorkspaceData { target, toolchain });
 
         // FIXME: This is less than ideal
         let proc_macro_cwd = Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()));
 
         for entry in fixture {
+            file_lines.push(entry.line);
+
             let mut range_or_offset = None;
             let text = if entry.text.contains(CURSOR_MARKER) {
                 if entry.text.contains(ESCAPED_CURSOR_MARKER) {
@@ -238,7 +252,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_edition = meta.edition;
-                default_cfg.extend(meta.cfg.into_iter());
+                default_cfg.append(meta.cfg);
                 default_env.extend_from_other(&meta.env);
             }
 
@@ -249,37 +263,7 @@ impl ChangeFixture {
             file_id = FileId::from_raw(file_id.index() + 1);
         }
 
-        if crates.is_empty() {
-            let crate_root = default_crate_root
-                .expect("missing default crate root, specify a main.rs or lib.rs");
-            crate_graph.add_crate_root(
-                crate_root,
-                default_edition,
-                Some(CrateName::new("ra_test_fixture").unwrap().into()),
-                None,
-                default_cfg.clone(),
-                Some(default_cfg),
-                default_env,
-                CrateOrigin::Local { repo: None, name: None },
-                false,
-                proc_macro_cwd.clone(),
-                crate_ws_data.clone(),
-            );
-        } else {
-            for (from, to, prelude) in crate_deps {
-                let from_id = crates[&from];
-                let to_id = crates[&to];
-                let sysroot = crate_graph[to_id].basic.origin.is_lang();
-                crate_graph
-                    .add_dep(
-                        from_id,
-                        DependencyBuilder::with_prelude(to.clone(), to_id, prelude, sysroot),
-                    )
-                    .unwrap();
-            }
-        }
-
-        if let Some(mini_core) = mini_core {
+        let mini_core = mini_core.map(|mini_core| {
             let core_file = file_id;
             file_id = FileId::from_raw(file_id.index() + 1);
 
@@ -287,9 +271,9 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_owned()));
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(core_file, Some(mini_core.source_code()));
+            sysroot_files.push(core_file);
 
-            let all_crates = crate_graph.iter().collect::<Vec<_>>();
+            source_change.change_file(core_file, Some(mini_core.source_code(minicore_raw)));
 
             let core_crate = crate_graph.add_crate_root(
                 core_file,
@@ -308,16 +292,58 @@ impl ChangeFixture {
                 crate_ws_data.clone(),
             );
 
-            for krate in all_crates {
+            (
+                move || {
+                    DependencyBuilder::with_prelude(
+                        CrateName::new("core").unwrap(),
+                        core_crate,
+                        true,
+                        true,
+                    )
+                },
+                core_crate,
+            )
+        });
+
+        if crates.is_empty() {
+            let crate_root = default_crate_root
+                .expect("missing default crate root, specify a main.rs or lib.rs");
+            let root = crate_graph.add_crate_root(
+                crate_root,
+                default_edition,
+                Some(CrateName::new("ra_test_fixture").unwrap().into()),
+                None,
+                default_cfg.clone(),
+                Some(default_cfg),
+                default_env,
+                CrateOrigin::Local { repo: None, name: None },
+                false,
+                proc_macro_cwd.clone(),
+                crate_ws_data.clone(),
+            );
+            if let Some((mini_core, _)) = mini_core {
+                crate_graph.add_dep(root, mini_core()).unwrap();
+            }
+        } else {
+            // Insert minicore first to match with `project-model::workspace`
+            if let Some((mini_core, core_crate)) = mini_core {
+                let all_crates = crate_graph.iter().collect::<Vec<_>>();
+                for krate in all_crates {
+                    if krate == core_crate {
+                        continue;
+                    }
+                    crate_graph.add_dep(krate, mini_core()).unwrap();
+                }
+            }
+
+            for (from, to, prelude) in crate_deps {
+                let from_id = crates[&from];
+                let to_id = crates[&to];
+                let sysroot = crate_graph[to_id].basic.origin.is_lang();
                 crate_graph
                     .add_dep(
-                        krate,
-                        DependencyBuilder::with_prelude(
-                            CrateName::new("core").unwrap(),
-                            core_crate,
-                            true,
-                            true,
-                        ),
+                        from_id,
+                        DependencyBuilder::with_prelude(to.clone(), to_id, prelude, sysroot),
                     )
                     .unwrap();
             }
@@ -335,6 +361,8 @@ impl ChangeFixture {
                 VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_owned()),
             );
             roots.push(SourceRoot::new_library(fs));
+
+            sysroot_files.push(proc_lib_file);
 
             source_change.change_file(proc_lib_file, Some(source));
 
@@ -371,6 +399,8 @@ impl ChangeFixture {
             }
         }
 
+        let _ = file_id;
+
         let root = match current_source_root_kind {
             SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
             SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
@@ -382,7 +412,16 @@ impl ChangeFixture {
         change.source_change.set_roots(roots);
         change.source_change.set_crate_graph(crate_graph);
 
-        ChangeFixture { file_position, files, change }
+        ChangeFixture { file_position, file_lines, files, change, sysroot_files }
+    }
+}
+
+fn parse_target_arch(arch: &str) -> base_db::target::Arch {
+    use base_db::target::Arch::*;
+    match arch {
+        "wasm32" => Wasm32,
+        "wasm64" => Wasm64,
+        _ => Other,
     }
 }
 
@@ -627,11 +666,23 @@ impl FileMeta {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ForceNoneLangOrigin {
+    Yes,
+    No,
+}
+
 fn parse_crate(
     crate_str: String,
     current_source_root_kind: SourceRootKind,
     explicit_non_workspace_member: bool,
 ) -> (String, CrateOrigin, Option<String>) {
+    let (crate_str, force_non_lang_origin) = if let Some(s) = crate_str.strip_prefix("r#") {
+        (s.to_owned(), ForceNoneLangOrigin::Yes)
+    } else {
+        (crate_str, ForceNoneLangOrigin::No)
+    };
+
     // syntax:
     //   "my_awesome_crate"
     //   "my_awesome_crate@0.0.1,http://example.com"
@@ -646,16 +697,25 @@ fn parse_crate(
     let non_workspace_member = explicit_non_workspace_member
         || matches!(current_source_root_kind, SourceRootKind::Library);
 
-    let origin = match LangCrateOrigin::from(&*name) {
-        LangCrateOrigin::Other => {
-            let name = Symbol::intern(&name);
-            if non_workspace_member {
-                CrateOrigin::Library { repo, name }
-            } else {
-                CrateOrigin::Local { repo, name: Some(name) }
-            }
+    let origin = if force_non_lang_origin == ForceNoneLangOrigin::Yes {
+        let name = Symbol::intern(&name);
+        if non_workspace_member {
+            CrateOrigin::Library { repo, name }
+        } else {
+            CrateOrigin::Local { repo, name: Some(name) }
         }
-        origin => CrateOrigin::Lang(origin),
+    } else {
+        match LangCrateOrigin::from(&*name) {
+            LangCrateOrigin::Other => {
+                let name = Symbol::intern(&name);
+                if non_workspace_member {
+                    CrateOrigin::Library { repo, name }
+                } else {
+                    CrateOrigin::Local { repo, name: Some(name) }
+                }
+            }
+            origin => CrateOrigin::Lang(origin),
+        }
     };
 
     (name, origin, version)
@@ -955,12 +1015,12 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
         _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         for tt in subtree.token_trees().flat_tokens() {
-            if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
-                if ident.sym == sym::cfg || ident.sym == sym::cfg_attr {
-                    return Err(ProcMacroExpansionError::Panic(
-                        "cfg or cfg_attr found in DisallowCfgProcMacroExpander".to_owned(),
-                    ));
-                }
+            if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt
+                && (ident.sym == sym::cfg || ident.sym == sym::cfg_attr)
+            {
+                return Err(ProcMacroExpansionError::Panic(
+                    "cfg or cfg_attr found in DisallowCfgProcMacroExpander".to_owned(),
+                ));
             }
         }
         Ok(subtree.clone())

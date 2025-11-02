@@ -116,5 +116,28 @@ LL | |             None
 LL | |         });
    | |_________^ help: try: `(i % 2 == 0).then_some(closure_fn)`
 
-error: aborting due to 11 previous errors
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:231:13
+   |
+LL | /             if self.count < 5 {
+LL | |                 self.count += 1;
+LL | |                 Some(self.count)
+LL | |             } else {
+LL | |                 None
+LL | |             }
+   | |_____________^ help: try: `(self.count < 5).then(||  { self.count += 1; self.count })`
+
+error: this could be simplified with `bool::then`
+  --> tests/ui/if_then_some_else_none.rs:249:13
+   |
+LL |       let _ = if true {
+   |  _____________^
+LL | |         mac!();
+LL | |         Some(42)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^ help: try: `true.then(||  { mac!(); 42 })`
+
+error: aborting due to 13 previous errors
 

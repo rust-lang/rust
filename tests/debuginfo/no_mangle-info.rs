@@ -1,5 +1,6 @@
 //@ compile-flags:-g
 //@ min-gdb-version: 10.1
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run

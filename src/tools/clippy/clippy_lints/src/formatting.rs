@@ -93,6 +93,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for an `if` expression followed by either a block or another `if` that
+    /// looks like it should have an `else` between them.
+    ///
+    /// ### Why is this bad?
+    /// This is probably some refactoring remnant, even if the code is correct, it
+    /// might look confusing.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// if foo {
+    /// } { // looks like an `else` is missing here
+    /// }
+    ///
+    /// if foo {
+    /// } if bar { // looks like an `else` is missing here
+    /// }
+    /// ```
+    #[clippy::version = "1.91.0"]
+    pub POSSIBLE_MISSING_ELSE,
+    suspicious,
+    "possibly missing `else`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for possible missing comma in an array. It lints if
     /// an array element is a binary operator expression and it lies on two lines.
     ///
@@ -116,6 +141,7 @@ declare_lint_pass!(Formatting => [
     SUSPICIOUS_ASSIGNMENT_FORMATTING,
     SUSPICIOUS_UNARY_OP_FORMATTING,
     SUSPICIOUS_ELSE_FORMATTING,
+    POSSIBLE_MISSING_ELSE,
     POSSIBLE_MISSING_COMMA
 ]);
 
@@ -307,7 +333,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
 
         span_lint_and_note(
             cx,
-            SUSPICIOUS_ELSE_FORMATTING,
+            POSSIBLE_MISSING_ELSE,
             else_span,
             format!("this looks like {looks_like} but the `else` is missing"),
             None,

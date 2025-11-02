@@ -3,8 +3,6 @@
 Thank you for your interest in contributing to Rust! There are many ways to
 contribute, and we appreciate all of them.
 
-<!-- toc -->
-
 If this is your first time contributing, the [walkthrough] chapter can give you a good example of
 how a typical contribution would go.
 
@@ -13,7 +11,6 @@ quick guide for the most useful things. For more information, [see this
 chapter on how to build and run the compiler](./building/how-to-build-and-run.md).
 
 [internals]: https://internals.rust-lang.org
-[rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
 [coc]: https://www.rust-lang.org/policies/code-of-conduct
 [walkthrough]: ./walkthrough.md
@@ -22,8 +19,7 @@ chapter on how to build and run the compiler](./building/how-to-build-and-run.md
 ## Asking Questions
 
 If you have questions, please make a post on the [Rust Zulip server][rust-zulip] or
-[internals.rust-lang.org][internals]. If you are contributing to Rustup, be aware they are not on
-Zulip - you can ask questions in `#wg-rustup` [on Discord][rust-discord].
+[internals.rust-lang.org][internals].
 See the [list of teams and working groups][governance] and [the Community page][community] on the
 official website for more resources.
 
@@ -32,18 +28,22 @@ official website for more resources.
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
-The compiler team (or `t-compiler`) usually hangs out in Zulip [in this
-"stream"][z]; it will be easiest to get questions answered there.
+The compiler team (or `t-compiler`) usually hangs out in Zulip in
+[the #t-compiler channel][z-t-compiler];
+questions about how the compiler works can go in [#t-compiler/help][z-help].
 
-[z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[z-t-compiler]: https://rust-lang.zulipchat.com/#narrow/channel/131828-t-compiler
+[z-help]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp
 
 **Please ask questions!** A lot of people report feeling that they are "wasting
-expert time", but nobody on `t-compiler` feels this way. Contributors are
+expert's time", but nobody on `t-compiler` feels this way. Contributors are
 important to us.
 
 Also, if you feel comfortable, prefer public topics, as this means others can
 see the questions and answers, and perhaps even integrate them back into this
 guide :)
+
+**Tip**: If you're not a native English speaker and feel unsure about writing, try using a translator to help. But avoid using LLM tools that generate long, complex words. In daily teamwork, **simple and clear words** are best for easy understanding. Even small typos or grammar mistakes can make you seem more human, and people connect better with humans.
 
 ### Experts
 
@@ -98,7 +98,7 @@ Some work is too large to be done by a single person. In this case, it's common 
 issues" to co-ordinate the work between contributors. Here are some example tracking issues where
 it's easy to pick up work without a large time commitment:
 
-- [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
+- *Add recurring work items here.*
 
 If you find more recurring work, please feel free to add it here!
 
@@ -164,15 +164,12 @@ incredibly helpful:
 - [Triaging issues][triage]: categorizing, replicating, and minimizing issues is very helpful to the Rust maintainers.
 - [Working groups][wg]: there are a bunch of working groups on a wide variety
   of rust-related things.
-- Answer questions in the _Get Help!_ channels on the [Rust Discord
-  server][rust-discord], on [users.rust-lang.org][users], or on
-  [StackOverflow][so].
+- Answer questions on [users.rust-lang.org][users], or on [Stack Overflow][so].
 - Participate in the [RFC process](https://github.com/rust-lang/rfcs).
 - Find a [requested community library][community-library], build it, and publish
   it to [Crates.io](http://crates.io). Easier said than done, but very, very
   valuable!
 
-[rust-discord]: https://discord.gg/rust-lang
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library

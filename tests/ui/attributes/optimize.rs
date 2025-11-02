@@ -5,11 +5,11 @@
 
 //@ edition: 2018
 
-#[optimize(speed)] //~ ERROR attribute applied to an invalid target
+#[optimize(speed)] //~ ERROR attribute cannot be used on
 struct F;
 
 fn invalid() {
-    #[optimize(speed)] //~ ERROR attribute applied to an invalid target
+    #[optimize(speed)] //~ ERROR attribute cannot be used on
     {
         1
     };
@@ -18,10 +18,10 @@ fn invalid() {
 #[optimize(speed)]
 fn valid() {}
 
-#[optimize(speed)] //~ ERROR attribute applied to an invalid target
+#[optimize(speed)] //~ ERROR attribute cannot be used on
 mod valid_module {}
 
-#[optimize(speed)] //~ ERROR attribute applied to an invalid target
+#[optimize(speed)] //~ ERROR attribute cannot be used on
 impl F {}
 
 fn main() {

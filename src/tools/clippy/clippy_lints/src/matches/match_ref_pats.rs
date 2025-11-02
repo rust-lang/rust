@@ -17,6 +17,11 @@ where
         return;
     }
 
+    // `!` cannot be deref-ed
+    if cx.typeck_results().expr_ty(scrutinee).is_never() {
+        return;
+    }
+
     let (first_sugg, msg, title);
     let ctxt = expr.span.ctxt();
     let mut app = Applicability::Unspecified;

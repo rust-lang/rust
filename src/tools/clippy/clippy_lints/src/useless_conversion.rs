@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
-use clippy_utils::ty::{get_type_diagnostic_name, is_copy, is_type_diagnostic_item, same_type_and_consts};
-use clippy_utils::{
-    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local, sym,
-};
+use clippy_utils::ty::{is_copy, same_type_modulo_regions};
+use clippy_utils::{get_parent_expr, is_ty_alias, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
@@ -98,7 +97,7 @@ fn into_iter_bound<'tcx>(
             if tr.def_id() == into_iter_did {
                 into_iter_span = Some(*span);
             } else {
-                let tr = cx.tcx.erase_regions(tr);
+                let tr = cx.tcx.erase_and_anonymize_regions(tr);
                 if tr.has_escaping_bound_vars() {
                     return None;
                 }
@@ -133,7 +132,7 @@ fn into_iter_bound<'tcx>(
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
-        && is_trait_method(cx, expr, sym::IntoIterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && name.ident.name == sym::into_iter
     {
         Some(recv)
@@ -181,10 +180,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     path.ident.name,
                     sym::map | sym::map_err | sym::map_break | sym::map_continue
                 ) && has_eligible_receiver(cx, recv, e)
-                    && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
+                    && matches!(
+                        arg.res(cx).assoc_parent(cx).opt_diag_name(cx),
+                        Some(sym::Into | sym::From)
+                    )
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
                     && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
-                    && same_type_and_consts(from_ty, to_ty)
+                    && same_type_modulo_regions(from_ty, to_ty)
                 {
                     span_lint_and_then(
                         cx,
@@ -204,10 +206,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if is_trait_method(cx, e, sym::Into) && name.ident.name == sym::into {
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) && name.ident.name == sym::into {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
-                    if same_type_and_consts(a, b) {
+                    if same_type_modulo_regions(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = snippet_with_context(cx, recv.span, e.span.ctxt(), "<expr>", &mut app).0;
                         span_lint_and_sugg(
@@ -308,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
                     }
 
-                    if let Some(id) = path_to_local(recv)
+                    if let Some(id) = recv.res_local_id()
                         && let Node::Pat(pat) = cx.tcx.hir_node(id)
                         && let PatKind::Binding(ann, ..) = pat.kind
                         && ann != BindingMode::MUT
@@ -324,7 +326,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     // If the types are identical then .into_iter() can be removed, unless the type
                     // implements Copy, in which case .into_iter() returns a copy of the receiver and
                     // cannot be safely omitted.
-                    if same_type_and_consts(a, b) && !is_copy(cx, b) {
+                    if same_type_modulo_regions(a, b) && !is_copy(cx, b) {
                         // Below we check if the parent method call meets the following conditions:
                         // 1. First parameter is `&mut self` (requires mutable reference)
                         // 2. Second parameter implements the `FnMut` trait (e.g., Iterator::any)
@@ -364,14 +366,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if is_trait_method(cx, e, sym::TryInto)
+                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
                     && name.ident.name == sym::try_into
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
-                    && is_type_diagnostic_item(cx, a, sym::Result)
+                    && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
-                    && same_type_and_consts(a_type, b)
+                    && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
                         cx,
@@ -386,16 +388,17 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
             ExprKind::Call(path, [arg]) => {
                 if let ExprKind::Path(ref qpath) = path.kind
-                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && !is_ty_alias(qpath)
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(arg);
-                    if cx.tcx.is_diagnostic_item(sym::try_from_fn, def_id)
-                        && is_type_diagnostic_item(cx, a, sym::Result)
+                    if name == sym::try_from_fn
+                        && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
-                        && same_type_and_consts(a_type, b)
+                        && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
                         span_lint_and_help(
@@ -406,9 +409,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    }
-
-                    if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
+                    } else if name == sym::from_fn && same_type_modulo_regions(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
@@ -440,13 +441,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 }
 
 fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    if is_inherent_method_call(cx, expr) {
+    if cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
         matches!(
-            get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv)),
+            cx.typeck_results().expr_ty(recv).opt_diag_name(cx),
             Some(sym::Option | sym::Result | sym::ControlFlow)
         )
     } else {
-        is_trait_method(cx, expr, sym::Iterator)
+        cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
     }
 }
 

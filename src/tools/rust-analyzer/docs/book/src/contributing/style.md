@@ -49,8 +49,8 @@ In this case, we'll probably ask you to split API changes into a separate PR.
 Changes of the third group should be pretty rare, so we don't specify any specific process for them.
 That said, adding an innocent-looking `pub use` is a very simple way to break encapsulation, keep an eye on it!
 
-Note: if you enjoyed this abstract hand-waving about boundaries, you might appreciate
-https://www.tedinski.com/2018/02/06/system-boundaries.html
+Note: if you enjoyed this abstract hand-waving about boundaries, you might appreciate [this post](https://www.tedinski.com/2018/02/06/system-boundaries.html).
+
 
 ## Crates.io Dependencies
 
@@ -101,7 +101,7 @@ Including a description and GIF suitable for the changelog means less work for t
 
 ## Clippy
 
-We use Clippy to improve the code, but if some lints annoy you, allow them in the [Cargo.toml](../../Cargo.toml) [workspace.lints.clippy] section.
+We use Clippy to improve the code, but if some lints annoy you, allow them in the [Cargo.toml](https://github.com/rust-lang/rust-analyzer/blob/master/Cargo.toml) [workspace.lints.clippy] section.
 
 # Code
 
@@ -231,7 +231,7 @@ fn is_string_literal(s: &str) -> bool {
 }
 ```
 
-In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and used in `foo`.
+In the "Bad" version, the precondition that `1` and `s.len() - 1` are valid string literal boundaries is checked in `is_string_literal` but used in `main`.
 In the "Good" version, the precondition check and usage are checked in the same block, and then encoded in the types.
 
 **Rationale:** non-local code properties degrade under change.
@@ -270,6 +270,8 @@ fn f() {
     ...
 }
 ```
+
+See also [this post](https://matklad.github.io/2023/11/15/push-ifs-up-and-fors-down.html)
 
 ## Assertions
 
@@ -608,7 +610,7 @@ Avoid making a lot of code type parametric, *especially* on the boundaries betwe
 
 ```rust
 // GOOD
-fn frobnicate(f: impl FnMut()) {
+fn frobnicate(mut f: impl FnMut()) {
     frobnicate_impl(&mut f)
 }
 fn frobnicate_impl(f: &mut dyn FnMut()) {
@@ -616,7 +618,7 @@ fn frobnicate_impl(f: &mut dyn FnMut()) {
 }
 
 // BAD
-fn frobnicate(f: impl FnMut()) {
+fn frobnicate(mut f: impl FnMut()) {
     // lots of code
 }
 ```
@@ -975,7 +977,7 @@ Don't use the `ref` keyword.
 **Rationale:** consistency & simplicity.
 `ref` was required before [match ergonomics](https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md).
 Today, it is redundant.
-Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, and is simpler (does not require a keyword).
+Between `ref` and match ergonomics, the latter is more ergonomic in most cases, and is simpler (does not require a keyword).
 
 ## Empty Match Arms
 

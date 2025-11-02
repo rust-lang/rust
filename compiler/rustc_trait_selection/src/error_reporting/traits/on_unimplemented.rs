@@ -44,8 +44,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             self.tcx.for_each_relevant_impl(trait_pred.def_id(), trait_self_ty, |def_id| {
                 let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
-                let impl_trait_ref =
-                    tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
+                let impl_trait_ref = tcx.impl_trait_ref(def_id).instantiate(tcx, impl_args);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
@@ -99,7 +98,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        long_ty_file: &mut Option<PathBuf>,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return OnUnimplementedNote::default();
@@ -237,7 +236,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 }
             }
-            if let ty::Dynamic(traits, _, _) = self_ty.kind() {
+            if let ty::Dynamic(traits, _) = self_ty.kind() {
                 for t in traits.iter() {
                     if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
                         self_types.push(self.tcx.def_path_str(trait_ref.def_id));
@@ -281,7 +280,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
                         {
-                            self.tcx.short_string(ty, long_ty_file)
+                            self.tcx.short_string(ty, long_ty_path)
                         } else {
                             trait_pred.trait_ref.args[param.index as usize].to_string()
                         }
@@ -309,7 +308,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 pub struct OnUnimplementedFormatString {
     /// Symbol of the format string, i.e. `"content"`
     symbol: Symbol,
-    ///The span of the format string, i.e. `"content"`
+    /// The span of the format string, i.e. `"content"`
     span: Span,
     is_diagnostic_namespace_variant: bool,
 }

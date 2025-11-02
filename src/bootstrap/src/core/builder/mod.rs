@@ -1,7 +1,7 @@
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{self, Debug, Write};
+use std::fmt::{Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -16,18 +16,21 @@ use tracing::instrument;
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink};
+use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
 };
+use crate::core::builder::cli_paths::CLIStepPath;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate, trace};
 
 mod cargo;
-
+mod cli_paths;
 #[cfg(test)]
 mod tests;
 
@@ -77,7 +80,7 @@ impl Deref for Builder<'_> {
 /// type's [`Debug`] implementation.
 ///
 /// (Trying to debug-print `dyn Any` results in the unhelpful `"Any { .. }"`.)
-trait AnyDebug: Any + Debug {}
+pub trait AnyDebug: Any + Debug {}
 impl<T: Any + Debug> AnyDebug for T {}
 impl dyn AnyDebug {
     /// Equivalent to `<dyn Any>::downcast_ref`.
@@ -99,8 +102,13 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// by `Step::should_run`.
     const DEFAULT: bool = false;
 
-    /// If true, then this rule should be skipped if --target was specified, but --host was not
-    const ONLY_HOSTS: bool = false;
+    /// If this value is true, then the values of `run.target` passed to the `make_run` function of
+    /// this Step will be determined based on the `--host` flag.
+    /// If this value is false, then they will be determined based on the `--target` flag.
+    ///
+    /// A corollary of the above is that if this is set to true, then the step will be skipped if
+    /// `--target` was specified, but `--host` was explicitly set to '' (empty string).
+    const IS_HOST: bool = false;
 
     /// Primary function to implement `Step` logic.
     ///
@@ -138,10 +146,9 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 }
 
 /// Metadata that describes an executed step, mostly for testing and tracing.
-#[allow(unused)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
-    name: &'static str,
+    name: String,
     kind: Kind,
     target: TargetSelection,
     built_by: Option<Compiler>,
@@ -151,28 +158,36 @@ pub struct StepMetadata {
 }
 
 impl StepMetadata {
-    pub fn build(name: &'static str, target: TargetSelection) -> Self {
+    pub fn build(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Build)
     }
 
-    pub fn check(name: &'static str, target: TargetSelection) -> Self {
+    pub fn check(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Check)
     }
 
-    pub fn doc(name: &'static str, target: TargetSelection) -> Self {
+    pub fn clippy(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Clippy)
+    }
+
+    pub fn doc(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Doc)
     }
 
-    pub fn dist(name: &'static str, target: TargetSelection) -> Self {
+    pub fn dist(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Dist)
     }
 
-    pub fn test(name: &'static str, target: TargetSelection) -> Self {
+    pub fn test(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Test)
     }
 
-    fn new(name: &'static str, target: TargetSelection, kind: Kind) -> Self {
-        Self { name, kind, target, built_by: None, stage: None, metadata: None }
+    pub fn run(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Run)
+    }
+
+    fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
+        Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
     }
 
     pub fn built_by(mut self, compiler: Compiler) -> Self {
@@ -196,6 +211,14 @@ impl StepMetadata {
             // For std, its stage corresponds to the stage of the compiler that builds it.
             // For everything else, a stage N things gets built by a stage N-1 compiler.
             .map(|compiler| if self.name == "std" { compiler.stage } else { compiler.stage + 1 }))
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_target(&self) -> TargetSelection {
+        self.target
     }
 }
 
@@ -273,7 +296,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
         return "".into();
     }
 
-    let mut descr = String::from(" {");
+    let mut descr = String::from("{");
     descr.push_str(crates[0].as_ref());
     for krate in &crates[1..] {
         descr.push_str(", ");
@@ -285,7 +308,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
 
 struct StepDescription {
     default: bool,
-    only_hosts: bool,
+    is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
@@ -402,92 +425,11 @@ impl PathSet {
     }
 }
 
-const PATH_REMAP: &[(&str, &[&str])] = &[
-    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
-    // actual path is `proc-macro-srv-cli`
-    ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
-    // Make `x test tests` function the same as `x t tests/*`
-    (
-        "tests",
-        &[
-            // tidy-alphabetical-start
-            "tests/assembly-llvm",
-            "tests/codegen-llvm",
-            "tests/codegen-units",
-            "tests/coverage",
-            "tests/coverage-run-rustdoc",
-            "tests/crashes",
-            "tests/debuginfo",
-            "tests/incremental",
-            "tests/mir-opt",
-            "tests/pretty",
-            "tests/run-make",
-            "tests/rustdoc",
-            "tests/rustdoc-gui",
-            "tests/rustdoc-js",
-            "tests/rustdoc-js-std",
-            "tests/rustdoc-json",
-            "tests/rustdoc-ui",
-            "tests/ui",
-            "tests/ui-fulldeps",
-            // tidy-alphabetical-end
-        ],
-    ),
-];
-
-fn remap_paths(paths: &mut Vec<PathBuf>) {
-    let mut remove = vec![];
-    let mut add = vec![];
-    for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
-    {
-        for &(search, replace) in PATH_REMAP {
-            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
-            if path.trim_matches(std::path::is_separator) == search {
-                remove.push(i);
-                add.extend(replace.iter().map(PathBuf::from));
-                break;
-            }
-        }
-    }
-    remove.sort();
-    remove.dedup();
-    for idx in remove.into_iter().rev() {
-        paths.remove(idx);
-    }
-    paths.append(&mut add);
-}
-
-#[derive(Clone, PartialEq)]
-struct CLIStepPath {
-    path: PathBuf,
-    will_be_executed: bool,
-}
-
-#[cfg(test)]
-impl CLIStepPath {
-    fn will_be_executed(mut self, will_be_executed: bool) -> Self {
-        self.will_be_executed = will_be_executed;
-        self
-    }
-}
-
-impl Debug for CLIStepPath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.path.display())
-    }
-}
-
-impl From<PathBuf> for CLIStepPath {
-    fn from(path: PathBuf) -> Self {
-        Self { path, will_be_executed: false }
-    }
-}
-
 impl StepDescription {
     fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
             default: S::DEFAULT,
-            only_hosts: S::ONLY_HOSTS,
+            is_host: S::IS_HOST,
             should_run: S::should_run,
             make_run: S::make_run,
             name: std::any::type_name::<S>(),
@@ -503,7 +445,7 @@ impl StepDescription {
         }
 
         // Determine the targets participating in this rule.
-        let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
+        let targets = if self.is_host { &builder.hosts } else { &builder.targets };
 
         for target in targets {
             let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
@@ -522,7 +464,7 @@ impl StepDescription {
         if !builder.config.skip.is_empty()
             && !matches!(builder.config.get_dry_run(), DryRun::SelfCheck)
         {
-            builder.verbose(|| {
+            builder.do_if_verbose(|| {
                 println!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
@@ -530,132 +472,6 @@ impl StepDescription {
             });
         }
         false
-    }
-
-    fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
-        let should_runs = v
-            .iter()
-            .map(|desc| (desc.should_run)(ShouldRun::new(builder, desc.kind)))
-            .collect::<Vec<_>>();
-
-        if builder.download_rustc() && (builder.kind == Kind::Dist || builder.kind == Kind::Install)
-        {
-            eprintln!(
-                "ERROR: '{}' subcommand is incompatible with `rust.download-rustc`.",
-                builder.kind.as_str()
-            );
-            crate::exit!(1);
-        }
-
-        // sanity checks on rules
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            assert!(
-                !should_run.paths.is_empty(),
-                "{:?} should have at least one pathset",
-                desc.name
-            );
-        }
-
-        if paths.is_empty() || builder.config.include_default_paths {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
-                if desc.default && should_run.is_really_default() {
-                    desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
-                }
-            }
-        }
-
-        // Attempt to resolve paths to be relative to the builder source directory.
-        let mut paths: Vec<PathBuf> = paths
-            .iter()
-            .map(|p| {
-                // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-                if !p.exists() {
-                    return p.clone();
-                }
-
-                // Make the path absolute, strip the prefix, and convert to a PathBuf.
-                match std::path::absolute(p) {
-                    Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
-                    Err(e) => {
-                        eprintln!("ERROR: {e:?}");
-                        panic!("Due to the above error, failed to resolve path: {p:?}");
-                    }
-                }
-            })
-            .collect();
-
-        remap_paths(&mut paths);
-
-        // Handle all test suite paths.
-        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
-        paths.retain(|path| {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(path) {
-                    desc.maybe_run(builder, vec![suite.clone()]);
-                    return false;
-                }
-            }
-            true
-        });
-
-        if paths.is_empty() {
-            return;
-        }
-
-        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
-        let mut path_lookup: Vec<(CLIStepPath, bool)> =
-            paths.clone().into_iter().map(|p| (p, false)).collect();
-
-        // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
-        // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
-        // the steps.
-        let mut steps_to_run = vec![];
-
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
-
-            // This value is used for sorting the step execution order.
-            // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
-            //
-            // If we resolve the step's path from the given CLI input, this value will be updated with
-            // the step's actual index.
-            let mut closest_index = usize::MAX;
-
-            // Find the closest index from the original list of paths given by the CLI input.
-            for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
-                if !*is_used && !paths.contains(path) {
-                    closest_index = index;
-                    *is_used = true;
-                    break;
-                }
-            }
-
-            steps_to_run.push((closest_index, desc, pathsets));
-        }
-
-        // Sort the steps before running them to respect the CLI order.
-        steps_to_run.sort_by_key(|(index, _, _)| *index);
-
-        // Handle all PathSets.
-        for (_index, desc, pathsets) in steps_to_run {
-            if !pathsets.is_empty() {
-                desc.maybe_run(builder, pathsets);
-            }
-        }
-
-        paths.retain(|p| !p.will_be_executed);
-
-        if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
-            eprintln!(
-                "HELP: run `x.py {} --help --verbose` to show a list of available paths",
-                builder.kind.as_str()
-            );
-            eprintln!(
-                "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
-            );
-            crate::exit!(1);
-        }
     }
 }
 
@@ -912,7 +728,7 @@ impl Step for Libdir {
             // Sysroot`).
             if !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
-                builder.verbose(|| {
+                builder.do_if_verbose(|| {
                     eprintln!(
                         "Removing sysroot {} to avoid caching bugs",
                         sysroot_target_libdir.display()
@@ -938,6 +754,9 @@ impl Step for Libdir {
     }
 }
 
+#[cfg(feature = "tracing")]
+pub const STEP_SPAN_TARGET: &str = "STEP";
+
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
@@ -950,7 +769,8 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Rustc,
                 compile::Assemble,
-                compile::CodegenBackend,
+                compile::CraneliftCodegenBackend,
+                compile::GccCodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -1020,7 +840,8 @@ impl<'a> Builder<'a> {
             Kind::Check | Kind::Fix => describe!(
                 check::Rustc,
                 check::Rustdoc,
-                check::CodegenBackend,
+                check::CraneliftCodegenBackend,
+                check::GccCodegenBackend,
                 check::Clippy,
                 check::Miri,
                 check::CargoMiri,
@@ -1031,9 +852,12 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::RustdocGuiTest,
                 check::FeaturesStatusDump,
                 check::CoverageDump,
                 check::Linkchecker,
+                check::BumpStage0,
+                check::Tidy,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1100,11 +924,11 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
+                test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
-            Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
+            Kind::Bench => describe!(test::Crate, test::CrateLibrustc, test::CrateRustdoc),
             Kind::Doc => describe!(
                 doc::UnstableBook,
                 doc::UnstableBookGen,
@@ -1141,7 +965,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::CodegenBackend,
+                dist::CraneliftCodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -1180,6 +1004,8 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
+                install::RustcCodegenCranelift,
+                install::LlvmBitcodeLinker
             ),
             Kind::Run => describe!(
                 run::BuildManifest,
@@ -1195,6 +1021,7 @@ impl<'a> Builder<'a> {
                 run::CyclicStep,
                 run::CoverageDump,
                 run::Rustfmt,
+                run::GenerateHelp,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1257,7 +1084,7 @@ impl<'a> Builder<'a> {
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
         let (kind, paths) = match build.config.cmd {
-            Subcommand::Build => (Kind::Build, &paths[..]),
+            Subcommand::Build { .. } => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { .. } => (Kind::Clippy, &paths[..]),
             Subcommand::Fix => (Kind::Fix, &paths[..]),
@@ -1285,8 +1112,9 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
 
-    pub fn default_doc(&self, paths: &[PathBuf]) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
+    /// Run all default documentation steps to build documentation.
+    pub fn run_default_doc_steps(&self) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1302,7 +1130,7 @@ impl<'a> Builder<'a> {
     }
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
-        StepDescription::run(v, self, paths);
+        cli_paths::match_paths_to_steps_and_run(self, v, paths);
     }
 
     /// Returns if `std` should be statically linked into `rustc_driver`.
@@ -1330,6 +1158,30 @@ impl<'a> Builder<'a> {
     )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
+    }
+
+    /// This function can be used to provide a build compiler for building
+    /// the standard library, in order to avoid unnecessary rustc builds in case where std uplifting
+    /// would happen anyway.
+    ///
+    /// This is an important optimization mainly for CI.
+    ///
+    /// Normally, to build stage N libstd, we need stage N rustc.
+    /// However, if we know that we will uplift libstd from stage 1 anyway, building the stage N
+    /// rustc can be wasteful.
+    /// In particular, if we do a cross-compiling dist stage 2 build from target1 to target2,
+    /// we need:
+    /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 rustc)
+    /// - stage 2 rustc for target2
+    ///
+    /// However, without this optimization, we would also build stage 2 rustc for **target1**,
+    /// which is completely wasteful.
+    pub fn compiler_for_std(&self, stage: u32) -> Compiler {
+        if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
+            self.compiler(1, self.host_target)
+        } else {
+            self.compiler(stage, self.host_target)
+        }
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1388,6 +1240,8 @@ impl<'a> Builder<'a> {
     /// The standard library will be linked to the sysroot of the passed compiler.
     ///
     /// Prefer using this method rather than manually invoking `Std::new`.
+    ///
+    /// Returns an optional build stamp, if libstd was indeed built.
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1401,29 +1255,38 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
-    pub fn std(&self, compiler: Compiler, target: TargetSelection) {
+    pub fn std(&self, compiler: Compiler, target: TargetSelection) -> Option<BuildStamp> {
         // FIXME: make the `Std` step return some type-level "proof" that std was indeed built,
         // and then require passing that to all Cargo invocations that we do.
 
-        // The "stage 0" std is always precompiled and comes with the stage0 compiler, so we have
-        // special logic for it, to avoid creating needless and confusing Std steps that don't
+        // The "stage 0" std is almost always precompiled and comes with the stage0 compiler, so we
+        // have special logic for it, to avoid creating needless and confusing Std steps that don't
         // actually build anything.
+        // We only allow building the stage0 stdlib if we do a local rebuild, so the stage0 compiler
+        // actually comes from in-tree sources, and we're cross-compiling, so the stage0 for the
+        // given `target` is not available.
         if compiler.stage == 0 {
             if target != compiler.host {
-                panic!(
-                    r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
+                if self.local_rebuild {
+                    self.ensure(Std::new(compiler, target))
+                } else {
+                    panic!(
+                        r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
 You have to build a stage1 compiler for `{}` first, and then use it to build a standard library for `{target}`.
+Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler built from in-tree sources.
 ",
-                    compiler.host
-                )
+                        compiler.host
+                    )
+                }
+            } else {
+                // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
+                self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
+                None
             }
-
-            // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
-            self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
         } else {
             // This step both compiles the std and links it into the compiler's sysroot.
             // Yes, it's quite magical and side-effecty.. would be nice to refactor later.
-            self.ensure(Std::new(compiler, target));
+            self.ensure(Std::new(compiler, target))
         }
     }
 
@@ -1526,6 +1389,14 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         }
     }
 
+    /// Gets a command to run the compiler specified, including the dynamic library
+    /// path in case the executable has not been build with `rpath` enabled.
+    pub fn rustc_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        let mut cmd = command(self.rustc(compiler));
+        self.add_rustc_lib_path(compiler, &mut cmd);
+        cmd
+    }
+
     /// Gets the paths to all of the compiler's codegen backends.
     fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
         fs::read_dir(self.sysroot_codegen_backends(compiler))
@@ -1535,12 +1406,43 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             .map(|entry| entry.path())
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler }).tool_path
+    /// Returns a path to `Rustdoc` that "belongs" to the `target_compiler`.
+    /// It can be either a stage0 rustdoc or a locally built rustdoc that *links* to
+    /// `target_compiler`.
+    pub fn rustdoc_for_compiler(&self, target_compiler: Compiler) -> PathBuf {
+        self.ensure(tool::Rustdoc { target_compiler })
     }
 
-    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        if run_compiler.stage == 0 {
+    pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
+        assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
+
+        let compilers =
+            RustcPrivateCompilers::new(self, run_compiler.stage, self.build.host_target);
+        assert_eq!(run_compiler, compilers.target_compiler());
+
+        // Prepare the tools
+        let miri = self.ensure(tool::Miri::from_compilers(compilers));
+        let cargo_miri = self.ensure(tool::CargoMiri::from_compilers(compilers));
+        // Invoke cargo-miri, make sure it can find miri and cargo.
+        let mut cmd = command(cargo_miri.tool_path);
+        cmd.env("MIRI", &miri.tool_path);
+        cmd.env("CARGO", &self.initial_cargo);
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
+        // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
+        // are actually living one stage up, i.e. we are running `stage1-tools-bin/miri` with the
+        // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
+        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
+        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
+        // added to the PATH due to the stage mismatch.
+        // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
+        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
+        cmd
+    }
+
+    /// Create a Cargo command for running Clippy.
+    /// The used Clippy is (or in the case of stage 0, already was) built using `build_compiler`.
+    pub fn cargo_clippy_cmd(&self, build_compiler: Compiler) -> BootstrapCommand {
+        if build_compiler.stage == 0 {
             let cargo_clippy = self
                 .config
                 .initial_cargo_clippy
@@ -1552,39 +1454,19 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             return cmd;
         }
 
-        let _ =
-            self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.host_target });
-        let cargo_clippy = self
-            .ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.host_target });
+        // If we're linting something with build_compiler stage N, we want to build Clippy stage N
+        // and use that to lint it. That is why we use the `build_compiler` as the target compiler
+        // for RustcPrivateCompilers. We will use build compiler stage N-1 to build Clippy stage N.
+        let compilers = RustcPrivateCompilers::from_target_compiler(self, build_compiler);
+
+        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
+        let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
         let mut dylib_path = helpers::dylib_path();
-        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
+        dylib_path.insert(0, self.sysroot(build_compiler).join("lib"));
 
         let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
-        cmd
-    }
-
-    pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
-        // Prepare the tools
-        let miri =
-            self.ensure(tool::Miri { compiler: run_compiler, target: self.build.host_target });
-        let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.host_target });
-        // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = command(cargo_miri.tool_path);
-        cmd.env("MIRI", &miri.tool_path);
-        cmd.env("CARGO", &self.initial_cargo);
-        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
-        // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
-        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
-        // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
-        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
-        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
-        // added to the PATH due to the stage mismatch.
-        // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
-        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
         cmd
     }
 
@@ -1596,7 +1478,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             // equivalently to rustc.
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(compiler))
+            .env("RUSTDOC_REAL", self.rustdoc_for_compiler(compiler))
             .env("RUSTC_BOOTSTRAP", "1");
 
         cmd.arg("-Wrustdoc::invalid_codeblock_attributes");
@@ -1605,7 +1487,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 
@@ -1613,11 +1495,15 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
+    ///
+    /// FIXME(@kobzol)
+    /// **WARNING**: This actually returns the **HOST** LLVM config, not LLVM config for the given
+    /// *target*.
     pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
-            let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
-            if llvm_config.is_file() {
-                return Some(llvm_config);
+            let llvm::LlvmResult { host_llvm_config, .. } = self.ensure(llvm::Llvm { target });
+            if host_llvm_config.is_file() {
+                return Some(host_llvm_config);
             }
         }
         None
@@ -1655,21 +1541,52 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
-
+                #[cfg(feature = "tracing")]
+                {
+                    if let Some(parent) = stack.last() {
+                        let mut graph = self.build.step_graph.borrow_mut();
+                        graph.register_cached_step(&step, parent, self.config.dry_run());
+                    }
+                }
                 return out;
             }
-            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
+
+            #[cfg(feature = "tracing")]
+            {
+                let parent = stack.last();
+                let mut graph = self.build.step_graph.borrow_mut();
+                graph.register_step_execution(&step, parent, self.config.dry_run());
+            }
+
             stack.push(Box::new(step.clone()));
         }
 
         #[cfg(feature = "build-metrics")]
         self.metrics.enter_step(&step, self);
 
+        if self.config.print_step_timings && !self.config.dry_run() {
+            println!("[TIMING:start] {}", pretty_print_step(&step));
+        }
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
             let parent = self.time_spent_on_dependencies.replace(zero);
+
+            #[cfg(feature = "tracing")]
+            let _span = {
+                // Keep the target and field names synchronized with `setup_tracing`.
+                let span = tracing::info_span!(
+                    target: STEP_SPAN_TARGET,
+                    // We cannot use a dynamic name here, so instead we record the actual step name
+                    // in the step_name field.
+                    "step",
+                    step_name = pretty_step_name::<S>(),
+                    args = step_debug_args(&step)
+                );
+                span.entered()
+            };
+
             let out = step.clone().run(self);
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
@@ -1677,13 +1594,9 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         };
 
         if self.config.print_step_timings && !self.config.dry_run() {
-            let step_string = format!("{step:?}");
-            let brace_index = step_string.find('{').unwrap_or(0);
-            let type_string = type_name::<S>();
             println!(
-                "[TIMING] {} {} -- {}.{:03}",
-                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
-                &step_string[brace_index..],
+                "[TIMING:end] {} -- {}.{:03}",
+                pretty_print_step(&step),
                 dur.as_secs(),
                 dur.subsec_millis()
             );
@@ -1697,7 +1610,6 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }
@@ -1705,11 +1617,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     /// Ensure that a given step is built *only if it's supposed to be built by default*, returning
     /// its output. This will cache the step, so it's safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are build.
-    pub(crate) fn ensure_if_default<T, S: Step<Output = Option<T>>>(
+    pub(crate) fn ensure_if_default<T, S: Step<Output = T>>(
         &'a self,
         step: S,
         kind: Kind,
-    ) -> S::Output {
+    ) -> Option<S::Output> {
         let desc = StepDescription::from::<S>(kind);
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
@@ -1721,7 +1633,7 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
+        if desc.default && should_run.is_really_default() { Some(self.ensure(step)) } else { None }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
@@ -1768,6 +1680,30 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
     pub fn exec_ctx(&self) -> &ExecutionContext {
         &self.config.exec_ctx
     }
+}
+
+/// Return qualified step name, e.g. `compile::Rustc`.
+pub fn pretty_step_name<S: Step>() -> String {
+    // Normalize step type path to only keep the module and the type name
+    let path = type_name::<S>().rsplit("::").take(2).collect::<Vec<_>>();
+    path.into_iter().rev().collect::<Vec<_>>().join("::")
+}
+
+/// Renders `step` using its `Debug` implementation and extract the field arguments out of it.
+fn step_debug_args<S: Step>(step: &S) -> String {
+    let step_dbg_repr = format!("{step:?}");
+
+    // Some steps do not have any arguments, so they do not have the braces
+    match (step_dbg_repr.find('{'), step_dbg_repr.rfind('}')) {
+        (Some(brace_start), Some(brace_end)) => {
+            step_dbg_repr[brace_start + 1..brace_end - 1].trim().to_string()
+        }
+        _ => String::new(),
+    }
+}
+
+fn pretty_print_step<S: Step>(step: &S) -> String {
+    format!("{} {{ {} }}", pretty_step_name::<S>(), step_debug_args(step))
 }
 
 impl<'a> AsRef<ExecutionContext> for Builder<'a> {

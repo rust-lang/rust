@@ -12,6 +12,38 @@ fn bool_() {
 }
 
 #[test]
+#[should_panic = "there is no such thing as an acquire store"]
+fn store_illegal_rt_store_acquire_ordering() {
+    let a = AtomicBool::new(false);
+    let ord = Ordering::Acquire;
+    a.store(true, ord);
+}
+
+#[test]
+#[should_panic = "there is no such thing as an acquire-release store"]
+fn store_illegal_rt_store_acq_rel_ordering() {
+    let a = AtomicBool::new(false);
+    let ord = Ordering::AcqRel;
+    a.store(true, ord);
+}
+
+#[test]
+#[should_panic = "there is no such thing as a release load"]
+fn store_illegal_rt_load_release_ordering() {
+    let a = AtomicBool::new(false);
+    let ord = Ordering::Release;
+    a.load(ord);
+}
+
+#[test]
+#[should_panic = "there is no such thing as an acquire-release load"]
+fn store_illegal_rt_load_acq_rel_ordering() {
+    let a = AtomicBool::new(false);
+    let ord = Ordering::AcqRel;
+    a.load(ord);
+}
+
+#[test]
 fn bool_and() {
     let a = AtomicBool::new(true);
     assert_eq!(a.fetch_and(false, SeqCst), true);
@@ -283,23 +315,227 @@ fn atomic_compare_exchange() {
     static ATOMIC: AtomicIsize = AtomicIsize::new(0);
 
     ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, Relaxed, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, Relaxed, SeqCst).ok();
     ATOMIC.compare_exchange(0, 1, Acquire, Relaxed).ok();
-    ATOMIC.compare_exchange(0, 1, Release, Relaxed).ok();
-    ATOMIC.compare_exchange(0, 1, AcqRel, Relaxed).ok();
-    ATOMIC.compare_exchange(0, 1, SeqCst, Relaxed).ok();
     ATOMIC.compare_exchange(0, 1, Acquire, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, Acquire, SeqCst).ok();
+    ATOMIC.compare_exchange(0, 1, Release, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, Release, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, Release, SeqCst).ok();
+    ATOMIC.compare_exchange(0, 1, AcqRel, Relaxed).ok();
     ATOMIC.compare_exchange(0, 1, AcqRel, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, AcqRel, SeqCst).ok();
+    ATOMIC.compare_exchange(0, 1, SeqCst, Relaxed).ok();
     ATOMIC.compare_exchange(0, 1, SeqCst, Acquire).ok();
     ATOMIC.compare_exchange(0, 1, SeqCst, SeqCst).ok();
     ATOMIC.compare_exchange_weak(0, 1, Relaxed, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Relaxed, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Relaxed, SeqCst).ok();
     ATOMIC.compare_exchange_weak(0, 1, Acquire, Relaxed).ok();
-    ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed).ok();
-    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Relaxed).ok();
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed).ok();
     ATOMIC.compare_exchange_weak(0, 1, Acquire, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Acquire, SeqCst).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Release, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Release, SeqCst).ok();
+    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Relaxed).ok();
     ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, AcqRel, SeqCst).ok();
+    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed).ok();
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, Acquire).ok();
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst).ok();
+}
+
+#[test]
+#[should_panic = "there is no such thing as an acquire-release failure ordering"]
+fn atomic_compare_exchange_illegal_acq_rel() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+
+    let failure = AcqRel;
+
+    ATOMIC.compare_exchange(0, 1, Relaxed, failure).ok();
+}
+
+#[test]
+#[should_panic = "there is no such thing as a release failure ordering"]
+fn atomic_compare_exchange_illegal_release() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+
+    let failure = Release;
+
+    ATOMIC.compare_exchange(0, 1, Relaxed, failure).ok();
+}
+
+#[test]
+#[should_panic = "there is no such thing as an acquire-release failure ordering"]
+fn atomic_compare_exchange_weak_illegal_acq_rel() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+
+    let failure = AcqRel;
+
+    ATOMIC.compare_exchange_weak(0, 1, Relaxed, failure).ok();
+}
+
+#[test]
+#[should_panic = "there is no such thing as a release failure ordering"]
+fn atomic_compare_exchange_weak_illegal_release() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+
+    let failure = Release;
+
+    ATOMIC.compare_exchange_weak(0, 1, Relaxed, failure).ok();
+}
+
+#[test]
+fn atomic_swap() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicBool = AtomicBool::new(false);
+
+    assert_eq!(ATOMIC.swap(true, Relaxed), false);
+    assert_eq!(ATOMIC.swap(false, Acquire), true);
+    assert_eq!(ATOMIC.swap(true, Release), false);
+    assert_eq!(ATOMIC.swap(false, AcqRel), true);
+    assert_eq!(ATOMIC.swap(true, SeqCst), false);
+}
+
+#[test]
+fn atomic_add() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicU8 = AtomicU8::new(0);
+
+    assert_eq!(ATOMIC.fetch_add(1, Relaxed), 0);
+    assert_eq!(ATOMIC.fetch_add(1, Acquire), 1);
+    assert_eq!(ATOMIC.fetch_add(1, Release), 2);
+    assert_eq!(ATOMIC.fetch_add(1, AcqRel), 3);
+    assert_eq!(ATOMIC.fetch_add(1, SeqCst), 4);
+    assert_eq!(ATOMIC.load(Relaxed), 5);
+}
+
+#[test]
+fn atomic_sub() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicU8 = AtomicU8::new(5);
+
+    assert_eq!(ATOMIC.fetch_sub(1, Relaxed), 5);
+    assert_eq!(ATOMIC.fetch_sub(1, Acquire), 4);
+    assert_eq!(ATOMIC.fetch_sub(1, Release), 3);
+    assert_eq!(ATOMIC.fetch_sub(1, AcqRel), 2);
+    assert_eq!(ATOMIC.fetch_sub(1, SeqCst), 1);
+    assert_eq!(ATOMIC.load(Relaxed), 0);
+}
+
+#[test]
+fn atomic_and_or() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicBool = AtomicBool::new(false);
+
+    assert_eq!(ATOMIC.fetch_or(true, Relaxed), false);
+    assert_eq!(ATOMIC.fetch_and(false, Relaxed), true);
+    assert_eq!(ATOMIC.fetch_or(true, Acquire), false);
+    assert_eq!(ATOMIC.fetch_and(false, Acquire), true);
+    assert_eq!(ATOMIC.fetch_or(true, Release), false);
+    assert_eq!(ATOMIC.fetch_and(false, Release), true);
+    assert_eq!(ATOMIC.fetch_or(true, AcqRel), false);
+    assert_eq!(ATOMIC.fetch_and(false, AcqRel), true);
+    assert_eq!(ATOMIC.fetch_or(true, SeqCst), false);
+    assert_eq!(ATOMIC.fetch_and(false, SeqCst), true);
+    assert_eq!(ATOMIC.load(Relaxed), false);
+}
+
+#[test]
+fn atomic_nand() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicU8 = AtomicU8::new(0x13);
+
+    assert_eq!(ATOMIC.fetch_nand(0x13, Relaxed), 0x13);
+    assert_eq!(ATOMIC.fetch_nand(0xec, Acquire), 0xec);
+    assert_eq!(ATOMIC.fetch_nand(0x13, Release), 0x13);
+    assert_eq!(ATOMIC.fetch_nand(0xec, AcqRel), 0xec);
+    assert_eq!(ATOMIC.fetch_nand(0x13, SeqCst), 0x13);
+    assert_eq!(ATOMIC.load(Relaxed), 0xec);
+}
+
+#[test]
+fn atomic_xor() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicBool = AtomicBool::new(false);
+
+    assert_eq!(ATOMIC.fetch_xor(true, Relaxed), false);
+    assert_eq!(ATOMIC.fetch_xor(true, Acquire), true);
+    assert_eq!(ATOMIC.fetch_xor(true, Release), false);
+    assert_eq!(ATOMIC.fetch_xor(true, AcqRel), true);
+    assert_eq!(ATOMIC.fetch_xor(true, SeqCst), false);
+    assert_eq!(ATOMIC.load(Relaxed), true);
+}
+
+#[test]
+fn atomic_max() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicI8 = AtomicI8::new(0);
+
+    assert_eq!(ATOMIC.fetch_max(1, Relaxed), 0);
+    assert_eq!(ATOMIC.fetch_max(2, Acquire), 1);
+    assert_eq!(ATOMIC.fetch_max(3, Release), 2);
+    assert_eq!(ATOMIC.fetch_max(4, AcqRel), 3);
+    assert_eq!(ATOMIC.fetch_max(5, SeqCst), 4);
+    assert_eq!(ATOMIC.load(Relaxed), 5);
+}
+
+#[test]
+fn atomic_umax() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicU8 = AtomicU8::new(0);
+
+    assert_eq!(ATOMIC.fetch_max(1, Relaxed), 0);
+    assert_eq!(ATOMIC.fetch_max(2, Acquire), 1);
+    assert_eq!(ATOMIC.fetch_max(3, Release), 2);
+    assert_eq!(ATOMIC.fetch_max(4, AcqRel), 3);
+    assert_eq!(ATOMIC.fetch_max(5, SeqCst), 4);
+    assert_eq!(ATOMIC.load(Relaxed), 5);
+}
+
+#[test]
+fn atomic_min() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicI8 = AtomicI8::new(5);
+
+    assert_eq!(ATOMIC.fetch_min(4, Relaxed), 5);
+    assert_eq!(ATOMIC.fetch_min(3, Acquire), 4);
+    assert_eq!(ATOMIC.fetch_min(2, Release), 3);
+    assert_eq!(ATOMIC.fetch_min(1, AcqRel), 2);
+    assert_eq!(ATOMIC.fetch_min(0, SeqCst), 1);
+    assert_eq!(ATOMIC.load(Relaxed), 0);
+}
+
+#[test]
+fn atomic_umin() {
+    use Ordering::*;
+
+    static ATOMIC: AtomicU8 = AtomicU8::new(5);
+
+    assert_eq!(ATOMIC.fetch_min(4, Relaxed), 5);
+    assert_eq!(ATOMIC.fetch_min(3, Acquire), 4);
+    assert_eq!(ATOMIC.fetch_min(2, Release), 3);
+    assert_eq!(ATOMIC.fetch_min(1, AcqRel), 2);
+    assert_eq!(ATOMIC.fetch_min(0, SeqCst), 1);
+    assert_eq!(ATOMIC.load(Relaxed), 0);
 }
 
 /* FIXME(#110395)

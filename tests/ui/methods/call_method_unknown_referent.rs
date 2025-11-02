@@ -44,5 +44,5 @@ fn main() {
     // our resolution logic needs to be able to call methods such as foo()
     // on the outer type even if the inner type is ambiguous.
     let _c = (ptr as SmartPtr<_>).read();
-    //~^ ERROR no method named `read` found for struct `SmartPtr`
+    //~^ ERROR no method named `read` found for struct `SmartPtr<T>`
 }

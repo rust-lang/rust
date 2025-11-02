@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: The Rust Project Developers (see https://thanks.rust-lang.org)
 
-#![feature(core_intrinsics)]
+#![feature(core_intrinsics, funnel_shifts)]
 use std::intrinsics::*;
 
-pub fn main() {
+fn main() {
     unsafe {
         [assert_eq!(ctpop(0u8), 0), assert_eq!(ctpop(0i8), 0)];
         [assert_eq!(ctpop(0u16), 0), assert_eq!(ctpop(0i16), 0)];
@@ -143,5 +143,11 @@ pub fn main() {
 
         assert_eq!(unchecked_mul(6u8, 7), 42);
         assert_eq!(unchecked_mul(13, -5), -65);
+
+        assert_eq!(unchecked_funnel_shl(1_u32, 2, 5), 32);
+        assert_eq!(unchecked_funnel_shl(1_u32, 2, 31), 0x80000001);
+
+        assert_eq!(unchecked_funnel_shr(1_u32, 2, 5), 0x08000000);
+        assert_eq!(unchecked_funnel_shr(1_u32, 2, 31), 2);
     }
 }

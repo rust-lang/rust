@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -96,9 +98,6 @@
 // lldb-command:print c
 // lldb-check:[...] 400
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 macro_rules! trivial {
     ($e1:expr) => ($e1)

@@ -43,18 +43,18 @@ pub fn run() -> Result<(), String> {
             "--start" => {
                 start =
                     str::parse(&args.next().ok_or_else(|| "Fuzz start not provided!".to_string())?)
-                        .map_err(|err| (format!("Fuzz start not a number {err:?}!")))?;
+                        .map_err(|err| format!("Fuzz start not a number {err:?}!"))?;
             }
             "--count" => {
                 count =
                     str::parse(&args.next().ok_or_else(|| "Fuzz count not provided!".to_string())?)
-                        .map_err(|err| (format!("Fuzz count not a number {err:?}!")))?;
+                        .map_err(|err| format!("Fuzz count not a number {err:?}!"))?;
             }
             "-j" | "--jobs" => {
                 threads = str::parse(
                     &args.next().ok_or_else(|| "Fuzz thread count not provided!".to_string())?,
                 )
-                .map_err(|err| (format!("Fuzz thread count not a number {err:?}!")))?;
+                .map_err(|err| format!("Fuzz thread count not a number {err:?}!"))?;
             }
             _ => return Err(format!("Unknown option {arg}")),
         }
@@ -66,7 +66,7 @@ pub fn run() -> Result<(), String> {
         Some("clones/rustlantis".as_ref()),
         true,
     )
-    .map_err(|err| (format!("Git clone failed with message: {err:?}!")))?;
+    .map_err(|err| format!("Git clone failed with message: {err:?}!"))?;
 
     // Ensure that we are on the newest rustlantis commit.
     let cmd: &[&dyn AsRef<OsStr>] = &[&"git", &"pull", &"origin"];

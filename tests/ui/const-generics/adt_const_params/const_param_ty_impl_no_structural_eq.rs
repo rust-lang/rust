@@ -3,20 +3,20 @@
 
 #[derive(PartialEq, Eq)]
 struct ImplementsConstParamTy;
-impl std::marker::UnsizedConstParamTy for ImplementsConstParamTy {}
+impl std::marker::ConstParamTy_ for ImplementsConstParamTy {}
 
 struct CantParam(ImplementsConstParamTy);
 
-impl std::marker::UnsizedConstParamTy for CantParam {}
+impl std::marker::ConstParamTy_ for CantParam {}
 //~^ error: the type `CantParam` does not `#[derive(PartialEq)]`
 //~| ERROR the trait bound `CantParam: Eq` is not satisfied
 
-#[derive(std::marker::UnsizedConstParamTy)]
+#[derive(std::marker::ConstParamTy)]
 //~^ error: the type `CantParamDerive` does not `#[derive(PartialEq)]`
 //~| ERROR the trait bound `CantParamDerive: Eq` is not satisfied
 struct CantParamDerive(ImplementsConstParamTy);
 
-fn check<T: std::marker::UnsizedConstParamTy>() {}
+fn check<T: std::marker::ConstParamTy_>() {}
 
 fn main() {
     check::<ImplementsConstParamTy>();

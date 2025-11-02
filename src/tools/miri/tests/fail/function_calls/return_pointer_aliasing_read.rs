@@ -7,14 +7,14 @@
 use std::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-pub fn main() {
+fn main() {
     mir! {
         {
-            let x = 0;
-            let ptr = &raw mut x;
+            let _x = 0;
+            let ptr = &raw mut _x;
             // We arrange for `myfun` to have a pointer that aliases
             // its return place. Even just reading from that pointer is UB.
-            Call(*ptr = myfun(ptr), ReturnTo(after_call), UnwindContinue())
+            Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
         }
 
         after_call = {
@@ -25,7 +25,7 @@ pub fn main() {
 
 fn myfun(ptr: *mut i32) -> i32 {
     unsafe { ptr.read() };
-    //~[stack]^ ERROR: not granting access
+    //~[stack]^ ERROR: does not exist in the borrow stack
     //~[tree]| ERROR: /read access .* forbidden/
     //~[none]| ERROR: uninitialized
     // Without an aliasing model, reads are "fine" but at least they return uninit data.

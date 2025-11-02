@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-musleabihf".into(),
         metadata: TargetMetadata {
-            description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3".into()),
+            description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
@@ -27,8 +27,6 @@ pub(crate) fn target() -> Target {
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
-            crt_static_default: true,
             ..base::linux_musl::opts()
         },
     }

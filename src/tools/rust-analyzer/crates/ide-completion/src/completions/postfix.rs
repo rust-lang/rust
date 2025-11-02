@@ -11,12 +11,12 @@ use ide_db::{
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
-use itertools::Either;
 use stdx::never;
 use syntax::{
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
-    TextRange, TextSize,
+    T, TextRange, TextSize,
     ast::{self, AstNode, AstToken},
+    match_ast,
 };
 
 use crate::{
@@ -43,7 +43,7 @@ pub(crate) fn complete_postfix(
                 DotAccessKind::Field { receiver_is_ambiguous_float_literal } => {
                     receiver_is_ambiguous_float_literal
                 }
-                DotAccessKind::Method { .. } => false,
+                DotAccessKind::Method => false,
             },
         ),
         _ => return,
@@ -63,28 +63,21 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
-    let cfg = ctx.config.import_path_config(ctx.is_nightly);
+    let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
-    if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
-        if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
-            if let Some(drop_fn) = ctx.famous_defs().core_mem_drop() {
-                if let Some(path) =
-                    ctx.module.find_path(ctx.db, ItemInNs::Values(drop_fn.into()), cfg)
-                {
-                    cov_mark::hit!(postfix_drop_completion);
-                    let mut item = postfix_snippet(
-                        "drop",
-                        "fn drop(&mut self)",
-                        &format!(
-                            "{path}($0{receiver_text})",
-                            path = path.display(ctx.db, ctx.edition)
-                        ),
-                    );
-                    item.set_documentation(drop_fn.docs(ctx.db));
-                    item.add_to(acc, ctx.db);
-                }
-            }
-        }
+    if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop()
+        && receiver_ty.impls_trait(ctx.db, drop_trait, &[])
+        && let Some(drop_fn) = ctx.famous_defs().core_mem_drop()
+        && let Some(path) = ctx.module.find_path(ctx.db, ItemInNs::Values(drop_fn.into()), cfg)
+    {
+        cov_mark::hit!(postfix_drop_completion);
+        let mut item = postfix_snippet(
+            "drop",
+            "fn drop(&mut self)",
+            &format!("{path}($0{receiver_text})", path = path.display(ctx.db, ctx.edition)),
+        );
+        item.set_documentation(drop_fn.docs(ctx.db));
+        item.add_to(acc, ctx.db);
     }
 
     postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc, ctx.db);
@@ -117,56 +110,46 @@ pub(crate) fn complete_postfix(
 
     let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     let mut is_in_cond = false;
-    if let Some(parent) = dot_receiver_including_refs.syntax().parent() {
-        if let Some(second_ancestor) = parent.parent() {
-            let sec_ancestor_kind = second_ancestor.kind();
-            if let Some(expr) = <Either<ast::IfExpr, ast::WhileExpr>>::cast(second_ancestor) {
-                is_in_cond = match expr {
-                    Either::Left(it) => it.condition().is_some_and(|cond| *cond.syntax() == parent),
-                    Either::Right(it) => {
-                        it.condition().is_some_and(|cond| *cond.syntax() == parent)
-                    }
+    if let Some(parent) = dot_receiver_including_refs.syntax().parent()
+        && let Some(second_ancestor) = parent.parent()
+    {
+        if let Some(parent_expr) = ast::Expr::cast(parent) {
+            is_in_cond = is_in_condition(&parent_expr);
+        }
+        match &try_enum {
+            Some(try_enum) if is_in_cond => match try_enum {
+                TryEnum::Result => {
+                    postfix_snippet("let", "let Ok(_)", &format!("let Ok($0) = {receiver_text}"))
+                        .add_to(acc, ctx.db);
+                    postfix_snippet(
+                        "letm",
+                        "let Ok(mut _)",
+                        &format!("let Ok(mut $0) = {receiver_text}"),
+                    )
+                    .add_to(acc, ctx.db);
                 }
-            }
-            match &try_enum {
-                Some(try_enum) if is_in_cond => match try_enum {
-                    TryEnum::Result => {
-                        postfix_snippet(
-                            "let",
-                            "let Ok(_)",
-                            &format!("let Ok($0) = {receiver_text}"),
-                        )
-                        .add_to(acc, ctx.db);
-                        postfix_snippet(
-                            "letm",
-                            "let Ok(mut _)",
-                            &format!("let Ok(mut $0) = {receiver_text}"),
-                        )
-                        .add_to(acc, ctx.db);
-                    }
-                    TryEnum::Option => {
-                        postfix_snippet(
-                            "let",
-                            "let Some(_)",
-                            &format!("let Some($0) = {receiver_text}"),
-                        )
-                        .add_to(acc, ctx.db);
-                        postfix_snippet(
-                            "letm",
-                            "let Some(mut _)",
-                            &format!("let Some(mut $0) = {receiver_text}"),
-                        )
-                        .add_to(acc, ctx.db);
-                    }
-                },
-                _ if matches!(sec_ancestor_kind, STMT_LIST | EXPR_STMT) => {
-                    postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
-                        .add_to(acc, ctx.db);
-                    postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
-                        .add_to(acc, ctx.db);
+                TryEnum::Option => {
+                    postfix_snippet(
+                        "let",
+                        "let Some(_)",
+                        &format!("let Some($0) = {receiver_text}"),
+                    )
+                    .add_to(acc, ctx.db);
+                    postfix_snippet(
+                        "letm",
+                        "let Some(mut _)",
+                        &format!("let Some(mut $0) = {receiver_text}"),
+                    )
+                    .add_to(acc, ctx.db);
                 }
-                _ => (),
+            },
+            _ if matches!(second_ancestor.kind(), STMT_LIST | EXPR_STMT) => {
+                postfix_snippet("let", "let", &format!("let $0 = {receiver_text};"))
+                    .add_to(acc, ctx.db);
+                postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
+                    .add_to(acc, ctx.db);
             }
+            _ => (),
         }
     }
 
@@ -258,25 +241,25 @@ pub(crate) fn complete_postfix(
             )
             .add_to(acc, ctx.db);
             postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc, ctx.db);
-        } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
-            if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
-                postfix_snippet(
-                    "for",
-                    "for ele in expr {}",
-                    &format!("for ele in {receiver_text} {{\n    $0\n}}"),
-                )
-                .add_to(acc, ctx.db);
-            }
+        } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator()
+            && receiver_ty.impls_trait(ctx.db, trait_, &[])
+        {
+            postfix_snippet(
+                "for",
+                "for ele in expr {}",
+                &format!("for ele in {receiver_text} {{\n    $0\n}}"),
+            )
+            .add_to(acc, ctx.db);
         }
     }
 
     let mut block_should_be_wrapped = true;
     if dot_receiver.syntax().kind() == BLOCK_EXPR {
         block_should_be_wrapped = false;
-        if let Some(parent) = dot_receiver.syntax().parent() {
-            if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
-                block_should_be_wrapped = true;
-            }
+        if let Some(parent) = dot_receiver.syntax().parent()
+            && matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR)
+        {
+            block_should_be_wrapped = true;
         }
     };
     {
@@ -292,10 +275,10 @@ pub(crate) fn complete_postfix(
         postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
     }
 
-    if let ast::Expr::Literal(literal) = dot_receiver_including_refs.clone() {
-        if let Some(literal_text) = ast::String::cast(literal.token()) {
-            add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
-        }
+    if let ast::Expr::Literal(literal) = dot_receiver_including_refs.clone()
+        && let Some(literal_text) = ast::String::cast(literal.token())
+    {
+        add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
     }
 
     postfix_snippet(
@@ -308,7 +291,7 @@ pub(crate) fn complete_postfix(
     )
     .add_to(acc, ctx.db);
 
-    if let BreakableKind::Block | BreakableKind::Loop = expr_ctx.in_breakable {
+    if let Some(BreakableKind::Block | BreakableKind::Loop) = expr_ctx.in_breakable {
         postfix_snippet(
             "break",
             "break expr",
@@ -465,6 +448,24 @@ fn add_custom_postfix_completions(
         },
     );
     None
+}
+
+pub(crate) fn is_in_condition(it: &ast::Expr) -> bool {
+    it.syntax()
+        .parent()
+        .and_then(|parent| {
+            Some(match_ast! { match parent {
+                ast::IfExpr(expr) => expr.condition()? == *it,
+                ast::WhileExpr(expr) => expr.condition()? == *it,
+                ast::MatchGuard(guard) => guard.condition()? == *it,
+                ast::BinExpr(bin_expr) => (bin_expr.op_token()?.kind() == T![&&])
+                    .then(|| is_in_condition(&bin_expr.into()))?,
+                ast::Expr(expr) => (expr.syntax().text_range().start() == it.syntax().text_range().start())
+                    .then(|| is_in_condition(&expr))?,
+                _ => return None,
+            } })
+        })
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -660,6 +661,38 @@ fn main() {
 fn main() {
     let bar = Some(true);
     if let Some($0) = bar
+}
+"#,
+        );
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if true && bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    if true && let Some($0) = bar
+}
+"#,
+        );
+        check_edit(
+            "let",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    if true && true && bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    if true && true && let Some($0) = bar
 }
 "#,
         );

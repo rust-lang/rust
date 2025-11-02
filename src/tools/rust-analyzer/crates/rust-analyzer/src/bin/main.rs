@@ -122,12 +122,12 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         // directory which we set to the project workspace.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/general-environment-variables
         // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
-        if let Ok(path) = env::current_exe() {
-            if let Some(path) = path.parent() {
-                // SAFETY: This is safe because this is single-threaded.
-                unsafe {
-                    env::set_var("_NT_SYMBOL_PATH", path);
-                }
+        if let Ok(path) = env::current_exe()
+            && let Some(path) = path.parent()
+        {
+            // SAFETY: This is safe because this is single-threaded.
+            unsafe {
+                env::set_var("_NT_SYMBOL_PATH", path);
             }
         }
     }
@@ -160,9 +160,9 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
 
     rust_analyzer::tracing::Config {
         writer,
-        // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
+        // Deliberately enable all `warn` logs if the user has not set RA_LOG, as there is usually
         // useful information in there for debugging.
-        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
+        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "warn".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
         profile_filter: env::var("RA_PROFILE").ok(),
         json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
@@ -208,12 +208,23 @@ fn run_server() -> anyhow::Result<()> {
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         root_uri,
-        capabilities,
+        mut capabilities,
         workspace_folders,
         initialization_options,
         client_info,
         ..
     } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
+
+    // lsp-types has a typo in the `/capabilities/workspace/diagnostics` field, its typoed as `diagnostic`
+    if let Some(val) = initialize_params.pointer("/capabilities/workspace/diagnostics")
+        && let Ok(diag_caps) = from_json::<lsp_types::DiagnosticWorkspaceClientCapabilities>(
+            "DiagnosticWorkspaceClientCapabilities",
+            val,
+        )
+    {
+        tracing::info!("Patching lsp-types workspace diagnostics capabilities: {diag_caps:#?}");
+        capabilities.workspace.get_or_insert_default().diagnostic.get_or_insert(diag_caps);
+    }
 
     let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())

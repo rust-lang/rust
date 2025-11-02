@@ -108,10 +108,14 @@ fn generics() {
     //~^ manual_is_ascii_check
     take_while(|c: char| c.is_ascii_uppercase());
     //~^ manual_is_ascii_check
+    take_while(|c: char| c.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
 }
 
 fn adds_type_reference() {
     let digits: Vec<&char> = ['1', 'A'].iter().take_while(|c: &&char| c.is_ascii_digit()).collect();
+    //~^ manual_is_ascii_check
+    let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c: &&mut char| c.is_ascii_digit()).collect();
     //~^ manual_is_ascii_check
     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c: &&mut char| c.is_ascii_digit()).collect();
     //~^ manual_is_ascii_check

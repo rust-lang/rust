@@ -1,0 +1,28 @@
+warning: sharing memory with a native function called via FFI
+  --> tests/native-lib/fail/pass_struct_expose_only_range.rs:LL:CC
+   |
+LL |         let r = access_struct_ptr(structs[1]);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ sharing memory with a native function
+   |
+   = help: when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory
+   = help: in particular, Miri assumes that the native call initializes all memory it has access to
+   = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
+   = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
+   = note: BACKTRACE:
+   = note: inside `main` at tests/native-lib/fail/pass_struct_expose_only_range.rs:LL:CC
+
+error: Undefined Behavior: memory access failed: attempting to access 1 byte, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+  --> tests/native-lib/fail/pass_struct_expose_only_range.rs:LL:CC
+   |
+LL |         let _val = *std::ptr::with_exposed_provenance::<u8>(structs[0].ptr.addr());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at tests/native-lib/fail/pass_struct_expose_only_range.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error; 1 warning emitted
+

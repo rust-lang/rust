@@ -29,7 +29,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
-use rustc_target::spec::PanicStrategy;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;
@@ -730,7 +729,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         if self.is_sized_indirect() {
             OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
         } else if self.is_unsized_indirect() {
-            bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
+            bug!("unsized `ArgAbi` cannot be stored");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
@@ -771,6 +770,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),
                     MemFlags::empty(),
+                    None,
                 );
 
                 bx.lifetime_end(scratch, scratch_size);
@@ -797,12 +797,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect { meta_attrs: Some(_), .. } => {
-                let place_val = PlaceValue {
-                    llval: next(),
-                    llextra: Some(next()),
-                    align: self.layout.align.abi,
-                };
-                OperandValue::Ref(place_val).store(bx, dst);
+                bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Direct(_)
             | PassMode::Indirect { meta_attrs: None, .. }
@@ -925,10 +920,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): use width?
         let arg_type = arg.get_type();
         let result_type = self.u32_type;
+        let arg = if arg_type.is_signed(self.cx) {
+            let new_type = arg_type.to_unsigned(self.cx);
+            self.gcc_int_cast(arg, new_type)
+        } else {
+            arg
+        };
+        let arg_type = arg.get_type();
         let count_leading_zeroes =
             // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
             // instead of using is_uint().
-            if arg_type.is_uint(self.cx) {
+            if arg_type.is_uchar(self.cx) || arg_type.is_ushort(self.cx) || arg_type.is_uint(self.cx) {
                 "__builtin_clz"
             }
             else if arg_type.is_ulong(self.cx) {
@@ -1332,7 +1334,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
     _catch_func: RValue<'gcc>,
     dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
-    if bx.sess().panic_strategy() == PanicStrategy::Abort {
+    if !bx.sess().panic_strategy().unwinds() {
         bx.call(bx.type_void(), None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.

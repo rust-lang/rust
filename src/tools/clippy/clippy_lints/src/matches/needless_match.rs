@@ -1,10 +1,10 @@
 use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::ty::same_type_modulo_regions;
 use clippy_utils::{
-    SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, is_res_lang_ctor, over, path_res,
-    peel_blocks_with_stmt,
+    SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, over, peel_blocks_with_stmt,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
@@ -104,8 +104,8 @@ fn check_if_let_inner(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool 
                 return false;
             }
             let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
-            if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
-                return is_res_lang_ctor(cx, path_res(cx, else_expr), OptionNone)
+            if let_expr_ty.is_diag_item(cx, sym::Option) {
+                return else_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
                     || eq_expr_value(cx, if_let.let_expr, else_expr);
             }
             return eq_expr_value(cx, if_let.let_expr, else_expr);
@@ -122,7 +122,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
         // Compare match_expr ty with local in `let local = match match_expr {..}`
         Node::LetStmt(local) => {
             let results = cx.typeck_results();
-            return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
+            return same_type_modulo_regions(results.node_type(local.hir_id), results.expr_ty(expr));
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
         Node::Item(item) => {
@@ -133,7 +133,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
                     .instantiate_identity()
                     .output()
                     .skip_binder();
-                return same_type_and_consts(output, cx.typeck_results().expr_ty(expr));
+                return same_type_modulo_regions(output, cx.typeck_results().expr_ty(expr));
             }
         },
         // check the parent expr for this whole block `{ match match_expr {..} }`
@@ -172,7 +172,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
                 },
             )),
         ) => {
-            return !matches!(annot, BindingMode(ByRef::Yes(_), _)) && pat_ident.name == first_seg.ident.name;
+            return !matches!(annot, BindingMode(ByRef::Yes(..), _)) && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (

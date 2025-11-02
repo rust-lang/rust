@@ -920,7 +920,11 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_alphanumeric(self) -> bool {
-        self.is_alphabetic() || self.is_numeric()
+        if self.is_ascii() {
+            self.is_ascii_alphanumeric()
+        } else {
+            unicode::Alphabetic(self) || unicode::N(self)
+        }
     }
 
     /// Returns `true` if this `char` has the general category for control codes.
@@ -946,7 +950,11 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_control(self) -> bool {
-        unicode::Cc(self)
+        // According to
+        // https://www.unicode.org/policies/stability_policy.html#Property_Value,
+        // the set of codepoints in `Cc` will never change.
+        // So we can just hard-code the patterns to match against instead of using a table.
+        matches!(self, '\0'..='\x1f' | '\x7f'..='\u{9f}')
     }
 
     /// Returns `true` if this `char` has the `Grapheme_Extend` property.
@@ -961,7 +969,43 @@ impl char {
     #[must_use]
     #[inline]
     pub(crate) fn is_grapheme_extended(self) -> bool {
-        unicode::Grapheme_Extend(self)
+        !self.is_ascii() && unicode::Grapheme_Extend(self)
+    }
+
+    /// Returns `true` if this `char` has the `Cased` property.
+    ///
+    /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    #[must_use]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn is_cased(self) -> bool {
+        if self.is_ascii() { self.is_ascii_alphabetic() } else { unicode::Cased(self) }
+    }
+
+    /// Returns `true` if this `char` has the `Case_Ignorable` property.
+    ///
+    /// `Case_Ignorable` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
+    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    #[must_use]
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn is_case_ignorable(self) -> bool {
+        if self.is_ascii() {
+            matches!(self, '\'' | '.' | ':' | '^' | '`')
+        } else {
+            unicode::Case_Ignorable(self)
+        }
     }
 
     /// Returns `true` if this `char` has one of the general categories for numbers.
@@ -1868,28 +1912,33 @@ pub const unsafe fn encode_utf8_raw_unchecked(code: u32, dst: *mut u8) {
     // SAFETY: The caller must guarantee that the buffer pointed to by `dst`
     // is at least `len` bytes long.
     unsafe {
-        match len {
-            1 => {
-                *dst = code as u8;
-            }
-            2 => {
-                *dst = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *dst.add(1) = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            3 => {
-                *dst = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *dst.add(1) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *dst.add(2) = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            4 => {
-                *dst = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *dst.add(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *dst.add(2) = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *dst.add(3) = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            // SAFETY: `char` always takes between 1 and 4 bytes to encode in UTF-8.
-            _ => crate::hint::unreachable_unchecked(),
+        if len == 1 {
+            *dst = code as u8;
+            return;
         }
+
+        let last1 = (code >> 0 & 0x3F) as u8 | TAG_CONT;
+        let last2 = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+        let last3 = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+        let last4 = (code >> 18 & 0x3F) as u8 | TAG_FOUR_B;
+
+        if len == 2 {
+            *dst = last2 | TAG_TWO_B;
+            *dst.add(1) = last1;
+            return;
+        }
+
+        if len == 3 {
+            *dst = last3 | TAG_THREE_B;
+            *dst.add(1) = last2;
+            *dst.add(2) = last1;
+            return;
+        }
+
+        *dst = last4;
+        *dst.add(1) = last3;
+        *dst.add(2) = last2;
+        *dst.add(3) = last1;
     }
 }
 

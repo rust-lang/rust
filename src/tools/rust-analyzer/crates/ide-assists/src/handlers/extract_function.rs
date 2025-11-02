@@ -175,10 +175,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             let fn_def = format_function(ctx, module, &fun, old_indent).clone_for_update();
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(name) = fn_def.name() {
-                    builder.add_tabstop_before(cap, name);
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let Some(name) = fn_def.name()
+            {
+                builder.add_tabstop_before(cap, name);
             }
 
             let fn_def = match fun.self_param_adt(ctx) {
@@ -209,11 +209,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     FamousDefs(&ctx.sema, module.krate()).core_ops_ControlFlow();
 
                 if let Some(control_flow_enum) = control_flow_enum {
+                    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
                     let mod_path = module.find_use_path(
                         ctx.sema.db,
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
-                        ctx.config.import_path_config(),
+                        cfg,
                     );
 
                     if let Some(mod_path) = mod_path {
@@ -289,10 +290,10 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
 
     // Covering element returned the parent block of one or multiple statements that have been selected
     if let Some(stmt_list) = ast::StmtList::cast(node.clone()) {
-        if let Some(block_expr) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast) {
-            if block_expr.syntax().text_range() == selection_range {
-                return FunctionBody::from_expr(block_expr.into());
-            }
+        if let Some(block_expr) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast)
+            && block_expr.syntax().text_range() == selection_range
+        {
+            return FunctionBody::from_expr(block_expr.into());
         }
 
         // Extract the full statements.
@@ -915,11 +916,10 @@ impl FunctionBody {
                     ast::Fn(fn_) => {
                         let func = sema.to_def(&fn_)?;
                         let mut ret_ty = func.ret_type(sema.db);
-                        if func.is_async(sema.db) {
-                            if let Some(async_ret) = func.async_ret_type(sema.db) {
+                        if func.is_async(sema.db)
+                            && let Some(async_ret) = func.async_ret_type(sema.db) {
                                 ret_ty = async_ret;
                             }
-                        }
                         (fn_.const_token().is_some(), fn_.body().map(ast::Expr::BlockExpr), Some(ret_ty))
                     },
                     ast::Static(statik) => {
@@ -1172,19 +1172,19 @@ impl GenericParent {
 /// Search `parent`'s ancestors for items with potentially applicable generic parameters
 fn generic_parents(parent: &SyntaxNode) -> Vec<GenericParent> {
     let mut list = Vec::new();
-    if let Some(parent_item) = parent.ancestors().find_map(ast::Item::cast) {
-        if let ast::Item::Fn(ref fn_) = parent_item {
-            if let Some(parent_parent) =
-                parent_item.syntax().parent().and_then(|it| it.parent()).and_then(ast::Item::cast)
-            {
-                match parent_parent {
-                    ast::Item::Impl(impl_) => list.push(GenericParent::Impl(impl_)),
-                    ast::Item::Trait(trait_) => list.push(GenericParent::Trait(trait_)),
-                    _ => (),
-                }
+    if let Some(parent_item) = parent.ancestors().find_map(ast::Item::cast)
+        && let ast::Item::Fn(ref fn_) = parent_item
+    {
+        if let Some(parent_parent) =
+            parent_item.syntax().parent().and_then(|it| it.parent()).and_then(ast::Item::cast)
+        {
+            match parent_parent {
+                ast::Item::Impl(impl_) => list.push(GenericParent::Impl(impl_)),
+                ast::Item::Trait(trait_) => list.push(GenericParent::Trait(trait_)),
+                _ => (),
             }
-            list.push(GenericParent::Fn(fn_.clone()));
         }
+        list.push(GenericParent::Fn(fn_.clone()));
     }
     list
 }
@@ -1337,10 +1337,10 @@ fn locals_defined_in_body(
     //        see https://github.com/rust-lang/rust-analyzer/pull/7535#discussion_r570048550
     let mut res = FxIndexSet::default();
     body.walk_pat(&mut |pat| {
-        if let ast::Pat::IdentPat(pat) = pat {
-            if let Some(local) = sema.to_def(&pat) {
-                res.insert(local);
-            }
+        if let ast::Pat::IdentPat(pat) = pat
+            && let Some(local) = sema.to_def(&pat)
+        {
+            res.insert(local);
         }
     });
     res
@@ -1445,11 +1445,11 @@ fn impl_type_name(impl_node: &ast::Impl) -> Option<String> {
 fn fixup_call_site(builder: &mut SourceChangeBuilder, body: &FunctionBody) {
     let parent_match_arm = body.parent().and_then(ast::MatchArm::cast);
 
-    if let Some(parent_match_arm) = parent_match_arm {
-        if parent_match_arm.comma_token().is_none() {
-            let parent_match_arm = builder.make_mut(parent_match_arm);
-            ted::append_child_raw(parent_match_arm.syntax(), make::token(T![,]));
-        }
+    if let Some(parent_match_arm) = parent_match_arm
+        && parent_match_arm.comma_token().is_none()
+    {
+        let parent_match_arm = builder.make_mut(parent_match_arm);
+        ted::append_child_raw(parent_match_arm.syntax(), make::token(T![,]));
     }
 }
 
@@ -1642,6 +1642,7 @@ fn format_function(
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
 
     make::fn_(
+        None,
         None,
         fun_name,
         generic_params,
@@ -2120,29 +2121,29 @@ fn update_external_control_flow(handler: &FlowHandler<'_>, syntax: &SyntaxNode) 
                 _ => {}
             },
             WalkEvent::Leave(e) => {
-                if nested_scope.is_none() {
-                    if let Some(expr) = ast::Expr::cast(e.clone()) {
-                        match expr {
-                            ast::Expr::ReturnExpr(return_expr) => {
-                                let expr = return_expr.expr();
-                                if let Some(replacement) = make_rewritten_flow(handler, expr) {
-                                    ted::replace(return_expr.syntax(), replacement.syntax())
-                                }
+                if nested_scope.is_none()
+                    && let Some(expr) = ast::Expr::cast(e.clone())
+                {
+                    match expr {
+                        ast::Expr::ReturnExpr(return_expr) => {
+                            let expr = return_expr.expr();
+                            if let Some(replacement) = make_rewritten_flow(handler, expr) {
+                                ted::replace(return_expr.syntax(), replacement.syntax())
                             }
-                            ast::Expr::BreakExpr(break_expr) if nested_loop.is_none() => {
-                                let expr = break_expr.expr();
-                                if let Some(replacement) = make_rewritten_flow(handler, expr) {
-                                    ted::replace(break_expr.syntax(), replacement.syntax())
-                                }
+                        }
+                        ast::Expr::BreakExpr(break_expr) if nested_loop.is_none() => {
+                            let expr = break_expr.expr();
+                            if let Some(replacement) = make_rewritten_flow(handler, expr) {
+                                ted::replace(break_expr.syntax(), replacement.syntax())
                             }
-                            ast::Expr::ContinueExpr(continue_expr) if nested_loop.is_none() => {
-                                if let Some(replacement) = make_rewritten_flow(handler, None) {
-                                    ted::replace(continue_expr.syntax(), replacement.syntax())
-                                }
+                        }
+                        ast::Expr::ContinueExpr(continue_expr) if nested_loop.is_none() => {
+                            if let Some(replacement) = make_rewritten_flow(handler, None) {
+                                ted::replace(continue_expr.syntax(), replacement.syntax())
                             }
-                            _ => {
-                                // do nothing
-                            }
+                        }
+                        _ => {
+                            // do nothing
                         }
                     }
                 }
@@ -5043,7 +5044,7 @@ fn main() {
     fun_name(bar);
 }
 
-fn $0fun_name(bar: &'static str) {
+fn $0fun_name(bar: &str) {
     m!(bar);
 }
 "#,

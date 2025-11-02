@@ -8,6 +8,7 @@
 #![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(if_let_guard)]
 #![feature(map_try_insert)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
@@ -22,13 +23,11 @@ mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
 mod errors;
-#[cfg(debug_assertions)]
 pub mod hir_id_validator;
 pub mod input_stats;
 mod lang_items;
 pub mod layout_test;
 mod lib_features;
-mod liveness;
 mod reachable;
 pub mod stability;
 mod upvars;
@@ -44,7 +43,6 @@ pub fn provide(providers: &mut Providers) {
     entry::provide(providers);
     lang_items::provide(providers);
     lib_features::provide(providers);
-    liveness::provide(providers);
     reachable::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);

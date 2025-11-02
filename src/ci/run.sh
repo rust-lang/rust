@@ -205,6 +205,9 @@ if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-new-symbol-mangling"
 fi
 
+# If bootstrap fails, we want to see its backtrace
+export RUST_BACKTRACE=1
+
 # Print the date from the local machine and the date from an external source to
 # check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
 # Pipelines it happened that the certificates were marked as expired.

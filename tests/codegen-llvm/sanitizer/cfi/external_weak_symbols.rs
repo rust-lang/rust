@@ -2,7 +2,7 @@
 // emitted correctly.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clinker-plugin-lto -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
+//@ compile-flags: -Clinker-plugin-lto -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 #![crate_type = "bin"]
 #![feature(linkage)]
 
@@ -10,7 +10,7 @@ unsafe extern "C" {
     #[linkage = "extern_weak"]
     static FOO: Option<unsafe extern "C" fn(f64) -> ()>;
 }
-// CHECK: @_rust_extern_with_linkage_FOO = internal global ptr @FOO
+// CHECK: @_rust_extern_with_linkage_{{.*}}_FOO = internal global ptr @FOO
 
 fn main() {
     unsafe {

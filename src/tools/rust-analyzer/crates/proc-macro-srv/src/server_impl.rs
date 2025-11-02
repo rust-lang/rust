@@ -209,7 +209,7 @@ pub(super) fn from_token_tree<Span: Copy>(
                 token_trees.push(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     spacing: tt::Spacing::Alone,
                     span: literal.span,
-                    char: '-' as char,
+                    char: '-',
                 })));
                 symbol = Symbol::intern(&symbol.as_str()[1..]);
             }

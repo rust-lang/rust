@@ -2,11 +2,20 @@ error[E0277]: the trait bound `for<'de> EmptyBis<'de>: Foo<'_>` is not satisfied
   --> $DIR/issue-96223.rs:49:17
    |
 LL |     icey_bounds(&p);
-   |     ----------- ^^ the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`
+   |     ----------- ^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Foo<'de>` is implemented for `Baz<T>`
+help: the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`
+  --> $DIR/issue-96223.rs:33:1
+   |
+LL | pub struct EmptyBis<'a>(&'a [u8]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+help: the trait `Foo<'de>` is implemented for `Baz<T>`
+  --> $DIR/issue-96223.rs:16:1
+   |
+LL | impl<'de, T> Foo<'de> for Baz<T> where T: Foo<'de> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required for `Baz<EmptyBis<'de>>` to implement `for<'de> Foo<'de>`
   --> $DIR/issue-96223.rs:16:14
    |

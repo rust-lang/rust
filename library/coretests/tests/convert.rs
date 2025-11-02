@@ -1,4 +1,3 @@
-/* FIXME(#110395)
 #[test]
 fn convert() {
     const fn from(x: i32) -> i32 {
@@ -15,4 +14,3 @@ fn convert() {
     const BAR: Vec<String> = into(Vec::new());
     assert_eq!(BAR, Vec::<String>::new());
 }
-*/

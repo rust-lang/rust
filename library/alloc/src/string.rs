@@ -265,12 +265,12 @@ use crate::vec::{self, Vec};
 /// You can look at these with the [`as_ptr`], [`len`], and [`capacity`]
 /// methods:
 ///
+// FIXME Update this when vec_into_raw_parts is stabilized
 /// ```
 /// use std::mem;
 ///
 /// let story = String::from("Once upon a time...");
 ///
-// FIXME Update this when vec_into_raw_parts is stabilized
 /// // Prevent automatically dropping the String's data
 /// let mut story = mem::ManuallyDrop::new(story);
 ///
@@ -970,13 +970,13 @@ impl String {
     ///
     /// # Examples
     ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
     /// use std::mem;
     ///
     /// unsafe {
     ///     let s = String::from("hello");
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Prevent automatically dropping the String's data
     ///     let mut s = mem::ManuallyDrop::new(s);
     ///
@@ -1105,7 +1105,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "push")]
     #[rustc_diagnostic_item = "string_push_str"]
@@ -1117,8 +1116,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
@@ -1208,7 +1207,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.vec.reserve(additional)
@@ -1260,7 +1258,6 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.vec.reserve_exact(additional)
     }
@@ -1356,7 +1353,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
@@ -1384,7 +1380,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[track_caller]
     #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
@@ -1406,7 +1401,6 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn push(&mut self, ch: char) {
         let len = self.len();
         let ch_len = ch.len_utf8();
@@ -1939,8 +1933,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and does not lie on a [`char`] boundary.
     ///
     /// # Leaking
     ///
@@ -2050,8 +2044,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point or end point do not lie on a [`char`]
-    /// boundary, or if they're out of bounds.
+    /// Panics if the range has `start_bound > end_bound`, or, if the range is
+    /// bounded on either end and does not lie on a [`char`] boundary.
     ///
     /// # Examples
     ///
@@ -2096,6 +2090,67 @@ impl String {
         unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
+    /// Replaces the leftmost occurrence of a pattern with another string, in-place.
+    ///
+    /// This method can be preferred over [`string = string.replacen(..., 1);`][replacen],
+    /// as it can use the `String`'s existing capacity to prevent a reallocation if
+    /// sufficient space is available.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_replace_in_place)]
+    ///
+    /// let mut s = String::from("Test Results: ❌❌❌");
+    ///
+    /// // Replace the leftmost ❌ with a ✅
+    /// s.replace_first('❌', "✅");
+    /// assert_eq!(s, "Test Results: ✅❌❌");
+    /// ```
+    ///
+    /// [replacen]: ../../std/primitive.str.html#method.replacen
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_replace_in_place", issue = "147949")]
+    pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
+        let range = match self.match_indices(from).next() {
+            Some((start, match_str)) => start..start + match_str.len(),
+            None => return,
+        };
+
+        self.replace_range(range, to);
+    }
+
+    /// Replaces the rightmost occurrence of a pattern with another string, in-place.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_replace_in_place)]
+    ///
+    /// let mut s = String::from("Test Results: ❌❌❌");
+    ///
+    /// // Replace the rightmost ❌ with a ✅
+    /// s.replace_last('❌', "✅");
+    /// assert_eq!(s, "Test Results: ❌❌✅");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_replace_in_place", issue = "147949")]
+    pub fn replace_last<P: Pattern>(&mut self, from: P, to: &str)
+    where
+        for<'a> P::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+    {
+        let range = match self.rmatch_indices(from).next() {
+            Some((start, match_str)) => start..start + match_str.len(),
+            None => return,
+        };
+
+        self.replace_range(range, to);
+    }
+
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
     /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
@@ -2115,7 +2170,6 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    #[track_caller]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
@@ -2285,25 +2339,14 @@ impl fmt::Display for FromUtf16Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf8Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "invalid utf-8"
-    }
-}
+impl Error for FromUtf8Error {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf16Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "invalid utf-16"
-    }
-}
+impl Error for FromUtf16Error {}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
-    #[track_caller]
     fn clone(&self) -> Self {
         String { vec: self.vec.clone() }
     }
@@ -2312,7 +2355,6 @@ impl Clone for String {
     ///
     /// This method is preferred over simply assigning `source.clone()` to `self`,
     /// as it avoids reallocation if possible.
-    #[track_caller]
     fn clone_from(&mut self, source: &Self) {
         self.vec.clone_from(&source.vec);
     }
@@ -2394,6 +2436,28 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
                 buf
             }
         }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl FromIterator<core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<&'a core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = &'a core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().copied().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
     }
 }
 
@@ -2487,13 +2551,11 @@ impl<'a> Extend<Cow<'a, str>> for String {
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl Extend<core::ascii::Char> for String {
     #[inline]
-    #[track_caller]
     fn extend<I: IntoIterator<Item = core::ascii::Char>>(&mut self, iter: I) {
         self.vec.extend(iter.into_iter().map(|c| c.to_u8()));
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, c: core::ascii::Char) {
         self.vec.push(c.to_u8());
     }
@@ -2503,13 +2565,11 @@ impl Extend<core::ascii::Char> for String {
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl<'a> Extend<&'a core::ascii::Char> for String {
     #[inline]
-    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a core::ascii::Char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, c: &'a core::ascii::Char) {
         self.vec.push(c.to_u8());
     }
@@ -2949,68 +3009,41 @@ impl SpecToString for i8 {
     }
 }
 
-// Generic/generated code can sometimes have multiple, nested references
-// for strings, including `&&&str`s that would never be written
-// by hand. This macro generates twelve layers of nested `&`-impl
-// for primitive strings.
-#[cfg(not(no_global_oom_handling))]
-macro_rules! to_string_str_wrap_in_ref {
-    {x $($x:ident)*} => {
-        &to_string_str_wrap_in_ref! { $($x)* }
-    };
-    {} => { str };
-}
-#[cfg(not(no_global_oom_handling))]
-macro_rules! to_string_expr_wrap_in_deref {
-    {$self:expr ; x $($x:ident)*} => {
-        *(to_string_expr_wrap_in_deref! { $self ; $($x)* })
-    };
-    {$self:expr ;} => { $self };
-}
 #[cfg(not(no_global_oom_handling))]
 macro_rules! to_string_str {
-    {$($($x:ident)*),+} => {
+    {$($type:ty,)*} => {
         $(
-            impl SpecToString for to_string_str_wrap_in_ref!($($x)*) {
+            impl SpecToString for $type {
                 #[inline]
                 fn spec_to_string(&self) -> String {
-                    String::from(to_string_expr_wrap_in_deref!(self ; $($x)*))
+                    let s: &str = self;
+                    String::from(s)
                 }
             }
-        )+
+        )*
     };
 }
 
 #[cfg(not(no_global_oom_handling))]
 to_string_str! {
-    x x x x x x x x x x x x,
-    x x x x x x x x x x x,
-    x x x x x x x x x x,
-    x x x x x x x x x,
-    x x x x x x x x,
-    x x x x x x x,
-    x x x x x x,
-    x x x x x,
-    x x x x,
-    x x x,
-    x x,
-    x,
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl SpecToString for Cow<'_, str> {
-    #[inline]
-    fn spec_to_string(&self) -> String {
-        self[..].to_owned()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl SpecToString for String {
-    #[inline]
-    fn spec_to_string(&self) -> String {
-        self.to_owned()
-    }
+    Cow<'_, str>,
+    String,
+    // Generic/generated code can sometimes have multiple, nested references
+    // for strings, including `&&&str`s that would never be written
+    // by hand.
+    &&&&&&&&&&&&str,
+    &&&&&&&&&&&str,
+    &&&&&&&&&&str,
+    &&&&&&&&&str,
+    &&&&&&&&str,
+    &&&&&&&str,
+    &&&&&&str,
+    &&&&&str,
+    &&&&str,
+    &&&str,
+    &&str,
+    &str,
+    str,
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -3230,6 +3263,14 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
     fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<core::ascii::Char> for Cow<'a, str> {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(it: T) -> Self {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }

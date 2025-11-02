@@ -1,7 +1,5 @@
 # Drop elaboration
 
-<!-- toc -->
-
 ## Dynamic drops
 
 According to the [reference][reference-drop]:

@@ -105,22 +105,14 @@ fn propagate_loans_between_points(
         });
     }
 
-    let Some(current_live_regions) = live_regions.row(current_point) else {
-        // There are no constraints to add: there are no live regions at the current point.
-        return;
-    };
     let Some(next_live_regions) = live_regions.row(next_point) else {
         // There are no constraints to add: there are no live regions at the next point.
         return;
     };
 
     for region in next_live_regions.iter() {
-        if !current_live_regions.contains(region) {
-            continue;
-        }
-
-        // `region` is indeed live at both points, add a constraint between them, according to
-        // variance.
+        // `region` could be live at the current point, and is live at the next point: add a
+        // constraint between them, according to variance.
         if let Some(&direction) = live_region_variances.get(&region) {
             add_liveness_constraint(
                 region,

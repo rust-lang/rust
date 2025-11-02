@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -51,8 +53,6 @@
 // lldb-check:[...] { 0 = { a = OneHundred b = Vienna } 1 = 9 }
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::AnEnum::{OneHundred, OneThousand, OneMillion};
 use self::AnotherEnum::{MountainView, Toronto, Vienna};

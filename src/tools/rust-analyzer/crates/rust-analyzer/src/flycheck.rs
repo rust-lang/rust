@@ -1,13 +1,18 @@
 //! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, process::Command, time::Duration};
+use std::{
+    fmt, io,
+    process::Command,
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
+};
 
 use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
 use itertools::Itertools;
-use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
@@ -18,7 +23,10 @@ pub(crate) use cargo_metadata::diagnostic::{
 use toolchain::Tool;
 use triomphe::Arc;
 
-use crate::command::{CargoParser, CommandHandle};
+use crate::{
+    command::{CargoParser, CommandHandle},
+    diagnostics::DiagnosticsGeneration,
+};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
@@ -96,11 +104,11 @@ pub(crate) enum FlycheckConfig {
 }
 
 impl FlycheckConfig {
-    pub(crate) fn invocation_strategy_once(&self) -> bool {
+    pub(crate) fn invocation_strategy(&self) -> InvocationStrategy {
         match self {
-            FlycheckConfig::CargoCommand { .. } => false,
+            FlycheckConfig::CargoCommand { .. } => InvocationStrategy::PerWorkspace,
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
-                *invocation_strategy == InvocationStrategy::Once
+                invocation_strategy.clone()
             }
         }
     }
@@ -138,36 +146,64 @@ pub(crate) struct FlycheckHandle {
     sender: Sender<StateChange>,
     _thread: stdx::thread::JoinHandle,
     id: usize,
+    generation: AtomicUsize,
 }
 
 impl FlycheckHandle {
     pub(crate) fn spawn(
         id: usize,
+        generation: DiagnosticsGeneration,
         sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
     ) -> FlycheckHandle {
-        let actor =
-            FlycheckActor::new(id, sender, config, sysroot_root, workspace_root, manifest_path);
+        let actor = FlycheckActor::new(
+            id,
+            generation,
+            sender,
+            config,
+            sysroot_root,
+            workspace_root,
+            manifest_path,
+        );
         let (sender, receiver) = unbounded::<StateChange>();
         let thread =
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, format!("Flycheck{id}"))
                 .spawn(move || actor.run(receiver))
                 .expect("failed to spawn thread");
-        FlycheckHandle { id, sender, _thread: thread }
+        FlycheckHandle { id, generation: generation.into(), sender, _thread: thread }
     }
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
     pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
-        self.sender.send(StateChange::Restart { package: None, saved_file, target: None }).unwrap();
+        let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
+        self.sender
+            .send(StateChange::Restart {
+                generation,
+                scope: FlycheckScope::Workspace,
+                saved_file,
+                target: None,
+            })
+            .unwrap();
     }
 
     /// Schedule a re-start of the cargo check worker to do a package wide check.
-    pub(crate) fn restart_for_package(&self, package: String, target: Option<Target>) {
+    pub(crate) fn restart_for_package(
+        &self,
+        package: Arc<PackageId>,
+        target: Option<Target>,
+        workspace_deps: Option<FxHashSet<Arc<PackageId>>>,
+    ) {
+        let generation = self.generation.fetch_add(1, Ordering::Relaxed) + 1;
         self.sender
-            .send(StateChange::Restart { package: Some(package), saved_file: None, target })
+            .send(StateChange::Restart {
+                generation,
+                scope: FlycheckScope::Package { package, workspace_deps },
+                saved_file: None,
+                target,
+            })
             .unwrap();
     }
 
@@ -179,23 +215,36 @@ impl FlycheckHandle {
     pub(crate) fn id(&self) -> usize {
         self.id
     }
+
+    pub(crate) fn generation(&self) -> DiagnosticsGeneration {
+        self.generation.load(Ordering::Relaxed)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ClearDiagnosticsKind {
+    All(ClearScope),
+    OlderThan(DiagnosticsGeneration, ClearScope),
+}
+
+#[derive(Debug)]
+pub(crate) enum ClearScope {
+    Workspace,
+    Package(Arc<PackageId>),
 }
 
 pub(crate) enum FlycheckMessage {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic {
         id: usize,
+        generation: DiagnosticsGeneration,
         workspace_root: Arc<AbsPathBuf>,
         diagnostic: Diagnostic,
         package_id: Option<Arc<PackageId>>,
     },
 
     /// Request clearing all outdated diagnostics.
-    ClearDiagnostics {
-        id: usize,
-        /// The package whose diagnostics to clear, or if unspecified, all diagnostics.
-        package_id: Option<Arc<PackageId>>,
-    },
+    ClearDiagnostics { id: usize, kind: ClearDiagnosticsKind },
 
     /// Request check progress notification to client
     Progress {
@@ -208,18 +257,23 @@ pub(crate) enum FlycheckMessage {
 impl fmt::Debug for FlycheckMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => f
+            FlycheckMessage::AddDiagnostic {
+                id,
+                generation,
+                workspace_root,
+                diagnostic,
+                package_id,
+            } => f
                 .debug_struct("AddDiagnostic")
                 .field("id", id)
+                .field("generation", generation)
                 .field("workspace_root", workspace_root)
                 .field("package_id", package_id)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
-            FlycheckMessage::ClearDiagnostics { id, package_id } => f
-                .debug_struct("ClearDiagnostics")
-                .field("id", id)
-                .field("package_id", package_id)
-                .finish(),
+            FlycheckMessage::ClearDiagnostics { id, kind } => {
+                f.debug_struct("ClearDiagnostics").field("id", id).field("kind", kind).finish()
+            }
             FlycheckMessage::Progress { id, progress } => {
                 f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
             }
@@ -236,8 +290,18 @@ pub(crate) enum Progress {
     DidFailToRestart(String),
 }
 
+enum FlycheckScope {
+    Workspace,
+    Package { package: Arc<PackageId>, workspace_deps: Option<FxHashSet<Arc<PackageId>>> },
+}
+
 enum StateChange {
-    Restart { package: Option<String>, saved_file: Option<AbsPathBuf>, target: Option<Target> },
+    Restart {
+        generation: DiagnosticsGeneration,
+        scope: FlycheckScope,
+        saved_file: Option<AbsPathBuf>,
+        target: Option<Target>,
+    },
     Cancel,
 }
 
@@ -246,6 +310,7 @@ struct FlycheckActor {
     /// The workspace id of this flycheck instance.
     id: usize,
 
+    generation: DiagnosticsGeneration,
     sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
@@ -253,6 +318,7 @@ struct FlycheckActor {
     /// or the project root of the project.
     root: Arc<AbsPathBuf>,
     sysroot_root: Option<AbsPathBuf>,
+    scope: FlycheckScope,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
@@ -283,6 +349,7 @@ pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 impl FlycheckActor {
     fn new(
         id: usize,
+        generation: DiagnosticsGeneration,
         sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
@@ -292,10 +359,12 @@ impl FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor {
             id,
+            generation,
             sender,
             config,
             sysroot_root,
             root: Arc::new(workspace_root),
+            scope: FlycheckScope::Workspace,
             manifest_path,
             command_handle: None,
             command_receiver: None,
@@ -327,7 +396,12 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck cancelled");
                     self.cancel_check_process();
                 }
-                Event::RequestStateChange(StateChange::Restart { package, saved_file, target }) => {
+                Event::RequestStateChange(StateChange::Restart {
+                    generation,
+                    scope,
+                    saved_file,
+                    target,
+                }) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
@@ -337,9 +411,11 @@ impl FlycheckActor {
                         }
                     }
 
-                    let Some(command) =
-                        self.check_command(package.as_deref(), saved_file.as_deref(), target)
-                    else {
+                    let command = self.check_command(&scope, saved_file.as_deref(), target);
+                    self.scope = scope;
+                    self.generation = generation;
+
+                    let Some(command) = command else {
                         continue;
                     };
 
@@ -347,7 +423,23 @@ impl FlycheckActor {
 
                     tracing::debug!(?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
-                    match CommandHandle::spawn(command, CargoCheckParser, sender) {
+                    match CommandHandle::spawn(
+                        command,
+                        CargoCheckParser,
+                        sender,
+                        match &self.config {
+                            FlycheckConfig::CargoCommand { options, .. } => Some(
+                                options
+                                    .target_dir
+                                    .as_deref()
+                                    .unwrap_or(
+                                        Utf8Path::new("target").join("rust-analyzer").as_path(),
+                                    )
+                                    .join(format!("flycheck{}", self.id)),
+                            ),
+                            _ => None,
+                        },
+                    ) {
                         Ok(command_handle) => {
                             tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
@@ -381,10 +473,55 @@ impl FlycheckActor {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
                         // Clear everything for good measure
-                        self.send(FlycheckMessage::ClearDiagnostics {
-                            id: self.id,
-                            package_id: None,
-                        });
+                        match &self.scope {
+                            FlycheckScope::Workspace => {
+                                self.send(FlycheckMessage::ClearDiagnostics {
+                                    id: self.id,
+                                    kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+                                });
+                            }
+                            FlycheckScope::Package { package, workspace_deps } => {
+                                for pkg in
+                                    std::iter::once(package).chain(workspace_deps.iter().flatten())
+                                {
+                                    self.send(FlycheckMessage::ClearDiagnostics {
+                                        id: self.id,
+                                        kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                            pkg.clone(),
+                                        )),
+                                    });
+                                }
+                            }
+                        }
+                    } else if res.is_ok() {
+                        // We clear diagnostics for packages on
+                        // `[CargoCheckMessage::CompilerArtifact]` but there seem to be setups where
+                        // cargo may not report an artifact to our runner at all. To handle such
+                        // cases, clear stale diagnostics when flycheck completes successfully.
+                        match &self.scope {
+                            FlycheckScope::Workspace => {
+                                self.send(FlycheckMessage::ClearDiagnostics {
+                                    id: self.id,
+                                    kind: ClearDiagnosticsKind::OlderThan(
+                                        self.generation,
+                                        ClearScope::Workspace,
+                                    ),
+                                });
+                            }
+                            FlycheckScope::Package { package, workspace_deps } => {
+                                for pkg in
+                                    std::iter::once(package).chain(workspace_deps.iter().flatten())
+                                {
+                                    self.send(FlycheckMessage::ClearDiagnostics {
+                                        id: self.id,
+                                        kind: ClearDiagnosticsKind::OlderThan(
+                                            self.generation,
+                                            ClearScope::Package(pkg.clone()),
+                                        ),
+                                    });
+                                }
+                            }
+                        }
                     }
                     self.clear_diagnostics_state();
 
@@ -412,7 +549,7 @@ impl FlycheckActor {
                             );
                             self.send(FlycheckMessage::ClearDiagnostics {
                                 id: self.id,
-                                package_id: Some(package_id),
+                                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
                             });
                         }
                     }
@@ -435,7 +572,9 @@ impl FlycheckActor {
                                 );
                                 self.send(FlycheckMessage::ClearDiagnostics {
                                     id: self.id,
-                                    package_id: Some(package_id.clone()),
+                                    kind: ClearDiagnosticsKind::All(ClearScope::Package(
+                                        package_id.clone(),
+                                    )),
                                 });
                             }
                         } else if self.diagnostics_received
@@ -444,11 +583,12 @@ impl FlycheckActor {
                             self.diagnostics_received = DiagnosticsReceived::YesAndClearedForAll;
                             self.send(FlycheckMessage::ClearDiagnostics {
                                 id: self.id,
-                                package_id: None,
+                                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
                             });
                         }
                         self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
+                            generation: self.generation,
                             package_id,
                             workspace_root: self.root.clone(),
                             diagnostic,
@@ -465,7 +605,7 @@ impl FlycheckActor {
         if let Some(command_handle) = self.command_handle.take() {
             tracing::debug!(
                 command = ?command_handle,
-                "did  cancel flycheck"
+                "did cancel flycheck"
             );
             command_handle.cancel();
             self.command_receiver.take();
@@ -484,7 +624,7 @@ impl FlycheckActor {
     /// return None.
     fn check_command(
         &self,
-        package: Option<&str>,
+        scope: &FlycheckScope,
         saved_file: Option<&AbsPath>,
         target: Option<Target>,
     ) -> Option<Command> {
@@ -492,18 +632,18 @@ impl FlycheckActor {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd =
                     toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
-                if let Some(sysroot_root) = &self.sysroot_root {
-                    if !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
-                        && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
-                    {
-                        cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
-                    }
+                if let Some(sysroot_root) = &self.sysroot_root
+                    && !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
+                    && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
+                {
+                    cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
+                cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
                 cmd.arg(command);
 
-                match package {
-                    Some(pkg) => cmd.arg("-p").arg(pkg),
-                    None => cmd.arg("--workspace"),
+                match scope {
+                    FlycheckScope::Workspace => cmd.arg("--workspace"),
+                    FlycheckScope::Package { package, .. } => cmd.arg("-p").arg(&package.repr),
                 };
 
                 if let Some(tgt) = target {
@@ -525,6 +665,7 @@ impl FlycheckActor {
                     cmd.arg("--manifest-path");
                     cmd.arg(manifest_path);
                     if manifest_path.extension() == Some("rs") {
+                        cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
                         cmd.arg("-Zscript");
                     }
                 }

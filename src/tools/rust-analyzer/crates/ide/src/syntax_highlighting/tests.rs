@@ -1,14 +1,15 @@
 use std::time::Instant;
 
 use expect_test::{ExpectFile, expect_file};
-use ide_db::SymbolKind;
+use ide_db::{MiniCore, SymbolKind};
 use span::Edition;
 use test_utils::{AssertLinear, bench, bench_fixture, skip_slow_tests};
 
 use crate::{FileRange, HighlightConfig, HlTag, TextRange, fixture};
 
-const HL_CONFIG: HighlightConfig = HighlightConfig {
+const HL_CONFIG: HighlightConfig<'_> = HighlightConfig {
     strings: true,
+    comments: true,
     punctuation: true,
     specialize_punctuation: true,
     specialize_operator: true,
@@ -16,6 +17,7 @@ const HL_CONFIG: HighlightConfig = HighlightConfig {
     inject_doc_comment: true,
     macro_bang: true,
     syntactic_name_ref_highlighting: false,
+    minicore: MiniCore::default(),
 };
 
 #[test]
@@ -1016,6 +1018,35 @@ impl t for foo {
 }
 
 #[test]
+fn test_injection_2() {
+    check_highlighting(
+        r##"
+fn fixture(#[rust_analyzer::rust_fixture] ra_fixture: &str) {}
+
+fn main() {
+    fixture(r#"
+@@- /main.rs crate:main deps:other_crate
+fn test() {
+    let x = other_crate::foo::S::thing();
+    x;
+} //^ i128
+
+@@- /lib.rs crate:other_crate
+pub mod foo {
+    pub struct S;
+    impl S {
+        pub fn thing() -> i128 { 0 }
+    }
+}
+    "#);
+}
+"##,
+        expect_file!["./test_data/highlight_injection_2.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_injection() {
     check_highlighting(
         r##"
@@ -1023,7 +1054,8 @@ fn fixture(#[rust_analyzer::rust_fixture] ra_fixture: &str) {}
 
 fn main() {
     fixture(r#"
-trait Foo {
+@@- minicore: sized
+trait Foo: Sized {
     fn foo() {
         println!("2 + 2 = {}", 4);
     }
@@ -1220,14 +1252,23 @@ fn foo(x: &fn(&dyn Trait)) {}
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
+fn check_highlighting_with_config(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    config: HighlightConfig<'_>,
+    expect: ExpectFile,
+    rainbow: bool,
+) {
+    let (analysis, file_id) = fixture::file(ra_fixture.trim());
+    let actual_html = &analysis.highlight_as_html_with_config(config, file_id, rainbow).unwrap();
+    expect.assert_eq(actual_html)
+}
+
 fn check_highlighting(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: ExpectFile,
     rainbow: bool,
 ) {
-    let (analysis, file_id) = fixture::file(ra_fixture.trim());
-    let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
-    expect.assert_eq(actual_html)
+    check_highlighting_with_config(ra_fixture, HL_CONFIG, expect, rainbow)
 }
 
 #[test]
@@ -1432,6 +1473,27 @@ fn main() {
 //- /main.rs
 "#,
         expect_file!["./test_data/highlight_issue_19357.html"],
+        false,
+    );
+}
+
+#[test]
+fn test_comment_highlighting_disabled() {
+    // Test that comments are not highlighted when disabled
+    check_highlighting_with_config(
+        r#"
+// This is a regular comment
+/// This is a doc comment
+fn main() {
+    // Another comment
+    println!("Hello, world!");
+}
+"#,
+        HighlightConfig {
+            comments: false, // Disable comment highlighting
+            ..HL_CONFIG
+        },
+        expect_file!["./test_data/highlight_comments_disabled.html"],
         false,
     );
 }

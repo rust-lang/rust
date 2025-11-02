@@ -796,6 +796,12 @@ mod err {
     #[test]
     fn impl_type() { run_and_expect_errors("test_data/parser/inline/err/impl_type.rs"); }
     #[test]
+    fn invalid_question_for_type_trait_bound() {
+        run_and_expect_errors(
+            "test_data/parser/inline/err/invalid_question_for_type_trait_bound.rs",
+        );
+    }
+    #[test]
     fn let_else_right_curly_brace() {
         run_and_expect_errors("test_data/parser/inline/err/let_else_right_curly_brace.rs");
     }
@@ -818,8 +824,16 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/misplaced_label_err.rs");
     }
     #[test]
+    fn missing_const_type() {
+        run_and_expect_errors("test_data/parser/inline/err/missing_const_type.rs");
+    }
+    #[test]
     fn missing_fn_param_type() {
         run_and_expect_errors("test_data/parser/inline/err/missing_fn_param_type.rs");
+    }
+    #[test]
+    fn missing_static_type() {
+        run_and_expect_errors("test_data/parser/inline/err/missing_static_type.rs");
     }
     #[test]
     fn path_item_without_excl() {
@@ -828,6 +842,10 @@ mod err {
     #[test]
     fn pointer_type_no_mutability() {
         run_and_expect_errors("test_data/parser/inline/err/pointer_type_no_mutability.rs");
+    }
+    #[test]
+    fn postfix_dot_expr_ambiguity() {
+        run_and_expect_errors("test_data/parser/inline/err/postfix_dot_expr_ambiguity.rs");
     }
     #[test]
     fn precise_capturing_invalid() {

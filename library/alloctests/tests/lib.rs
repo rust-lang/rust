@@ -2,10 +2,11 @@
 #![feature(alloc_layout_extra)]
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
-#![feature(btree_extract_if)]
+#![feature(wtf8_internals)]
 #![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
+#![feature(deque_extend_front)]
 #![feature(downcast_unchecked)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
@@ -23,7 +24,6 @@
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
-#![feature(round_char_boundary)]
 #![feature(slice_partition_dedup)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(string_remove_matches)]
@@ -37,17 +37,18 @@
 #![feature(local_waker)]
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
+#![feature(string_replace_in_place)]
 #![feature(vec_deque_pop_if)]
 #![feature(vec_deque_truncate_front)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
+#![feature(vec_try_remove)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
-extern crate test;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 

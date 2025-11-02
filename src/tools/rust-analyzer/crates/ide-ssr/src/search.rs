@@ -187,16 +187,15 @@ impl<'db> MatchFinder<'db> {
         self.try_add_match(rule, code, restrict_range, matches_out);
         // If we've got a macro call, we already tried matching it pre-expansion, which is the only
         // way to match the whole macro, now try expanding it and matching the expansion.
-        if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {
-            if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
-                if let Some(tt) = macro_call.token_tree() {
-                    // When matching within a macro expansion, we only want to allow matches of
-                    // nodes that originated entirely from within the token tree of the macro call.
-                    // i.e. we don't want to match something that came from the macro itself.
-                    if let Some(range) = self.sema.original_range_opt(tt.syntax()) {
-                        self.slow_scan_node(&expanded.value, rule, &Some(range), matches_out);
-                    }
-                }
+        if let Some(macro_call) = ast::MacroCall::cast(code.clone())
+            && let Some(expanded) = self.sema.expand_macro_call(&macro_call)
+            && let Some(tt) = macro_call.token_tree()
+        {
+            // When matching within a macro expansion, we only want to allow matches of
+            // nodes that originated entirely from within the token tree of the macro call.
+            // i.e. we don't want to match something that came from the macro itself.
+            if let Some(range) = self.sema.original_range_opt(tt.syntax()) {
+                self.slow_scan_node(&expanded.value, rule, &Some(range), matches_out);
             }
         }
         for child in code.children() {
@@ -241,10 +240,10 @@ impl<'db> MatchFinder<'db> {
 
 /// Returns whether we support matching within `node` and all of its ancestors.
 fn is_search_permitted_ancestors(node: &SyntaxNode) -> bool {
-    if let Some(parent) = node.parent() {
-        if !is_search_permitted_ancestors(&parent) {
-            return false;
-        }
+    if let Some(parent) = node.parent()
+        && !is_search_permitted_ancestors(&parent)
+    {
+        return false;
     }
     is_search_permitted(node)
 }

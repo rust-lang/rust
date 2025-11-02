@@ -9,7 +9,6 @@
 //! where parent follows the same scheme.
 use std::ops;
 
-use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast as _};
 use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId, Lookup,
     TypeOrConstParamId, TypeParamId,
@@ -22,8 +21,6 @@ use hir_def::{
 };
 use itertools::chain;
 use triomphe::Arc;
-
-use crate::{Interner, Substitution, db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx};
 
 pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
@@ -130,9 +127,14 @@ impl Generics {
 
     /// Returns total number of generic parameters in scope, including those from parent.
     pub(crate) fn len(&self) -> usize {
-        let parent = self.parent_generics().map_or(0, Generics::len);
+        let parent = self.len_parent();
         let child = self.params.len();
         parent + child
+    }
+
+    #[inline]
+    pub(crate) fn len_parent(&self) -> usize {
+        self.parent_generics().map_or(0, Generics::len)
     }
 
     /// Returns numbers of generic parameters excluding those from parent.
@@ -163,6 +165,21 @@ impl Generics {
 
         let parent_len = self.parent_generics().map_or(0, Generics::len);
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
+    }
+
+    pub(crate) fn type_or_const_param(
+        &self,
+        param: TypeOrConstParamId,
+    ) -> Option<(usize, TypeOrConstParamData)> {
+        let idx = self.find_type_or_const_param(param)?;
+        self.iter().nth(idx).and_then(|p| {
+            let data = match p.1 {
+                GenericParamDataRef::TypeParamData(p) => p.clone().into(),
+                GenericParamDataRef::ConstParamData(p) => p.clone().into(),
+                _ => return None,
+            };
+            Some((idx, data))
+        })
     }
 
     pub fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
@@ -210,55 +227,11 @@ impl Generics {
     pub(crate) fn parent_generics(&self) -> Option<&Generics> {
         self.parent_generics.as_deref()
     }
-
-    pub(crate) fn parent_or_self(&self) -> &Generics {
-        self.parent_generics.as_deref().unwrap_or(self)
-    }
-
-    /// Returns a Substitution that replaces each parameter by a bound variable.
-    pub(crate) fn bound_vars_subst(
-        &self,
-        db: &dyn HirDatabase,
-        debruijn: DebruijnIndex,
-    ) -> Substitution {
-        Substitution::from_iter(
-            Interner,
-            self.iter_id().enumerate().map(|(idx, id)| match id {
-                GenericParamId::ConstParamId(id) => BoundVar::new(debruijn, idx)
-                    .to_const(Interner, db.const_param_ty(id))
-                    .cast(Interner),
-                GenericParamId::TypeParamId(_) => {
-                    BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner)
-                }
-                GenericParamId::LifetimeParamId(_) => {
-                    BoundVar::new(debruijn, idx).to_lifetime(Interner).cast(Interner)
-                }
-            }),
-        )
-    }
-
-    /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
-    pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
-        Substitution::from_iter(
-            Interner,
-            self.iter_id().map(|id| match id {
-                GenericParamId::TypeParamId(id) => {
-                    to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
-                }
-                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into())
-                    .to_const(Interner, db.const_param_ty(id))
-                    .cast(Interner),
-                GenericParamId::LifetimeParamId(id) => {
-                    lt_to_placeholder_idx(db, id).to_lifetime(Interner).cast(Interner)
-                }
-            }),
-        )
-    }
 }
 
 pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> Option<usize> {
     match def {
-        GenericDefId::TraitId(_) | GenericDefId::TraitAliasId(_) => {
+        GenericDefId::TraitId(_) => {
             let params = db.generic_params(def);
             params.trait_self_param().map(|idx| idx.into_raw().into_u32() as usize)
         }
@@ -272,7 +245,7 @@ pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> O
     }
 }
 
-fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+pub(crate) fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
@@ -280,8 +253,7 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::StaticId(_)
         | GenericDefId::AdtId(_)
         | GenericDefId::TraitId(_)
-        | GenericDefId::ImplId(_)
-        | GenericDefId::TraitAliasId(_) => return None,
+        | GenericDefId::ImplId(_) => return None,
     };
 
     match container {

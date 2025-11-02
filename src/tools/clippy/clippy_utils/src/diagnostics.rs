@@ -22,13 +22,14 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
     {
         diag.help(format!(
             "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{lint}",
-            &option_env!("RUST_RELEASE_NUM").map_or_else(
-                || "master".to_string(),
-                |n| {
-                    // extract just major + minor version and ignore patch versions
-                    format!("rust-{}", n.rsplit_once('.').unwrap().1)
-                }
-            )
+            match option_env!("CFG_RELEASE_CHANNEL") {
+                // Clippy version is 0.1.xx
+                //
+                // Always use .0 because we do not generate separate lint doc pages for rust patch releases
+                Some("stable") => concat!("rust-1.", env!("CARGO_PKG_VERSION_PATCH"), ".0"),
+                Some("beta") => "beta",
+                _ => "master",
+            }
         ));
     }
 }

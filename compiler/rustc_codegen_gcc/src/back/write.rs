@@ -5,8 +5,8 @@ use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_fs_util::link_or_copy;
+use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
-use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::SplitDebuginfo;
 
 use crate::base::add_pic_option;
@@ -17,7 +17,7 @@ pub(crate) fn codegen(
     cgcx: &CodegenContext<GccCodegenBackend>,
     module: ModuleCodegen<GccContext>,
     config: &ModuleConfig,
-) -> Result<CompiledModule, FatalError> {
+) -> CompiledModule {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
@@ -246,7 +246,7 @@ pub(crate) fn codegen(
         }
     }
 
-    Ok(module.into_compiled_module(
+    module.into_compiled_module(
         config.emit_obj != EmitObj::None,
         cgcx.target_can_use_split_dwarf && cgcx.split_debuginfo == SplitDebuginfo::Unpacked,
         config.emit_bc,
@@ -254,7 +254,7 @@ pub(crate) fn codegen(
         config.emit_ir,
         &cgcx.output_filenames,
         cgcx.invocation_temp.as_deref(),
-    ))
+    )
 }
 
 pub(crate) fn save_temp_bitcode(

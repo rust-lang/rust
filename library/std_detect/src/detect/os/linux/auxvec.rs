@@ -131,15 +131,15 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 /// `getauxval` function. If the function is not linked, this function return `Err`.
 fn getauxval(key: usize) -> Result<usize, ()> {
     type F = unsafe extern "C" fn(libc::c_ulong) -> libc::c_ulong;
-    cfg_if::cfg_if! {
-        if #[cfg(all(
+    cfg_select! {
+        all(
             feature = "std_detect_dlsym_getauxval",
             not(all(
                 target_os = "linux",
                 any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
             )),
             not(target_os = "android"),
-        ))] {
+        ) => {
             let ffi_getauxval: F = unsafe {
                 let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
                 if ptr.is_null() {
@@ -147,7 +147,8 @@ fn getauxval(key: usize) -> Result<usize, ()> {
                 }
                 core::mem::transmute(ptr)
             };
-        } else {
+        }
+        _ => {
             let ffi_getauxval: F = libc::getauxval;
         }
     }

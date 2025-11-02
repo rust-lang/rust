@@ -18,7 +18,9 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 # Provides access to APIs that expose internals of the rust compiler.
 # APIs enabled by this feature are unstable. They can be removed or modified
 # at any point and they are not included in the crate's semantic versioning.
 rustc_internal = []
+# tidy-alphabetical-end

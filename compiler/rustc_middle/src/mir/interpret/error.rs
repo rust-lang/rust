@@ -497,12 +497,12 @@ pub enum ValidationErrorKind<'tcx> {
     MutableRefToImmutable,
     UnsafeCellInImmutable,
     MutableRefInConst,
-    NullFnPtr,
-    NeverVal,
-    NullablePtrOutOfRange {
-        range: WrappingRange,
-        max_value: u128,
+    NullFnPtr {
+        /// Records whether this pointer is definitely null or just may be null.
+        maybe: bool,
     },
+    NeverVal,
+    NonnullPtrMaybeNull,
     PtrOutOfRange {
         range: WrappingRange,
         max_value: u128,
@@ -544,6 +544,8 @@ pub enum ValidationErrorKind<'tcx> {
     },
     NullPtr {
         ptr_kind: PointerKind,
+        /// Records whether this pointer is definitely null or just may be null.
+        maybe: bool,
     },
     DanglingPtrNoProvenance {
         ptr_kind: PointerKind,
@@ -582,9 +584,6 @@ pub enum UnsupportedOpInfo {
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
-    /// Overwriting parts of a pointer; without knowing absolute addresses, the resulting state
-    /// cannot be represented by the CTFE interpreter.
-    OverwritePartialPointer(Pointer<AllocId>),
     /// Attempting to read or copy parts of a pointer to somewhere else; without knowing absolute
     /// addresses, the resulting state cannot be represented by the CTFE interpreter.
     ReadPartialPointer(Pointer<AllocId>),
@@ -793,36 +792,37 @@ impl Drop for Guard {
 /// We also make things panic if this type is ever implicitly dropped.
 #[derive(Debug)]
 #[must_use]
-pub struct InterpResult_<'tcx, T> {
+pub struct InterpResult<'tcx, T = ()> {
     res: Result<T, InterpErrorInfo<'tcx>>,
     guard: Guard,
 }
 
-// Type alias to be able to set a default type argument.
-pub type InterpResult<'tcx, T = ()> = InterpResult_<'tcx, T>;
-
-impl<'tcx, T> ops::Try for InterpResult_<'tcx, T> {
+impl<'tcx, T> ops::Try for InterpResult<'tcx, T> {
     type Output = T;
-    type Residual = InterpResult_<'tcx, convert::Infallible>;
+    type Residual = InterpResult<'tcx, convert::Infallible>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
-        InterpResult_::new(Ok(output))
+        InterpResult::new(Ok(output))
     }
 
     #[inline]
     fn branch(self) -> ops::ControlFlow<Self::Residual, Self::Output> {
         match self.disarm() {
             Ok(v) => ops::ControlFlow::Continue(v),
-            Err(e) => ops::ControlFlow::Break(InterpResult_::new(Err(e))),
+            Err(e) => ops::ControlFlow::Break(InterpResult::new(Err(e))),
         }
     }
 }
 
-impl<'tcx, T> ops::FromResidual for InterpResult_<'tcx, T> {
+impl<'tcx, T> ops::Residual<T> for InterpResult<'tcx, convert::Infallible> {
+    type TryType = InterpResult<'tcx, T>;
+}
+
+impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {
     #[inline]
     #[track_caller]
-    fn from_residual(residual: InterpResult_<'tcx, convert::Infallible>) -> Self {
+    fn from_residual(residual: InterpResult<'tcx, convert::Infallible>) -> Self {
         match residual.disarm() {
             Err(e) => Self::new(Err(e)),
         }
@@ -830,7 +830,7 @@ impl<'tcx, T> ops::FromResidual for InterpResult_<'tcx, T> {
 }
 
 // Allow `yeet`ing `InterpError` in functions returning `InterpResult_`.
-impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpErrorKind<'tcx>>> for InterpResult_<'tcx, T> {
+impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpErrorKind<'tcx>>> for InterpResult<'tcx, T> {
     #[inline]
     fn from_residual(ops::Yeet(e): ops::Yeet<InterpErrorKind<'tcx>>) -> Self {
         Self::new(Err(e.into()))
@@ -840,7 +840,7 @@ impl<'tcx, T> ops::FromResidual<ops::Yeet<InterpErrorKind<'tcx>>> for InterpResu
 // Allow `?` on `Result<_, InterpError>` in functions returning `InterpResult_`.
 // This is useful e.g. for `option.ok_or_else(|| err_ub!(...))`.
 impl<'tcx, T, E: Into<InterpErrorInfo<'tcx>>> ops::FromResidual<Result<convert::Infallible, E>>
-    for InterpResult_<'tcx, T>
+    for InterpResult<'tcx, T>
 {
     #[inline]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
@@ -863,7 +863,7 @@ impl<'tcx, T, V: FromIterator<T>> FromIterator<InterpResult<'tcx, T>> for Interp
     }
 }
 
-impl<'tcx, T> InterpResult_<'tcx, T> {
+impl<'tcx, T> InterpResult<'tcx, T> {
     #[inline(always)]
     fn new(res: Result<T, InterpErrorInfo<'tcx>>) -> Self {
         Self { res, guard: Guard }
@@ -890,7 +890,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
 
     #[inline]
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> InterpResult<'tcx, U> {
-        InterpResult_::new(self.disarm().map(f))
+        InterpResult::new(self.disarm().map(f))
     }
 
     #[inline]
@@ -898,7 +898,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
         self,
         f: impl FnOnce(InterpErrorInfo<'tcx>) -> InterpErrorInfo<'tcx>,
     ) -> InterpResult<'tcx, T> {
-        InterpResult_::new(self.disarm().map_err(f))
+        InterpResult::new(self.disarm().map_err(f))
     }
 
     #[inline]
@@ -906,7 +906,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
         self,
         f: impl FnOnce(InterpErrorKind<'tcx>) -> InterpErrorKind<'tcx>,
     ) -> InterpResult<'tcx, T> {
-        InterpResult_::new(self.disarm().map_err(|mut e| {
+        InterpResult::new(self.disarm().map_err(|mut e| {
             e.0.kind = f(e.0.kind);
             e
         }))
@@ -914,7 +914,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
 
     #[inline]
     pub fn inspect_err_kind(self, f: impl FnOnce(&InterpErrorKind<'tcx>)) -> InterpResult<'tcx, T> {
-        InterpResult_::new(self.disarm().inspect_err(|e| f(&e.0.kind)))
+        InterpResult::new(self.disarm().inspect_err(|e| f(&e.0.kind)))
     }
 
     #[inline]
@@ -937,7 +937,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
 
     #[inline]
     pub fn and_then<U>(self, f: impl FnOnce(T) -> InterpResult<'tcx, U>) -> InterpResult<'tcx, U> {
-        InterpResult_::new(self.disarm().and_then(|t| f(t).disarm()))
+        InterpResult::new(self.disarm().and_then(|t| f(t).disarm()))
     }
 
     /// Returns success if both `self` and `other` succeed, while ensuring we don't
@@ -952,7 +952,7 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
                 // Discard the other error.
                 drop(other.disarm());
                 // Return `self`.
-                InterpResult_::new(Err(e))
+                InterpResult::new(Err(e))
             }
         }
     }
@@ -960,5 +960,5 @@ impl<'tcx, T> InterpResult_<'tcx, T> {
 
 #[inline(always)]
 pub fn interp_ok<'tcx, T>(x: T) -> InterpResult<'tcx, T> {
-    InterpResult_::new(Ok(x))
+    InterpResult::new(Ok(x))
 }

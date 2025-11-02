@@ -4,7 +4,6 @@ pub const C: () = {
     let _: &'static _ = &id(&String::new());
     //~^ ERROR: temporary value dropped while borrowed
     //~| ERROR: temporary value dropped while borrowed
-    //~| ERROR: destructor of `String` cannot be evaluated at compile-time
 };
 
 fn main() {

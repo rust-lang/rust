@@ -1,6 +1,8 @@
 //@ ignore-lldb
 
 //@ compile-flags:-C debuginfo=1
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // Make sure functions have proper names
 // gdb-command:info functions
@@ -18,8 +20,6 @@
 
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     a: i64,

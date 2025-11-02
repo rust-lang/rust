@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
 
 use crate::ty::{
-    self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self, Binder, BoundConst, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
 };
 
@@ -60,7 +60,7 @@ where
 pub trait BoundVarReplacerDelegate<'tcx> {
     fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx>;
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx>;
-    fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx>;
+    fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx>;
 }
 
 /// A simple delegate taking 3 mutable functions. The used functions must
@@ -69,7 +69,7 @@ pub trait BoundVarReplacerDelegate<'tcx> {
 pub struct FnMutDelegate<'a, 'tcx> {
     pub regions: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
     pub types: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
-    pub consts: &'a mut (dyn FnMut(ty::BoundVar) -> ty::Const<'tcx> + 'a),
+    pub consts: &'a mut (dyn FnMut(ty::BoundConst) -> ty::Const<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
@@ -79,8 +79,8 @@ impl<'a, 'tcx> BoundVarReplacerDelegate<'tcx> for FnMutDelegate<'a, 'tcx> {
     fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
         (self.types)(bt)
     }
-    fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-        (self.consts)(bv)
+    fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+        (self.consts)(bc)
     }
 }
 
@@ -125,7 +125,9 @@ where
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
                 ty::shift_vars(self.tcx, ty, self.current_index.as_u32())
@@ -146,9 +148,11 @@ where
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
-            ty::ReBound(debruijn, br) if debruijn == self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+                if debruijn == self.current_index =>
+            {
                 let region = self.delegate.replace_region(br);
-                if let ty::ReBound(debruijn1, br) = region.kind() {
+                if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1), br) = region.kind() {
                     // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
@@ -165,7 +169,9 @@ where
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn == self.current_index =>
+            {
                 let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
                 ty::shift_vars(self.tcx, ct, self.current_index.as_u32())
@@ -300,7 +306,13 @@ impl<'tcx> TyCtxt<'tcx> {
                         ty::BoundTy { var: shift_bv(t.var), kind: t.kind },
                     )
                 },
-                consts: &mut |c| ty::Const::new_bound(self, ty::INNERMOST, shift_bv(c)),
+                consts: &mut |c| {
+                    ty::Const::new_bound(
+                        self,
+                        ty::INNERMOST,
+                        ty::BoundConst { var: shift_bv(c.var) },
+                    )
+                },
             },
         )
     }
@@ -343,12 +355,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     .expect_ty();
                 Ty::new_bound(self.tcx, ty::INNERMOST, BoundTy { var, kind })
             }
-            fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                let entry = self.map.entry(bv);
+            fn replace_const(&mut self, bc: ty::BoundConst) -> ty::Const<'tcx> {
+                let entry = self.map.entry(bc.var);
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                ty::Const::new_bound(self.tcx, ty::INNERMOST, var)
+                ty::Const::new_bound(self.tcx, ty::INNERMOST, BoundConst { var })
             }
         }
 

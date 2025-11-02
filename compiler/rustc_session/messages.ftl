@@ -49,6 +49,8 @@ session_hexadecimal_float_literal_not_supported = hexadecimal float literal is n
 session_incompatible_linker_flavor = linker flavor `{$flavor}` is incompatible with the current target
     .note = compatible flavors are: {$compatible_list}
 
+session_indirect_branch_cs_prefix_requires_x86_or_x86_64 = `-Zindirect-branch-cs-prefix` is only supported on x86 and x86_64
+
 session_instrumentation_not_supported = {$us} instrumentation is not supported for this target
 
 session_int_literal_too_large = integer literal is too large
@@ -128,6 +130,10 @@ session_target_requires_unwind_tables = target requires unwind tables, they cann
 session_target_small_data_threshold_not_supported = `-Z small-data-threshold` is not supported for target {$target_triple} and will be ignored
 
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
+
+session_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
+    .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
+    .incoherent = manually setting a built-in cfg can and does create incoherent behaviors
 
 session_unleashed_feature_help_named = skipping check for `{$gate}` feature
 session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate

@@ -51,6 +51,7 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_middle::ty::TyCtxt;
+use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
     CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
@@ -205,7 +206,7 @@ impl Callbacks for TimePassesCallbacks {
         // time because it will mess up the --print output. See #64339.
         //
         self.time_passes = (config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes)
-            .then(|| config.opts.unstable_opts.time_passes_format);
+            .then_some(config.opts.unstable_opts.time_passes_format);
         config.opts.trimmed_def_paths = true;
     }
 }
@@ -268,7 +269,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
-        expanded_args: args,
     };
 
     callbacks.config(&mut config);
@@ -438,8 +438,9 @@ fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Inpu
                         "when UNSTABLE_RUSTDOC_TEST_PATH is set \
                                     UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
                     );
-                    let line = isize::from_str_radix(&line, 10)
-                        .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+                    let line = line
+                        .parse::<isize>()
+                        .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be a number");
                     FileName::doc_test_source_code(PathBuf::from(path), line)
                 }
                 Err(_) => FileName::anon_source_code(&input),
@@ -473,8 +474,7 @@ fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, col
         let mut text = String::new();
         // Slice off the leading newline and print.
         for line in description.lines() {
-            let indent_level =
-                line.find(|c: char| !c.is_whitespace()).unwrap_or_else(|| line.len());
+            let indent_level = line.find(|c: char| !c.is_whitespace()).unwrap_or(line.len());
             let dedented_line = &line[indent_level..];
             if dedented_line.starts_with("```") {
                 is_in_code_block = !is_in_code_block;
@@ -520,11 +520,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     };
 
     // Try to prettify the raw markdown text. The result can be used by the pager or on stdout.
-    let pretty_data = {
+    let mut pretty_data = {
         let mdstream = markdown::MdStream::parse_str(content);
         let bufwtr = markdown::create_stdout_bufwtr();
-        let mut mdbuf = bufwtr.buffer();
-        if mdstream.write_termcolor_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
+        let mut mdbuf = Vec::new();
+        if mdstream.write_anstream_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
     };
 
     // Try to print via the pager, pretty output if possible.
@@ -545,8 +545,8 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
-    if let Some((bufwtr, mdbuf)) = &pretty_data
-        && bufwtr.print(&mdbuf).is_ok()
+    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+        && bufwtr.write_all(&mdbuf).is_ok()
     {
         return;
     }
@@ -597,8 +597,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
 
 fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
-        Input::File(ref ifile) => {
-            let path = &(*ifile);
+        Input::File(ref path) => {
             let mut v = Vec::new();
             locator::list_file_metadata(
                 &sess.target,
@@ -667,6 +666,10 @@ fn print_crate_info(
             TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
+            TargetSpecJsonSchema => {
+                let schema = rustc_target::spec::json_schema();
+                println_info!("{}", serde_json::to_string_pretty(&schema).unwrap());
+            }
             AllTargetSpecsJson => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {
@@ -683,7 +686,8 @@ fn print_crate_info(
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let crate_name = passes::get_crate_name(sess, attrs);
-                let crate_types = collect_crate_types(sess, attrs);
+                let crate_types =
+                    collect_crate_types(sess, &codegen_backend.supported_crate_types(sess), attrs);
                 for &style in &crate_types {
                     let fname = rustc_session::output::filename_for_input(
                         sess, style, crate_name, &t_outputs,
@@ -828,7 +832,7 @@ fn print_crate_info(
             SupportedCrateTypes => {
                 let supported_crate_types = CRATE_TYPES
                     .iter()
-                    .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .filter(|(_, crate_type)| !invalid_output_for_target(sess, *crate_type))
                     .filter(|(_, crate_type)| *crate_type != CrateType::Sdylib)
                     .map(|(crate_type_sym, _)| *crate_type_sym)
                     .collect::<BTreeSet<_>>();
@@ -1288,10 +1292,15 @@ fn warn_on_confusing_output_filename_flag(
 
 fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
     let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
-        Input::File(file) => new_parser_from_file(&sess.psess, file, None),
-        Input::Str { name, input } => {
-            new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
+        Input::File(file) => {
+            new_parser_from_file(&sess.psess, file, StripTokens::ShebangAndFrontmatter, None)
         }
+        Input::Str { name, input } => new_parser_from_source_str(
+            &sess.psess,
+            name.clone(),
+            input.clone(),
+            StripTokens::ShebangAndFrontmatter,
+        ),
     });
     parser.parse_inner_attributes()
 }
@@ -1424,7 +1433,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&DiagCtxt))
                 eprintln!();
 
                 if let Some(ice_path) = ice_path()
-                    && let Ok(mut out) = File::options().create(true).append(true).open(&ice_path)
+                    && let Ok(mut out) = File::options().create(true).append(true).open(ice_path)
                 {
                     // The current implementation always returns `Some`.
                     let location = info.location().unwrap();
@@ -1500,7 +1509,7 @@ fn report_ice(
 
     let file = if let Some(path) = ice_path() {
         // Create the ICE dump target file.
-        match crate::fs::File::options().create(true).append(true).open(&path) {
+        match crate::fs::File::options().create(true).append(true).open(path) {
             Ok(mut file) => {
                 dcx.emit_note(session_diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {

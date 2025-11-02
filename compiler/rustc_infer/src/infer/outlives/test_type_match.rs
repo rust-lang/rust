@@ -44,8 +44,8 @@ pub fn extract_verify_if_eq<'tcx>(
     let verify_if_eq = verify_if_eq_b.skip_binder();
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
-    if let ty::RegionKind::ReBound(depth, br) = verify_if_eq.bound.kind() {
-        assert!(depth == ty::INNERMOST);
+    if let ty::RegionKind::ReBound(index_kind, br) = verify_if_eq.bound.kind() {
+        assert!(matches!(index_kind, ty::BoundVarIndexKind::Bound(ty::INNERMOST)));
         match m.map.get(&br) {
             Some(&r) => Some(r),
             None => {
@@ -76,7 +76,7 @@ pub(super) fn can_match_erased_ty<'tcx>(
     erased_ty: Ty<'tcx>,
 ) -> bool {
     assert!(!outlives_predicate.has_escaping_bound_vars());
-    let erased_outlives_predicate = tcx.erase_regions(outlives_predicate);
+    let erased_outlives_predicate = tcx.erase_and_anonymize_regions(outlives_predicate);
     let outlives_ty = erased_outlives_predicate.skip_binder().0;
     if outlives_ty == erased_ty {
         // pointless micro-optimization
@@ -156,7 +156,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         pattern: ty::Region<'tcx>,
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if let ty::RegionKind::ReBound(depth, br) = pattern.kind()
+        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(depth), br) = pattern.kind()
             && depth == self.pattern_depth
         {
             self.bind(br, value)

@@ -404,9 +404,7 @@ fn check_item<'tcx>(
     let items = tcx.associated_item_def_ids(id.owner_id);
     worklist.extend(items.iter().map(|ii_ref| ii_ref.expect_local()));
 
-    let Some(trait_def_id) = tcx.trait_id_of_impl(id.owner_id.to_def_id()) else {
-        unreachable!();
-    };
+    let trait_def_id = tcx.impl_trait_id(id.owner_id.to_def_id());
 
     if !trait_def_id.is_local() {
         return;
@@ -423,6 +421,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     if !tcx.def_kind(def_id).has_codegen_attrs() {
         return false;
     }
+
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     codegen_attrs.contains_extern_indicator()
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by

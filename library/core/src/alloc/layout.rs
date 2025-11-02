@@ -226,10 +226,10 @@ impl Layout {
 
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
     ///
-    /// Note that the pointer value may potentially represent a valid pointer,
-    /// which means this must not be used as a "not yet initialized"
-    /// sentinel value. Types that lazily allocate must track initialization by
-    /// some other means.
+    /// Note that the address of the returned pointer may potentially
+    /// be that of a valid pointer, which means this must not be used
+    /// as a "not yet initialized" sentinel value.
+    /// Types that lazily allocate must track initialization by some other means.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[must_use]
     #[inline]
@@ -316,8 +316,7 @@ impl Layout {
         // Size 1 Align MAX or Size isize::MAX Align 2 round up to `isize::MAX + 1`.)
         unsafe {
             let align_m1 = unchecked_sub(align.as_usize(), 1);
-            let size_rounded_up = unchecked_add(self.size, align_m1) & !align_m1;
-            size_rounded_up
+            unchecked_add(self.size, align_m1) & !align_m1
         }
     }
 

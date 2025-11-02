@@ -1,7 +1,5 @@
 # Compiletest
 
-<!-- toc -->
-
 ## Introduction
 
 `compiletest` is the main test harness of the Rust test suite. It allows test
@@ -74,7 +72,7 @@ The following test suites are available, with links for more information:
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
 | [`coverage`](#coverage-tests)             | Check coverage instrumentation                                                                                      |
 | [`coverage-run-rustdoc`](#coverage-tests) | `coverage` tests that also run instrumented doctests                                                                |
-| [`crashes`](#crashes-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
+| [`crashes`](#crash-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
 
 ### General purpose test suite
 
@@ -399,12 +397,18 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 
 ### `run-make` tests
 
-The tests in [`tests/run-make`] are general-purpose tests using Rust *recipes*,
-which are small programs (`rmake.rs`) allowing arbitrary Rust code such as
-`rustc` invocations, and is supported by a [`run_make_support`] library. Using
-Rust recipes provide the ultimate in flexibility.
+The tests in [`tests/run-make`] and [`tests/run-make-cargo`] are general-purpose
+tests using Rust *recipes*, which are small programs (`rmake.rs`) allowing
+arbitrary Rust code such as `rustc` invocations, and is supported by a
+[`run_make_support`] library. Using Rust recipes provide the ultimate in
+flexibility.
 
 `run-make` tests should be used if no other test suites better suit your needs.
+
+The `run-make-cargo` test suite additionally builds an in-tree `cargo` to support
+use cases that require testing in-tree `cargo` in conjunction with in-tree `rustc`.
+The `run-make` test suite does not have access to in-tree `cargo` (so it can be the
+faster-to-iterate test suite).
 
 #### Using Rust recipes
 
@@ -478,6 +482,7 @@ Then add a corresponding entry to `"rust-analyzer.linkedProjects"`
 ```
 
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
+[`tests/run-make-cargo`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-cargo
 [`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
 
 ### Coverage tests
@@ -552,7 +557,7 @@ only running the main `coverage` suite.
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
 [`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
 
-### Crashes tests
+### Crash tests
 
 [`tests/crashes`] serve as a collection of tests that are expected to cause the
 compiler to ICE, panic or crash in some other way, so that accidental fixes are
@@ -575,13 +580,13 @@ recommended to include test cases from several issues in a single PR.
 When you do so, each issue number should be noted in the file name (`12345.rs`
 should suffice) and also inside the file by means of a `//@ known-bug: #12345`
 directive. Please [label][labeling] the relevant issues with `S-bug-has-test`
-afterwards.
+once your PR is merged.
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name. Please add a doc
 comment at the top of the file explaining why this test exists, even better if
 you can briefly explain how the example causes rustc to crash previously and
-what was done to prevent rustc to ICE/panic/crash.
+what was done to prevent rustc to ICE / panic / crash.
 
 Adding
 

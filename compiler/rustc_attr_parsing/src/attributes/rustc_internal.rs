@@ -1,18 +1,23 @@
-use rustc_attr_data_structures::AttributeKind;
-use rustc_feature::{AttributeTemplate, template};
-use rustc_span::{Symbol, sym};
+use super::prelude::*;
+use super::util::parse_single_integer;
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage, parse_single_integer};
-use crate::parser::ArgParser;
+pub(crate) struct RustcMainParser;
 
-pub(crate) struct RustcLayoutScalarValidRangeStart;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_main];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
+}
 
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
+pub(crate) struct RustcLayoutScalarValidRangeStartParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "start");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
@@ -20,13 +25,14 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
     }
 }
 
-pub(crate) struct RustcLayoutScalarValidRangeEnd;
+pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEnd {
+impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
     const PATH: &'static [Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "end");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         parse_single_integer(cx, args)
@@ -40,6 +46,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_object_lifetime_default];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -49,5 +56,23 @@ impl<S: Stage> SingleAttributeParser<S> for RustcObjectLifetimeDefaultParser {
         }
 
         Some(AttributeKind::RustcObjectLifetimeDefault)
+    }
+}
+
+pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
+
+impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
+    const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let ArgParser::NameValue(nv) = args else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
     }
 }

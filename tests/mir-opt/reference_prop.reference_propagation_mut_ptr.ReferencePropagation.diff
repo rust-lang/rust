@@ -214,7 +214,8 @@
           _12 = &raw mut _10;
           StorageLive(_13);
           _13 = &raw mut _11;
-          _12 = move _13;
+-         _12 = move _13;
++         _12 = copy _13;
           StorageDead(_13);
           StorageLive(_14);
           _14 = copy (*_12);
@@ -245,7 +246,8 @@
           StorageLive(_22);
           StorageLive(_23);
           _23 = copy _20;
-          _22 = opaque::<&*mut usize>(move _23) -> [return: bb3, unwind continue];
+-         _22 = opaque::<&*mut usize>(move _23) -> [return: bb3, unwind continue];
++         _22 = opaque::<&*mut usize>(copy _23) -> [return: bb3, unwind continue];
       }
   
       bb3: {
@@ -269,7 +271,8 @@
           StorageLive(_29);
           StorageLive(_30);
           _30 = copy _27;
-          _29 = opaque::<*mut *mut usize>(move _30) -> [return: bb4, unwind continue];
+-         _29 = opaque::<*mut *mut usize>(move _30) -> [return: bb4, unwind continue];
++         _29 = opaque::<*mut *mut usize>(copy _30) -> [return: bb4, unwind continue];
       }
   
       bb4: {
@@ -291,7 +294,8 @@
           StorageLive(_35);
           StorageLive(_36);
           _36 = copy _33;
-          _35 = opaque::<*mut usize>(move _36) -> [return: bb5, unwind continue];
+-         _35 = opaque::<*mut usize>(move _36) -> [return: bb5, unwind continue];
++         _35 = opaque::<*mut usize>(copy _36) -> [return: bb5, unwind continue];
       }
   
       bb5: {
@@ -318,7 +322,8 @@
           StorageLive(_44);
           StorageLive(_45);
           _45 = copy _43;
-          _44 = opaque::<*mut usize>(move _45) -> [return: bb6, unwind continue];
+-         _44 = opaque::<*mut usize>(move _45) -> [return: bb6, unwind continue];
++         _44 = opaque::<*mut usize>(copy _45) -> [return: bb6, unwind continue];
       }
   
       bb6: {
@@ -356,7 +361,8 @@
           _52 = &raw mut (*_2);
           StorageLive(_53);
           _53 = &raw mut (*_1);
-          _2 = move _53;
+-         _2 = move _53;
++         _2 = copy _53;
           StorageDead(_53);
           StorageLive(_54);
           _54 = copy (*_52);

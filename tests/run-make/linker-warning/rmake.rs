@@ -61,14 +61,13 @@ fn main() {
         diff()
             .expected_file("short-error.txt")
             .actual_text("(linker error)", out.stderr())
-            .normalize(r#"/rustc[^/_-]*/"#, "/rustc/")
-            .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(
                 regex::escape(
                     run_make_support::build_root().canonicalize().unwrap().to_str().unwrap(),
                 ),
                 "/build-root",
             )
+            .normalize("libpanic_abort", "libpanic_unwind")
             .normalize(r#""[^"]*\/symbols.o""#, "\"/symbols.o\"")
             .normalize(r#""[^"]*\/raw-dylibs""#, "\"/raw-dylibs\"")
             .run();

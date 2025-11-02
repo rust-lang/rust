@@ -20,7 +20,7 @@ use super::{
     MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar, from_known_layout,
     interp_ok, throw_ub, throw_unsup,
 };
-use crate::errors;
+use crate::{enter_trace_span, errors};
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
 // boundary and dropped in the other thread, it would exit the span in the other thread.
@@ -386,6 +386,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for &const_ in body.required_consts() {
+            // We can't use `eval_mir_constant` here as that assumes that all required consts have
+            // already been checked, so we need a separate tracing call.
+            let _trace = enter_trace_span!(M, const_eval::required_consts, ?const_.const_);
             let c =
                 self.instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
             c.eval(*self.tcx, self.typing_env, const_.span).map_err(|err| {
@@ -397,11 +400,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Finish things up.
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);
-        // `tracing_separate_thread` is used to instruct the chrome_tracing [tracing::Layer] in Miri
+        // `tracing_separate_thread` is used to instruct the tracing_chrome [tracing::Layer] in Miri
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
-        // visualization in https://ui.perfetto.dev easier to interpret. It is set to a value of
+        // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
         // [tracing::field::Empty] so that other tracing layers (e.g. the logger) will ignore it.
-        let span = info_span!("frame", tracing_separate_thread = Empty, "{}", instance);
+        let span = info_span!("frame", tracing_separate_thread = Empty, frame = %instance);
         self.frame_mut().tracing_span.enter(span);
 
         interp_ok(())
@@ -506,7 +509,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | ty::Never
                 | ty::Error(_) => true,
 
-                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _) | ty::Foreign(..) => false,
 
                 ty::Tuple(tys) => tys.last().is_none_or(|ty| is_very_trivially_sized(*ty)),
 

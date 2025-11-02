@@ -1,11 +1,12 @@
 use std::num::NonZero;
+use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_hash::FxHashSet;
 use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
@@ -14,7 +15,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -32,6 +33,8 @@ pub enum AccessKind {
 ///
 /// A `None` namespace indicates we are looking for a module.
 fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>) -> Option<DefId> {
+    let _trace = enter_trace_span!("try_resolve_did", ?path);
+
     /// Yield all children of the given item, that have the given name.
     fn find_children<'tcx: 'a, 'a>(
         tcx: TyCtxt<'tcx>,
@@ -133,7 +136,6 @@ pub fn iter_exported_symbols<'tcx>(
         let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
             codegen_attrs.contains_extern_indicator()
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
@@ -649,7 +651,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                let mut emitted_warnings = this.machine.reject_in_isolation_warned.borrow_mut();
+                // Deduplicate these warnings *by shim* (not by span)
+                static DEDUP: Mutex<FxHashSet<String>> =
+                    Mutex::new(FxHashSet::with_hasher(rustc_hash::FxBuildHasher));
+                let mut emitted_warnings = DEDUP.lock().unwrap();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
@@ -960,75 +965,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
     }
 
-    /// Converts `src` from floating point to integer type `dest_ty`
-    /// after rounding with mode `round`.
-    /// Returns `None` if `f` is NaN or out of range.
-    fn float_to_int_checked(
-        &self,
-        src: &ImmTy<'tcx>,
-        cast_to: TyAndLayout<'tcx>,
-        round: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
-        let this = self.eval_context_ref();
-
-        fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
-            ecx: &MiriInterpCx<'tcx>,
-            src: F,
-            cast_to: TyAndLayout<'tcx>,
-            round: rustc_apfloat::Round,
-        ) -> (Scalar, rustc_apfloat::Status) {
-            let int_size = cast_to.layout.size;
-            match cast_to.ty.kind() {
-                // Unsigned
-                ty::Uint(_) => {
-                    let res = src.to_u128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_uint(res.value, int_size), res.status)
-                }
-                // Signed
-                ty::Int(_) => {
-                    let res = src.to_i128_r(int_size.bits_usize(), round, &mut false);
-                    (Scalar::from_int(res.value, int_size), res.status)
-                }
-                // Nothing else
-                _ =>
-                    span_bug!(
-                        ecx.cur_span(),
-                        "attempted float-to-int conversion with non-int output type {}",
-                        cast_to.ty,
-                    ),
-            }
-        }
-
-        let ty::Float(fty) = src.layout.ty.kind() else {
-            bug!("float_to_int_checked: non-float input type {}", src.layout.ty)
-        };
-
-        let (val, status) = match fty {
-            FloatTy::F16 =>
-                float_to_int_inner::<Half>(this, src.to_scalar().to_f16()?, cast_to, round),
-            FloatTy::F32 =>
-                float_to_int_inner::<Single>(this, src.to_scalar().to_f32()?, cast_to, round),
-            FloatTy::F64 =>
-                float_to_int_inner::<Double>(this, src.to_scalar().to_f64()?, cast_to, round),
-            FloatTy::F128 =>
-                float_to_int_inner::<Quad>(this, src.to_scalar().to_f128()?, cast_to, round),
-        };
-
-        if status.intersects(
-            rustc_apfloat::Status::INVALID_OP
-                | rustc_apfloat::Status::OVERFLOW
-                | rustc_apfloat::Status::UNDERFLOW,
-        ) {
-            // Floating point value is NaN (flagged with INVALID_OP) or outside the range
-            // of values of the integer type (flagged with OVERFLOW or UNDERFLOW).
-            interp_ok(None)
-        } else {
-            // Floating point value can be represented by the integer type after rounding.
-            // The INEXACT flag is ignored on purpose to allow rounding.
-            interp_ok(Some(ImmTy::from_scalar(val, cast_to)))
-        }
-    }
-
     /// Returns an integer type that is twice wide as `ty`
     fn get_twice_wide_int_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let this = self.eval_context_ref();
@@ -1127,8 +1063,8 @@ impl<'tcx> MiriMachine<'tcx> {
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
     /// It will work even when the stack is empty.
-    pub fn current_span(&self) -> Span {
-        self.threads.active_thread_ref().current_span()
+    pub fn current_user_relevant_span(&self) -> Span {
+        self.threads.active_thread_ref().current_user_relevant_span()
     }
 
     /// Returns the span of the *caller* of the current operation, again
@@ -1193,20 +1129,6 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
     Scalar::from_int(val, size)
 }
 
-pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
-    assert!(
-        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
-        "SIMD mask element type must be an integer, but this is `{}`",
-        elem.layout.ty
-    );
-    let val = elem.to_scalar().to_int(elem.layout.size)?;
-    interp_ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
-}
-
 /// Check whether an operation that writes to a target buffer was successful.
 /// Accordingly select return value.
 /// Local helper function to be used in Windows shims.
@@ -1245,43 +1167,14 @@ impl ToU64 for usize {
     }
 }
 
-/// This struct is needed to enforce `#[must_use]` on values produced by [enter_trace_span] even
-/// when the "tracing" feature is not enabled.
-#[must_use]
-pub struct MaybeEnteredTraceSpan {
-    #[cfg(feature = "tracing")]
-    pub _entered_span: tracing::span::EnteredSpan,
-}
-
 /// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
-/// This is like [rustc_const_eval::enter_trace_span] except that it does not depend on the
-/// [Machine] trait to check if tracing is enabled, because from the Miri codebase we can directly
-/// check whether the "tracing" feature is enabled, unlike from the rustc_const_eval codebase.
-///
-/// In addition to the syntax accepted by [tracing::span!], this macro optionally allows passing
-/// the span name (i.e. the first macro argument) in the form `NAME::SUBNAME` (without quotes) to
-/// indicate that the span has name "NAME" (usually the name of the component) and has an additional
-/// more specific name "SUBNAME" (usually the function name). The latter is passed to the [tracing]
-/// infrastructure as a span field with the name "NAME". This allows not being distracted by
-/// subnames when looking at the trace in <https://ui.perfetto.dev>, but when deeper introspection
-/// is needed within a component, it's still possible to view the subnames directly in the UI by
-/// selecting a span, clicking on the "NAME" argument on the right, and clicking on "Visualize
-/// argument values".
-/// ```rust
-/// // for example, the first will expand to the second
-/// enter_trace_span!(borrow_tracker::on_stack_pop, /* ... */)
-/// enter_trace_span!("borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */)
-/// ```
+/// This calls [rustc_const_eval::enter_trace_span] with [MiriMachine] as the first argument, which
+/// will in turn call [MiriMachine::enter_trace_span], which takes care of determining at compile
+/// time whether to trace or not (and supposedly the call is compiled out if tracing is disabled).
+/// Look at [rustc_const_eval::enter_trace_span] for complete documentation, examples and tips.
 #[macro_export]
 macro_rules! enter_trace_span {
-    ($name:ident :: $subname:ident $($tt:tt)*) => {{
-        enter_trace_span!(stringify!($name), $name = %stringify!($subname) $($tt)*)
-    }};
-
     ($($tt:tt)*) => {
-        $crate::MaybeEnteredTraceSpan {
-            #[cfg(feature = "tracing")]
-            _entered_span: tracing::info_span!($($tt)*).entered()
-        }
+        rustc_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
     };
 }

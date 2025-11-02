@@ -18,6 +18,21 @@ use libc::off_t as off64_t;
 ))]
 use libc::off64_t;
 
+cfg_select! {
+    any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "android",
+        target_os = "hurd",
+    ) => {
+        // Prefer explicit pread64 for 64-bit offset independently of libc
+        // #[cfg(gnu_file_offset_bits64)].
+        use libc::pread64;
+    }
+    _ => {
+        use libc::pread as pread64;
+    }
+}
+
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
@@ -37,10 +52,10 @@ pub struct FileDesc(OwnedFd);
 //
 // On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
-// larger than or equal to INT_MAX. To handle both of these the read
-// size is capped on both platforms.
+// larger than INT_MAX. To handle both of these the read size is capped on
+// both platforms.
 const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
-    libc::c_int::MAX as usize - 1
+    libc::c_int::MAX as usize
 } else {
     libc::ssize_t::MAX as usize
 };
@@ -146,42 +161,47 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
-    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        )))]
-        use libc::pread as pread64;
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        ))]
-        use libc::pread64;
-
-        unsafe {
-            cvt(pread64(
+        cvt(unsafe {
+            pread64(
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as off64_t,
-            ))
-            .map(|n| n as usize)
-        }
+                offset as off64_t, // EINVAL if offset + count overflows
+            )
+        })
+        .map(|n| n as usize)
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
+                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
                 cmp::min(cursor.capacity(), READ_LIMIT),
             )
         })?;
 
-        // Safety: `ret` bytes were written to the initialized portion of the buffer
+        // SAFETY: `ret` bytes were written to the initialized portion of the buffer
+        unsafe {
+            cursor.advance_unchecked(ret as usize);
+        }
+        Ok(())
+    }
+
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
+        let ret = cvt(unsafe {
+            pread64(
+                self.as_raw_fd(),
+                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
+                cmp::min(cursor.capacity(), READ_LIMIT),
+                offset as off64_t, // EINVAL if offset + count overflows
+            )
+        })?;
+
+        // SAFETY: `ret` bytes were written to the initialized portion of the buffer
         unsafe {
             cursor.advance_unchecked(ret as usize);
         }
@@ -369,7 +389,6 @@ impl FileDesc {
         )))
     }
 
-    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(not(any(
             all(target_os = "linux", not(target_env = "musl")),

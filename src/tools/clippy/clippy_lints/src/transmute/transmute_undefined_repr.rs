@@ -12,8 +12,8 @@ pub(super) fn check<'tcx>(
     from_ty_orig: Ty<'tcx>,
     to_ty_orig: Ty<'tcx>,
 ) -> bool {
-    let mut from_ty = cx.tcx.erase_regions(from_ty_orig);
-    let mut to_ty = cx.tcx.erase_regions(to_ty_orig);
+    let mut from_ty = cx.tcx.erase_and_anonymize_regions(from_ty_orig);
+    let mut to_ty = cx.tcx.erase_and_anonymize_regions(to_ty_orig);
 
     while from_ty != to_ty {
         let reduced_tys = reduce_refs(cx, from_ty, to_ty);

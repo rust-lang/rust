@@ -10,7 +10,7 @@ error: constant SLICE_MUT cannot be used as pattern
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
    |
-   = note: constants that reference mutable or external memory cannot be used as pattern
+   = note: constants that reference mutable or external memory cannot be used as patterns
 
 error: constant U8_MUT cannot be used as pattern
   --> $DIR/const_refers_to_static_cross_crate.rs:44:9
@@ -18,7 +18,7 @@ error: constant U8_MUT cannot be used as pattern
 LL |         U8_MUT => true,
    |         ^^^^^^
    |
-   = note: constants that reference mutable or external memory cannot be used as pattern
+   = note: constants that reference mutable or external memory cannot be used as patterns
 
 error: constant U8_MUT2 cannot be used as pattern
   --> $DIR/const_refers_to_static_cross_crate.rs:53:9
@@ -26,7 +26,7 @@ error: constant U8_MUT2 cannot be used as pattern
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
    |
-   = note: constants that reference mutable or external memory cannot be used as pattern
+   = note: constants that reference mutable or external memory cannot be used as patterns
 
 error: aborting due to 4 previous errors
 

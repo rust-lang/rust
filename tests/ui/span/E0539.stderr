@@ -6,10 +6,14 @@ LL | #[inline(unknown)]
    |          |
    |          valid arguments are `always` or `never`
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(unknown)]
-LL + #[inline(always|never)]
+LL + #[inline(always)]
+   |
+LL - #[inline(unknown)]
+LL + #[inline(never)]
    |
 LL - #[inline(unknown)]
 LL + #[inline]

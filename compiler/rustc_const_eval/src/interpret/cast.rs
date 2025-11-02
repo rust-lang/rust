@@ -16,8 +16,8 @@ use super::{
     FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy, err_inval, interp_ok, throw_ub,
     throw_ub_custom,
 };
-use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
+use crate::{enter_trace_span, fluent_generated as fluent};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn cast(
@@ -81,13 +81,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::FnDef(def_id, args) => {
-                        let instance = ty::Instance::resolve_for_fn_ptr(
-                            *self.tcx,
-                            self.typing_env,
-                            def_id,
-                            args,
-                        )
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                        let instance = {
+                            let _trace = enter_trace_span!(M, resolve::resolve_for_fn_ptr, ?def_id);
+                            ty::Instance::resolve_for_fn_ptr(
+                                *self.tcx,
+                                self.typing_env,
+                                def_id,
+                                args,
+                            )
+                            .ok_or_else(|| err_inval!(TooGeneric))?
+                        };
 
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
@@ -114,12 +117,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::Closure(def_id, args) => {
-                        let instance = ty::Instance::resolve_closure(
-                            *self.tcx,
-                            def_id,
-                            args,
-                            ty::ClosureKind::FnOnce,
-                        );
+                        let instance = {
+                            let _trace = enter_trace_span!(M, resolve::resolve_closure, ?def_id);
+                            ty::Instance::resolve_closure(
+                                *self.tcx,
+                                def_id,
+                                args,
+                                ty::ClosureKind::FnOnce,
+                            )
+                        };
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
@@ -127,7 +133,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            CastKind::Transmute => {
+            CastKind::Transmute | CastKind::Subtype => {
                 assert!(src.layout.is_sized());
                 assert!(dest.layout.is_sized());
                 assert_eq!(cast_ty, dest.layout.ty); // we otherwise ignore `cast_ty` enirely...
@@ -380,7 +386,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 );
                 self.write_immediate(val, dest)
             }
-            (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
+            (ty::Dynamic(data_a, _), ty::Dynamic(data_b, _)) => {
                 let val = self.read_immediate(src)?;
                 // MIR building generates odd NOP casts, prevent them from causing unexpected trouble.
                 // See <https://github.com/rust-lang/rust/issues/128880>.
@@ -430,7 +436,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b)?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(data, _, ty::Dyn)) => {
+            (_, &ty::Dynamic(data, _)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data)?;
                 let ptr = self.read_pointer(src)?;
@@ -460,6 +466,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (src.layout.ty.kind(), cast_ty.ty.kind()) {
+            (&ty::Pat(_, s_pat), &ty::Pat(cast_ty, c_pat)) if s_pat == c_pat => {
+                let src = self.project_field(src, FieldIdx::ZERO)?;
+                let dest = self.project_field(dest, FieldIdx::ZERO)?;
+                let cast_ty = self.layout_of(cast_ty)?;
+                self.unsize_into(&src, cast_ty, &dest)
+            }
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
             | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {

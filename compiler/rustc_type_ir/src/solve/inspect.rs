@@ -17,9 +17,6 @@
 //!
 //! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
-use std::fmt::Debug;
-use std::hash::Hash;
-
 use derive_where::derive_where;
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
@@ -32,17 +29,15 @@ use crate::{Canonical, CanonicalVarValues, Interner};
 /// This is only ever used as [CanonicalState]. Any type information in proof
 /// trees used mechanically has to be canonicalized as we otherwise leak
 /// inference variables from a nested `InferCtxt`.
-#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Clone, PartialEq, Hash, Debug; I: Interner, T)]
 #[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(PartialEq; I: Interner, T: PartialEq)]
-#[derive_where(Eq; I: Interner, T: Eq)]
-#[derive_where(Hash; I: Interner, T: Hash)]
-#[derive_where(Debug; I: Interner, T: Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub struct State<I: Interner, T> {
     pub var_values: CanonicalVarValues<I>,
     pub data: T,
 }
+
+impl<I: Interner, T: Eq> Eq for State<I, T> {}
 
 pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 
@@ -54,17 +49,8 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
-    pub kind: GoalEvaluationKind<I>,
+    pub final_revision: I::Probe,
     pub result: QueryResult<I>,
-}
-
-#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
-pub enum GoalEvaluationKind<I: Interner> {
-    Overflow,
-    Evaluation {
-        /// This is always `ProbeKind::Root`.
-        final_revision: Probe<I>,
-    },
 }
 
 /// A self-contained computation during trait solving. This either

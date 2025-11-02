@@ -2,9 +2,10 @@ use std::borrow::Cow;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
-use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty};
+use clippy_utils::{contains_return, return_ty};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::intravisit::FnKind;
@@ -107,12 +108,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         // Get the wrapper and inner types, if can't, abort.
         let (return_type_label, lang_item, inner_type) =
             if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id.expect_owner()).kind() {
-                if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did()) {
-                    ("Option", OptionSome, subst.type_at(0))
-                } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did()) {
-                    ("Result", ResultOk, subst.type_at(0))
-                } else {
-                    return;
+                match cx.tcx.get_diagnostic_name(adt_def.did()) {
+                    Some(sym::Option) => ("Option", OptionSome, subst.type_at(0)),
+                    Some(sym::Result) => ("Result", ResultOk, subst.type_at(0)),
+                    _ => return,
                 }
             } else {
                 return;
@@ -124,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if !ret_expr.span.from_expansion()
                 // Check if a function call.
                 && let ExprKind::Call(func, [arg]) = ret_expr.kind
-                && is_res_lang_ctor(cx, path_res(cx, func), lang_item)
+                && func.res(cx).ctor_parent(cx).is_lang_item(cx, lang_item)
                 // Make sure the function argument does not contain a return expression.
                 && !contains_return(arg)
             {

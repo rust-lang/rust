@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_type_diagnostic_item, ty_from_hir_ty};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::ty_from_hir_ty;
 use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -48,7 +49,7 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             && !in_trait_impl(cx, hir_ty.hir_id)
             // We don't care about infer vars
             && let ty = ty_from_hir_ty(cx, hir_ty.as_unambig_ty())
-            && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
+            && (ty.is_diag_item(cx, sym::HashMap) || ty.is_diag_item(cx, sym::BTreeMap))
             && let ty::Adt(_, args) = ty.kind()
             && let ty = args.type_at(1)
             // Ensure that no type information is missing, to avoid a delayed bug in the compiler if this is not the case.
@@ -56,6 +57,9 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             // cannot check if it is `Sized` or not, such as an incomplete associated type in a
             // type alias. See an example in `issue14822()` of `tests/ui/zero_sized_hashmap_values.rs`.
             && !ty.has_non_region_param()
+            // Ensure that no region escapes to avoid an assertion error when computing the layout.
+            // See an example in `issue15429()` of `tests/ui/zero_sized_hashmap_values.rs`.
+            && !ty.has_escaping_bound_vars()
             && let Ok(layout) = cx.layout_of(ty)
             && layout.is_zst()
         {

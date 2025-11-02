@@ -106,73 +106,73 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         },
     );
 
-    if let Some(let_stmt) = try_expr.syntax().parent().and_then(ast::LetStmt::cast) {
-        if let_stmt.let_else().is_none() {
-            let pat = let_stmt.pat()?;
-            acc.add(
-                AssistId::refactor_rewrite("desugar_try_expr_let_else"),
-                "Replace try expression with let else",
-                target,
-                |builder| {
-                    let make = SyntaxFactory::with_mappings();
-                    let mut editor = builder.make_editor(let_stmt.syntax());
+    if let Some(let_stmt) = try_expr.syntax().parent().and_then(ast::LetStmt::cast)
+        && let_stmt.let_else().is_none()
+    {
+        let pat = let_stmt.pat()?;
+        acc.add(
+            AssistId::refactor_rewrite("desugar_try_expr_let_else"),
+            "Replace try expression with let else",
+            target,
+            |builder| {
+                let make = SyntaxFactory::with_mappings();
+                let mut editor = builder.make_editor(let_stmt.syntax());
 
-                    let indent_level = IndentLevel::from_node(let_stmt.syntax());
-                    let new_let_stmt = make.let_else_stmt(
-                        try_enum.happy_pattern(pat),
-                        let_stmt.ty(),
-                        expr,
-                        make.block_expr(
-                            iter::once(
-                                make.expr_stmt(
-                                    make.expr_return(Some(match try_enum {
-                                        TryEnum::Option => make.expr_path(make.ident_path("None")),
-                                        TryEnum::Result => make
-                                            .expr_call(
-                                                make.expr_path(make.ident_path("Err")),
-                                                make.arg_list(iter::once(
-                                                    match ctx.config.expr_fill_default {
-                                                        ExprFillDefaultMode::Todo => make
-                                                            .expr_macro(
-                                                                make.ident_path("todo"),
-                                                                make.token_tree(
-                                                                    syntax::SyntaxKind::L_PAREN,
-                                                                    [],
-                                                                ),
-                                                            )
-                                                            .into(),
-                                                        ExprFillDefaultMode::Underscore => {
-                                                            make.expr_underscore().into()
-                                                        }
-                                                        ExprFillDefaultMode::Default => make
-                                                            .expr_macro(
-                                                                make.ident_path("todo"),
-                                                                make.token_tree(
-                                                                    syntax::SyntaxKind::L_PAREN,
-                                                                    [],
-                                                                ),
-                                                            )
-                                                            .into(),
-                                                    },
-                                                )),
-                                            )
-                                            .into(),
-                                    }))
-                                    .indent(indent_level + 1)
-                                    .into(),
-                                )
+                let indent_level = IndentLevel::from_node(let_stmt.syntax());
+                let new_let_stmt = make.let_else_stmt(
+                    try_enum.happy_pattern(pat),
+                    let_stmt.ty(),
+                    expr,
+                    make.block_expr(
+                        iter::once(
+                            make.expr_stmt(
+                                make.expr_return(Some(match try_enum {
+                                    TryEnum::Option => make.expr_path(make.ident_path("None")),
+                                    TryEnum::Result => make
+                                        .expr_call(
+                                            make.expr_path(make.ident_path("Err")),
+                                            make.arg_list(iter::once(
+                                                match ctx.config.expr_fill_default {
+                                                    ExprFillDefaultMode::Todo => make
+                                                        .expr_macro(
+                                                            make.ident_path("todo"),
+                                                            make.token_tree(
+                                                                syntax::SyntaxKind::L_PAREN,
+                                                                [],
+                                                            ),
+                                                        )
+                                                        .into(),
+                                                    ExprFillDefaultMode::Underscore => {
+                                                        make.expr_underscore().into()
+                                                    }
+                                                    ExprFillDefaultMode::Default => make
+                                                        .expr_macro(
+                                                            make.ident_path("todo"),
+                                                            make.token_tree(
+                                                                syntax::SyntaxKind::L_PAREN,
+                                                                [],
+                                                            ),
+                                                        )
+                                                        .into(),
+                                                },
+                                            )),
+                                        )
+                                        .into(),
+                                }))
+                                .indent(indent_level + 1)
                                 .into(),
-                            ),
-                            None,
-                        )
-                        .indent(indent_level),
-                    );
-                    editor.replace(let_stmt.syntax(), new_let_stmt.syntax());
-                    editor.add_mappings(make.finish_with_mappings());
-                    builder.add_file_edits(ctx.vfs_file_id(), editor);
-                },
-            );
-        }
+                            )
+                            .into(),
+                        ),
+                        None,
+                    )
+                    .indent(indent_level),
+                );
+                editor.replace(let_stmt.syntax(), new_let_stmt.syntax());
+                editor.add_mappings(make.finish_with_mappings());
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
+            },
+        );
     }
     Some(())
 }

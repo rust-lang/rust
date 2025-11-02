@@ -192,7 +192,7 @@ Modeling this with immutable trees is possible, but annoying.
 
 A function green tree is not super-convenient to use.
 The biggest problem is accessing parents (there are no parent pointers!).
-But there are also "identify" issues.
+But there are also "identity" issues.
 Let's say you want to write a code which builds a list of expressions in a file: `fn collect_expressions(file: GreenNode) -> HashSet<GreenNode>`.
 For the input like
 

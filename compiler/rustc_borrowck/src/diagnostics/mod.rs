@@ -6,7 +6,9 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::{self as hir, CoroutineKind, LangItem};
+use rustc_hir::{
+    self as hir, CoroutineKind, GenericBound, LangItem, WhereBoundPredicate, WherePredicateKind,
+};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{BoundRegionConversionTime, NllRegionVariableOrigin};
 use rustc_infer::traits::SelectionError;
@@ -51,7 +53,7 @@ mod conflict_errors;
 mod explain_borrow;
 mod move_errors;
 mod mutability_errors;
-mod opaque_suggestions;
+mod opaque_types;
 mod region_errors;
 
 pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
@@ -400,7 +402,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ProjectionElem::Downcast(..) if opt.including_downcast => return None,
                 ProjectionElem::Downcast(..) => (),
                 ProjectionElem::OpaqueCast(..) => (),
-                ProjectionElem::Subtype(..) => (),
                 ProjectionElem::UnwrapUnsafeBinder(_) => (),
                 ProjectionElem::Field(field, _ty) => {
                     // FIXME(project-rfc_2229#36): print capture precisely here.
@@ -482,9 +483,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
                 ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
-                ProjectionElem::Subtype(ty)
-                | ProjectionElem::OpaqueCast(ty)
-                | ProjectionElem::UnwrapUnsafeBinder(ty) => PlaceTy::from_ty(*ty),
+                ProjectionElem::OpaqueCast(ty) | ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                    PlaceTy::from_ty(*ty)
+                }
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
         };
@@ -613,7 +614,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
     pub(super) fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
+        let mut p = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
@@ -624,19 +625,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
+                }) => p.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
         }
 
-        ty.print(&mut printer).unwrap();
-        printer.into_buffer()
+        ty.print(&mut p).unwrap();
+        p.into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
     /// synthesized lifetime name where required.
     pub(super) fn get_region_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
+        let mut p = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match region.kind() {
@@ -644,7 +645,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
-                }) => printer.region_highlight_mode.highlighting_bound_region(br, counter),
+                }) => p.region_highlight_mode.highlighting_bound_region(br, counter),
                 _ => {}
             }
             region
@@ -652,31 +653,72 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        region.print(&mut printer).unwrap();
-        printer.into_buffer()
+        region.print(&mut p).unwrap();
+        p.into_buffer()
     }
 
     /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates
     /// implicitly introduce an "outlives `'static`" constraint.
+    ///
+    /// This is very similar to `fn suggest_static_lifetime_for_gat_from_hrtb` which handles this
+    /// note for failed type tests instead of outlives errors.
     fn add_placeholder_from_predicate_note<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_, G>,
+        diag: &mut Diag<'_, G>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
-        let predicate_span = path.iter().find_map(|constraint| {
+        let tcx = self.infcx.tcx;
+        let Some((gat_hir_id, generics)) = path.iter().find_map(|constraint| {
             let outlived = constraint.sub;
             if let Some(origin) = self.regioncx.definitions.get(outlived)
-                && let NllRegionVariableOrigin::Placeholder(_) = origin.origin
-                && let ConstraintCategory::Predicate(span) = constraint.category
+                && let NllRegionVariableOrigin::Placeholder(placeholder) = origin.origin
+                && let Some(id) = placeholder.bound.kind.get_id()
+                && let Some(placeholder_id) = id.as_local()
+                && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
+                && let Some(generics_impl) =
+                    tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
             {
-                Some(span)
+                Some((gat_hir_id, generics_impl))
             } else {
                 None
             }
-        });
+        }) else {
+            return;
+        };
 
-        if let Some(span) = predicate_span {
-            err.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
+        for pred in generics.predicates {
+            let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                bound_generic_params,
+                bounds,
+                ..
+            }) = pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                diag.span_note(pred.span, fluent::borrowck_limitations_implies_static);
+                return;
+            }
+            for bound in bounds.iter() {
+                if let GenericBound::Trait(bound) = bound {
+                    if bound
+                        .bound_generic_params
+                        .iter()
+                        .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                        .is_some()
+                    {
+                        diag.span_note(bound.span, fluent::borrowck_limitations_implies_static);
+                        return;
+                    }
+                }
+            }
         }
     }
 

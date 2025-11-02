@@ -13,7 +13,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
@@ -55,11 +55,9 @@ pub(super) fn hints(
 
     // Insert braces if necessary
     let insert_braces = |builder: &mut TextEditBuilder| {
-        if !has_block_body {
-            if let Some(range) = closure.body().map(|b| b.syntax().text_range()) {
-                builder.insert(range.start(), "{ ".to_owned());
-                builder.insert(range.end(), " }".to_owned());
-            }
+        if !has_block_body && let Some(range) = closure.body().map(|b| b.syntax().text_range()) {
+            builder.insert(range.start(), "{ ".to_owned());
+            builder.insert(range.end(), " }".to_owned());
         }
     };
 

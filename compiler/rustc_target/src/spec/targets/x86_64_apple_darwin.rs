@@ -1,13 +1,13 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
 use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("macos", Arch::X86_64, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("macos", Arch::X86_64, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {
             description: Some("x86_64 Apple macOS (10.12+, Sierra+)".into()),
-            tier: Some(1),
+            tier: Some(2),
             host_tools: Some(true),
             std: Some(true),
         },

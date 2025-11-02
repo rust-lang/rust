@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // gdb-command:run
 // gdb-command:whatis basic_types_globals_metadata::B
@@ -35,8 +37,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(f16)]
 
 // N.B. These are `mut` only so they don't constant fold away.

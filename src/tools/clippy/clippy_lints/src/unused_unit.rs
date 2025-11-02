@@ -6,13 +6,13 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, Node, PolyTraitRef, Term,
-    Ty, TyKind,
+    AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, PolyTraitRef, Term, Ty,
+    TyKind,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Pos as _, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,19 +49,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         decl: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         span: Span,
-        def_id: LocalDefId,
+        _def_id: LocalDefId,
     ) {
         if let FnRetTy::Return(hir_ty) = decl.output
             && is_unit_ty(hir_ty)
             && !hir_ty.span.from_expansion()
             && get_def(span) == get_def(hir_ty.span)
         {
-            // implicit types in closure signatures are forbidden when `for<...>` is present
-            if let FnKind::Closure = kind
-                && let Node::Expr(expr) = cx.tcx.hir_node_by_def_id(def_id)
-                && let ExprKind::Closure(closure) = expr.kind
-                && !closure.bound_generic_params.is_empty()
-            {
+            // The explicit `-> ()` in the closure signature might be necessary for multiple reasons:
+            // - Implicit types in closure signatures are forbidden when `for<...>` is present
+            // - If the closure body ends with a function call, and that function's return type is generic, the
+            //   `-> ()` could be required for it to be inferred
+            //
+            // There could be more reasons to have it, and, in general, we shouldn't discourage the users from
+            // writing more type annotations than strictly necessary, because it can help readability and
+            // maintainability
+            if let FnKind::Closure = kind {
                 return;
             }
 
@@ -97,16 +100,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
     }
 
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>) {
-        let segments = &poly.trait_ref.path.segments;
-
-        if segments.len() == 1
-            && matches!(segments[0].ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
-            && let Some(args) = segments[0].args
+        if let [segment] = &poly.trait_ref.path.segments
+            && matches!(segment.ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
+            && let Some(args) = segment.args
             && args.parenthesized == GenericArgsParentheses::ParenSugar
-            && let constraints = &args.constraints
-            && constraints.len() == 1
-            && constraints[0].ident.name == sym::Output
-            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraints[0].kind
+            && let [constraint] = &args.constraints
+            && constraint.ident.name == sym::Output
+            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraint.kind
             && args.span_ext.hi() != poly.span.hi()
             && !hir_ty.span.from_expansion()
             && args.span_ext.hi() != hir_ty.span.hi()
@@ -160,17 +160,15 @@ fn get_def(span: Span) -> Option<Span> {
 
 fn lint_unneeded_unit_return(cx: &LateContext<'_>, ty_span: Span, span: Span) {
     let (ret_span, appl) =
-        span.with_hi(ty_span.hi())
-            .get_source_text(cx)
-            .map_or((ty_span, Applicability::MaybeIncorrect), |src| {
-                position_before_rarrow(&src).map_or((ty_span, Applicability::MaybeIncorrect), |rpos| {
-                    (
-                        #[expect(clippy::cast_possible_truncation)]
-                        ty_span.with_lo(BytePos(span.lo().0 + rpos as u32)),
-                        Applicability::MachineApplicable,
-                    )
-                })
-            });
+        if let Some(Some(rpos)) = span.with_hi(ty_span.hi()).with_source_text(cx, position_before_rarrow) {
+            (
+                ty_span.with_lo(span.lo() + BytePos::from_usize(rpos)),
+                Applicability::MachineApplicable,
+            )
+        } else {
+            (ty_span, Applicability::MaybeIncorrect)
+        };
+
     span_lint_and_sugg(
         cx,
         UNUSED_UNIT,

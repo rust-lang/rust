@@ -176,7 +176,19 @@ LL |     take_while(|c: char| ('A'..='Z').contains(&c));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `c.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> tests/ui/manual_is_ascii_check.rs:114:63
+  --> tests/ui/manual_is_ascii_check.rs:111:20
+   |
+LL |     take_while(|c| matches!(c, 'A'..='Z'));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     take_while(|c| matches!(c, 'A'..='Z'));
+LL +     take_while(|c: char| c.is_ascii_uppercase());
+   |
+
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:116:63
    |
 LL |     let digits: Vec<&char> = ['1', 'A'].iter().take_while(|c| ('0'..='9').contains(c)).collect();
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^
@@ -188,7 +200,7 @@ LL +     let digits: Vec<&char> = ['1', 'A'].iter().take_while(|c: &&char| c.is_
    |
 
 error: manual check for common ascii range
-  --> tests/ui/manual_is_ascii_check.rs:116:71
+  --> tests/ui/manual_is_ascii_check.rs:118:71
    |
 LL |     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c| ('0'..='9').contains(c)).collect();
    |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^
@@ -199,5 +211,17 @@ LL -     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c| ('0'.
 LL +     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c: &&mut char| c.is_ascii_digit()).collect();
    |
 
-error: aborting due to 29 previous errors
+error: manual check for common ascii range
+  --> tests/ui/manual_is_ascii_check.rs:120:71
+   |
+LL |     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c| matches!(c, '0'..='9')).collect();
+   |                                                                       ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c| matches!(c, '0'..='9')).collect();
+LL +     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c: &&mut char| c.is_ascii_digit()).collect();
+   |
+
+error: aborting due to 31 previous errors
 

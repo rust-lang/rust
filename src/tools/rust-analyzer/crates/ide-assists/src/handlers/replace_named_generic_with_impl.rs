@@ -7,11 +7,8 @@ use ide_db::{
 };
 use syntax::{
     AstNode,
-    ast::{
-        self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType,
-        make::impl_trait_type,
-    },
-    match_ast, ted,
+    ast::{self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType, make},
+    match_ast,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -74,26 +71,31 @@ pub(crate) fn replace_named_generic_with_impl(
         "Replace named generic with impl trait",
         target,
         |edit| {
-            let type_param = edit.make_mut(type_param);
-            let fn_ = edit.make_mut(fn_);
-
-            let path_types_to_replace = path_types_to_replace
-                .into_iter()
-                .map(|param| edit.make_mut(param))
-                .collect::<Vec<_>>();
+            let mut editor = edit.make_editor(type_param.syntax());
 
             // remove trait from generic param list
             if let Some(generic_params) = fn_.generic_param_list() {
-                generic_params.remove_generic_param(ast::GenericParam::TypeParam(type_param));
-                if generic_params.generic_params().count() == 0 {
-                    ted::remove(generic_params.syntax());
+                let params: Vec<ast::GenericParam> = generic_params
+                    .clone()
+                    .generic_params()
+                    .filter(|it| it.syntax() != type_param.syntax())
+                    .collect();
+                if params.is_empty() {
+                    editor.delete(generic_params.syntax());
+                } else {
+                    let new_generic_param_list = make::generic_param_list(params);
+                    editor.replace(
+                        generic_params.syntax(),
+                        new_generic_param_list.syntax().clone_for_update(),
+                    );
                 }
             }
 
-            let new_bounds = impl_trait_type(type_bound_list);
+            let new_bounds = make::impl_trait_type(type_bound_list);
             for path_type in path_types_to_replace.iter().rev() {
-                ted::replace(path_type.syntax(), new_bounds.clone_for_update().syntax());
+                editor.replace(path_type.syntax(), new_bounds.clone_for_update().syntax());
             }
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

@@ -17,6 +17,7 @@
 
 //@[regparm4] check-fail
 //@[regparm4] compile-flags: -Zregparm=4
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

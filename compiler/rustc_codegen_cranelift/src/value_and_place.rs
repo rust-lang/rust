@@ -342,6 +342,14 @@ impl<'tcx> CValue<'tcx> {
         assert_eq!(self.layout().backend_repr, layout.backend_repr);
         CValue(self.0, layout)
     }
+
+    pub(crate) fn cast_pat_ty_to_base(self, layout: TyAndLayout<'tcx>) -> Self {
+        let ty::Pat(base, _) = *self.layout().ty.kind() else {
+            panic!("not a pattern type: {:#?}", self.layout())
+        };
+        assert_eq!(layout.ty, base);
+        CValue(self.0, layout)
+    }
 }
 
 /// A place where you can write a value to or read a value from
@@ -383,7 +391,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.create_stack_slot(
             u32::try_from(layout.size.bytes()).unwrap(),
-            u32::try_from(layout.align.abi.bytes()).unwrap(),
+            u32::try_from(layout.align.bytes()).unwrap(),
         );
         CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
@@ -641,8 +649,8 @@ impl<'tcx> CPlace<'tcx> {
                         let size = dst_layout.size.bytes();
                         // `emit_small_memory_copy` uses `u8` for alignments, just use the maximum
                         // alignment that fits in a `u8` if the actual alignment is larger.
-                        let src_align = src_layout.align.abi.bytes().try_into().unwrap_or(128);
-                        let dst_align = dst_layout.align.abi.bytes().try_into().unwrap_or(128);
+                        let src_align = src_layout.align.bytes().try_into().unwrap_or(128);
+                        let dst_align = dst_layout.align.bytes().try_into().unwrap_or(128);
                         fx.bcx.emit_small_memory_copy(
                             fx.target_config,
                             to_addr,
@@ -660,7 +668,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    /// Used for `ProjectionElem::Subtype`, `ty` has to be monomorphized before
+    /// Used for `ProjectionElem::UnwrapUnsafeBinder`, `ty` has to be monomorphized before
     /// passed on.
     pub(crate) fn place_transmute_type(
         self,
@@ -909,8 +917,7 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
-            // FIXME(dyn-star): Do the right thing with DynKinds
+        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), from);
                 let to = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to);

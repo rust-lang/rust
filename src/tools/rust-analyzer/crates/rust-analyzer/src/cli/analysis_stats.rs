@@ -10,21 +10,22 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ImportPathConfig, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
+    Name,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
+    next_solver::{DbInterner, GenericArgs},
 };
 use hir_def::{
     SyntheticSyntax,
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
 };
-use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
 use ide_db::{
-    EditionedFileId, LineIndexDatabase, SnippetCap,
+    EditionedFileId, LineIndexDatabase, MiniCore, SnippetCap,
     base_db::{SourceDatabase, salsa::Database},
 };
 use itertools::Itertools;
@@ -34,6 +35,7 @@ use profile::StopWatch;
 use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::Ty as _;
 use syntax::AstNode;
 use vfs::{AbsPathBuf, Vfs, VfsPath};
 
@@ -136,34 +138,30 @@ impl flags::AnalysisStats {
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
             for file_id in source_root.iter() {
-                if let Some(p) = source_root.path_for_file(&file_id) {
-                    if let Some((_, Some("rs"))) = p.name_and_extension() {
-                        // measure workspace/project code
-                        if !source_root.is_library || self.with_deps {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                if let Some(p) = source_root.path_for_file(&file_id)
+                    && let Some((_, Some("rs"))) = p.name_and_extension()
+                {
+                    // measure workspace/project code
+                    if !source_root.is_library || self.with_deps {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            workspace_loc += length;
-                            workspace_item_trees += 1;
-                            workspace_item_stats += item_stats;
-                        } else {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                        workspace_loc += length;
+                        workspace_item_trees += 1;
+                        workspace_item_stats += item_stats;
+                    } else {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            dep_loc += length;
-                            dep_item_trees += 1;
-                            dep_item_stats += item_stats;
-                        }
+                        dep_loc += length;
+                        dep_item_trees += 1;
+                        dep_item_stats += item_stats;
                     }
                 }
             }
@@ -314,33 +312,40 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut bodies);
         }
 
-        if !self.skip_lowering {
-            self.run_body_lowering(db, &vfs, &bodies, verbosity);
-        }
+        hir::attach_db(db, || {
+            if !self.skip_lowering {
+                self.run_body_lowering(db, &vfs, &bodies, verbosity);
+            }
 
-        if !self.skip_inference {
-            self.run_inference(db, &vfs, &bodies, verbosity);
-        }
+            if !self.skip_inference {
+                self.run_inference(db, &vfs, &bodies, verbosity);
+            }
 
-        if !self.skip_mir_stats {
-            self.run_mir_lowering(db, &bodies, verbosity);
-        }
+            if !self.skip_mir_stats {
+                self.run_mir_lowering(db, &bodies, verbosity);
+            }
 
-        if !self.skip_data_layout {
-            self.run_data_layout(db, &adts, verbosity);
-        }
+            if !self.skip_data_layout {
+                self.run_data_layout(db, &adts, verbosity);
+            }
 
-        if !self.skip_const_eval {
-            self.run_const_eval(db, &bodies, verbosity);
-        }
+            if !self.skip_const_eval {
+                self.run_const_eval(db, &bodies, verbosity);
+            }
+        });
+
+        file_ids.sort();
+        file_ids.dedup();
 
         if self.run_all_ide_things {
-            self.run_ide_things(host.analysis(), file_ids.clone());
+            self.run_ide_things(host.analysis(), &file_ids, db, &vfs, verbosity);
         }
 
         if self.run_term_search {
-            self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
+            self.run_term_search(&workspace, db, &vfs, &file_ids, verbosity);
         }
+
+        hir::clear_tls_solver_cache();
 
         let db = host.raw_database_mut();
         db.trigger_lru_eviction();
@@ -365,6 +370,7 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
+            let interner = DbInterner::new_with(db, Some(a.krate(db).base()), None);
             let generic_params = db.generic_params(a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
@@ -375,7 +381,7 @@ impl flags::AnalysisStats {
             all += 1;
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
-                Substitution::empty(Interner),
+                GenericArgs::new_from_iter(interner, []),
                 db.trait_environment(a.into()),
             ) else {
                 continue;
@@ -394,15 +400,27 @@ impl flags::AnalysisStats {
     }
 
     fn run_const_eval(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
+        let len = bodies
+            .iter()
+            .filter(|body| matches!(body, DefWithBody::Const(_) | DefWithBody::Static(_)))
+            .count();
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(len),
+        };
+
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
         for &b in bodies {
+            bar.set_message(move || format!("const eval: {}", full_name(db, b, b.module(db))));
             let res = match b {
                 DefWithBody::Const(c) => c.eval(db),
                 DefWithBody::Static(s) => s.eval(db),
                 _ => continue,
             };
+            bar.inc(1);
             all += 1;
             let Err(error) = res else {
                 continue;
@@ -410,10 +428,11 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 let full_name =
                     full_name_of_item(db, b.module(db), b.name(db).unwrap_or(Name::missing()));
-                println!("Const eval for {full_name} failed due {error:?}");
+                bar.println(format!("Const eval for {full_name} failed due {error:?}"));
             }
             fail += 1;
         }
+        bar.finish_and_clear();
         let const_eval_time = sw.elapsed();
         eprintln!("{:<20} {}", "Const evaluation:", const_eval_time);
         eprintln!("Failed const evals: {fail} ({}%)", percentage(fail, all));
@@ -421,12 +440,13 @@ impl flags::AnalysisStats {
         report_metric("const eval time", const_eval_time.time.as_millis() as u64, "ms");
     }
 
+    /// Invariant: `file_ids` must be sorted and deduped before passing into here
     fn run_term_search(
         &self,
         ws: &ProjectWorkspace,
         db: &RootDatabase,
         vfs: &Vfs,
-        mut file_ids: Vec<EditionedFileId>,
+        file_ids: &[EditionedFileId],
         verbosity: Verbosity,
     ) {
         let cargo_config = CargoConfig {
@@ -444,9 +464,6 @@ impl flags::AnalysisStats {
             _ => ProgressReport::new(file_ids.len()),
         };
 
-        file_ids.sort();
-        file_ids.dedup();
-
         #[derive(Debug, Default)]
         struct Acc {
             tail_expr_syntax_hits: u64,
@@ -460,7 +477,7 @@ impl flags::AnalysisStats {
         bar.tick();
         let mut sw = self.stop_watch();
 
-        for &file_id in &file_ids {
+        for &file_id in file_ids {
             let file_id = file_id.editioned_file_id(db);
             let sema = hir::Semantics::new(db);
             let display_target = match sema.first_crate(file_id.file_id()) {
@@ -539,7 +556,7 @@ impl flags::AnalysisStats {
                         .gen_source_code(
                             &scope,
                             &mut formatter,
-                            ImportPathConfig {
+                            FindPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
@@ -560,29 +577,35 @@ impl flags::AnalysisStats {
                         std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
-                        if let Some(err) = res.error() {
-                            if err.contains("error: could not compile") {
-                                if let Some(mut err_idx) = err.find("error[E") {
-                                    err_idx += 7;
-                                    let err_code = &err[err_idx..err_idx + 4];
-                                    match err_code {
-                                        "0282" | "0283" => continue, // Byproduct of testing method
-                                        "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
-                                        // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
-                                        // Generated code is valid in case traits are imported
-                                        "0599" if err.contains("the following trait is implemented but not in scope") => continue,
-                                        _ => (),
+                        if let Some(err) = res.error()
+                            && err.contains("error: could not compile")
+                        {
+                            if let Some(mut err_idx) = err.find("error[E") {
+                                err_idx += 7;
+                                let err_code = &err[err_idx..err_idx + 4];
+                                match err_code {
+                                    "0282" | "0283" => continue, // Byproduct of testing method
+                                    "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                    // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
+                                    // Generated code is valid in case traits are imported
+                                    "0599"
+                                        if err.contains(
+                                            "the following trait is implemented but not in scope",
+                                        ) =>
+                                    {
+                                        continue;
                                     }
-                                    bar.println(err);
-                                    bar.println(generated);
-                                    acc.error_codes
-                                        .entry(err_code.to_owned())
-                                        .and_modify(|n| *n += 1)
-                                        .or_insert(1);
-                                } else {
-                                    acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error: \n{err}"));
+                                    _ => (),
                                 }
+                                bar.println(err);
+                                bar.println(generated);
+                                acc.error_codes
+                                    .entry(err_code.to_owned())
+                                    .and_modify(|n| *n += 1)
+                                    .or_insert(1);
+                            } else {
+                                acc.syntax_errors += 1;
+                                bar.println(format!("Syntax error: \n{err}"));
                             }
                         }
                     }
@@ -657,6 +680,10 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &body_id in bodies {
+            bar.set_message(move || {
+                format!("mir lowering: {}", full_name(db, body_id, body_id.module(db)))
+            });
+            bar.inc(1);
             if matches!(body_id, DefWithBody::Variant(_)) {
                 continue;
             }
@@ -731,12 +758,11 @@ impl flags::AnalysisStats {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate().to_display_target(db);
-            if let Some(only_name) = self.only.as_deref() {
-                if name.display(db, Edition::LATEST).to_string() != only_name
-                    && full_name(db, body_id, module) != only_name
-                {
-                    continue;
-                }
+            if let Some(only_name) = self.only.as_deref()
+                && name.display(db, Edition::LATEST).to_string() != only_name
+                && full_name(db, body_id, module) != only_name
+            {
+                continue;
             }
             let msg = move || {
                 if verbosity.is_verbose() {
@@ -793,7 +819,7 @@ impl flags::AnalysisStats {
             for (expr_id, _) in body.exprs() {
                 let ty = &inference_result[expr_id];
                 num_exprs += 1;
-                let unknown_or_partial = if ty.is_unknown() {
+                let unknown_or_partial = if ty.is_ty_error() {
                     num_exprs_unknown += 1;
                     if verbosity.is_spammy() {
                         if let Some((path, start, end)) = expr_syntax_range(db, vfs, &sm(), expr_id)
@@ -815,8 +841,7 @@ impl flags::AnalysisStats {
                     }
                     true
                 } else {
-                    let is_partially_unknown =
-                        ty.data(Interner).flags.contains(TypeFlags::HAS_ERROR);
+                    let is_partially_unknown = ty.references_non_lt_error();
                     if is_partially_unknown {
                         num_exprs_partially_unknown += 1;
                     }
@@ -898,7 +923,7 @@ impl flags::AnalysisStats {
             for (pat_id, _) in body.pats() {
                 let ty = &inference_result[pat_id];
                 num_pats += 1;
-                let unknown_or_partial = if ty.is_unknown() {
+                let unknown_or_partial = if ty.is_ty_error() {
                     num_pats_unknown += 1;
                     if verbosity.is_spammy() {
                         if let Some((path, start, end)) = pat_syntax_range(db, vfs, &sm(), pat_id) {
@@ -919,8 +944,7 @@ impl flags::AnalysisStats {
                     }
                     true
                 } else {
-                    let is_partially_unknown =
-                        ty.data(Interner).flags.contains(TypeFlags::HAS_ERROR);
+                    let is_partially_unknown = ty.references_non_lt_error();
                     if is_partially_unknown {
                         num_pats_partially_unknown += 1;
                     }
@@ -1085,12 +1109,28 @@ impl flags::AnalysisStats {
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
-    fn run_ide_things(&self, analysis: Analysis, mut file_ids: Vec<EditionedFileId>) {
-        file_ids.sort();
-        file_ids.dedup();
+    /// Invariant: `file_ids` must be sorted and deduped before passing into here
+    fn run_ide_things(
+        &self,
+        analysis: Analysis,
+        file_ids: &[EditionedFileId],
+        db: &RootDatabase,
+        vfs: &Vfs,
+        verbosity: Verbosity,
+    ) {
+        let len = file_ids.len();
+        let create_bar = || match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(len),
+        };
+
         let mut sw = self.stop_watch();
 
-        for &file_id in &file_ids {
+        let mut bar = create_bar();
+        for &file_id in file_ids {
+            let msg = format!("diagnostics: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
@@ -1117,8 +1157,14 @@ impl flags::AnalysisStats {
                 ide::AssistResolveStrategy::All,
                 analysis.editioned_file_id_to_vfs(file_id),
             );
+            bar.inc(1);
         }
-        for &file_id in &file_ids {
+        bar.finish_and_clear();
+
+        let mut bar = create_bar();
+        for &file_id in file_ids {
+            let msg = format!("inlay hints: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             _ = analysis.inlay_hints(
                 &InlayHintsConfig {
                     render_colons: false,
@@ -1133,6 +1179,7 @@ impl flags::AnalysisStats {
                     },
                     chaining_hints: true,
                     adjustment_hints: ide::AdjustmentHints::Always,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,
                     adjustment_hints_hide_outside_unsafe: false,
                     closure_return_type_hints: ide::ClosureReturnTypeHints::Always,
@@ -1149,31 +1196,40 @@ impl flags::AnalysisStats {
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
+                    minicore: MiniCore::default(),
                 },
                 analysis.editioned_file_id_to_vfs(file_id),
                 None,
             );
+            bar.inc(1);
         }
-        for &file_id in &file_ids {
+        bar.finish_and_clear();
+
+        let mut bar = create_bar();
+        let annotation_config = AnnotationConfig {
+            binary_target: true,
+            annotate_runnables: true,
+            annotate_impls: true,
+            annotate_references: false,
+            annotate_method_references: false,
+            annotate_enum_variant_references: false,
+            location: ide::AnnotationLocation::AboveName,
+            minicore: MiniCore::default(),
+        };
+        for &file_id in file_ids {
+            let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));
+            bar.set_message(move || msg.clone());
             analysis
-                .annotations(
-                    &AnnotationConfig {
-                        binary_target: true,
-                        annotate_runnables: true,
-                        annotate_impls: true,
-                        annotate_references: false,
-                        annotate_method_references: false,
-                        annotate_enum_variant_references: false,
-                        location: ide::AnnotationLocation::AboveName,
-                    },
-                    analysis.editioned_file_id_to_vfs(file_id),
-                )
+                .annotations(&annotation_config, analysis.editioned_file_id_to_vfs(file_id))
                 .unwrap()
                 .into_iter()
                 .for_each(|annotation| {
-                    _ = analysis.resolve_annotation(annotation);
+                    _ = analysis.resolve_annotation(&annotation_config, annotation);
                 });
+            bar.inc(1);
         }
+        bar.finish_and_clear();
+
         let ide_time = sw.elapsed();
         eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }

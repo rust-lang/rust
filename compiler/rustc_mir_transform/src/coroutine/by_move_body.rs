@@ -77,7 +77,7 @@ use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{self, dump_mir};
+use rustc_middle::mir::{self, MirDumper};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
@@ -225,7 +225,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     );
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
-    dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
+
+    if let Some(dumper) = MirDumper::new(tcx, "built", &by_move_body) {
+        dumper.set_disambiguator(&"after").dump_mir(&by_move_body);
+    }
 
     // Feed HIR because we try to access this body's attrs in the inliner.
     body_def.feed_hir();

@@ -92,7 +92,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DECLARE_INTERIOR_MUTABLE_CONST,
-    style,
+    suspicious,
     "declaring `const` with interior mutability"
 }
 
@@ -778,7 +778,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                     if let Node::Item(parent_item) = cx.tcx.parent_hir_node(item.hir_id())
                         && let ItemKind::Impl(impl_block) = parent_item.kind
                         && let Some(of_trait) = impl_block.of_trait
-                        && let Some(trait_id) = of_trait.trait_def_id()
+                        && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
                     {
                         // Replace all instances of `<Self as Trait>::AssocType` with the
                         // unit type and check again. If the result is the same then the

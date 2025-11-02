@@ -12,6 +12,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     let _: <u8 as E>::N;
    |                   ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -42,6 +43,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     <u8 as E>::N;
    |            ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -63,6 +65,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     let _: <u8 as E>::Y;
    |                   ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -72,6 +75,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     <u8 as E>::Y;
    |            ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -90,6 +94,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     let _: <u8 as E>::N::NN;
    |                   ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -120,6 +125,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     <u8 as E>::N::NN;
    |            ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -141,6 +147,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     let _: <u8 as E>::Y::NN;
    |                   ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here
@@ -150,6 +157,7 @@ error[E0404]: expected trait, found enum `E`
    |
 LL |     <u8 as E>::Y::NN;
    |            ^ help: a trait with a similar name exists: `Eq`
+   |
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    |
    = note: similarly named trait `Eq` defined here

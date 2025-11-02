@@ -80,7 +80,7 @@ pub struct OpenOptions {
     attributes: u32,
     share_mode: u32,
     security_qos_flags: u32,
-    security_attributes: *mut c::SECURITY_ATTRIBUTES,
+    inherit_handle: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -203,7 +203,7 @@ impl OpenOptions {
             share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
             attributes: 0,
             security_qos_flags: 0,
-            security_attributes: ptr::null_mut(),
+            inherit_handle: false,
         }
     }
 
@@ -243,8 +243,8 @@ impl OpenOptions {
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn security_attributes(&mut self, attrs: *mut c::SECURITY_ATTRIBUTES) {
-        self.security_attributes = attrs;
+    pub fn inherit_handle(&mut self, inherit: bool) {
+        self.inherit_handle = inherit;
     }
 
     fn get_access_mode(&self) -> io::Result<u32> {
@@ -258,7 +258,19 @@ impl OpenOptions {
                 Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA))
             }
             (false, false, false, None) => {
-                Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32))
+                // If no access mode is set, check if any creation flags are set
+                // to provide a more descriptive error message
+                if self.create || self.create_new || self.truncate {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ))
+                } else {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "must specify at least one of read, write, or append access",
+                    ))
+                }
             }
         }
     }
@@ -268,12 +280,18 @@ impl OpenOptions {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
-                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ));
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
-                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "creating or truncating a file requires write or append access",
+                    ));
                 }
             }
         }
@@ -307,12 +325,17 @@ impl File {
 
     fn open_native(path: &WCStr, opts: &OpenOptions) -> io::Result<File> {
         let creation = opts.get_creation_mode()?;
+        let sa = c::SECURITY_ATTRIBUTES {
+            nLength: size_of::<c::SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: opts.inherit_handle as c::BOOL,
+        };
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
-                opts.security_attributes,
+                if opts.inherit_handle { &sa } else { ptr::null() },
                 creation,
                 opts.get_flags_and_attributes(),
                 ptr::null_mut(),
@@ -580,6 +603,10 @@ impl File {
 
     pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         self.handle.read_buf(cursor)
+    }
+
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        self.handle.read_buf_at(cursor, offset)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -1487,6 +1514,23 @@ pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
+pub fn set_times(p: &WCStr, times: FileTimes) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.write(true);
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = File::open_native(p, &opts)?;
+    file.set_times(times)
+}
+
+pub fn set_times_nofollow(p: &WCStr, times: FileTimes) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.write(true);
+    // `FILE_FLAG_OPEN_REPARSE_POINT` for no_follow behavior
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+    let file = File::open_native(p, &opts)?;
+    file.set_times(times)
+}
+
 fn get_path(f: &File) -> io::Result<PathBuf> {
     fill_utf16_buf(
         |buf, sz| unsafe {
@@ -1601,7 +1645,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     };
     unsafe {
         let ptr = header.PathBuffer.as_mut_ptr();
-        ptr.copy_from(abs_path.as_ptr().cast::<MaybeUninit<u16>>(), abs_path.len());
+        ptr.copy_from(abs_path.as_ptr().cast_uninit(), abs_path.len());
 
         let mut ret = 0;
         cvt(c::DeviceIoControl(

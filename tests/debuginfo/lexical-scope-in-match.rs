@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -112,9 +114,6 @@
 // lldb-command:v not_shadowed
 // lldb-check:[...] 232
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     x: isize,

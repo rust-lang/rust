@@ -235,6 +235,10 @@ impl TidyDocs {
             return;
         }
 
+        if is_ported_from_rustc(path, &["crates/hir-ty/src/next_solver"]) {
+            return;
+        }
+
         let first_line = match text.lines().next() {
             Some(it) => it,
             None => return,
@@ -255,7 +259,7 @@ impl TidyDocs {
         }
 
         fn is_exclude_file(d: &Path) -> bool {
-            let file_names = ["tests.rs", "famous_defs_fixture.rs"];
+            let file_names = ["tests.rs", "famous_defs_fixture.rs", "frontmatter.rs"];
 
             d.file_name()
                 .unwrap_or_default()
@@ -288,6 +292,11 @@ fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
         .skip(1)
         .filter_map(|it| it.as_os_str().to_str())
         .any(|it| dirs_to_exclude.contains(&it))
+}
+
+fn is_ported_from_rustc(p: &Path, dirs_to_exclude: &[&str]) -> bool {
+    let p = p.strip_prefix(project_root()).unwrap();
+    dirs_to_exclude.iter().any(|exclude| p.starts_with(exclude))
 }
 
 #[derive(Default)]

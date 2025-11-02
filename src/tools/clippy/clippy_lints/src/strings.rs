@@ -1,19 +1,16 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, path_def_id,
-    peel_blocks, sym,
+    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-
-use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -190,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             },
             ExprKind::Index(target, _idx, _) => {
                 let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
-                if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
+                if e_ty.is_str() || e_ty.is_lang_item(cx, LangItem::String) {
                     span_lint(
                         cx,
                         STRING_SLICE,
@@ -205,7 +202,10 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
+    cx.typeck_results()
+        .expr_ty(e)
+        .peel_refs()
+        .is_lang_item(cx, LangItem::String)
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         if let ExprKind::Call(fun, [bytes_arg]) = e.kind
             // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
             && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
-                path_def_id(cx, fun).and_then(|id| cx.tcx.get_diagnostic_name(id))
+                fun.res(cx).opt_diag_name(cx)
 
             // Find string::as_bytes
             && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
@@ -266,7 +266,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             && expressions[0].1.is_empty()
 
             // Check for slicer
-            && let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind
+            && let ExprKind::Struct(&qpath, _, _) = right.kind
+            && cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
         {
             let mut applicability = Applicability::MachineApplicable;
             let string_expression = &expressions[0].0;
@@ -413,125 +414,6 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for `.to_string()` method calls on values of type `String`.
-    ///
-    /// ### Why restrict this?
-    /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `String` it only clones the `String`, which can be more specifically
-    /// expressed with `.clone()`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let msg = String::from("Hello World");
-    /// let _ = msg.to_string();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let msg = String::from("Hello World");
-    /// let _ = msg.clone();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub STRING_TO_STRING,
-    restriction,
-    "using `to_string()` on a `String`, which should be `clone()`"
-}
-
-declare_lint_pass!(StringToString => [STRING_TO_STRING]);
-
-fn is_parent_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
-    if let Some(parent_expr) = get_parent_expr(cx, expr)
-        && let ExprKind::MethodCall(name, _, _, parent_span) = parent_expr.kind
-        && name.ident.name == sym::map
-        && let Some(caller_def_id) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
-        && (clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Result)
-            || clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Option)
-            || clippy_utils::is_diag_trait_item(cx, caller_def_id, sym::Iterator))
-    {
-        Some(parent_span)
-    } else {
-        None
-    }
-}
-
-fn is_called_from_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
-    // Look for a closure as parent of `expr`, discarding simple blocks
-    let parent_closure = cx
-        .tcx
-        .hir_parent_iter(expr.hir_id)
-        .try_fold(expr.hir_id, |child_hir_id, (_, node)| match node {
-            // Check that the child expression is the only expression in the block
-            Node::Block(block) if block.stmts.is_empty() && block.expr.map(|e| e.hir_id) == Some(child_hir_id) => {
-                ControlFlow::Continue(block.hir_id)
-            },
-            Node::Expr(expr) if matches!(expr.kind, ExprKind::Block(..)) => ControlFlow::Continue(expr.hir_id),
-            Node::Expr(expr) if matches!(expr.kind, ExprKind::Closure(_)) => ControlFlow::Break(Some(expr)),
-            _ => ControlFlow::Break(None),
-        })
-        .break_value()?;
-    is_parent_map_like(cx, parent_closure?)
-}
-
-fn suggest_cloned_string_to_string(cx: &LateContext<'_>, span: rustc_span::Span) {
-    span_lint_and_sugg(
-        cx,
-        STRING_TO_STRING,
-        span,
-        "`to_string()` called on a `String`",
-        "try",
-        "cloned()".to_string(),
-        Applicability::MachineApplicable,
-    );
-}
-
-impl<'tcx> LateLintPass<'tcx> for StringToString {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-
-        match &expr.kind {
-            ExprKind::MethodCall(path, self_arg, [], _) => {
-                if path.ident.name == sym::to_string
-                    && let ty = cx.typeck_results().expr_ty(self_arg)
-                    && is_type_lang_item(cx, ty.peel_refs(), LangItem::String)
-                {
-                    if let Some(parent_span) = is_called_from_map_like(cx, expr) {
-                        suggest_cloned_string_to_string(cx, parent_span);
-                    } else {
-                        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                        span_lint_and_then(
-                            cx,
-                            STRING_TO_STRING,
-                            expr.span,
-                            "`to_string()` called on a `String`",
-                            |diag| {
-                                diag.help("consider using `.clone()`");
-                            },
-                        );
-                    }
-                }
-            },
-            ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
-                if segment.ident.name == sym::to_string
-                    && let rustc_hir::TyKind::Path(QPath::Resolved(_, path)) = ty.peel_refs().kind
-                    && let rustc_hir::def::Res::Def(_, def_id) = path.res
-                    && cx
-                        .tcx
-                        .lang_items()
-                        .get(LangItem::String)
-                        .is_some_and(|lang_id| lang_id == def_id)
-                    && let Some(parent_span) = is_parent_map_like(cx, expr)
-                {
-                    suggest_cloned_string_to_string(cx, parent_span);
-                }
-            },
-            _ => {},
-        }
-    }
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
     ///
     /// ### Why is this bad?
@@ -578,7 +460,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
 }
 
 fn is_one_of_trim_diagnostic_items(cx: &LateContext<'_>, trim_def_id: DefId) -> bool {
-    cx.tcx.is_diagnostic_item(sym::str_trim, trim_def_id)
-        || cx.tcx.is_diagnostic_item(sym::str_trim_start, trim_def_id)
-        || cx.tcx.is_diagnostic_item(sym::str_trim_end, trim_def_id)
+    matches!(
+        cx.tcx.get_diagnostic_name(trim_def_id),
+        Some(sym::str_trim | sym::str_trim_start | sym::str_trim_end)
+    )
 }

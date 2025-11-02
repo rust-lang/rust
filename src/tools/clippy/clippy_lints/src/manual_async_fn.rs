@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
-    FnRetTy, GenericBound, ImplItem, Item, Node, OpaqueTy, TraitRef, Ty, TyKind,
+    FnRetTy, GenericBound, Node, OpaqueTy, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -60,8 +60,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             && let ExprKind::Block(block, _) = body.value.kind
             && block.stmts.is_empty()
             && let Some(closure_body) = desugared_async_block(cx, block)
-            && let Node::Item(Item {vis_span, ..}) | Node::ImplItem(ImplItem {vis_span, ..}) =
-                cx.tcx.hir_node_by_def_id(fn_def_id)
+            && let Some(vis_span_opt) = match cx.tcx.hir_node_by_def_id(fn_def_id) {
+                Node::Item(item) => Some(Some(item.vis_span)),
+                Node::ImplItem(impl_item) => Some(impl_item.vis_span()),
+                _ => None,
+            }
             && !span.from_expansion()
         {
             let header_span = span.with_hi(ret_ty.span.hi());
@@ -72,7 +75,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                 header_span,
                 "this function can be simplified using the `async fn` syntax",
                 |diag| {
-                    if let Some(vis_snip) = vis_span.get_source_text(cx)
+                    if let Some(vis_span) = vis_span_opt
+                        && let Some(vis_snip) = vis_span.get_source_text(cx)
                         && let Some(header_snip) = header_span.get_source_text(cx)
                         && let Some(ret_pos) = position_before_rarrow(&header_snip)
                         && let Some((_, ret_snip)) = suggested_ret(cx, output)
@@ -83,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
                         };
 
-                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span)).to_string();
+                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span));
 
                         diag.multipart_suggestion(
                             "make the function `async` and return the output of the future directly",

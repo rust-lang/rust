@@ -35,6 +35,7 @@ fn test_bool() {
     assert_eq!(true ^ true, false);
 }
 
+#[allow(integer_to_ptr_transmutes)]
 fn test_ptr() {
     unsafe {
         let p1: *const u8 = ::std::mem::transmute(0_usize);

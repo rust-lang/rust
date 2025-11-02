@@ -15,5 +15,6 @@ pub fn bar(x: Foo) -> Foo {
 fn main() {
     unsafe {
         let _: Foo = std::mem::transmute(0u8);
+        //~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types
     }
 }

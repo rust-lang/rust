@@ -1,12 +1,12 @@
 error: indexing into a string with a character position where a byte index is expected
-  --> tests/ui/char_indices_as_byte_indices.rs:13:24
+  --> tests/ui/char_indices_as_byte_indices.rs:12:24
    |
 LL |         let _ = prim[..idx];
    |                        ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:12:10
+  --> tests/ui/char_indices_as_byte_indices.rs:11:10
    |
 LL |     for (idx, _) in prim.chars().enumerate() {
    |          ^^^                     ^^^^^^^^^^^
@@ -19,14 +19,14 @@ LL +     for (idx, _) in prim.char_indices() {
    |
 
 error: passing a character position to a method that expects a byte index
-  --> tests/ui/char_indices_as_byte_indices.rs:15:23
+  --> tests/ui/char_indices_as_byte_indices.rs:14:23
    |
 LL |         prim.split_at(idx);
    |                       ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:12:10
+  --> tests/ui/char_indices_as_byte_indices.rs:11:10
    |
 LL |     for (idx, _) in prim.chars().enumerate() {
    |          ^^^                     ^^^^^^^^^^^
@@ -37,14 +37,14 @@ LL +     for (idx, _) in prim.char_indices() {
    |
 
 error: passing a character position to a method that expects a byte index
-  --> tests/ui/char_indices_as_byte_indices.rs:19:49
+  --> tests/ui/char_indices_as_byte_indices.rs:18:49
    |
 LL |         let _ = prim[..prim.floor_char_boundary(idx)];
    |                                                 ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:12:10
+  --> tests/ui/char_indices_as_byte_indices.rs:11:10
    |
 LL |     for (idx, _) in prim.chars().enumerate() {
    |          ^^^                     ^^^^^^^^^^^
@@ -55,14 +55,14 @@ LL +     for (idx, _) in prim.char_indices() {
    |
 
 error: indexing into a string with a character position where a byte index is expected
-  --> tests/ui/char_indices_as_byte_indices.rs:29:24
+  --> tests/ui/char_indices_as_byte_indices.rs:28:24
    |
 LL |         let _ = prim[..c.0];
    |                        ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:28:9
+  --> tests/ui/char_indices_as_byte_indices.rs:27:9
    |
 LL |     for c in prim.chars().enumerate() {
    |         ^                 ^^^^^^^^^^^
@@ -73,14 +73,14 @@ LL +     for c in prim.char_indices() {
    |
 
 error: passing a character position to a method that expects a byte index
-  --> tests/ui/char_indices_as_byte_indices.rs:31:23
+  --> tests/ui/char_indices_as_byte_indices.rs:30:23
    |
 LL |         prim.split_at(c.0);
    |                       ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:28:9
+  --> tests/ui/char_indices_as_byte_indices.rs:27:9
    |
 LL |     for c in prim.chars().enumerate() {
    |         ^                 ^^^^^^^^^^^
@@ -91,14 +91,14 @@ LL +     for c in prim.char_indices() {
    |
 
 error: indexing into a string with a character position where a byte index is expected
-  --> tests/ui/char_indices_as_byte_indices.rs:36:26
+  --> tests/ui/char_indices_as_byte_indices.rs:35:26
    |
 LL |         let _ = string[..idx];
    |                          ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:35:10
+  --> tests/ui/char_indices_as_byte_indices.rs:34:10
    |
 LL |     for (idx, _) in string.chars().enumerate() {
    |          ^^^                       ^^^^^^^^^^^
@@ -109,14 +109,14 @@ LL +     for (idx, _) in string.char_indices() {
    |
 
 error: passing a character position to a method that expects a byte index
-  --> tests/ui/char_indices_as_byte_indices.rs:38:25
+  --> tests/ui/char_indices_as_byte_indices.rs:37:25
    |
 LL |         string.split_at(idx);
    |                         ^^^
    |
    = note: a character can take up more than one byte, so they are not interchangeable
 note: position comes from the enumerate iterator
-  --> tests/ui/char_indices_as_byte_indices.rs:35:10
+  --> tests/ui/char_indices_as_byte_indices.rs:34:10
    |
 LL |     for (idx, _) in string.chars().enumerate() {
    |          ^^^                       ^^^^^^^^^^^

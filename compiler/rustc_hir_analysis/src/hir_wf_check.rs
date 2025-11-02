@@ -95,7 +95,7 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(tcx_ty.into())),
             ));
 
-            for error in ocx.select_all_or_error() {
+            for error in ocx.evaluate_obligations_error_on_ambiguity() {
                 debug!("Wf-check got error for {:?}: {:?}", ty, error);
                 if error.obligation.predicate == self.predicate {
                     // Save the cause from the greatest depth - this corresponds
@@ -154,8 +154,9 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
                 hir::ItemKind::TyAlias(_, _, ty)
                 | hir::ItemKind::Static(_, _, ty, _)
                 | hir::ItemKind::Const(_, _, ty, _) => vec![ty],
-                hir::ItemKind::Impl(impl_) => match &impl_.of_trait {
-                    Some(t) => t
+                hir::ItemKind::Impl(impl_) => match impl_.of_trait {
+                    Some(of_trait) => of_trait
+                        .trait_ref
                         .path
                         .segments
                         .last()

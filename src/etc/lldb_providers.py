@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import sys
 from typing import List, TYPE_CHECKING
 
@@ -410,6 +411,16 @@ class MSVCStrSyntheticProvider:
             return "&str"
 
 
+def _getVariantName(variant) -> str:
+    """
+    Since the enum variant's type name is in the form `TheEnumName::TheVariantName$Variant`,
+    we can extract `TheVariantName` from it for display purpose.
+    """
+    s = variant.GetType().GetName()
+    match = re.search(r"::([^:]+)\$Variant$", s)
+    return match.group(1) if match else ""
+
+
 class ClangEncodedEnumProvider:
     """Pretty-printer for 'clang-encoded' enums support implemented in LLDB"""
 
@@ -424,37 +435,25 @@ class ClangEncodedEnumProvider:
         return True
 
     def num_children(self) -> int:
-        if self.is_default:
-            return 1
-        return 2
+        return 1
 
-    def get_child_index(self, name: str) -> int:
-        if name == ClangEncodedEnumProvider.VALUE_MEMBER_NAME:
-            return 0
-        if name == ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME:
-            return 1
+    def get_child_index(self, _name: str) -> int:
         return -1
 
     def get_child_at_index(self, index: int) -> SBValue:
         if index == 0:
-            return self.variant.GetChildMemberWithName(
+            value = self.variant.GetChildMemberWithName(
                 ClangEncodedEnumProvider.VALUE_MEMBER_NAME
             )
-        if index == 1:
-            return self.variant.GetChildMemberWithName(
-                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME
+            return value.CreateChildAtOffset(
+                _getVariantName(self.variant), 0, value.GetType()
             )
+        return None
 
     def update(self):
         all_variants = self.valobj.GetChildAtIndex(0)
         index = self._getCurrentVariantIndex(all_variants)
         self.variant = all_variants.GetChildAtIndex(index)
-        self.is_default = (
-            self.variant.GetIndexOfChildWithName(
-                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME
-            )
-            == -1
-        )
 
     def _getCurrentVariantIndex(self, all_variants: SBValue) -> int:
         default_index = 0
@@ -653,6 +652,21 @@ class MSVCEnumSyntheticProvider:
         return name
 
 
+def StructSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    output = []
+    for i in range(valobj.GetNumChildren()):
+        child: SBValue = valobj.GetChildAtIndex(i)
+        summary = child.summary
+        if summary is None:
+            summary = child.value
+            if summary is None:
+                summary = StructSummaryProvider(child, _dict)
+        summary = child.GetName() + ":" + summary
+        output.append(summary)
+
+    return "{" + ", ".join(output) + "}"
+
+
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
     variant_names: SBType = valobj.target.FindFirstType(
@@ -696,16 +710,7 @@ def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         return name + TupleSummaryProvider(enum_synth.value, _dict)
     else:
         # enum variant is a regular struct
-        var_list = (
-            str(enum_synth.value.GetNonSyntheticValue()).split("= ", 1)[1].splitlines()
-        )
-        vars = [x.strip() for x in var_list if x not in ("{", "}")]
-        if vars[0][0] == "(":
-            vars[0] = vars[0][1:]
-        if vars[-1][-1] == ")":
-            vars[-1] = vars[-1][:-1]
-
-        return f"{name}{{{', '.join(vars)}}}"
+        return name + StructSummaryProvider(enum_synth.value, _dict)
 
 
 class TupleSyntheticProvider:
@@ -762,7 +767,8 @@ class MSVCTupleSyntheticProvider:
 
     def get_child_at_index(self, index: int) -> SBValue:
         child: SBValue = self.valobj.GetChildAtIndex(index)
-        return child.CreateChildAtOffset(str(index), 0, child.GetType())
+        offset = self.valobj.GetType().GetFieldAtIndex(index).byte_offset
+        return self.valobj.CreateChildAtOffset(str(index), offset, child.GetType())
 
     def update(self):
         pass
@@ -773,7 +779,7 @@ class MSVCTupleSyntheticProvider:
     def get_type_name(self) -> str:
         name = self.valobj.GetTypeName()
         # remove "tuple$<" and ">", str.removeprefix and str.removesuffix require python 3.9+
-        name = name[7:-1]
+        name = name[7:-1].strip()
         return "(" + name + ")"
 
 

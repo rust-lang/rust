@@ -106,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "readdir" => {
                 let [dirp] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.linux_solarish_readdir64("dirent", dirp)?;
+                let result = this.readdir64("dirent", dirp)?;
                 this.write_scalar(result, dest)?;
             }
 

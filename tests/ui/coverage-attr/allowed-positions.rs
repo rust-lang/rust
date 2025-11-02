@@ -11,24 +11,24 @@
 #[coverage(off)]
 mod submod {}
 
-#[coverage(off)] //~ ERROR coverage attribute not allowed here [E0788]
+#[coverage(off)] //~ ERROR attribute cannot be used on
 type MyTypeAlias = ();
 
-#[coverage(off)] //~ ERROR [E0788]
+#[coverage(off)] //~ ERROR attribute cannot be used on
 trait MyTrait {
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     const TRAIT_ASSOC_CONST: u32;
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     type TraitAssocType;
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     fn trait_method(&self);
 
     #[coverage(off)]
     fn trait_method_with_default(&self) {}
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     fn trait_assoc_fn();
 }
 
@@ -36,7 +36,7 @@ trait MyTrait {
 impl MyTrait for () {
     const TRAIT_ASSOC_CONST: u32 = 0;
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     type TraitAssocType = Self;
 
     #[coverage(off)]
@@ -53,14 +53,14 @@ trait HasAssocType {
 }
 
 impl HasAssocType for () {
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     type T = impl Copy;
     fn constrain_assoc_type() -> Self::T {}
 }
 
-#[coverage(off)] //~ ERROR [E0788]
+#[coverage(off)] //~ ERROR attribute cannot be used on
 struct MyStruct {
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     field: u32,
 }
 
@@ -73,25 +73,25 @@ impl MyStruct {
 }
 
 extern "C" {
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     static X: u32;
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     type T;
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     fn foreign_fn();
 }
 
 #[coverage(off)]
 fn main() {
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     let _ = ();
 
     // Currently not allowed on let statements, even if they bind to a closure.
     // It might be nice to support this as a special case someday, but trying
     // to define the precise boundaries of that special case might be tricky.
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     let _let_closure = || ();
 
     // In situations where attributes can already be applied to expressions,
@@ -107,10 +107,10 @@ fn main() {
     //~^ ERROR attributes on expressions are experimental [E0658]
 
     match () {
-        #[coverage(off)] //~ ERROR [E0788]
+        #[coverage(off)] //~ ERROR attribute cannot be used on
         () => (),
     }
 
-    #[coverage(off)] //~ ERROR [E0788]
+    #[coverage(off)] //~ ERROR attribute cannot be used on
     return ();
 }

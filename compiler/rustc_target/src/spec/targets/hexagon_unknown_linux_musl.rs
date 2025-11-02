@@ -7,7 +7,6 @@ pub(crate) fn target() -> Target {
     // FIXME: HVX length defaults are per-CPU
     base.features = "-small-data,+hvx-length128b".into();
 
-    base.crt_static_default = false;
     base.has_rpath = true;
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
@@ -16,7 +15,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "hexagon-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("Hexagon Linux with musl 1.2.3".into()),
+            description: Some("Hexagon Linux with musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

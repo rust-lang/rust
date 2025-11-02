@@ -4,10 +4,11 @@
 #![feature(once_cell_try)]
 #![feature(lock_value_accessors)]
 #![feature(reentrant_lock)]
-#![feature(rwlock_downgrade)]
 #![feature(std_internals)]
 #![feature(sync_nonpoison)]
+#![feature(nonpoison_condvar)]
 #![feature(nonpoison_mutex)]
+#![feature(nonpoison_rwlock)]
 #![allow(internal_features)]
 #![feature(macro_metavar_expr_concat)] // For concatenating identifiers in macros.
 
@@ -56,6 +57,9 @@ fn result_unwrap<T, E: std::fmt::Debug>(x: Result<T, E>) -> T {
 /// a no-op (the identity function).
 ///
 /// The test names will be prefiex with `poison_` or `nonpoison_`.
+///
+/// Important: most attributes (except `cfg`) will not work properly! (They are only applied to the first test.)
+/// See <https://github.com/rust-lang/rust/pull/146433> for more information.
 macro_rules! nonpoison_and_poison_unwrap_test {
     (
         name: $name:ident,

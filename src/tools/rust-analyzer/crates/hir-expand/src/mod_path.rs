@@ -273,16 +273,17 @@ fn convert_path(
     // Basically, even in rustc it is quite hacky:
     // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
     // We follow what it did anyway :)
-    if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
-        if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctx = span_for_range(segment.syntax().text_range());
-            if let Some(macro_call_id) = syn_ctx.outer_expn(db) {
-                if db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner {
-                    mod_path.kind = match resolve_crate_root(db, syn_ctx) {
-                        Some(crate_root) => PathKind::DollarCrate(crate_root),
-                        None => PathKind::Crate,
-                    }
-                }
+    if mod_path.segments.len() == 1
+        && mod_path.kind == PathKind::Plain
+        && let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast)
+    {
+        let syn_ctx = span_for_range(segment.syntax().text_range());
+        if let Some(macro_call_id) = syn_ctx.outer_expn(db)
+            && db.lookup_intern_macro_call(macro_call_id.into()).def.local_inner
+        {
+            mod_path.kind = match resolve_crate_root(db, syn_ctx) {
+                Some(crate_root) => PathKind::DollarCrate(crate_root),
+                None => PathKind::Crate,
             }
         }
     }

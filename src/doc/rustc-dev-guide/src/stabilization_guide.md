@@ -6,8 +6,6 @@
 
 Once an unstable feature has been well-tested with no outstanding concerns, anyone may push for its stabilization, though involving the people who have worked on it is prudent. Follow these steps:
 
-<!-- toc -->
-
 ## Write an RFC, if needed
 
 If the feature was part of a [lang experiment], the lang team generally will want to first accept an RFC before stabilization.
@@ -84,7 +82,7 @@ Most importantly, remove the code which flags an error if the feature-gate is no
 gate_all!(pub_restricted, "`pub(restricted)` syntax is experimental");
 ```
 
-This `gate_feature_post!` macro prints an error if the `pub_restricted` feature is not enabled. It is not needed now that `#[pub_restricted]` is stable.
+The `gate_all!` macro reports an error if the `pub_restricted` feature is not enabled. It is not needed now that `pub(restricted)` is stable.
 
 For more subtle features, you may find code like this:
 

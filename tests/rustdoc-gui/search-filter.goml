@@ -2,11 +2,7 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
-write-into: (".search-input", "test")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "test"})
 assert-text: ("#results .externcrate", "test_docs")
 
 wait-for: "#crate-search"
@@ -21,6 +17,7 @@ press-key: "ArrowDown"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-document-property: ({"URL": "&filter-crate="}, CONTAINS)
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
@@ -31,7 +28,8 @@ assert-property: ("#crate-search", {"value": "lib2"})
 // crate filtering.
 press-key: "Escape"
 wait-for-css: ("#main-content", {"display": "block"})
-focus: ".search-input"
+click: "#search-button"
+wait-for: ".search-input"
 wait-for-css: ("#main-content", {"display": "none"})
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
@@ -47,6 +45,7 @@ press-key: "ArrowUp"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-property: ("#crate-search", {"value": "all crates"})
 
 // Checking that the URL parameter is taken into account for crate filtering.
@@ -56,8 +55,7 @@ assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"
 
 // Checking that the text for the "title" is correct (the "all crates" comes from the "<select>").
-assert-text: (".search-results-title", "Results", STARTS_WITH)
-assert-text: (".search-results-title + .sub-heading", " in all crates", STARTS_WITH)
+assert-text: (".search-switcher", "Search results in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
@@ -72,7 +70,7 @@ assert-css: ("#crate-search", {
 })
 
 // We now check the dark theme.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 click: "#theme-dark"
 wait-for-css: ("#crate-search", {

@@ -3,6 +3,8 @@
 //@ only-unix (this is a unix-specific test)
 //@ needs-subprocess
 //@ ignore-fuchsia no execvp syscall provided
+//@ ignore-tvos execvp is prohibited
+//@ ignore-watchos execvp is prohibited
 
 use std::env;
 use std::os::unix::process::CommandExt;

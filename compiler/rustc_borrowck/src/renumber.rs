@@ -21,10 +21,10 @@ pub(crate) fn renumber_mir<'tcx>(
     let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
-        renumberer.visit_body(body);
+        renumberer.visit_body_preserves_cfg(body);
     }
 
-    renumberer.visit_body(body);
+    renumberer.visit_body_preserves_cfg(body);
 }
 
 // The fields are used only for debugging output in `sccs_info`.
@@ -66,7 +66,7 @@ impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,
     {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+        let origin = NllRegionVariableOrigin::Existential { name: None };
         fold_regions(self.infcx.tcx, value, |_region, _depth| {
             self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
         })

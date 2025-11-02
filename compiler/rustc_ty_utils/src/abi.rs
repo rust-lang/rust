@@ -5,6 +5,7 @@ use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
+use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
@@ -39,7 +40,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
-            rustc_abi::ExternAbi::Unadjusted,
+            rustc_abi::ExternAbi::Rust,
         );
     }
 
@@ -268,20 +269,21 @@ fn fn_abi_of_instance<'tcx>(
 }
 
 // Handle safe Rust thin and wide pointers.
-fn adjust_for_rust_scalar<'tcx>(
+fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
-    attrs: &mut ArgAttributes,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
-) {
+) -> ArgAttributes {
+    let mut attrs = ArgAttributes::new();
+
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
         attrs.ext(ArgExtension::Zext);
         attrs.set(ArgAttribute::NoUndef);
-        return;
+        return attrs;
     }
 
     if !scalar.is_uninit_valid() {
@@ -289,7 +291,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
     // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
     // which must be nonnull per its documented safety requirements.
@@ -355,9 +357,12 @@ fn adjust_for_rust_scalar<'tcx>(
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
+                attrs.set(ArgAttribute::CapturesReadOnly);
             }
         }
     }
+
+    attrs
 }
 
 /// Ensure that the ABI makes basic sense.
@@ -471,9 +476,10 @@ fn fn_abi_new_uncached<'tcx>(
     let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
     {
         let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        let is_tls_shim_call = matches!(instance.def, ty::InstanceKind::ThreadLocalShim(_));
         (
             instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            if is_virtual_call { None } else { Some(instance.def_id()) },
+            if is_virtual_call || is_tls_shim_call { None } else { Some(instance.def_id()) },
             is_virtual_call,
         )
     } else {
@@ -530,17 +536,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
-            let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(
-                *cx,
-                &mut attrs,
-                scalar,
-                *layout,
-                offset,
-                is_return,
-                drop_target_pointee,
-            );
-            attrs
+            arg_attrs_for_rust_scalar(*cx, scalar, *layout, offset, is_return, drop_target_pointee)
         });
 
         if arg.layout.is_zst() {
@@ -563,6 +559,7 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
+        // FIXME return false for tls shim
         can_unwind: fn_can_unwind(
             tcx,
             // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
@@ -575,8 +572,9 @@ fn fn_abi_new_uncached<'tcx>(
         &mut fn_abi,
         sig.abi,
         // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
-        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
-        // visit the function body.
+        // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
+        // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
+        // by visit the function body.
         determined_fn_def_id,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
@@ -617,41 +615,51 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
-
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
-        let deduced_param_attrs =
+        let deduced =
             if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
                 fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
             } else {
                 &[]
             };
-
-        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
-            if arg.is_ignore() {
-                continue;
-            }
-
-            // If we deduced that this parameter was read-only, add that to the attribute list now.
-            //
-            // The `readonly` parameter only applies to pointers, so we can only do this if the
-            // argument was passed indirectly. (If the argument is passed directly, it's an SSA
-            // value, so it's implicitly immutable.)
-            if let &mut PassMode::Indirect { ref mut attrs, .. } = &mut arg.mode {
-                // The `deduced_param_attrs` list could be empty if this is a type of function
-                // we can't deduce any parameters for, so make sure the argument index is in
-                // bounds.
-                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx)
-                    && deduced_param_attrs.read_only
-                {
-                    attrs.regular.insert(ArgAttribute::ReadOnly);
-                    debug!("added deduced read-only attribute");
-                }
+        if !deduced.is_empty() {
+            apply_deduced_attributes(cx, deduced, 0, &mut fn_abi.ret);
+            for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
+                apply_deduced_attributes(cx, deduced, arg_idx + 1, arg);
             }
         }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
+    }
+}
+
+/// Apply deduced optimization attributes to a parameter using an indirect pass mode.
+///
+/// `deduced` is a possibly truncated list of deduced attributes for a return place and arguments.
+/// `idx` the index of the parameter on the list (0 for a return place, and 1.. for arguments).
+fn apply_deduced_attributes<'tcx>(
+    cx: &LayoutCx<'tcx>,
+    deduced: &[DeducedParamAttrs],
+    idx: usize,
+    arg: &mut ArgAbi<'tcx, Ty<'tcx>>,
+) {
+    // Deduction is performed under the assumption of the indirection pass mode.
+    let PassMode::Indirect { ref mut attrs, .. } = arg.mode else {
+        return;
+    };
+    // The default values at the tail of the list are not encoded.
+    let Some(deduced) = deduced.get(idx) else {
+        return;
+    };
+    if deduced.read_only(cx.tcx(), cx.typing_env, arg.layout.ty) {
+        debug!("added deduced ReadOnly attribute");
+        attrs.regular.insert(ArgAttribute::ReadOnly);
+    }
+    if deduced.captures_none(cx.tcx(), cx.typing_env, arg.layout.ty) {
+        debug!("added deduced CapturesNone attribute");
+        attrs.regular.insert(ArgAttribute::CapturesNone);
     }
 }
 

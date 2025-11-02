@@ -2,6 +2,8 @@
 // ^ test temporarily disabled as it fails under gdb 15
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 // gdb-command:run
 // gdb-command:print string1.length
 // gdb-check:$1 = 48
@@ -26,8 +28,6 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 // This test case makes sure that debug info does not ICE when include_str is
 // used multiple times (see issue #11322).

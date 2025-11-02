@@ -1,5 +1,7 @@
 use rustc_abi::ExternAbi;
-use rustc_hir::{self as hir, intravisit};
+use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::FnKind;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -10,39 +12,18 @@ use super::TOO_MANY_ARGUMENTS;
 
 pub(super) fn check_fn(
     cx: &LateContext<'_>,
-    kind: intravisit::FnKind<'_>,
+    kind: FnKind<'_>,
     decl: &hir::FnDecl<'_>,
-    span: Span,
     hir_id: hir::HirId,
+    def_id: LocalDefId,
     too_many_arguments_threshold: u64,
 ) {
     // don't warn for implementations, it's not their fault
-    if !is_trait_impl_item(cx, hir_id) {
+    if !is_trait_impl_item(cx, hir_id)
         // don't lint extern functions decls, it's not their fault either
-        match kind {
-            intravisit::FnKind::Method(
-                _,
-                &hir::FnSig {
-                    header: hir::FnHeader {
-                        abi: ExternAbi::Rust, ..
-                    },
-                    ..
-                },
-            )
-            | intravisit::FnKind::ItemFn(
-                _,
-                _,
-                hir::FnHeader {
-                    abi: ExternAbi::Rust, ..
-                },
-            ) => check_arg_number(
-                cx,
-                decl,
-                span.with_hi(decl.output.span().hi()),
-                too_many_arguments_threshold,
-            ),
-            _ => {},
-        }
+        && kind.header().is_some_and(|header| header.abi == ExternAbi::Rust)
+    {
+        check_arg_number(cx, decl, cx.tcx.def_span(def_id), too_many_arguments_threshold);
     }
 }
 

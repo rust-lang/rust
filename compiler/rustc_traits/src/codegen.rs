@@ -59,7 +59,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // In principle, we only need to do this so long as `impl_source`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so
@@ -73,7 +73,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     }
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);
-    let impl_source = tcx.erase_regions(impl_source);
+    let impl_source = tcx.erase_and_anonymize_regions(impl_source);
     if impl_source.has_non_region_infer() {
         // Unused generic types or consts on an impl get replaced with inference vars,
         // but never resolved, causing the return value of a query to contain inference

@@ -2,15 +2,18 @@ use std::convert::Infallible;
 use std::ops::ControlFlow;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{method_chain_args, sext, sym};
+use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Symbol;
 
-use super::CAST_SIGN_LOSS;
+use super::{CAST_SIGN_LOSS, utils};
 
 /// A list of methods that can never return a negative value.
 /// Includes methods that panic rather than returning a negative value.
@@ -42,13 +45,33 @@ pub(super) fn check<'cx>(
     cast_op: &Expr<'_>,
     cast_from: Ty<'cx>,
     cast_to: Ty<'_>,
+    msrv: Msrv,
 ) {
     if should_lint(cx, cast_op, cast_from, cast_to) {
-        span_lint(
+        span_lint_and_then(
             cx,
             CAST_SIGN_LOSS,
             expr.span,
             format!("casting `{cast_from}` to `{cast_to}` may lose the sign of the value"),
+            |diag| {
+                if msrv.meets(cx, msrvs::INTEGER_SIGN_CAST)
+                    && let Some(cast) = utils::is_signedness_cast(cast_from, cast_to)
+                {
+                    let method = match cast {
+                        utils::CastTo::Signed => "cast_signed()",
+                        utils::CastTo::Unsigned => "cast_unsigned()",
+                    };
+                    let mut app = Applicability::MaybeIncorrect;
+                    let sugg = Sugg::hir_with_context(cx, cast_op, expr.span.ctxt(), "..", &mut app);
+
+                    diag.span_suggestion(
+                        expr.span,
+                        format!("if this is intentional, use `{method}` instead"),
+                        format!("{}.{method}", sugg.maybe_paren()),
+                        app,
+                    );
+                }
+            },
         );
     }
 }

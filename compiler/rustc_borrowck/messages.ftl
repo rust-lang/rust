@@ -90,7 +90,7 @@ borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 
 borrowck_limitations_implies_static =
-    due to current limitations in the borrow checker, this implies a `'static` lifetime
+    due to a current limitation of the type system, this implies a `'static` lifetime
 
 borrowck_move_closure_suggestion =
     consider adding 'move' keyword before the nested closure

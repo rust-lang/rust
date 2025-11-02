@@ -190,15 +190,15 @@ impl fmt::Display for LitKind {
             LitKind::Int(n, ty) => {
                 write!(f, "{n}")?;
                 match ty {
-                    ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
-                    ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name_str())?,
+                    ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name_str())?,
                     ast::LitIntType::Unsuffixed => {}
                 }
             }
             LitKind::Float(symbol, ty) => {
                 write!(f, "{symbol}")?;
                 match ty {
-                    ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name_str())?,
                     ast::LitFloatType::Unsuffixed => {}
                 }
             }

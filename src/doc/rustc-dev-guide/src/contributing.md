@@ -1,7 +1,5 @@
 # Contribution procedures
 
-<!-- toc -->
-
 ## Bug reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we
@@ -28,8 +26,7 @@ conditions that trigger the bug, or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
 
-Opening an issue is as easy as following [this
-link](https://github.com/rust-lang/rust/issues/new/choose) and filling out the fields
+Opening an issue is as easy as following [thi link][create an issue] and filling out the fields
 in the appropriate provided template.
 
 ## Bug fixes or "normal" code changes
@@ -55,9 +52,9 @@ channels: stable, beta, and nightly.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
-- **Nightly**: follows the `master` branch of the repo. This is the only
-  channel where unstable, incomplete, or experimental features are usable with
-  feature gates.
+- **Nightly**: follows the `master` branch of the repo.
+  This is the only channel where unstable features are intended to be used,
+  which happens via opt-in feature gates.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
@@ -77,7 +74,7 @@ Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something, or
 smaller user-facing changes.
 
-**When in doubt, ask on [zulip]. It would be a shame to put a lot of work
+**When in doubt, ask on [Zulip]. It would be a shame to put a lot of work
 into a PR that ends up not getting merged!** [See this document][mcpinfo] for
 more info on MCPs.
 
@@ -129,7 +126,7 @@ when contributing to Rust under [the git section](./git.md).
 > from), and work with the compiler team to see if we can help you **break down a large potentially
 > unreviewable PR into a series of smaller more individually reviewable PRs**.
 >
-> You can communicate with the compiler team by creating a [#t-compiler thread on zulip][t-compiler]
+> You can communicate with the compiler team by creating a [#t-compiler thread on Zulip][t-compiler]
 > to discuss your proposed changes.
 >
 > Communicating with the compiler team beforehand helps in several ways:
@@ -156,11 +153,14 @@ The CI in rust-lang/rust applies your patches directly against the current maste
 not against the commit your branch is based on. This can lead to unexpected failures
 if your branch is outdated, even when there are no explicit merge conflicts.
 
-Before submitting or updating a PR, make sure to update your branch
-as mentioned [here](git.md#keeping-things-up-to-date) if it's significantly
-behind the master branch (e.g., more than 100 commits behind).
-This fetches the latest master branch and rebases your changes on top of it,
-ensuring your PR is tested against the latest code.
+Update your branch only when needed: when you have merge conflicts, upstream CI is broken and blocking your green PR, or a maintainer requests it.
+Avoid updating an already-green PR under review unless necessary.
+During review, make incremental commits to address feedback.
+Prefer to squash or rebase only at the end, or when a reviewer requests it.
+
+When updating, use `git push --force-with-lease` and leave a brief comment explaining what changed.
+Some repos prefer merging from `upstream/master` instead of rebasing; follow the project's conventions.
+See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
 
 After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
 
@@ -374,6 +374,11 @@ You can also use `rustdoc` directly to check small fixes. For example,
 `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
 The CSS might be messed up, but you can verify that the HTML is right.
 
+Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
+as it's usually not worth the churn or the review time.
+Examples of internal documentation is code comments and rustc api docs.
+However, feel free to fix those if accompanied by other improvements in the same PR.
+
 ### Contributing to rustc-dev-guide
 
 Contributions to the [rustc-dev-guide] are always welcome, and can be made directly at
@@ -436,7 +441,8 @@ Just a few things to keep in mind:
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
-For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so, see [the rustc-dev-guide working group documentation](https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes).
+For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
+see [the rustc-dev-guide working group documentation].
 
 ## Issue triage
 
@@ -453,8 +459,9 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
+[the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
-### Rfcbot labels
+### rfcbot labels
 
 [rfcbot] uses its own labels for tracking the process of coordinating
 asynchronous decisions, such as approving or rejecting a change.
@@ -500,3 +507,4 @@ This section has moved to the ["About this guide"] chapter.
 [RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
 [rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
+[create an issue]: https://github.com/rust-lang/rust/issues/new/choose
