@@ -2,6 +2,7 @@
 
 use rustc_data_structures::snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage};
 use rustc_data_structures::undo_log::Rollback;
+use rustc_macros::TypeVisitable;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty;
 use tracing::{debug, info};
@@ -12,7 +13,7 @@ use crate::infer::snapshot::undo_log::InferCtxtUndoLogs;
 pub(crate) type UndoLog<'tcx> =
     snapshot_map::UndoLog<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>;
 
-#[derive(Clone)]
+#[derive(Clone, TypeVisitable)]
 pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>,
 }
