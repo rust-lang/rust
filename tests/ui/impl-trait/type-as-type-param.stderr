@@ -1,0 +1,18 @@
+error: expected type parameter, found path `Y<A, B, C>`
+  --> $DIR/type-as-type-param.rs:1:6
+   |
+LL | impl<Y<A, B, C>> Z for X<T> {}
+   |      ^^^^^^^^^^ expected type parameter, found path
+   |
+help: you might have meant to bind a type parameter to a trait
+   |
+LL | impl<T: Y<A, B, C>> Z for X<T> {}
+   |      ++
+help: alternatively, you might have meant to bind type parameters to trait `Y`
+   |
+LL - impl<Y<A, B, C>> Z for X<T> {}
+LL + impl<A: Y, B: Y, C: Y> Z for X<T> {}
+   |
+
+error: aborting due to 1 previous error
+
