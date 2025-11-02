@@ -163,6 +163,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::offload
         | sym::powf16
         | sym::powf32
         | sym::powf64
@@ -310,6 +311,7 @@ pub(crate) fn check_intrinsic_type(
             let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
         }
+        sym::offload => (2, 0, vec![param(0)], param(1)),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,

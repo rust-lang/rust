@@ -4,6 +4,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// TODO(Sa4dUs): remove this once we have a great version, just to ignore unused LLVM wrappers
+#![allow(unused)]
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
