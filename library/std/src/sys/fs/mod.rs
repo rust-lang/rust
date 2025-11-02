@@ -122,7 +122,7 @@ pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
     with_native_path(path, &|path| imp::set_perm(path, perm.clone()))
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "vxworks")))]
 pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
     use crate::fs::OpenOptions;
 
@@ -139,7 +139,7 @@ pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io
     options.open(path)?.set_permissions(perm)
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), target_os = "vxworks"))]
 pub fn set_permissions_nofollow(_path: &Path, _perm: crate::fs::Permissions) -> io::Result<()> {
     crate::unimplemented!(
         "`set_permissions_nofollow` is currently only implemented on Unix platforms"
