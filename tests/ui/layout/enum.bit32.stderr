@@ -1,0 +1,360 @@
+error: align: AbiAlign { abi: Align(2 bytes) }
+  --> $DIR/enum.rs:12:1
+   |
+LL | enum UninhabitedVariantAlign {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(15 bytes)
+  --> $DIR/enum.rs:18:1
+   |
+LL | enum UninhabitedVariantSpace {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, false), valid_range: 0..=255 })
+  --> $DIR/enum.rs:24:1
+   |
+LL | enum ScalarPairDifferingSign {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:32:1
+   |
+LL | enum AbsentVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/enum.rs:32:1
+   |
+LL | enum AbsentVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:41:1
+   |
+LL | enum UninhabitedVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/enum.rs:41:1
+   |
+LL | enum UninhabitedVariantUntagged {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(8 bytes)
+  --> $DIR/enum.rs:52:1
+   |
+LL | enum UninhabitedVariantUntaggedBigger {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=0 }, Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/enum.rs:52:1
+   |
+LL | enum UninhabitedVariantUntaggedBigger {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(2 bytes)
+  --> $DIR/enum.rs:59:1
+   |
+LL | enum UninhabitedVariantWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, true), valid_range: 0..=255 })
+  --> $DIR/enum.rs:59:1
+   |
+LL | enum UninhabitedVariantWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(UninhabitedVariantLargeWithNiche) = Layout {
+           size: Size(3 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Memory {
+               sized: true,
+           },
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(3 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                               Size(2 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                               1,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(2 bytes),
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                           variants: None,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 17394913183323368564,
+                   },
+                   Layout {
+                       size: Size(3 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(1 bytes),
+                               Size(2 bytes),
+                               Size(3 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                               1,
+                               2,
+                               3,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: true,
+                       variants: Single {
+                           index: 1,
+                           variants: None,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 17538183959353994357,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: 15362464571658798427,
+       }
+  --> $DIR/enum.rs:66:1
+   |
+LL | enum UninhabitedVariantLargeWithNiche {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(2 bytes)
+  --> $DIR/enum.rs:80:1
+   |
+LL | enum AllUninhabitedVariants {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:80:1
+   |
+LL | enum AllUninhabitedVariants {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(2 bytes)
+  --> $DIR/enum.rs:91:1
+   |
+LL | enum AlignedI8 {
+   | ^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:91:1
+   |
+LL | enum AlignedI8 {
+   | ^^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:99:1
+   |
+LL | enum TaggedI8 {
+   | ^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:99:1
+   |
+LL | enum TaggedI8 {
+   | ^^^^^^^^^^^^^
+
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:108:1
+   |
+LL | enum TaggedI16 {
+   | ^^^^^^^^^^^^^^
+
+error: abi: ScalarPair(Initialized { value: Int(I16, false), valid_range: 0..=0 }, Initialized { value: Int(I16, true), valid_range: 0..=65535 })
+  --> $DIR/enum.rs:108:1
+   |
+LL | enum TaggedI16 {
+   | ^^^^^^^^^^^^^^
+
+error: size: Size(0 bytes)
+  --> $DIR/enum.rs:116:1
+   |
+LL | enum AllUninhabitedVariantsAlignedZst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:116:1
+   |
+LL | enum AllUninhabitedVariantsAlignedZst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:131:1
+   |
+LL | type NPONever1 = Result<NPONever, ()>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:135:1
+   |
+LL | type NPONever2 = Result<(), NPONever>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:139:1
+   |
+LL | type NPONever3 = Result<NPONever, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:143:1
+   |
+LL | type NPONever4 = Result<!, NPONever>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:147:1
+   |
+LL | type NPONever5 = Result<&'static (), !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:151:1
+   |
+LL | type NPONever6 = Result<!, &'static ()>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:155:1
+   |
+LL | type NPONever7 = Result<std::num::NonZero<i16>, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:159:1
+   |
+LL | type NPONever8 = Result<!, std::num::NonZero<i16>>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:163:1
+   |
+LL | type NPONever9 = Result<NPONeverI16, !>;
+   | ^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: 1..=65535 })
+  --> $DIR/enum.rs:167:1
+   |
+LL | type NPONever10 = Result<!, NPONeverI16>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:171:1
+   |
+LL | type NPONever11 = Result<NPONeverI16, ()>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I16, true), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:175:1
+   |
+LL | type NPONever12 = Result<(), NPONeverI16>;
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:179:1
+   |
+LL | enum NPONever13 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: (..=0) | (1..) })
+  --> $DIR/enum.rs:185:1
+   |
+LL | enum NPONever14 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:191:1
+   |
+LL | enum NPONever15 {
+   | ^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I32, false), valid_range: 0..=0 })
+  --> $DIR/enum.rs:199:1
+   |
+LL | type NotNPONever1 = Result<NPONever, NPONever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Memory { sized: true }
+  --> $DIR/enum.rs:203:1
+   |
+LL | type NotNPONever2 = Result<NPONever, AlignedNever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:207:1
+   |
+LL | type NotNPONever3 = Result<NPONever, &'static ()>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Pointer(AddressSpace(0)), valid_range: 1..=4294967295 })
+  --> $DIR/enum.rs:211:1
+   |
+LL | type NotNPONever4 = Result<&'static (), AlignedNever>;
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 41 previous errors
+
