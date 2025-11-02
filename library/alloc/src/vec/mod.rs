@@ -79,7 +79,9 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::PhantomData;
+#[cfg(not(no_global_oom_handling))]
+use core::marker::Destruct;
+use core::marker::{Freeze, PhantomData};
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -515,7 +517,8 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[rustc_diagnostic_item = "vec_with_capacity"]
-    pub fn with_capacity(capacity: usize) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
     }
 
@@ -844,6 +847,22 @@ impl<T> Vec<T> {
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
     }
+
+    /// Interns the `Vec<T>`, making the underlying memory read-only. This method should be
+    /// called during compile time. (This is a no-op if called during runtime)
+    ///
+    /// This method must be called if the memory used by `Vec` needs to appear in the final
+    /// values of constants.
+    #[unstable(feature = "const_heap", issue = "79597")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn const_make_global(mut self) -> &'static [T]
+    where
+        T: Freeze,
+    {
+        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+        let me = ManuallyDrop::new(self);
+        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+    }
 }
 
 impl<T, A: Allocator> Vec<T, A> {
@@ -925,7 +944,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn with_capacity_in(capacity: usize, alloc: A) -> Self
+    where
+        A: [const] Allocator + [const] Destruct,
+    {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
 
@@ -2560,7 +2583,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
-    pub fn push(&mut self, value: T) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn push(&mut self, value: T)
+    where
+        A: [const] Allocator,
+    {
         let _ = self.push_mut(value);
     }
 
@@ -2637,7 +2664,11 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
-    pub fn push_mut(&mut self, value: T) -> &mut T {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn push_mut(&mut self, value: T) -> &mut T
+    where
+        A: [const] Allocator,
+    {
         // Inform codegen that the length does not change across grow_one().
         let len = self.len;
         // This will panic or abort if we would allocate > isize::MAX bytes
