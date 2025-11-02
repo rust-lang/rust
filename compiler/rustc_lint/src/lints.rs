@@ -705,6 +705,16 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
     },
 }
 
+// redefining_runtime_symbols.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_redefining_runtime_symbols)]
+#[note(lint_match_exactly)]
+#[note(lint_learn_more)]
+#[help]
+pub(crate) struct RedefiningRuntimeSymbolsDiag {
+    pub symbol_name: String,
+}
+
 // drop_forget_useless.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_dropping_references)]
