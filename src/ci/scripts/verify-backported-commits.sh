@@ -1,5 +1,6 @@
 #!/bin/bash
-# Ensure commits in beta are in master & commits in stable are in beta + master.
+# Ensure commits in beta are in the default branch & commits in stable are in beta + the default
+# branch.
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -19,11 +20,11 @@ verify_backported_commits_main() {
   fi
 
   if [[ $ci_base_branch == "beta" ]]; then
-    verify_cherries master "$BETA_LIMIT" \
+    verify_cherries HEAD "$BETA_LIMIT" \
       || exit 1
 
   elif [[ $ci_base_branch == "stable" ]]; then
-    (verify_cherries master "$STABLE_LIMIT" \
+    (verify_cherries HEAD "$STABLE_LIMIT" \
       & verify_cherries beta "$STABLE_LIMIT") \
       || exit 1
 
@@ -64,7 +65,7 @@ verify_cherries() {
       continue
     fi
 
-    if ! is_in_master "$backport_sha"; then
+    if ! is_in_default_branch "$backport_sha"; then
       bad_backports+=("$sha")
       continue
     fi
@@ -85,7 +86,7 @@ verify_cherries() {
         done
         echo
         echo "do not match any commits in \`$1\`. If this was intended, add the text"
-        echo '\`backport-of: <SHA of a commit already in master>\`'
+        echo '\`backport-of: <SHA of a commit already in the default branch>\`'
         echo 'somewhere in the message of each of these commits.'
         echo
         failure=1
@@ -101,7 +102,7 @@ verify_cherries() {
         done
         echo
         echo 'have commit messages marked \`backport-of: <SHA>\`, but the SHA is not in'
-        echo '\`master\`.'
+        echo 'the default branch.'
         echo
         failure=1
   fi
@@ -132,11 +133,11 @@ get_backport() {
     | sed -n '/^.*backport-of:\s\?\([a-f0-9]\+\|nothing\).*/{s//\1/p;q}'
 }
 
-# Check if a commit is in master.
+# Check if a commit is in the default branch.
 #
 # $1 = <sha>
-is_in_master() {
-  git merge-base --is-ancestor "$1" origin/master 2> /dev/null
+is_in_default_branch() {
+  git merge-base --is-ancestor "$1" origin/HEAD 2> /dev/null
 }
 
 verify_backported_commits_main
