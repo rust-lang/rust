@@ -620,6 +620,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
     tracked!(instrument_coverage, InstrumentCoverage::Yes);
+    tracked!(jump_tables, false);
     tracked!(link_dead_code, Some(true));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
@@ -831,7 +832,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mutable_noalias, false);
     tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
     tracked!(no_generate_arange_section, true);
-    tracked!(no_jump_tables, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
     tracked!(no_trait_vptr, true);

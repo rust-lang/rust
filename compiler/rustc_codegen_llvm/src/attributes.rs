@@ -229,7 +229,7 @@ fn instrument_function_attr<'ll>(
 }
 
 fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
-    if !sess.opts.unstable_opts.no_jump_tables {
+    if sess.opts.cg.jump_tables {
         return None;
     }
 
