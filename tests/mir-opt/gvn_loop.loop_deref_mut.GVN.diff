@@ -34,8 +34,7 @@
   
       bb0: {
           StorageLive(_2);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = &(*_1);
           _3 = get::<Value>(move _4) -> [return: bb1, unwind unreachable];
@@ -44,12 +43,10 @@
       bb1: {
           _2 = &(*_3);
           StorageDead(_4);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           StorageLive(_5);
           _5 = const false;
--         _8 = discriminant((*_2));
-+         _8 = discriminant((*_3));
+          _8 = discriminant((*_2));
           switchInt(move _8) -> [0: bb3, otherwise: bb2];
       }
   
@@ -59,9 +56,8 @@
   
       bb3: {
 -         StorageLive(_7);
--         _7 = copy (((*_2) as V0).0: i32);
 +         nop;
-+         _7 = copy (((*_3) as V0).0: i32);
+          _7 = copy (((*_2) as V0).0: i32);
           StorageLive(_9);
           goto -> bb4;
       }
