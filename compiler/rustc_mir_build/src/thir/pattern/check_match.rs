@@ -168,9 +168,9 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             {
                 let mut chain_refutabilities = Vec::new();
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
-                // Check only single let binding.
-                if let [Some((_, refutability))] = chain_refutabilities[..] {
-                    self.check_single_let(refutability, ex.span);
+                // Lint only single irrefutable let binding.
+                if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
+                    self.lint_single_let(ex.span);
                 }
                 return;
             }
@@ -562,17 +562,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_single_let(&mut self, refutability: RefutableFlag, whole_chain_span: Span) {
-        assert!(self.let_source != LetSource::None);
-        if matches!(refutability, Irrefutable) {
-            report_irrefutable_let_patterns(
-                self.tcx,
-                self.lint_level,
-                self.let_source,
-                1,
-                whole_chain_span,
-            );
-        }
+    fn lint_single_let(&mut self, let_span: Span) {
+        report_irrefutable_let_patterns(self.tcx, self.lint_level, self.let_source, 1, let_span);
     }
 
     fn analyze_binding(
