@@ -565,6 +565,7 @@ fn ptr_metadata() {
 
 #[test]
 fn ptr_metadata_bounds() {
+    #[allow(unknown_lints, function_casts_as_integer)]
     fn metadata_eq_method_address<T: ?Sized>() -> usize {
         // The `Metadata` associated type has an `Ord` bound, so this is valid:
         <<T as Pointee>::Metadata as PartialEq>::eq as usize

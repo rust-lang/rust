@@ -3019,6 +3019,26 @@ pub(crate) struct ReservedMultihash {
     pub suggestion: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_function_casts_as_integer)]
+pub(crate) struct FunctionCastsAsIntegerDiag<'tcx> {
+    #[subdiagnostic]
+    pub(crate) sugg: FunctionCastsAsIntegerSugg<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_cast_as_fn,
+    code = " as *const ()",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct FunctionCastsAsIntegerSugg<'tcx> {
+    #[primary_span]
+    pub suggestion: Span,
+    pub cast_to_ty: Ty<'tcx>,
+}
+
 #[derive(Debug)]
 pub(crate) struct MismatchedLifetimeSyntaxes {
     pub inputs: LifetimeSyntaxCategories<Vec<Span>>,

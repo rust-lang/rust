@@ -622,7 +622,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// // Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
 /// // This avoids an integer-to-pointer `transmute`, which can be problematic.
 /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
-/// let pointer = foo as *const ();
+/// let pointer = foo as fn() -> i32 as *const ();
 /// let function = unsafe {
 ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
 /// };

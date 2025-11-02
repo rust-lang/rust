@@ -1,5 +1,7 @@
 //@ build-pass
 
+#![allow(function_casts_as_integer)]
+
 trait Supertrait<T> {
     fn method(&self) {}
 }
