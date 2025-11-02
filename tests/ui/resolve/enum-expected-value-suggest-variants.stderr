@@ -1,11 +1,11 @@
 error[E0423]: expected value, found enum `Foo`
-  --> $DIR/enum-expected-value-suggest-variants.rs:19:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:20:18
    |
 LL |     let _: Foo = Foo.A(0);
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:1:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:2:1
    |
 LL | / enum Foo {
 LL | |
@@ -20,13 +20,13 @@ LL +     let _: Foo = Foo::A(0);
    |
 
 error[E0423]: expected value, found enum `Foo`
-  --> $DIR/enum-expected-value-suggest-variants.rs:23:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:24:18
    |
 LL |     let _: Foo = Foo.Bad(0);
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:1:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:2:1
    |
 LL | / enum Foo {
 LL | |
@@ -44,13 +44,13 @@ LL +     let _: Foo = (Foo::B(/* fields */)).Bad(0);
    |
 
 error[E0423]: expected value, found enum `Bar`
-  --> $DIR/enum-expected-value-suggest-variants.rs:32:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:33:18
    |
 LL |     let _: Bar = Bar.C(0);
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:7:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:8:1
    |
 LL | / enum Bar {
 LL | |     C(u32),
@@ -66,13 +66,13 @@ LL +     let _: Bar = Bar::C(0);
    |
 
 error[E0423]: expected value, found enum `Bar`
-  --> $DIR/enum-expected-value-suggest-variants.rs:36:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:37:18
    |
 LL |     let _: Bar = Bar.E;
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:7:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:8:1
    |
 LL | / enum Bar {
 LL | |     C(u32),
@@ -88,13 +88,13 @@ LL +     let _: Bar = Bar::E;
    |
 
 error[E0423]: expected value, found enum `Bar`
-  --> $DIR/enum-expected-value-suggest-variants.rs:40:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:41:18
    |
 LL |     let _: Bar = Bar.Bad(0);
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:7:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:8:1
    |
 LL | / enum Bar {
 LL | |     C(u32),
@@ -119,13 +119,13 @@ LL +     let _: Bar = (Bar::D(/* fields */)).Bad(0);
    |
 
 error[E0423]: expected value, found enum `Bar`
-  --> $DIR/enum-expected-value-suggest-variants.rs:45:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:46:18
    |
 LL |     let _: Bar = Bar.Bad;
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:7:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:8:1
    |
 LL | / enum Bar {
 LL | |     C(u32),
@@ -150,7 +150,7 @@ LL +     let _: Bar = (Bar::D(/* fields */)).Bad;
    |
 
 error[E0531]: cannot find tuple struct or tuple variant `A` in this scope
-  --> $DIR/enum-expected-value-suggest-variants.rs:51:9
+  --> $DIR/enum-expected-value-suggest-variants.rs:52:9
    |
 LL |         A(..) => {}
    |         ^ not found in this scope
@@ -161,13 +161,13 @@ LL + use Foo::A;
    |
 
 error[E0532]: expected tuple struct or tuple variant, found enum `Foo`
-  --> $DIR/enum-expected-value-suggest-variants.rs:53:9
+  --> $DIR/enum-expected-value-suggest-variants.rs:54:9
    |
 LL |         Foo(..) => {}
    |         ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:1:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:2:1
    |
 LL | / enum Foo {
 LL | |
@@ -183,13 +183,13 @@ LL |         Foo::B(..) => {}
    |            +++
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `Foo`
-  --> $DIR/enum-expected-value-suggest-variants.rs:15:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:16:18
    |
 LL |     let _: Foo = Foo(0);
    |                  ^^^
    |
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:1:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:2:1
    |
 LL | / enum Foo {
 LL | |
@@ -205,14 +205,14 @@ LL |     let _: Foo = Foo::B(0);
    |                     +++
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `Bar`
-  --> $DIR/enum-expected-value-suggest-variants.rs:27:18
+  --> $DIR/enum-expected-value-suggest-variants.rs:28:18
    |
 LL |     let _: Bar = Bar(0);
    |                  ^^^
    |
    = help: you might have meant to construct one of the enum's non-tuple variants
 note: the enum is defined here
-  --> $DIR/enum-expected-value-suggest-variants.rs:7:1
+  --> $DIR/enum-expected-value-suggest-variants.rs:8:1
    |
 LL | / enum Bar {
 LL | |     C(u32),

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:no_method_suggested_traits.rs
 //@ dont-require-annotations: HELP
 

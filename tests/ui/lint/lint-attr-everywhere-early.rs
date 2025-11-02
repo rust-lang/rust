@@ -1,3 +1,4 @@
+//@ edition:2015
 // Tests that lint levels can be set for early lints.
 #![allow(non_camel_case_types, unsafe_code, while_true, unused_parens)]
 

@@ -1,3 +1,4 @@
+//@ edition:2015
 pub mod foo {
     pub mod bar {
         // note: trait T is not public, but being in the current

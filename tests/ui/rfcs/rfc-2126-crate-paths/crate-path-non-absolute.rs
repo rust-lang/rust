@@ -1,3 +1,4 @@
+//@ edition:2015
 struct S;
 
 pub mod m {

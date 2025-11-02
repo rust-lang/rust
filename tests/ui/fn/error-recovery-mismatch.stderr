@@ -1,11 +1,11 @@
 error: unexpected `self` parameter in function
-  --> $DIR/error-recovery-mismatch.rs:11:29
+  --> $DIR/error-recovery-mismatch.rs:12:29
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                             ^^^^^ must be the first parameter of an associated function
 
 error: expected one of `)` or `,`, found `.`
-  --> $DIR/error-recovery-mismatch.rs:11:34
+  --> $DIR/error-recovery-mismatch.rs:12:34
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                                  ^
@@ -14,13 +14,13 @@ LL |     fn fold<T>(&self, _: T, &self._) {}
    |                                  help: missing `,`
 
 error[E0415]: identifier `self` is bound more than once in this parameter list
-  --> $DIR/error-recovery-mismatch.rs:11:30
+  --> $DIR/error-recovery-mismatch.rs:12:30
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                              ^^^^ used as parameter more than once
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/error-recovery-mismatch.rs:11:35
+  --> $DIR/error-recovery-mismatch.rs:12:35
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                                   ^ help: try naming the parameter or explicitly ignoring it: `_: _`
@@ -30,7 +30,7 @@ LL |     fn fold<T>(&self, _: T, &self._) {}
    = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
-  --> $DIR/error-recovery-mismatch.rs:11:35
+  --> $DIR/error-recovery-mismatch.rs:12:35
    |
 LL |     fn fold<T>(&self, _: T, &self._) {}
    |                                   ^ not allowed in type signatures

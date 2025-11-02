@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(rustc_attrs)]
 
 macro_rules! test { ($nm:ident,

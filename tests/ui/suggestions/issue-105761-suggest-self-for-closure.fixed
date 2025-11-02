@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@run-rustfix
 #![allow(unused)]
 

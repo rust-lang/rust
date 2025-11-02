@@ -1,3 +1,4 @@
+//@ edition:2015
 // Regression test for ICE #122989
 trait Foo<const N: Bar<2>> {
     //~^ WARN trait objects without an explicit `dyn` are deprecated

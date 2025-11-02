@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `Trait`
-  --> $DIR/unresolved-candidates.rs:6:9
+  --> $DIR/unresolved-candidates.rs:7:9
    |
 LL |     use Trait;
    |         ^^^^^ no `Trait` in the root
@@ -10,7 +10,7 @@ LL |     use a::Trait;
    |         +++
 
 error[E0405]: cannot find trait `Trait` in this scope
-  --> $DIR/unresolved-candidates.rs:10:10
+  --> $DIR/unresolved-candidates.rs:11:10
    |
 LL |     impl Trait for () {}
    |          ^^^^^ not found in this scope

@@ -1,3 +1,4 @@
+//@ edition:2015
 mod foo {
     use spam::*; //~ ERROR unresolved import `spam` [E0432]
 

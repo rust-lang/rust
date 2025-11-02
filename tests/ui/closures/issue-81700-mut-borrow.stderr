@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `bar` as mutable, as it is not declared as mutable
-  --> $DIR/issue-81700-mut-borrow.rs:3:5
+  --> $DIR/issue-81700-mut-borrow.rs:4:5
    |
 LL |     let bar = || { foo(x); };
    |                        - calling `bar` requires mutable binding due to mutable borrow of `x`
