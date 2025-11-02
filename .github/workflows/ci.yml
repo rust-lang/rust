@@ -323,7 +323,7 @@ jobs:
       # If a some dependent job has failed, this exits with 1.
       - name: calculate the correct exit status
         run: jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
-      # Publish the toolstate if an auto build succeeds (just before push to master)
+      # Publish the toolstate if an auto build succeeds (just before push to the default branch)
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
         shell: bash

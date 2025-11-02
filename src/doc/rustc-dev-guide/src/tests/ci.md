@@ -333,7 +333,7 @@ platform.
 These builders are running on a special pool of builders set up and maintained
 for us by GitHub.
 
-[Docker container]: https://github.com/rust-lang/rust/tree/master/src/ci/docker
+[Docker container]: https://github.com/rust-lang/rust/tree/HEAD/src/ci/docker
 
 ## Caching
 
@@ -460,11 +460,11 @@ this:
 5. All of the build settings are listed on the line with the text, `build.configure-args`
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
-[`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
-[`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`src/ci/citool`]: https://github.com/rust-lang/rust/blob/master/src/ci/citool
+[`jobs.yml`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/github-actions/jobs.yml
+[`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/HEAD/.github/workflows/ci.yml
+[`src/ci/citool`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/citool
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu
 [merge queue]: https://bors.rust-lang.org/queue/rust
-[dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
+[dist-x86_64-linux]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/docker/host-x86_64/dist-x86_64-linux/Dockerfile
 [the GitHub Actions workflows page]: https://github.com/rust-lang/rust/actions

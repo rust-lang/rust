@@ -3,7 +3,10 @@
 use core::ascii::EscapeDefault;
 
 use crate::fmt::{self, Write};
-#[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+#[cfg(not(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "loongarch64", target_feature = "lsx")
+)))]
 use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, ops};
 
@@ -359,7 +362,10 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 ///
 /// If any of these loads produces something for which `contains_nonascii`
 /// (above) returns true, then we know the answer is false.
-#[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
+#[cfg(not(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "loongarch64", target_feature = "lsx")
+)))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 const fn is_ascii(s: &[u8]) -> bool {
@@ -457,12 +463,15 @@ const fn is_ascii(s: &[u8]) -> bool {
     )
 }
 
-/// ASCII test optimized to use the `pmovmskb` instruction available on `x86-64`
-/// platforms.
+/// ASCII test optimized to use the `pmovmskb` instruction on `x86-64` and the
+/// `vmskltz.b` instruction on `loongarch64`.
 ///
 /// Other platforms are not likely to benefit from this code structure, so they
 /// use SWAR techniques to test for ASCII in `usize`-sized chunks.
-#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+#[cfg(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "loongarch64", target_feature = "lsx")
+))]
 #[inline]
 const fn is_ascii(bytes: &[u8]) -> bool {
     // Process chunks of 32 bytes at a time in the fast path to enable

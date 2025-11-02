@@ -7,7 +7,7 @@ simplest mechanisms are the `#[rustc_if_this_changed]` and
 `#[rustc_then_this_would_need]` annotations. These are used in [ui] tests to test
 whether the expected set of paths exist in the dependency graph.
 
-[`tests/ui/dep-graph/dep-graph-caller-callee.rs`]: https://github.com/rust-lang/rust/blob/master/tests/ui/dep-graph/dep-graph-caller-callee.rs
+[`tests/ui/dep-graph/dep-graph-caller-callee.rs`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/dep-graph/dep-graph-caller-callee.rs
 [ui]: tests/ui.html
 
 As an example, see [`tests/ui/dep-graph/dep-graph-caller-callee.rs`], or the

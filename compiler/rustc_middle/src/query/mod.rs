@@ -42,7 +42,7 @@
 //!   Only valid for queries returning `Result<_, ErrorGuaranteed>`.
 //!
 //! For the up-to-date list, see the `QueryModifiers` struct in
-//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/query.rs)
+//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
 //! and for more details in incremental compilation, see the
 //! [Query modifiers in incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html#query-modifiers) section of the rustc-dev-guide.
 //!
