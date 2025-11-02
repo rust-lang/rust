@@ -1290,17 +1290,44 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Grow `shorter_fr` until we find some non-local regions. (We
             // always will.)  We'll call them `shorter_fr+` -- they're ever
             // so slightly larger than `shorter_fr`.
-            let shorter_fr_plus =
+            let shorter_fr_plusses =
                 self.universal_region_relations.non_local_upper_bounds(shorter_fr);
-            debug!("try_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus);
-            for fr in shorter_fr_plus {
-                // Push the constraint `fr-: shorter_fr+`
-                propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-                    subject: ClosureOutlivesSubject::Region(fr_minus),
-                    outlived_free_region: fr,
-                    blame_span: blame_constraint.cause.span,
-                    category: blame_constraint.category,
-                });
+            debug!(
+                "try_propagate_universal_region_error: shorter_fr_plus={:?}",
+                shorter_fr_plusses
+            );
+
+            let fr_static = self.universal_regions().fr_static;
+            let single_region = shorter_fr_plusses.len() == 1;
+
+            for shorter_fr_plus in shorter_fr_plusses {
+                // Don't propagate every `fr-: shorter_fr+`.
+                // A smaller "optimal subset" exists, since full propagation is overly conservative
+                // and can reject valid code. Consider this small example (`'b: 'a` == `a -> b`)
+                // were we try to propagate region error `'d: 'a`:
+                // a --> b --> d
+                //  \
+                //   \-> c
+                // Here `shorter_fr_plusses` == `['b, 'c]`.
+                // Propagating `'d: 'b` is correct and should happen; `'d: 'c` is redundant and can reject valid code.
+                // We can come closer to this "optimal subset" by checking if the `shorter_fr+` should be outlived by `fr-`.
+                // NOTE: [] is *not* a valid subset, so we check for that as well.
+                if single_region
+                    || shorter_fr_plus == fr_static // `fr-: 'static` should be propagated
+                    || self.eval_outlives(fr_minus, shorter_fr_plus)
+                {
+                    debug!(
+                        "try_propagate_universal_region_error: propagating {:?}: {:?}",
+                        fr_minus, shorter_fr_plus,
+                    );
+                    // If that's the case, push the constraint `fr-: shorter_fr+`
+                    propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                        subject: ClosureOutlivesSubject::Region(fr_minus),
+                        outlived_free_region: shorter_fr_plus,
+                        blame_span: blame_constraint.cause.span,
+                        category: blame_constraint.category,
+                    });
+                }
             }
             return RegionRelationCheckResult::Propagated;
         }
