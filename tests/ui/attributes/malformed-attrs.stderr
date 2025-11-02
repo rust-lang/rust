@@ -601,6 +601,15 @@ LL | #[rustc_layout_scalar_valid_range_end]
    | expected this to be a list
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error[E0565]: malformed `type_const` attribute input
+  --> $DIR/malformed-attrs.rs:149:5
+   |
+LL |     #[type_const = 1]
+   |     ^^^^^^^^^^^^^---^
+   |     |            |
+   |     |            didn't expect any arguments here
+   |     help: must be of the form: `#[type_const]`
+
 error[E0565]: malformed `marker` attribute input
   --> $DIR/malformed-attrs.rs:161:1
    |
@@ -715,15 +724,6 @@ LL | #[allow_internal_unsafe = 1]
    | |                       |
    | |                       didn't expect any arguments here
    | help: must be of the form: `#[allow_internal_unsafe]`
-
-error[E0565]: malformed `type_const` attribute input
-  --> $DIR/malformed-attrs.rs:149:5
-   |
-LL |     #[type_const = 1]
-   |     ^^^^^^^^^^^^^---^
-   |     |            |
-   |     |            didn't expect any arguments here
-   |     help: must be of the form: `#[type_const]`
 
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:31:1
