@@ -33,6 +33,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![doc(cfg(target_os = "wasi"))]
 
+#[path = "../../sys/ffi/bytes.rs"]
 pub mod ffi;
 pub mod fs;
 pub mod io;
