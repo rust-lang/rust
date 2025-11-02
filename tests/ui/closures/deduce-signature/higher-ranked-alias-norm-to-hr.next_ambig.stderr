@@ -1,0 +1,51 @@
+error[E0277]: expected a `Fn(&'a u32)` closure, found `{closure@$DIR/higher-ranked-alias-norm-to-hr.rs:23:17: 23:20}`
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:23:17
+   |
+LL |     needs_super(|_| {});
+   |     ----------- ^^^^^^ expected an `Fn(&'a u32)` closure, found `{closure@$DIR/higher-ranked-alias-norm-to-hr.rs:23:17: 23:20}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> Fn(&'a u32)` is not implemented for closure `{closure@$DIR/higher-ranked-alias-norm-to-hr.rs:23:17: 23:20}`
+   = note: expected a closure with signature `for<'a> fn(&'a _)`
+              found a closure with signature `fn(&_)`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:23:17
+   |
+LL |     needs_super(|_| {});
+   |     ------------^^^----
+   |     |           |
+   |     |           the trait solver is unable to infer the generic types that should be inferred from this argument
+   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
+note: required by a bound in `needs_super`
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:17:19
+   |
+LL | fn needs_super<F: for<'a> Fn(<F as Foo<'a>>::Input) + for<'a> Foo<'a>>(_: F) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `needs_super`
+
+error[E0277]: the trait bound `for<'a> {closure@$DIR/higher-ranked-alias-norm-to-hr.rs:23:17: 23:20}: Foo<'a>` is not satisfied
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:23:17
+   |
+LL |     needs_super(|_| {});
+   |     ----------- ^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `for<'a> Foo<'a>` is not implemented for closure `{closure@$DIR/higher-ranked-alias-norm-to-hr.rs:23:17: 23:20}`
+note: this is a known limitation of the trait solver that will be lifted in the future
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:23:17
+   |
+LL |     needs_super(|_| {});
+   |     ------------^^^----
+   |     |           |
+   |     |           the trait solver is unable to infer the generic types that should be inferred from this argument
+   |     add turbofish arguments to this call to specify the types manually, even if it's redundant
+note: required by a bound in `needs_super`
+  --> $DIR/higher-ranked-alias-norm-to-hr.rs:17:55
+   |
+LL | fn needs_super<F: for<'a> Fn(<F as Foo<'a>>::Input) + for<'a> Foo<'a>>(_: F) {}
+   |                                                       ^^^^^^^^^^^^^^^ required by this bound in `needs_super`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
