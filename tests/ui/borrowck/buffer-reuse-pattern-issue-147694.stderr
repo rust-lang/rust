@@ -1,0 +1,64 @@
+error[E0597]: `data` does not live long enough
+  --> $DIR/buffer-reuse-pattern-issue-147694.rs:11:23
+   |
+LL |     let mut buffer: Vec<&[u8]> = vec![];
+   |         ---------- variable `buffer` declared here
+...
+LL |         let data: Vec<u8> = source;
+   |             ---- binding `data` declared here
+LL |
+LL |         buffer.extend(data.split(|x| *x == 3));
+   |         ------        ^^^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+...
+LL |     }
+   |     - `data` dropped here while still borrowed
+   |
+   = note: `buffer` is a collection that stores borrowed references, but `data` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
+
+error[E0597]: `data` does not live long enough
+  --> $DIR/buffer-reuse-pattern-issue-147694.rs:32:23
+   |
+LL |     let mut buffer: Vec<&[u8]> = vec![];
+   |         ---------- variable `buffer` declared here
+...
+LL |         buffer.clear();
+   |         ------ borrow later used here
+LL |
+LL |         let data: Vec<u8> = source;
+   |             ---- binding `data` declared here
+LL |
+LL |         buffer.extend(data.split(|x| *x == 3));
+   |                       ^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `data` dropped here while still borrowed
+   |
+   = note: `buffer` is a collection that stores borrowed references, but `data` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
+
+error[E0597]: `data` does not live long enough
+  --> $DIR/buffer-reuse-pattern-issue-147694.rs:49:23
+   |
+LL |     let mut buffer: Vec<&[u8]> = vec![];
+   |         ---------- variable `buffer` declared here
+...
+LL |         let data: Vec<u8> = source;
+   |             ---- binding `data` declared here
+LL |
+LL |         buffer.extend(data.split(|x| *x == 3));
+   |         ------        ^^^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+...
+LL |     }
+   |     - `data` dropped here while still borrowed
+   |
+   = note: `buffer` is a collection that stores borrowed references, but `data` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

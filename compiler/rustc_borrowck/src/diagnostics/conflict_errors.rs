@@ -3087,6 +3087,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             });
 
             explanation.add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
+
+            // Detect buffer reuse pattern
+            if let BorrowExplanation::UsedLater(_dropped_local, _, _, _) = explanation {
+                // Check all locals at the borrow location to find Vec<&T> types
+                for (local, local_decl) in self.body.local_decls.iter_enumerated() {
+                    if let ty::Adt(adt_def, args) = local_decl.ty.kind()
+                        && self.infcx.tcx.is_diagnostic_item(sym::Vec, adt_def.did())
+                        && args.len() > 0
+                    {
+                        let vec_inner_ty = args.type_at(0);
+                        // Check if Vec contains references
+                        if vec_inner_ty.is_ref() {
+                            let local_place = local.into();
+                            if let Some(local_name) = self.describe_place(local_place) {
+                                err.span_label(
+                                    local_decl.source_info.span,
+                                    format!("variable `{local_name}` declared here"),
+                                );
+                                err.note(
+                                    format!(
+                                        "`{local_name}` is a collection that stores borrowed references, \
+                                         but {name} does not live long enough to be stored in it"
+                                    )
+                                );
+                                err.help(
+                                    "buffer reuse with borrowed references requires unsafe code or restructuring"
+                                );
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         err
