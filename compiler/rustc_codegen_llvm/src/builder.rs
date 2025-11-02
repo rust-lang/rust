@@ -764,6 +764,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
 
+        // Sibling blocks have the same debug location as the original block.
+        let dbg_loc = self.get_dbg_loc();
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
         let next_bb = self.append_sibling_block("repeat_loop_next");
@@ -771,12 +773,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.br(header_bb);
 
         let mut header_bx = Self::build(self.cx, header_bb);
+        if let Some(dbg_loc) = dbg_loc {
+            header_bx.set_dbg_loc(dbg_loc);
+        }
         let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
         header_bx.cond_br(keep_going, body_bb, next_bb);
 
         let mut body_bx = Self::build(self.cx, body_bb);
+        if let Some(dbg_loc) = dbg_loc {
+            body_bx.set_dbg_loc(dbg_loc);
+        }
         let dest_elem = dest.project_index(&mut body_bx, i);
         cg_elem.val.store(&mut body_bx, dest_elem);
 
@@ -785,6 +793,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         header_bx.add_incoming_to_phi(i, next, body_bb);
 
         *self = Self::build(self.cx, next_bb);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -1822,6 +1833,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 cfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
             let typeid_metadata = self.cx.create_metadata(typeid.as_bytes());
+            // Sibling blocks have the same debug location as the original block.
             let dbg_loc = self.get_dbg_loc();
 
             // Test whether the function pointer is associated with the type identifier using the
