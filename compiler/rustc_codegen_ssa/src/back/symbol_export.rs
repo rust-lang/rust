@@ -5,6 +5,7 @@ use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name,
 };
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
 use rustc_middle::bug;
@@ -105,8 +106,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         })
         .map(|def_id| {
             // We won't link right if this symbol is stripped during LTO.
-            let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
-            let used = name == "rust_eh_personality";
+            let used = tcx.is_lang_item(def_id.to_def_id(), LangItem::EhPersonality);
 
             let export_level = if special_runtime_crate {
                 SymbolExportLevel::Rust
