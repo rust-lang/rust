@@ -49,8 +49,8 @@ fn check<T: Project1>() {
     unsafe {
         std::mem::transmute::<_, ()>(opaque::<T>().get());
         //~^ ERROR: cannot transmute
-        //~| NOTE: (unable to determine layout for `<impl Project2 as Project2>::Assoc2` because `<impl Project2 as Project2>::Assoc2` cannot be normalized)
-        //~| NOTE: (0 bits)
+        //~| NOTE: source type: `{type error}` (the type has an unknown layout)
+        //~| NOTE: target type: `()` (0 bits)
     }
 }
 

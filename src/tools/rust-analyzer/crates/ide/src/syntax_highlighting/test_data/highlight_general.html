@@ -127,9 +127,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable declaration mutable reference">y</span> <span class="operator">=</span> <span class="operator">&</span><span class="keyword">mut</span> <span class="variable mutable">x</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration reference">z</span> <span class="operator">=</span> <span class="operator">&</span><span class="variable mutable reference">y</span><span class="semicolon">;</span>
 
-    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable declaration">z</span><span class="comma">,</span> <span class="variable declaration">y</span> <span class="brace">}</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable reference">z</span><span class="comma">,</span> <span class="variable mutable reference">y</span> <span class="brace">}</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable declaration">z</span><span class="comma">,</span> <span class="variable callable declaration">y</span> <span class="brace">}</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="colon">:</span> <span class="variable reference">z</span><span class="comma">,</span> <span class="variable mutable reference">y</span> <span class="brace">}</span><span class="semicolon">;</span>
 
-    <span class="variable">y</span><span class="semicolon">;</span>
+    <span class="variable callable">y</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">foo2</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="unresolved_reference">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
@@ -142,13 +142,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="variable mutable">copy</span><span class="operator">.</span><span class="method mutable reference">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="variable mutable">copy</span><span class="operator">.</span><span class="method">baz</span><span class="parenthesis">(</span><span class="variable mutable">copy</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
-    <span class="keyword">let</span> <span class="variable callable declaration">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param declaration">x</span><span class="punctuation">|</span> <span class="value_param">x</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable callable declaration">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param callable declaration">x</span><span class="punctuation">|</span> <span class="value_param callable">x</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable callable declaration">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="method associated consuming">baz</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="numeric_literal">-</span><span class="numeric_literal">42</span><span class="comma">,</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="operator">.</span><span class="field library">0</span><span class="semicolon">;</span>
 
-    <span class="keyword">let</span> <span class="punctuation">_</span> <span class="operator">=</span> <span class="logical">!</span><span class="bool_literal">true</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="punctuation">_</span> <span class="operator">=</span> <span class="negation">!</span><span class="bool_literal">true</span><span class="semicolon">;</span>
 
     <span class="label declaration">'foo</span><span class="colon">:</span> <span class="keyword control">loop</span> <span class="brace">{</span>
         <span class="keyword control">break</span> <span class="label">'foo</span><span class="semicolon">;</span>
@@ -172,13 +172,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function async declaration">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="keyword">let</span> <span class="variable declaration">song</span> <span class="operator">=</span> <span class="unresolved_reference">learn_song</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
-    <span class="unresolved_reference">sing_song</span><span class="parenthesis">(</span><span class="variable consuming">song</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable callable declaration">song</span> <span class="operator">=</span> <span class="unresolved_reference">learn_song</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">sing_song</span><span class="parenthesis">(</span><span class="variable callable">song</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword async control">await</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function async declaration">async_main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">f1</span> <span class="operator">=</span> <span class="function async">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="keyword">let</span> <span class="variable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable callable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="unresolved_reference">futures</span><span class="operator">::</span><span class="unresolved_reference">join</span><span class="macro_bang">!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 

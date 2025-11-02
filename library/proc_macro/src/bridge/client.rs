@@ -26,18 +26,16 @@ macro_rules! define_client_handles {
         $(
             pub(crate) struct $oty {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
-                // way of doing this, but that requires unstable features.
-                // rust-analyzer uses this code and avoids unstable features.
-                _marker: PhantomData<*mut ()>,
             }
+
+            impl !Send for $oty {}
+            impl !Sync for $oty {}
 
             // Forward `Drop::drop` to the inherent `drop` method.
             impl Drop for $oty {
                 fn drop(&mut self) {
                     $oty {
                         handle: self.handle,
-                        _marker: PhantomData,
                     }.drop();
                 }
             }
@@ -60,11 +58,10 @@ macro_rules! define_client_handles {
                 }
             }
 
-            impl<S> DecodeMut<'_, '_, S> for $oty {
+            impl<S> Decode<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty {
                         handle: handle::Handle::decode(r, s),
-                        _marker: PhantomData,
                     }
                 }
             }
@@ -74,11 +71,10 @@ macro_rules! define_client_handles {
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
                 handle: handle::Handle,
-                // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
-                // way of doing this, but that requires unstable features.
-                // rust-analyzer uses this code and avoids unstable features.
-                _marker: PhantomData<*mut ()>,
             }
+
+            impl !Send for $ity {}
+            impl !Sync for $ity {}
 
             impl<S> Encode<S> for $ity {
                 fn encode(self, w: &mut Writer, s: &mut S) {
@@ -86,11 +82,10 @@ macro_rules! define_client_handles {
                 }
             }
 
-            impl<S> DecodeMut<'_, '_, S> for $ity {
+            impl<S> Decode<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $ity {
                         handle: handle::Handle::decode(r, s),
-                        _marker: PhantomData,
                     }
                 }
             }
@@ -144,7 +139,7 @@ macro_rules! define_client_side {
 
                     buf.clear();
                     api_tags::Method::$name(api_tags::$name::$method).encode(&mut buf, &mut ());
-                    reverse_encode!(buf; $($arg),*);
+                    $($arg.encode(&mut buf, &mut ());)*
 
                     buf = bridge.dispatch.call(buf);
 
@@ -281,7 +276,7 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
-fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
+fn run_client<A: for<'a, 's> Decode<'a, 's, ()>, R: Encode<()>>(
     config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer {

@@ -1,0 +1,32 @@
+error: `[const]` is not allowed here
+  --> $DIR/conditionally-const-in-anon-const.rs:14:25
+   |
+LL |             struct I<U: [const] Trait<0>>(U);
+   |                         ^^^^^^^
+   |
+note: structs cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-in-anon-const.rs:14:13
+   |
+LL |             struct I<U: [const] Trait<0>>(U);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `[const]` is not allowed here
+  --> $DIR/conditionally-const-in-anon-const.rs:17:26
+   |
+LL |             let x: &impl [const] Trait<0> = &();
+   |                          ^^^^^^^
+   |
+note: anonymous constants cannot have `[const]` trait bounds
+  --> $DIR/conditionally-const-in-anon-const.rs:11:9
+   |
+LL | /         {
+LL | |             const fn g<U: [const] Trait<0>>() {}
+LL | |
+LL | |             struct I<U: [const] Trait<0>>(U);
+...  |
+LL | |             0
+LL | |         },
+   | |_________^
+
+error: aborting due to 2 previous errors
+

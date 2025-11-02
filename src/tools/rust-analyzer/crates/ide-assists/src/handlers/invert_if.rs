@@ -27,7 +27,9 @@ use crate::{
 // }
 // ```
 pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let if_keyword = ctx.find_token_syntax_at_offset(T![if])?;
+    let if_keyword = ctx
+        .find_token_syntax_at_offset(T![if])
+        .or_else(|| ctx.find_token_syntax_at_offset(T![else]))?;
     let expr = ast::IfExpr::cast(if_keyword.parent()?)?;
     let if_range = if_keyword.text_range();
     let cursor_in_range = if_range.contains_range(ctx.selection_trimmed());
@@ -112,6 +114,15 @@ mod tests {
     }
 
     #[test]
+    fn invert_if_on_else_keyword() {
+        check_assist(
+            invert_if,
+            "fn f() { if cond { 3 * 2 } e$0lse { 1 } }",
+            "fn f() { if !cond { 1 } else { 3 * 2 } }",
+        )
+    }
+
+    #[test]
     fn invert_if_doesnt_apply_with_cursor_not_on_if() {
         check_assist_not_applicable(invert_if, "fn f() { if !$0cond { 3 * 2 } else { 1 } }")
     }
@@ -122,6 +133,18 @@ mod tests {
             invert_if,
             "fn f() { i$0f let Some(_) = Some(1) { 1 } else { 0 } }",
         )
+    }
+
+    #[test]
+    fn invert_if_doesnt_apply_with_if_let_chain() {
+        check_assist_not_applicable(
+            invert_if,
+            "fn f() { i$0f x && let Some(_) = Some(1) { 1 } else { 0 } }",
+        );
+        check_assist_not_applicable(
+            invert_if,
+            "fn f() { i$0f let Some(_) = Some(1) && x { 1 } else { 0 } }",
+        );
     }
 
     #[test]

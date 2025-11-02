@@ -12,7 +12,7 @@ fn foo(i: isize, j: char) -> Foo {
     Foo { i: i, j: j }
 }
 
-pub fn main() {
+fn main() {
     let (tx, rx) = channel();
     tx.send(foo(42, 'c')).unwrap();
     let _val = rx;

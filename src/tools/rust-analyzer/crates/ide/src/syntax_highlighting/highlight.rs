@@ -137,7 +137,7 @@ fn punctuation(
         }
         (T![!], MACRO_RULES) => HlPunct::MacroBang.into(),
         (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
-        (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
+        (T![!], PREFIX_EXPR) => HlOperator::Negation.into(),
         (T![*], PTR_TYPE) => HlTag::Keyword.into(),
         (T![*], PREFIX_EXPR) => {
             let h = HlTag::Operator(HlOperator::Other).into();
@@ -306,12 +306,12 @@ fn highlight_name_ref(
     };
     let mut h = match name_class {
         NameRefClass::Definition(def, _) => {
-            if let Definition::Local(local) = &def {
-                if let Some(bindings_shadow_count) = bindings_shadow_count {
-                    let name = local.name(sema.db);
-                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                    *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                }
+            if let Definition::Local(local) = &def
+                && let Some(bindings_shadow_count) = bindings_shadow_count
+            {
+                let name = local.name(sema.db);
+                let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
             };
 
             let mut h = highlight_def(sema, krate, def, edition, true);
@@ -437,21 +437,21 @@ fn highlight_name(
     edition: Edition,
 ) -> Highlight {
     let name_kind = NameClass::classify(sema, &name);
-    if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
-        if let Some(bindings_shadow_count) = bindings_shadow_count {
-            let name = local.name(sema.db);
-            let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-            *shadow_count += 1;
-            *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-        }
+    if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind
+        && let Some(bindings_shadow_count) = bindings_shadow_count
+    {
+        let name = local.name(sema.db);
+        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+        *shadow_count += 1;
+        *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
     };
     match name_kind {
         Some(NameClass::Definition(def)) => {
             let mut h = highlight_def(sema, krate, def, edition, false) | HlMod::Definition;
-            if let Definition::Trait(trait_) = &def {
-                if trait_.is_unsafe(sema.db) {
-                    h |= HlMod::Unsafe;
-                }
+            if let Definition::Trait(trait_) = &def
+                && trait_.is_unsafe(sema.db)
+            {
+                h |= HlMod::Unsafe;
             }
             h
         }
@@ -576,7 +576,6 @@ pub(super) fn highlight_def(
             h
         }
         Definition::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
-        Definition::TraitAlias(_) => Highlight::new(HlTag::Symbol(SymbolKind::TraitAlias)),
         Definition::TypeAlias(type_) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
 
@@ -743,10 +742,9 @@ fn highlight_method_call(
             hir::Access::Owned => {
                 if let Some(receiver_ty) =
                     method_call.receiver().and_then(|it| sema.type_of_expr(&it))
+                    && !receiver_ty.adjusted().is_copy(sema.db)
                 {
-                    if !receiver_ty.adjusted().is_copy(sema.db) {
-                        h |= HlMod::Consuming
-                    }
+                    h |= HlMod::Consuming
                 }
             }
         }
@@ -781,7 +779,6 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         MACRO_RULES => SymbolKind::Macro,
         CONST_PARAM => SymbolKind::ConstParam,
         SELF_PARAM => SymbolKind::SelfParam,
-        TRAIT_ALIAS => SymbolKind::TraitAlias,
         ASM_OPERAND_NAMED => SymbolKind::Local,
         _ => return default.into(),
     };

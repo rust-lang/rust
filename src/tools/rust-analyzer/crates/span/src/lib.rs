@@ -203,15 +203,3 @@ pub struct HirFileId(pub salsa::Id);
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacroCallId(pub salsa::Id);
-
-/// Legacy span type, only defined here as it is still used by the proc-macro server.
-/// While rust-analyzer doesn't use this anymore at all, RustRover relies on the legacy type for
-/// proc-macro expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId(pub u32);
-
-impl std::fmt::Debug for TokenId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}

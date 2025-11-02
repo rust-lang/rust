@@ -4,7 +4,7 @@
 use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
-    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
+    FileId, FileRange, FxHashMap, FxHashSet, MiniCore, RootDatabase,
     base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
@@ -133,10 +133,10 @@ fn get_definitions(
 ) -> Option<ArrayVec<Definition, 2>> {
     for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
-        if let Some(defs) = def {
-            if !defs.is_empty() {
-                return Some(defs);
-            }
+        if let Some(defs) = def
+            && !defs.is_empty()
+        {
+            return Some(defs);
         }
     }
     None
@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     adjustment_hints: crate::AdjustmentHints::Never,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: AdjustmentHintsMode::Prefix,
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
@@ -183,6 +184,7 @@ impl StaticIndex<'_> {
                     closing_brace_hints_min_lines: Some(25),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: false,
+                    minicore: MiniCore::default(),
                 },
                 file_id,
                 None,
@@ -214,6 +216,7 @@ impl StaticIndex<'_> {
             max_enum_variants_count: Some(5),
             max_subst_ty_len: SubstTyLen::Unlimited,
             show_drop_glue: true,
+            minicore: MiniCore::default(),
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -241,7 +244,7 @@ impl StaticIndex<'_> {
                         edition,
                         display_target,
                     )),
-                    definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
+                    definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
                     references: vec![],
@@ -258,7 +261,7 @@ impl StaticIndex<'_> {
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
-                is_definition: match def.try_to_nav(self.db).map(UpmappingResult::call_site) {
+                is_definition: match def.try_to_nav(&sema).map(UpmappingResult::call_site) {
                     Some(it) => it.file_id == file_id && it.focus_or_full_range() == range,
                     None => false,
                 },
@@ -275,7 +278,7 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            match get_definitions(&sema, token.clone()) {
+            match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
                 Some(it) => {
                     for i in it {
                         add_token(i, range, &node);
@@ -292,37 +295,40 @@ impl StaticIndex<'_> {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
         let db = &analysis.db;
-        let work = all_modules(db).into_iter().filter(|module| {
-            let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
-            let source_root = db.source_root(source_root).source_root(db);
-            let is_vendored = match vendored_libs_config {
-                VendoredLibrariesConfig::Included { workspace_root } => source_root
-                    .path_for_file(&file_id.file_id(&analysis.db))
-                    .is_some_and(|module_path| module_path.starts_with(workspace_root)),
-                VendoredLibrariesConfig::Excluded => false,
-            };
+        hir::attach_db(db, || {
+            let work = all_modules(db).into_iter().filter(|module| {
+                let file_id = module.definition_source_file_id(db).original_file(db);
+                let source_root =
+                    db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
+                let source_root = db.source_root(source_root).source_root(db);
+                let is_vendored = match vendored_libs_config {
+                    VendoredLibrariesConfig::Included { workspace_root } => source_root
+                        .path_for_file(&file_id.file_id(&analysis.db))
+                        .is_some_and(|module_path| module_path.starts_with(workspace_root)),
+                    VendoredLibrariesConfig::Excluded => false,
+                };
 
-            !source_root.is_library || is_vendored
-        });
-        let mut this = StaticIndex {
-            files: vec![],
-            tokens: Default::default(),
-            analysis,
-            db,
-            def_map: Default::default(),
-        };
-        let mut visited_files = FxHashSet::default();
-        for module in work {
-            let file_id = module.definition_source_file_id(db).original_file(db);
-            if visited_files.contains(&file_id) {
-                continue;
+                !source_root.is_library || is_vendored
+            });
+            let mut this = StaticIndex {
+                files: vec![],
+                tokens: Default::default(),
+                analysis,
+                db,
+                def_map: Default::default(),
+            };
+            let mut visited_files = FxHashSet::default();
+            for module in work {
+                let file_id = module.definition_source_file_id(db).original_file(db);
+                if visited_files.contains(&file_id) {
+                    continue;
+                }
+                this.add_file(file_id.file_id(&analysis.db));
+                // mark the file
+                visited_files.insert(file_id);
             }
-            this.add_file(file_id.file_id(&analysis.db));
-            // mark the file
-            visited_files.insert(file_id);
-        }
-        this
+            this
+        })
     }
 }
 

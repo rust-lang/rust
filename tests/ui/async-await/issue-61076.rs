@@ -4,7 +4,7 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-struct T;
+struct T; //~ HELP the trait `Try` is not implemented for `T`
 
 struct Tuple(i32);
 
@@ -61,9 +61,7 @@ async fn baz() -> Result<(), ()> {
     let t = T;
     t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     //~^ NOTE the `?` operator cannot be applied to type `T`
-    //~| HELP the trait `Try` is not implemented for `T`
     //~| HELP consider `await`ing on the `Future`
-    //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
 

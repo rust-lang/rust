@@ -16,7 +16,7 @@ LL |     panic::catch_unwind(move || unsafe { init(argc, argv, sigpipe) }).map_e
 help: the protected tag <TAG> was created here, in the initial state Active
   --> RUSTLIB/std/src/panic.rs:LL:CC
    |
-LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
+LL | fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
    |                                                       ^
    = note: BACKTRACE (of the first span):
    = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC

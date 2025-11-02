@@ -1,12 +1,13 @@
+use clippy_utils::res::MaybeResPath;
 use rustc_hir::{self as hir, HirId, HirIdSet, intravisit};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::type_is_unsafe_function;
+use clippy_utils::iter_input_pats;
+use clippy_utils::ty::is_unsafe_fn;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{iter_input_pats, path_to_local};
 
 use core::ops::ControlFlow;
 
@@ -51,7 +52,7 @@ fn check_raw_ptr<'tcx>(
             let typeck = cx.tcx.typeck_body(body.id());
             let _: Option<!> = for_each_expr(cx, body.value, |e| {
                 match e.kind {
-                    hir::ExprKind::Call(f, args) if type_is_unsafe_function(cx, typeck.expr_ty(f)) => {
+                    hir::ExprKind::Call(f, args) if is_unsafe_fn(cx, typeck.expr_ty(f)) => {
                         for arg in args {
                             check_arg(cx, &raw_ptrs, arg);
                         }
@@ -87,7 +88,7 @@ fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<HirId> {
 }
 
 fn check_arg(cx: &LateContext<'_>, raw_ptrs: &HirIdSet, arg: &hir::Expr<'_>) {
-    if path_to_local(arg).is_some_and(|id| raw_ptrs.contains(&id)) {
+    if arg.res_local_id().is_some_and(|id| raw_ptrs.contains(&id)) {
         span_lint(
             cx,
             NOT_UNSAFE_PTR_ARG_DEREF,

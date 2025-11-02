@@ -5,6 +5,8 @@
 // its numerical value.
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // gdb-command:run
 
@@ -74,8 +76,6 @@
 // gdb-check:$30 = 9.25
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(f16)]
 
 static mut B: bool = false;

@@ -228,24 +228,22 @@ fn add_function_impl_(
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
-    if let Some(source) = ctx.sema.source(func) {
-        if let Some(transformed_fn) =
+    if let Some(source) = ctx.sema.source(func)
+        && let Some(transformed_fn) =
             get_transformed_fn(ctx, source.value, impl_def, async_sugaring)
-        {
-            let function_decl =
-                function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let snippet = format!("{function_decl} {{\n    $0\n}}");
-                    item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
-                }
-                None => {
-                    let header = format!("{function_decl} {{");
-                    item.text_edit(TextEdit::replace(replacement_range, header));
-                }
-            };
-            item.add_to(acc, ctx.db);
-        }
+    {
+        let function_decl = function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snippet = format!("{function_decl} {{\n    $0\n}}");
+                item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
+            }
+            None => {
+                let header = format!("{function_decl} {{");
+                item.text_edit(TextEdit::replace(replacement_range, header));
+            }
+        };
+        item.add_to(acc, ctx.db);
     }
 }
 
@@ -447,36 +445,36 @@ fn add_const_impl(
 ) {
     let const_name = const_.name(ctx.db).map(|n| n.display_no_db(ctx.edition).to_smolstr());
 
-    if let Some(const_name) = const_name {
-        if let Some(source) = ctx.sema.source(const_) {
-            let assoc_item = ast::AssocItem::Const(source.value);
-            if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
-                let transformed_const = match transformed_item {
-                    ast::AssocItem::Const(const_) => const_,
-                    _ => unreachable!(),
-                };
+    if let Some(const_name) = const_name
+        && let Some(source) = ctx.sema.source(const_)
+    {
+        let assoc_item = ast::AssocItem::Const(source.value);
+        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+            let transformed_const = match transformed_item {
+                ast::AssocItem::Const(const_) => const_,
+                _ => unreachable!(),
+            };
 
-                let label =
-                    make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
-                let replacement = format!("{label} ");
+            let label =
+                make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
+            let replacement = format!("{label} ");
 
-                let mut item =
-                    CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
-                item.lookup_by(format_smolstr!("const {const_name}"))
-                    .set_documentation(const_.docs(ctx.db))
-                    .set_relevance(CompletionRelevance {
-                        exact_name_match: true,
-                        ..Default::default()
-                    });
-                match ctx.config.snippet_cap {
-                    Some(cap) => item.snippet_edit(
-                        cap,
-                        TextEdit::replace(replacement_range, format!("{replacement}$0;")),
-                    ),
-                    None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
-                };
-                item.add_to(acc, ctx.db);
-            }
+            let mut item =
+                CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
+            item.lookup_by(format_smolstr!("const {const_name}"))
+                .set_documentation(const_.docs(ctx.db))
+                .set_relevance(CompletionRelevance {
+                    exact_name_match: true,
+                    ..Default::default()
+                });
+            match ctx.config.snippet_cap {
+                Some(cap) => item.snippet_edit(
+                    cap,
+                    TextEdit::replace(replacement_range, format!("{replacement}$0;")),
+                ),
+                None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
+            };
+            item.add_to(acc, ctx.db);
         }
     }
 }

@@ -208,7 +208,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx| {
+                |selcx, bound, idx, alias_bound_kind| {
                     let Some(bound) = bound.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
@@ -230,12 +230,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             bound.map_bound(|pred| pred.trait_ref),
                         ) {
                             Ok(None) => {
-                                candidates.vec.push(ProjectionCandidate(idx));
+                                candidates
+                                    .vec
+                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
                             }
                             Ok(Some(normalized_trait))
                                 if distinct_normalized_bounds.insert(normalized_trait) =>
                             {
-                                candidates.vec.push(ProjectionCandidate(idx));
+                                candidates
+                                    .vec
+                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
                             }
                             _ => {}
                         }
@@ -600,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
                 if !drcx
                     .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
                 {
@@ -669,7 +673,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
-                | ty::Dynamic(_, _, _)
+                | ty::Dynamic(_, _)
                 | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
@@ -794,18 +798,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
-                ty::Coroutine(coroutine_def_id, _)
-                    if self.tcx().is_lang_item(def_id, LangItem::Unpin) =>
-                {
-                    match self.tcx().coroutine_movability(coroutine_def_id) {
-                        hir::Movability::Static => {
-                            // Immovable coroutines are never `Unpin`, so
-                            // suppress the normal auto-impl candidate for it.
+                ty::Coroutine(coroutine_def_id, _) => {
+                    if self.tcx().is_lang_item(def_id, LangItem::Unpin) {
+                        match self.tcx().coroutine_movability(coroutine_def_id) {
+                            hir::Movability::Static => {
+                                // Immovable coroutines are never `Unpin`, so
+                                // suppress the normal auto-impl candidate for it.
+                            }
+                            hir::Movability::Movable => {
+                                // Movable coroutines are always `Unpin`, so add an
+                                // unconditional builtin candidate with no sub-obligations.
+                                candidates.vec.push(BuiltinCandidate);
+                            }
                         }
-                        hir::Movability::Movable => {
-                            // Movable coroutines are always `Unpin`, so add an
-                            // unconditional builtin candidate.
-                            candidates.vec.push(BuiltinCandidate);
+                    } else {
+                        if self.should_stall_coroutine(coroutine_def_id) {
+                            candidates.ambiguous = true;
+                        } else {
+                            // Coroutines implement all other auto traits normally.
+                            candidates.vec.push(AutoImplCandidate);
                         }
                     }
                 }
@@ -818,7 +829,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, alias) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //
@@ -842,12 +853,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::CoroutineWitness(def_id, _) => {
-                    if self.should_stall_coroutine_witness(def_id) {
-                        candidates.ambiguous = true;
-                    } else {
-                        candidates.vec.push(AutoImplCandidate);
-                    }
+                ty::CoroutineWitness(..) => {
+                    candidates.vec.push(AutoImplCandidate);
                 }
 
                 ty::Bool
@@ -866,7 +873,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
-                | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::UnsafeBinder(_) => {
@@ -989,7 +995,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(a_data, a_region, ty::Dyn), &ty::Dynamic(b_data, b_region, ty::Dyn)) => {
+            (&ty::Dynamic(a_data, a_region), &ty::Dynamic(b_data, b_region)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -1052,7 +1058,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
+            (_, &ty::Dynamic(_, _)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -1153,15 +1159,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Ref(_, _, hir::Mutability::Mut) => {}
 
             ty::Coroutine(coroutine_def_id, args) => {
+                if self.should_stall_coroutine(coroutine_def_id) {
+                    candidates.ambiguous = true;
+                    return;
+                }
+
                 match self.tcx().coroutine_movability(coroutine_def_id) {
                     hir::Movability::Static => {}
                     hir::Movability::Movable => {
                         if self.tcx().features().coroutine_clone() {
                             let resolved_upvars =
                                 self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                            let resolved_witness =
-                                self.infcx.shallow_resolve(args.as_coroutine().witness());
-                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                            if resolved_upvars.is_ty_var() {
                                 // Not yet resolved.
                                 candidates.ambiguous = true;
                             } else {
@@ -1194,12 +1203,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::CoroutineWitness(coroutine_def_id, _) => {
-                if self.should_stall_coroutine_witness(coroutine_def_id) {
-                    candidates.ambiguous = true;
-                } else {
-                    candidates.vec.push(SizedCandidate);
-                }
+            ty::CoroutineWitness(..) => {
+                candidates.vec.push(SizedCandidate);
             }
 
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
@@ -1238,7 +1243,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
-            | ty::Coroutine(..)
             | ty::Array(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1247,12 +1251,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.vec.push(SizedCandidate);
             }
 
-            ty::CoroutineWitness(coroutine_def_id, _) => {
-                if self.should_stall_coroutine_witness(coroutine_def_id) {
+            ty::Coroutine(coroutine_def_id, _) => {
+                if self.should_stall_coroutine(coroutine_def_id) {
                     candidates.ambiguous = true;
                 } else {
                     candidates.vec.push(SizedCandidate);
                 }
+            }
+
+            ty::CoroutineWitness(..) => {
+                candidates.vec.push(SizedCandidate);
             }
 
             // Conditionally `Sized`.
@@ -1323,7 +1331,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Pat(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(_, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)

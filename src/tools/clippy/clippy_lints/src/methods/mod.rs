@@ -55,6 +55,8 @@ mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
+mod lib;
+mod lines_filter_map_ok;
 mod manual_c_str_literals;
 mod manual_contains;
 mod manual_inspect;
@@ -79,6 +81,7 @@ mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
 mod needless_option_take;
+mod new_ret_no_self;
 mod no_effect_replace;
 mod obfuscated_if_else;
 mod ok_expect;
@@ -91,6 +94,7 @@ mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod path_ends_with_ext;
+mod ptr_offset_with_cast;
 mod range_zip_with_len;
 mod read_line_without_trim;
 mod readonly_write_lock;
@@ -101,9 +105,8 @@ mod return_and_then;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
+mod should_implement_trait;
 mod single_char_add_str;
-mod single_char_insert_string;
-mod single_char_push_string;
 mod skip_while_next;
 mod sliced_string_as_bytes;
 mod stable_sort_primitive;
@@ -131,6 +134,7 @@ mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
 mod unnecessary_map_or;
 mod unnecessary_min_or_max;
+mod unnecessary_option_map_or_else;
 mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
@@ -147,20 +151,17 @@ mod zst_offset;
 
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty, sym};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::{contains_return, iter_input_pats, peel_blocks, sym};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
-use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
+use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, TraitRef, Ty};
+use rustc_middle::ty::TraitRef;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol, kw};
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -475,6 +476,9 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `ok().expect(..)`.
+    ///
+    /// Note: This lint only triggers for code marked compatible
+    /// with versions of the compiler older than Rust 1.82.0.
     ///
     /// ### Why is this bad?
     /// Because you usually call `expect()` on the `Result`
@@ -1079,9 +1083,9 @@ declare_clippy_lint! {
     /// `T` implements `ToString` directly (like `&&str` or `&&String`).
     ///
     /// ### Why is this bad?
-    /// This bypasses the specialized implementation of
-    /// `ToString` and instead goes through the more expensive string formatting
-    /// facilities.
+    /// In versions of the compiler before Rust 1.82.0, this bypasses the specialized
+    /// implementation of`ToString` and instead goes through the more expensive string
+    /// formatting facilities.
     ///
     /// ### Example
     /// ```no_run
@@ -1723,6 +1727,43 @@ declare_clippy_lint! {
     pub ZST_OFFSET,
     correctness,
     "Check for offset calculations on raw pointers to zero-sized types"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// `isize`.
+    ///
+    /// ### Why is this bad?
+    /// If we’re always increasing the pointer address, we can avoid the numeric
+    /// cast by using the `add` method instead.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.offset(offset as isize);
+    /// }
+    /// ```
+    ///
+    /// Could be written:
+    ///
+    /// ```no_run
+    /// let vec = vec![b'a', b'b', b'c'];
+    /// let ptr = vec.as_ptr();
+    /// let offset = 1_usize;
+    ///
+    /// unsafe {
+    ///     ptr.add(offset);
+    /// }
+    /// ```
+    #[clippy::version = "1.30.0"]
+    pub PTR_OFFSET_WITH_CAST,
+    complexity,
+    "unneeded pointer offset cast"
 }
 
 declare_clippy_lint! {
@@ -4424,7 +4465,7 @@ declare_clippy_lint! {
     /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
     ///
     /// ### Why is this bad?
-    /// The default implementation calls `read` for each byte, which can be very inefficient for data that’s not in memory, such as `File`.
+    /// The default implementation calls `read` for each byte, which can be very inefficient for data that's not in memory, such as `File`.
     ///
     /// ### Example
     /// ```no_run
@@ -4576,6 +4617,104 @@ declare_clippy_lint! {
     "hardcoded localhost IP address"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Iterator::cloned` where the original value could be used
+    /// instead.
+    ///
+    /// ### Why is this bad?
+    /// It is not always possible for the compiler to eliminate useless allocations and
+    /// deallocations generated by redundant `clone()`s.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = vec![String::new()];
+    /// let _ = x.iter().cloned().map(|x| x.len());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = vec![String::new()];
+    /// let _ = x.iter().map(|x| x.len());
+    /// ```
+    #[clippy::version = "1.90.0"]
+    pub REDUNDANT_ITER_CLONED,
+    perf,
+    "detects redundant calls to `Iterator::cloned`"
+}
+
+declare_clippy_lint! {
+    /// Checks for usage of `.map_or_else()` "map closure" for `Option` type.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or_else()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.map_or_else(|| 2 * k, |n| n);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let k = 10;
+    /// let x: Option<u32> = Some(4);
+    /// let y = x.unwrap_or_else(|| 2 * k);
+    /// ```
+    #[clippy::version = "1.88.0"]
+    pub UNNECESSARY_OPTION_MAP_OR_ELSE,
+    suspicious,
+    "making no use of the \"map closure\" when calling `.map_or_else(|| 2 * k, |n| n)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `lines.filter_map(Result::ok)` or `lines.flat_map(Result::ok)`
+    /// when `lines` has type `std::io::Lines`.
+    ///
+    /// ### Why is this bad?
+    /// `Lines` instances might produce a never-ending stream of `Err`, in which case
+    /// `filter_map(Result::ok)` will enter an infinite loop while waiting for an
+    /// `Ok` variant. Calling `next()` once is sufficient to enter the infinite loop,
+    /// even in the absence of explicit loops in the user code.
+    ///
+    /// This situation can arise when working with user-provided paths. On some platforms,
+    /// `std::fs::File::open(path)` might return `Ok(fs)` even when `path` is a directory,
+    /// but any later attempt to read from `fs` will return an error.
+    ///
+    /// ### Known problems
+    /// This lint suggests replacing `filter_map()` or `flat_map()` applied to a `Lines`
+    /// instance in all cases. There are two cases where the suggestion might not be
+    /// appropriate or necessary:
+    ///
+    /// - If the `Lines` instance can never produce any error, or if an error is produced
+    ///   only once just before terminating the iterator, using `map_while()` is not
+    ///   necessary but will not do any harm.
+    /// - If the `Lines` instance can produce intermittent errors then recover and produce
+    ///   successful results, using `map_while()` would stop at the first error.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().filter_map(Result::ok);
+    /// // If "some-path" points to a directory, the next statement never terminates:
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::{fs::File, io::{self, BufRead, BufReader}};
+    /// # let _ = || -> io::Result<()> {
+    /// let mut lines = BufReader::new(File::open("some-path")?).lines().map_while(Result::ok);
+    /// let first_line: Option<String> = lines.next();
+    /// # Ok(()) };
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub LINES_FILTER_MAP_OK,
+    suspicious,
+    "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4665,6 +4804,7 @@ impl_lint_pass!(Methods => [
     UNINIT_ASSUMED_INIT,
     MANUAL_SATURATING_ARITHMETIC,
     ZST_OFFSET,
+    PTR_OFFSET_WITH_CAST,
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
     UNNECESSARY_LAZY_EVALUATIONS,
@@ -4755,6 +4895,9 @@ impl_lint_pass!(Methods => [
     IO_OTHER_ERROR,
     SWAP_WITH_TEMPORARY,
     IP_CONSTANT,
+    REDUNDANT_ITER_CLONED,
+    UNNECESSARY_OPTION_MAP_OR_ELSE,
+    LINES_FILTER_MAP_OK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4762,8 +4905,8 @@ impl_lint_pass!(Methods => [
 /// come from expansion.
 pub fn method_call<'tcx>(recv: &'tcx Expr<'tcx>) -> Option<(Symbol, &'tcx Expr<'tcx>, &'tcx [Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind
-        && !args.iter().any(|e| e.span.from_expansion())
-        && !receiver.span.from_expansion()
+        && !args.iter().any(|e| e.range_span().unwrap_or(e.span).from_expansion())
+        && !receiver.range_span().unwrap_or(receiver.span).from_expansion()
     {
         Some((path.ident.name, receiver, args, path.ident.span, call_span))
     } else {
@@ -4777,8 +4920,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        self.check_methods(cx, expr);
-
         match expr.kind {
             ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
@@ -4789,24 +4930,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
             },
-            ExprKind::MethodCall(method_call, receiver, args, _) => {
-                let method_span = method_call.ident.span;
-                or_fun_call::check(cx, expr, method_span, method_call.ident.name, receiver, args);
-                expect_fun_call::check(
-                    cx,
-                    &self.format_args,
-                    expr,
-                    method_span,
-                    method_call.ident.name,
-                    receiver,
-                    args,
-                );
-                clone_on_copy::check(cx, expr, method_call.ident.name, receiver, args);
-                clone_on_ref_ptr::check(cx, expr, method_call.ident.name, receiver, args);
-                inefficient_to_string::check(cx, expr, method_call.ident.name, receiver, args);
-                single_char_add_str::check(cx, expr, receiver, args);
-                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, receiver);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, receiver, args, self.msrv);
+            ExprKind::MethodCall(..) => {
+                self.check_methods(cx, expr);
             },
             ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
@@ -4821,53 +4946,21 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
-        let name = impl_item.ident.name;
-        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-        let item = cx.tcx.hir_expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
 
-        let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
+            let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let item = cx.tcx.hir_expect_item(parent);
+            let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+            let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
+
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
             let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
-            // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
-                // check missing trait implementations
-                for method_config in &TRAIT_METHODS {
-                    if name == method_config.method_name
-                        && sig.decl.inputs.len() == method_config.param_count
-                        && method_config.output_type.matches(&sig.decl.output)
-                        // in case there is no first arg, since we already have checked the number of arguments
-                        // it's should be always true
-                        && first_arg_ty_opt.is_none_or(|first_arg_ty| method_config
-                            .self_kind.matches(cx, self_ty, first_arg_ty)
-                            )
-                        && fn_header_equals(method_config.fn_header, sig.header)
-                        && method_config.lifetime_param_cond(impl_item)
-                    {
-                        span_lint_and_help(
-                            cx,
-                            SHOULD_IMPLEMENT_TRAIT,
-                            impl_item.span,
-                            format!(
-                                "method `{}` can be confused for the standard trait method `{}::{}`",
-                                method_config.method_name, method_config.trait_name, method_config.method_name
-                            ),
-                            None,
-                            format!(
-                                "consider implementing the trait `{}` or choosing a less ambiguous method name",
-                                method_config.trait_name
-                            ),
-                        );
-                    }
-                }
-            }
+            should_implement_trait::check_impl_item(cx, impl_item, self_ty, implements_trait, first_arg_ty_opt, sig);
 
             if sig.decl.implicit_self.has_implicit_self()
                 && !(self.avoid_breaking_exported_api
@@ -4877,7 +4970,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             {
                 wrong_self_convention::check(
                     cx,
-                    name,
+                    impl_item.ident.name,
                     self_ty,
                     first_arg_ty,
                     first_arg.pat.span,
@@ -4885,28 +4978,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     false,
                 );
             }
-        }
 
-        // if this impl block implements a trait, lint in trait definition instead
-        if implements_trait {
-            return;
-        }
-
-        if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.owner_id);
-
-            if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
-                return;
-            }
-
-            if name == sym::new && ret_ty != self_ty {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    impl_item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+            new_ret_no_self::check_impl_item(cx, impl_item, self_ty, implements_trait);
         }
     }
 
@@ -4915,55 +4988,41 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if let TraitItemKind::Fn(ref sig, _) = item.kind
-            && sig.decl.implicit_self.has_implicit_self()
-            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
-            && let Some(&first_arg_ty) = cx
-                .tcx
-                .fn_sig(item.owner_id)
-                .instantiate_identity()
-                .inputs()
-                .skip_binder()
-                .first()
-        {
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            wrong_self_convention::check(
-                cx,
-                item.ident.name,
-                self_ty,
-                first_arg_ty,
-                first_arg_hir_ty.span,
-                false,
-                true,
-            );
-        }
+        if let TraitItemKind::Fn(ref sig, _) = item.kind {
+            if sig.decl.implicit_self.has_implicit_self()
+                && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+                && let Some(&first_arg_ty) = cx
+                    .tcx
+                    .fn_sig(item.owner_id)
+                    .instantiate_identity()
+                    .inputs()
+                    .skip_binder()
+                    .first()
+            {
+                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+                wrong_self_convention::check(
+                    cx,
+                    item.ident.name,
+                    self_ty,
+                    first_arg_ty,
+                    first_arg_hir_ty.span,
+                    false,
+                    true,
+                );
+            }
 
-        if item.ident.name == sym::new
-            && let TraitItemKind::Fn(_, _) = item.kind
-            && let ret_ty = return_ty(cx, item.owner_id)
-            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
-            && !ret_ty.contains(self_ty)
-        {
-            span_lint(
-                cx,
-                NEW_RET_NO_SELF,
-                item.span,
-                "methods called `new` usually return `Self`",
-            );
+            new_ret_no_self::check_trait_item(cx, item);
         }
     }
 }
 
 impl Methods {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Handle method calls whose receiver and arguments may not come from expansion
         if let Some((name, recv, args, span, call_span)) = method_call(expr) {
             match (name, args) {
-                (
-                    sym::add | sym::offset | sym::sub | sym::wrapping_offset | sym::wrapping_add | sym::wrapping_sub,
-                    [_arg],
-                ) => {
+                (sym::add | sym::sub | sym::wrapping_add | sym::wrapping_sub, [_arg]) => {
                     zst_offset::check(cx, expr, recv);
                 },
                 (sym::all, [arg]) => {
@@ -5042,9 +5101,13 @@ impl Methods {
                 (sym::bytes, []) => unbuffered_bytes::check(cx, expr, recv),
                 (sym::cloned, []) => {
                     cloned_instead_of_copied::check(cx, expr, recv, span, self.msrv);
-                    option_as_ref_cloned::check(cx, recv, span);
+                    if let Some((method @ (sym::as_ref | sym::as_mut), as_ref_recv, [], as_ref_ident_span, _)) =
+                        method_call(recv)
+                    {
+                        option_as_ref_cloned::check(cx, span, method, as_ref_recv, as_ref_ident_span);
+                    }
                 },
-                (sym::collect, []) if is_trait_method(cx, expr, sym::Iterator) => {
+                (sym::collect, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
                     match method_call(recv) {
                         Some((name @ (sym::cloned | sym::copied), recv2, [], _, _)) => {
@@ -5065,17 +5128,26 @@ impl Methods {
                         _ => {},
                     }
                 },
-                (sym::count, []) if is_trait_method(cx, expr, sym::Iterator) => match method_call(recv) {
-                    Some((sym::cloned, recv2, [], _, _)) => {
-                        iter_overeager_cloned::check(cx, expr, recv, recv2, iter_overeager_cloned::Op::RmCloned, false);
-                    },
-                    Some((name2 @ (sym::into_iter | sym::iter | sym::iter_mut), recv2, [], _, _)) => {
-                        iter_count::check(cx, expr, recv2, name2);
-                    },
-                    Some((sym::map, _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
-                    Some((sym::filter, recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
-                    Some((sym::bytes, recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
-                    _ => {},
+                (sym::count, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) => {
+                    match method_call(recv) {
+                        Some((sym::cloned, recv2, [], _, _)) => {
+                            iter_overeager_cloned::check(
+                                cx,
+                                expr,
+                                recv,
+                                recv2,
+                                iter_overeager_cloned::Op::RmCloned,
+                                false,
+                            );
+                        },
+                        Some((name2 @ (sym::into_iter | sym::iter | sym::iter_mut), recv2, [], _, _)) => {
+                            iter_count::check(cx, expr, recv2, name2);
+                        },
+                        Some((sym::map, _, [arg], _, _)) => suspicious_map::check(cx, expr, recv, arg),
+                        Some((sym::filter, recv2, [arg], _, _)) => bytecount::check(cx, expr, recv2, arg),
+                        Some((sym::bytes, recv2, [], _, _)) => bytes_count_to_len::check(cx, expr, recv, recv2),
+                        _ => {},
+                    }
                 },
                 (sym::min | sym::max, [arg]) => {
                     unnecessary_min_or_max::check(cx, expr, name, recv, arg);
@@ -5145,32 +5217,47 @@ impl Methods {
                 },
                 (sym::filter_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FilterMap);
                     filter_map_bool_then::check(cx, expr, arg, call_span);
                     filter_map_identity::check(cx, expr, arg, span);
+                    lines_filter_map_ok::check_filter_or_flat_map(
+                        cx,
+                        expr,
+                        recv,
+                        "filter_map",
+                        arg,
+                        call_span,
+                        self.msrv,
+                    );
                 },
                 (sym::find_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
-                    unnecessary_filter_map::check(cx, expr, arg, name);
+                    unnecessary_filter_map::check(cx, expr, arg, call_span, unnecessary_filter_map::Kind::FindMap);
                 },
                 (sym::flat_map, [arg]) => {
                     unused_enumerate_index::check(cx, expr, recv, arg);
                     flat_map_identity::check(cx, expr, arg, span);
                     flat_map_option::check(cx, expr, arg, span);
+                    lines_filter_map_ok::check_filter_or_flat_map(
+                        cx, expr, recv, "flat_map", arg, call_span, self.msrv,
+                    );
                 },
-                (sym::flatten, []) => match method_call(recv) {
-                    Some((sym::map, recv, [map_arg], map_span, _)) => {
-                        map_flatten::check(cx, expr, recv, map_arg, map_span);
-                    },
-                    Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
-                        cx,
-                        expr,
-                        recv,
-                        recv2,
-                        iter_overeager_cloned::Op::LaterCloned,
-                        true,
-                    ),
-                    _ => {},
+                (sym::flatten, []) => {
+                    match method_call(recv) {
+                        Some((sym::map, recv, [map_arg], map_span, _)) => {
+                            map_flatten::check(cx, expr, recv, map_arg, map_span);
+                        },
+                        Some((sym::cloned, recv2, [], _, _)) => iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::LaterCloned,
+                            true,
+                        ),
+                        _ => {},
+                    }
+                    lines_filter_map_ok::check_flatten(cx, expr, recv, call_span, self.msrv);
                 },
                 (sym::fold, [init, acc]) => {
                     manual_try_fold::check(cx, expr, init, acc, call_span, self.msrv);
@@ -5294,6 +5381,7 @@ impl Methods {
                 },
                 (sym::map_or_else, [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
+                    unnecessary_option_map_or_else::check(cx, expr, recv, def, map);
                     unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
                 (sym::next, []) => {
@@ -5307,7 +5395,9 @@ impl Methods {
                                 iter_overeager_cloned::Op::LaterCloned,
                                 false,
                             ),
-                            (sym::filter, [arg]) => filter_next::check(cx, expr, recv2, arg),
+                            (sym::filter, [arg]) => {
+                                filter_next::check(cx, expr, recv2, arg, filter_next::Direction::Forward);
+                            },
                             (sym::filter_map, [arg]) => filter_map_next::check(cx, expr, recv2, arg, self.msrv),
                             (sym::iter, []) => iter_next_slice::check(cx, expr, recv2),
                             (sym::skip, [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
@@ -5315,6 +5405,14 @@ impl Methods {
                             (sym::rev, []) => manual_next_back::check(cx, expr, recv, recv2),
                             _ => {},
                         }
+                    }
+                },
+                (sym::next_back, []) => {
+                    if let Some((name2, recv2, args2, _, _)) = method_call(recv)
+                        && let (sym::filter, [arg]) = (name2, args2)
+                        && self.msrv.meets(cx, msrvs::DOUBLE_ENDED_ITERATOR_RFIND)
+                    {
+                        filter_next::check(cx, expr, recv2, arg, filter_next::Direction::Backward);
                     }
                 },
                 (sym::nth, [n_arg]) => match method_call(recv) {
@@ -5333,6 +5431,11 @@ impl Methods {
                         }
                     },
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
+                },
+                (sym::offset | sym::wrapping_offset, [arg]) => {
+                    zst_offset::check(cx, expr, recv);
+
+                    ptr_offset_with_cast::check(cx, name, expr, recv, arg, self.msrv);
                 },
                 (sym::ok_or_else, [arg]) => {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
@@ -5442,7 +5545,7 @@ impl Methods {
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
                 },
-                (sym::try_into, []) if is_trait_method(cx, expr, sym::TryInto) => {
+                (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);
                 },
                 (sym::to_owned, []) => {
@@ -5450,7 +5553,7 @@ impl Methods {
                         implicit_clone::check(cx, name, expr, recv);
                     }
                 },
-                (sym::to_os_string | sym::to_path_buf | sym::to_vec, []) => {
+                (sym::to_os_string | sym::to_path_buf | sym::to_string | sym::to_vec, []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
                 (sym::type_id, []) => {
@@ -5487,7 +5590,14 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, Some(u_arg), then_method, name);
+                            obfuscated_if_else::check(
+                                cx,
+                                expr,
+                                t_recv,
+                                t_arg,
+                                then_method,
+                                obfuscated_if_else::Unwrap::Or(u_arg),
+                            );
                         },
                         _ => {},
                     }
@@ -5504,9 +5614,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                None,
                                 then_method,
-                                sym::unwrap_or_default,
+                                obfuscated_if_else::Unwrap::OrDefault,
                             );
                         },
                         _ => {},
@@ -5523,9 +5632,8 @@ impl Methods {
                                 expr,
                                 t_recv,
                                 t_arg,
-                                Some(u_arg),
                                 then_method,
-                                sym::unwrap_or_else,
+                                obfuscated_if_else::Unwrap::OrElse(u_arg),
                             );
                         },
                         _ => {
@@ -5552,8 +5660,18 @@ impl Methods {
         }
         // Handle method calls whose receiver and arguments may come from expansion
         if let ExprKind::MethodCall(path, recv, args, _call_span) = expr.kind {
+            let method_span = path.ident.span;
+
+            // Those methods do their own method name checking as they deal with multiple methods.
+            or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+
             match (path.ident.name, args) {
-                (sym::expect, [_]) => {
+                (sym::clone, []) => {
+                    clone_on_ref_ptr::check(cx, expr, recv);
+                    clone_on_copy::check(cx, expr, recv);
+                },
+                (sym::expect, [arg]) => {
                     unwrap_expect_used::check(
                         cx,
                         expr,
@@ -5563,6 +5681,7 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                    expect_fun_call::check(cx, &self.format_args, expr, method_span, recv, arg);
                 },
                 (sym::expect_err, [_]) => {
                     unwrap_expect_used::check(
@@ -5574,6 +5693,15 @@ impl Methods {
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
+                },
+                (sym::insert_str | sym::push_str, _) => {
+                    single_char_add_str::check(cx, expr, recv, args);
+                },
+                (sym::into_iter, []) => {
+                    into_iter_on_ref::check(cx, expr, method_span, recv);
+                },
+                (sym::to_string, []) => {
+                    inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },
                 (sym::unwrap, []) => {
                     unwrap_expect_used::check(
@@ -5644,184 +5772,4 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
     lint_with_both_lhs_and_rhs!(chars_last_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_next_cmp_with_unwrap::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_last_cmp_with_unwrap::check, cx, info);
-}
-
-const FN_HEADER: hir::FnHeader = hir::FnHeader {
-    safety: hir::HeaderSafety::Normal(hir::Safety::Safe),
-    constness: hir::Constness::NotConst,
-    asyncness: hir::IsAsync::NotAsync,
-    abi: ExternAbi::Rust,
-};
-
-struct ShouldImplTraitCase {
-    trait_name: &'static str,
-    method_name: Symbol,
-    param_count: usize,
-    fn_header: hir::FnHeader,
-    // implicit self kind expected (none, self, &self, ...)
-    self_kind: SelfKind,
-    // checks against the output type
-    output_type: OutType,
-    // certain methods with explicit lifetimes can't implement the equivalent trait method
-    lint_explicit_lifetime: bool,
-}
-impl ShouldImplTraitCase {
-    const fn new(
-        trait_name: &'static str,
-        method_name: Symbol,
-        param_count: usize,
-        fn_header: hir::FnHeader,
-        self_kind: SelfKind,
-        output_type: OutType,
-        lint_explicit_lifetime: bool,
-    ) -> ShouldImplTraitCase {
-        ShouldImplTraitCase {
-            trait_name,
-            method_name,
-            param_count,
-            fn_header,
-            self_kind,
-            output_type,
-            lint_explicit_lifetime,
-        }
-    }
-
-    fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
-        self.lint_explicit_lifetime
-            || !impl_item.generics.params.iter().any(|p| {
-                matches!(
-                    p.kind,
-                    hir::GenericParamKind::Lifetime {
-                        kind: hir::LifetimeParamKind::Explicit
-                    }
-                )
-            })
-    }
-}
-
-#[rustfmt::skip]
-const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
-    ShouldImplTraitCase::new("std::ops::Add", sym::add,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::convert::AsMut", sym::as_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::convert::AsRef", sym::as_ref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::BitAnd", sym::bitand,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitOr", sym::bitor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::BitXor", sym::bitxor,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::borrow::Borrow", sym::borrow,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::borrow::BorrowMut", sym::borrow_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::clone::Clone", sym::clone,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::cmp::Ord", sym::cmp,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::default::Default", kw::Default,  0,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Deref", sym::deref,  1,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::DerefMut", sym::deref_mut,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::Div", sym::div,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Drop", sym::drop,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::cmp::PartialEq", sym::eq,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
-    ShouldImplTraitCase::new("std::iter::FromIterator", sym::from_iter,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::str::FromStr", sym::from_str,  1,  FN_HEADER,  SelfKind::No,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::hash::Hash", sym::hash,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
-    ShouldImplTraitCase::new("std::ops::Index", sym::index,  2,  FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::ops::IndexMut", sym::index_mut,  2,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
-    ShouldImplTraitCase::new("std::iter::IntoIterator", sym::into_iter,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Mul", sym::mul,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Neg", sym::neg,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::iter::Iterator", sym::next,  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
-    ShouldImplTraitCase::new("std::ops::Not", sym::not,  1,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Rem", sym::rem,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shl", sym::shl,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Shr", sym::shr,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-    ShouldImplTraitCase::new("std::ops::Sub", sym::sub,  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-];
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum SelfKind {
-    Value,
-    Ref,
-    RefMut,
-    No, // When we want the first argument type to be different than `Self`
-}
-
-impl SelfKind {
-    fn matches<'a>(self, cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-        fn matches_value<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if ty == parent_ty {
-                true
-            } else if let Some(boxed_ty) = ty.boxed_ty() {
-                boxed_ty == parent_ty
-            } else if is_type_diagnostic_item(cx, ty, sym::Rc) || is_type_diagnostic_item(cx, ty, sym::Arc) {
-                if let ty::Adt(_, args) = ty.kind() {
-                    args.types().next() == Some(parent_ty)
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-
-        fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            if let ty::Ref(_, t, m) = *ty.kind() {
-                return m == mutability && t == parent_ty;
-            }
-
-            let trait_sym = match mutability {
-                hir::Mutability::Not => sym::AsRef,
-                hir::Mutability::Mut => sym::AsMut,
-            };
-
-            let Some(trait_def_id) = cx.tcx.get_diagnostic_item(trait_sym) else {
-                return false;
-            };
-            implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
-        }
-
-        fn matches_none<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-            !matches_value(cx, parent_ty, ty)
-                && !matches_ref(cx, hir::Mutability::Not, parent_ty, ty)
-                && !matches_ref(cx, hir::Mutability::Mut, parent_ty, ty)
-        }
-
-        match self {
-            Self::Value => matches_value(cx, parent_ty, ty),
-            Self::Ref => matches_ref(cx, hir::Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
-            Self::RefMut => matches_ref(cx, hir::Mutability::Mut, parent_ty, ty),
-            Self::No => matches_none(cx, parent_ty, ty),
-        }
-    }
-
-    #[must_use]
-    fn description(self) -> &'static str {
-        match self {
-            Self::Value => "`self` by value",
-            Self::Ref => "`self` by reference",
-            Self::RefMut => "`self` by mutable reference",
-            Self::No => "no `self`",
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-enum OutType {
-    Unit,
-    Bool,
-    Any,
-    Ref,
-}
-
-impl OutType {
-    fn matches(self, ty: &hir::FnRetTy<'_>) -> bool {
-        let is_unit = |ty: &hir::Ty<'_>| matches!(ty.kind, hir::TyKind::Tup(&[]));
-        match (self, ty) {
-            (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
-            (Self::Unit, &hir::FnRetTy::Return(ty)) if is_unit(ty) => true,
-            (Self::Bool, &hir::FnRetTy::Return(ty)) if is_bool(ty) => true,
-            (Self::Any, &hir::FnRetTy::Return(ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Ref(_, _)),
-            _ => false,
-        }
-    }
-}
-
-fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
-    expected.constness == actual.constness && expected.safety == actual.safety && expected.asyncness == actual.asyncness
 }

@@ -1,0 +1,9 @@
+error[E0371]: the object type `(dyn Foo + 'a)` automatically implements the trait `Foo`
+  --> $DIR/dyn-compatible-trait-implementation-20939.rs:4:1
+   |
+LL | impl<'a> Foo for dyn Foo + 'a {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Foo + 'a)` automatically implements trait `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0371`.

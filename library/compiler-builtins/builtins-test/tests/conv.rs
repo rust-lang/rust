@@ -59,32 +59,28 @@ mod i_to_f {
                                 || ((error_minus == error || error_plus == error)
                                     && ((f0.to_bits() & 1) != 0))
                             {
-                                if !cfg!(any(
-                                    target_arch = "powerpc",
-                                    target_arch = "powerpc64"
-                                )) {
-                                    panic!(
-                                        "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
-                                        stringify!($fn),
-                                        x,
-                                        f1.to_bits(),
-                                        y_minus_ulp,
-                                        y,
-                                        y_plus_ulp,
-                                        error_minus,
-                                        error,
-                                        error_plus,
-                                    );
-                                }
+                                panic!(
+                                    "incorrect rounding by {}({}): {}, ({}, {}, {}), errors ({}, {}, {})",
+                                    stringify!($fn),
+                                    x,
+                                    f1.to_bits(),
+                                    y_minus_ulp,
+                                    y,
+                                    y_plus_ulp,
+                                    error_minus,
+                                    error,
+                                    error_plus,
+                                );
                             }
                         }
 
-                        // Test against native conversion. We disable testing on all `x86` because of
-                        // rounding bugs with `i686`. `powerpc` also has the same rounding bug.
+                        // Test against native conversion.
+                        // FIXME(x86,ppc): the platform version has rounding bugs on i686 and
+                        // PowerPC64le (for PPC this only shows up in Docker, not the native runner).
+                        // https://github.com/rust-lang/compiler-builtins/pull/384#issuecomment-740413334
                         if !Float::eq_repr(f0, f1) && !cfg!(any(
                             target_arch = "x86",
-                            target_arch = "powerpc",
-                            target_arch = "powerpc64"
+                            all(target_arch = "powerpc64", target_endian = "little")
                         )) {
                             panic!(
                                 "{}({}): std: {:?}, builtins: {:?}",

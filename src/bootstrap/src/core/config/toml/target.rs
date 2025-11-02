@@ -7,18 +7,17 @@
 //! * [`TomlTarget`]: This struct directly mirrors the `[target.<triple>]` sections in your
 //!   `bootstrap.toml`. It's used for deserializing raw TOML data for a specific target.
 //! * [`Target`]: This struct represents the processed and validated configuration for a
-//!   build target, which is is stored in the main [`Config`] structure.
-//! * [`Config::apply_target_config`]: This method processes the `TomlTarget` data and
-//!   applies it to the global [`Config`], ensuring proper path resolution, validation,
-//!   and integration with other build settings.
+//!   build target, which is is stored in the main `Config` structure.
 
 use std::collections::HashMap;
 
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
-use crate::core::config::toml::rust::validate_codegen_backends;
-use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
-use crate::{Config, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{
+    CompilerBuiltins, LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool,
+};
+use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.
@@ -28,6 +27,7 @@ define_config! {
         ar: Option<String> = "ar",
         ranlib: Option<String> = "ranlib",
         default_linker: Option<PathBuf> = "default-linker",
+        default_linker_linux_override: Option<DefaultLinuxLinkerOverride> = "default-linker-linux-override",
         linker: Option<String> = "linker",
         split_debuginfo: Option<String> = "split-debuginfo",
         llvm_config: Option<String> = "llvm-config",
@@ -45,7 +45,7 @@ define_config! {
         no_std: Option<bool> = "no-std",
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         runner: Option<String> = "runner",
-        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        optimized_compiler_builtins: Option<CompilerBuiltins> = "optimized-compiler-builtins",
         jemalloc: Option<bool> = "jemalloc",
     }
 }
@@ -64,6 +64,7 @@ pub struct Target {
     pub ar: Option<PathBuf>,
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
+    pub default_linker_linux_override: DefaultLinuxLinkerOverride,
     pub linker: Option<PathBuf>,
     pub split_debuginfo: Option<SplitDebuginfo>,
     pub sanitizers: Option<bool>,
@@ -76,8 +77,8 @@ pub struct Target {
     pub qemu_rootfs: Option<PathBuf>,
     pub runner: Option<String>,
     pub no_std: bool,
-    pub codegen_backends: Option<Vec<String>>,
-    pub optimized_compiler_builtins: Option<bool>,
+    pub codegen_backends: Option<Vec<CodegenBackendKind>>,
+    pub optimized_compiler_builtins: Option<CompilerBuiltins>,
     pub jemalloc: Option<bool>,
 }
 
@@ -94,67 +95,59 @@ impl Target {
     }
 }
 
-impl Config {
-    pub fn apply_target_config(&mut self, toml_target: Option<HashMap<String, TomlTarget>>) {
-        if let Some(t) = toml_target {
-            for (triple, cfg) in t {
-                let mut target = Target::from_triple(&triple);
+/// Overrides the default linker used on a Linux target.
+/// On Linux, the linker is usually invoked through `cc`, therefore this exists as a separate
+/// configuration from simply setting `default-linker`, which corresponds to `-Clinker`.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+pub enum DefaultLinuxLinkerOverride {
+    /// Do not apply any override and use the default linker for the given target.
+    #[default]
+    Off,
+    /// Use the self-contained `rust-lld` linker, invoked through `cc`.
+    /// Corresponds to `-Clinker-features=+lld -Clink-self-contained=+linker`.
+    SelfContainedLldCc,
+}
 
-                if let Some(ref s) = cfg.llvm_config {
-                    if self.download_rustc_commit.is_some() && triple == *self.host_target.triple {
-                        panic!(
-                            "setting llvm_config for the host is incompatible with download-rustc"
-                        );
-                    }
-                    target.llvm_config = Some(self.src.join(s));
-                }
-                if let Some(patches) = cfg.llvm_has_rust_patches {
-                    assert!(
-                        self.submodules == Some(false) || cfg.llvm_config.is_some(),
-                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
-                    );
-                    target.llvm_has_rust_patches = Some(patches);
-                }
-                if let Some(ref s) = cfg.llvm_filecheck {
-                    target.llvm_filecheck = Some(self.src.join(s));
-                }
-                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
-                    v.parse().unwrap_or_else(|_| {
-                        panic!("failed to parse target.{triple}.llvm-libunwind")
-                    })
-                });
-                if let Some(s) = cfg.no_std {
-                    target.no_std = s;
-                }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
-                target.ar = cfg.ar.map(PathBuf::from);
-                target.ranlib = cfg.ranlib.map(PathBuf::from);
-                target.linker = cfg.linker.map(PathBuf::from);
-                target.crt_static = cfg.crt_static;
-                target.musl_root = cfg.musl_root.map(PathBuf::from);
-                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
-                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
-                target.runner = cfg.runner;
-                target.sanitizers = cfg.sanitizers;
-                target.profiler = cfg.profiler;
-                target.rpath = cfg.rpath;
-                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
-                target.jemalloc = cfg.jemalloc;
-                if let Some(backends) = cfg.codegen_backends {
-                    target.codegen_backends =
-                        Some(validate_codegen_backends(backends, &format!("target.{triple}")))
-                }
-
-                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
-                    v.parse().unwrap_or_else(|_| {
-                        panic!("invalid value for target.{triple}.split-debuginfo")
-                    })
-                });
-
-                self.target_config.insert(TargetSelection::from_user(&triple), target);
-            }
+impl<'de> Deserialize<'de> for DefaultLinuxLinkerOverride {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "off" => Ok(Self::Off),
+            "self-contained-lld-cc" => Ok(Self::SelfContainedLldCc),
+            other => Err(D::Error::unknown_variant(other, &["off", "self-contained-lld-cc"])),
         }
     }
+}
+
+/// Set of linker overrides for selected Linux targets.
+#[cfg(not(test))]
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
+    [("x86_64-unknown-linux-gnu".to_string(), DefaultLinuxLinkerOverride::SelfContainedLldCc)]
+        .into()
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_LINUX_LINKER_OVERRIDES: std::cell::RefCell<Option<HashMap<String, DefaultLinuxLinkerOverride>>> = std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+pub fn default_linux_linker_overrides() -> HashMap<String, DefaultLinuxLinkerOverride> {
+    TEST_LINUX_LINKER_OVERRIDES.with(|cell| cell.borrow().clone()).unwrap_or_default()
+}
+
+#[cfg(test)]
+pub fn with_default_linux_linker_overrides<R>(
+    targets: HashMap<String, DefaultLinuxLinkerOverride>,
+    f: impl FnOnce() -> R,
+) -> R {
+    TEST_LINUX_LINKER_OVERRIDES.with(|cell| {
+        let prev = cell.replace(Some(targets));
+        let result = f();
+        cell.replace(prev);
+        result
+    })
 }

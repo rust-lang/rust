@@ -31,7 +31,7 @@ This target is cross-compiled and requires an installation of the [WALI compiler
 > **Note**: Users can expect that new enabled-by-default Wasm features for LLVM are transitively incorporatable into this target -- see [wasm32-unknown-unknown](wasm32-unknown-unknown.md) for detailed information on WebAssembly features.
 
 
-> **Note**: The WALI ABI is similar to default Clang wasm32 ABIs but *not identical*. The primary difference is 64-bit `long` types as opposed to 32-bit for wasm32. This is required to mantain minimum source code changes for 64-bit host platforms currently supported. This may change in the future as the spec evolves.
+> **Note**: The WALI ABI is similar to default Clang wasm32 ABIs but *not identical*. The primary difference is 64-bit `long` types as opposed to 32-bit for wasm32. This is required to maintain minimum source code changes for 64-bit host platforms currently supported. This may change in the future as the spec evolves.
 
 ### Execution
 Running generated WALI binaries also requires a supported compliant engine implementation -- a working implementation in the [WebAssembly Micro-Runtime (WAMR)](https://github.com/arjunr2/WALI) is included in the repo.

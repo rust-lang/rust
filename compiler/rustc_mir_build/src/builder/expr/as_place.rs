@@ -103,7 +103,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
             }
             ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
-            ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
+            ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
@@ -454,7 +454,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 index,
                 mutability,
                 fake_borrow_temps,
-                expr.temp_lifetime,
                 expr_span,
                 source_info,
             ),
@@ -625,7 +624,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         index: ExprId,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
-        temp_lifetime: TempLifetime,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
@@ -639,7 +637,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
         // The "retagging" transformation (for Stacked Borrows) relies on this.
-        let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not));
+        let index_lifetime = self.thir[index].temp_lifetime;
+        let idx = unpack!(block = self.as_temp(block, index_lifetime, index, Mutability::Not));
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
@@ -663,7 +662,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For arrays it'll be `Operand::Constant` with the actual length;
     /// For slices it'll be `Operand::Move` of a local using `PtrMetadata`.
-    fn len_of_slice_or_array(
+    pub(in crate::builder) fn len_of_slice_or_array(
         &mut self,
         block: BasicBlock,
         place: Place<'tcx>,
@@ -802,7 +801,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::OpaqueCast(..)
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::UnwrapUnsafeBinder(_) => (),

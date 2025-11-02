@@ -1,12 +1,3 @@
-Function name: <try_in_macro::MyEnum as try_in_macro::Arbitrary>::try_size_hint
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 26, 38, 00, 39]
-Number of files: 1
-- file 0 => $DIR/try-in-macro.rs
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 38, 56) to (start + 0, 57)
-Highest counter ID seen: (none)
-
 Function name: try_in_macro::main
 Raw bytes (19): 0x[01, 01, 00, 03, 01, 29, 01, 00, 0a, 01, 01, 05, 00, 1a, 01, 01, 01, 00, 02]
 Number of files: 1

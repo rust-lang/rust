@@ -2,7 +2,7 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_attr_data_structures::Deprecation;
+use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -71,24 +71,6 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
         if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
-    for Option<DecodeIterator<'a, 'tcx, T>>
-{
-    #[inline(always)]
-    fn process_decoded(
-        self,
-        tcx: TyCtxt<'tcx>,
-        err: impl Fn() -> !,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
-        ty::EarlyBinder::bind(if let Some(iter) = self {
-            tcx.arena.alloc_from_iter(iter)
-        } else {
-            err()
-        })
     }
 }
 
@@ -258,6 +240,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    trivial_const => { table }
     closure_saved_names_of_captured_variables => { table }
     mir_coroutine_witnesses => { table }
     promoted_mir => { table }
@@ -413,6 +396,7 @@ provide! { tcx, def_id, other, cdata,
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    default_field => { cdata.get_default_field(def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {
@@ -708,8 +692,8 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             .get(&stable_crate_id)
             .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"));
         assert_ne!(cnum, LOCAL_CRATE);
-        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
-        DefId { krate: cnum, index: def_index }
+        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash)?;
+        Some(DefId { krate: cnum, index: def_index })
     };
 
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {

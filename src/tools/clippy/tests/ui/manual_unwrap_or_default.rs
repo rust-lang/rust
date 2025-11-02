@@ -64,6 +64,15 @@ fn main() {
     } else {
         String::new()
     };
+
+    // edge case
+    // because the `Some(bizarro)` pattern is not actually reachable,
+    // changing this match to `unwrap_or_default` would have side effects
+    let bizarro = Some(String::new());
+    match bizarro {
+        _ => String::new(),
+        Some(bizarro) => bizarro,
+    };
 }
 
 // Issue #12531
@@ -138,7 +147,7 @@ fn issue_12928() {
     let y = if let Some(Y(a, ..)) = x { a } else { 0 };
 }
 
-// For symetry with `manual_unwrap_or` test
+// For symmetry with `manual_unwrap_or` test
 fn allowed_manual_unwrap_or_zero() -> u32 {
     if let Some(x) = Some(42) {
         //~^ manual_unwrap_or_default
@@ -159,4 +168,18 @@ mod issue14716 {
             None => "",
         };
     }
+}
+
+fn issue_15807() {
+    let uncopyable_res: Result<usize, String> = Ok(1);
+    let _ = if let Ok(v) = uncopyable_res { v } else { 0 };
+
+    let x = uncopyable_res;
+    let _ = if let Ok(v) = x { v } else { 0 };
+    //~^ manual_unwrap_or_default
+
+    let copyable_res: Result<usize, ()> = Ok(1);
+    let _ = if let Ok(v) = copyable_res { v } else { 0 };
+    //~^ manual_unwrap_or_default
+    let _ = copyable_res;
 }

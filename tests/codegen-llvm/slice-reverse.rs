@@ -8,10 +8,10 @@
 #[no_mangle]
 pub fn slice_reverse_u8(slice: &mut [u8]) {
     // CHECK-NOT: panic_bounds_check
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK: shufflevector <{{[0-9]+}} x i8>
     // CHECK-NOT: panic_bounds_check
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     slice.reverse();
 }
 
@@ -19,9 +19,9 @@ pub fn slice_reverse_u8(slice: &mut [u8]) {
 #[no_mangle]
 pub fn slice_reverse_i32(slice: &mut [i32]) {
     // CHECK-NOT: panic_bounds_check
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     // CHECK: shufflevector <{{[0-9]+}} x i32>
     // CHECK-NOT: panic_bounds_check
-    // CHECK-NOT: slice_end_index_len_fail
+    // CHECK-NOT: slice_index_fail
     slice.reverse();
 }

@@ -1,3 +1,5 @@
+use crate::error;
+use crate::fmt::{self, Write};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
@@ -5,7 +7,6 @@ use crate::sys::abi::usercalls;
 use crate::sys::fd::FileDesc;
 use crate::sys::{AsInner, FromInner, IntoInner, TryIntoInner, sgx_ineffective, unsupported};
 use crate::time::Duration;
-use crate::{error, fmt};
 
 const DEFAULT_FAKE_TTL: u32 = 64;
 
@@ -63,18 +64,52 @@ impl fmt::Debug for TcpStream {
     }
 }
 
-fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
-    match result {
-        Ok(saddr) => Ok(saddr.to_string()),
-        // need to downcast twice because io::Error::into_inner doesn't return the original
-        // value if the conversion fails
-        Err(e) => {
-            if e.get_ref().and_then(|e| e.downcast_ref::<NonIpSockAddr>()).is_some() {
-                Ok(e.into_inner().unwrap().downcast::<NonIpSockAddr>().unwrap().host)
-            } else {
-                Err(e)
+/// Converts each address in `addr` into a hostname.
+///
+/// SGX doesn't support DNS resolution but rather accepts hostnames in
+/// the same place as socket addresses. So, to make e.g.
+/// ```rust
+/// TcpStream::connect("example.com:80")`
+/// ```
+/// work, the DNS lookup returns a special error (`NonIpSockAddr`) instead,
+/// which contains the hostname being looked up. When `.to_socket_addrs()`
+/// fails, we inspect the error and try recover the hostname from it. If that
+/// succeeds, we thus continue with the hostname.
+///
+/// This is a terrible hack and leads to buggy code. For instance, when users
+/// use the result of `.to_socket_addrs()` in their own `ToSocketAddrs`
+/// implementation to select from a list of possible URLs, the only URL used
+/// will be that of the last item tried.
+// FIXME: This is a terrible, terrible hack. Fixing this requires Fortanix to
+// add a method for resolving addresses.
+fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
+where
+    F: FnMut(&str) -> io::Result<T>,
+{
+    match addr.to_socket_addrs() {
+        Ok(addrs) => {
+            let mut last_err = None;
+            let mut encoded = String::new();
+            for addr in addrs {
+                // Format the IP address as a string, reusing the buffer.
+                encoded.clear();
+                write!(encoded, "{}", &addr).unwrap();
+
+                match f(&encoded) {
+                    Ok(val) => return Ok(val),
+                    Err(err) => last_err = Some(err),
+                }
+            }
+
+            match last_err {
+                Some(err) => Err(err),
+                None => Err(io::Error::NO_ADDRESSES),
             }
         }
+        Err(err) => match err.get_ref().and_then(|e| e.downcast_ref::<NonIpSockAddr>()) {
+            Some(NonIpSockAddr { host }) => f(host),
+            None => Err(err),
+        },
     }
 }
 
@@ -86,17 +121,18 @@ fn addr_to_sockaddr(addr: Option<&str>) -> io::Result<SocketAddr> {
 }
 
 impl TcpStream {
-    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        let addr = io_err_to_addr(addr)?;
-        let (fd, local_addr, peer_addr) = usercalls::connect_stream(&addr)?;
-        Ok(TcpStream { inner: Socket::new(fd, local_addr), peer_addr: Some(peer_addr) })
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
+        each_addr(addr, |addr| {
+            let (fd, local_addr, peer_addr) = usercalls::connect_stream(addr)?;
+            Ok(TcpStream { inner: Socket::new(fd, local_addr), peer_addr: Some(peer_addr) })
+        })
     }
 
     pub fn connect_timeout(addr: &SocketAddr, dur: Duration) -> io::Result<TcpStream> {
         if dur == Duration::default() {
             return Err(io::Error::ZERO_TIMEOUT);
         }
-        Self::connect(Ok(addr)) // FIXME: ignoring timeout
+        Self::connect(addr) // FIXME: ignoring timeout
     }
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
@@ -247,10 +283,11 @@ impl fmt::Debug for TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
-        let addr = io_err_to_addr(addr)?;
-        let (fd, local_addr) = usercalls::bind_stream(&addr)?;
-        Ok(TcpListener { inner: Socket::new(fd, local_addr) })
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
+        each_addr(addr, |addr| {
+            let (fd, local_addr) = usercalls::bind_stream(addr)?;
+            Ok(TcpListener { inner: Socket::new(fd, local_addr) })
+        })
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -316,7 +353,7 @@ impl FromInner<Socket> for TcpListener {
 pub struct UdpSocket(!);
 
 impl UdpSocket {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -436,7 +473,7 @@ impl UdpSocket {
         self.0
     }
 
-    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
+    pub fn connect<A: ToSocketAddrs>(&self, _: A) -> io::Result<()> {
         self.0
     }
 }
@@ -452,12 +489,7 @@ pub struct NonIpSockAddr {
     host: String,
 }
 
-impl error::Error for NonIpSockAddr {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "Failed to convert address to SocketAddr"
-    }
-}
+impl error::Error for NonIpSockAddr {}
 
 impl fmt::Display for NonIpSockAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -467,16 +499,6 @@ impl fmt::Display for NonIpSockAddr {
 
 pub struct LookupHost(!);
 
-impl LookupHost {
-    fn new(host: String) -> io::Result<LookupHost> {
-        Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host }))
-    }
-
-    pub fn port(&self) -> u16 {
-        self.0
-    }
-}
-
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
@@ -484,18 +506,9 @@ impl Iterator for LookupHost {
     }
 }
 
-impl TryFrom<&str> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from(v: &str) -> io::Result<LookupHost> {
-        LookupHost::new(v.to_owned())
-    }
-}
-
-impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
-    type Error = io::Error;
-
-    fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
-        LookupHost::new(format!("{host}:{port}"))
-    }
+pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
+    Err(io::Error::new(
+        io::ErrorKind::Uncategorized,
+        NonIpSockAddr { host: format!("{host}:{port}") },
+    ))
 }

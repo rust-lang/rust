@@ -103,7 +103,7 @@ help: if this generic argument was intended as a const parameter, surround it wi
 LL | impl X<{ N }> {}
    |        +   +
 
-error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/missing-type-parameter2.rs:6:9
    |
 LL | impl<T, const A: u8 = 2> X<N> {}

@@ -60,6 +60,7 @@ impl<'a> PanicHookInfo<'a> {
     /// Returns the payload associated with the panic.
     ///
     /// This will commonly, but not always, be a `&'static str` or [`String`].
+    /// If you only care about such payloads, use [`payload_as_str`] instead.
     ///
     /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
     /// panic payload of type `&'static str` or `String`.
@@ -69,6 +70,7 @@ impl<'a> PanicHookInfo<'a> {
     /// can result in a panic payload other than a `&'static str` or `String`.
     ///
     /// [`String`]: ../../std/string/struct.String.html
+    /// [`payload_as_str`]: PanicHookInfo::payload_as_str
     ///
     /// # Examples
     ///
@@ -108,8 +110,6 @@ impl<'a> PanicHookInfo<'a> {
     /// # Example
     ///
     /// ```should_panic
-    /// #![feature(panic_payload_as_str)]
-    ///
     /// std::panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(s) = panic_info.payload_as_str() {
     ///         println!("panic occurred: {s:?}");
@@ -122,7 +122,7 @@ impl<'a> PanicHookInfo<'a> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "panic_payload_as_str", issue = "125175")]
+    #[stable(feature = "panic_payload_as_str", since = "1.91.0")]
     pub fn payload_as_str(&self) -> Option<&str> {
         if let Some(s) = self.payload.downcast_ref::<&str>() {
             Some(s)
@@ -388,7 +388,7 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panicking::rust_panic_without_hook(payload)
+    panicking::resume_unwind(payload)
 }
 
 /// Makes all future panics abort directly without running the panic hook or unwinding.

@@ -1,5 +1,8 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::borrow_as_ptr)]
 #![allow(clippy::useless_vec)]
+
+extern crate proc_macros;
 
 fn a() -> i32 {
     0
@@ -52,4 +55,13 @@ fn issue_15141() {
     let a = String::new();
     // Don't lint cast to dyn trait pointers
     let b = &a as *const dyn std::any::Any;
+}
+
+fn issue15389() {
+    proc_macros::with_span! {
+        span
+        let var = 0u32;
+        // Don't lint in proc-macros
+        let _ = &var as *const u32;
+    };
 }

@@ -1,7 +1,6 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
@@ -45,7 +44,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_early_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -56,7 +55,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -67,7 +66,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_early_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -78,7 +77,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &'mir mir::Terminator<'tcx>,
         loc: Location,
@@ -93,7 +92,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -317,9 +316,8 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             loans_out_of_scope_at_location: FxIndexMap::default(),
         };
         for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
-            let issuing_region = loan_data.region;
             let loan_issued_at = loan_data.reserve_location;
-            prec.precompute_loans_out_of_scope(loan_idx, issuing_region, loan_issued_at);
+            prec.precompute_loans_out_of_scope(loan_idx, loan_issued_at);
         }
 
         prec.loans_out_of_scope_at_location
@@ -328,45 +326,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     /// Loans are in scope while they are live: whether they are contained within any live region.
     /// In the location-insensitive analysis, a loan will be contained in a region if the issuing
     /// region can reach it in the subset graph. So this is a reachability problem.
-    fn precompute_loans_out_of_scope(
-        &mut self,
-        loan_idx: BorrowIndex,
-        issuing_region: RegionVid,
-        loan_issued_at: Location,
-    ) {
-        let sccs = self.regioncx.constraint_sccs();
-        let universal_regions = self.regioncx.universal_regions();
-
-        // The loop below was useful for the location-insensitive analysis but shouldn't be
-        // impactful in the location-sensitive case. It seems that it does, however, as without it a
-        // handful of tests fail. That likely means some liveness or outlives data related to choice
-        // regions is missing
-        // FIXME: investigate the impact of loans traversing applied member constraints and why some
-        // tests fail otherwise.
-        //
-        // We first handle the cases where the loan doesn't go out of scope, depending on the
-        // issuing region's successors.
-        for successor in graph::depth_first_search(&self.regioncx.region_graph(), issuing_region) {
-            // Via applied member constraints
-            //
-            // The issuing region can flow into the choice regions, and they are either:
-            // - placeholders or free regions themselves,
-            // - or also transitively outlive a free region.
-            //
-            // That is to say, if there are applied member constraints here, the loan escapes the
-            // function and cannot go out of scope. We could early return here.
-            //
-            // For additional insurance via fuzzing and crater, we verify that the constraint's min
-            // choice indeed escapes the function. In the future, we could e.g. turn this check into
-            // a debug assert and early return as an optimization.
-            let scc = sccs.scc(successor);
-            for constraint in self.regioncx.applied_member_constraints(scc) {
-                if universal_regions.is_universal_region(constraint.min_choice) {
-                    return;
-                }
-            }
-        }
-
+    fn precompute_loans_out_of_scope(&mut self, loan_idx: BorrowIndex, loan_issued_at: Location) {
         let first_block = loan_issued_at.block;
         let first_bb_data = &self.body.basic_blocks[first_block];
 
@@ -573,7 +533,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_early_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -582,7 +542,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -617,7 +577,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::SetDiscriminant { .. }
-            | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::PlaceMention(..)
@@ -631,7 +590,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_early_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -640,7 +599,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,

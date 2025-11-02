@@ -12,12 +12,17 @@ trait MetaSized_: MetaSized { }
 
 trait NegMetaSized: ?MetaSized { }
 //~^ ERROR relaxed bounds are not permitted in supertrait bounds
-
+//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~| ERROR bound modifier `?` can only be applied to `Sized`
 
 trait PointeeSized_: PointeeSized { }
 
 trait NegPointeeSized: ?PointeeSized { }
 //~^ ERROR relaxed bounds are not permitted in supertrait bounds
+//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~| ERROR bound modifier `?` can only be applied to `Sized`
+//~| ERROR bound modifier `?` can only be applied to `Sized`
 
 trait Bare {}
 
@@ -47,14 +52,11 @@ fn with_pointeesized_supertrait<T: PointeeSized + PointeeSized_>() {
     requires_pointeesized::<T>();
 }
 
-// `T` won't inherit the `const MetaSized` implicit supertrait of `Bare`, so there is an error on
-// the bound, which is expected.
+// `T` inherits the `const MetaSized` implicit supertrait of `Bare`.
 fn with_bare_trait<T: PointeeSized + Bare>() {
-//~^ ERROR the size for values of type `T` cannot be known
     requires_sized::<T>();
     //~^ ERROR the size for values of type `T` cannot be known
     requires_metasized::<T>();
-    //~^ ERROR the size for values of type `T` cannot be known
     requires_pointeesized::<T>();
 }
 

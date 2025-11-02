@@ -7,8 +7,8 @@ use itertools::Itertools;
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::WHITESPACE,
-    T,
-    ast::{self, make, syntax_factory::SyntaxFactory},
+    SyntaxToken, T,
+    ast::{self, TokenTree, make, syntax_factory::SyntaxFactory},
 };
 
 // Assist: extract_expressions_from_format_string
@@ -58,10 +58,11 @@ pub(crate) fn extract_expressions_from_format_string(
         tt.syntax().text_range(),
         |edit| {
             // Extract existing arguments in macro
-            let tokens = tt.token_trees_and_tokens().collect_vec();
+            let mut raw_tokens = tt.token_trees_and_tokens().skip(1).collect_vec();
+            let format_string_index = format_str_index(&raw_tokens, &fmt_string);
+            let tokens = raw_tokens.split_off(format_string_index);
 
             let existing_args = if let [
-                _opening_bracket,
                 NodeOrToken::Token(_format_string),
                 _args_start_comma,
                 tokens @ ..,
@@ -90,8 +91,10 @@ pub(crate) fn extract_expressions_from_format_string(
 
             // Start building the new args
             let mut existing_args = existing_args.into_iter();
-            let mut new_tt_bits = vec![NodeOrToken::Token(make::tokens::literal(&new_fmt))];
+            let mut new_tt_bits = raw_tokens;
             let mut placeholder_indexes = vec![];
+
+            new_tt_bits.push(NodeOrToken::Token(make::tokens::literal(&new_fmt)));
 
             for arg in extracted_args {
                 if matches!(arg, Arg::Expr(_) | Arg::Placeholder) {
@@ -105,9 +108,7 @@ pub(crate) fn extract_expressions_from_format_string(
                 match arg {
                     Arg::Expr(s) => {
                         // insert arg
-                        // FIXME: use the crate's edition for parsing
-                        let expr =
-                            ast::Expr::parse(&s, syntax::Edition::CURRENT_FIXME).syntax_node();
+                        let expr = ast::Expr::parse(&s, ctx.edition()).syntax_node();
                         let mut expr_tt = utils::tt_from_syntax(expr);
                         new_tt_bits.append(&mut expr_tt);
                     }
@@ -150,7 +151,9 @@ pub(crate) fn extract_expressions_from_format_string(
                 }
 
                 // Add the final tabstop after the format literal
-                if let Some(NodeOrToken::Token(literal)) = new_tt.token_trees_and_tokens().nth(1) {
+                if let Some(NodeOrToken::Token(literal)) =
+                    new_tt.token_trees_and_tokens().nth(1 + format_string_index)
+                {
                     let annotation = edit.make_tabstop_after(cap);
                     editor.add_annotation(literal, annotation);
                 }
@@ -161,6 +164,17 @@ pub(crate) fn extract_expressions_from_format_string(
     );
 
     Some(())
+}
+
+fn format_str_index(
+    raw_tokens: &[NodeOrToken<TokenTree, SyntaxToken>],
+    fmt_string: &ast::String,
+) -> usize {
+    let fmt_string = fmt_string.syntax();
+    raw_tokens
+        .iter()
+        .position(|tt| tt.as_token().is_some_and(|tt| tt == fmt_string))
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -181,6 +195,24 @@ fn main() {
             r#"
 fn main() {
     print!("{} {:b} {}"$0, y + 2, x + 1, 2);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn multiple_middle_arg_on_write() {
+        check_assist(
+            extract_expressions_from_format_string,
+            r#"
+//- minicore: write
+fn main() {
+    write!(writer(), "{} {x + 1:b} {}$0", y + 2, 2);
+}
+"#,
+            r#"
+fn main() {
+    write!(writer(), "{} {:b} {}"$0, y + 2, x + 1, 2);
 }
 "#,
         );

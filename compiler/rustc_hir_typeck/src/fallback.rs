@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
+use crate::typeck_root_ctxt::InferVarInfo;
 use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
@@ -345,7 +346,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .map(|(_, info)| *info)
                 .collect();
 
-            let found_infer_var_info = ty::InferVarInfo {
+            let found_infer_var_info = InferVarInfo {
                 self_in_trait: infer_var_infos.items().any(|info| info.self_in_trait),
                 output: infer_var_infos.items().any(|info| info.output),
             };
@@ -494,7 +495,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         .expect("expected diverging var to be unconstrained");
                 }
 
-                ocx.select_where_possible()
+                ocx.try_evaluate_obligations()
             })
         };
 
@@ -670,9 +671,6 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
                 path.segments.last().expect("paths should have a segment")
             }
             hir::QPath::TypeRelative(_, segment) => segment,
-            hir::QPath::LangItem(..) => {
-                return hir::intravisit::walk_qpath(self, qpath, id);
-            }
         };
         // Alternatively, try to turbofish `::<_, (), _>`.
         if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id()

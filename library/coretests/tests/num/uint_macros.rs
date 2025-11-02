@@ -104,6 +104,19 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: C.rotate_left(128), C);
             }
 
+            fn test_funnel_shift() {
+                // Shifting by 0 should have no effect
+                assert_eq_const_safe!($T: <$T>::funnel_shl(A, B, 0), A);
+                assert_eq_const_safe!($T: <$T>::funnel_shr(A, B, 0), B);
+
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_0, _1, 4), 0b1111);
+                assert_eq_const_safe!($T: <$T>::funnel_shr(_0, _1, 4), _1 >> 4);
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_1, _0, 4), _1 << 4);
+
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_1, _1, 4), <$T>::rotate_left(_1, 4));
+                assert_eq_const_safe!($T: <$T>::funnel_shr(_1, _1, 4), <$T>::rotate_right(_1, 4));
+            }
+
             fn test_swap_bytes() {
                 assert_eq_const_safe!($T: A.swap_bytes().swap_bytes(), A);
                 assert_eq_const_safe!($T: B.swap_bytes().swap_bytes(), B);
@@ -151,7 +164,30 @@ macro_rules! uint_module {
         }
 
         #[test]
-        fn test_isolate_most_significant_one() {
+        #[should_panic = "attempt to funnel shift left with overflow"]
+        fn test_funnel_shl_overflow() {
+            let _ = <$T>::funnel_shl(A, B, $T::BITS);
+        }
+
+        #[test]
+        #[should_panic = "attempt to funnel shift right with overflow"]
+        fn test_funnel_shr_overflow() {
+            let _ = <$T>::funnel_shr(A, B, $T::BITS);
+        }
+
+        #[test]
+        fn test_funnel_shifts_runtime() {
+            for i in 0..$T::BITS - 1 {
+                assert_eq!(<$T>::funnel_shl(A, 0, i), A << i);
+                assert_eq!(<$T>::funnel_shl(A, A, i), A.rotate_left(i));
+
+                assert_eq!(<$T>::funnel_shr(0, A, i), A >> i);
+                assert_eq!(<$T>::funnel_shr(A, A, i), A.rotate_right(i));
+            }
+        }
+
+        #[test]
+        fn test_isolate_highest_one() {
             const BITS: $T = <$T>::MAX;
             const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
 
@@ -160,15 +196,15 @@ macro_rules! uint_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS >> i).isolate_most_significant_one(),
-                    (MOST_SIG_ONE >> i).isolate_most_significant_one(),
+                    (BITS >> i).isolate_highest_one(),
+                    (MOST_SIG_ONE >> i).isolate_highest_one(),
                 );
                 i += 1;
             }
         }
 
         #[test]
-        fn test_isolate_least_significant_one() {
+        fn test_isolate_lowest_one() {
             const BITS: $T = <$T>::MAX;
             const LEAST_SIG_ONE: $T = 1;
 
@@ -177,10 +213,44 @@ macro_rules! uint_module {
             let mut i = 0;
             while i < <$T>::BITS {
                 assert_eq!(
-                    (BITS << i).isolate_least_significant_one(),
-                    (LEAST_SIG_ONE << i).isolate_least_significant_one(),
+                    (BITS << i).isolate_lowest_one(),
+                    (LEAST_SIG_ONE << i).isolate_lowest_one(),
                 );
                 i += 1;
+            }
+        }
+
+        #[test]
+        fn test_highest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+
+            assert_eq!(ZERO.highest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).highest_one(), Some(i));
+                // Set lowest bits.
+                assert_eq!((<$T>::MAX >> i).highest_one(), Some(<$T>::BITS - i - 1));
+                // Set highest bits.
+                assert_eq!((<$T>::MAX << i).highest_one(), Some(<$T>::BITS - 1));
+            }
+        }
+
+        #[test]
+        fn test_lowest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+
+            assert_eq!(ZERO.lowest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).lowest_one(), Some(i));
+                // Set lowest bits.
+                assert_eq!((<$T>::MAX >> i).lowest_one(), Some(0));
+                // Set highest bits.
+                assert_eq!((<$T>::MAX << i).lowest_one(), Some(i));
             }
         }
 
@@ -536,14 +606,15 @@ macro_rules! uint_module {
             fn test_exact_div() {
                 // 42 / 6
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), EXACT_DIV_SUCCESS_QUOTIENT1);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
 
                 // 18 / 3
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), EXACT_DIV_SUCCESS_QUOTIENT2);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
 
                 // failures
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(1, 2), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::exact_div(1, 2), None);
                 assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(0, 0), None);
             }
         }

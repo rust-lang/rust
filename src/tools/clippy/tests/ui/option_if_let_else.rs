@@ -6,7 +6,8 @@
     clippy::redundant_locals,
     clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
-    clippy::manual_unwrap_or
+    clippy::manual_unwrap_or,
+    clippy::unnecessary_option_map_or_else
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
@@ -150,6 +151,22 @@ fn complex_subpat() -> DummyEnum {
     let x = Some(DummyEnum::One(1));
     let _ = if let Some(_one @ DummyEnum::One(..)) = x { 1 } else { 2 };
     DummyEnum::Two
+}
+
+// #10335
+pub fn test_result_err_ignored_1(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    match r {
+        //~^ option_if_let_else
+        Ok(s) => s.to_owned(),
+        Err(_) => Vec::new(),
+    }
+}
+
+// #10335
+pub fn test_result_err_ignored_2(r: Result<&[u8], &[u8]>) -> Vec<u8> {
+    if let Ok(s) = r { s.to_owned() }
+    //~^ option_if_let_else
+    else { Vec::new() }
 }
 
 fn main() {
@@ -364,4 +381,20 @@ mod issue11059 {
     fn deref_with_overload(o: Option<&str>) -> &str {
         if let Some(o) = o { o } else { &S }
     }
+}
+
+fn issue15379() {
+    let opt = Some(0usize);
+    let opt_raw_ptr = &opt as *const Option<usize>;
+    let _ = unsafe { if let Some(o) = *opt_raw_ptr { o } else { 1 } };
+    //~^ option_if_let_else
+}
+
+fn issue15002() {
+    let res: Result<String, ()> = Ok("_".to_string());
+    let _ = match res {
+        //~^ option_if_let_else
+        Ok(s) => s.clone(),
+        Err(_) => String::new(),
+    };
 }

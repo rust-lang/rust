@@ -5,7 +5,7 @@
 //! these raw TOML configurations from various sources (the main `bootstrap.toml`,
 //! included files, profile defaults, and command-line overrides). This processed
 //! TOML data then serves as an intermediate representation, which is further
-//! transformed and applied to the final [`Config`] struct.
+//! transformed and applied to the final `Config` struct.
 
 use serde::Deserialize;
 use serde_derive::Deserialize;
@@ -152,10 +152,6 @@ impl Config {
     }
 
     pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-        #[cfg(test)]
-        return Ok(TomlConfig::default());
-
-        #[cfg(not(test))]
         Self::get_toml_inner(file)
     }
 

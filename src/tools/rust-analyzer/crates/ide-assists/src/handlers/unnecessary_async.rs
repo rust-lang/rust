@@ -41,10 +41,10 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         return None;
     }
     // Do nothing if the method is a member of trait.
-    if let Some(impl_) = function.syntax().ancestors().nth(2).and_then(ast::Impl::cast) {
-        if impl_.trait_().is_some() {
-            return None;
-        }
+    if let Some(impl_) = function.syntax().ancestors().nth(2).and_then(ast::Impl::cast)
+        && impl_.trait_().is_some()
+    {
+        return None;
     }
 
     // Remove the `async` keyword plus whitespace after it, if any.

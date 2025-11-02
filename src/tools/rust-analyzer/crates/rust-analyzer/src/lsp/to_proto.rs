@@ -16,7 +16,9 @@ use ide::{
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
     UpdateTest,
 };
-use ide_db::{FxHasher, assists, rust_doc::format_docs, source_change::ChangeAnnotationId};
+use ide_db::{
+    FxHasher, MiniCore, assists, rust_doc::format_docs, source_change::ChangeAnnotationId,
+};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -61,7 +63,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
-        SymbolKind::Trait | SymbolKind::TraitAlias => lsp_types::SymbolKind::INTERFACE,
+        SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro
         | SymbolKind::ProcMacro
         | SymbolKind::BuiltinAttr
@@ -156,7 +158,6 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
-            SymbolKind::TraitAlias => lsp_types::CompletionItemKind::INTERFACE,
             SymbolKind::TypeAlias => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::TypeParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Union => lsp_types::CompletionItemKind::STRUCT,
@@ -271,7 +272,7 @@ pub(crate) fn completion_items(
         );
     }
 
-    if let Some(limit) = config.completion(None).limit {
+    if let Some(limit) = config.completion(None, MiniCore::default()).limit {
         res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
         res.truncate(limit);
     }
@@ -401,16 +402,17 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    let imports =
-        if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
-            item.import_to_add
-                .clone()
-                .into_iter()
-                .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
-                .collect()
-        } else {
-            Vec::new()
-        };
+    let imports = if config.completion(None, MiniCore::default()).enable_imports_on_the_fly
+        && !item.import_to_add.is_empty()
+    {
+        item.import_to_add
+            .clone()
+            .into_iter()
+            .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
         let ref_resolve_data = if ref_match.is_some() {
             let ref_resolve_data = lsp_ext::CompletionResolveData {
@@ -494,8 +496,15 @@ pub(crate) fn signature_help(
                 .parameter_ranges()
                 .iter()
                 .map(|it| {
-                    let start = call_info.signature[..it.start().into()].chars().count() as u32;
-                    let end = call_info.signature[..it.end().into()].chars().count() as u32;
+                    let start = call_info.signature[..it.start().into()]
+                        .chars()
+                        .map(|c| c.len_utf16())
+                        .sum::<usize>() as u32;
+                    let end = start
+                        + call_info.signature[it.start().into()..it.end().into()]
+                            .chars()
+                            .map(|c| c.len_utf16())
+                            .sum::<usize>() as u32;
                     [start, end]
                 })
                 .map(|label_offsets| lsp_types::ParameterInformation {
@@ -514,9 +523,9 @@ pub(crate) fn signature_help(
                     label.push_str(", ");
                 }
                 first = false;
-                let start = label.chars().count() as u32;
+                let start = label.len() as u32;
                 label.push_str(param);
-                let end = label.chars().count() as u32;
+                let end = label.len() as u32;
                 params.push(lsp_types::ParameterInformation {
                     label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
                     documentation: None,
@@ -817,7 +826,6 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Union => types::UNION,
             SymbolKind::TypeAlias => types::TYPE_ALIAS,
             SymbolKind::Trait => types::INTERFACE,
-            SymbolKind::TraitAlias => types::INTERFACE,
             SymbolKind::Macro => types::MACRO,
             SymbolKind::ProcMacro => types::PROC_MACRO,
             SymbolKind::BuiltinAttr => types::BUILTIN_ATTRIBUTE,
@@ -839,6 +847,7 @@ fn semantic_token_type_and_modifiers(
             HlOperator::Bitwise => types::BITWISE,
             HlOperator::Arithmetic => types::ARITHMETIC,
             HlOperator::Logical => types::LOGICAL,
+            HlOperator::Negation => types::NEGATION,
             HlOperator::Comparison => types::COMPARISON,
             HlOperator::Other => types::OPERATOR,
         },
@@ -909,7 +918,6 @@ pub(crate) fn folding_range(
         | FoldKind::WhereClause
         | FoldKind::ReturnType
         | FoldKind::Array
-        | FoldKind::TraitAliases
         | FoldKind::ExternCrates
         | FoldKind::MatchArm
         | FoldKind::Function => None,

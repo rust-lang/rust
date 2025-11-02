@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind
+        } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
         {
             report_extra_impl_lifetimes(cx, impl_);
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
@@ -540,7 +540,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
     false
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct Usage {
     lifetime: Lifetime,
     in_where_predicate: bool,
@@ -712,8 +712,8 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
 
     walk_generics(&mut checker, impl_.generics);
-    if let Some(ref trait_ref) = impl_.of_trait {
-        walk_trait_ref(&mut checker, trait_ref);
+    if let Some(of_trait) = impl_.of_trait {
+        walk_trait_ref(&mut checker, &of_trait.trait_ref);
     }
     walk_unambig_ty(&mut checker, impl_.self_ty);
     for &item in impl_.items {
@@ -745,7 +745,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
     impl_: &'tcx Impl<'_>,
     map: &FxIndexMap<LocalDefId, Vec<Usage>>,
 ) {
-    let single_usages = map
+    let (elidable_lts, usages): (Vec<_>, Vec<_>) = map
         .iter()
         .filter_map(|(def_id, usages)| {
             if let [
@@ -762,13 +762,11 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 None
             }
         })
-        .collect::<Vec<_>>();
+        .unzip();
 
-    if single_usages.is_empty() {
+    if elidable_lts.is_empty() {
         return;
     }
-
-    let (elidable_lts, usages): (Vec<_>, Vec<_>) = single_usages.into_iter().unzip();
 
     report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
 }
@@ -795,9 +793,7 @@ fn report_elidable_lifetimes(
         // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
         // `Node::GenericParam`.
         .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
-        .map(|ident| ident.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+        .format(", ");
 
     let elidable_usages: Vec<ElidableUsage> = usages
         .iter()
@@ -867,20 +863,33 @@ fn elision_suggestions(
         //     ^^^^
         vec![(generics.span, String::new())]
     } else {
+        // 1. Start from the last elidable lifetime
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
+        //    lifetime to the comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
+        //    current lifetime to the comma _after_ it
+        let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()
+            .rev()
             .map(|&id| {
-                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
-                let param = explicit_params.get(pos)?;
+                let (idx, param) = explicit_params.iter().find_position(|param| param.def_id == id)?;
 
-                let span = if let Some(next) = explicit_params.get(pos + 1) {
+                let span = if let Some(next) = explicit_params.get(idx + 1)
+                    && end != Some(next.def_id)
+                {
+                    // Extend the current span forward, up until the next param in the list.
                     // fn x<'prev, 'a, 'next>() {}
                     //             ^^^^
                     param.span.until(next.span)
                 } else {
-                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
-                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
-                    let prev = explicit_params.get(pos - 1)?;
+                    // Extend the current span back to include the comma following the previous
+                    // param. If the span of the next param in the list has already been
+                    // extended, we continue the chain. This is why we're iterating in reverse.
+                    end = Some(param.def_id);
+
+                    // `idx` will never be 0, else we'd be removing the entire list of generics
+                    let prev = explicit_params.get(idx - 1)?;
 
                     // fn x<'prev, 'a>() {}
                     //           ^^^^

@@ -104,7 +104,14 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         format!("Generate `{trait_new}` impl from this `{trait_name}` trait"),
         target,
         |edit| {
-            edit.insert(target.start(), format!("$0{impl_def}\n\n{indent}"));
+            edit.insert(
+                target.start(),
+                if ctx.config.snippet_cap.is_some() {
+                    format!("$0{impl_def}\n\n{indent}")
+                } else {
+                    format!("{impl_def}\n\n{indent}")
+                },
+            );
         },
     )
 }
@@ -161,7 +168,10 @@ fn process_ret_type(ref_ty: &ast::RetType) -> Option<ast::Type> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::{
+        AssistConfig,
+        tests::{TEST_CONFIG, check_assist, check_assist_not_applicable, check_assist_with_config},
+    };
 
     use super::*;
 
@@ -402,6 +412,43 @@ impl<T> Index$0<i32> for [T; 3] {}
 pub trait AsRef<T: ?Sized> {}
 
 impl AsRef$0<i32> for [T; 3] {}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_snippets() {
+        check_assist_with_config(
+            generate_mut_trait_impl,
+            AssistConfig { snippet_cap: None, ..TEST_CONFIG },
+            r#"
+//- minicore: index
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> core::ops::Index$0<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+"#,
+            r#"
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> core::ops::IndexMut<Axis> for [T; 3] {
+    fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
+impl<T> core::ops::Index<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
 "#,
         );
     }

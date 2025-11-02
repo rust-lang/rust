@@ -1,5 +1,5 @@
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:12:5
+  --> tests/ui/never_loop.rs:9:5
    |
 LL | /     loop {
 ...  |
@@ -10,7 +10,7 @@ LL | |     }
    = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:36:5
+  --> tests/ui/never_loop.rs:33:5
    |
 LL | /     loop {
 ...  |
@@ -19,7 +19,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:58:5
+  --> tests/ui/never_loop.rs:55:5
    |
 LL | /     loop {
 ...  |
@@ -28,7 +28,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:62:9
+  --> tests/ui/never_loop.rs:59:9
    |
 LL | /         while i == 0 {
 ...  |
@@ -36,7 +36,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:76:9
+  --> tests/ui/never_loop.rs:73:9
    |
 LL | /         loop {
 ...  |
@@ -45,7 +45,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:114:5
+  --> tests/ui/never_loop.rs:111:5
    |
 LL | /     while let Some(y) = x {
 ...  |
@@ -53,7 +53,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:123:5
+  --> tests/ui/never_loop.rs:120:5
    |
 LL | /     for x in 0..10 {
 ...  |
@@ -67,7 +67,7 @@ LL +     if let Some(x) = (0..10).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:173:5
+  --> tests/ui/never_loop.rs:170:5
    |
 LL | /     'outer: while a {
 ...  |
@@ -76,7 +76,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:190:9
+  --> tests/ui/never_loop.rs:187:9
    |
 LL | /         while false {
 LL | |
@@ -86,7 +86,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:243:13
+  --> tests/ui/never_loop.rs:240:13
    |
 LL |       let _ = loop {
    |  _____________^
@@ -99,7 +99,7 @@ LL | |     };
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:266:5
+  --> tests/ui/never_loop.rs:263:5
    |
 LL | /     'a: loop {
 LL | |
@@ -110,7 +110,7 @@ LL | |     }
    | |_____^
 
 error: sub-expression diverges
-  --> tests/ui/never_loop.rs:271:17
+  --> tests/ui/never_loop.rs:268:17
    |
 LL |                 break 'a;
    |                 ^^^^^^^^
@@ -119,7 +119,7 @@ LL |                 break 'a;
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:303:13
+  --> tests/ui/never_loop.rs:300:13
    |
 LL | /             for _ in 0..20 {
 LL | |
@@ -135,7 +135,7 @@ LL +             if let Some(_) = (0..20).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:388:13
+  --> tests/ui/never_loop.rs:385:13
    |
 LL | /             'c: loop {
 LL | |
@@ -145,7 +145,7 @@ LL | |             }
    | |_____________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:400:5
+  --> tests/ui/never_loop.rs:397:5
    |
 LL | /     loop {
 LL | |
@@ -155,7 +155,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:405:5
+  --> tests/ui/never_loop.rs:402:5
    |
 LL | /     loop {
 LL | |
@@ -165,7 +165,7 @@ LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:426:5
+  --> tests/ui/never_loop.rs:423:5
    |
 LL | /     for v in 0..10 {
 LL | |
@@ -183,7 +183,7 @@ LL ~
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:434:5
+  --> tests/ui/never_loop.rs:431:5
    |
 LL | /     'outer: for v in 0..10 {
 LL | |
@@ -193,6 +193,19 @@ LL | |         return;
 LL | |     }
    | |_____^
    |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:433:9
+   |
+LL | /         loop {
+LL | |
+LL | |             break 'outer;
+LL | |         }
+   | |_________^
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:437:9
+   |
+LL |         return;
+   |         ^^^^^^^
 help: if you need the first element of the iterator, try writing
    |
 LL -     'outer: for v in 0..10 {
@@ -200,7 +213,7 @@ LL +     if let Some(v) = (0..10).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:436:9
+  --> tests/ui/never_loop.rs:433:9
    |
 LL | /         loop {
 LL | |
@@ -209,7 +222,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:443:5
+  --> tests/ui/never_loop.rs:440:5
    |
 LL | /     for v in 0..10 {
 LL | |
@@ -226,7 +239,7 @@ LL +     if let Some(v) = (0..10).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:445:9
+  --> tests/ui/never_loop.rs:442:9
    |
 LL | /         'inner: loop {
 LL | |
@@ -235,7 +248,7 @@ LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:471:5
+  --> tests/ui/never_loop.rs:468:5
    |
 LL | /     'a: for _ in 0..1 {
 LL | |
@@ -251,7 +264,7 @@ LL ~
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:477:5
+  --> tests/ui/never_loop.rs:474:5
    |
 LL | /     'a: for i in 0..1 {
 LL | |
@@ -275,7 +288,7 @@ LL ~
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:492:5
+  --> tests/ui/never_loop.rs:489:5
    |
 LL | /     for v in 0..10 {
 LL | |
@@ -297,5 +310,99 @@ LL ~
 LL ~         
    |
 
-error: aborting due to 24 previous errors
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:500:5
+   |
+LL | /     'bar: for _ in 0..100 {
+LL | |
+LL | |         loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:502:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             break 'bar;
+LL | |         }
+   | |_________^
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'bar: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:502:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             break 'bar;
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:509:5
+   |
+LL | /     'foo: for _ in 0..100 {
+LL | |
+LL | |         loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: this code is unreachable. Consider moving the reachable parts out
+  --> tests/ui/never_loop.rs:511:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             loop {
+...  |
+LL | |         }
+   | |_________^
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'foo: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:511:9
+   |
+LL | /         loop {
+LL | |
+LL | |             println!("This will still run");
+LL | |             loop {
+...  |
+LL | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:514:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 println!("This will still run");
+LL | |                 break 'foo;
+LL | |             }
+   | |_____________^
+
+error: this loop never actually loops
+  --> tests/ui/never_loop.rs:537:5
+   |
+LL | /     loop {
+LL | |         unsafe {
+LL | |             asm! {
+LL | |                 "/* {} */",
+...  |
+LL | |         return;
+LL | |     }
+   | |_____^
+
+error: aborting due to 30 previous errors
 

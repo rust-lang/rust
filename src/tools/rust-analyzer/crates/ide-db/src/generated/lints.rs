@@ -10706,20 +10706,6 @@ The tracking issue for this feature is: [#77998]
         deny_since: None,
     },
     Lint {
-        label: "strict_overflow_ops",
-        description: r##"# `strict_overflow_ops`
-
-The tracking issue for this feature is: [#118260]
-
-[#118260]: https://github.com/rust-lang/rust/issues/118260
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "strict_provenance_atomic_ptr",
         description: r##"# `strict_provenance_atomic_ptr`
 

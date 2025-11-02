@@ -1,7 +1,7 @@
 #![allow(unused, clippy::assertions_on_constants, clippy::const_is_empty)]
 #![warn(clippy::bool_assert_comparison)]
 
-use std::ops::Not;
+use std::ops::{Add, Not};
 
 macro_rules! a {
     () => {
@@ -62,6 +62,14 @@ impl Not for ImplNotTraitWithBool {
     }
 }
 
+impl Add for ImplNotTraitWithBool {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        self
+    }
+}
+
 #[derive(Debug)]
 struct NonCopy;
 
@@ -94,7 +102,7 @@ fn main() {
     assert_eq!(a!(), "".is_empty());
     assert_eq!("".is_empty(), b!());
     assert_eq!(a, true);
-    assert!(b);
+    assert!(!!b);
     //~^ bool_assert_comparison
 
     assert_ne!("a".len(), 1);
@@ -122,7 +130,7 @@ fn main() {
     debug_assert_eq!(a!(), "".is_empty());
     debug_assert_eq!("".is_empty(), b!());
     debug_assert_eq!(a, true);
-    debug_assert!(b);
+    debug_assert!(!!b);
     //~^ bool_assert_comparison
 
     debug_assert_ne!("a".len(), 1);
@@ -167,7 +175,7 @@ fn main() {
 
     use debug_assert_eq as renamed;
     renamed!(a, true);
-    debug_assert!(b);
+    debug_assert!(!!b);
     //~^ bool_assert_comparison
 
     let non_copy = NonCopy;
@@ -198,5 +206,13 @@ fn main() {
     debug_assert!(!"requires negation".is_empty());
     //~^ bool_assert_comparison
     debug_assert!(!"requires negation".is_empty());
+    //~^ bool_assert_comparison
+    assert!(!b);
+    //~^ bool_assert_comparison
+    assert!(!(!b));
+    //~^ bool_assert_comparison
+    assert!(!!(b + b));
+    //~^ bool_assert_comparison
+    assert!(!(b + b));
     //~^ bool_assert_comparison
 }

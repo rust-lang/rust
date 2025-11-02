@@ -17,7 +17,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
-    - [IntelliJ Rust](#intellij-rust)
+    - [RustRover](#rustrover)
     - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
   - [Issue and PR triage](#issue-and-pr-triage)
@@ -92,22 +92,22 @@ an AST expression).
 
 ## Getting code-completion for rustc internals to work
 
-### IntelliJ Rust
-Unfortunately, [`IntelliJ Rust`][IntelliJ_rust_homepage] does not (yet?) understand how Clippy uses compiler-internals
+### RustRover
+Unfortunately, [`RustRover`][RustRover_homepage] does not (yet?) understand how Clippy uses compiler-internals
 using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
 available via a `rustup` component at the time of writing.
 To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
 `git clone https://github.com/rust-lang/rust/`.
 Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
-which `IntelliJ Rust` will be able to understand.
+which `RustRover` will be able to understand.
 Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippy's `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
+Clippy's `Cargo.toml`s and should allow `RustRover` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
 [rustc_repo]: https://github.com/rust-lang/rust/
-[IntelliJ_rust_homepage]: https://intellij-rust.github.io/
+[RustRover_homepage]: https://www.jetbrains.com/rust/
 
 ### Rust Analyzer
 For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set
@@ -199,26 +199,34 @@ currently. Between writing new lints, fixing issues, reviewing pull requests and
 responding to issues there may not always be enough time to stay on top of it
 all.
 
-Our highest priority is fixing [ICEs][I-ICE] and [bugs][C-bug], for example
-an ICE in a popular crate that many other crates depend on. We don't
-want Clippy to crash on your code and we want it to be as reliable as the
-suggestions from Rust compiler errors.
+To find things to fix, go to the [tracking issue][tracking_issue], find an issue that you like, 
+and claim it with `@rustbot claim`.
 
-We have prioritization labels and a sync-blocker label, which are described below.
-- [P-low][p-low]: Requires attention (fix/response/evaluation) by a team member but isn't urgent.
-- [P-medium][p-medium]: Should be addressed by a team member until the next sync.
-- [P-high][p-high]: Should be immediately addressed and will require an out-of-cycle sync or a backport.
-- [L-sync-blocker][l-sync-blocker]: An issue that "blocks" a sync.
-Or rather: before the sync this should be addressed,
-e.g. by removing a lint again, so it doesn't hit beta/stable.
+As a general metric and always taking into account your skill and knowledge level, you can use this guide:
+
+- 🟥 [ICEs][search_ice], these are compiler errors that causes Clippy to panic and crash. Usually involves high-level
+debugging, sometimes interacting directly with the upstream compiler. Difficult to fix but a great challenge that
+improves a lot developer workflows!
+
+- 🟧 [Suggestion causes bug][sugg_causes_bug], Clippy suggested code that changed logic in some silent way.
+Unacceptable, as this may have disastrous consequences. Easier to fix than ICEs
+
+- 🟨 [Suggestion causes error][sugg_causes_error], Clippy suggested code snippet that caused a compiler error
+when applied. We need to make sure that Clippy doesn't suggest using a variable twice at the same time or similar
+easy-to-happen occurrences.
+
+- 🟩 [False positives][false_positive], a lint should not have fired, the easiest of them all, as this is "just"
+identifying the root of a false positive and making an exception for those cases.
+
+Note that false negatives do not have priority unless the case is very clear, as they are a feature-request in a
+trench coat.
 
 [triage]: https://forge.rust-lang.org/release/triage-procedure.html
-[I-ICE]: https://github.com/rust-lang/rust-clippy/labels/I-ICE
-[C-bug]: https://github.com/rust-lang/rust-clippy/labels/C-bug
-[p-low]: https://github.com/rust-lang/rust-clippy/labels/P-low
-[p-medium]: https://github.com/rust-lang/rust-clippy/labels/P-medium
-[p-high]: https://github.com/rust-lang/rust-clippy/labels/P-high
-[l-sync-blocker]: https://github.com/rust-lang/rust-clippy/labels/L-sync-blocker
+[search_ice]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc+state%3Aopen+label%3A%22I-ICE%22
+[sugg_causes_bug]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-suggestion-causes-bug
+[sugg_causes_error]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-suggestion-causes-error%20
+[false_positive]: https://github.com/rust-lang/rust-clippy/issues?q=sort%3Aupdated-desc%20state%3Aopen%20label%3AI-false-positive
+[tracking_issue]: https://github.com/rust-lang/rust-clippy/issues/15086
 
 ## Contributions
 

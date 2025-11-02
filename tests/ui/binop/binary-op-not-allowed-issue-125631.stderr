@@ -11,10 +11,10 @@ note: an implementation of `PartialEq` might be missing for `T1`
    |
 LL | struct T1;
    | ^^^^^^^^^ must implement `PartialEq`
-note: the foreign item type `std::io::Error` doesn't implement `PartialEq`
+note: `std::io::Error` does not implement `PartialEq`
   --> $SRC_DIR/std/src/io/error.rs:LL:COL
    |
-   = note: not implement `PartialEq`
+   = note: `std::io::Error` is defined in another crate
 help: consider annotating `T1` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
@@ -29,13 +29,14 @@ LL |     (Error::new(ErrorKind::Other, "2"), thread::current())
 LL |         == (Error::new(ErrorKind::Other, "2"), thread::current());
    |         ^^ ------------------------------------------------------ (std::io::Error, Thread)
    |
-note: the foreign item types don't implement required traits for this operation to be valid
-  --> $SRC_DIR/std/src/io/error.rs:LL:COL
-   |
-   = note: not implement `PartialEq`
+note: `Thread` does not implement `PartialEq`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
-   = note: not implement `PartialEq`
+   = note: `Thread` is defined in another crate
+note: `std::io::Error` does not implement `PartialEq`
+  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+   |
+   = note: `std::io::Error` is defined in another crate
 
 error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread, T1, T2)`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:14:9
@@ -52,13 +53,14 @@ LL | struct T1;
    | ^^^^^^^^^ must implement `PartialEq`
 LL | struct T2;
    | ^^^^^^^^^ must implement `PartialEq`
-note: the foreign item types don't implement required traits for this operation to be valid
-  --> $SRC_DIR/std/src/io/error.rs:LL:COL
-   |
-   = note: not implement `PartialEq`
+note: `Thread` does not implement `PartialEq`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
-   = note: not implement `PartialEq`
+   = note: `Thread` is defined in another crate
+note: `std::io::Error` does not implement `PartialEq`
+  --> $SRC_DIR/std/src/io/error.rs:LL:COL
+   |
+   = note: `std::io::Error` is defined in another crate
 help: consider annotating `T1` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]

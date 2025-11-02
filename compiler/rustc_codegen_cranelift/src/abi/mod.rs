@@ -467,7 +467,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         true
     } else {
         instance.is_some_and(|inst| {
-            fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD)
+            fx.tcx.codegen_instance_attrs(inst.def).flags.contains(CodegenFnAttrFlags::COLD)
         })
     };
     if is_cold {
@@ -715,7 +715,7 @@ pub(crate) fn codegen_drop<'tcx>(
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
         match ty.kind() {
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)
                 // which is: exists<T> ( *mut T,    Vtable<T: Trait> )

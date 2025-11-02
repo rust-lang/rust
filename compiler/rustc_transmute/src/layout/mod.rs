@@ -163,7 +163,7 @@ pub mod rustc {
         ty: Ty<'tcx>,
     ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
         use rustc_middle::ty::layout::LayoutOf;
-        let ty = cx.tcx().erase_regions(ty);
+        let ty = cx.tcx().erase_and_anonymize_regions(ty);
         cx.layout_of(ty).map(|tl| tl.layout)
     }
 }

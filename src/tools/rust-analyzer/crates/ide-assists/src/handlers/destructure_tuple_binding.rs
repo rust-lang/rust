@@ -7,6 +7,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
+    T,
     ast::{self, AstNode, FieldExpr, HasName, IdentPat, make},
     ted,
 };
@@ -179,6 +180,11 @@ fn edit_tuple_assignment(
             .map(|name| ast::Pat::from(make::ident_pat(is_ref, is_mut, make::name(name))));
         make::tuple_pat(fields).clone_for_update()
     };
+    let is_shorthand_field = ident_pat
+        .name()
+        .as_ref()
+        .and_then(ast::RecordPatField::for_field_name)
+        .is_some_and(|field| field.colon_token().is_none());
 
     if let Some(cap) = ctx.config.snippet_cap {
         // place cursor on first tuple name
@@ -190,12 +196,13 @@ fn edit_tuple_assignment(
         }
     }
 
-    AssignmentEdit { ident_pat, tuple_pat, in_sub_pattern }
+    AssignmentEdit { ident_pat, tuple_pat, in_sub_pattern, is_shorthand_field }
 }
 struct AssignmentEdit {
     ident_pat: ast::IdentPat,
     tuple_pat: ast::TuplePat,
     in_sub_pattern: bool,
+    is_shorthand_field: bool,
 }
 
 impl AssignmentEdit {
@@ -203,6 +210,9 @@ impl AssignmentEdit {
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
             self.ident_pat.set_pat(Some(self.tuple_pat.into()))
+        } else if self.is_shorthand_field {
+            ted::insert(ted::Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
+            ted::insert_raw(ted::Position::after(self.ident_pat.syntax()), make::token(T![:]));
         } else {
             ted::replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }
@@ -794,6 +804,48 @@ fn main() {
 fn main() {
     let t1 @ (_, ($0_0, _1)) = (1, (2,3));
     let v = t1.0 + _0 + _1;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn in_record_shorthand_field() {
+        check_assist(
+            assist,
+            r#"
+struct S { field: (i32, i32) }
+fn main() {
+    let S { $0field } = S { field: (2, 3) };
+    let v = field.0 + field.1;
+}
+            "#,
+            r#"
+struct S { field: (i32, i32) }
+fn main() {
+    let S { field: ($0_0, _1) } = S { field: (2, 3) };
+    let v = _0 + _1;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn in_record_field() {
+        check_assist(
+            assist,
+            r#"
+struct S { field: (i32, i32) }
+fn main() {
+    let S { field: $0t } = S { field: (2, 3) };
+    let v = t.0 + t.1;
+}
+            "#,
+            r#"
+struct S { field: (i32, i32) }
+fn main() {
+    let S { field: ($0_0, _1) } = S { field: (2, 3) };
+    let v = _0 + _1;
 }
             "#,
         )

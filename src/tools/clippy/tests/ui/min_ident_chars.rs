@@ -124,3 +124,52 @@ fn wrong_pythagoras(a: f32, b: f32) -> f32 {
 mod issue_11163 {
     struct Array<T, const N: usize>([T; N]);
 }
+
+struct Issue13396;
+
+impl core::fmt::Display for Issue13396 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Issue13396")
+    }
+}
+
+impl core::fmt::Debug for Issue13396 {
+    fn fmt(&self, g: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        //~^ min_ident_chars
+        write!(g, "Issue13396")
+    }
+}
+
+fn issue13396() {
+    let a = |f: i8| f;
+    //~^ min_ident_chars
+    //~| min_ident_chars
+}
+
+trait D {
+    //~^ min_ident_chars
+    fn f(g: i32);
+    //~^ min_ident_chars
+    //~| min_ident_chars
+    fn long(long: i32);
+
+    fn g(arg: i8) {
+        //~^ min_ident_chars
+        fn c(d: u8) {}
+        //~^ min_ident_chars
+        //~| min_ident_chars
+    }
+}
+
+impl D for Issue13396 {
+    fn f(g: i32) {
+        fn h() {}
+        //~^ min_ident_chars
+        fn inner(a: i32) {}
+        //~^ min_ident_chars
+        let a = |f: String| f;
+        //~^ min_ident_chars
+        //~| min_ident_chars
+    }
+    fn long(long: i32) {}
+}

@@ -18,7 +18,6 @@ mod print_attribute;
 mod query;
 mod serialize;
 mod symbols;
-mod try_from;
 mod type_foldable;
 mod type_visitable;
 mod visitable;
@@ -177,17 +176,9 @@ decl_derive!(
 );
 
 decl_derive! {
-    [TryFromU32] =>
-    /// Derives `TryFrom<u32>` for the annotated `enum`, which must have no fields.
-    /// Each variant maps to the value it would produce under an `as u32` cast.
-    ///
-    /// The error type is `u32`.
-    try_from::try_from_u32
-}
-decl_derive! {
     [PrintAttribute] =>
     /// Derives `PrintAttribute` for `AttributeKind`.
-    /// This macro is pretty specific to `rustc_attr_data_structures` and likely not that useful in
+    /// This macro is pretty specific to `rustc_hir::attrs` and likely not that useful in
     /// other places. It's deriving something close to `Debug` without printing some extraneous
     /// things like spans.
     print_attribute::print_attribute

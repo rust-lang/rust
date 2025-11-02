@@ -127,14 +127,10 @@ mod issue14577 {
     trait Unit {}
     impl Unit for () {}
 
-    fn run<R: Unit>(f: impl FnOnce() -> R) {
-        f();
-    }
-
     #[allow(dependency_on_unit_never_type_fallback)]
     fn bar() {
-        run(|| { todo!() }); 
         //~[edition2021]^ unused_unit
+        panic!()
     }
 
     struct UnitStruct;
@@ -150,3 +146,24 @@ mod pr14962 {
     type UnusedParensButNoUnit = Box<dyn (Fn())>;
 }
 
+
+mod issue15035 {
+
+    trait Convert<T> {
+        fn from(value: T) -> Self;
+    }
+
+    impl Convert<u64> for () {
+        fn from(_value: u64) -> Self {}
+    }
+
+    fn handle<T: Convert<u64>>(value: u64) -> T {
+        Convert::from(value)
+    }
+
+    pub fn f() -> Option<bool> {
+        let result: Result<bool, u64> = Err(42);
+        // the `-> ()` is required for the inference of `handle`'s return type
+        result.map_err(|err| -> () { handle(err) }).ok()
+    }
+}

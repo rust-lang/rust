@@ -7,11 +7,14 @@ use rustc_abi::{
     VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, SimdLayoutError, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -22,7 +25,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::errors::{NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType};
+use crate::errors::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -120,11 +123,11 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::ZeroLengthSimdType => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(ZeroLengthSimdType { ty })
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::ZeroLength }
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            cx.tcx().dcx().emit_fatal(OversizedSimdType { ty, max_lanes })
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) }
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if
@@ -213,9 +216,7 @@ fn layout_of_uncached<'tcx>(
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end } => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
-                        &mut layout.backend_repr
-                    {
+                    if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
                         scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
@@ -263,6 +264,25 @@ fn layout_of_uncached<'tcx>(
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }
                 }
+                ty::PatternKind::NotNull => {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
+                        scalar.valid_range_mut().start = 1;
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(cx),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        bug!(
+                            "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
+                        )
+                    }
+                }
+
                 ty::PatternKind::Or(variants) => match *variants[0] {
                     ty::PatternKind::Range { .. } => {
                         if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
@@ -279,7 +299,7 @@ fn layout_of_uncached<'tcx>(
                                             .try_to_bits(tcx, cx.typing_env)
                                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?,
                                     )),
-                                    ty::PatternKind::Or(_) => {
+                                    ty::PatternKind::NotNull | ty::PatternKind::Or(_) => {
                                         unreachable!("mixed or patterns are not allowed")
                                     }
                                 })
@@ -344,9 +364,18 @@ fn layout_of_uncached<'tcx>(
                             )
                         }
                     }
+                    ty::PatternKind::NotNull => bug!("or patterns can't contain `!null` patterns"),
                     ty::PatternKind::Or(..) => bug!("patterns cannot have nested or patterns"),
                 },
             }
+            // Pattern types contain their base as their sole field.
+            // This allows the rest of the compiler to process pattern types just like
+            // single field transparent Adts, and only the parts of the compiler that
+            // specifically care about pattern types will have to handle it.
+            layout.fields = FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into_iter().collect(),
+                memory_index: [0].into_iter().collect(),
+            };
             tcx.mk_layout(layout)
         }
 
@@ -390,30 +419,31 @@ fn layout_of_uncached<'tcx>(
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                 let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
-                let metadata_ty =
-                    match tcx.try_normalize_erasing_regions(cx.typing_env, pointee_metadata) {
-                        Ok(metadata_ty) => metadata_ty,
-                        Err(mut err) => {
-                            // Usually `<Ty as Pointee>::Metadata` can't be normalized because
-                            // its struct tail cannot be normalized either, so try to get a
-                            // more descriptive layout error here, which will lead to less confusing
-                            // diagnostics.
-                            //
-                            // We use the raw struct tail function here to get the first tail
-                            // that is an alias, which is likely the cause of the normalization
-                            // error.
-                            match tcx.try_normalize_erasing_regions(
-                                cx.typing_env,
-                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
-                            ) {
-                                Ok(_) => {}
-                                Err(better_err) => {
-                                    err = better_err;
-                                }
+                let metadata_ty = match tcx
+                    .try_normalize_erasing_regions(cx.typing_env, pointee_metadata)
+                {
+                    Ok(metadata_ty) => metadata_ty,
+                    Err(mut err) => {
+                        // Usually `<Ty as Pointee>::Metadata` can't be normalized because
+                        // its struct tail cannot be normalized either, so try to get a
+                        // more descriptive layout error here, which will lead to less confusing
+                        // diagnostics.
+                        //
+                        // We use the raw struct tail function here to get the first tail
+                        // that is an alias, which is likely the cause of the normalization
+                        // error.
+                        match tcx.try_normalize_erasing_regions(
+                            cx.typing_env,
+                            tcx.struct_tail_raw(pointee, &ObligationCause::dummy(), |ty| ty, || {}),
+                        ) {
+                            Ok(_) => {}
+                            Err(better_err) => {
+                                err = better_err;
                             }
-                            return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
                         }
-                    };
+                        return Err(error(cx, LayoutError::NormalizationFailure(pointee, err)));
+                    }
+                };
 
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
@@ -476,7 +506,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Odd unit types.
-        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+        ty::FnDef(..) | ty::Dynamic(_, _) | ty::Foreign(..) => {
             let sized = matches!(ty.kind(), ty::FnDef(..));
             tcx.mk_layout(LayoutData::unit(cx, sized))
         }
@@ -560,6 +590,22 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             let e_ly = cx.layout_of(e_ty)?;
+
+            // Check for the rustc_simd_monomorphize_lane_limit attribute and check the lane limit
+            if let Some(limit) = find_attr!(
+                tcx.get_all_attrs(def.did()),
+                AttributeKind::RustcSimdMonomorphizeLaneLimit(limit) => limit
+            ) {
+                if !limit.value_within_limit(e_len as usize) {
+                    return Err(map_error(
+                        &cx,
+                        ty,
+                        rustc_abi::LayoutCalculatorError::OversizedSimdType {
+                            max_lanes: limit.0 as u64,
+                        },
+                    ));
+                }
+            }
 
             map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
@@ -775,7 +821,7 @@ fn variant_info_for_adt<'tcx>(
                     name,
                     offset: offset.bytes(),
                     size: field_layout.size.bytes(),
-                    align: field_layout.align.abi.bytes(),
+                    align: field_layout.align.bytes(),
                     type_name: None,
                 }
             })
@@ -784,7 +830,7 @@ fn variant_info_for_adt<'tcx>(
         VariantInfo {
             name: n,
             kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
-            align: layout.align.abi.bytes(),
+            align: layout.align.bytes(),
             size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
             fields: field_info,
         }
@@ -857,7 +903,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: *name,
                 offset: offset.bytes(),
                 size: field_layout.size.bytes(),
-                align: field_layout.align.abi.bytes(),
+                align: field_layout.align.bytes(),
                 type_name: None,
             }
         })
@@ -885,7 +931,7 @@ fn variant_info_for_coroutine<'tcx>(
                         }),
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
-                        align: field_layout.align.abi.bytes(),
+                        align: field_layout.align.bytes(),
                         // Include the type name if there is no field name, or if the name is the
                         // __awaitee placeholder symbol which means a child future being `.await`ed.
                         type_name: (field_name.is_none() || field_name == Some(sym::__awaitee))
@@ -926,7 +972,7 @@ fn variant_info_for_coroutine<'tcx>(
                 name: Some(Symbol::intern(&ty::CoroutineArgs::variant_name(variant_idx))),
                 kind: SizeKind::Exact,
                 size: variant_size.bytes(),
-                align: variant_layout.align.abi.bytes(),
+                align: variant_layout.align.bytes(),
                 fields,
             }
         })

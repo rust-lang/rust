@@ -2,6 +2,7 @@
 //@ proc-macro: ver-cfg-rel.rs
 //@ revisions: assume no_assume
 //@ [assume]compile-flags: -Z assume-incomplete-release
+//@ ignore-backends: gcc
 
 #![feature(cfg_version)]
 

@@ -304,7 +304,7 @@ pub struct DirBuilder {
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
-        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let size = file.metadata().map(|m| usize::try_from(m.len()).unwrap_or(usize::MAX)).ok();
         let mut bytes = Vec::try_with_capacity(size.unwrap_or(0))?;
         io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
@@ -346,7 +346,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
-        let size = file.metadata().map(|m| m.len() as usize).ok();
+        let size = file.metadata().map(|m| usize::try_from(m.len()).unwrap_or(usize::MAX)).ok();
         let mut string = String::new();
         string.try_reserve_exact(size.unwrap_or(0))?;
         io::default_read_to_string(&mut file, &mut string, size)?;
@@ -385,6 +385,87 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
         File::create(path)?.write_all(contents)
     }
     inner(path.as_ref(), contents.as_ref())
+}
+
+/// Changes the timestamps of the file or directory at the specified path.
+///
+/// This function will attempt to set the access and modification times
+/// to the times specified. If the path refers to a symbolic link, this function
+/// will follow the link and change the timestamps of the target file.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `utimensat` function on Unix platforms, the
+/// `setattrlist` function on Apple platforms, and the `SetFileTime` function on Windows.
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks permission to change timestamps on the
+/// target file or symlink. It may also return an error if the OS does not support it.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(fs_set_times)]
+/// use std::fs::{self, FileTimes};
+/// use std::time::SystemTime;
+///
+/// fn main() -> std::io::Result<()> {
+///     let now = SystemTime::now();
+///     let times = FileTimes::new()
+///         .set_accessed(now)
+///         .set_modified(now);
+///     fs::set_times("foo.txt", times)?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "fs_set_times", issue = "147455")]
+#[doc(alias = "utimens")]
+#[doc(alias = "utimes")]
+#[doc(alias = "utime")]
+pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
+    fs_imp::set_times(path.as_ref(), times.0)
+}
+
+/// Changes the timestamps of the file or symlink at the specified path.
+///
+/// This function will attempt to set the access and modification times
+/// to the times specified. Differ from `set_times`, if the path refers to a symbolic link,
+/// this function will change the timestamps of the symlink itself, not the target file.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `utimensat` function with `AT_SYMLINK_NOFOLLOW` on
+/// Unix platforms, the `setattrlist` function with `FSOPT_NOFOLLOW` on Apple platforms, and the
+/// `SetFileTime` function on Windows.
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks permission to change timestamps on the
+/// target file or symlink. It may also return an error if the OS does not support it.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(fs_set_times)]
+/// use std::fs::{self, FileTimes};
+/// use std::time::SystemTime;
+///
+/// fn main() -> std::io::Result<()> {
+///     let now = SystemTime::now();
+///     let times = FileTimes::new()
+///         .set_accessed(now)
+///         .set_modified(now);
+///     fs::set_times_nofollow("symlink.txt", times)?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "fs_set_times", issue = "147455")]
+#[doc(alias = "utimensat")]
+#[doc(alias = "lutimens")]
+#[doc(alias = "lutimes")]
+pub fn set_times_nofollow<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
+    fs_imp::set_times_nofollow(path.as_ref(), times.0)
 }
 
 #[stable(feature = "file_lock", since = "1.89.0")]
@@ -814,7 +895,7 @@ impl File {
     ///
     /// If this file handle/descriptor, or a clone of it, already holds a lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
+    /// However, if this method returns `Ok(())`, then it has acquired an exclusive lock.
     ///
     /// If the file is not open for writing, it is unspecified whether this function returns an error.
     ///
@@ -879,7 +960,7 @@ impl File {
     ///
     /// If this file handle, or a clone of it, already holds a lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
+    /// However, if this method returns `Ok(())`, then it has acquired a shared lock.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -1111,6 +1192,11 @@ impl File {
     /// `futimes` on macOS before 10.13) and the `SetFileTime` function on Windows. Note that this
     /// [may change in the future][changes].
     ///
+    /// On most platforms, including UNIX and Windows platforms, this function can also change the
+    /// timestamps of a directory. To get a `File` representing a directory in order to call
+    /// `set_times`, open the directory with `File::open` without attempting to obtain write
+    /// permission.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// # Errors
@@ -1128,7 +1214,7 @@ impl File {
     ///     use std::fs::{self, File, FileTimes};
     ///
     ///     let src = fs::metadata("src")?;
-    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let dest = File::open("dest")?;
     ///     let times = FileTimes::new()
     ///         .set_accessed(src.accessed()?)
     ///         .set_modified(src.modified()?);
@@ -1609,6 +1695,10 @@ impl OpenOptions {
     /// See also [`std::fs::write()`][self::write] for a simple function to
     /// create a file with some given data.
     ///
+    /// # Errors
+    ///
+    /// If `.create(true)` is set without `.write(true)` or `.append(true)`,
+    /// calling [`open`](Self::open) will fail with [`InvalidInput`](io::ErrorKind::InvalidInput) error.
     /// # Examples
     ///
     /// ```no_run
@@ -1680,7 +1770,8 @@ impl OpenOptions {
     /// * [`AlreadyExists`]: `create_new` was specified and the file already
     ///   exists.
     /// * [`InvalidInput`]: Invalid combinations of open options (truncate
-    ///   without write access, no access mode set, etc.).
+    ///   without write access, create without write or append access,
+    ///   no access mode set, etc.).
     ///
     /// The following errors don't match any existing [`io::ErrorKind`] at the moment:
     /// * One of the directory components of the specified file path
@@ -3031,6 +3122,9 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Entries for the current and parent directories (typically `.` and `..`) are
 /// skipped.
 ///
+/// The order in which `read_dir` returns entries can change between calls. If reproducible
+/// ordering is required, the entries should be explicitly sorted.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
@@ -3114,7 +3208,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// On UNIX-like systems, this function will update the permission bits
 /// of the file pointed to by the symlink.
 ///
-/// Note that this behavior can lead to privalage escalation vulnerabilities,
+/// Note that this behavior can lead to privilege escalation vulnerabilities,
 /// where the ability to create a symlink in one directory allows you to
 /// cause the permissions of another file or directory to be modified.
 ///
@@ -3149,6 +3243,25 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_permissions(path.as_ref(), perm.0)
+}
+
+/// Set the permissions of a file, unless it is a symlink.
+///
+/// Note that the non-final path elements are allowed to be symlinks.
+///
+/// # Platform-specific behavior
+///
+/// Currently unimplemented on Windows.
+///
+/// On Unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
+///
+/// This behavior may change in the future.
+///
+/// [`FilesystemLoop`]: crate::io::ErrorKind::FilesystemLoop
+#[doc(alias = "chmod", alias = "SetFileAttributes")]
+#[unstable(feature = "set_permissions_nofollow", issue = "141607")]
+pub fn set_permissions_nofollow<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
+    fs_imp::set_permissions_nofollow(path.as_ref(), perm)
 }
 
 impl DirBuilder {

@@ -42,8 +42,13 @@ error[E0277]: `TupleStruct` is not a tuple
   --> $DIR/builtin-fail.rs:17:23
    |
 LL |     assert_is_tuple::<TupleStruct>();
-   |                       ^^^^^^^^^^^ the trait `Tuple` is not implemented for `TupleStruct`
+   |                       ^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Tuple` is not implemented for `TupleStruct`
+  --> $DIR/builtin-fail.rs:5:1
+   |
+LL | struct TupleStruct(i32, i32);
+   | ^^^^^^^^^^^^^^^^^^
 note: required by a bound in `assert_is_tuple`
   --> $DIR/builtin-fail.rs:3:23
    |

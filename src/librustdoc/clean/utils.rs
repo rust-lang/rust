@@ -5,13 +5,13 @@ use std::{ascii, mem};
 
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{Symbol, kw, sym};
-use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -60,6 +60,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
+    let documented_attributes = local_crate.documented_attributes(cx.tcx);
     {
         let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.map(|(def_id, prim)| {
@@ -72,6 +73,9 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
         m.items.extend(keywords.map(|(def_id, kw)| {
             Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
+        }));
+        m.items.extend(documented_attributes.into_iter().map(|(def_id, kw)| {
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx)
         }));
     }
 
@@ -249,7 +253,6 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
         hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
     join_path_idents(segments.iter().map(|seg| seg.ident))

@@ -9,19 +9,20 @@ use clippy_utils::macros::{
     root_macro_call_first_node,
 };
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test, trait_ref_of_method};
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_from_proc_macro, is_in_test, trait_ref_of_method};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_attr_data_structures::{AttributeKind, RustcVersion, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
@@ -222,7 +223,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub POINTER_FORMAT,
     restriction,
     "formatting a pointer"
@@ -237,7 +238,7 @@ impl_lint_pass!(FormatArgs<'_> => [
     POINTER_FORMAT,
 ]);
 
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 pub struct FormatArgs<'tcx> {
     format_args: FormatArgsStorage,
     msrv: Msrv,
@@ -344,7 +345,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         if let Some(placeholder_span) = placeholder.span
             && *options != FormatOptions::default()
             && let ty = self.cx.typeck_results().expr_ty(arg).peel_refs()
-            && is_type_lang_item(self.cx, ty, LangItem::FormatArguments)
+            && ty.is_lang_item(self.cx, LangItem::FormatArguments)
         {
             span_lint_and_then(
                 self.cx,
@@ -497,8 +498,11 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let cx = self.cx;
         if !value.span.from_expansion()
             && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
-            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
-            && is_diag_trait_item(cx, method_def_id, sym::ToString)
+            && cx
+                .typeck_results()
+                .type_dependent_def_id(value.hir_id)
+                .opt_parent(cx)
+                .is_diag_item(cx, sym::ToString)
             && let receiver_ty = cx.typeck_results().expr_ty(receiver)
             && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
             && let (n_needed_derefs, target) =

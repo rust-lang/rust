@@ -193,67 +193,54 @@ fn compute_symbol_name<'tcx>(
         // defining crate.
         // Weak lang items automatically get #[rustc_std_internal_symbol]
         // applied by the code computing the CodegenFnAttrs.
-        // We are mangling all #[rustc_std_internal_symbol] items that don't
-        // also have #[no_mangle] as a combination of the rustc version and the
-        // unmangled linkage name. This is to ensure that if we link against a
-        // staticlib compiled by a different rustc version, we don't get symbol
-        // conflicts or even UB due to a different implementation/ABI. Rust
-        // staticlibs currently export all symbols, including those that are
-        // hidden in cdylibs.
+        // We are mangling all #[rustc_std_internal_symbol] items as a
+        // combination of the rustc version and the unmangled linkage name.
+        // This is to ensure that if we link against a staticlib compiled by a
+        // different rustc version, we don't get symbol conflicts or even UB
+        // due to a different implementation/ABI. Rust staticlibs currently
+        // export all symbols, including those that are hidden in cdylibs.
         // We are using the v0 symbol mangling scheme here as we need to be
         // consistent across all crates and in some contexts the legacy symbol
         // mangling scheme can't be used. For example both the GCC backend and
         // Rust-for-Linux don't support some of the characters used by the
         // legacy symbol mangling scheme.
-        let name = if tcx.is_foreign_item(def_id) {
-            if let Some(name) = attrs.link_name { name } else { tcx.item_name(def_id) }
-        } else {
-            if let Some(name) = attrs.export_name { name } else { tcx.item_name(def_id) }
-        };
+        let name = if let Some(name) = attrs.symbol_name { name } else { tcx.item_name(def_id) };
+
+        return v0::mangle_internal_symbol(tcx, name.as_str());
+    }
+
+    let wasm_import_module_exception_force_mangling = {
+        // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
+        //   same-named symbol when imported from different wasm modules will get
+        //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
+        //   with a wasm import module, get mangled. Additionally our codegen will
+        //   deduplicate symbols based purely on the symbol name, but for wasm this
+        //   isn't quite right because the same-named symbol on wasm can come from
+        //   different modules. For these reasons if `#[link(wasm_import_module)]`
+        //   is present we mangle everything on wasm because the demangled form will
+        //   show up in the `wasm-import-name` custom attribute in LLVM IR.
+        //
+        // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
+        //
+        // So, on wasm if a foreign item loses its `#[no_mangle]`, it might *still*
+        // be mangled if we're forced to. Note: I don't like this.
+        // These kinds of exceptions should be added during the `codegen_attrs` query.
+        // However, we don't have the wasm import module map there yet.
+        tcx.is_foreign_item(def_id)
+            && tcx.sess.target.is_like_wasm
+            && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
+    };
+
+    if !wasm_import_module_exception_force_mangling {
+        if let Some(name) = attrs.symbol_name {
+            // Use provided name
+            return name.to_string();
+        }
 
         if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-            return name.to_string();
-        } else {
-            return v0::mangle_internal_symbol(tcx, name.as_str());
+            // Don't mangle
+            return tcx.item_name(def_id).to_string();
         }
-    }
-
-    // Foreign items by default use no mangling for their symbol name. There's a
-    // few exceptions to this rule though:
-    //
-    // * This can be overridden with the `#[link_name]` attribute
-    //
-    // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
-    //   same-named symbol when imported from different wasm modules will get
-    //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
-    //   with a wasm import module, get mangled. Additionally our codegen will
-    //   deduplicate symbols based purely on the symbol name, but for wasm this
-    //   isn't quite right because the same-named symbol on wasm can come from
-    //   different modules. For these reasons if `#[link(wasm_import_module)]`
-    //   is present we mangle everything on wasm because the demangled form will
-    //   show up in the `wasm-import-name` custom attribute in LLVM IR.
-    //
-    // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
-    //   both for exports and imports through foreign items. This is handled above.
-    // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
-    if tcx.is_foreign_item(def_id)
-        && (!tcx.sess.target.is_like_wasm
-            || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
-    {
-        if let Some(name) = attrs.link_name {
-            return name.to_string();
-        }
-        return tcx.item_name(def_id).to_string();
-    }
-
-    if let Some(name) = attrs.export_name {
-        // Use provided name
-        return name.to_string();
-    }
-
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-        // Don't mangle
-        return tcx.item_name(def_id).to_string();
     }
 
     // If we're dealing with an instance of a function that's inlined from

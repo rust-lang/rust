@@ -1,14 +1,15 @@
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::sym;
 use clippy_utils::ty::has_iter_method;
-use clippy_utils::{is_trait_method, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -65,17 +66,29 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
             )
             && method_name.ident.name == sym::for_each
-            && is_trait_method(cx, expr, sym::Iterator)
+            && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
             // Checks the type of the `iter` method receiver is NOT a user defined type.
             && has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some()
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
-            && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
+            && let ExprKind::Closure(&Closure { body, fn_decl, .. }) = for_each_arg.kind
             && let body = cx.tcx.hir_body(body)
             // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
             // and suggesting `for … in … { unsafe { } }` is a little ugly.
             && !matches!(body.value.kind, ExprKind::Block(Block { rules: BlockCheckMode::UnsafeBlock(_), .. }, ..))
         {
+            let mut applicability = Applicability::MachineApplicable;
+
+            // If any closure parameter has an explicit type specified, applying the lint would necessarily
+            // remove that specification, possibly breaking type inference
+            if fn_decl
+                .inputs
+                .iter()
+                .any(|input| matches!(input.kind, TyKind::Infer(..)))
+            {
+                applicability = Applicability::MaybeIncorrect;
+            }
+
             let mut ret_collector = RetCollector::default();
             ret_collector.visit_expr(body.value);
 
@@ -84,18 +97,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 return;
             }
 
-            let (mut applicability, ret_suggs) = if ret_collector.spans.is_empty() {
-                (Applicability::MachineApplicable, None)
+            let ret_suggs = if ret_collector.spans.is_empty() {
+                None
             } else {
-                (
-                    Applicability::MaybeIncorrect,
-                    Some(
-                        ret_collector
-                            .spans
-                            .into_iter()
-                            .map(|span| (span, "continue".to_string()))
-                            .collect(),
-                    ),
+                applicability = Applicability::MaybeIncorrect;
+                Some(
+                    ret_collector
+                        .spans
+                        .into_iter()
+                        .map(|span| (span, "continue".to_string()))
+                        .collect(),
                 )
             };
 

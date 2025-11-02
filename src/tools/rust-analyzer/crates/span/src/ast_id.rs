@@ -485,8 +485,7 @@ register_has_name_ast_id! {
         MacroRules = name,
         Module = name,
         Static = name,
-        Trait = name,
-        TraitAlias = name
+        Trait = name
 }
 
 macro_rules! register_assoc_item_ast_id {

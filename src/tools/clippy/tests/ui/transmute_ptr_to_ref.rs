@@ -5,7 +5,7 @@
     clippy::missing_transmute_annotations
 )]
 
-unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
+fn ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     unsafe {
         let _: &T = std::mem::transmute(p);
         //~^ transmute_ptr_to_ref
@@ -37,7 +37,7 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
     }
 }
 
-fn _issue1231() {
+fn issue1231() {
     struct Foo<'a, T> {
         bar: &'a T,
     }
@@ -55,7 +55,7 @@ fn _issue1231() {
     //~^ transmute_ptr_to_ref
 }
 
-unsafe fn _issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'b u32 {
+fn issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'b u32 {
     unsafe {
         match 0 {
             0 => std::mem::transmute(x),
@@ -71,7 +71,7 @@ unsafe fn _issue8924<'a, 'b, 'c>(x: *const &'a u32, y: *const &'b u32) -> &'c &'
 }
 
 #[clippy::msrv = "1.38"]
-unsafe fn _meets_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
+fn meets_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
     unsafe {
         let a = 0u32;
         let a = &a as *const u32;
@@ -89,7 +89,7 @@ unsafe fn _meets_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
 }
 
 #[clippy::msrv = "1.37"]
-unsafe fn _under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
+fn under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
     unsafe {
         let a = 0u32;
         let a = &a as *const u32;
@@ -103,6 +103,35 @@ unsafe fn _under_msrv<'a, 'b, 'c>(x: *const &'a u32) -> &'c &'b u32 {
             _ => std::mem::transmute::<_, &&'b u32>(x),
             //~^ transmute_ptr_to_ref
         }
+    }
+}
+
+// handle DSTs
+fn issue13357(ptr: *const [i32], s_ptr: *const &str, a_s_ptr: *const [&str]) {
+    unsafe {
+        // different types, without erased regions
+        let _ = core::mem::transmute::<_, &[u32]>(ptr);
+        //~^ transmute_ptr_to_ref
+        let _: &[u32] = core::mem::transmute(ptr);
+        //~^ transmute_ptr_to_ref
+
+        // different types, with erased regions
+        let _ = core::mem::transmute::<_, &[&[u8]]>(a_s_ptr);
+        //~^ transmute_ptr_to_ref
+        let _: &[&[u8]] = core::mem::transmute(a_s_ptr);
+        //~^ transmute_ptr_to_ref
+
+        // same type, without erased regions
+        let _ = core::mem::transmute::<_, &[i32]>(ptr);
+        //~^ transmute_ptr_to_ref
+        let _: &[i32] = core::mem::transmute(ptr);
+        //~^ transmute_ptr_to_ref
+
+        // same type, with erased regions
+        let _ = core::mem::transmute::<_, &[&str]>(a_s_ptr);
+        //~^ transmute_ptr_to_ref
+        let _: &[&str] = core::mem::transmute(a_s_ptr);
+        //~^ transmute_ptr_to_ref
     }
 }
 

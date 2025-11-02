@@ -66,22 +66,6 @@ pub(super) trait FixedSizeEncoding: IsDefault {
     fn write_to_bytes(self, b: &mut Self::ByteArray);
 }
 
-/// This implementation is not used generically, but for reading/writing
-/// concrete `u32` fields in `Lazy*` structures, which may be zero.
-impl FixedSizeEncoding for u32 {
-    type ByteArray = [u8; 4];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 4]) -> Self {
-        Self::from_le_bytes(*b)
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 4]) {
-        *b = self.to_le_bytes();
-    }
-}
-
 impl FixedSizeEncoding for u64 {
     type ByteArray = [u8; 8];
 
@@ -97,7 +81,7 @@ impl FixedSizeEncoding for u64 {
 }
 
 macro_rules! fixed_size_enum {
-    ($ty:ty { $(($($pat:tt)*))* }) => {
+    ($ty:ty { $(($($pat:tt)*))* } $( unreachable { $(($($upat:tt)*))+ } )?) => {
         impl FixedSizeEncoding for Option<$ty> {
             type ByteArray = [u8;1];
 
@@ -119,11 +103,23 @@ macro_rules! fixed_size_enum {
                 b[0] = match self {
                     None => unreachable!(),
                     $(Some($($pat)*) => 1 + ${index()},)*
+                    $(Some($($($upat)*)|+) => unreachable!(),)?
                 }
             }
         }
     }
 }
+
+// Workaround; need const traits to construct bitflags in a const
+macro_rules! const_macro_kinds {
+    ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
+}
+const MACRO_KINDS_ATTR_BANG: MacroKinds = const_macro_kinds!(ATTR, BANG);
+const MACRO_KINDS_DERIVE_BANG: MacroKinds = const_macro_kinds!(DERIVE, BANG);
+const MACRO_KINDS_DERIVE_ATTR: MacroKinds = const_macro_kinds!(DERIVE, ATTR);
+const MACRO_KINDS_DERIVE_ATTR_BANG: MacroKinds = const_macro_kinds!(DERIVE, ATTR, BANG);
+// Ensure that we get a compilation error if MacroKinds gets extended without updating metadata.
+const _: () = assert!(MACRO_KINDS_DERIVE_ATTR_BANG.is_all());
 
 fixed_size_enum! {
     DefKind {
@@ -167,18 +163,16 @@ fixed_size_enum! {
         ( Ctor(CtorOf::Struct, CtorKind::Const)    )
         ( Ctor(CtorOf::Variant, CtorKind::Fn)      )
         ( Ctor(CtorOf::Variant, CtorKind::Const)   )
-        ( Macro(MacroKind::Bang)                   )
-        ( Macro(MacroKind::Attr)                   )
-        ( Macro(MacroKind::Derive)                 )
+        ( Macro(MacroKinds::BANG)                  )
+        ( Macro(MacroKinds::ATTR)                  )
+        ( Macro(MacroKinds::DERIVE)                )
+        ( Macro(MACRO_KINDS_ATTR_BANG)             )
+        ( Macro(MACRO_KINDS_DERIVE_ATTR)           )
+        ( Macro(MACRO_KINDS_DERIVE_BANG)           )
+        ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
-    }
-}
-
-fixed_size_enum! {
-    ty::ImplPolarity {
-        ( Positive    )
-        ( Negative    )
-        ( Reservation )
+    } unreachable {
+        ( Macro(_)                                 )
     }
 }
 
@@ -224,13 +218,6 @@ fixed_size_enum! {
         ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Block)   )
         ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Fn)      )
         ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Closure) )
-    }
-}
-
-fixed_size_enum! {
-    ty::AssocItemContainer {
-        ( Trait )
-        ( Impl  )
     }
 }
 
@@ -303,45 +290,6 @@ impl FixedSizeEncoding for bool {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = self as u8
-    }
-}
-
-impl FixedSizeEncoding for Option<bool> {
-    type ByteArray = [u8; 1];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 1]) -> Self {
-        match b[0] {
-            0 => Some(false),
-            1 => Some(true),
-            2 => None,
-            _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 1]) {
-        debug_assert!(!self.is_default());
-        b[0] = match self {
-            Some(false) => 0,
-            Some(true) => 1,
-            None => 2,
-        };
-    }
-}
-
-impl FixedSizeEncoding for UnusedGenericParams {
-    type ByteArray = [u8; 4];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 4]) -> Self {
-        let x: u32 = u32::from_bytes(b);
-        UnusedGenericParams::from_bits(x)
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 4]) {
-        self.bits().write_to_bytes(b);
     }
 }
 

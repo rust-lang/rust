@@ -2,7 +2,6 @@ use core::ops::ControlFlow;
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{Attribute, HasAttrs, HasTokens, NodeId, mut_visit, visit};
 use rustc_errors::PResult;
@@ -132,7 +131,7 @@ impl CfgEval<'_> {
                     let stmt = parser
                         .parse_stmt_without_recovery(false, ForceCollect::Yes, false)?
                         .unwrap();
-                    Annotatable::Stmt(P(self.flat_map_stmt(stmt).pop().unwrap()))
+                    Annotatable::Stmt(Box::new(self.flat_map_stmt(stmt).pop().unwrap()))
                 }
                 Annotatable::Expr(_) => {
                     let mut expr = parser.parse_expr_force_collect()?;
@@ -166,7 +165,7 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::walk_expr(self, expr);
     }
 
-    fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
+    fn filter_map_expr(&mut self, expr: Box<ast::Expr>) -> Option<Box<ast::Expr>> {
         let mut expr = configure!(self, expr);
         mut_visit::walk_expr(self, &mut expr);
         Some(expr)
@@ -185,24 +184,24 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::walk_flat_map_stmt(self, stmt)
     }
 
-    fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+    fn flat_map_item(&mut self, item: Box<ast::Item>) -> SmallVec<[Box<ast::Item>; 1]> {
         let item = configure!(self, item);
         mut_visit::walk_flat_map_item(self, item)
     }
 
     fn flat_map_assoc_item(
         &mut self,
-        item: P<ast::AssocItem>,
+        item: Box<ast::AssocItem>,
         ctxt: AssocCtxt,
-    ) -> SmallVec<[P<ast::AssocItem>; 1]> {
+    ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
         let item = configure!(self, item);
         mut_visit::walk_flat_map_assoc_item(self, item, ctxt)
     }
 
     fn flat_map_foreign_item(
         &mut self,
-        foreign_item: P<ast::ForeignItem>,
-    ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
+        foreign_item: Box<ast::ForeignItem>,
+    ) -> SmallVec<[Box<ast::ForeignItem>; 1]> {
         let foreign_item = configure!(self, foreign_item);
         mut_visit::walk_flat_map_foreign_item(self, foreign_item)
     }

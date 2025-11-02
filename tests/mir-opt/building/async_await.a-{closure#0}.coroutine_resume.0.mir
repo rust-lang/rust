@@ -10,26 +10,26 @@
 } */
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _4;
+    debug _task_context => _2;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();
-    let mut _4: &mut std::task::Context<'_>;
-    let mut _5: u32;
+    let mut _4: u32;
+    let mut _5: &mut {async fn body of a()};
 
     bb0: {
-        _5 = discriminant((*(_1.0: &mut {async fn body of a()})));
-        switchInt(move _5) -> [0: bb1, 1: bb4, otherwise: bb5];
+        _5 = copy (_1.0: &mut {async fn body of a()});
+        _4 = discriminant((*_5));
+        switchInt(move _4) -> [0: bb1, 1: bb4, otherwise: bb5];
     }
 
     bb1: {
-        _4 = move _2;
         _3 = const ();
         goto -> bb3;
     }
 
     bb2: {
         _0 = Poll::<()>::Ready(move _3);
-        discriminant((*(_1.0: &mut {async fn body of a()}))) = 1;
+        discriminant((*_5)) = 1;
         return;
     }
 

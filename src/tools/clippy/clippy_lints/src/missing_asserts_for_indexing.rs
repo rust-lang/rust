@@ -220,14 +220,14 @@ impl<'hir> IndexEntry<'hir> {
 ///
 /// E.g. for `5` this returns `Some(5)`, for `..5` this returns `Some(4)`,
 /// for `..=5` this returns `Some(5)`
-fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
+fn upper_index_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<usize> {
     if let ExprKind::Lit(lit) = &expr.kind
         && let LitKind::Int(Pu128(index), _) = lit.node
     {
         Some(index as usize)
     } else if let Some(higher::Range {
         end: Some(end), limits, ..
-    }) = higher::Range::hir(expr)
+    }) = higher::Range::hir(cx, expr)
         && let ExprKind::Lit(lit) = &end.kind
         && let LitKind::Int(Pu128(index @ 1..), _) = lit.node
     {
@@ -244,7 +244,7 @@ fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
 fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnindexMap<u64, Vec<IndexEntry<'hir>>>) {
     if let ExprKind::Index(slice, index_lit, _) = expr.kind
         && cx.typeck_results().expr_ty_adjusted(slice).peel_refs().is_slice()
-        && let Some(index) = upper_index_expr(index_lit)
+        && let Some(index) = upper_index_expr(cx, index_lit)
     {
         let hash = hash_expr(cx, slice);
 

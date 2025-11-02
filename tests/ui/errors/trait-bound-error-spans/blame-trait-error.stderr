@@ -39,7 +39,11 @@ LL |     want(Some(()));
    |     required by a bound introduced by this call
    |
    = help: the trait `Iterator` is not implemented for `()`
-   = help: the trait `T1` is implemented for `Option<It>`
+help: the trait `T1` is implemented for `Option<It>`
+  --> $DIR/blame-trait-error.rs:21:1
+   |
+LL | impl<It: Iterator> T1 for Option<It> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required for `Option<()>` to implement `T1`
   --> $DIR/blame-trait-error.rs:21:20
    |

@@ -242,3 +242,12 @@ fn issue_12101() {
     for a in &(vec![1, 2]) {}
     //~^ useless_vec
 }
+
+fn issue_14531() {
+    // The lint used to suggest using an array rather than a reference to a slice.
+
+    fn requires_ref_slice(v: &[()]) {}
+    let v = &vec![];
+    //~^ useless_vec
+    requires_ref_slice(v);
+}

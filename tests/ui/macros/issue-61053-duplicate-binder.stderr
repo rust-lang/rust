@@ -2,9 +2,9 @@ error: duplicate matcher binding
   --> $DIR/issue-61053-duplicate-binder.rs:7:20
    |
 LL |             ($x:tt $x:tt) => { $x };
-   |              --    ^^
+   |              --    ^^ duplicate binding
    |              |
-   |              previous declaration
+   |              previous binding
    |
 note: the lint level is defined here
   --> $DIR/issue-61053-duplicate-binder.rs:1:9

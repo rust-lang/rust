@@ -1,9 +1,7 @@
 use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
-use itertools::Itertools;
-use syntax::{
-    ast::{self, AstNode, HasGenericArgs, HasName, make},
-    ted,
-};
+use syntax::ast::edit::IndentLevel;
+use syntax::ast::{self, AstNode, HasGenericArgs, HasName, make};
+use syntax::syntax_editor::{Element, Position};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -49,11 +47,12 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
     };
 
     let associated_items = impl_.assoc_item_list()?;
+    let associated_l_curly = associated_items.l_curly_token()?;
     let from_fn = associated_items.assoc_items().find_map(|item| {
-        if let ast::AssocItem::Fn(f) = item {
-            if f.name()?.text() == "from" {
-                return Some(f);
-            }
+        if let ast::AssocItem::Fn(f) = item
+            && f.name()?.text() == "from"
+        {
+            return Some(f);
         };
         None
     })?;
@@ -75,33 +74,29 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert From to TryFrom",
         impl_.syntax().text_range(),
         |builder| {
-            let trait_ty = builder.make_mut(trait_ty);
-            let from_fn_return_type = builder.make_mut(from_fn_return_type);
-            let from_fn_name = builder.make_mut(from_fn_name);
-            let tail_expr = builder.make_mut(tail_expr);
-            let return_exprs = return_exprs.map(|r| builder.make_mut(r)).collect_vec();
-            let associated_items = builder.make_mut(associated_items);
-
-            ted::replace(
+            let mut editor = builder.make_editor(impl_.syntax());
+            editor.replace(
                 trait_ty.syntax(),
                 make::ty(&format!("TryFrom<{from_type}>")).syntax().clone_for_update(),
             );
-            ted::replace(
+            editor.replace(
                 from_fn_return_type.syntax(),
                 make::ty("Result<Self, Self::Error>").syntax().clone_for_update(),
             );
-            ted::replace(from_fn_name.syntax(), make::name("try_from").syntax().clone_for_update());
-            ted::replace(
+            editor
+                .replace(from_fn_name.syntax(), make::name("try_from").syntax().clone_for_update());
+            editor.replace(
                 tail_expr.syntax(),
                 wrap_ok(tail_expr.clone()).syntax().clone_for_update(),
             );
 
             for r in return_exprs {
                 let t = r.expr().unwrap_or_else(make::ext::expr_unit);
-                ted::replace(t.syntax(), wrap_ok(t.clone()).syntax().clone_for_update());
+                editor.replace(t.syntax(), wrap_ok(t.clone()).syntax().clone_for_update());
             }
 
             let error_type = ast::AssocItem::TypeAlias(make::ty_alias(
+                None,
                 "Error",
                 None,
                 None,
@@ -110,15 +105,24 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             ))
             .clone_for_update();
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let ast::AssocItem::TypeAlias(type_alias) = &error_type {
-                    if let Some(ty) = type_alias.ty() {
-                        builder.add_placeholder_snippet(cap, ty);
-                    }
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let ast::AssocItem::TypeAlias(type_alias) = &error_type
+                && let Some(ty) = type_alias.ty()
+            {
+                let placeholder = builder.make_placeholder_snippet(cap);
+                editor.add_annotation(ty.syntax(), placeholder);
             }
 
-            associated_items.add_item_at_start(error_type);
+            let indent = IndentLevel::from_token(&associated_l_curly) + 1;
+            editor.insert_all(
+                Position::after(associated_l_curly),
+                vec![
+                    make::tokens::whitespace(&format!("\n{indent}")).syntax_element(),
+                    error_type.syntax().syntax_element(),
+                    make::tokens::whitespace("\n").syntax_element(),
+                ],
+            );
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

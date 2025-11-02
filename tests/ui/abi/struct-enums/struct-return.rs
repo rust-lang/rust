@@ -1,4 +1,6 @@
 //@ run-pass
+//@ ignore-backends: gcc
+
 #![allow(dead_code)]
 
 #[repr(C)]

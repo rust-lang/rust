@@ -6,10 +6,10 @@ LL | fn main() { let x = "a".to_string() ^ "b".to_string(); }
    |                     |
    |                     String
    |
-note: the foreign item type `String` doesn't implement `BitXor`
+note: `String` does not implement `BitXor`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-   = note: not implement `BitXor`
+   = note: `String` is defined in another crate
 
 error: aborting due to 1 previous error
 

@@ -68,7 +68,7 @@ unsafe fn cell_unprotected_read() {
 }
 
 // Foreign Write on an interior mutable pointer is a noop.
-// Also y must become Active.
+// Also y must become Unique.
 unsafe fn cell_unprotected_write() {
     print("[interior mut] Foreign Write: Re* -> Re*");
     let base = &mut UnsafeCell::new(0u64);
@@ -97,7 +97,7 @@ unsafe fn int_protected_read() {
 }
 
 // Foreign Read on a Reserved is a noop.
-// Also y must become Active.
+// Also y must become Unique.
 unsafe fn int_unprotected_read() {
     print("[] Foreign Read: Res -> Res");
     let base = &mut 0u8;

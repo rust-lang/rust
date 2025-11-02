@@ -9,7 +9,8 @@ use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
 use rustc_errors::emitter::stderr_destination;
-use rustc_errors::{ColorConfig, DiagCtxtHandle};
+use rustc_errors::{AutoStream, ColorConfig, DiagCtxtHandle};
+use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
@@ -462,20 +463,22 @@ fn parse_source(
             .supports_color();
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
+    let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
     let psess = ParseSess::with_dcx(dcx, sm);
 
-    let mut parser = match new_parser_from_source_str(&psess, filename, wrapped_source) {
-        Ok(p) => p,
-        Err(errs) => {
-            errs.into_iter().for_each(|err| err.cancel());
-            reset_error_count(&psess);
-            return Err(());
-        }
-    };
+    // Don't strip any tokens; it wouldn't matter anyway because the source is wrapped in a function.
+    let mut parser =
+        match new_parser_from_source_str(&psess, filename, wrapped_source, StripTokens::Nothing) {
+            Ok(p) => p,
+            Err(errs) => {
+                errs.into_iter().for_each(|err| err.cancel());
+                reset_error_count(&psess);
+                return Err(());
+            }
+        };
 
     fn push_to_s(s: &mut String, source: &str, span: rustc_span::Span, prev_span_hi: &mut usize) {
         let extra_len = DOCTEST_CODE_WRAPPER.len();

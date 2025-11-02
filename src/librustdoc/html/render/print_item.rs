@@ -5,7 +5,7 @@ use std::iter;
 use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
@@ -20,8 +20,8 @@ use super::{
     AssocItemLink, AssocItemRender, Context, ImplRenderingParameters, RenderMode,
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
+    render_assoc_item, render_assoc_items, render_attributes_in_code, render_impl,
+    render_repr_attribute_in_code, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -35,6 +35,7 @@ use crate::html::format::{
     visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
+use crate::html::render::sidebar::filters;
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
@@ -106,13 +107,6 @@ macro_rules! item_template_methods {
         }
         item_template_methods!($($rest)*);
     };
-    (render_attributes_in_pre $($rest:tt)*) => {
-        fn render_attributes_in_pre(&self) -> impl fmt::Display {
-            let (item, cx) = self.item_and_cx();
-            render_attributes_in_pre(item, "", cx)
-        }
-        item_template_methods!($($rest)*);
-    };
     (render_assoc_items $($rest:tt)*) => {
         fn render_assoc_items(&self) -> impl fmt::Display {
             let (item, cx) = self.item_and_cx();
@@ -179,6 +173,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ConstantItem(..) => "Constant ",
             clean::ForeignTypeItem => "Foreign Type ",
             clean::KeywordItem => "Keyword ",
+            clean::AttributeItem => "Attribute ",
             clean::TraitAliasItem(..) => "Trait Alias ",
             _ => {
                 // We don't generate pages for any other type.
@@ -199,7 +194,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let src_href =
             if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
-        let path_components = if item.is_primitive() || item.is_keyword() {
+        let path_components = if item.is_fake_item() {
             vec![]
         } else {
             let cur = &cx.current;
@@ -258,7 +253,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ForeignTypeItem => {
                 write!(buf, "{}", item_foreign_type(cx, item))
             }
-            clean::KeywordItem => write!(buf, "{}", item_keyword(cx, item)),
+            clean::KeywordItem | clean::AttributeItem => {
+                write!(buf, "{}", item_keyword_or_attribute(cx, item))
+            }
             clean::TraitAliasItem(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
@@ -310,8 +307,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
     fmt::from_fn(|w| {
         write!(w, "{}", document(cx, item, None, HeadingOffset::H2))?;
 
-        let mut not_stripped_items =
-            items.iter().filter(|i| !i.is_stripped()).enumerate().collect::<Vec<_>>();
+        let mut not_stripped_items: FxIndexMap<ItemType, Vec<(usize, &clean::Item)>> =
+            FxIndexMap::default();
+
+        for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
+            not_stripped_items.entry(item.type_()).or_default().push((index, item));
+        }
 
         // the order of item types in the listing
         fn reorder(ty: ItemType) -> u8 {
@@ -334,11 +335,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         }
 
         fn cmp(i1: &clean::Item, i2: &clean::Item, tcx: TyCtxt<'_>) -> Ordering {
-            let rty1 = reorder(i1.type_());
-            let rty2 = reorder(i2.type_());
-            if rty1 != rty2 {
-                return rty1.cmp(&rty2);
-            }
             let is_stable1 =
                 i1.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
             let is_stable2 =
@@ -360,7 +356,9 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
         match cx.shared.module_sorting {
             ModuleSorting::Alphabetical => {
-                not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
+                for items in not_stripped_items.values_mut() {
+                    items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
+                }
             }
             ModuleSorting::DeclarationOrder => {}
         }
@@ -383,150 +381,152 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         // can be identical even if the elements are different (mostly in imports).
         // So in case this is an import, we keep everything by adding a "unique id"
         // (which is the position in the vector).
-        not_stripped_items.dedup_by_key(|(idx, i)| {
-            (
-                i.item_id,
-                if i.name.is_some() { Some(full_path(cx, i)) } else { None },
-                i.type_(),
-                if i.is_import() { *idx } else { 0 },
-            )
-        });
+        for items in not_stripped_items.values_mut() {
+            items.dedup_by_key(|(idx, i)| {
+                (
+                    i.item_id,
+                    if i.name.is_some() { Some(full_path(cx, i)) } else { None },
+                    i.type_(),
+                    if i.is_import() { *idx } else { 0 },
+                )
+            });
+        }
 
         debug!("{not_stripped_items:?}");
-        let mut last_section = None;
 
-        for (_, myitem) in &not_stripped_items {
-            let my_section = item_ty_to_section(myitem.type_());
-            if Some(my_section) != last_section {
-                if last_section.is_some() {
-                    w.write_str(ITEM_TABLE_CLOSE)?;
-                }
-                last_section = Some(my_section);
-                let section_id = my_section.id();
-                let tag =
-                    if section_id == "reexports" { REEXPORTS_TABLE_OPEN } else { ITEM_TABLE_OPEN };
-                write!(
-                    w,
-                    "{}",
-                    write_section_heading(my_section.name(), &cx.derive_id(section_id), None, tag)
-                )?;
-            }
+        let mut types = not_stripped_items.keys().copied().collect::<Vec<_>>();
+        types.sort_unstable_by(|a, b| reorder(*a).cmp(&reorder(*b)));
 
-            match myitem.kind {
-                clean::ExternCrateItem { ref src } => {
-                    use crate::html::format::print_anchor;
+        for type_ in types {
+            let my_section = item_ty_to_section(type_);
+            let tag = if my_section == super::ItemSection::Reexports {
+                REEXPORTS_TABLE_OPEN
+            } else {
+                ITEM_TABLE_OPEN
+            };
+            write!(
+                w,
+                "{}",
+                write_section_heading(my_section.name(), &cx.derive_id(my_section.id()), None, tag)
+            )?;
 
-                    match *src {
-                        Some(src) => {
-                            write!(
-                                w,
-                                "<dt><code>{}extern crate {} as {};",
-                                visibility_print_with_space(myitem, cx),
-                                print_anchor(myitem.item_id.expect_def_id(), src, cx),
-                                EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
-                            )?;
-                        }
-                        None => {
-                            write!(
-                                w,
-                                "<dt><code>{}extern crate {};",
-                                visibility_print_with_space(myitem, cx),
-                                print_anchor(
-                                    myitem.item_id.expect_def_id(),
-                                    myitem.name.unwrap(),
-                                    cx
-                                )
-                            )?;
-                        }
-                    }
-                    w.write_str("</code></dt>")?;
-                }
+            for (_, myitem) in &not_stripped_items[&type_] {
+                match myitem.kind {
+                    clean::ExternCrateItem { ref src } => {
+                        use crate::html::format::print_anchor;
 
-                clean::ImportItem(ref import) => {
-                    let stab_tags = import.source.did.map_or_else(String::new, |import_def_id| {
-                        print_extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
-                    });
-
-                    let id = match import.kind {
-                        clean::ImportKind::Simple(s) => {
-                            format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
-                        }
-                        clean::ImportKind::Glob => String::new(),
-                    };
-                    write!(
-                        w,
-                        "<dt{id}>\
-                            <code>{vis}{imp}</code>{stab_tags}\
-                        </dt>",
-                        vis = visibility_print_with_space(myitem, cx),
-                        imp = import.print(cx)
-                    )?;
-                }
-
-                _ => {
-                    if myitem.name.is_none() {
-                        continue;
-                    }
-
-                    let unsafety_flag = match myitem.kind {
-                        clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
-                            if myitem.fn_header(tcx).unwrap().safety
-                                == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
-                        {
-                            "<sup title=\"unsafe function\">⚠</sup>"
-                        }
-                        clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
-                            "<sup title=\"unsafe static\">⚠</sup>"
-                        }
-                        _ => "",
-                    };
-
-                    let visibility_and_hidden = match myitem.visibility(tcx) {
-                        Some(ty::Visibility::Restricted(_)) => {
-                            if myitem.is_doc_hidden() {
-                                // Don't separate with a space when there are two of them
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
-                            } else {
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        match *src {
+                            Some(src) => {
+                                write!(
+                                    w,
+                                    "<dt><code>{}extern crate {} as {};",
+                                    visibility_print_with_space(myitem, cx),
+                                    print_anchor(myitem.item_id.expect_def_id(), src, cx),
+                                    EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
+                                )?;
+                            }
+                            None => {
+                                write!(
+                                    w,
+                                    "<dt><code>{}extern crate {};",
+                                    visibility_print_with_space(myitem, cx),
+                                    print_anchor(
+                                        myitem.item_id.expect_def_id(),
+                                        myitem.name.unwrap(),
+                                        cx
+                                    )
+                                )?;
                             }
                         }
-                        _ if myitem.is_doc_hidden() => {
-                            "<span title=\"Hidden item\">&nbsp;👻</span> "
+                    }
+                    clean::ImportItem(ref import) => {
+                        let stab_tags =
+                            import.source.did.map_or_else(String::new, |import_def_id| {
+                                print_extra_info_tags(tcx, myitem, item, Some(import_def_id))
+                                    .to_string()
+                            });
+                        let id = match import.kind {
+                            clean::ImportKind::Simple(s) => {
+                                format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
+                            }
+                            clean::ImportKind::Glob => String::new(),
+                        };
+                        write!(
+                            w,
+                            "<dt{id}>\
+                                <code>"
+                        )?;
+                        render_attributes_in_code(w, myitem, "", cx);
+                        write!(
+                            w,
+                            "{vis}{imp}</code>{stab_tags}\
+                            </dt>",
+                            vis = visibility_print_with_space(myitem, cx),
+                            imp = import.print(cx)
+                        )?;
+                    }
+                    _ => {
+                        if myitem.name.is_none() {
+                            continue;
                         }
-                        _ => "",
-                    };
 
-                    let docs =
-                        MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
-                    let (docs_before, docs_after) =
-                        if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
-                    write!(
-                        w,
-                        "<dt>\
-                            <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
-                            {name}\
-                            </a>\
-                            {visibility_and_hidden}\
-                            {unsafety_flag}\
-                            {stab_tags}\
-                        </dt>\
-                        {docs_before}{docs}{docs_after}",
-                        name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
-                        visibility_and_hidden = visibility_and_hidden,
-                        stab_tags = print_extra_info_tags(tcx, myitem, item, None),
-                        class = myitem.type_(),
-                        unsafety_flag = unsafety_flag,
-                        href = print_item_path(myitem.type_(), myitem.name.unwrap().as_str()),
-                        title1 = myitem.type_(),
-                        title2 = full_path(cx, myitem),
-                    )?;
+                        let unsafety_flag = match myitem.kind {
+                            clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
+                                if myitem.fn_header(tcx).unwrap().safety
+                                    == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
+                            {
+                                "<sup title=\"unsafe function\">⚠</sup>"
+                            }
+                            clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                                "<sup title=\"unsafe static\">⚠</sup>"
+                            }
+                            _ => "",
+                        };
+                        let visibility_and_hidden = match myitem.visibility(tcx) {
+                            Some(ty::Visibility::Restricted(_)) => {
+                                if myitem.is_doc_hidden() {
+                                    // Don't separate with a space when there are two of them
+                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                                } else {
+                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                                }
+                            }
+                            _ if myitem.is_doc_hidden() => {
+                                "<span title=\"Hidden item\">&nbsp;👻</span> "
+                            }
+                            _ => "",
+                        };
+
+                        let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
+                            .into_string();
+                        let (docs_before, docs_after) =
+                            if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
+                        write!(
+                            w,
+                            "<dt>\
+                                <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
+                                {name}\
+                                </a>\
+                                {visibility_and_hidden}\
+                                {unsafety_flag}\
+                                {stab_tags}\
+                            </dt>\
+                            {docs_before}{docs}{docs_after}",
+                            name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
+                            visibility_and_hidden = visibility_and_hidden,
+                            stab_tags = print_extra_info_tags(tcx, myitem, item, None),
+                            class = type_,
+                            unsafety_flag = unsafety_flag,
+                            href = print_item_path(type_, myitem.name.unwrap().as_str()),
+                            title1 = myitem.type_(),
+                            title2 = full_path(cx, myitem),
+                        )?;
+                    }
                 }
             }
-        }
-
-        if last_section.is_some() {
             w.write_str(ITEM_TABLE_CLOSE)?;
         }
+
         Ok(())
     })
 }
@@ -624,11 +624,11 @@ fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> imp
         let notable_traits = notable_traits_button(&f.decl.output, cx).maybe_display();
 
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}{constness}{asyncness}{safety}{abi}fn \
+                "{vis}{constness}{asyncness}{safety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
-                attrs = render_attributes_in_pre(it, "", cx),
                 vis = visibility,
                 constness = constness,
                 asyncness = asyncness,
@@ -665,10 +665,10 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
 
         // Output the trait definition
         wrap_item(w, |mut w| {
+            render_attributes_in_code(&mut w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
                 vis = visibility_print_with_space(it, cx),
                 safety = t.safety(tcx).print_with_space(),
                 is_auto = if t.is_auto(tcx) { "auto " } else { "" },
@@ -1239,10 +1239,10 @@ fn item_trait_alias(
 ) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}trait {name}{generics} = {bounds}{where_clause};",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "trait {name}{generics} = {bounds}{where_clause};",
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
                 bounds = print_bounds(&t.bounds, true, cx),
@@ -1267,10 +1267,10 @@ fn item_trait_alias(
 fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "{vis}type {name}{generics}{where_clause} = {type_};",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
@@ -1451,7 +1451,21 @@ item_template!(
 
 impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     fn render_union(&self) -> impl Display {
-        render_union(self.it, Some(self.generics), self.fields, self.cx)
+        render_union(
+            self.it,
+            Some(self.generics),
+            self.fields,
+            self.def_id,
+            self.is_type_alias,
+            self.cx,
+        )
+    }
+
+    fn print_field_attrs(&self, field: &'a clean::Item) -> impl Display {
+        fmt::from_fn(move |w| {
+            render_attributes_in_code(w, field, "", self.cx);
+            Ok(())
+        })
     }
 
     fn document_field(&self, field: &'a clean::Item) -> impl Display {
@@ -1476,27 +1490,6 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         self.fields.iter().filter_map(|f| match f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
-        })
-    }
-
-    fn render_attributes_in_pre(&self) -> impl fmt::Display {
-        fmt::from_fn(move |f| {
-            if self.is_type_alias {
-                // For now the only attributes we render for type aliases are `repr` attributes.
-                if let Some(repr) = clean::repr_attributes(
-                    self.cx.tcx(),
-                    self.cx.cache(),
-                    self.def_id,
-                    ItemType::Union,
-                ) {
-                    writeln!(f, "{repr}")?;
-                };
-            } else {
-                for a in self.it.attributes(self.cx.tcx(), self.cx.cache()) {
-                    writeln!(f, "{a}")?;
-                }
-            }
-            Ok(())
         })
     }
 }
@@ -1560,9 +1553,9 @@ impl<'clean> DisplayEnum<'clean> {
         wrap_item(w, |w| {
             if is_type_alias {
                 // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
-                render_attributes_in_code(w, it, cx);
+                render_attributes_in_code(w, it, "", cx);
             }
             write!(
                 w,
@@ -1656,11 +1649,9 @@ fn display_c_like_variant(
         } else if should_show_enum_discriminant {
             let adt_def = cx.tcx().adt_def(enum_def_id);
             let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
-            if discr.ty.is_signed() {
-                write!(w, "{} = {}", name.as_str(), discr.val as i128)?;
-            } else {
-                write!(w, "{} = {}", name.as_str(), discr.val)?;
-            }
+            // Use `discr`'s `Display` impl to render the value with the correct
+            // signedness, including proper sign-extension for signed types.
+            write!(w, "{} = {}", name.as_str(), discr)?;
         } else {
             write!(w, "{name}")?;
         }
@@ -1703,7 +1694,7 @@ fn render_enum_fields(
                 if v.is_stripped() {
                     continue;
                 }
-                write!(w, "{}", render_attributes_in_pre(v, TAB, cx))?;
+                render_attributes_in_code(w, v, TAB, cx);
                 w.write_str(TAB)?;
                 match v.kind {
                     clean::VariantItem(ref var) => match var.kind {
@@ -1787,6 +1778,7 @@ fn item_variants(
                 )
                 .maybe_display()
             )?;
+            render_attributes_in_code(w, variant, "", cx);
             if let clean::VariantItem(ref var) = variant.kind
                 && let clean::VariantKind::CLike = var.kind
             {
@@ -1860,7 +1852,12 @@ fn item_variants(
                                 "<div class=\"sub-variant-field\">\
                                     <span id=\"{id}\" class=\"section-header\">\
                                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                        <code>{f}: {t}</code>\
+                                        <code>"
+                            )?;
+                            render_attributes_in_code(w, field, "", cx);
+                            write!(
+                                w,
+                                "{f}: {t}</code>\
                                     </span>\
                                     {doc}\
                                 </div>",
@@ -1883,6 +1880,7 @@ fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt:
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
+            render_attributes_in_code(w, it, "", cx);
             if !t.macro_rules {
                 write!(w, "{}", visibility_print_with_space(it, cx))?;
             }
@@ -1951,7 +1949,7 @@ fn item_constant(
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             let tcx = cx.tcx();
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
 
             write!(
                 w,
@@ -2017,9 +2015,9 @@ impl<'a> DisplayStruct<'a> {
         wrap_item(w, |w| {
             if is_type_alias {
                 // For now the only attributes we render for type aliases are `repr` attributes.
-                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
+                render_repr_attribute_in_code(w, cx, self.def_id);
             } else {
-                render_attributes_in_code(w, it, cx);
+                render_attributes_in_code(w, it, "", cx);
             }
             write!(
                 w,
@@ -2095,10 +2093,15 @@ fn item_fields(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} section-header\">\
                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                        <code>{field_name}: {ty}</code>\
+                        <code>",
+                    item_type = ItemType::StructField,
+                )?;
+                render_attributes_in_code(w, field, "", cx);
+                write!(
+                    w,
+                    "{field_name}: {ty}</code>\
                     </span>\
                     {doc}",
-                    item_type = ItemType::StructField,
                     ty = ty.print(cx),
                     doc = document(cx, field, Some(it), HeadingOffset::H3),
                 )?;
@@ -2116,7 +2119,7 @@ fn item_static(
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         wrap_item(w, |w| {
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
                 "{vis}{safe}static {mutability}{name}: {typ}",
@@ -2136,7 +2139,7 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             w.write_str("extern {\n")?;
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
             write!(w, "    {}type {};\n}}", visibility_print_with_space(it, cx), it.name.unwrap(),)
         })?;
 
@@ -2149,7 +2152,7 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     })
 }
 
-fn item_keyword(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+fn item_keyword_or_attribute(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     document(cx, it, None, HeadingOffset::H2)
 }
 
@@ -2359,9 +2362,17 @@ fn render_union(
     it: &clean::Item,
     g: Option<&clean::Generics>,
     fields: &[clean::Item],
+    def_id: DefId,
+    is_type_alias: bool,
     cx: &Context<'_>,
 ) -> impl Display {
     fmt::from_fn(move |mut f| {
+        if is_type_alias {
+            // For now the only attributes we render for type aliases are `repr` attributes.
+            render_repr_attribute_in_code(f, cx, def_id);
+        } else {
+            render_attributes_in_code(f, it, "", cx);
+        }
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 
         let where_displayed = if let Some(generics) = g {
@@ -2391,6 +2402,7 @@ fn render_union(
 
         for field in fields {
             if let clean::StructFieldItem(ref ty) = field.kind {
+                render_attributes_in_code(&mut f, field, "    ", cx);
                 writeln!(
                     f,
                     "    {}{}: {},",
@@ -2482,11 +2494,15 @@ fn render_struct_fields(
                 if toggle {
                     toggle_open(&mut *w, format_args!("{count_fields} fields"));
                 }
+                if has_visible_fields {
+                    writeln!(w)?;
+                }
                 for field in fields {
                     if let clean::StructFieldItem(ref ty) = field.kind {
-                        write!(
+                        render_attributes_in_code(w, field, &format!("{tab}    "), cx);
+                        writeln!(
                             w,
-                            "\n{tab}    {vis}{name}: {ty},",
+                            "{tab}    {vis}{name}: {ty},",
                             vis = visibility_print_with_space(field, cx),
                             name = field.name.unwrap(),
                             ty = ty.print(cx)
@@ -2496,12 +2512,12 @@ fn render_struct_fields(
 
                 if has_visible_fields {
                     if has_stripped_entries {
-                        write!(
+                        writeln!(
                             w,
-                            "\n{tab}    <span class=\"comment\">/* private fields */</span>"
+                            "{tab}    <span class=\"comment\">/* private fields */</span>"
                         )?;
                     }
-                    write!(w, "\n{tab}")?;
+                    write!(w, "{tab}")?;
                 } else if has_stripped_entries {
                     write!(w, " <span class=\"comment\">/* private fields */</span> ")?;
                 }

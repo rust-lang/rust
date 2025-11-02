@@ -4,7 +4,7 @@ use core::intrinsics;
 
 intrinsics! {
     #[unsafe(naked)]
-    #[cfg(all(target_os = "uefi", not(feature = "no-asm")))]
+    #[cfg(target_os = "uefi")]
     pub unsafe extern "custom" fn __chkstk() {
         core::arch::naked_asm!(
             ".p2align 2",

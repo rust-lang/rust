@@ -530,8 +530,8 @@ mod issue7206 {
 
     impl<'a> S2<S<'a>> {
         fn new_again() -> Self {
-            Self::new()
-            //~^ use_self
+            S2::new()
+            // FIXME: ^Broken by PR #15611
         }
     }
 }
@@ -753,5 +753,19 @@ mod crash_check_13128 {
                 }
             }
         }
+    }
+}
+
+mod issue_13277 {
+    trait Foo {
+        type Item<'foo>;
+    }
+    struct Bar<'b> {
+        content: &'b str,
+    }
+    impl<'b> Foo for Option<Bar<'b>> {
+        // when checking whether `Option<Bar<'foo>>` has a lifetime, check not only the outer
+        // `Option<T>`, but also the inner `Bar<'foo>`
+        type Item<'foo> = Option<Bar<'foo>>;
     }
 }

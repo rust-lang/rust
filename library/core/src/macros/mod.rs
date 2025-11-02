@@ -223,13 +223,14 @@ pub macro assert_matches {
 /// }
 /// ```
 ///
-/// The `cfg_select!` macro can also be used in expression position:
+/// The `cfg_select!` macro can also be used in expression position, with or without braces on the
+/// right-hand side:
 ///
 /// ```
 /// #![feature(cfg_select)]
 ///
 /// let _some_string = cfg_select! {
-///     unix => { "With great power comes great electricity bills" }
+///     unix => "With great power comes great electricity bills",
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// };
 /// ```
@@ -271,7 +272,10 @@ pub macro cfg_select($($tt:tt)*) {
 /// // expression given.
 /// debug_assert!(true);
 ///
-/// fn some_expensive_computation() -> bool { true } // a very simple function
+/// fn some_expensive_computation() -> bool {
+///     // Some expensive computation here
+///     true
+/// }
 /// debug_assert!(some_expensive_computation());
 ///
 /// // assert with a custom message
@@ -947,8 +951,9 @@ pub(crate) mod builtin {
     /// format string in `format_args!`.
     ///
     /// ```rust
-    /// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
-    /// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
+    /// let args = format_args!("{} foo {:?}", 1, 2);
+    /// let debug = format!("{args:?}");
+    /// let display = format!("{args}");
     /// assert_eq!("1 foo 2", display);
     /// assert_eq!(display, debug);
     /// ```
@@ -972,13 +977,17 @@ pub(crate) mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     /// ```
     ///
-    /// # Lifetime limitation
+    /// # Argument lifetimes
     ///
     /// Except when no formatting arguments are used,
-    /// the produced `fmt::Arguments` value borrows temporary values,
-    /// which means it can only be used within the same expression
-    /// and cannot be stored for later use.
-    /// This is a known limitation, see [#92698](https://github.com/rust-lang/rust/issues/92698).
+    /// the produced `fmt::Arguments` value borrows temporary values.
+    /// To allow it to be stored for later use, the arguments' lifetimes, as well as those of
+    /// temporaries they borrow, may be [extended] when `format_args!` appears in the initializer
+    /// expression of a `let` statement. The syntactic rules used to determine when temporaries'
+    /// lifetimes are extended are documented in the [Reference].
+    ///
+    /// [extended]: ../reference/destructors.html#temporary-lifetime-extension
+    /// [Reference]: ../reference/destructors.html#extending-based-on-expressions
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "format_args_macro"]
     #[allow_internal_unsafe]
@@ -1013,6 +1022,7 @@ pub(crate) mod builtin {
     )]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
+    #[doc(hidden)]
     #[macro_export]
     macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
@@ -1491,6 +1501,7 @@ pub(crate) mod builtin {
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
     #[rustc_builtin_macro]
     pub macro autodiff_forward($item:item) {
         /* compiler built-in */
@@ -1509,6 +1520,7 @@ pub(crate) mod builtin {
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
     #[rustc_builtin_macro]
     pub macro autodiff_reverse($item:item) {
         /* compiler built-in */
@@ -1547,7 +1559,10 @@ pub(crate) mod builtin {
     /// // expression given.
     /// assert!(true);
     ///
-    /// fn some_computation() -> bool { true } // a very simple function
+    /// fn some_computation() -> bool {
+    ///     // Some expensive computation here
+    ///     true
+    /// }
     ///
     /// assert!(some_computation());
     ///
@@ -1760,5 +1775,16 @@ pub(crate) mod builtin {
     )]
     pub macro deref($pat:pat) {
         builtin # deref($pat)
+    }
+
+    /// Derive macro generating an impl of the trait `From`.
+    /// Currently, it can only be used on single-field structs.
+    // Note that the macro is in a different module than the `From` trait,
+    // to avoid triggering an unstable feature being used if someone imports
+    // `std::convert::From`.
+    #[rustc_builtin_macro]
+    #[unstable(feature = "derive_from", issue = "144889")]
+    pub macro From($item: item) {
+        /* compiler built-in */
     }
 }

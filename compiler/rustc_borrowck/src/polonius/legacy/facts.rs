@@ -184,22 +184,6 @@ where
     }
 }
 
-impl<A, B, C, D> FactRow for (A, B, C, D)
-where
-    A: FactCell,
-    B: FactCell,
-    C: FactCell,
-    D: FactCell,
-{
-    fn write(
-        &self,
-        out: &mut dyn Write,
-        location_table: &PoloniusLocationTable,
-    ) -> Result<(), Box<dyn Error>> {
-        write_row(out, location_table, &[&self.0, &self.1, &self.2, &self.3])
-    }
-}
-
 fn write_row(
     out: &mut dyn Write,
     location_table: &PoloniusLocationTable,

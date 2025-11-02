@@ -1,21 +1,34 @@
 use core::fmt::{self, Display};
+use core::marker::PhantomData;
 use core::num::NonZero;
-use core::ops::Range;
-use core::slice;
+use core::ops::{Deref, DerefMut};
+use core::range::Range;
 use core::str::FromStr;
-use rustc_lexer::{self as lexer, FrontmatterAllowed};
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, ExitStatus, Stdio};
+use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
 
-#[cfg(not(windows))]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
-#[cfg(windows)]
-static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
+pub struct Scoped<'inner, 'outer: 'inner, T>(T, PhantomData<&'inner mut T>, PhantomData<&'outer mut ()>);
+impl<T> Scoped<'_, '_, T> {
+    pub fn new(value: T) -> Self {
+        Self(value, PhantomData, PhantomData)
+    }
+}
+impl<T> Deref for Scoped<'_, '_, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T> DerefMut for Scoped<'_, '_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum ErrAction {
@@ -118,16 +131,14 @@ impl<'a> File<'a> {
     }
 }
 
-/// Returns the path to the `cargo-clippy` binary
-///
-/// # Panics
-///
-/// Panics if the path of current executable could not be retrieved.
+/// Creates a `Command` for running cargo.
 #[must_use]
-pub fn cargo_clippy_path() -> PathBuf {
-    let mut path = env::current_exe().expect("failed to get current executable name");
-    path.set_file_name(CARGO_CLIPPY_EXE);
-    path
+pub fn cargo_cmd() -> Command {
+    if let Some(path) = env::var_os("CARGO") {
+        Command::new(path)
+    } else {
+        Command::new("cargo")
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -288,19 +299,6 @@ impl ClippyInfo {
     }
 }
 
-/// # Panics
-/// Panics if given command result was failed.
-pub fn exit_if_err(status: io::Result<ExitStatus>) {
-    match status.expect("failed to run command").code() {
-        Some(0) => {},
-        Some(n) => process::exit(n),
-        None => {
-            eprintln!("Killed by signal");
-            process::exit(1);
-        },
-    }
-}
-
 #[derive(Clone, Copy)]
 pub enum UpdateStatus {
     Unchanged,
@@ -341,6 +339,7 @@ pub struct FileUpdater {
     dst_buf: String,
 }
 impl FileUpdater {
+    #[track_caller]
     fn update_file_checked_inner(
         &mut self,
         tool: &str,
@@ -364,6 +363,7 @@ impl FileUpdater {
         }
     }
 
+    #[track_caller]
     fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
         let mut file = File::open(path, OpenOptions::new().read(true).write(true));
         file.read_to_cleared_string(&mut self.src_buf);
@@ -373,6 +373,7 @@ impl FileUpdater {
         }
     }
 
+    #[track_caller]
     pub fn update_file_checked(
         &mut self,
         tool: &str,
@@ -383,6 +384,7 @@ impl FileUpdater {
         self.update_file_checked_inner(tool, mode, path.as_ref(), update);
     }
 
+    #[track_caller]
     pub fn update_file(
         &mut self,
         path: impl AsRef<Path>,
@@ -426,182 +428,7 @@ pub fn update_text_region_fn(
     move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
 }
 
-#[derive(Clone, Copy)]
-pub enum Token<'a> {
-    /// Matches any number of comments / doc comments.
-    AnyComment,
-    Ident(&'a str),
-    CaptureIdent,
-    LitStr,
-    CaptureLitStr,
-    Bang,
-    CloseBrace,
-    CloseBracket,
-    CloseParen,
-    /// This will consume the first colon even if the second doesn't exist.
-    DoubleColon,
-    Comma,
-    Eq,
-    Lifetime,
-    Lt,
-    Gt,
-    OpenBrace,
-    OpenBracket,
-    OpenParen,
-    Pound,
-    Semi,
-    Slash,
-}
-
-pub struct RustSearcher<'txt> {
-    text: &'txt str,
-    cursor: lexer::Cursor<'txt>,
-    pos: u32,
-    next_token: lexer::Token,
-}
-impl<'txt> RustSearcher<'txt> {
-    #[must_use]
-    #[expect(clippy::inconsistent_struct_constructor)]
-    pub fn new(text: &'txt str) -> Self {
-        let mut cursor = lexer::Cursor::new(text, FrontmatterAllowed::Yes);
-        Self {
-            text,
-            pos: 0,
-            next_token: cursor.advance_token(),
-            cursor,
-        }
-    }
-
-    #[must_use]
-    pub fn peek_text(&self) -> &'txt str {
-        &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
-    }
-
-    #[must_use]
-    pub fn peek_len(&self) -> u32 {
-        self.next_token.len
-    }
-
-    #[must_use]
-    pub fn peek(&self) -> lexer::TokenKind {
-        self.next_token.kind
-    }
-
-    #[must_use]
-    pub fn pos(&self) -> u32 {
-        self.pos
-    }
-
-    #[must_use]
-    pub fn at_end(&self) -> bool {
-        self.next_token.kind == lexer::TokenKind::Eof
-    }
-
-    pub fn step(&mut self) {
-        // `next_len` is zero for the sentinel value and the eof marker.
-        self.pos += self.next_token.len;
-        self.next_token = self.cursor.advance_token();
-    }
-
-    /// Consumes the next token if it matches the requested value and captures the value if
-    /// requested. Returns true if a token was matched.
-    fn read_token(&mut self, token: Token<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
-        loop {
-            match (token, self.next_token.kind) {
-                (_, lexer::TokenKind::Whitespace)
-                | (
-                    Token::AnyComment,
-                    lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
-                ) => self.step(),
-                (Token::AnyComment, _) => return true,
-                (Token::Bang, lexer::TokenKind::Bang)
-                | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
-                | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
-                | (Token::CloseParen, lexer::TokenKind::CloseParen)
-                | (Token::Comma, lexer::TokenKind::Comma)
-                | (Token::Eq, lexer::TokenKind::Eq)
-                | (Token::Lifetime, lexer::TokenKind::Lifetime { .. })
-                | (Token::Lt, lexer::TokenKind::Lt)
-                | (Token::Gt, lexer::TokenKind::Gt)
-                | (Token::OpenBrace, lexer::TokenKind::OpenBrace)
-                | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
-                | (Token::OpenParen, lexer::TokenKind::OpenParen)
-                | (Token::Pound, lexer::TokenKind::Pound)
-                | (Token::Semi, lexer::TokenKind::Semi)
-                | (Token::Slash, lexer::TokenKind::Slash)
-                | (
-                    Token::LitStr,
-                    lexer::TokenKind::Literal {
-                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
-                        ..
-                    },
-                ) => {
-                    self.step();
-                    return true;
-                },
-                (Token::Ident(x), lexer::TokenKind::Ident) if x == self.peek_text() => {
-                    self.step();
-                    return true;
-                },
-                (Token::DoubleColon, lexer::TokenKind::Colon) => {
-                    self.step();
-                    if !self.at_end() && matches!(self.next_token.kind, lexer::TokenKind::Colon) {
-                        self.step();
-                        return true;
-                    }
-                    return false;
-                },
-                (
-                    Token::CaptureLitStr,
-                    lexer::TokenKind::Literal {
-                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
-                        ..
-                    },
-                )
-                | (Token::CaptureIdent, lexer::TokenKind::Ident) => {
-                    **captures.next().unwrap() = self.peek_text();
-                    self.step();
-                    return true;
-                },
-                _ => return false,
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn find_token(&mut self, token: Token<'_>) -> bool {
-        let mut capture = [].iter_mut();
-        while !self.read_token(token, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return false;
-            }
-        }
-        true
-    }
-
-    #[must_use]
-    pub fn find_capture_token(&mut self, token: Token<'_>) -> Option<&'txt str> {
-        let mut res = "";
-        let mut capture = &mut res;
-        let mut capture = slice::from_mut(&mut capture).iter_mut();
-        while !self.read_token(token, &mut capture) {
-            self.step();
-            if self.at_end() {
-                return None;
-            }
-        }
-        Some(res)
-    }
-
-    #[must_use]
-    pub fn match_tokens(&mut self, tokens: &[Token<'_>], captures: &mut [&mut &'txt str]) -> bool {
-        let mut captures = captures.iter_mut();
-        tokens.iter().all(|&t| self.read_token(t, &mut captures))
-    }
-}
-
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     match OpenOptions::new().create_new(true).write(true).open(new_name) {
         Ok(file) => drop(file),
@@ -623,7 +450,7 @@ pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
     }
 }
 
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     match fs::create_dir(new_name) {
         Ok(()) => {},
@@ -649,10 +476,19 @@ pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
     }
 }
 
-pub fn write_file(path: &Path, contents: &str) {
-    expect_action(fs::write(path, contents), ErrAction::Write, path);
+#[track_caller]
+pub fn run_exit_on_err(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) {
+    match expect_action(cmd.status(), ErrAction::Run, path.as_ref()).code() {
+        Some(0) => {},
+        Some(n) => process::exit(n),
+        None => {
+            eprintln!("{} killed by signal", path.as_ref().display());
+            process::exit(1);
+        },
+    }
 }
 
+#[track_caller]
 #[must_use]
 pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
     fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
@@ -738,7 +574,7 @@ pub fn split_args_for_threads(
     }
 }
 
-#[expect(clippy::must_use_candidate)]
+#[track_caller]
 pub fn delete_file_if_exists(path: &Path) -> bool {
     match fs::remove_file(path) {
         Ok(()) => true,
@@ -747,6 +583,7 @@ pub fn delete_file_if_exists(path: &Path) -> bool {
     }
 }
 
+#[track_caller]
 pub fn delete_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {},
@@ -756,8 +593,8 @@ pub fn delete_dir_if_exists(path: &Path) {
 }
 
 /// Walks all items excluding top-level dot files/directories and any target directories.
-pub fn walk_dir_no_dot_or_target() -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
-    WalkDir::new(".").into_iter().filter_entry(|e| {
+pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
+    WalkDir::new(p).into_iter().filter_entry(|e| {
         e.path()
             .file_name()
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))

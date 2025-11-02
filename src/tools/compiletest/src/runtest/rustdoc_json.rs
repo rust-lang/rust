@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use super::{TestCx, remove_and_create_dir_all};
+use super::{DocKind, TestCx, remove_and_create_dir_all};
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_json_test(&self) {
@@ -13,7 +13,7 @@ impl TestCx<'_> {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
         });
 
-        let proc_res = self.document(&out_dir, &self.testpaths);
+        let proc_res = self.document(&out_dir, &self.testpaths, DocKind::Json);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -29,9 +29,9 @@ impl TestCx<'_> {
         );
 
         if !res.status.success() {
-            self.fatal_proc_rec_with_ctx("jsondocck failed!", &res, |_| {
-                println!("Rustdoc Output:");
-                proc_res.print_info();
+            self.fatal_proc_rec_general("jsondocck failed!", None, &res, || {
+                writeln!(self.stdout, "Rustdoc Output:");
+                writeln!(self.stdout, "{}", proc_res.format_info());
             })
         }
 

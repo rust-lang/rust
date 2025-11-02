@@ -4,17 +4,15 @@ Windows MSVC targets.
 
 **Tier 1 with host tools:**
 
+- `aarch64-pc-windows-msvc`: Windows on ARM64.
 - `i686-pc-windows-msvc`: Windows on 32-bit x86.
 - `x86_64-pc-windows-msvc`: Windows on 64-bit x86.
-
-**Tier 2 with host tools:**
-
-- `aarch64-pc-windows-msvc`: Windows on ARM64.
 
 ## Target maintainers
 
 [@ChrisDenton](https://github.com/ChrisDenton)
 [@dpaoliello](https://github.com/dpaoliello)
+[@Fulgen301](https://github.com/Fulgen301)
 [@lambdageek](https://github.com/lambdageek)
 [@sivadeilra](https://github.com/sivadeilra)
 [@wesleywiser](https://github.com/wesleywiser)

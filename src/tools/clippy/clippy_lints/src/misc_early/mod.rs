@@ -7,12 +7,9 @@ mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
 mod zero_prefixed_literal;
 
-use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
+use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
 use rustc_ast::token;
-use rustc_ast::visit::FnKind;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -58,29 +55,6 @@ declare_clippy_lint! {
     pub UNNEEDED_FIELD_PATTERN,
     restriction,
     "struct fields bound to a wildcard instead of using `..`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for function arguments having the similar names
-    /// differing by an underscore.
-    ///
-    /// ### Why is this bad?
-    /// It affects code readability.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// fn foo(a: i32, _a: i32) {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// fn bar(a: i32, _b: i32) {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DUPLICATE_UNDERSCORE_ARGUMENT,
-    style,
-    "function arguments having names which only differ by an underscore"
 }
 
 declare_clippy_lint! {
@@ -330,7 +304,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
-    DUPLICATE_UNDERSCORE_ARGUMENT,
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
     SEPARATED_LITERAL_SUFFIX,
@@ -359,32 +332,6 @@ impl EarlyLintPass for MiscEarlyLints {
         unneeded_wildcard_pattern::check(cx, pat);
     }
 
-    fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
-        let mut registered_names: FxHashMap<String, Span> = FxHashMap::default();
-
-        for arg in &fn_kind.decl().inputs {
-            if let PatKind::Ident(_, ident, None) = arg.pat.kind {
-                let arg_name = ident.to_string();
-
-                if let Some(arg_name) = arg_name.strip_prefix('_') {
-                    if let Some(correspondence) = registered_names.get(arg_name) {
-                        span_lint(
-                            cx,
-                            DUPLICATE_UNDERSCORE_ARGUMENT,
-                            *correspondence,
-                            format!(
-                                "`{arg_name}` already exists, having another argument having almost the same \
-                                 name makes code comprehension and documentation more difficult"
-                            ),
-                        );
-                    }
-                } else {
-                    registered_names.insert(arg_name, arg.pat.span);
-                }
-            }
-        }
-    }
-
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if expr.span.in_external_macro(cx.sess().source_map()) {
             return;
@@ -404,7 +351,7 @@ impl MiscEarlyLints {
         // See <https://github.com/rust-lang/rust-clippy/issues/4507> for a regression.
         // FIXME: Find a better way to detect those cases.
         let lit_snip = match snippet_opt(cx, span) {
-            Some(snip) if snip.chars().next().is_some_and(|c| c.is_ascii_digit()) => snip,
+            Some(snip) if snip.starts_with(|c: char| c.is_ascii_digit()) => snip,
             _ => return,
         };
 

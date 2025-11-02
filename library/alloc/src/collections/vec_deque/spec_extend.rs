@@ -8,7 +8,6 @@ use crate::vec;
 
 // Specialization trait used for VecDeque::extend
 pub(super) trait SpecExtend<T, I> {
-    #[track_caller]
     fn spec_extend(&mut self, iter: I);
 }
 
@@ -16,7 +15,6 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
 where
     I: Iterator<Item = T>,
 {
-    #[track_caller]
     default fn spec_extend(&mut self, mut iter: I) {
         // This function should be the moral equivalent of:
         //
@@ -47,7 +45,6 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for VecDeque<T, A>
 where
     I: TrustedLen<Item = T>,
 {
-    #[track_caller]
     default fn spec_extend(&mut self, iter: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iter.size_hint();
@@ -81,7 +78,6 @@ where
 
 #[cfg(not(test))]
 impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
-    #[track_caller]
     fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {
         let slice = iterator.as_slice();
         self.reserve(slice.len());
@@ -99,7 +95,6 @@ where
     I: Iterator<Item = &'a T>,
     T: Copy,
 {
-    #[track_caller]
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.copied())
     }
@@ -109,7 +104,6 @@ impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for VecDeque
 where
     T: Copy,
 {
-    #[track_caller]
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
         self.reserve(slice.len());

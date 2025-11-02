@@ -37,10 +37,17 @@ impl<'a> LexedStr<'a> {
     pub fn new(edition: Edition, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(edition, text);
-        if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            conv.res.push(SHEBANG, conv.offset);
-            conv.offset = shebang_len;
-        };
+        if let Ok(script) = crate::frontmatter::ScriptSource::parse(text) {
+            if let Some(shebang) = script.shebang_span() {
+                conv.push(SHEBANG, shebang.end - shebang.start, Vec::new());
+            }
+            if script.frontmatter().is_some() {
+                conv.push(FRONTMATTER, script.content_span().start - conv.offset, Vec::new());
+            }
+        } else if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
+            // Leave error reporting to `rustc_lexer`
+            conv.push(SHEBANG, shebang_len, Vec::new());
+        }
 
         // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
         // but we want to split it to two in edition <2024.
@@ -147,6 +154,24 @@ impl<'a> Converter<'a> {
             offset: 0,
             edition,
         }
+    }
+
+    /// Check for likely unterminated string by analyzing STRING token content
+    fn has_likely_unterminated_string(&self) -> bool {
+        let Some(last_idx) = self.res.kind.len().checked_sub(1) else { return false };
+
+        for i in (0..=last_idx).rev().take(5) {
+            if self.res.kind[i] == STRING {
+                let start = self.res.start[i] as usize;
+                let end = self.res.start.get(i + 1).map(|&s| s as usize).unwrap_or(self.offset);
+                let content = &self.res.text[start..end];
+
+                if content.contains('(') && (content.contains("//") || content.contains(";\n")) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     fn finalize_with_eof(mut self) -> LexedStr<'a> {
@@ -267,7 +292,16 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Unknown => ERROR,
                 rustc_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
                 rustc_lexer::TokenKind::UnknownPrefix => {
-                    errors.push("unknown literal prefix".into());
+                    let has_unterminated = self.has_likely_unterminated_string();
+
+                    let error_msg = if has_unterminated {
+                        format!(
+                            "unknown literal prefix `{token_text}` (note: check for unterminated string literal)"
+                        )
+                    } else {
+                        "unknown literal prefix".to_owned()
+                    };
+                    errors.push(error_msg);
                     IDENT
                 }
                 rustc_lexer::TokenKind::Eof => EOF,

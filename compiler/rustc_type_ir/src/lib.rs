@@ -57,7 +57,6 @@ mod upcast;
 mod visit;
 
 pub use AliasTyKind::*;
-pub use DynKind::*;
 pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
@@ -75,7 +74,7 @@ pub use pattern::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
-pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
+pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;
@@ -197,13 +196,20 @@ impl DebruijnIndex {
 
 pub fn debug_bound_var<T: std::fmt::Write>(
     fmt: &mut T,
-    debruijn: DebruijnIndex,
+    bound_index: BoundVarIndexKind,
     var: impl std::fmt::Debug,
 ) -> Result<(), std::fmt::Error> {
-    if debruijn == INNERMOST {
-        write!(fmt, "^{var:?}")
-    } else {
-        write!(fmt, "^{}_{:?}", debruijn.index(), var)
+    match bound_index {
+        BoundVarIndexKind::Bound(debruijn) => {
+            if debruijn == INNERMOST {
+                write!(fmt, "^{var:?}")
+            } else {
+                write!(fmt, "^{}_{:?}", debruijn.index(), var)
+            }
+        }
+        BoundVarIndexKind::Canonical => {
+            write!(fmt, "^c_{:?}", var)
+        }
     }
 }
 
@@ -385,16 +391,6 @@ rustc_index::newtype_index! {
     #[debug_format = "{}"]
     #[gate_rustc_only]
     pub struct BoundVar {}
-}
-
-impl<I: Interner> inherent::BoundVarLike<I> for BoundVar {
-    fn var(self) -> BoundVar {
-        self
-    }
-
-    fn assert_eq(self, _var: I::BoundVarKind) {
-        unreachable!("FIXME: We really should have a separate `BoundConst` for consts")
-    }
 }
 
 /// Represents the various closure traits in the language. This

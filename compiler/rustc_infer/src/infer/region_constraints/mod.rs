@@ -80,31 +80,37 @@ pub struct RegionConstraintData<'tcx> {
 
 /// Represents a constraint that influences the inference process.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub enum Constraint<'tcx> {
+pub enum ConstraintKind {
     /// A region variable is a subregion of another.
-    VarSubVar(RegionVid, RegionVid),
+    VarSubVar,
 
     /// A concrete region is a subregion of region variable.
-    RegSubVar(Region<'tcx>, RegionVid),
+    RegSubVar,
 
     /// A region variable is a subregion of a concrete region. This does not
     /// directly affect inference, but instead is checked after
     /// inference is complete.
-    VarSubReg(RegionVid, Region<'tcx>),
+    VarSubReg,
 
     /// A constraint where neither side is a variable. This does not
     /// directly affect inference, but instead is checked after
     /// inference is complete.
-    RegSubReg(Region<'tcx>, Region<'tcx>),
+    RegSubReg,
+}
+
+/// Represents a constraint that influences the inference process.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub struct Constraint<'tcx> {
+    pub kind: ConstraintKind,
+    // If `kind` is `VarSubVar` or `VarSubReg`, this must be a `ReVar`.
+    pub sub: Region<'tcx>,
+    // If `kind` is `VarSubVar` or `RegSubVar`, this must be a `ReVar`.
+    pub sup: Region<'tcx>,
 }
 
 impl Constraint<'_> {
     pub fn involves_placeholders(&self) -> bool {
-        match self {
-            Constraint::VarSubVar(_, _) => false,
-            Constraint::VarSubReg(_, r) | Constraint::RegSubVar(r, _) => r.is_placeholder(),
-            Constraint::RegSubReg(r, s) => r.is_placeholder() || s.is_placeholder(),
-        }
+        self.sub.is_placeholder() || self.sup.is_placeholder()
     }
 }
 
@@ -471,16 +477,24 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 // all regions are subregions of static, so we can ignore this
             }
             (ReVar(sub_id), ReVar(sup_id)) => {
-                self.add_constraint(Constraint::VarSubVar(sub_id, sup_id), origin);
+                if sub_id != sup_id {
+                    self.add_constraint(
+                        Constraint { kind: ConstraintKind::VarSubVar, sub, sup },
+                        origin,
+                    );
+                }
             }
-            (_, ReVar(sup_id)) => {
-                self.add_constraint(Constraint::RegSubVar(sub, sup_id), origin);
-            }
-            (ReVar(sub_id), _) => {
-                self.add_constraint(Constraint::VarSubReg(sub_id, sup), origin);
-            }
+            (_, ReVar(_)) => self
+                .add_constraint(Constraint { kind: ConstraintKind::RegSubVar, sub, sup }, origin),
+            (ReVar(_), _) => self
+                .add_constraint(Constraint { kind: ConstraintKind::VarSubReg, sub, sup }, origin),
             _ => {
-                self.add_constraint(Constraint::RegSubReg(sub, sup), origin);
+                if sub != sup {
+                    self.add_constraint(
+                        Constraint { kind: ConstraintKind::RegSubReg, sub, sup },
+                        origin,
+                    )
+                }
             }
         }
     }

@@ -9,8 +9,8 @@ pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, PolyTraitPredicate, SizedTraitKind, TraitPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 pub use rustc_next_trait_solver::placeholder::BoundVarReplacer;
 use rustc_span::Span;
@@ -222,7 +222,7 @@ pub struct PlaceholderReplacer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
     universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
         infcx: &'a InferCtxt<'tcx>,
         mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundVar>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
         universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {
@@ -383,13 +383,6 @@ pub fn sizedness_fast_path<'tcx>(
             _ => return false,
         };
 
-        // FIXME(sized_hierarchy): this temporarily reverts the `sized_hierarchy` feature
-        // while a proper fix for `tests/ui/sized-hierarchy/incomplete-inference-issue-143992.rs`
-        // is pending a proper fix
-        if !tcx.features().sized_hierarchy() && matches!(sizedness, SizedTraitKind::MetaSized) {
-            return true;
-        }
-
         if trait_pred.self_ty().has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");
             return true;
@@ -427,7 +420,9 @@ pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
         return candidate;
     }
 
-    if obligation.predicate.polarity() != candidate.polarity() {
+    if obligation.predicate.polarity() != PredicatePolarity::Positive
+        || candidate.polarity() != PredicatePolarity::Positive
+    {
         return candidate;
     }
 

@@ -2,16 +2,27 @@ error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:22:5
    |
 LL |     f.read_exact(&mut data).unwrap();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data.resize(20, 0); f.read_exact(&mut data)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
+help: try
+   |
+LL ~     data.resize(20, 0);
+LL ~     f.read_exact(&mut data).unwrap();
+   |
 
 error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:28:5
    |
 LL |     f.read_exact(&mut data2)?;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data2.resize(cap, 0); f.read_exact(&mut data2)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     data2.resize(cap, 0);
+LL ~     f.read_exact(&mut data2)?;
+   |
 
 error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:33:5
@@ -67,5 +78,53 @@ error: reading zero byte data to `Vec`
 LL |     r.read_exact(&mut data2).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:131:30
+   |
+LL |     let num_bytes_received = stream_and_addr.0.read(&mut buf).unwrap();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     buf.resize(32, 0);
+LL ~     let num_bytes_received = stream_and_addr.0.read(&mut buf).unwrap();
+   |
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:136:30
+   |
+LL |     let num_bytes_received = stream_and_addr.0.read(&mut buf).unwrap();
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     buf.resize(cap, 0);
+LL ~     let num_bytes_received = stream_and_addr.0.read(&mut buf).unwrap();
+   |
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:141:32
+   |
+LL |     let num_bytes_received = { stream_and_addr.0.read(&mut buf) }.unwrap();
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     buf.resize(cap, 0);
+LL ~     let num_bytes_received = { stream_and_addr.0.read(&mut buf) }.unwrap();
+   |
+
+error: reading zero byte data to `Vec`
+  --> tests/ui/read_zero_byte_vec.rs:147:5
+   |
+LL |     f.read(&mut data).unwrap()
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~     data.resize(100, 0);
+LL ~     f.read(&mut data).unwrap()
+   |
+
+error: aborting due to 15 previous errors
 

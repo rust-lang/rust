@@ -9,9 +9,8 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 use crate::builder::Builder;
-use crate::type_::Type;
+use crate::llvm::{Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 fn round_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
@@ -28,9 +27,12 @@ fn round_pointer_up_to_alignment<'ll>(
     align: Align,
     ptr_ty: &'ll Type,
 ) -> &'ll Value {
-    let mut ptr_as_int = bx.ptrtoint(addr, bx.cx().type_isize());
-    ptr_as_int = round_up_to_alignment(bx, ptr_as_int, align);
-    bx.inttoptr(ptr_as_int, ptr_ty)
+    let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
+    bx.call_intrinsic(
+        "llvm.ptrmask",
+        &[ptr_ty, bx.type_i32()],
+        &[ptr, bx.const_int(bx.isize_ty, -(align.bytes() as isize) as i64)],
+    )
 }
 
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(
@@ -190,7 +192,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // the offset again.
 
     bx.switch_to_block(maybe_reg);
-    if gr_type && layout.align.abi.bytes() > 8 {
+    if gr_type && layout.align.bytes() > 8 {
         reg_off_v = bx.add(reg_off_v, bx.const_i32(15));
         reg_off_v = bx.and(reg_off_v, bx.const_i32(-16));
     }
@@ -288,7 +290,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         bx.inbounds_ptradd(va_list_addr, bx.const_usize(1)) // fpr
     };
 
-    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align.abi);
+    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align);
 
     // "Align" the register count when the type is passed as `i64`.
     if is_i64 || (is_f64 && is_soft_float_abi) {
@@ -326,7 +328,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         // Increase the used-register count.
         let reg_incr = if is_i64 || (is_f64 && is_soft_float_abi) { 2 } else { 1 };
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
-        bx.store(new_num_regs, num_regs_addr, dl.i8_align.abi);
+        bx.store(new_num_regs, num_regs_addr, dl.i8_align);
 
         bx.br(end);
 
@@ -336,7 +338,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let mem_addr = {
         bx.switch_to_block(in_mem);
 
-        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align.abi);
+        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align);
 
         // Everything in the overflow area is rounded up to a size of at least 4.
         let overflow_area_align = Align::from_bytes(4).unwrap();
@@ -735,6 +737,7 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
             src_align,
             bx.const_u32(layout.layout.size().bytes() as u32),
             MemFlags::empty(),
+            None,
         );
         tmp
     } else {
@@ -757,7 +760,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     // byte boundary if alignment needed by type exceeds 8 byte boundary.
     // It isn't stated explicitly in the standard, but in practice we use
     // alignment greater than 16 where necessary.
-    if layout.layout.align.abi.bytes() > 8 {
+    if layout.layout.align.bytes() > 8 {
         unreachable!("all instances of VaArgSafe have an alignment <= 8");
     }
 
@@ -810,7 +813,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let va_ndx_offset = va_reg_offset + 4;
     let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
-    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
+    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align);
     let offset = round_up_to_alignment(bx, offset, layout.align.abi);
 
     let slot_size = layout.size.align_to(Align::from_bytes(4).unwrap()).bytes() as i32;
@@ -905,6 +908,21 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             )
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
+        "arm" => {
+            // Types wider than 16 bytes are not currently supported. Clang has special logic for
+            // such types, but `VaArgSafe` is not implemented for any type that is this large.
+            assert!(bx.cx.size_of(target_ty).bytes() <= 16);
+
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                AllowHigherAlign::Yes,
+                ForceRightAdjust::No,
+            )
+        }
         "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
         "powerpc" => emit_powerpc_va_arg(bx, addr, target_ty),
         "powerpc64" | "powerpc64le" => emit_ptr_va_arg(

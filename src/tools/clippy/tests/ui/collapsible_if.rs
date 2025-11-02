@@ -1,7 +1,7 @@
 #![allow(
     clippy::assertions_on_constants,
     clippy::equatable_if_let,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::nonminimal_bool,
     clippy::eq_op,
     clippy::redundant_pattern_matching
@@ -154,6 +154,24 @@ fn layout_check() -> u32 {
     //~^^^^^ collapsible_if
 }
 
+fn issue13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+        #[expect(clippy::collapsible_if)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::style)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::all)]
+        if true {}
+    }
+}
+
 fn issue14722() {
     let x = if true {
         Some(1)
@@ -172,4 +190,23 @@ fn issue14799() {
 
         if true {}
     };
+}
+
+fn in_parens() {
+    if true {
+        (if true {
+            println!("In parens, linted");
+        })
+    }
+    //~^^^^^ collapsible_if
+}
+
+fn in_brackets() {
+    if true {
+        {
+            if true {
+                println!("In brackets, not linted");
+            }
+        }
+    }
 }

@@ -11,7 +11,7 @@
 
 //@ only-windows
 
-use run_make_support::{cc, diff, is_windows_msvc, run, rustc};
+use run_make_support::{cc, diff, extra_c_flags, is_windows_msvc, run, rustc};
 
 // NOTE: build_native_dynamic lib is not used, as the special `def` files
 // must be passed to the CC compiler.
@@ -24,6 +24,7 @@ fn main() {
         cc().input("exporter.obj")
             .arg("exporter.def")
             .args(&["-link", "-dll", "-noimplib", "-out:exporter.dll"])
+            .args(extra_c_flags())
             .run();
     } else {
         cc().arg("-v").arg("-c").out_exe("exporter.obj").input("exporter.c").run();

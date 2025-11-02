@@ -7,30 +7,6 @@ use crate::ty::{self as ty, Ty, TyCtxt};
 
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
 
-impl<'tcx> Relate<TyCtxt<'tcx>> for ty::ImplSubject<'tcx> {
-    #[inline]
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        relation: &mut R,
-        a: ty::ImplSubject<'tcx>,
-        b: ty::ImplSubject<'tcx>,
-    ) -> RelateResult<'tcx, ty::ImplSubject<'tcx>> {
-        match (a, b) {
-            (ty::ImplSubject::Trait(trait_ref_a), ty::ImplSubject::Trait(trait_ref_b)) => {
-                let trait_ref = ty::TraitRef::relate(relation, trait_ref_a, trait_ref_b)?;
-                Ok(ty::ImplSubject::Trait(trait_ref))
-            }
-            (ty::ImplSubject::Inherent(ty_a), ty::ImplSubject::Inherent(ty_b)) => {
-                let ty = Ty::relate(relation, ty_a, ty_b)?;
-                Ok(ty::ImplSubject::Inherent(ty))
-            }
-            (ty::ImplSubject::Trait(_), ty::ImplSubject::Inherent(_))
-            | (ty::ImplSubject::Inherent(_), ty::ImplSubject::Trait(_)) => {
-                bug!("can not relate TraitRef and Ty");
-            }
-        }
-    }
-}
-
 impl<'tcx> Relate<TyCtxt<'tcx>> for Ty<'tcx> {
     #[inline]
     fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
@@ -59,6 +35,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let end = relation.relate(end_a, end_b)?;
                 Ok(tcx.mk_pat(ty::PatternKind::Range { start, end }))
             }
+            (ty::PatternKind::NotNull, ty::PatternKind::NotNull) => Ok(a),
             (&ty::PatternKind::Or(a), &ty::PatternKind::Or(b)) => {
                 if a.len() != b.len() {
                     return Err(TypeError::Mismatch);
@@ -67,7 +44,10 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let patterns = tcx.mk_patterns_from_iter(v)?;
                 Ok(tcx.mk_pat(ty::PatternKind::Or(patterns)))
             }
-            (ty::PatternKind::Range { .. } | ty::PatternKind::Or(_), _) => Err(TypeError::Mismatch),
+            (
+                ty::PatternKind::NotNull | ty::PatternKind::Range { .. } | ty::PatternKind::Or(_),
+                _,
+            ) => Err(TypeError::Mismatch),
         }
     }
 }

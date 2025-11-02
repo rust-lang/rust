@@ -77,10 +77,11 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
+                let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_module.krate()));
                 let type_path = current_module.find_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,
-                    ctx.config.import_path_config(),
+                    cfg,
                 )?;
 
                 let edition = current_module.krate().edition(ctx.db());
@@ -134,6 +135,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         let ret_type = make::ret_type(make::ty_path(make::ext::ident_path("Self")));
 
         let fn_ = make::fn_(
+            None,
             strukt.visibility(),
             make::name("new"),
             None,
@@ -168,7 +170,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 );
                 fn_.syntax().clone()
             } else {
-                let items = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+                let items = vec![ast::AssocItem::Fn(fn_)];
                 let list = make::assoc_item_list(Some(items));
                 editor.insert(Position::after(impl_def.syntax()), list.syntax());
                 list.syntax().clone()
@@ -176,7 +178,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         } else {
             // Generate a new impl to add the method to
             let indent_level = strukt.indent_level();
-            let body = vec![either::Either::Right(ast::AssocItem::Fn(fn_))];
+            let body = vec![ast::AssocItem::Fn(fn_)];
             let list = make::assoc_item_list(Some(body));
             let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list));
 

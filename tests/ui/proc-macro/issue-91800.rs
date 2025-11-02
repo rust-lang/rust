@@ -1,4 +1,5 @@
 //@ proc-macro: issue-91800-macro.rs
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate issue_91800_macro;

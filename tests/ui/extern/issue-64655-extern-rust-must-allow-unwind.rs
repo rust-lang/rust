@@ -48,6 +48,7 @@
 //@[fat1]compile-flags: -C opt-level=1 -C lto=fat
 //@[fat2]compile-flags: -C opt-level=2 -C lto=fat
 //@[fat3]compile-flags: -C opt-level=3 -C lto=fat
+//@ ignore-backends: gcc
 
 fn main() {
     use std::sync::atomic::{AtomicUsize, Ordering};

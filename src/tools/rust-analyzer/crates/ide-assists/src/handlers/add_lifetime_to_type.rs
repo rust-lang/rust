@@ -82,10 +82,10 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
             record_field_list
                 .fields()
                 .filter_map(|r_field| {
-                    if let ast::Type::RefType(ref_type) = r_field.ty()? {
-                        if ref_type.lifetime().is_none() {
-                            return Some(ref_type);
-                        }
+                    if let ast::Type::RefType(ref_type) = r_field.ty()?
+                        && ref_type.lifetime().is_none()
+                    {
+                        return Some(ref_type);
                     }
 
                     None
@@ -102,10 +102,10 @@ fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast
         ast::FieldList::RecordFieldList(record_list) => record_list
             .fields()
             .filter_map(|f| {
-                if let ast::Type::RefType(ref_type) = f.ty()? {
-                    if ref_type.lifetime().is_none() {
-                        return Some(ref_type);
-                    }
+                if let ast::Type::RefType(ref_type) = f.ty()?
+                    && ref_type.lifetime().is_none()
+                {
+                    return Some(ref_type);
                 }
 
                 None
@@ -114,10 +114,10 @@ fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast
         ast::FieldList::TupleFieldList(tuple_field_list) => tuple_field_list
             .fields()
             .filter_map(|f| {
-                if let ast::Type::RefType(ref_type) = f.ty()? {
-                    if ref_type.lifetime().is_none() {
-                        return Some(ref_type);
-                    }
+                if let ast::Type::RefType(ref_type) = f.ty()?
+                    && ref_type.lifetime().is_none()
+                {
+                    return Some(ref_type);
                 }
 
                 None

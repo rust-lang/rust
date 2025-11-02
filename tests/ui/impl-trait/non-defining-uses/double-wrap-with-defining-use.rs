@@ -1,12 +1,16 @@
 // Regression test for ICE from issue #140545
 // The error message is confusing and wrong, but that's a different problem (#139350)
-//@ edition:2018
+
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] check-pass
 
 trait Foo {}
-fn a(x: impl Foo) -> impl Foo {
+fn a<T: Foo>(x: T) -> impl Foo {
     if true { x } else { a(a(x)) }
-    //~^ ERROR: expected generic type parameter, found `impl Foo` [E0792]
-    //~| ERROR: type parameter `impl Foo` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+    //[current]~^ ERROR: expected generic type parameter, found `impl Foo` [E0792]
+    //[current]~| ERROR: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
 }
 
 fn main(){}

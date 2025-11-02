@@ -6,7 +6,7 @@
 
 #![crate_type = "rlib"]
 #![feature(no_core, asm_experimental_arch)]
-#![feature(s390x_target_feature, simd_ffi, link_llvm_intrinsics, repr_simd)]
+#![feature(s390x_target_feature, simd_ffi, intrinsics, repr_simd)]
 #![no_core]
 
 extern crate minicore;
@@ -30,16 +30,20 @@ struct f32x4([f32; 4]);
 #[repr(simd)]
 struct f64x2([f64; 2]);
 
-#[allow(improper_ctypes)]
-extern "C" {
-    #[link_name = "llvm.smax.v16i8"]
-    fn vmxb(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.smax.v8i16"]
-    fn vmxh(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.smax.v4i32"]
-    fn vmxf(a: i32x4, b: i32x4) -> i32x4;
-    #[link_name = "llvm.smax.v2i64"]
-    fn vmxg(a: i64x2, b: i64x2) -> i64x2;
+impl Copy for i8x16 {}
+impl Copy for i16x8 {}
+impl Copy for i32x4 {}
+impl Copy for i64x2 {}
+
+#[rustc_intrinsic]
+unsafe fn simd_ge<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
+
+#[inline(always)]
+unsafe fn simd_max<T: Copy>(a: T, b: T) -> T {
+    simd_select(simd_ge::<T, T>(a, b), a, b)
 }
 
 // CHECK-LABEL: define <16 x i8> @max_i8x16
@@ -48,7 +52,7 @@ extern "C" {
 #[no_mangle]
 #[target_feature(enable = "vector")]
 pub unsafe extern "C" fn max_i8x16(a: i8x16, b: i8x16) -> i8x16 {
-    vmxb(a, b)
+    simd_max(a, b)
 }
 
 // CHECK-LABEL: define <8 x i16> @max_i16x8
@@ -57,7 +61,7 @@ pub unsafe extern "C" fn max_i8x16(a: i8x16, b: i8x16) -> i8x16 {
 #[no_mangle]
 #[target_feature(enable = "vector")]
 pub unsafe extern "C" fn max_i16x8(a: i16x8, b: i16x8) -> i16x8 {
-    vmxh(a, b)
+    simd_max(a, b)
 }
 
 // CHECK-LABEL: define <4 x i32> @max_i32x4
@@ -66,7 +70,7 @@ pub unsafe extern "C" fn max_i16x8(a: i16x8, b: i16x8) -> i16x8 {
 #[no_mangle]
 #[target_feature(enable = "vector")]
 pub unsafe extern "C" fn max_i32x4(a: i32x4, b: i32x4) -> i32x4 {
-    vmxf(a, b)
+    simd_max(a, b)
 }
 
 // CHECK-LABEL: define <2 x i64> @max_i64x2
@@ -75,7 +79,7 @@ pub unsafe extern "C" fn max_i32x4(a: i32x4, b: i32x4) -> i32x4 {
 #[no_mangle]
 #[target_feature(enable = "vector")]
 pub unsafe extern "C" fn max_i64x2(a: i64x2, b: i64x2) -> i64x2 {
-    vmxg(a, b)
+    simd_max(a, b)
 }
 
 // CHECK-LABEL: define <4 x float> @choose_f32x4
@@ -108,7 +112,7 @@ pub unsafe extern "C" fn max_wrapper_i8x16(a: Wrapper<i8x16>, b: Wrapper<i8x16>)
     // CHECK: call <16 x i8> @llvm.smax.v16i8
     // CHECK-SAME: <16 x i8>
     // CHECK-SAME: <16 x i8>
-    Wrapper(vmxb(a.0, b.0))
+    Wrapper(simd_max(a.0, b.0))
 }
 
 #[no_mangle]
@@ -122,7 +126,7 @@ pub unsafe extern "C" fn max_wrapper_i64x2(a: Wrapper<i64x2>, b: Wrapper<i64x2>)
     // CHECK: call <2 x i64> @llvm.smax.v2i64
     // CHECK-SAME: <2 x i64>
     // CHECK-SAME: <2 x i64>
-    Wrapper(vmxg(a.0, b.0))
+    Wrapper(simd_max(a.0, b.0))
 }
 
 #[no_mangle]

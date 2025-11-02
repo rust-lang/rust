@@ -1,15 +1,14 @@
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
-
 //@ aux-build:cross_crate_spans.rs
 extern crate cross_crate_spans;
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:break cross_crate_spans.rs:14
+// gdb-command:break cross_crate_spans.rs:12
 // gdb-command:run
 
 // gdb-command:print result
@@ -32,7 +31,7 @@ extern crate cross_crate_spans;
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:b cross_crate_spans.rs:14
+// lldb-command:b cross_crate_spans.rs:12
 // lldb-command:run
 
 // lldb-command:v result

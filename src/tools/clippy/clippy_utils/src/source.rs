@@ -13,8 +13,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DUMMY_SP, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine, Span, SpanData,
-    SyntaxContext, hygiene,
+    BytePos, DUMMY_SP, DesugaringKind, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine,
+    Span, SpanData, SyntaxContext, hygiene,
 };
 use std::borrow::Cow;
 use std::fmt;
@@ -143,7 +143,6 @@ pub trait SpanRangeExt: SpanRange {
         map_range(cx.sess().source_map(), self.into_range(), f)
     }
 
-    #[allow(rustdoc::invalid_rust_codeblocks, reason = "The codeblock is intentionally broken")]
     /// Extends the range to include all preceding whitespace characters.
     ///
     /// The range will not be expanded if it would cross a line boundary, the line the range would
@@ -211,6 +210,11 @@ where
     }
 }
 impl fmt::Display for SourceText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+impl fmt::Debug for SourceText {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
     }
@@ -342,11 +346,8 @@ impl SourceFileRange {
     /// Attempts to get the text from the source file. This can fail if the source text isn't
     /// loaded.
     pub fn as_str(&self) -> Option<&str> {
-        self.sf
-            .src
-            .as_ref()
-            .map(|src| src.as_str())
-            .or_else(|| self.sf.external_src.get().and_then(|src| src.get_source()))
+        (self.sf.src.as_ref().map(|src| src.as_str()))
+            .or_else(|| self.sf.external_src.get()?.get_source())
             .and_then(|x| x.get(self.range.clone()))
     }
 }
@@ -669,6 +670,14 @@ fn snippet_with_context_sess<'a>(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> (Cow<'a, str>, bool) {
+    // If it is just range desugaring, use the desugaring span since it may include parenthesis.
+    if span.desugaring_kind() == Some(DesugaringKind::RangeExpr) && span.parent_callsite().unwrap().ctxt() == outer {
+        return (
+            snippet_with_applicability_sess(sess, span, default, applicability),
+            false,
+        );
+    }
+
     let (span, is_macro_call) = walk_span_to_context(span, outer).map_or_else(
         || {
             // The span is from a macro argument, and the outer context is the macro using the argument

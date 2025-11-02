@@ -164,19 +164,17 @@ pub(crate) fn render_field(
         let expected_fn_type =
             ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
 
-        if !expected_fn_type {
-            if let Some(receiver) = &dot_access.receiver {
-                if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-                    builder.insert(receiver.syntax().text_range().start(), "(".to_owned());
-                    builder.insert(ctx.source_range().end(), ")".to_owned());
+        if !expected_fn_type
+            && let Some(receiver) = &dot_access.receiver
+            && let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone())
+        {
+            builder.insert(receiver.syntax().text_range().start(), "(".to_owned());
+            builder.insert(ctx.source_range().end(), ")".to_owned());
 
-                    let is_parens_needed =
-                        !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+            let is_parens_needed = !matches!(dot_access.kind, DotAccessKind::Method);
 
-                    if is_parens_needed {
-                        builder.insert(ctx.source_range().end(), "()".to_owned());
-                    }
-                }
+            if is_parens_needed {
+                builder.insert(ctx.source_range().end(), "()".to_owned());
             }
         }
 
@@ -184,12 +182,11 @@ pub(crate) fn render_field(
     } else {
         item.insert_text(field_with_receiver(receiver.as_deref(), &escaped_name));
     }
-    if let Some(receiver) = &dot_access.receiver {
-        if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-            if let Some(ref_mode) = compute_ref_match(ctx.completion, ty) {
-                item.ref_match(ref_mode, original.syntax().text_range().start());
-            }
-        }
+    if let Some(receiver) = &dot_access.receiver
+        && let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone())
+        && let Some(ref_mode) = compute_ref_match(ctx.completion, ty)
+    {
+        item.ref_match(ref_mode, original.syntax().text_range().start());
     }
     item.doc_aliases(ctx.doc_aliases);
     item.build(db)
@@ -301,7 +298,7 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let cfg = ctx.config.import_path_config(ctx.is_nightly);
+    let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
     let label =
         expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.display_target).ok()?;
@@ -437,26 +434,21 @@ fn render_resolution_path(
         path_ctx,
         PathCompletionCtx { kind: PathKind::Type { .. }, has_type_args: false, .. }
     ) && config.callable.is_some();
-    if type_path_no_ty_args {
-        if let Some(cap) = cap {
-            let has_non_default_type_params = match resolution {
-                ScopeDef::ModuleDef(hir::ModuleDef::Adt(it)) => it.has_non_default_type_params(db),
-                ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(it)) => {
-                    it.has_non_default_type_params(db)
-                }
-                _ => false,
-            };
-
-            if has_non_default_type_params {
-                cov_mark::hit!(inserts_angle_brackets_for_generics);
-                item.lookup_by(name.clone())
-                    .label(SmolStr::from_iter([&name, "<…>"]))
-                    .trigger_call_info()
-                    .insert_snippet(
-                        cap,
-                        format!("{}<$0>", local_name.display(db, completion.edition)),
-                    );
+    if type_path_no_ty_args && let Some(cap) = cap {
+        let has_non_default_type_params = match resolution {
+            ScopeDef::ModuleDef(hir::ModuleDef::Adt(it)) => it.has_non_default_type_params(db),
+            ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(it)) => {
+                it.has_non_default_type_params(db)
             }
+            _ => false,
+        };
+
+        if has_non_default_type_params {
+            cov_mark::hit!(inserts_angle_brackets_for_generics);
+            item.lookup_by(name.clone())
+                .label(SmolStr::from_iter([&name, "<…>"]))
+                .trigger_call_info()
+                .insert_snippet(cap, format!("{}<$0>", local_name.display(db, completion.edition)));
         }
     }
 
@@ -493,10 +485,7 @@ fn render_resolution_path(
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
         | ScopeDef::ModuleDef(
-            ModuleDef::Trait(_)
-            | ModuleDef::TraitAlias(_)
-            | ModuleDef::Module(_)
-            | ModuleDef::TypeAlias(_),
+            ModuleDef::Trait(_) | ModuleDef::Module(_) | ModuleDef::TypeAlias(_),
         ) => (),
     };
 
@@ -549,9 +538,6 @@ fn res_to_kind(resolution: ScopeDef) -> CompletionItemKind {
         ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
         ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::SymbolKind(SymbolKind::Static),
         ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::SymbolKind(SymbolKind::Trait),
-        ScopeDef::ModuleDef(TraitAlias(..)) => {
-            CompletionItemKind::SymbolKind(SymbolKind::TraitAlias)
-        }
         ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::SymbolKind(SymbolKind::TypeAlias),
         ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
         ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
@@ -634,23 +620,24 @@ fn compute_ref_match(
     if expected_type.could_unify_with(ctx.db, completion_ty) {
         return None;
     }
-    if let Some(expected_without_ref) = &expected_without_ref {
-        if completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref) {
-            cov_mark::hit!(suggest_ref);
-            let mutability = if expected_type.is_mutable_reference() {
-                hir::Mutability::Mut
-            } else {
-                hir::Mutability::Shared
-            };
-            return Some(CompletionItemRefMode::Reference(mutability));
-        }
+    if let Some(expected_without_ref) = &expected_without_ref
+        && completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref)
+    {
+        cov_mark::hit!(suggest_ref);
+        let mutability = if expected_type.is_mutable_reference() {
+            hir::Mutability::Mut
+        } else {
+            hir::Mutability::Shared
+        };
+        return Some(CompletionItemRefMode::Reference(mutability));
     }
 
-    if let Some(completion_without_ref) = completion_without_ref {
-        if completion_without_ref == *expected_type && completion_without_ref.is_copy(ctx.db) {
-            cov_mark::hit!(suggest_deref);
-            return Some(CompletionItemRefMode::Dereference);
-        }
+    if let Some(completion_without_ref) = completion_without_ref
+        && completion_without_ref == *expected_type
+        && completion_without_ref.is_copy(ctx.db)
+    {
+        cov_mark::hit!(suggest_deref);
+        return Some(CompletionItemRefMode::Dereference);
     }
 
     None
@@ -664,10 +651,10 @@ fn path_ref_match(
 ) {
     if let Some(original_path) = &path_ctx.original_path {
         // At least one char was typed by the user already, in that case look for the original path
-        if let Some(original_path) = completion.sema.original_ast_node(original_path.clone()) {
-            if let Some(ref_mode) = compute_ref_match(completion, ty) {
-                item.ref_match(ref_mode, original_path.syntax().text_range().start());
-            }
+        if let Some(original_path) = completion.sema.original_ast_node(original_path.clone())
+            && let Some(ref_mode) = compute_ref_match(completion, ty)
+        {
+            item.ref_match(ref_mode, original_path.syntax().text_range().start());
         }
     } else {
         // completion requested on an empty identifier, there is no path here yet.
@@ -2999,7 +2986,6 @@ fn main() {
             &[CompletionItemKind::Snippet, CompletionItemKind::SymbolKind(SymbolKind::Method)],
             expect![[r#"
                 sn not !expr [snippet]
-                me not() fn(self) -> <Self as Not>::Output [type_could_unify+requires_import]
                 sn box Box::new(expr) []
                 sn call function(expr) []
                 sn const const {} []
@@ -3013,6 +2999,7 @@ fn main() {
                 sn return return expr []
                 sn unsafe unsafe {} []
                 sn while while expr {} []
+                me not() fn(self) -> <Self as Not>::Output [requires_import]
             "#]],
         );
     }

@@ -5,7 +5,7 @@
 
 // When this method is called, the tree will be a single line and look like this,
 // with other_ptr being the root at the top
-// other_ptr = root : Active
+// other_ptr = root : Unique
 // intermediary     : Frozen // an intermediary node
 // m                : Reserved
 fn write_to_mut(m: &mut u8, other_ptr: *const u8) {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use build_helper::npm;
 use build_helper::util::try_run;
-use compiletest::directives::TestProps;
+use compiletest::rustdoc_gui_test::RustdocGuiTestProps;
 use config::Config;
 
 mod config;
@@ -43,13 +43,7 @@ fn main() -> Result<(), ()> {
                 .current_dir(path);
 
             if let Some(librs) = find_librs(entry.path()) {
-                let compiletest_c = compiletest::common::Config::incomplete_for_rustdoc_gui_test();
-
-                let test_props = TestProps::from_file(
-                    &camino::Utf8PathBuf::try_from(librs).unwrap(),
-                    None,
-                    &compiletest_c,
-                );
+                let test_props = RustdocGuiTestProps::from_file(&librs);
 
                 if !test_props.compile_flags.is_empty() {
                     cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
@@ -71,22 +65,28 @@ fn main() -> Result<(), ()> {
     let mut command = Command::new(&config.nodejs);
 
     command
-        .arg(config.rust_src.join("src/tools/rustdoc-gui/tester.js"))
+        .arg(local_node_modules.join(".bin/browser-ui-test"))
         .arg("--jobs")
         .arg(&config.jobs)
-        .arg("--doc-folder")
+        .arg("--variable")
+        .arg("DOC_PATH")
         .arg(config.out_dir.join("doc"))
-        .arg("--tests-folder")
-        .arg(config.rust_src.join("tests/rustdoc-gui"));
+        .arg("--allow-file-access-from-files")
+        .arg("--display-format")
+        .arg("compact");
 
     if local_node_modules.exists() {
-        // Link the local node_modules if exists.
+        // Link the local node_modules if it exists.
         // This is useful when we run rustdoc-gui-test from outside of the source root.
         command.env("NODE_PATH", local_node_modules);
     }
 
-    for file in &config.goml_files {
-        command.arg("--file").arg(file);
+    if config.goml_files.is_empty() {
+        command.arg("--test-folder").arg(config.rust_src.join("tests/rustdoc-gui"));
+    } else {
+        for file in &config.goml_files {
+            command.arg("--test-file").arg(config.rust_src.join("tests/rustdoc-gui").join(file));
+        }
     }
 
     command.args(&config.test_args);

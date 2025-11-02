@@ -1,0 +1,17 @@
+error[E0599]: no method named `method` found for type parameter `impl Deref<Target : module::Trait>` in the current scope
+  --> $DIR/rigid-alias-bound-is-not-inherent-2.rs:13:7
+   |
+LL | fn foo(x: impl Deref<Target: module::Trait>) {
+   |           --------------------------------- method `method` not found for this type parameter
+LL |     x.method();
+   |       ^^^^^^ method not found in `impl Deref<Target : module::Trait>`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use module::Trait;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -201,5 +201,17 @@ LL | |         0
 LL | |     }
    | |_____^ help: replace with: `Some(42).unwrap_or(0)`
 
-error: aborting due to 18 previous errors
+error: this pattern reimplements `Result::unwrap_or`
+  --> tests/ui/manual_unwrap_or.rs:337:13
+   |
+LL |     let _ = if let Ok(v) = x { v } else { 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `x.unwrap_or(2)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> tests/ui/manual_unwrap_or.rs:341:13
+   |
+LL |     let _ = if let Ok(v) = copyable_res { v } else { 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `copyable_res.unwrap_or(2)`
+
+error: aborting due to 20 previous errors
 

@@ -13,7 +13,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     params: ast::GenericParamList,
 ) -> Option<()> {
     if !config.sized_bound {
@@ -44,7 +44,7 @@ pub(super) fn hints(
                             text: "Sized".to_owned(),
                             linked_location: sized_trait.and_then(|it| {
                                 config.lazy_location_opt(|| {
-                                    it.try_to_nav(sema.db).map(|it| {
+                                    it.try_to_nav(sema).map(|it| {
                                         let n = it.call_site();
                                         FileRange {
                                             file_id: n.file_id,

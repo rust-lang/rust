@@ -1,3 +1,4 @@
+use std::panic::RefUnwindSafe;
 use std::sync::mpsc::{TryRecvError, channel};
 use std::sync::{Arc, Barrier};
 use std::thread;
@@ -33,3 +34,11 @@ fn test_barrier() {
     }
     assert!(leader_found);
 }
+
+/// Asserts that `Barrier` is ref unwind safe.
+///
+/// See <https://github.com/rust-lang/rust/issues/146087>.
+const _: () = {
+    const fn check_ref_unwind_safe<T: RefUnwindSafe>() {}
+    check_ref_unwind_safe::<Barrier>();
+};

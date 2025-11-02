@@ -54,7 +54,7 @@ impl BorrowedSocket<'_> {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must remain open for the duration of
+    /// The resource pointed to by `socket` must remain open for the duration of
     /// the returned `BorrowedSocket`, and it must not have the value
     /// `INVALID_SOCKET`.
     #[inline]

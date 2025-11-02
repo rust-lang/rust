@@ -52,6 +52,12 @@ error: unclosed HTML tag `p`
 LL | ///    <br/> <p>
    |              ^^^
 
+error: incomplete HTML tag `script`
+  --> $DIR/invalid-html-tags.rs:45:5
+   |
+LL | /// <script
+   |     ^^^^^^^
+
 error: unclosed HTML tag `div`
   --> $DIR/invalid-html-tags.rs:41:5
    |
@@ -64,11 +70,11 @@ error: unclosed HTML tag `h3`
 LL | ///   <h3>
    |       ^^^^
 
-error: unclosed HTML tag `script`
-  --> $DIR/invalid-html-tags.rs:45:5
+error: incomplete HTML tag `div`
+  --> $DIR/invalid-html-tags.rs:73:10
    |
-LL | /// <script
-   |     ^^^^^^
+LL | /// <div></div
+   |          ^^^^^
 
 error: unclosed HTML tag `div`
   --> $DIR/invalid-html-tags.rs:73:5
@@ -77,28 +83,73 @@ LL | /// <div></div
    |     ^^^^^
 
 error: Unclosed HTML comment
-  --> $DIR/invalid-html-tags.rs:87:5
+  --> $DIR/invalid-html-tags.rs:88:5
    |
 LL | /// <!--
-   |     ^^^
+   |     ^^^^
 
 error: unopened HTML tag `unopened-tag`
-  --> $DIR/invalid-html-tags.rs:114:26
+  --> $DIR/invalid-html-tags.rs:115:26
    |
 LL | /// Web Components style </unopened-tag>
    |                          ^^^^^^^^^^^^^^^
 
 error: unclosed HTML tag `dashed-tags`
-  --> $DIR/invalid-html-tags.rs:112:26
+  --> $DIR/invalid-html-tags.rs:113:26
    |
 LL | /// Web Components style <dashed-tags>
    |                          ^^^^^^^^^^^^^
 
 error: unclosed HTML tag `a`
-  --> $DIR/invalid-html-tags.rs:121:19
+  --> $DIR/invalid-html-tags.rs:122:19
    |
 LL | /// backslashed \<<a href="">
    |                   ^^
 
-error: aborting due to 16 previous errors
+error: incomplete HTML tag `img`
+  --> $DIR/invalid-html-tags.rs:156:5
+   |
+LL | /// <img
+   |     ^^^^
+
+error: incomplete HTML tag `img`
+  --> $DIR/invalid-html-tags.rs:161:8
+   |
+LL | /// <p><img</p>
+   |        ^^^^
+
+error: incomplete HTML tag `img`
+  --> $DIR/invalid-html-tags.rs:166:7
+   |
+LL |   /// > <img
+   |  _______^
+LL | |
+LL | | /// > href="#broken"
+   | |____________________^
+
+error: incomplete HTML tag `br`
+  --> $DIR/invalid-html-tags.rs:172:5
+   |
+LL | /// <br<br>
+   |     ^^^
+
+error: incomplete HTML tag `br`
+  --> $DIR/invalid-html-tags.rs:177:5
+   |
+LL | /// <br
+   |     ^^^
+
+error: incomplete HTML tag `p`
+  --> $DIR/invalid-html-tags.rs:210:5
+   |
+LL | /// <p <!-->foobar</p>
+   |     ^^^
+
+error: Unclosed HTML comment
+  --> $DIR/invalid-html-tags.rs:210:8
+   |
+LL | /// <p <!-->foobar</p>
+   |        ^^^^
+
+error: aborting due to 24 previous errors
 

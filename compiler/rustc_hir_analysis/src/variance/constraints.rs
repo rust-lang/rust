@@ -281,7 +281,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_args(current, data.def_id, data.args, variance);
             }
 
-            ty::Dynamic(data, r, _) => {
+            ty::Dynamic(data, r) => {
                 // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
                 self.add_constraints_from_region(current, r, variance);
 
@@ -340,6 +340,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_const(current, start, variance);
                 self.add_constraints_from_const(current, end, variance);
             }
+            ty::PatternKind::NotNull => {}
             ty::PatternKind::Or(patterns) => {
                 for pat in patterns {
                     self.add_constraints_from_pat(current, variance, pat)

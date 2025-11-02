@@ -108,7 +108,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
 
         let vtable_entries = match tcx.hir_item(id).kind {
             hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
-                let trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate_identity();
+                let trait_ref = tcx.impl_trait_ref(def_id).instantiate_identity();
                 if trait_ref.has_non_region_param() {
                     tcx.dcx().span_err(
                         attr.span(),
@@ -152,7 +152,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     );
                     continue;
                 };
-                let ty::Dynamic(data, _, _) = *ty.kind() else {
+                let ty::Dynamic(data, _) = *ty.kind() else {
                     tcx.dcx()
                         .span_err(attr.span(), "`rustc_dump_vtable` to type alias of dyn type");
                     continue;

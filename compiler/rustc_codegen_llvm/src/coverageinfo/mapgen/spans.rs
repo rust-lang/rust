@@ -39,7 +39,10 @@ impl Coords {
 /// or other expansions), and if it does happen then skipping a span or function is
 /// better than an ICE or `llvm-cov` failure that the user might have no way to avoid.
 pub(crate) fn make_coords(source_map: &SourceMap, file: &SourceFile, span: Span) -> Option<Coords> {
-    let span = ensure_non_empty_span(source_map, span)?;
+    if span.is_empty() {
+        debug_assert!(false, "can't make coords from empty span: {span:?}");
+        return None;
+    }
 
     let lo = span.lo();
     let hi = span.hi();
@@ -68,29 +71,6 @@ pub(crate) fn make_coords(source_map: &SourceMap, file: &SourceFile, span: Span)
         end_line: end_line as u32,
         end_col: end_col as u32,
     })
-}
-
-fn ensure_non_empty_span(source_map: &SourceMap, span: Span) -> Option<Span> {
-    if !span.is_empty() {
-        return Some(span);
-    }
-
-    // The span is empty, so try to enlarge it to cover an adjacent '{' or '}'.
-    source_map
-        .span_to_source(span, |src, start, end| try {
-            // Adjusting span endpoints by `BytePos(1)` is normally a bug,
-            // but in this case we have specifically checked that the character
-            // we're skipping over is one of two specific ASCII characters, so
-            // adjusting by exactly 1 byte is correct.
-            if src.as_bytes().get(end).copied() == Some(b'{') {
-                Some(span.with_hi(span.hi() + BytePos(1)))
-            } else if start > 0 && src.as_bytes()[start - 1] == b'}' {
-                Some(span.with_lo(span.lo() - BytePos(1)))
-            } else {
-                None
-            }
-        })
-        .ok()?
 }
 
 /// If `llvm-cov` sees a source region that is improperly ordered (end < start),

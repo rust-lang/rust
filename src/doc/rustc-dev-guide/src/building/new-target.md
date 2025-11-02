@@ -6,8 +6,6 @@ relevant to your desired goal.
 
 See also the associated documentation in the [target tier policy].
 
-<!-- toc -->
-
 [target tier policy]: https://doc.rust-lang.org/rustc/target-tier-policy.html#adding-a-new-target
 
 ## Specifying a new LLVM

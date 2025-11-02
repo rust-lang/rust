@@ -1,0 +1,10 @@
+error: cannot construct `Foo` with struct literal syntax due to private fields
+  --> $DIR/suggest-new-projection-ice.rs:18:13
+   |
+LL |     let _ = m::Foo {};
+   |             ^^^^^^
+   |
+   = note: private field `_priv` that was not provided
+
+error: aborting due to 1 previous error
+

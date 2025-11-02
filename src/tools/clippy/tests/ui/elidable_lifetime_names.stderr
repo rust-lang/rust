@@ -158,5 +158,149 @@ LL |             o: &'t str,
 LL ~         ) -> Content<'t, '_> {
    |
 
-error: aborting due to 12 previous errors
+error: the following explicit lifetimes could be elided: 'a, 's
+  --> tests/ui/elidable_lifetime_names.rs:202:15
+   |
+LL |     impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
+   |               ^^  ^^                                   ^^       ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
+LL +     impl<'de> Trait<'de> for UnitVariantAccess<'_, 'de, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:226:10
+   |
+LL |     impl<'a> T for S1<'a> {}
+   |          ^^           ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a> T for S1<'a> {}
+LL +     impl T for S1<'_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/elidable_lifetime_names.rs:234:14
+   |
+LL |     impl<'a, 'b> TA<'a> for S2<'a, 'b> {}
+   |              ^^                    ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b> TA<'a> for S2<'a, 'b> {}
+LL +     impl<'a> TA<'a> for S2<'a, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:238:10
+   |
+LL |     impl<'a, 'b> TB<'b> for S2<'a, 'b> {}
+   |          ^^                    ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b> TB<'b> for S2<'a, 'b> {}
+LL +     impl<'b> TB<'b> for S2<'_, 'b> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a, 'b
+  --> tests/ui/elidable_lifetime_names.rs:242:10
+   |
+LL |     impl<'a, 'b> T for S2<'a, 'b> {}
+   |          ^^  ^^           ^^  ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b> T for S2<'a, 'b> {}
+LL +     impl T for S2<'_, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'c
+  --> tests/ui/elidable_lifetime_names.rs:250:18
+   |
+LL |     impl<'a, 'b, 'c> TAB<'a, 'b> for S3<'a, 'b, 'c> {}
+   |                  ^^                             ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TAB<'a, 'b> for S3<'a, 'b, 'c> {}
+LL +     impl<'a, 'b> TAB<'a, 'b> for S3<'a, 'b, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/elidable_lifetime_names.rs:254:14
+   |
+LL |     impl<'a, 'b, 'c> TAC<'a, 'c> for S3<'a, 'b, 'c> {}
+   |              ^^                             ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TAC<'a, 'c> for S3<'a, 'b, 'c> {}
+LL +     impl<'a, 'c> TAC<'a, 'c> for S3<'a, '_, 'c> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'b, 'c
+  --> tests/ui/elidable_lifetime_names.rs:258:14
+   |
+LL |     impl<'a, 'b, 'c> TA<'a> for S3<'a, 'b, 'c> {}
+   |              ^^  ^^                    ^^  ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TA<'a> for S3<'a, 'b, 'c> {}
+LL +     impl<'a> TA<'a> for S3<'a, '_, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:262:10
+   |
+LL |     impl<'a, 'b, 'c> TBC<'b, 'c> for S3<'a, 'b, 'c> {}
+   |          ^^                             ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TBC<'b, 'c> for S3<'a, 'b, 'c> {}
+LL +     impl<'b, 'c> TBC<'b, 'c> for S3<'_, 'b, 'c> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a, 'c
+  --> tests/ui/elidable_lifetime_names.rs:266:10
+   |
+LL |     impl<'a, 'b, 'c> TB<'b> for S3<'a, 'b, 'c> {}
+   |          ^^      ^^                ^^      ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TB<'b> for S3<'a, 'b, 'c> {}
+LL +     impl<'b> TB<'b> for S3<'_, 'b, '_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a, 'b
+  --> tests/ui/elidable_lifetime_names.rs:270:10
+   |
+LL |     impl<'a, 'b, 'c> TC<'c> for S3<'a, 'b, 'c> {}
+   |          ^^  ^^                    ^^  ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> TC<'c> for S3<'a, 'b, 'c> {}
+LL +     impl<'c> TC<'c> for S3<'_, '_, 'c> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a, 'b, 'c
+  --> tests/ui/elidable_lifetime_names.rs:274:10
+   |
+LL |     impl<'a, 'b, 'c> T for S3<'a, 'b, 'c> {}
+   |          ^^  ^^  ^^           ^^  ^^  ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a, 'b, 'c> T for S3<'a, 'b, 'c> {}
+LL +     impl T for S3<'_, '_, '_> {}
+   |
+
+error: aborting due to 24 previous errors
 

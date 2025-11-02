@@ -271,6 +271,7 @@ mod prim_bool {}
 /// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
 /// coercion to allow the type checker to infer any type:
 ///
+// FIXME: use `core::convert::absurd` here instead, once it's merged
 /// ```rust,ignore (illustrative-and-has-placeholders)
 /// // this
 /// let x: u8 = panic!();
@@ -281,7 +282,6 @@ mod prim_bool {}
 /// // where absurd is a function with the following signature
 /// // (it's sound, because `!` always marks unreachable code):
 /// fn absurd<T>(_: !) -> T { ... }
-// FIXME: use `core::convert::absurd` here instead, once it's merged
 /// ```
 ///
 /// This can lead to compilation errors if the type cannot be inferred:

@@ -6,7 +6,7 @@ use ide_db::{
     label::Label,
     source_change::SourceChange,
 };
-use syntax::{Edition, TextRange};
+use syntax::{AstNode, Edition, TextRange, ToSmolStr};
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -24,15 +24,21 @@ pub(crate) fn unused_variables(
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
     // The range for the Actual Name. We don't want to replace the entire declaration. Using the diagnostic range causes issues within in Array Destructuring.
-    let name_range = d
-        .local
-        .primary_source(ctx.sema.db)
+    let primary_source = d.local.primary_source(ctx.sema.db);
+    let name_range = primary_source
         .name()
         .map(|v| v.syntax().original_file_range_rooted(ctx.sema.db))
         .filter(|it| {
             Some(it.file_id) == ast.file_id.file_id()
                 && diagnostic_range.range.contains_range(it.range)
         });
+    let is_shorthand_field = primary_source
+        .source
+        .value
+        .left()
+        .and_then(|name| name.syntax().parent())
+        .and_then(syntax::ast::RecordPatField::cast)
+        .is_some_and(|field| field.colon_token().is_none());
     let var_name = d.local.name(ctx.sema.db);
     Some(
         Diagnostic::new_with_syntax_node_ptr(
@@ -48,6 +54,7 @@ pub(crate) fn unused_variables(
                 it.range,
                 diagnostic_range,
                 ast.file_id.is_macro(),
+                is_shorthand_field,
                 ctx.edition,
             )
         })),
@@ -60,24 +67,24 @@ fn fixes(
     name_range: TextRange,
     diagnostic_range: FileRange,
     is_in_marco: bool,
+    is_shorthand_field: bool,
     edition: Edition,
 ) -> Option<Vec<Assist>> {
     if is_in_marco {
         return None;
     }
+    let name = var_name.display(db, edition).to_smolstr();
+    let name = name.strip_prefix("r#").unwrap_or(&name);
+    let new_name = if is_shorthand_field { format!("{name}: _{name}") } else { format!("_{name}") };
 
     Some(vec![Assist {
         id: AssistId::quick_fix("unscore_unused_variable_name"),
-        label: Label::new(format!(
-            "Rename unused {} to _{}",
-            var_name.display(db, edition),
-            var_name.display(db, edition)
-        )),
+        label: Label::new(format!("Rename unused {name} to {new_name}")),
         group: None,
         target: diagnostic_range.range,
         source_change: Some(SourceChange::from_text_edit(
             diagnostic_range.file_id,
-            TextEdit::replace(name_range, format!("_{}", var_name.display(db, edition))),
+            TextEdit::replace(name_range, new_name),
         )),
         command: None,
     }])
@@ -220,10 +227,23 @@ struct Foo { f1: i32, f2: i64 }
 fn main() {
     let f = Foo { f1: 0, f2: 0 };
     match f {
-        Foo { _f1, f2 } => {
+        Foo { f1: _f1, f2 } => {
             _ = f2;
         }
     }
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+fn main() {
+    let $0r#type = 2;
+}
+"#,
+            r#"
+fn main() {
+    let _type = 2;
 }
 "#,
         );
@@ -258,6 +278,46 @@ fn main() {
 fn main() {
     let arr = [1, 2, 3, 4, 5];
     let [_x, _y @ ..] = arr;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unused_variable_in_record_field() {
+        check_fix(
+            r#"
+struct S { field : u32 }
+fn main() {
+    let s = S { field : 2 };
+    let S { field: $0x } = s
+}
+"#,
+            r#"
+struct S { field : u32 }
+fn main() {
+    let s = S { field : 2 };
+    let S { field: _x } = s
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unused_variable_in_shorthand_record_field() {
+        check_fix(
+            r#"
+struct S { field : u32 }
+fn main() {
+    let s = S { field : 2 };
+    let S { $0field } = s
+}
+"#,
+            r#"
+struct S { field : u32 }
+fn main() {
+    let s = S { field : 2 };
+    let S { field: _field } = s
 }
 "#,
         );

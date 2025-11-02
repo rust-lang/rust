@@ -1,5 +1,6 @@
+//! Unicode internals used in liballoc and libstd. Not public API.
 #![unstable(feature = "unicode_internals", issue = "none")]
-#![allow(missing_docs)]
+#![doc(hidden)]
 
 // for use in alloc, not re-exported in std.
 #[rustfmt::skip]
@@ -9,7 +10,6 @@ pub use unicode_data::conversions;
 
 #[rustfmt::skip]
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
-pub(crate) use unicode_data::cc::lookup as Cc;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
 pub(crate) use unicode_data::n::lookup as N;
@@ -18,8 +18,9 @@ pub(crate) use unicode_data::white_space::lookup as White_Space;
 
 pub(crate) mod printable;
 
+mod rt;
 #[allow(unreachable_pub)]
-mod unicode_data;
+pub mod unicode_data;
 
 /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
@@ -31,5 +32,4 @@ mod unicode_data;
 ///
 /// The version numbering scheme is explained in
 /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
-#[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;

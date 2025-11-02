@@ -1,15 +1,14 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, AsAssocItem, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
+use hir::{Adt, AsAssocItem, Crate, FindPathConfig, HasAttrs, ModuleDef, Semantics, sym};
 use ide_db::RootDatabase;
 use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ToSmolStr;
-use syntax::ast::edit::IndentLevel;
-use syntax::ast::edit_in_place::Indent;
+use syntax::ast::edit::{AstNodeEdit, IndentLevel};
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
 
@@ -76,12 +75,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let cfg = ctx.config.import_path_config();
-
     let make = SyntaxFactory::with_mappings();
 
     let scope = ctx.sema.scope(expr.syntax())?;
     let module = scope.module();
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(scope.krate()));
     let self_ty = if ctx.config.prefer_self_ty {
         scope
             .containing_function()
@@ -262,6 +260,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                         true
                     }
                 })
+                .map(|arm| arm.reset_indent().indent(IndentLevel(1)))
                 .collect();
 
             let first_new_arm_idx = arms.len();
@@ -301,7 +300,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             };
 
             let mut editor = builder.make_editor(&old_place);
-            new_match_arm_list.indent(IndentLevel::from_node(&old_place));
+            let new_match_arm_list = new_match_arm_list.indent(IndentLevel::from_node(&old_place));
             editor.replace(old_place, new_match_arm_list.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
@@ -498,7 +497,7 @@ fn build_pat(
     make: &SyntaxFactory,
     module: hir::Module,
     var: ExtendedVariant,
-    cfg: ImportPathConfig,
+    cfg: FindPathConfig,
 ) -> Option<ast::Pat> {
     let db = ctx.db();
     match var {
@@ -522,7 +521,7 @@ fn build_pat(
                 hir::StructKind::Tuple => {
                     let mut name_generator = suggest_name::NameGenerator::default();
                     let pats = fields.into_iter().map(|f| {
-                        let name = name_generator.for_type(&f.ty(db), db, edition);
+                        let name = name_generator.for_type(&f.ty(db).to_type(db), db, edition);
                         match name {
                             Some(name) => make::ext::simple_ident_pat(make.name(&name)).into(),
                             None => make.wildcard_pat().into(),
@@ -911,6 +910,39 @@ fn main() {
 fn main() {
     match None {
         None => {}
+        Some(${1:_}) => ${2:todo!()},$0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn partial_fill_option_with_indentation() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- minicore: option
+fn main() {
+    match None$0 {
+        None => {
+            foo(
+                "foo",
+                "bar",
+            );
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match None {
+        None => {
+            foo(
+                "foo",
+                "bar",
+            );
+        }
         Some(${1:_}) => ${2:todo!()},$0
     }
 }

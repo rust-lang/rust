@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_hir::hir_id::OwnerId;
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
+use std::iter;
 
 use super::RENAMED_FUNCTION_PARAMS;
 
@@ -15,11 +15,11 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored
         && let parent_node = cx.tcx.parent_hir_node(item.hir_id())
         && let Node::Item(parent_item) = parent_node
         && let ItemKind::Impl(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             ..
         }) = &parent_item.kind
-        && let Some(did) = trait_item_def_id_of_impl(cx, item.owner_id)
-        && !is_from_ignored_trait(trait_ref, ignored_traits)
+        && let Some(did) = cx.tcx.trait_item_of(item.owner_id)
+        && !is_from_ignored_trait(&of_trait.trait_ref, ignored_traits)
     {
         let mut param_idents_iter = cx.tcx.hir_body_param_idents(body_id);
         let mut default_param_idents_iter = cx.tcx.fn_arg_idents(did).iter().copied();
@@ -58,16 +58,11 @@ impl RenamedFnArgs {
         let mut renamed: Vec<(Span, String)> = vec![];
 
         debug_assert!(default_idents.size_hint() == current_idents.size_hint());
-        while let (Some(default_ident), Some(current_ident)) = (default_idents.next(), current_idents.next()) {
+        for (default_ident, current_ident) in iter::zip(default_idents, current_idents) {
             let has_name_to_check = |ident: Option<Ident>| {
-                if let Some(ident) = ident
-                    && ident.name != kw::Underscore
-                    && !ident.name.as_str().starts_with('_')
-                {
-                    Some(ident)
-                } else {
-                    None
-                }
+                ident
+                    .filter(|ident| ident.name != kw::Underscore)
+                    .filter(|ident| !ident.name.as_str().starts_with('_'))
             };
 
             if let Some(default_ident) = has_name_to_check(default_ident)
@@ -91,14 +86,8 @@ impl RenamedFnArgs {
     }
 }
 
-/// Get the [`trait_item_def_id`](ImplItemRef::trait_item_def_id) of a relevant impl item.
-fn trait_item_def_id_of_impl(cx: &LateContext<'_>, target: OwnerId) -> Option<DefId> {
-    cx.tcx.associated_item(target).trait_item_def_id
-}
-
 fn is_from_ignored_trait(of_trait: &TraitRef<'_>, ignored_traits: &DefIdSet) -> bool {
-    let Some(trait_did) = of_trait.trait_def_id() else {
-        return false;
-    };
-    ignored_traits.contains(&trait_did)
+    of_trait
+        .trait_def_id()
+        .is_some_and(|trait_did| ignored_traits.contains(&trait_did))
 }

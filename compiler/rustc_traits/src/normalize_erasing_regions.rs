@@ -41,8 +41,19 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
             // fresh `InferCtxt`. If this assert does trigger, it will give
             // us a test case.
             debug_assert_eq!(normalized_value, resolved_value);
-            let erased = infcx.tcx.erase_regions(resolved_value);
-            debug_assert!(!erased.has_infer(), "{erased:?}");
+            let erased = infcx.tcx.erase_and_anonymize_regions(resolved_value);
+            if infcx.next_trait_solver() {
+                debug_assert!(!erased.has_infer(), "{erased:?}");
+            } else {
+                // The old solver returns an ty var with the failed obligation in case of
+                // selection error. And when the obligation is re-tried, the error should be
+                // reported. However in case of overflow error, the obligation may be fulfilled
+                // due to the original depth being dropped.
+                // In conclusion, overflow results in an unconstrained ty var.
+                if erased.has_infer() {
+                    return Err(NoSolution);
+                }
+            }
             Ok(erased)
         }
         Err(NoSolution) => Err(NoSolution),

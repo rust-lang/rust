@@ -1,12 +1,16 @@
 //@revisions: trace notrace
 //@[trace] only-target: x86_64-unknown-linux-gnu i686-unknown-linux-gnu
 //@[trace] compile-flags: -Zmiri-native-lib-enable-tracing
+//@compile-flags: -Zmiri-permissive-provenance
+
+use std::ptr::NonNull;
 
 fn main() {
     test_access_pointer();
     test_access_simple();
     test_access_nested();
     test_access_static();
+    pass_fn_ptr();
 }
 
 /// Test function that dereferences an int pointer and prints its contents from C.
@@ -29,11 +33,15 @@ fn test_access_simple() {
 
     extern "C" {
         fn access_simple(s_ptr: *const Simple) -> i32;
+        fn access_simple2(s_ptr: NonNull<Simple>) -> i32;
+        fn access_simple3(s_ptr: Option<NonNull<Simple>>) -> i32;
     }
 
     let simple = Simple { field: -42 };
 
     assert_eq!(unsafe { access_simple(&simple) }, -42);
+    assert_eq!(unsafe { access_simple2(NonNull::from(&simple)) }, -42);
+    assert_eq!(unsafe { access_simple3(Some(NonNull::from(&simple))) }, -42);
 }
 
 /// Test function that dereferences nested struct pointers and accesses fields.
@@ -73,4 +81,17 @@ fn test_access_static() {
     static STATIC: Static = Static { value: 9001, recurse: &STATIC };
 
     assert_eq!(unsafe { access_static(&STATIC) }, 9001);
+}
+
+fn pass_fn_ptr() {
+    extern "C" {
+        fn pass_fn_ptr(s: Option<extern "C" fn()>);
+    }
+
+    extern "C" fn nop() {}
+
+    unsafe {
+        pass_fn_ptr(None); // this one is fine
+        pass_fn_ptr(Some(nop)); // this one is not
+    }
 }

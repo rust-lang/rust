@@ -75,7 +75,7 @@ fn format_build_step_diffs(current: &BuildStep, parent: &BuildStep) -> String {
         }
     }
 
-    fn get_steps(step: &BuildStep) -> Vec<StepByName> {
+    fn get_steps(step: &BuildStep) -> Vec<StepByName<'_>> {
         step.linearize_steps().into_iter().map(|v| StepByName(v)).collect()
     }
 
@@ -237,7 +237,7 @@ pub fn output_largest_duration_changes(
     println!("# Job duration changes");
     for (index, entry) in changes.into_iter().take(10).enumerate() {
         println!(
-            "{}. {}: {:.1}s -> {:.1}s ({:.1}%)",
+            "{}. {}: {:.1}s -> {:.1}s ({:+.1}%)",
             index + 1,
             format_job_link(job_info_resolver, job_metrics, entry.job),
             entry.before.as_secs_f64(),

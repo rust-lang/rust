@@ -3,18 +3,24 @@ error: relaxed bounds are not permitted in trait object types
    |
 LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |                        ^^^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:13:16
    |
 LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |                ^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 error: relaxed bounds are not permitted in trait object types
   --> $DIR/trait-object-trait-parens.rs:18:44
    |
 LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    |                                            ^^^^^^^^
+   |
+   = note: trait object types are not implicitly bounded by `Sized`, so there is nothing to relax
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/trait-object-trait-parens.rs:8:16
@@ -24,7 +30,7 @@ LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` on by default
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     let _: Box<dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)>;

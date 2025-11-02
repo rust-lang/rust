@@ -20,7 +20,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     pat: &ast::IdentPat,
 ) -> Option<()> {
@@ -41,13 +41,11 @@ pub(super) fn hints(
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
-                if config.hide_closure_initialization_hints {
-                    if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                        if closure_has_block_body(&closure) {
+                if config.hide_closure_initialization_hints
+                    && let Some(ast::Expr::ClosureExpr(closure)) = it.initializer()
+                        && closure_has_block_body(&closure) {
                             return None;
                         }
-                    }
-                }
                 if it.ty().is_some() {
                     return None;
                 }
@@ -380,9 +378,9 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static dyn Fn(f64, f64) -> u32
+     // ^^^ &dyn Fn(f64, f64) -> u32
     let foo = foo5();
-     // ^^^ &'static dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+     // ^^^ &dyn Fn(&(dyn Fn(f64, f64) -> u32 + 'static), f64) -> u32
     let foo = foo6();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
@@ -413,7 +411,7 @@ fn main() {
     let foo = foo3();
      // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo4();
-     // ^^^ &'static dyn Fn(f64, f64) -> u32
+     // ^^^ &dyn Fn(f64, f64) -> u32
     let foo = foo5();
     let foo = foo6();
     let foo = foo7();
@@ -528,7 +526,7 @@ fn main() {
           //^^^^ i32
     let _ = 22;
     let test = "test";
-      //^^^^ &'static str
+      //^^^^ &str
     let test = InnerStruct {};
       //^^^^ InnerStruct
 
@@ -618,12 +616,12 @@ impl<T> Iterator for IntoIter<T> {
 
 fn main() {
     let mut data = Vec::new();
-          //^^^^ Vec<&'static str>
+          //^^^^ Vec<&str>
     data.push("foo");
     for i in data {
-      //^ &'static str
+      //^ &str
       let z = i;
-        //^ &'static str
+        //^ &str
     }
 }
 "#,
@@ -648,9 +646,9 @@ auto trait Sync {}
 fn main() {
     // The block expression wrapping disables the constructor hint hiding logic
     let _v = { Vec::<Box<&(dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<&(dyn Display + Sync)>>
+      //^^ Vec<Box<&(dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<*const (dyn Display + Sync)>>::new() };
-      //^^ Vec<Box<*const (dyn Display + Sync)>>
+      //^^ Vec<Box<*const (dyn Display + Sync + 'static)>>
     let _v = { Vec::<Box<dyn Display + Sync + 'static>>::new() };
       //^^ Vec<Box<dyn Display + Sync + 'static>>
 }
@@ -911,7 +909,7 @@ fn main() {
     foo(plus_one);
 
     let add_mul = bar(|x: u8| { x + 1 });
-    //  ^^^^^^^ impl FnOnce(u8) -> u8 + ?Sized
+    //  ^^^^^^^ impl FnOnce(u8) -> u8
 
     let closure = if let Some(6) = add_mul(2).checked_sub(1) {
     //  ^^^^^^^ fn(i32) -> i32
@@ -1017,7 +1015,7 @@ fn test<T>(t: T) {
 "#,
             expect![[r#"
                 fn test<T>(t: T) {
-                    let f = |a: i32, b: &'static str, c: T| {};
+                    let f = |a: i32, b: &str, c: T| {};
                     let result: () = f(42, "", t);
                 }
             "#]],

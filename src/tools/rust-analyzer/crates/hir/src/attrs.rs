@@ -19,7 +19,7 @@ use hir_ty::{db::HirDatabase, method_resolution};
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
     Field, Function, GenericParam, HasCrate, Impl, LifetimeParam, Macro, Module, ModuleDef, Static,
-    Struct, Trait, TraitAlias, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 pub trait HasAttrs {
@@ -48,7 +48,6 @@ impl_has_attrs![
     (Static, StaticId),
     (Const, ConstId),
     (Trait, TraitId),
-    (TraitAlias, TraitAliasId),
     (TypeAlias, TypeAliasId),
     (Macro, MacroId),
     (Function, FunctionId),
@@ -137,7 +136,6 @@ fn resolve_doc_path_on_(
         AttrDefId::StaticId(it) => it.resolver(db),
         AttrDefId::ConstId(it) => it.resolver(db),
         AttrDefId::TraitId(it) => it.resolver(db),
-        AttrDefId::TraitAliasId(it) => it.resolver(db),
         AttrDefId::TypeAliasId(it) => it.resolver(db),
         AttrDefId::ImplId(it) => it.resolver(db),
         AttrDefId::ExternBlockId(it) => it.resolver(db),
@@ -216,10 +214,6 @@ fn resolve_assoc_or_field(
                 DocLinkDef::ModuleDef(def)
             });
         }
-        TypeNs::TraitAliasId(_) => {
-            // XXX: Do these get resolved?
-            return None;
-        }
         TypeNs::ModuleId(_) => {
             return None;
         }
@@ -263,7 +257,7 @@ fn resolve_impl_trait_item<'db>(
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    let canonical = ty.canonical();
+    let canonical = ty.canonical(db);
     let krate = ty.krate(db);
     let environment = resolver
         .generic_def()

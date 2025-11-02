@@ -36,11 +36,11 @@ declare_lint_pass!(EmptyDrop => [EMPTY_DROP]);
 impl LateLintPass<'_> for EmptyDrop {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             items: [child],
             ..
         }) = item.kind
-            && trait_ref.trait_def_id() == cx.tcx.lang_items().drop_trait()
+            && of_trait.trait_ref.trait_def_id() == cx.tcx.lang_items().drop_trait()
             && let impl_item_hir = child.hir_id()
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind

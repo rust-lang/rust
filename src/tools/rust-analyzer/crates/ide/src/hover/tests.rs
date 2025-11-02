@@ -1,12 +1,14 @@
 use expect_test::{Expect, expect};
-use ide_db::{FileRange, base_db::SourceDatabase};
+use ide_db::{FileRange, MiniCore, base_db::SourceDatabase};
 use syntax::TextRange;
 
 use crate::{
     HoverConfig, HoverDocFormat, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, fixture,
 };
 
-const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
+use hir::setup_tracing;
+
+const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
     links_in_hover: false,
     memory_layout: Some(MemoryLayoutHoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
@@ -23,6 +25,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
     show_drop_glue: true,
+    minicore: MiniCore::default(),
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -38,6 +41,7 @@ fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 
 #[track_caller]
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let _tracing = setup_tracing();
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -357,7 +361,7 @@ fn main() {
             ```rust
             impl Fn(i32) -> i32
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
 
             ## Captures
@@ -380,7 +384,7 @@ fn main() {
             ```rust
             impl Fn(i32) -> i32
             ```
-            ___
+            ---
             size = 0, align = 1
 
             ## Captures
@@ -414,7 +418,7 @@ fn main() {
             ```rust
             impl FnOnce()
             ```
-            ___
+            ---
             size = 16 (0x10), align = 8, niches = 1
 
             ## Captures
@@ -443,7 +447,7 @@ fn main() {
             ```rust
             impl FnMut()
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
 
             ## Captures
@@ -468,7 +472,7 @@ fn main() {
             ```rust
             impl FnOnce() -> S2
             ```
-            ___
+            ---
             size = 8, align = 8, niches = 1
             Coerced to: &impl FnOnce() -> S2
 
@@ -4735,7 +4739,7 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<_>
+            let value: Const<-1>
             ```
 
             ---
@@ -4789,6 +4793,48 @@ fn main() {
             ---
 
             size = 0, align = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn const_generic_negative_literal_macro_expansion() {
+    // Test that negative literals work correctly in const generics
+    // when used through macro expansion. This ensures the transcriber
+    // doesn't wrap negative literals in parentheses, which would create
+    // invalid syntax like Foo::<(-1)> instead of Foo::<-1>.
+    check(
+        r#"
+struct Foo<const I: i16> {
+    pub value: i16,
+}
+
+impl<const I: i16> Foo<I> {
+    pub fn new(value: i16) -> Self {
+        Self { value }
+    }
+}
+
+macro_rules! create_foo {
+    ($val:expr) => {
+        Foo::<$val>::new($val)
+    };
+}
+
+fn main() {
+    let v$0alue = create_foo!(-1);
+}
+"#,
+        expect![[r#"
+            *value*
+
+            ```rust
+            let value: Foo<-1>
+            ```
+
+            ---
+
+            size = 2, align = 2, no Drop
         "#]],
     );
 }
@@ -6261,6 +6307,8 @@ const FOO$0: (&str, &str) = {
     );
 }
 
+// FIXME(next-solver): this fails to normalize the const, probably due to the solver
+// refusing to give the impl because of the error type.
 #[test]
 fn hover_const_eval_in_generic_trait() {
     // Doesn't compile, but we shouldn't crash.
@@ -6282,12 +6330,16 @@ fn test() {
             *FOO*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::Trait
             ```
 
             ```rust
-            const FOO: bool = true
+            const FOO: bool = false
             ```
+
+            ---
+
+            `Self` = `S<{unknown}>`
         "#]],
     );
 }
@@ -6829,7 +6881,7 @@ fn hover_lint() {
                 ```
                 arithmetic_overflow
                 ```
-                ___
+                ---
 
                 arithmetic operation overflows
             "#]],
@@ -6841,7 +6893,7 @@ fn hover_lint() {
                 ```
                 arithmetic_overflow
                 ```
-                ___
+                ---
 
                 arithmetic operation overflows
             "#]],
@@ -6857,7 +6909,7 @@ fn hover_clippy_lint() {
                 ```
                 clippy::almost_swapped
                 ```
-                ___
+                ---
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
@@ -6869,7 +6921,7 @@ fn hover_clippy_lint() {
                 ```
                 clippy::almost_swapped
                 ```
-                ___
+                ---
 
                 Checks for `foo = bar; bar = foo` sequences.
             "#]],
@@ -7192,7 +7244,7 @@ fn foo() {
 "#,
         expect![[r#"
             ```rust
-            &'static str
+            &str
             ```"#]],
     );
 }
@@ -8456,7 +8508,7 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8476,7 +8528,7 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8496,7 +8548,7 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8521,7 +8573,7 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &'static str
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -8567,7 +8619,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ` 🦀🦀\A `
         "#]],
@@ -8583,7 +8635,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ` 🦀\u{1f980}\\\x41 `
         "#]],
@@ -8605,7 +8657,7 @@ fsdghs";
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal (truncated up to newline): ` 🦀\u{1f980}\\\x41 `
         "#]],
@@ -8625,7 +8677,7 @@ fn main() {
             ```rust
             &'static {unknown}
             ```
-            ___
+            ---
 
             value of literal: ` 🦀🦀\A `
         "#]],
@@ -8644,7 +8696,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: ```` `[^`]*` ````
         "#]],
@@ -8659,7 +8711,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `` ` ``
         "#]],
@@ -8674,7 +8726,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `    `
         "#]],
@@ -8690,7 +8742,7 @@ fn main() {
             ```rust
             &'static str
             ```
-            ___
+            ---
 
             value of literal: `  Hello World  `
         "#]],
@@ -8710,7 +8762,7 @@ fn main() {
             ```rust
             &'static [u8; 5]
             ```
-            ___
+            ---
 
             value of literal: ` [240, 159, 166, 128, 92] `
         "#]],
@@ -8726,7 +8778,7 @@ fn main() {
             ```rust
             &'static [u8; 18]
             ```
-            ___
+            ---
 
             value of literal: ` [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92] `
         "#]],
@@ -8746,7 +8798,7 @@ fn main() {
             ```rust
             u8
             ```
-            ___
+            ---
 
             value of literal: ` 0xF0 `
         "#]],
@@ -8762,7 +8814,7 @@ fn main() {
             ```rust
             u8
             ```
-            ___
+            ---
 
             value of literal: ` 0x5C `
         "#]],
@@ -8782,7 +8834,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` A `
         "#]],
@@ -8798,7 +8850,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` \ `
         "#]],
@@ -8814,7 +8866,7 @@ fn main() {
             ```rust
             char
             ```
-            ___
+            ---
 
             value of literal: ` 🦀 `
         "#]],
@@ -8834,7 +8886,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3FF0000000000000) `
         "#]],
@@ -8850,7 +8902,7 @@ fn main() {
             ```rust
             f16
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3C00) `
         "#]],
@@ -8866,7 +8918,7 @@ fn main() {
             ```rust
             f32
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3F800000) `
         "#]],
@@ -8882,7 +8934,7 @@ fn main() {
             ```rust
             f128
             ```
-            ___
+            ---
 
             value of literal: ` 1 (bits: 0x3FFF0000000000000000000000000000) `
         "#]],
@@ -8898,7 +8950,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 134000000000000 (bits: 0x42DE77D399980000) `
         "#]],
@@ -8914,7 +8966,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             value of literal: ` 1523527134274733600000000 (bits: 0x44F429E9249F629B) `
         "#]],
@@ -8930,7 +8982,7 @@ fn main() {
             ```rust
             f64
             ```
-            ___
+            ---
 
             invalid literal: invalid float literal
         "#]],
@@ -8950,7 +9002,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010) `
         "#]],
@@ -8966,7 +9018,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 13412342421 (0x31F701A95|0b1100011111011100000001101010010101) `
         "#]],
@@ -8982,7 +9034,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 306328611 (0x12423423|0b10010010000100011010000100011) `
         "#]],
@@ -8998,7 +9050,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 255 (0xFF|0b11111111) `
         "#]],
@@ -9014,7 +9066,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             value of literal: ` 5349 (0x14E5|0b1010011100101) `
         "#]],
@@ -9030,7 +9082,7 @@ fn main() {
             ```rust
             i32
             ```
-            ___
+            ---
 
             invalid literal: number too large to fit in target type
         "#]],
@@ -9186,7 +9238,7 @@ fn main() {
             ```rust
             S
             ```
-            ___
+            ---
             Implements notable traits: `Future<Output = u32>`, `Iterator<Item = S>`, `Notable`"#]],
     );
 }
@@ -10165,7 +10217,7 @@ fn baz() {
 
             ---
 
-            `U` = `i32`, `T` = `&'static str`
+            `U` = `i32`, `T` = `&str`
         "#]],
     );
 }
@@ -10258,7 +10310,7 @@ fn bar() {
 
             ---
 
-            `T` = `i8`, `U` = `&'static str`
+            `T` = `i8`, `U` = `&str`
         "#]],
     );
 }
@@ -10558,6 +10610,77 @@ macro_rules! str {
                             expect_test: true,
                             insta: true,
                             snapbox: true,
+                        },
+                    },
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_runnables_with_snapshot_tests_indirect_dep() {
+    check_actions(
+        r#"
+//- /lib.rs crate:foo deps:utils
+use utils::expect_test::expect;
+
+#[test]
+fn test$0() {
+    let actual = "new25";
+    expect!["new25"].assert_eq(&actual);
+}
+
+//- /expect-test/lib.rs crate:expect_test
+struct Expect;
+
+impl Expect {
+    fn assert_eq(&self, actual: &str) {}
+}
+
+#[macro_export]
+macro_rules! expect {
+    ($e:expr) => Expect; // dummy
+}
+
+//- /utils/lib.rs crate:utils deps:expect_test
+pub use expect_test;
+        "#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 44,
+                    },
+                ),
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 33..121,
+                            focus_range: 44..48,
+                            name: "test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: true,
+                            insta: false,
+                            snapbox: false,
                         },
                     },
                 ),
@@ -11020,6 +11143,29 @@ impl Enum<'_, Borrowed> {
             ```rust
             const CONSTANT: Self = Variant1(&[Variant2])
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn unknown_should_not_implement_notable_traits() {
+    check(
+        r#"
+//- minicore: future, iterator
+fn foo() {
+    let x$0;
+}
+    "#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            let x: {unknown}
+            ```
+
+            ---
+
+            no Drop
         "#]],
     );
 }

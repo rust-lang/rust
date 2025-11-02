@@ -4,4 +4,4 @@
 
 //@ compile-flags: --print=file-names
 #![crate_name = "this_one_is_okay"]
-#![crate_name = concat!("this_one_is_not")]  //~ ERROR malformed `crate_name` attribute input
+#![crate_name = concat!("this_one_is_not")] //~ ERROR attribute value must be a literal

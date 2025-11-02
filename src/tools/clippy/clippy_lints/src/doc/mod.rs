@@ -4,23 +4,24 @@ use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
-use pulldown_cmark::Event::{
-    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
-    TaskListMarker, Text,
-};
-use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
-use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_resolve::rustdoc::pulldown_cmark::Event::{
+    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
+    TaskListMarker, Text,
+};
+use rustc_resolve::rustdoc::pulldown_cmark::Tag::{
+    BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph,
+};
+use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_resolve::rustdoc::{
-    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
-    span_of_fragments,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, pulldown_cmark,
+    source_span_for_markdown_range, span_of_fragments,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
-use rustc_span::edition::Edition;
 use std::ops::Range;
 use url::Url;
 
@@ -34,6 +35,7 @@ mod markdown;
 mod missing_headers;
 mod needless_doctest_main;
 mod suspicious_doc_comments;
+mod test_attr_in_doctest;
 mod too_long_first_doc_paragraph;
 
 declare_clippy_lint! {
@@ -315,7 +317,7 @@ declare_clippy_lint! {
     /// /// [example of a good link](https://github.com/rust-lang/rust-clippy/)
     /// pub fn do_something() {}
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.90.0"]
     pub DOC_BROKEN_LINK,
     pedantic,
     "broken document link"
@@ -662,7 +664,7 @@ declare_clippy_lint! {
     /// /// [^1]: defined here
     /// fn my_fn() {}
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub DOC_SUSPICIOUS_FOOTNOTES,
     suspicious,
     "looks like a link or footnote ref, but with no definition"
@@ -898,8 +900,6 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     ))
 }
 
-const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
-
 enum Container {
     Blockquote,
     List(usize),
@@ -964,11 +964,75 @@ fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a
     }
 }
 
+#[derive(Clone, Copy)]
+#[expect(clippy::struct_excessive_bools)]
+struct CodeTags {
+    no_run: bool,
+    ignore: bool,
+    compile_fail: bool,
+
+    rust: bool,
+}
+
+impl Default for CodeTags {
+    fn default() -> Self {
+        Self {
+            no_run: false,
+            ignore: false,
+            compile_fail: false,
+
+            rust: true,
+        }
+    }
+}
+
+impl CodeTags {
+    /// Based on <https://github.com/rust-lang/rust/blob/1.90.0/src/librustdoc/html/markdown.rs#L1169>
+    fn parse(lang: &str) -> Self {
+        let mut tags = Self::default();
+
+        let mut seen_rust_tags = false;
+        let mut seen_other_tags = false;
+        for item in lang.split([',', ' ', '\t']) {
+            match item.trim() {
+                "" => {},
+                "rust" => {
+                    tags.rust = true;
+                    seen_rust_tags = true;
+                },
+                "ignore" => {
+                    tags.ignore = true;
+                    seen_rust_tags = !seen_other_tags;
+                },
+                "no_run" => {
+                    tags.no_run = true;
+                    seen_rust_tags = !seen_other_tags;
+                },
+                "should_panic" => seen_rust_tags = !seen_other_tags,
+                "compile_fail" => {
+                    tags.compile_fail = true;
+                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                },
+                "test_harness" | "standalone_crate" => {
+                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                },
+                _ if item.starts_with("ignore-") => seen_rust_tags = true,
+                _ if item.starts_with("edition") => {},
+                _ => seen_other_tags = true,
+            }
+        }
+
+        tags.rust &= seen_rust_tags || !seen_other_tags;
+
+        tags
+    }
+}
+
 /// Checks parsed documentation.
 /// This walks the "events" (think sections of markdown) produced by `pulldown_cmark`,
 /// so lints here will generally access that information.
 /// Returns documentation headers -- whether a "Safety", "Errors", "Panic" section was found
-#[allow(clippy::too_many_lines)] // Only a big match statement
+#[expect(clippy::too_many_lines, reason = "big match statement")]
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,
@@ -979,14 +1043,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 ) -> DocHeaders {
     // true if a safety header was found
     let mut headers = DocHeaders::default();
-    let mut in_code = false;
+    let mut code = None;
     let mut in_link = None;
     let mut in_heading = false;
     let mut in_footnote_definition = false;
-    let mut is_rust = false;
-    let mut no_test = false;
-    let mut ignore = false;
-    let mut edition = None;
     let mut ticks_unbalanced = false;
     let mut text_to_check: Vec<(CowStr<'_>, Range<usize>, isize)> = Vec::new();
     let mut paragraph_range = 0..0;
@@ -1046,31 +1106,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 containers.pop();
             },
             Start(CodeBlock(ref kind)) => {
-                in_code = true;
-                if let CodeBlockKind::Fenced(lang) = kind {
-                    for item in lang.split(',') {
-                        if item == "ignore" {
-                            is_rust = false;
-                            break;
-                        } else if item == "no_test" {
-                            no_test = true;
-                        } else if item == "no_run" || item == "compile_fail" {
-                            ignore = true;
-                        }
-                        if let Some(stripped) = item.strip_prefix("edition") {
-                            is_rust = true;
-                            edition = stripped.parse::<Edition>().ok();
-                        } else if item.is_empty() || RUST_CODE.contains(&item) {
-                            is_rust = true;
-                        }
-                    }
-                }
+                code = Some(match kind {
+                    CodeBlockKind::Indented => CodeTags::default(),
+                    CodeBlockKind::Fenced(lang) => CodeTags::parse(lang),
+                });
             },
-            End(TagEnd::CodeBlock) => {
-                in_code = false;
-                is_rust = false;
-                ignore = false;
-            },
+            End(TagEnd::CodeBlock) => code = None,
             Start(Link { dest_url, .. }) => in_link = Some(dest_url),
             End(TagEnd::Link) => in_link = None,
             Start(Heading { .. } | Paragraph | Item) => {
@@ -1139,12 +1180,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         None,
                         "a backtick may be missing a pair",
                     );
+                    text_to_check.clear();
                 } else {
-                    for (text, range, assoc_code_level) in text_to_check {
+                    for (text, range, assoc_code_level) in text_to_check.drain(..) {
                         markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
                     }
                 }
-                text_to_check = Vec::new();
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
@@ -1180,7 +1221,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 paragraph_range.end = range.end;
                 let range_ = range.clone();
                 ticks_unbalanced |= text.contains('`')
-                    && !in_code
+                    && code.is_none()
                     && doc[range.clone()].bytes().enumerate().any(|(i, c)| {
                         // scan the markdown source code bytes for backquotes that aren't preceded by backslashes
                         // - use bytes, instead of chars, to avoid utf8 decoding overhead (special chars are ascii)
@@ -1203,10 +1244,14 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 headers.safety |= in_heading && trimmed_text == "Implementation Safety";
                 headers.errors |= in_heading && trimmed_text == "Errors";
                 headers.panics |= in_heading && trimmed_text == "Panics";
-                if in_code {
-                    if is_rust && !no_test {
-                        let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
-                        needless_doctest_main::check(cx, &text, edition, range.clone(), fragments, ignore);
+
+                if let Some(tags) = code {
+                    if tags.rust && !tags.compile_fail && !tags.ignore {
+                        needless_doctest_main::check(cx, &text, range.start, fragments);
+
+                        if !tags.no_run {
+                            test_attr_in_doctest::check(cx, &text, range.start, fragments);
+                        }
                     }
                 } else {
                     if in_link.is_some() {

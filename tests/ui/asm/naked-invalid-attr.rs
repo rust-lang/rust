@@ -1,25 +1,25 @@
 // Checks that the #[unsafe(naked)] attribute can be placed on function definitions only.
 //
 //@ needs-asm-support
-#![unsafe(naked)] //~ ERROR should be applied to a function definition
+#![unsafe(naked)] //~ ERROR attribute cannot be used on
 
 use std::arch::naked_asm;
 
 extern "C" {
-    #[unsafe(naked)] //~ ERROR should be applied to a function definition
+    #[unsafe(naked)] //~ ERROR attribute cannot be used on
     fn f();
 }
 
-#[unsafe(naked)] //~ ERROR should be applied to a function definition
+#[unsafe(naked)] //~ ERROR attribute cannot be used on
 #[repr(C)]
 struct S {
-    #[unsafe(naked)] //~ ERROR should be applied to a function definition
+    #[unsafe(naked)] //~ ERROR attribute cannot be used on
     a: u32,
     b: u32,
 }
 
 trait Invoke {
-    #[unsafe(naked)] //~ ERROR should be applied to a function definition
+    #[unsafe(naked)] //~ ERROR attribute cannot be used on
     extern "C" fn invoke(&self);
 }
 
@@ -48,7 +48,7 @@ impl S {
 }
 
 fn main() {
-    #[unsafe(naked)] //~ ERROR should be applied to a function definition
+    #[unsafe(naked)] //~ ERROR attribute cannot be used on
     || {};
 }
 

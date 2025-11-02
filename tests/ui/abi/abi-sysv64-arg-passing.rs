@@ -28,6 +28,7 @@
 //@ ignore-arm
 //@ ignore-aarch64
 //@ ignore-windows
+//@ ignore-backends: gcc
 
 // Windows is ignored because bootstrap doesn't yet know to compile rust_test_helpers with
 // the sysv64 ABI on Windows.

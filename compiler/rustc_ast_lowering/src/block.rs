@@ -1,5 +1,6 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
+use rustc_hir::Target;
 use rustc_span::sym;
 use smallvec::SmallVec;
 
@@ -26,7 +27,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
-    fn lower_stmts(
+    pub(super) fn lower_stmts(
         &mut self,
         mut ast_stmts: &[Stmt],
     ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
@@ -109,7 +110,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
-        self.lower_attrs(hir_id, &l.attrs, l.span);
+        self.lower_attrs(hir_id, &l.attrs, l.span, Target::Statement);
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
 

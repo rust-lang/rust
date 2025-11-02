@@ -13,7 +13,6 @@ use crate::ast::{
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
@@ -87,10 +86,10 @@ impl AttributeExt for Attribute {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> bool {
+    fn is_doc_comment(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(..) => false,
-            AttrKind::DocComment(..) => true,
+            AttrKind::Normal(..) => None,
+            AttrKind::DocComment(..) => Some(self.span),
         }
     }
 
@@ -660,7 +659,7 @@ pub fn mk_attr_from_item(
     span: Span,
 ) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(P(NormalAttr { item, tokens })),
+        kind: AttrKind::Normal(Box::new(NormalAttr { item, tokens })),
         id: g.mk_attr_id(),
         style,
         span,
@@ -710,7 +709,7 @@ pub fn mk_attr_name_value_str(
     span: Span,
 ) -> Attribute {
     let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
-    let expr = P(Expr {
+    let expr = Box::new(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
         span,
@@ -777,7 +776,7 @@ pub trait AttributeExt: Debug {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> bool;
+    fn is_doc_comment(&self) -> Option<Span>;
 
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
@@ -864,8 +863,9 @@ impl Attribute {
         AttributeExt::path_matches(self, name)
     }
 
+    // on ast attributes we return a bool since that's what most code already expects
     pub fn is_doc_comment(&self) -> bool {
-        AttributeExt::is_doc_comment(self)
+        AttributeExt::is_doc_comment(self).is_some()
     }
 
     #[inline]

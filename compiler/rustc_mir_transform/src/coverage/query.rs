@@ -1,4 +1,5 @@
-use rustc_attr_data_structures::{AttributeKind, CoverageAttrKind, find_attr};
+use rustc_hir::attrs::{AttributeKind, CoverageAttrKind};
+use rustc_hir::find_attr;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -110,11 +111,6 @@ fn coverage_ids_info<'tcx>(
                 bcb_needs_counter.insert(true_bcb);
                 bcb_needs_counter.insert(false_bcb);
             }
-            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params: _ } => {
-                bcb_needs_counter.insert(true_bcb);
-                bcb_needs_counter.insert(false_bcb);
-            }
-            MappingKind::MCDCDecision(_) => {}
         }
     }
 

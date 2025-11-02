@@ -17,6 +17,7 @@ unsafe extern "Rust" {
     #[rustc_allocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
+    #[rustc_allocator_zeroed_variant = "__rust_alloc_zeroed"]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
@@ -360,7 +361,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 unsafe extern "Rust" {
     // This is the magic symbol to call the global alloc error handler. rustc generates
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
-    // default implementations below (`__rdl_oom`) otherwise.
+    // default implementations below (`__rdl_alloc_error_handler`) otherwise.
     #[rustc_std_internal_symbol]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
@@ -407,12 +408,12 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
         }
     }
 
-    #[cfg(not(feature = "panic_immediate_abort"))]
+    #[cfg(not(panic = "immediate-abort"))]
     {
         core::intrinsics::const_eval_select((layout,), ct_error, rt_error)
     }
 
-    #[cfg(feature = "panic_immediate_abort")]
+    #[cfg(panic = "immediate-abort")]
     ct_error(layout)
 }
 
@@ -424,7 +425,7 @@ pub mod __alloc_error_handler {
     // called via generated `__rust_alloc_error_handler` if there is no
     // `#[alloc_error_handler]`.
     #[rustc_std_internal_symbol]
-    pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
+    pub unsafe fn __rdl_alloc_error_handler(size: usize, _align: usize) -> ! {
         unsafe extern "Rust" {
             // This symbol is emitted by rustc next to __rust_alloc_error_handler.
             // Its value depends on the -Zoom={panic,abort} compiler option.

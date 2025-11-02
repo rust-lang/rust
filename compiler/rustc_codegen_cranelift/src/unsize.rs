@@ -30,9 +30,7 @@ pub(crate) fn unsized_info<'tcx>(
             fx.pointer_type,
             len.try_to_target_usize(fx.tcx).expect("expected monomorphic const in codegen") as i64,
         ),
-        (&ty::Dynamic(data_a, _, src_dyn_kind), &ty::Dynamic(data_b, _, target_dyn_kind))
-            if src_dyn_kind == target_dyn_kind =>
-        {
+        (&ty::Dynamic(data_a, _), &ty::Dynamic(data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             let b_principal_def_id = data_b.principal_def_id();
@@ -133,6 +131,11 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         dst.write_cvalue(fx, CValue::by_val_pair(base, info, dst.layout()));
     };
     match (&src_ty.kind(), &dst_ty.kind()) {
+        (ty::Pat(a, _), ty::Pat(b, _)) => {
+            let src = src.cast_pat_ty_to_base(fx.layout_of(*a));
+            let dst = dst.place_transmute_type(fx, *b);
+            return coerce_unsized_into(fx, src, dst);
+        }
         (&ty::Ref(..), &ty::Ref(..))
         | (&ty::Ref(..), &ty::RawPtr(..))
         | (&ty::RawPtr(..), &ty::RawPtr(..)) => coerce_ptr(),
@@ -169,7 +172,7 @@ pub(crate) fn size_and_align_of<'tcx>(
     if layout.is_sized() {
         return (
             fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64),
-            fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64),
+            fx.bcx.ins().iconst(fx.pointer_type, layout.align.bytes() as i64),
         );
     }
 
@@ -188,7 +191,7 @@ pub(crate) fn size_and_align_of<'tcx>(
             // times the unit size.
             (
                 fx.bcx.ins().imul_imm(info.unwrap(), unit.size.bytes() as i64),
-                fx.bcx.ins().iconst(fx.pointer_type, unit.align.abi.bytes() as i64),
+                fx.bcx.ins().iconst(fx.pointer_type, unit.align.bytes() as i64),
             )
         }
         ty::Foreign(_) => {
@@ -226,7 +229,7 @@ pub(crate) fn size_and_align_of<'tcx>(
             let unsized_offset_unadjusted = layout.fields.offset(i).bytes();
             let unsized_offset_unadjusted =
                 fx.bcx.ins().iconst(fx.pointer_type, unsized_offset_unadjusted as i64);
-            let sized_align = layout.align.abi.bytes();
+            let sized_align = layout.align.bytes();
             let sized_align = fx.bcx.ins().iconst(fx.pointer_type, sized_align as i64);
 
             // Recurse to get the size of the dynamically sized field (must be

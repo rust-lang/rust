@@ -4,7 +4,7 @@ use syn::spanned::Spanned;
 use syn::{Data, Fields, Ident};
 use synstructure::Structure;
 
-fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, TokenStream) {
+fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream) {
     let string_name = name.to_string();
     let mut disps = vec![quote! {let mut __printed_anything = false;}];
 
@@ -43,7 +43,6 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                     #(#disps)*
                     __p.word("}");
                 },
-                quote! { true },
             )
         }
         Fields::Unnamed(fields_unnamed) => {
@@ -76,10 +75,9 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                     #(#disps)*
                     __p.pclose();
                 },
-                quote! { true },
             )
         }
-        Fields::Unit => (quote! {}, quote! { __p.word(#string_name) }, quote! { true }),
+        Fields::Unit => (quote! {}, quote! { __p.word(#string_name) }),
     }
 }
 
@@ -89,51 +87,33 @@ pub(crate) fn print_attribute(input: Structure<'_>) -> TokenStream {
     };
 
     // Must be applied to an enum type.
-    let (code, printed) = match &input.ast().data {
+    let code = match &input.ast().data {
         Data::Enum(e) => {
-            let (arms, printed) = e
+            let arms = e
                 .variants
                 .iter()
                 .map(|x| {
                     let ident = &x.ident;
-                    let (pat, code, printed) = print_fields(ident, &x.fields);
+                    let (pat, code) = print_fields(ident, &x.fields);
 
-                    (
-                        quote! {
-                            Self::#ident #pat => {#code}
-                        },
-                        quote! {
-                            Self::#ident #pat => {#printed}
-                        },
-                    )
+                    quote! {
+                        Self::#ident #pat => {#code}
+                    }
                 })
-                .unzip::<_, _, Vec<_>, Vec<_>>();
+                .collect::<Vec<_>>();
 
-            (
-                quote! {
-                    match self {
-                        #(#arms)*
-                    }
-                },
-                quote! {
-                    match self {
-                        #(#printed)*
-                    }
-                },
-            )
+            quote! {
+                match self {
+                    #(#arms)*
+                }
+            }
         }
         Data::Struct(s) => {
-            let (pat, code, printed) = print_fields(&input.ast().ident, &s.fields);
-            (
-                quote! {
-                    let Self #pat = self;
-                    #code
-                },
-                quote! {
-                    let Self #pat = self;
-                    #printed
-                },
-            )
+            let (pat, code) = print_fields(&input.ast().ident, &s.fields);
+            quote! {
+                let Self #pat = self;
+                #code
+            }
         }
         Data::Union(u) => {
             return span_error(u.union_token.span(), "can't derive PrintAttribute on unions");
@@ -144,7 +124,7 @@ pub(crate) fn print_attribute(input: Structure<'_>) -> TokenStream {
     input.gen_impl(quote! {
         #[allow(unused)]
         gen impl PrintAttribute for @Self {
-            fn should_render(&self) -> bool { #printed }
+            fn should_render(&self) -> bool { true }
             fn print_attribute(&self, __p: &mut rustc_ast_pretty::pp::Printer) { #code }
         }
     })

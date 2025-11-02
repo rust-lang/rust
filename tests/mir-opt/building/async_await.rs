@@ -4,7 +4,7 @@
 // related to `yield` are `&mut Context`, and its return type is `Poll`.
 
 //@ edition:2018
-//@ compile-flags: -C panic=abort
+//@ compile-flags: -Zmir-opt-level=0 -C panic=abort
 
 #![crate_type = "lib"]
 

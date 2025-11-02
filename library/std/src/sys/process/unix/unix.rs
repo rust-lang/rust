@@ -13,13 +13,14 @@ use libc::{gid_t, uid_t};
 use super::common::*;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
+use crate::process::StdioPipes;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
 use crate::sys::pal::linux::pidfd::PidFd;
 use crate::{fmt, mem, sys};
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "nto")] {
+cfg_select! {
+    target_os = "nto" => {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
@@ -43,6 +44,7 @@ cfg_if::cfg_if! {
         // Maximum duration of sleeping before giving up and returning an error
         const MAX_FORKSPAWN_SLEEP: Duration = Duration::from_millis(1000);
     }
+    _ => {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,8 +467,8 @@ impl Command {
             return Ok(None);
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "linux")] {
+        cfg_select! {
+            target_os = "linux" => {
                 use crate::sys::weak::weak;
 
                 weak!(
@@ -526,7 +528,8 @@ impl Command {
                     }
                     core::assert_matches::debug_assert_matches!(support, SPAWN | NO);
                 }
-            } else {
+            }
+            _ => {
                 if self.get_create_pidfd() {
                     unreachable!("only implemented on linux")
                 }
@@ -746,10 +749,11 @@ impl Command {
             }
 
             if self.get_setsid() {
-                cfg_if::cfg_if! {
-                    if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
+                cfg_select! {
+                    all(target_os = "linux", target_env = "gnu") => {
                         flags |= libc::POSIX_SPAWN_SETSID;
-                    } else {
+                    }
+                    _ => {
                         return Ok(None);
                     }
                 }

@@ -1,14 +1,22 @@
-error[E0741]: `&'static str` can't be used as a const parameter type
-  --> $DIR/slice-const-param-mismatch.rs:8:29
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/slice-const-param-mismatch.rs:8:20
    |
 LL | struct ConstString<const T: &'static str>;
-   |                             ^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `&'static str` to implement `ConstParamTy_`
 
-error[E0741]: `&'static [u8]` can't be used as a const parameter type
-  --> $DIR/slice-const-param-mismatch.rs:11:28
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/slice-const-param-mismatch.rs:11:19
    |
 LL | struct ConstBytes<const T: &'static [u8]>;
-   |                            ^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `&'static [u8]` to implement `ConstParamTy_`
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:17:35
@@ -45,5 +53,5 @@ LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0308, E0741.
+Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

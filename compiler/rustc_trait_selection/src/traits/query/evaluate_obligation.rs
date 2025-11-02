@@ -1,8 +1,11 @@
+use rustc_infer::traits::solve::Goal;
 use rustc_macros::extension;
-use rustc_middle::span_bug;
+use rustc_middle::{span_bug, ty};
+use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
+use crate::solve::SolverDelegate;
 use crate::traits::{
     EvaluationResult, ObligationCtxt, OverflowError, PredicateObligation, SelectionContext,
 };
@@ -13,6 +16,27 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
         self.evaluate_obligation_no_overflow(obligation).may_apply()
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    fn predicate_may_hold_opaque_types_jank(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+        if self.next_trait_solver() {
+            self.goal_may_hold_opaque_types_jank(Goal::new(
+                self.tcx,
+                obligation.param_env,
+                obligation.predicate,
+            ))
+        } else {
+            self.predicate_may_hold(obligation)
+        }
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> bool {
+        assert!(self.next_trait_solver());
+        <&SolverDelegate<'tcx>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
     }
 
     /// Evaluates whether the predicate can be satisfied in the given
@@ -72,7 +96,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ocx = ObligationCtxt::new(self);
                 ocx.register_obligation(obligation.clone());
                 let mut result = EvaluationResult::EvaluatedToOk;
-                for error in ocx.select_all_or_error() {
+                for error in ocx.evaluate_obligations_error_on_ambiguity() {
                     if error.is_true_error() {
                         return Ok(EvaluationResult::EvaluatedToErr);
                     } else {

@@ -39,7 +39,7 @@ use crate::ptr::NonNull;
 pub struct Location<'a> {
     // A raw pointer is used rather than a reference because the pointer is valid for one more byte
     // than the length stored in this pointer; the additional byte is the NUL-terminator used by
-    // `Location::file_with_nul`.
+    // `Location::file_as_c_str`.
     filename: NonNull<str>,
     line: u32,
     col: u32,
@@ -183,7 +183,7 @@ impl<'a> Location<'a> {
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_location_fields", since = "1.79.0")]
-    pub const fn file(&self) -> &str {
+    pub const fn file(&self) -> &'a str {
         // SAFETY: The filename is valid.
         unsafe { self.filename.as_ref() }
     }
@@ -193,9 +193,10 @@ impl<'a> Location<'a> {
     /// This is useful for interop with APIs that expect C/C++ `__FILE__` or
     /// `std::source_location::file_name`, both of which return a nul-terminated `const char*`.
     #[must_use]
-    #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
-    pub const fn file_with_nul(&self) -> &CStr {
+    #[stable(feature = "file_with_nul", since = "1.92.0")]
+    #[rustc_const_stable(feature = "file_with_nul", since = "1.92.0")]
+    pub const fn file_as_c_str(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 
         // SAFETY: The filename is valid for `filename_len+1` bytes, so this addition can't

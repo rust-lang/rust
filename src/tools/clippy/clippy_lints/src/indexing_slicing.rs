@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             let allowed_in_tests = self.allow_indexing_slicing_in_tests && is_in_test(cx.tcx, expr.hir_id);
-            if let Some(range) = higher::Range::hir(index) {
+            if let Some(range) = higher::Range::hir(cx, index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind() {
                     let size: u128 = if let Some(size) = s.try_to_target_usize(cx.tcx) {

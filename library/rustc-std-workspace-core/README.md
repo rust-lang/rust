@@ -11,6 +11,12 @@ on crates.io will draw a dependency edge to `libcore`, the version defined in
 this repository. That should draw all the dependency edges to ensure Cargo
 builds crates successfully!
 
+`rustc-std-workspace-core` also ensures `compiler-builtins` is in the crate
+graph. This crate is used by other crates in `library/`, other than `std` and
+`alloc`, so the `compiler-builtins` setup only needs to be configured in a
+single place. (Otherwise these crates would just need to depend on `core` and
+`compiler-builtins` separately.)
+
 Note that crates on crates.io need to depend on this crate with the name `core`
 for everything to work correctly. To do that they can use:
 

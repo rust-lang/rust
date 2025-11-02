@@ -296,15 +296,7 @@ impl fmt::Display for VarError {
 }
 
 #[stable(feature = "env", since = "1.0.0")]
-impl Error for VarError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        match *self {
-            VarError::NotPresent => "environment variable not found",
-            VarError::NotUnicode(..) => "environment variable was not valid unicode",
-        }
-    }
-}
+impl Error for VarError {}
 
 /// Sets the environment variable `key` to the value `value` for the currently running
 /// process.
@@ -1106,6 +1098,7 @@ pub mod consts {
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3`
+    /// * `"vexos"`
     /// * `"vita"`
     /// * `"vxworks"`
     /// * `"xous"`
@@ -1156,6 +1149,7 @@ pub mod consts {
     ///
     /// <details><summary>Full list of possible values</summary>
     ///
+    /// * `"bin"`
     /// * `"exe"`
     /// * `"efi"`
     /// * `"js"`

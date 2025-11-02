@@ -11,6 +11,10 @@ LL | /     macro_rules! bar {
 LL | |         () => {};
 LL | |     }
    | |_____^
+help: in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+   |
+LL |     pub(crate) use bar as _;
+   |        +++++++
 
 error[E0364]: `baz` is private, and cannot be re-exported
   --> $DIR/macro-private-reexport.rs:14:13

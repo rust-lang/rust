@@ -5,6 +5,7 @@ use rand::RngCore;
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 use crate::assert_matches::assert_matches;
@@ -14,6 +15,7 @@ use crate::char::MAX_LEN_UTF8;
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 use crate::fs::TryLockError;
@@ -226,6 +228,8 @@ fn file_test_io_seek_and_write() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_multiple_shared() {
@@ -249,6 +253,8 @@ fn file_lock_multiple_shared() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_blocking() {
@@ -273,6 +279,8 @@ fn file_lock_blocking() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_drop() {
@@ -294,6 +302,8 @@ fn file_lock_drop() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
+    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_dup() {
@@ -492,6 +502,85 @@ fn file_test_io_read_write_at() {
 
 #[test]
 #[cfg(unix)]
+fn test_read_buf_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Fill entire buffer with potentially short reads
+        while buf.unfilled().capacity() > 0 {
+            let len = buf.len();
+            check!(file.read_buf_at(buf.unfilled(), 2 + len as u64));
+            assert!(!buf.filled().is_empty());
+            assert!(b"23456".starts_with(buf.filled()));
+            assert_eq!(check!(file.stream_position()), 0);
+        }
+        assert_eq!(buf.filled(), b"23456");
+
+        // Already full
+        check!(file.read_buf_at(buf.unfilled(), 3));
+        check!(file.read_buf_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Read past eof is noop
+        check!(file.read_buf_at(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
+        check!(file.read_buf_at(buf.clear().unfilled(), 11));
+        assert_eq!(buf.filled(), b"");
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
+fn test_read_buf_exact_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_exact_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Exact read
+        check!(file.read_buf_exact_at(buf.unfilled(), 2));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Already full
+        check!(file.read_buf_exact_at(buf.unfilled(), 3));
+        check!(file.read_buf_exact_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Non-empty exact read past eof fails
+        let err = file.read_buf_exact_at(buf.clear().unfilled(), 6).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
 fn set_get_unix_permissions() {
     use crate::os::unix::fs::PermissionsExt;
 
@@ -562,6 +651,39 @@ fn file_test_io_seek_read_write() {
         assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek_read(&mut buf, 14)), 0);
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(windows)]
+fn test_seek_read_buf() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_buf.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit()];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Seek read
+        check!(file.seek_read_buf(buf.unfilled(), 8));
+        assert_eq!(buf.filled(), b"8");
+        assert_eq!(check!(file.stream_position()), 9);
+
+        // Empty seek read
+        check!(file.seek_read_buf(buf.unfilled(), 0));
+        assert_eq!(buf.filled(), b"8");
+
+        // Seek read past eof
+        check!(file.seek_read_buf(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
     }
     check!(fs::remove_file(&filename));
 }
@@ -1265,12 +1387,7 @@ fn open_flavors() {
     let mut ra = OO::new();
     ra.read(true).append(true);
 
-    #[cfg(windows)]
-    let invalid_options = 87; // ERROR_INVALID_PARAMETER
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    let invalid_options = "Invalid argument";
-    #[cfg(target_os = "vxworks")]
-    let invalid_options = "invalid argument";
+    let invalid_options = "creating or truncating a file requires write or append access";
 
     // Test various combinations of creation modes and access modes.
     //
@@ -1293,10 +1410,10 @@ fn open_flavors() {
     check!(c(&w).open(&tmpdir.join("a")));
 
     // read-only
-    error!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
-    error!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
+    error_contains!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
     check!(c(&r).open(&tmpdir.join("a"))); // try opening the file created with write_only
 
     // read-write
@@ -1308,21 +1425,21 @@ fn open_flavors() {
 
     // append
     check!(c(&a).create_new(true).open(&tmpdir.join("d")));
-    error!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
-    error!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
+    error_contains!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
     check!(c(&a).create(true).open(&tmpdir.join("d")));
     check!(c(&a).open(&tmpdir.join("d")));
 
     // read-append
     check!(c(&ra).create_new(true).open(&tmpdir.join("e")));
-    error!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
-    error!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
+    error_contains!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
     check!(c(&ra).create(true).open(&tmpdir.join("e")));
     check!(c(&ra).open(&tmpdir.join("e")));
 
     // Test opening a file without setting an access mode
     let mut blank = OO::new();
-    error!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
+    error_contains!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
 
     // Test write works
     check!(check!(File::create(&tmpdir.join("h"))).write("foobar".as_bytes()));
@@ -2083,4 +2200,254 @@ fn test_rename_junction() {
     // Make sure that renaming `original` to `dest` preserves the junction point.
     // Junction links are always absolute so we just check the file name is correct.
     assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}
+
+#[test]
+fn test_open_options_invalid_combinations() {
+    use crate::fs::OpenOptions as OO;
+
+    let test_cases: &[(fn() -> OO, &str)] = &[
+        (|| OO::new().create(true).read(true).clone(), "create without write"),
+        (|| OO::new().create_new(true).read(true).clone(), "create_new without write"),
+        (|| OO::new().truncate(true).read(true).clone(), "truncate without write"),
+        (|| OO::new().truncate(true).append(true).clone(), "truncate with append"),
+    ];
+
+    for (make_opts, desc) in test_cases {
+        let opts = make_opts();
+        let result = opts.open("nonexistent.txt");
+        assert!(result.is_err(), "{desc} should fail");
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput, "{desc} - wrong error kind");
+        assert_eq!(
+            err.to_string(),
+            "creating or truncating a file requires write or append access",
+            "{desc} - wrong error message"
+        );
+    }
+
+    let result = OO::new().open("nonexistent.txt");
+    assert!(result.is_err(), "no access mode should fail");
+    let err = result.unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidInput);
+    assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
+}
+
+#[test]
+fn test_fs_set_times() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let path = tmp.join("foo");
+    File::create(&path).unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    match fs::set_times(&path, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times: {e:?}"),
+        Ok(_) => {}
+    }
+
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+}
+
+#[test]
+fn test_fs_set_times_follows_symlink() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+
+    // Create a target file
+    let target = tmp.join("target");
+    File::create(&target).unwrap();
+
+    // Create a symlink to the target
+    #[cfg(unix)]
+    let link = tmp.join("link");
+    #[cfg(unix)]
+    crate::os::unix::fs::symlink(&target, &link).unwrap();
+
+    #[cfg(windows)]
+    let link = tmp.join("link.txt");
+    #[cfg(windows)]
+    crate::os::windows::fs::symlink_file(&target, &link).unwrap();
+
+    // Get the symlink's own modified time BEFORE calling set_times (to compare later)
+    // We don't check accessed time because reading metadata may update atime on some platforms.
+    let link_metadata_before = fs::symlink_metadata(&link).unwrap();
+    let link_modified_before = link_metadata_before.modified().unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    // Call fs::set_times on the symlink - it should follow the link and modify the target
+    match fs::set_times(&link, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting file times through symlink: {e:?}"),
+        Ok(_) => {}
+    }
+
+    // Verify that the TARGET file's times were changed (following the symlink)
+    let target_metadata = fs::metadata(&target).unwrap();
+    assert_eq!(
+        target_metadata.accessed().unwrap(),
+        accessed,
+        "target file accessed time should match"
+    );
+    assert_eq!(
+        target_metadata.modified().unwrap(),
+        modified,
+        "target file modified time should match"
+    );
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(
+            target_metadata.created().unwrap(),
+            created,
+            "target file created time should match"
+        );
+    }
+
+    // Also verify through the symlink (fs::metadata follows symlinks)
+    let link_followed_metadata = fs::metadata(&link).unwrap();
+    assert_eq!(link_followed_metadata.accessed().unwrap(), accessed);
+    assert_eq!(link_followed_metadata.modified().unwrap(), modified);
+
+    // Verify that the SYMLINK ITSELF was NOT modified
+    // Note: We only check modified time, not accessed time, because reading the symlink
+    // metadata may update its atime on some platforms (e.g., Linux).
+    let link_metadata_after = fs::symlink_metadata(&link).unwrap();
+    assert_eq!(
+        link_metadata_after.modified().unwrap(),
+        link_modified_before,
+        "symlink's own modified time should not change"
+    );
+}
+
+#[test]
+fn test_fs_set_times_nofollow() {
+    #[cfg(target_vendor = "apple")]
+    use crate::os::darwin::fs::FileTimesExt;
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+
+    // Create a target file and a symlink to it
+    let target = tmp.join("target");
+    File::create(&target).unwrap();
+
+    #[cfg(unix)]
+    let link = tmp.join("link");
+    #[cfg(unix)]
+    crate::os::unix::fs::symlink(&target, &link).unwrap();
+
+    #[cfg(windows)]
+    let link = tmp.join("link.txt");
+    #[cfg(windows)]
+    crate::os::windows::fs::symlink_file(&target, &link).unwrap();
+
+    let mut times = FileTimes::new();
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(11111);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(22222);
+    times = times.set_accessed(accessed).set_modified(modified);
+
+    #[cfg(any(windows, target_vendor = "apple"))]
+    let created = SystemTime::UNIX_EPOCH + Duration::from_secs(33333);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        times = times.set_created(created);
+    }
+
+    // Set times on the symlink itself (not following it)
+    match fs::set_times_nofollow(&link, times) {
+        // Allow unsupported errors on platforms which don't support setting times.
+        #[cfg(not(any(
+            windows,
+            all(
+                unix,
+                not(any(
+                    target_os = "android",
+                    target_os = "redox",
+                    target_os = "espidf",
+                    target_os = "horizon"
+                ))
+            )
+        )))]
+        Err(e) if e.kind() == ErrorKind::Unsupported => return,
+        Err(e) => panic!("error setting symlink times: {e:?}"),
+        Ok(_) => {}
+    }
+
+    // Read symlink metadata (without following)
+    let metadata = fs::symlink_metadata(&link).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+    #[cfg(any(windows, target_vendor = "apple"))]
+    {
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+
+    // Verify that the target file's times were NOT changed
+    let target_metadata = fs::metadata(&target).unwrap();
+    assert_ne!(target_metadata.accessed().unwrap(), accessed);
+    assert_ne!(target_metadata.modified().unwrap(), modified);
 }

@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
 use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("ios", Arch::Arm64, TargetAbi::Simulator);
+    let (opts, llvm_target, arch) = base("ios", Arch::Arm64, TargetEnv::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {

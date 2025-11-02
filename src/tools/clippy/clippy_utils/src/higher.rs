@@ -3,7 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::ty::is_type_diagnostic_item;
+use crate::res::MaybeDef;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
@@ -14,6 +14,7 @@ use rustc_span::{Span, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.
+#[derive(Debug)]
 pub struct ForLoop<'tcx> {
     /// `for` loop item
     pub pat: &'tcx Pat<'tcx>,
@@ -208,39 +209,40 @@ pub struct Range<'a> {
     pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
+    pub span: Span,
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-    #[allow(clippy::similar_names)]
-    pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
+    #[expect(clippy::similar_names)]
+    pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<Range<'a>> {
+        let span = expr.range_span()?;
         match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
-                if matches!(
-                    path.kind,
-                    ExprKind::Path(QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
-                ) =>
+                if let ExprKind::Path(qpath) = path.kind
+                    && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::RangeInclusiveNew) =>
             {
                 Some(Range {
                     start: Some(arg1),
                     end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
+                    span,
                 })
             },
-            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
-                (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
+            ExprKind::Struct(&qpath, fields, StructTailExpr::None) => match (cx.tcx.qpath_lang_item(qpath)?, fields) {
+                (hir::LangItem::RangeFull, []) => Some(Range {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
-                (QPath::LangItem(hir::LangItem::RangeFrom, ..), [field]) if field.ident.name == sym::start => {
-                    Some(Range {
-                        start: Some(field.expr),
-                        end: None,
-                        limits: ast::RangeLimits::HalfOpen,
-                    })
-                },
-                (QPath::LangItem(hir::LangItem::Range, ..), [field1, field2]) => {
+                (hir::LangItem::RangeFrom, [field]) if field.ident.name == sym::start => Some(Range {
+                    start: Some(field.expr),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                    span,
+                }),
+                (hir::LangItem::Range, [field1, field2]) => {
                     let (start, end) = match (field1.ident.name, field2.ident.name) {
                         (sym::start, sym::end) => (field1.expr, field2.expr),
                         (sym::end, sym::start) => (field2.expr, field1.expr),
@@ -250,19 +252,20 @@ impl<'a> Range<'a> {
                         start: Some(start),
                         end: Some(end),
                         limits: ast::RangeLimits::HalfOpen,
+                        span,
                     })
                 },
-                (QPath::LangItem(hir::LangItem::RangeToInclusive, ..), [field]) if field.ident.name == sym::end => {
-                    Some(Range {
-                        start: None,
-                        end: Some(field.expr),
-                        limits: ast::RangeLimits::Closed,
-                    })
-                },
-                (QPath::LangItem(hir::LangItem::RangeTo, ..), [field]) if field.ident.name == sym::end => Some(Range {
+                (hir::LangItem::RangeToInclusive, [field]) if field.ident.name == sym::end => Some(Range {
+                    start: None,
+                    end: Some(field.expr),
+                    limits: ast::RangeLimits::Closed,
+                    span,
+                }),
+                (hir::LangItem::RangeTo, [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
                     end: Some(field.expr),
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
                 _ => None,
             },
@@ -287,23 +290,22 @@ impl<'a> VecArgs<'a> {
             && let ExprKind::Path(ref qpath) = fun.kind
             && is_expn_of(fun.span, sym::vec).is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
+            && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
         {
-            return if cx.tcx.is_diagnostic_item(sym::vec_from_elem, fun_def_id) && args.len() == 2 {
-                // `vec![elem; size]` case
-                Some(VecArgs::Repeat(&args[0], &args[1]))
-            } else if cx.tcx.is_diagnostic_item(sym::slice_into_vec, fun_def_id) && args.len() == 1 {
-                // `vec![a, b, c]` case
-                if let ExprKind::Call(_, [arg]) = &args[0].kind
-                    && let ExprKind::Array(args) = arg.kind
+            return match (name, args) {
+                (sym::vec_from_elem, [elem, size]) => {
+                    // `vec![elem; size]` case
+                    Some(VecArgs::Repeat(elem, size))
+                },
+                (sym::slice_into_vec, [slice])
+                    if let ExprKind::Call(_, [arg]) = slice.kind
+                        && let ExprKind::Array(args) = arg.kind =>
                 {
+                    // `vec![a, b, c]` case
                     Some(VecArgs::Vec(args))
-                } else {
-                    None
-                }
-            } else if cx.tcx.is_diagnostic_item(sym::vec_new, fun_def_id) && args.is_empty() {
-                Some(VecArgs::Vec(&[]))
-            } else {
-                None
+                },
+                (sym::vec_new, []) => Some(VecArgs::Vec(&[])),
+                _ => None,
             };
         }
 
@@ -319,6 +321,7 @@ pub struct While<'hir> {
     pub body: &'hir Expr<'hir>,
     /// Span of the loop header
     pub span: Span,
+    pub label: Option<ast::Label>,
 }
 
 impl<'hir> While<'hir> {
@@ -334,13 +337,18 @@ impl<'hir> While<'hir> {
                     }),
                 ..
             },
-            _,
+            label,
             LoopSource::While,
             span,
         ) = expr.kind
             && !has_let_expr(condition)
         {
-            return Some(Self { condition, body, span });
+            return Some(Self {
+                condition,
+                body,
+                span,
+                label,
+            });
         }
         None
     }
@@ -447,7 +455,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
     if let ExprKind::Call(func, args) = expr.kind {
         match func.kind {
             ExprKind::Path(QPath::TypeRelative(ty, name))
-                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
+                if cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, sym::Vec) =>
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
@@ -455,7 +463,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name == sym::with_capacity {
                     let arg = args.first()?;
-                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
+                    return match ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt()) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };
@@ -463,7 +471,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
+                    && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Vec) =>
             {
                 return Some(VecInitKind::Default);
             },

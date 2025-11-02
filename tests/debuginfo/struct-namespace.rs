@@ -1,5 +1,6 @@
 //@ ignore-gdb
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // Check that structs get placed in the correct namespace
 
@@ -16,8 +17,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct Struct1 {
     a: u32,

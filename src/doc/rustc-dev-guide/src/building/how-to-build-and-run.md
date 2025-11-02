@@ -1,7 +1,5 @@
 # How to build and run the compiler
 
-<!-- toc -->
-
 <div class="warning">
 
 For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that
@@ -151,7 +149,7 @@ On Windows, the Powershell commands may give you an error that looks like this:
 ```
 PS C:\Users\vboxuser\rust> ./x
 ./x : File C:\Users\vboxuser\rust\x.ps1 cannot be loaded because running scripts is disabled on this system. For more
-information, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170.
+information, see about_Execution_Policies at https://go.microsoft.com/fwlink/?LinkID=135170.
 At line:1 char:1
 + ./x
 + ~~~
@@ -189,7 +187,7 @@ Alternatively, you can write `bootstrap.toml` by hand. See `bootstrap.example.to
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x
+execute `./x clean --all` for subsequent configuration changes to take effect. Note that `./x
 clean` will not cause a rebuild of LLVM.
 
 ## Common `x` commands
@@ -228,16 +226,14 @@ Once you've created a `bootstrap.toml`, you are now ready to run
 `x`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local compiler:
 
-```bash
+```console
 ./x build library
 ```
 
-This may *look* like it only builds the standard library, but that is not the case.
-What this command does is the following:
-
-- Build `rustc` using the stage0 compiler
-  - This produces the stage1 compiler
-- Build `std` using the stage1 compiler
+What this command does is:
+- Build `rustc` using the stage0 compiler and stage0 `std`.
+- Build `library` (the standard libraries) with the stage1 compiler that was just built.
+- Assemble a working stage1 sysroot, containing the stage1 compiler and stage1 standard libraries.
 
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other Rust programs (unless you use `#![no_std]` or
@@ -247,7 +243,7 @@ You will probably find that building the stage1 `std` is a bottleneck for you,
 but fear not, there is a (hacky) workaround...
 see [the section on avoiding rebuilds for std][keep-stage].
 
-[keep-stage]: ./suggested.md#faster-builds-with---keep-stage
+[keep-stage]: ./suggested.md#faster-rebuilds-with---keep-stage-std
 
 Sometimes you don't need a full build. When doing some kind of
 "type-based refactoring", like renaming a method, or changing the
@@ -255,7 +251,7 @@ signature of some function, you can use `./x check` instead for a much faster bu
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get with `./x build
---stage 2 compiler/rustc`) has quite a few more steps:
+--stage 2 rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler, which uses stage1 std from the previous command.

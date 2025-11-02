@@ -6,6 +6,8 @@
 
 //@ run-pass
 //@ needs-subprocess
+//@ ignore-backends: gcc
+//@ ignore-i586 (no SSE2)
 
 #![allow(overflowing_literals)]
 #![allow(unused_variables)]
@@ -16,16 +18,6 @@ use std::env;
 fn main() {
     if let Some(level) = env::args().nth(1) {
         return test::main(&level)
-    }
-
-    match std::env::var("TARGET") {
-        Ok(s) => {
-            // Skip this tests on i586-unknown-linux-gnu where sse2 is disabled
-            if s.contains("i586") {
-                return
-            }
-        }
-        Err(_) => return,
     }
 
     let me = env::current_exe().unwrap();

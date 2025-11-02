@@ -4,15 +4,15 @@ use std::ops::Range;
 use std::str;
 
 use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
@@ -55,6 +55,10 @@ bitflags::bitflags! {
         const IS_UNSAFE_CELL              = 1 << 9;
         /// Indicates whether the type is `UnsafePinned`.
         const IS_UNSAFE_PINNED              = 1 << 10;
+        /// Indicates whether the type is `Pin`.
+        const IS_PIN                        = 1 << 11;
+        /// Indicates whether the type is `#[pin_project]`.
+        const IS_PIN_PROJECT                = 1 << 12;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -284,6 +288,10 @@ impl AdtDefData {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
+        if find_attr!(tcx.get_all_attrs(did), AttributeKind::PinV2(..)) {
+            debug!("found pin-project type {:?}", did);
+            flags |= AdtFlags::IS_PIN_PROJECT;
+        }
 
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
@@ -312,6 +320,9 @@ impl AdtDefData {
         }
         if tcx.is_lang_item(did, LangItem::UnsafePinned) {
             flags |= AdtFlags::IS_UNSAFE_PINNED;
+        }
+        if tcx.is_lang_item(did, LangItem::Pin) {
+            flags |= AdtFlags::IS_PIN;
         }
 
         AdtDefData { did, variants, flags, repr }
@@ -426,6 +437,19 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
+    /// Returns `true` if this is `Pin<T>`.
+    #[inline]
+    pub fn is_pin(self) -> bool {
+        self.flags().contains(AdtFlags::IS_PIN)
+    }
+
+    /// Returns `true` is this is `#[pin_v2]` for the purposes
+    /// of structural pinning.
+    #[inline]
+    pub fn is_pin_project(self) -> bool {
+        self.flags().contains(AdtFlags::IS_PIN_PROJECT)
     }
 
     /// Returns `true` if this type has a destructor.

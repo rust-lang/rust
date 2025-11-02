@@ -1,16 +1,16 @@
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/type-param-defaults.rs:6:16
    |
 LL |     type Assoc<T = u32>;
    |                ^^^^^^^
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/type-param-defaults.rs:11:16
    |
 LL |     type Assoc<T = u32> = u64;
    |                ^^^^^^^
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+error: defaults for generic parameters are not allowed here
   --> $DIR/type-param-defaults.rs:16:16
    |
 LL |     type Assoc<T = u32> = T;
@@ -42,7 +42,11 @@ error[E0277]: the trait bound `u64: Other` is not satisfied
 LL |     foo::<()>();
    |           ^^ the trait `Other` is not implemented for `u64`
    |
-   = help: the trait `Other` is implemented for `u32`
+help: the trait `Other` is implemented for `u32`
+  --> $DIR/type-param-defaults.rs:21:1
+   |
+LL | impl Other for u32 {}
+   | ^^^^^^^^^^^^^^^^^^
 note: required by a bound in `foo`
   --> $DIR/type-param-defaults.rs:26:15
    |

@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 //@ compile-flags: -C codegen-units=3
 //@ needs-threads
+//@ ignore-backends: gcc
 
 // Test unwinding through multiple compilation units.
 

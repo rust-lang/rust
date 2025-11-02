@@ -1,0 +1,43 @@
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/duplicate-name-in-module-6936.rs:6:5
+   |
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
+LL |     mod Foo {}
+   |     ^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/duplicate-name-in-module-6936.rs:11:5
+   |
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
+LL |     struct Foo;
+   |     ^^^^^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/duplicate-name-in-module-6936.rs:16:5
+   |
+LL |     type Foo = crate::T;
+   |     -------------------- previous definition of the type `Foo` here
+LL |     enum Foo {}
+   |     ^^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Bar` is defined multiple times
+  --> $DIR/duplicate-name-in-module-6936.rs:26:5
+   |
+LL |     type Bar<T> = T;
+   |     ---------------- previous definition of the type `Bar` here
+LL |     mod Bar {}
+   |     ^^^^^^^ `Bar` redefined here
+   |
+   = note: `Bar` must be defined only once in the type namespace of this module
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

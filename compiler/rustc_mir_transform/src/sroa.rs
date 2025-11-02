@@ -72,8 +72,12 @@ fn escaping_locals<'tcx>(
             return true;
         }
         if let ty::Adt(def, _args) = ty.kind()
-            && tcx.is_lang_item(def.did(), LangItem::DynMetadata)
+            && (def.repr().simd() || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
         {
+            // Exclude #[repr(simd)] types so that they are not de-optimized into an array
+            // (MCP#838 banned projections into SIMD types, but if the value is unused
+            // this pass sees "all the uses are of the fields" and expands it.)
+
             // codegen wants to see the `DynMetadata<T>`,
             // not the inner reference-to-opaque-type.
             return true;
@@ -132,9 +136,7 @@ fn escaping_locals<'tcx>(
         fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
             match statement.kind {
                 // Storage statements are expanded in run_pass.
-                StatementKind::StorageLive(..)
-                | StatementKind::StorageDead(..)
-                | StatementKind::Deinit(..) => return,
+                StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => return,
                 _ => self.super_statement(statement, location),
             }
         }
@@ -314,7 +316,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     for (_, _, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageLive(fl));
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                 }
                 return;
             }
@@ -323,19 +325,9 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                     for (_, _, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                 }
                 return;
-            }
-            StatementKind::Deinit(box place) => {
-                if let Some(final_locals) = self.replacements.place_fragments(place) {
-                    for (_, _, fl) in final_locals {
-                        self.patch
-                            .add_statement(location, StatementKind::Deinit(Box::new(fl.into())));
-                    }
-                    statement.make_nop();
-                    return;
-                }
             }
 
             // We have `a = Struct { 0: x, 1: y, .. }`.
@@ -363,7 +355,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             );
                         }
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                     return;
                 }
             }
@@ -425,7 +417,7 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                             StatementKind::Assign(Box::new((new_local.into(), rvalue))),
                         );
                     }
-                    statement.make_nop();
+                    statement.make_nop(true);
                     return;
                 }
             }

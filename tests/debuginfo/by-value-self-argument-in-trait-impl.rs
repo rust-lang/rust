@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -32,9 +34,6 @@
 // lldb-command:v self
 // lldb-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
 // lldb-command:continue
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 trait Trait {
     fn method(self) -> Self;

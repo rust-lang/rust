@@ -21,7 +21,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -50,8 +50,6 @@ enum GetSafeTransmuteErrorAndReason {
     Default,
     Error { err_msg: String, safe_transmute_explanation: Option<String> },
 }
-
-struct UnsatisfiedConst(pub bool);
 
 /// Crude way of getting back an `Expr` from a `Span`.
 pub struct FindExprBySpan<'hir> {
@@ -141,10 +139,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
-        self.sub_relations
-            .borrow_mut()
-            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
-
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             goal: Goal<'tcx, ty::Predicate<'tcx>>,
@@ -160,9 +154,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last,
+        // and `Subtype` obligations from `FormatLiteral` desugarings come first.
         // This lets us display diagnostics with more relevant type information and hide redundant
         // E0282 errors.
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorSortKey {
+            SubtypeFormat(usize, usize),
+            OtherKind,
+            SizedTrait,
+            MetaSizedTrait,
+            PointeeSizedTrait,
+            Coerce,
+            WellFormed,
+        }
         errors.sort_by_key(|e| {
             let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
@@ -171,12 +176,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             match e.obligation.predicate.kind().skip_binder() {
-                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => 1,
-                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => 2,
-                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => 3,
-                ty::PredicateKind::Coerce(_) => 4,
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 5,
-                _ => 0,
+                ty::PredicateKind::Subtype(_)
+                    if matches!(
+                        e.obligation.cause.span.desugaring_kind(),
+                        Some(DesugaringKind::FormatLiteral { .. })
+                    ) =>
+                {
+                    let (_, row, col, ..) =
+                        self.tcx.sess.source_map().span_to_location_info(e.obligation.cause.span);
+                    ErrorSortKey::SubtypeFormat(row, col)
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => {
+                    ErrorSortKey::SizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => {
+                    ErrorSortKey::MetaSizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => {
+                    ErrorSortKey::PointeeSizedTrait
+                }
+                ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                    ErrorSortKey::WellFormed
+                }
+                _ => ErrorSortKey::OtherKind,
             }
         });
 
@@ -331,7 +354,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.instantiate_identity();
+    let trait_ref = tcx.impl_opt_trait_ref(impl_def_id)?.instantiate_identity();
     let mut w = "impl".to_owned();
 
     #[derive(Debug, Default)]
@@ -453,9 +476,8 @@ pub fn report_dyn_incompatibility<'tcx>(
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Trait(_, _, _, ident, ..) | hir::ItemKind::TraitAlias(ident, _, _) => {
-                Some(ident.span)
-            }
+            hir::ItemKind::Trait(_, _, _, ident, ..)
+            | hir::ItemKind::TraitAlias(_, ident, _, _) => Some(ident.span),
             _ => unreachable!(),
         },
         _ => None,
@@ -560,7 +582,7 @@ fn attempt_dyn_to_enum_suggestion(
             // defaults to assuming that things are *not* sized, whereas we want to
             // fall back to assuming that things may be sized.
             match impl_type.kind() {
-                ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::DynKind::Dyn) => {
+                ty::Str | ty::Slice(_) | ty::Dynamic(_, _) => {
                     return None;
                 }
                 _ => {}

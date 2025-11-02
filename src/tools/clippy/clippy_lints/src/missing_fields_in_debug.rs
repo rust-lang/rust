@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::sym;
 use clippy_utils::visitors::{Visitable, for_each_expr};
-use clippy_utils::{is_path_lang_item, sym};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
@@ -112,11 +112,9 @@ fn should_lint<'tcx>(
         if let ExprKind::MethodCall(path, recv, ..) = &expr.kind {
             let recv_ty = typeck_results.expr_ty(recv).peel_refs();
 
-            if path.ident.name == sym::debug_struct && is_type_diagnostic_item(cx, recv_ty, sym::Formatter) {
+            if path.ident.name == sym::debug_struct && recv_ty.is_diag_item(cx, sym::Formatter) {
                 has_debug_struct = true;
-            } else if path.ident.name == sym::finish_non_exhaustive
-                && is_type_diagnostic_item(cx, recv_ty, sym::DebugStruct)
-            {
+            } else if path.ident.name == sym::finish_non_exhaustive && recv_ty.is_diag_item(cx, sym::DebugStruct) {
                 has_finish_non_exhaustive = true;
             }
         }
@@ -137,7 +135,7 @@ fn as_field_call<'tcx>(
 ) -> Option<Symbol> {
     if let ExprKind::MethodCall(path, recv, [debug_field, _], _) = &expr.kind
         && let recv_ty = typeck_results.expr_ty(recv).peel_refs()
-        && is_type_diagnostic_item(cx, recv_ty, sym::DebugStruct)
+        && recv_ty.is_diag_item(cx, sym::DebugStruct)
         && path.ident.name == sym::field
         && let ExprKind::Lit(lit) = &debug_field.kind
         && let LitKind::Str(sym, ..) = lit.node
@@ -180,7 +178,9 @@ fn check_struct<'tcx>(
         .fields()
         .iter()
         .filter_map(|field| {
-            if field_accesses.contains(&field.ident.name) || is_path_lang_item(cx, field.ty, LangItem::PhantomData) {
+            if field_accesses.contains(&field.ident.name)
+                || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+            {
                 None
             } else {
                 Some((field.span, "this field is unused"))
@@ -198,8 +198,8 @@ fn check_struct<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         // is this an `impl Debug for X` block?
-        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), self_ty, .. }) = item.kind
-            && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res
+        if let ItemKind::Impl(Impl { of_trait: Some(of_trait), self_ty, .. }) = item.kind
+            && let Res::Def(DefKind::Trait, trait_def_id) = of_trait.trait_ref.path.res
             && let TyKind::Path(QPath::Resolved(_, self_path)) = &self_ty.kind
             // make sure that the self type is either a struct, an enum or a union
             // this prevents ICEs such as when self is a type parameter or a primitive type

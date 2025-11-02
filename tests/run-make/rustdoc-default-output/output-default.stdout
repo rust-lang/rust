@@ -150,7 +150,7 @@ Options:
         --generate-redirect-map 
                         Generate JSON file at the top level instead of
                         generating HTML redirection files
-        --emit [unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]
+        --emit [toolchain-shared-resources,invocation-specific,dep-info]
                         Comma separated list of types of output for rustdoc to
                         emit
         --no-run        Compile doctests without running them
@@ -158,7 +158,7 @@ Options:
                         Remap source names in compiler messages
         --show-type-layout 
                         Include the memory layout of types in the docs
-        --nocapture     Don't capture stdout and stderr of tests
+        --no-capture    Don't capture stdout and stderr of tests
         --generate-link-to-definition 
                         Make the identifiers in the HTML source code pages
                         navigable
@@ -194,6 +194,9 @@ Options:
         --disable-minification 
                         disable the minification of CSS/JS files
                         (perma-unstable, do not use with cached files)
+        --generate-macro-expansion 
+                        Add possibility to expand macros in the HTML source
+                        code pages
         --plugin-path DIR
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for

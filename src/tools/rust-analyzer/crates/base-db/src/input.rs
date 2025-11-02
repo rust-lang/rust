@@ -295,8 +295,6 @@ impl CrateDisplayName {
     }
 }
 
-pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
     Stable,
@@ -929,7 +927,7 @@ mod tests {
     use super::{CrateGraphBuilder, CrateName, CrateOrigin, Edition::Edition2018, Env, FileId};
 
     fn empty_ws_data() -> Arc<CrateWorkspaceData> {
-        Arc::new(CrateWorkspaceData { data_layout: Err("".into()), toolchain: None })
+        Arc::new(CrateWorkspaceData { target: Err("".into()), toolchain: None })
     }
 
     #[test]

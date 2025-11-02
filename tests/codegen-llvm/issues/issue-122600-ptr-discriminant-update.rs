@@ -1,4 +1,7 @@
 //@ compile-flags: -Copt-level=3
+//@ revisions: new old
+//@ [old] max-llvm-major-version: 21
+//@ [new] min-llvm-version: 22
 
 #![crate_type = "lib"]
 
@@ -22,8 +25,8 @@ pub unsafe fn update(s: *mut State) {
     // CHECK-NOT: memcpy
     // CHECK-NOT: 75{{3|4}}
 
-    // CHECK: %[[TAG:.+]] = load i8, ptr %s, align 1
-    // CHECK-NEXT: trunc nuw i8 %[[TAG]] to i1
+    // old: %[[TAG:.+]] = load i8, ptr %s, align 1
+    // old-NEXT: trunc nuw i8 %[[TAG]] to i1
 
     // CHECK-NOT: load
     // CHECK-NOT: store

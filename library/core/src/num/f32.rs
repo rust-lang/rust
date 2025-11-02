@@ -277,6 +277,7 @@ pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "f32_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -291,11 +292,11 @@ pub mod consts {
     pub const TAU: f32 = 6.28318530717958647692528676655900577_f32;
 
     /// The golden ratio (φ)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const PHI: f32 = 1.618033988749894848204586834365638118_f32;
 
     /// The Euler-Mascheroni constant (γ)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const EGAMMA: f32 = 0.577215664901532860606512090082402431_f32;
 
     /// π/2
@@ -323,12 +324,12 @@ pub mod consts {
     pub const FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 1/sqrt(π)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_PI: f32 = 0.564189583547756286948079451560772586_f32;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_2PI: f32 = 0.398942280401432677939946059934381868_f32;
 
     /// 2/π
@@ -348,11 +349,11 @@ pub mod consts {
     pub const FRAC_1_SQRT_2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// sqrt(3)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const SQRT_3: f32 = 1.732050807568877293527446341505872367_f32;
 
     /// 1/sqrt(3)
-    #[unstable(feature = "more_float_constants", issue = "103883")]
+    #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f32 = 0.577350269189625764509148780501957456_f32;
 
     /// Euler's number (e)
@@ -839,6 +840,13 @@ impl f32 {
 
     /// Converts radians to degrees.
     ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let angle = std::f32::consts::PI;
     ///
@@ -852,12 +860,20 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_degrees(self) -> f32 {
-        // Use a constant for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
         self * PIS_IN_180
     }
 
     /// Converts degrees to radians.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let angle = 180.0f32;
@@ -872,6 +888,9 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_radians(self) -> f32 {
+        // The division here is correctly rounded with respect to the true value of π/180.
+        // Although π is irrational and already rounded, the double rounding happens
+        // to produce correct result for f32.
         const RADS_PER_DEG: f32 = consts::PI / 180.0;
         self * RADS_PER_DEG
     }
@@ -1007,7 +1026,6 @@ impl f32 {
                 ((self as f64 + other as f64) / 2.0) as f32
             }
             _ => {
-                const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
 
                 let (a, b) = (self, other);
@@ -1017,14 +1035,7 @@ impl f32 {
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
                     (a + b) / 2.
-                } else if abs_a < LO {
-                    // Not safe to halve `a` (would underflow)
-                    a + (b / 2.)
-                } else if abs_b < LO {
-                    // Not safe to halve `b` (would underflow)
-                    (a / 2.) + b
                 } else {
-                    // Safe to halve `a` and `b`
                     (a / 2.) + (b / 2.)
                 }
             }
@@ -1343,9 +1354,10 @@ impl f32 {
     /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     #[must_use]
     #[inline]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i32;
         let mut right = other.to_bits() as i32;
 
@@ -1439,8 +1451,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::fabsf32(self) }
+        intrinsics::fabsf32(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1498,8 +1509,7 @@ impl f32 {
     #[stable(feature = "copysign", since = "1.35.0")]
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     pub const fn copysign(self, sign: f32) -> f32 {
-        // SAFETY: this is actually a safe intrinsic
-        unsafe { intrinsics::copysignf32(self, sign) }
+        intrinsics::copysignf32(self, sign)
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1593,8 +1603,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::floorf32(x) }
+        intrinsics::floorf32(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f32::ceil`] for details.
@@ -1622,8 +1631,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn ceil(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::ceilf32(x) }
+        intrinsics::ceilf32(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f32::round`] for details.
@@ -1656,8 +1664,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::roundf32(x) }
+        intrinsics::roundf32(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f32::round_ties_even`] for
@@ -1719,8 +1726,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn trunc(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::truncf32(x) }
+        intrinsics::truncf32(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f32::fract`] for details.
@@ -1793,9 +1799,9 @@ pub mod math {
     #[doc(alias = "fmaf", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
-    pub fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::fmaf32(x, y, z) }
+    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
+        intrinsics::fmaf32(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
@@ -1886,8 +1892,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn powi(x: f32, n: i32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::powif32(x, n) }
+        intrinsics::powif32(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f32::sqrt`] for details.
@@ -1917,8 +1922,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f32) -> f32 {
-        // SAFETY: intrinsic with no preconditions
-        unsafe { intrinsics::sqrtf32(x) }
+        intrinsics::sqrtf32(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f32::abs_sub`] for details.
@@ -1936,8 +1940,8 @@ pub mod math {
     /// let abs_difference_x = (f32::math::abs_sub(x, 1.0) - 2.0).abs();
     /// let abs_difference_y = (f32::math::abs_sub(y, 1.0) - 0.0).abs();
     ///
-    /// assert!(abs_difference_x <= f32::EPSILON);
-    /// assert!(abs_difference_y <= f32::EPSILON);
+    /// assert!(abs_difference_x <= 1e-6);
+    /// assert!(abs_difference_y <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.
@@ -1982,7 +1986,7 @@ pub mod math {
     /// // x^(1/3) - 2 == 0
     /// let abs_difference = (f32::math::cbrt(x) - 2.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.

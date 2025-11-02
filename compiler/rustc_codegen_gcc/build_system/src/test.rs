@@ -531,7 +531,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
             r#"change-id = 115898
 
 [rust]
-codegen-backends = []
+codegen-backends = ["gcc"]
 deny-warnings = false
 verbose-tests = true
 
@@ -1083,11 +1083,12 @@ where
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(env, args, |_| Ok(false), false, "run-make")?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make-cargo")?;
     test_rustc_inner(env, args, |_| Ok(false), false, "ui")
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    let result1 = test_rustc_inner(
+    let run_make_result = test_rustc_inner(
         env,
         args,
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
@@ -1095,7 +1096,15 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         "run-make",
     );
 
-    let result2 = test_rustc_inner(
+    let run_make_cargo_result = test_rustc_inner(
+        env,
+        args,
+        retain_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
+        false,
+        "run-make",
+    );
+
+    let ui_result = test_rustc_inner(
         env,
         args,
         retain_files_callback("tests/failing-ui-tests.txt", "ui"),
@@ -1103,7 +1112,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         "ui",
     );
 
-    result1.and(result2)
+    run_make_result.and(run_make_cargo_result).and(ui_result)
 }
 
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -1120,6 +1129,13 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
+    )?;
+    test_rustc_inner(
+        env,
+        args,
+        remove_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
+        false,
+        "run-make-cargo",
     )
 }
 

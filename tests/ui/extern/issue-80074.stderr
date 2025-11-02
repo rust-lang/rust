@@ -16,7 +16,7 @@ error: cannot find macro `m` in this scope
 LL |     m!();
    |     ^
 
-warning: macro `foo` is private
+error: macro `foo` is private
   --> $DIR/issue-80074.rs:13:5
    |
 LL |     foo!();
@@ -24,8 +24,19 @@ LL |     foo!();
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #120192 <https://github.com/rust-lang/rust/issues/120192>
-   = note: `#[warn(private_macro_use)]` on by default
+   = note: `#[deny(private_macro_use)]` on by default
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0469`.
+Future incompatibility report: Future breakage diagnostic:
+error: macro `foo` is private
+  --> $DIR/issue-80074.rs:13:5
+   |
+LL |     foo!();
+   |     ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120192 <https://github.com/rust-lang/rust/issues/120192>
+   = note: `#[deny(private_macro_use)]` on by default
+

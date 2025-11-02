@@ -133,3 +133,15 @@ fn main() {
 
     -5 == (u32 as i32);
 }
+
+fn issue15662() {
+    macro_rules! add_one {
+        ($x:expr) => {
+            $x + 1
+        };
+    }
+
+    let x: u8 = 1;
+    (add_one!(x) as u32) > 300;
+    //~^ invalid_upcast_comparisons
+}

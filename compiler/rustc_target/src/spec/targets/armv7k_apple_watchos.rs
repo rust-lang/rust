@@ -1,8 +1,8 @@
-use crate::spec::base::apple::{Arch, TargetAbi, base};
+use crate::spec::base::apple::{Arch, TargetEnv, base};
 use crate::spec::{Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("watchos", Arch::Armv7k, TargetAbi::Normal);
+    let (opts, llvm_target, arch) = base("watchos", Arch::Armv7k, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {

@@ -403,7 +403,7 @@
 
 use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;
-use crate::marker::{FnPtr, PointeeSized};
+use crate::marker::{Destruct, FnPtr, PointeeSized};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
@@ -801,7 +801,11 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 #[rustc_diagnostic_item = "ptr_drop_in_place"]
-pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
+#[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
+where
+    T: [const] Destruct,
+{
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
 
@@ -885,10 +889,10 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
 ///
-/// Note that the pointer value may potentially represent a valid pointer to
-/// a `T`, which means this must not be used as a "not yet initialized"
-/// sentinel value. Types that lazily allocate must track initialization by
-/// some other means.
+/// Note that the address of the returned pointer may potentially
+/// be that of a valid pointer, which means this must not be used
+/// as a "not yet initialized" sentinel value.
+/// Types that lazily allocate must track initialization by some other means.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
@@ -914,6 +918,7 @@ pub const fn dangling<T>() -> *const T {
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
+#[allow(integer_to_ptr_transmutes)] // Expected semantics here.
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -928,10 +933,10 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
 ///
-/// Note that the pointer value may potentially represent a valid pointer to
-/// a `T`, which means this must not be used as a "not yet initialized"
-/// sentinel value. Types that lazily allocate must track initialization by
-/// some other means.
+/// Note that the address of the returned pointer may potentially
+/// be that of a valid pointer, which means this must not be used
+/// as a "not yet initialized" sentinel value.
+/// Types that lazily allocate must track initialization by some other means.
 #[inline(always)]
 #[must_use]
 #[stable(feature = "strict_provenance", since = "1.84.0")]
@@ -974,7 +979,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_unstable(feature = "const_exposed_provenance", issue = "144538")]
+#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
@@ -1015,7 +1020,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_unstable(feature = "const_exposed_provenance", issue = "144538")]
+#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
@@ -2201,10 +2206,9 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     }
 }
 
-/// Align pointer `p`.
+/// Calculate an element-offset that increases a pointer's alignment.
 ///
-/// Calculate offset (in terms of elements of `size_of::<T>()` stride) that has to be applied
-/// to pointer `p` so that pointer `p` would get aligned to `a`.
+/// Calculate an element-offset (not byte-offset) that when added to a given pointer `p`, increases `p`'s alignment to at least the given alignment `a`.
 ///
 /// # Safety
 /// `a` must be a power of two.

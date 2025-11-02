@@ -7,222 +7,129 @@
 //!
 //! So the monomorphization should be called even if the substitution is empty.
 
-use std::mem;
-
-use chalk_ir::{
-    ConstData, DebruijnIndex,
-    fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
-};
 use hir_def::DefWithBodyId;
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
+use rustc_type_ir::{
+    FallibleTypeFolder, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeVisitableExt,
+};
 use triomphe::Arc;
 
+use crate::next_solver::{Const, ConstKind, Region, RegionKind};
 use crate::{
-    Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
-    consteval::{intern_const_scalar, unknown_const},
-    db::{HirDatabase, InternedClosure, InternedClosureId},
-    from_placeholder_idx,
-    generics::{Generics, generics},
-    infer::normalize,
+    TraitEnvironment,
+    db::{HirDatabase, InternedClosureId},
+    next_solver::{
+        DbInterner, GenericArgs, Ty, TyKind, TypingMode,
+        infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
+        obligation_ctxt::ObligationCtxt,
+        references_non_lt_error,
+    },
 };
 
 use super::{MirBody, MirLowerError, Operand, OperandKind, Rvalue, StatementKind, TerminatorKind};
 
-macro_rules! not_supported {
-    ($it: expr) => {
-        return Err(MirLowerError::NotSupported(format!($it)))
-    };
+struct Filler<'db> {
+    infcx: InferCtxt<'db>,
+    trait_env: Arc<TraitEnvironment<'db>>,
+    subst: GenericArgs<'db>,
 }
 
-struct Filler<'a> {
-    db: &'a dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
-    subst: &'a Substitution,
-    generics: Option<Generics>,
-    owner: DefWithBodyId,
-}
-impl FallibleTypeFolder<Interner> for Filler<'_> {
-    type Error = MirLowerError;
+impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
+    type Error = MirLowerError<'db>;
 
-    fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = Self::Error> {
-        self
+    fn cx(&self) -> DbInterner<'db> {
+        self.infcx.interner
     }
 
-    fn interner(&self) -> Interner {
-        Interner
-    }
+    fn try_fold_ty(&mut self, ty: Ty<'db>) -> Result<Ty<'db>, Self::Error> {
+        if !ty.has_type_flags(TypeFlags::HAS_ALIAS | TypeFlags::HAS_PARAM) {
+            return Ok(ty);
+        }
 
-    fn try_fold_ty(
-        &mut self,
-        ty: Ty,
-        outer_binder: DebruijnIndex,
-    ) -> std::result::Result<Ty, Self::Error> {
-        match ty.kind(Interner) {
-            TyKind::AssociatedType(id, subst) => {
-                // I don't know exactly if and why this is needed, but it looks like `normalize_ty` likes
-                // this kind of associated types.
-                Ok(TyKind::Alias(chalk_ir::AliasTy::Projection(ProjectionTy {
-                    associated_ty_id: *id,
-                    substitution: subst.clone().try_fold_with(self, outer_binder)?,
-                }))
-                .intern(Interner))
+        match ty.kind() {
+            TyKind::Alias(..) => {
+                // First instantiate params.
+                let ty = ty.try_super_fold_with(self)?;
+
+                let mut ocx = ObligationCtxt::new(&self.infcx);
+                let ty = ocx
+                    .structurally_normalize_ty(&ObligationCause::dummy(), self.trait_env.env, ty)
+                    .map_err(|_| MirLowerError::NotSupported("can't normalize alias".to_owned()))?;
+                ty.try_super_fold_with(self)
             }
-            TyKind::OpaqueType(id, subst) => {
-                let impl_trait_id = self.db.lookup_intern_impl_trait_id((*id).into());
-                let subst = subst.clone().try_fold_with(self.as_dyn(), outer_binder)?;
-                match impl_trait_id {
-                    crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let infer = self.db.infer(func.into());
-                        let filler = &mut Filler {
-                            db: self.db,
-                            owner: self.owner,
-                            trait_env: self.trait_env.clone(),
-                            subst: &subst,
-                            generics: Some(generics(self.db, func.into())),
-                        };
-                        filler.try_fold_ty(infer.type_of_rpit[idx].clone(), outer_binder)
-                    }
-                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
-                        not_supported!("type alias impl trait");
-                    }
-                    crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
-                        not_supported!("async block impl trait");
-                    }
-                }
-            }
-            _ => ty.try_super_fold_with(self.as_dyn(), outer_binder),
+            TyKind::Param(param) => Ok(self
+                .subst
+                .as_slice()
+                .get(param.index as usize)
+                .and_then(|arg| arg.ty())
+                .ok_or_else(|| {
+                    MirLowerError::GenericArgNotProvided(param.id.into(), self.subst)
+                })?),
+            _ => ty.try_super_fold_with(self),
         }
     }
 
-    fn try_fold_free_placeholder_const(
-        &mut self,
-        _ty: chalk_ir::Ty<Interner>,
-        idx: chalk_ir::PlaceholderIndex,
-        _outer_binder: DebruijnIndex,
-    ) -> std::result::Result<chalk_ir::Const<Interner>, Self::Error> {
-        let it = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
-            not_supported!("missing idx in generics");
+    fn try_fold_const(&mut self, ct: Const<'db>) -> Result<Const<'db>, Self::Error> {
+        let ConstKind::Param(param) = ct.kind() else {
+            return ct.try_super_fold_with(self);
         };
-        Ok(self
-            .subst
-            .as_slice(Interner)
-            .get(idx)
-            .and_then(|it| it.constant(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
-            .clone())
+        self.subst
+            .as_slice()
+            .get(param.index as usize)
+            .and_then(|arg| arg.konst())
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(param.id.into(), self.subst))
     }
 
-    fn try_fold_free_placeholder_ty(
-        &mut self,
-        idx: chalk_ir::PlaceholderIndex,
-        _outer_binder: DebruijnIndex,
-    ) -> std::result::Result<Ty, Self::Error> {
-        let it = from_placeholder_idx(self.db, idx);
-        let Some(idx) = self.generics.as_ref().and_then(|g| g.type_or_const_param_idx(it)) else {
-            not_supported!("missing idx in generics");
+    fn try_fold_region(&mut self, region: Region<'db>) -> Result<Region<'db>, Self::Error> {
+        let RegionKind::ReEarlyParam(param) = region.kind() else {
+            return Ok(region);
         };
-        Ok(self
-            .subst
-            .as_slice(Interner)
-            .get(idx)
-            .and_then(|it| it.ty(Interner))
-            .ok_or_else(|| MirLowerError::GenericArgNotProvided(it, self.subst.clone()))?
-            .clone())
-    }
-
-    fn try_fold_const(
-        &mut self,
-        constant: chalk_ir::Const<Interner>,
-        outer_binder: DebruijnIndex,
-    ) -> Result<chalk_ir::Const<Interner>, Self::Error> {
-        let next_ty = normalize(
-            self.db,
-            self.trait_env.clone(),
-            constant.data(Interner).ty.clone().try_fold_with(self, outer_binder)?,
-        );
-        ConstData { ty: next_ty, value: constant.data(Interner).value.clone() }
-            .intern(Interner)
-            .try_super_fold_with(self, outer_binder)
+        self.subst
+            .as_slice()
+            .get(param.index as usize)
+            .and_then(|arg| arg.region())
+            .ok_or_else(|| MirLowerError::GenericArgNotProvided(param.id.into(), self.subst))
     }
 }
 
-impl Filler<'_> {
-    fn fill_ty(&mut self, ty: &mut Ty) -> Result<(), MirLowerError> {
-        let tmp = mem::replace(ty, TyKind::Error.intern(Interner));
-        *ty = normalize(
-            self.db,
-            self.trait_env.clone(),
-            tmp.try_fold_with(self, DebruijnIndex::INNERMOST)?,
-        );
-        Ok(())
+impl<'db> Filler<'db> {
+    fn new(
+        db: &'db dyn HirDatabase,
+        env: Arc<TraitEnvironment<'db>>,
+        subst: GenericArgs<'db>,
+    ) -> Self {
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        Self { infcx, trait_env: env, subst }
     }
 
-    fn fill_const(&mut self, c: &mut Const) -> Result<(), MirLowerError> {
-        let tmp = mem::replace(c, unknown_const(c.data(Interner).ty.clone()));
-        *c = tmp.try_fold_with(self, DebruijnIndex::INNERMOST)?;
-        Ok(())
+    fn fill<T: TypeFoldable<DbInterner<'db>> + Copy>(
+        &mut self,
+        t: &mut T,
+    ) -> Result<(), MirLowerError<'db>> {
+        // Can't deep normalized as that'll try to normalize consts and fail.
+        *t = t.try_fold_with(self)?;
+        if references_non_lt_error(t) {
+            Err(MirLowerError::NotSupported("monomorphization resulted in errors".to_owned()))
+        } else {
+            Ok(())
+        }
     }
 
-    fn fill_subst(&mut self, ty: &mut Substitution) -> Result<(), MirLowerError> {
-        let tmp = mem::replace(ty, Substitution::empty(Interner));
-        *ty = tmp.try_fold_with(self, DebruijnIndex::INNERMOST)?;
-        Ok(())
-    }
-
-    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError> {
+    fn fill_operand(&mut self, op: &mut Operand<'db>) -> Result<(), MirLowerError<'db>> {
         match &mut op.kind {
-            OperandKind::Constant(c) => {
-                match &c.data(Interner).value {
-                    chalk_ir::ConstValue::BoundVar(b) => {
-                        let resolved = self
-                            .subst
-                            .as_slice(Interner)
-                            .get(b.index)
-                            .ok_or_else(|| {
-                                MirLowerError::GenericArgNotProvided(
-                                    self.generics
-                                        .as_ref()
-                                        .and_then(|it| it.iter().nth(b.index))
-                                        .and_then(|(id, _)| match id {
-                                            hir_def::GenericParamId::ConstParamId(id) => {
-                                                Some(hir_def::TypeOrConstParamId::from(id))
-                                            }
-                                            hir_def::GenericParamId::TypeParamId(id) => {
-                                                Some(hir_def::TypeOrConstParamId::from(id))
-                                            }
-                                            _ => None,
-                                        })
-                                        .unwrap(),
-                                    self.subst.clone(),
-                                )
-                            })?
-                            .assert_const_ref(Interner);
-                        *c = resolved.clone();
-                    }
-                    chalk_ir::ConstValue::InferenceVar(_)
-                    | chalk_ir::ConstValue::Placeholder(_) => {}
-                    chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
-                        crate::ConstScalar::UnevaluatedConst(const_id, subst) => {
-                            let mut subst = subst.clone();
-                            self.fill_subst(&mut subst)?;
-                            *c = intern_const_scalar(
-                                crate::ConstScalar::UnevaluatedConst(*const_id, subst),
-                                c.data(Interner).ty.clone(),
-                            );
-                        }
-                        crate::ConstScalar::Bytes(_, _) | crate::ConstScalar::Unknown => (),
-                    },
-                }
-                self.fill_const(c)?;
+            OperandKind::Constant { konst, ty } => {
+                self.fill(konst)?;
+                self.fill(ty)?;
             }
             OperandKind::Copy(_) | OperandKind::Move(_) | OperandKind::Static(_) => (),
         }
         Ok(())
     }
 
-    fn fill_body(&mut self, body: &mut MirBody) -> Result<(), MirLowerError> {
+    fn fill_body(&mut self, body: &mut MirBody<'db>) -> Result<(), MirLowerError<'db>> {
         for (_, l) in body.locals.iter_mut() {
-            self.fill_ty(&mut l.ty)?;
+            self.fill(&mut l.ty)?;
         }
         for (_, bb) in body.basic_blocks.iter_mut() {
             for statement in &mut bb.statements {
@@ -235,20 +142,20 @@ impl Filler<'_> {
                             match ak {
                                 super::AggregateKind::Array(ty)
                                 | super::AggregateKind::Tuple(ty)
-                                | super::AggregateKind::Closure(ty) => self.fill_ty(ty)?,
-                                super::AggregateKind::Adt(_, subst) => self.fill_subst(subst)?,
+                                | super::AggregateKind::Closure(ty) => self.fill(ty)?,
+                                super::AggregateKind::Adt(_, subst) => self.fill(subst)?,
                                 super::AggregateKind::Union(_, _) => (),
                             }
                         }
                         Rvalue::ShallowInitBox(_, ty) | Rvalue::ShallowInitBoxWithAlloc(ty) => {
-                            self.fill_ty(ty)?;
+                            self.fill(ty)?;
                         }
                         Rvalue::Use(op) => {
                             self.fill_operand(op)?;
                         }
                         Rvalue::Repeat(op, len) => {
                             self.fill_operand(op)?;
-                            self.fill_const(len)?;
+                            self.fill(len)?;
                         }
                         Rvalue::Ref(_, _)
                         | Rvalue::Len(_)
@@ -299,54 +206,37 @@ impl Filler<'_> {
     }
 }
 
-pub fn monomorphized_mir_body_query(
-    db: &dyn HirDatabase,
+pub fn monomorphized_mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
     owner: DefWithBodyId,
-    subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
-) -> Result<Arc<MirBody>, MirLowerError> {
-    let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
+    subst: GenericArgs<'db>,
+    trait_env: Arc<crate::TraitEnvironment<'db>>,
+) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env, subst);
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(Arc::new(body))
 }
 
-pub(crate) fn monomorphized_mir_body_cycle_result(
-    _db: &dyn HirDatabase,
+pub(crate) fn monomorphized_mir_body_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: DefWithBodyId,
-    _: Substitution,
-    _: Arc<crate::TraitEnvironment>,
-) -> Result<Arc<MirBody>, MirLowerError> {
+    _: GenericArgs<'db>,
+    _: Arc<crate::TraitEnvironment<'db>>,
+) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
     Err(MirLowerError::Loop)
 }
 
-pub fn monomorphized_mir_body_for_closure_query(
-    db: &dyn HirDatabase,
+pub fn monomorphized_mir_body_for_closure_query<'db>(
+    db: &'db dyn HirDatabase,
     closure: InternedClosureId,
-    subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
-) -> Result<Arc<MirBody>, MirLowerError> {
-    let InternedClosure(owner, _) = db.lookup_intern_closure(closure);
-    let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
+    subst: GenericArgs<'db>,
+    trait_env: Arc<crate::TraitEnvironment<'db>>,
+) -> Result<Arc<MirBody<'db>>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env, subst);
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(Arc::new(body))
-}
-
-// FIXME: remove this function. Monomorphization is a time consuming job and should always be a query.
-pub fn monomorphize_mir_body_bad(
-    db: &dyn HirDatabase,
-    mut body: MirBody,
-    subst: Substitution,
-    trait_env: Arc<crate::TraitEnvironment>,
-) -> Result<MirBody, MirLowerError> {
-    let owner = body.owner;
-    let generics = owner.as_generic_def_id(db).map(|g_def| generics(db, g_def));
-    let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
-    filler.fill_body(&mut body)?;
-    Ok(body)
 }

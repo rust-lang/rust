@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -49,9 +51,6 @@
 // to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal
 // structs.
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct NoPadding16(u16, i16);
 struct NoPadding32(i32, f32, u32);

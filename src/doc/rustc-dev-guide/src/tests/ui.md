@@ -1,7 +1,5 @@
 # UI tests
 
-<!-- toc -->
-
 UI tests are a particular [test suite](compiletest.md#test-suites) of
 compiletest.
 
@@ -25,9 +23,9 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 
 ## General structure of a test
 
-A test consists of a Rust source file located anywhere in the `tests/ui`
-directory, but they should be placed in a suitable sub-directory. For example,
-[`tests/ui/hello.rs`] is a basic hello-world test.
+A test consists of a Rust source file located in the `tests/ui` directory.
+**Tests must be placed in the appropriate subdirectory** based on their purpose
+and testing category - placing tests directly in `tests/ui` is not permitted.
 
 Compiletest will use `rustc` to compile the test, and compare the output against
 the expected output which is stored in a `.stdout` or `.stderr` file located
@@ -45,8 +43,6 @@ pass/fail expectations](#controlling-passfail-expectations).
 
 By default, a test is built as an executable binary. If you need a different
 crate type, you can use the `#![crate_type]` attribute to set it as needed.
-
-[`tests/ui/hello.rs`]: https://github.com/rust-lang/rust/blob/master/tests/ui/hello.rs
 
 ## Output comparison
 
@@ -99,6 +95,7 @@ will check for output files:
   [Normalization](#normalization)).
 - `dont-check-compiler-stderr` — Ignores stderr from the compiler.
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
+- `compare-output-by-lines` — Some tests have non-deterministic orders of output, so we need to compare by lines.
 
 UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables rustc's
 built-in diagnostic deduplication mechanism. This means you may see some

@@ -10,15 +10,13 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;
-    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
-    base.crt_static_default = true;
     base.abi = "elfv2".into();
     base.llvm_abiname = "elfv2".into();
 
     Target {
         llvm_target: "powerpc64-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("64-bit PowerPC Linux with musl 1.2.3".into()),
+            description: Some("64-bit PowerPC Linux with musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

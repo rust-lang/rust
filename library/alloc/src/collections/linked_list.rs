@@ -825,7 +825,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         unsafe { self.tail.as_mut().map(|node| &mut node.as_mut().element) }
     }
 
-    /// Adds an element first in the list.
+    /// Adds an element to the front of the list.
     ///
     /// This operation should compute in *O*(1) time.
     ///
@@ -844,11 +844,34 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, elt: T) {
+        let _ = self.push_front_mut(elt);
+    }
+
+    /// Adds an element to the front of the list, returning a reference to it.
+    ///
+    /// This operation should compute in *O*(1) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut dl = LinkedList::from([1, 2, 3]);
+    ///
+    /// let ptr = dl.push_front_mut(2);
+    /// *ptr += 4;
+    /// assert_eq!(dl.front().unwrap(), &6);
+    /// ```
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[must_use = "if you don't need a reference to the value, use `LinkedList::push_front` instead"]
+    pub fn push_front_mut(&mut self, elt: T) -> &mut T {
         let node = Box::new_in(Node::new(elt), &self.alloc);
-        let node_ptr = NonNull::from(Box::leak(node));
+        let mut node_ptr = NonNull::from(Box::leak(node));
         // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
         unsafe {
             self.push_front_node(node_ptr);
+            &mut node_ptr.as_mut().element
         }
     }
 
@@ -876,7 +899,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         self.pop_front_node().map(Node::into_element)
     }
 
-    /// Appends an element to the back of a list.
+    /// Adds an element to the back of the list.
     ///
     /// This operation should compute in *O*(1) time.
     ///
@@ -893,11 +916,34 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "append")]
     pub fn push_back(&mut self, elt: T) {
+        let _ = self.push_back_mut(elt);
+    }
+
+    /// Adds an element to the back of the list, returning a reference to it.
+    ///
+    /// This operation should compute in *O*(1) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut dl = LinkedList::from([1, 2, 3]);
+    ///
+    /// let ptr = dl.push_back_mut(2);
+    /// *ptr += 4;
+    /// assert_eq!(dl.back().unwrap(), &6);
+    /// ```
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[must_use = "if you don't need a reference to the value, use `LinkedList::push_back` instead"]
+    pub fn push_back_mut(&mut self, elt: T) -> &mut T {
         let node = Box::new_in(Node::new(elt), &self.alloc);
-        let node_ptr = NonNull::from(Box::leak(node));
+        let mut node_ptr = NonNull::from(Box::leak(node));
         // SAFETY: node_ptr is a unique pointer to a node we boxed with self.alloc and leaked
         unsafe {
             self.push_back_node(node_ptr);
+            &mut node_ptr.as_mut().element
         }
     }
 

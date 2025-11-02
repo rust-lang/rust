@@ -16,4 +16,7 @@ fn main() {
     let _ = std::collections::HashMap {};
     //~^ ERROR cannot construct `HashMap<_, _, _>` with struct literal syntax due to private fields
     let _ = Box {}; //~ ERROR cannot construct `Box<_, _>` with struct literal syntax due to private fields
+
+    // test that we properly instantiate the parameter of `Box::<T>::new` with an inference variable
+    let _ = Box::<i32> {}; //~ ERROR cannot construct `Box<i32>` with struct literal syntax due to private fields
 }

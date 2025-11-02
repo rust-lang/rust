@@ -5,7 +5,7 @@
 use std::cmp::max;
 
 // CHECK-LABEL: @foo
-// CHECK-NOT: slice_start_index_len_fail
+// CHECK-NOT: slice_index_fail
 // CHECK-NOT: unreachable
 #[no_mangle]
 pub fn foo(v: &mut Vec<u8>, size: usize) -> Option<&mut [u8]> {

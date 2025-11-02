@@ -19,7 +19,7 @@ fn three() {}
 fn four() {}
 
 #[cfg(target(clippy::os = "linux"))]
-//~^ ERROR `cfg` predicate key must be an identifier
+//~^ ERROR malformed `cfg` attribute input
 fn five() {}
 
 fn main() {}

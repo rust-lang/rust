@@ -1,7 +1,7 @@
 // MIR for `b::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
-        _0: CoroutineSavedTy {
+        _s0: CoroutineSavedTy {
             ty: Coroutine(
                 DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
@@ -9,10 +9,6 @@
                     std::future::ResumeTy,
                     (),
                     (),
-                    CoroutineWitness(
-                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                        [],
-                    ),
                     (),
                 ],
             ),
@@ -22,7 +18,7 @@
             },
             ignore_for_traits: false,
         },
-        _1: CoroutineSavedTy {
+        _s1: CoroutineSavedTy {
             ty: Coroutine(
                 DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
                 [
@@ -30,10 +26,6 @@
                     std::future::ResumeTy,
                     (),
                     (),
-                    CoroutineWitness(
-                        DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                        [],
-                    ),
                     (),
                 ],
             ),
@@ -48,17 +40,17 @@
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
-        Suspend0 (3): [_0],
-        Suspend1 (4): [_1],
+        Suspend0 (3): [_s0],
+        Suspend1 (4): [_s1],
     },
     storage_conflicts: BitMatrix(2x2) {
-        (_0, _0),
-        (_1, _1),
+        (_s0, _s0),
+        (_s1, _s1),
     },
 } */
 
 fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _38;
+    debug _task_context => _2;
     let mut _0: std::task::Poll<()>;
     let _3: ();
     let mut _4: {async fn body of a()};
@@ -93,17 +85,17 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     let mut _35: &mut std::task::Context<'_>;
     let mut _36: ();
     let mut _37: ();
-    let mut _38: &mut std::task::Context<'_>;
-    let mut _39: u32;
+    let mut _38: u32;
+    let mut _39: &mut {async fn body of b()};
     scope 1 {
-        debug __awaitee => (((*(_1.0: &mut {async fn body of b()})) as variant#3).0: {async fn body of a()});
+        debug __awaitee => (((*_39) as variant#3).0: {async fn body of a()});
         let _17: ();
         scope 2 {
             debug result => _17;
         }
     }
     scope 3 {
-        debug __awaitee => (((*(_1.0: &mut {async fn body of b()})) as variant#4).0: {async fn body of a()});
+        debug __awaitee => (((*_39) as variant#4).0: {async fn body of a()});
         let _33: ();
         scope 4 {
             debug result => _33;
@@ -111,12 +103,12 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
     }
 
     bb0: {
-        _39 = discriminant((*(_1.0: &mut {async fn body of b()})));
-        switchInt(move _39) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb8];
+        _39 = copy (_1.0: &mut {async fn body of b()});
+        _38 = discriminant((*_39));
+        switchInt(move _38) -> [0: bb1, 1: bb29, 3: bb27, 4: bb28, otherwise: bb8];
     }
 
     bb1: {
-        _38 = move _2;
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
@@ -131,7 +123,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_5);
         PlaceMention(_4);
         nop;
-        (((*(_1.0: &mut {async fn body of b()})) as variant#3).0: {async fn body of a()}) = move _4;
+        (((*_39) as variant#3).0: {async fn body of a()}) = move _4;
         goto -> bb4;
     }
 
@@ -141,7 +133,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_10);
         StorageLive(_11);
         StorageLive(_12);
-        _12 = &mut (((*(_1.0: &mut {async fn body of b()})) as variant#3).0: {async fn body of a()});
+        _12 = &mut (((*_39) as variant#3).0: {async fn body of a()});
         _11 = &mut (*_12);
         _10 = Pin::<&mut {async fn body of a()}>::new_unchecked(move _11) -> [return: bb5, unwind unreachable];
     }
@@ -151,7 +143,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_13);
         StorageLive(_14);
         StorageLive(_15);
-        _15 = copy _38;
+        _15 = copy _2;
         _14 = move _15;
         goto -> bb6;
     }
@@ -188,7 +180,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_4);
         StorageDead(_19);
         StorageDead(_20);
-        discriminant((*(_1.0: &mut {async fn body of b()}))) = 3;
+        discriminant((*_39)) = 3;
         return;
     }
 
@@ -201,12 +193,12 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_12);
         StorageDead(_9);
         StorageDead(_8);
-        drop((((*(_1.0: &mut {async fn body of b()})) as variant#3).0: {async fn body of a()})) -> [return: bb12, unwind unreachable];
+        drop((((*_39) as variant#3).0: {async fn body of a()})) -> [return: bb12, unwind unreachable];
     }
 
     bb11: {
         StorageDead(_20);
-        _38 = move _19;
+        _2 = move _19;
         StorageDead(_19);
         _7 = const ();
         goto -> bb4;
@@ -233,7 +225,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_22);
         PlaceMention(_21);
         nop;
-        (((*(_1.0: &mut {async fn body of b()})) as variant#4).0: {async fn body of a()}) = move _21;
+        (((*_39) as variant#4).0: {async fn body of a()}) = move _21;
         goto -> bb16;
     }
 
@@ -243,7 +235,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_26);
         StorageLive(_27);
         StorageLive(_28);
-        _28 = &mut (((*(_1.0: &mut {async fn body of b()})) as variant#4).0: {async fn body of a()});
+        _28 = &mut (((*_39) as variant#4).0: {async fn body of a()});
         _27 = &mut (*_28);
         _26 = Pin::<&mut {async fn body of a()}>::new_unchecked(move _27) -> [return: bb17, unwind unreachable];
     }
@@ -253,7 +245,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_29);
         StorageLive(_30);
         StorageLive(_31);
-        _31 = copy _38;
+        _31 = copy _2;
         _30 = move _31;
         goto -> bb18;
     }
@@ -285,7 +277,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_21);
         StorageDead(_35);
         StorageDead(_36);
-        discriminant((*(_1.0: &mut {async fn body of b()}))) = 4;
+        discriminant((*_39)) = 4;
         return;
     }
 
@@ -298,12 +290,12 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageDead(_28);
         StorageDead(_25);
         StorageDead(_24);
-        drop((((*(_1.0: &mut {async fn body of b()})) as variant#4).0: {async fn body of a()})) -> [return: bb23, unwind unreachable];
+        drop((((*_39) as variant#4).0: {async fn body of a()})) -> [return: bb23, unwind unreachable];
     }
 
     bb22: {
         StorageDead(_36);
-        _38 = move _35;
+        _2 = move _35;
         StorageDead(_35);
         _7 = const ();
         goto -> bb16;
@@ -321,7 +313,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
 
     bb25: {
         _0 = Poll::<()>::Ready(move _37);
-        discriminant((*(_1.0: &mut {async fn body of b()}))) = 1;
+        discriminant((*_39)) = 1;
         return;
     }
 

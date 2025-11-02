@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::convert::AsRef;
 use std::path::Path;
+use std::process::Command;
 
 use anyhow::Context;
 
@@ -31,6 +33,22 @@ where
 }
 
 /// Normalizes Windows-style path delimiters to Unix-style paths.
-pub fn normalize_path_delimiters(name: &str) -> Cow<str> {
+pub fn normalize_path_delimiters(name: &str) -> Cow<'_, str> {
     if name.contains("\\") { name.replace('\\', "/").into() } else { name.into() }
+}
+
+pub fn init_submodule_if_needed<P: AsRef<Path>>(path_to_submodule: P) -> anyhow::Result<()> {
+    let path_to_submodule = path_to_submodule.as_ref();
+
+    if let Ok(mut iter) = path_to_submodule.read_dir()
+        && iter.any(|entry| entry.is_ok())
+    {
+        // Seems like the submodule is already initialized, nothing to be done here.
+        return Ok(());
+    }
+    let mut child = Command::new("git")
+        .args(&["submodule", "update", "--init"])
+        .arg(path_to_submodule)
+        .spawn()?;
+    if !child.wait()?.success() { Err(anyhow::anyhow!("git command failed")) } else { Ok(()) }
 }

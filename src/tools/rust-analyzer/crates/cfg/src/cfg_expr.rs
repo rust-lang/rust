@@ -47,7 +47,7 @@ impl fmt::Display for CfgAtom {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(test, derive(derive_arbitrary::Arbitrary))]
+#[cfg_attr(test, derive(arbitrary::Arbitrary))]
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
@@ -134,10 +134,10 @@ fn next_cfg_expr<S: Copy>(it: &mut tt::iter::TtIter<'_, S>) -> Option<CfgExpr> {
     };
 
     // Eat comma separator
-    if let Some(TtElement::Leaf(tt::Leaf::Punct(punct))) = it.peek() {
-        if punct.char == ',' {
-            it.next();
-        }
+    if let Some(TtElement::Leaf(tt::Leaf::Punct(punct))) = it.peek()
+        && punct.char == ','
+    {
+        it.next();
     }
     Some(ret)
 }

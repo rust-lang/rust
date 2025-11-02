@@ -6,7 +6,7 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
-use rustc_attr_data_structures::AttributeKind;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
     Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
     VariantData,
@@ -167,7 +167,7 @@ declare_clippy_lint! {
 impl_lint_pass!(ArbitrarySourceItemOrdering => [ARBITRARY_SOURCE_ITEM_ORDERING]);
 
 #[derive(Debug)]
-#[allow(clippy::struct_excessive_bools)] // Bools are cached feature flags.
+#[expect(clippy::struct_excessive_bools, reason = "Bools are cached feature flags")]
 pub struct ArbitrarySourceItemOrdering {
     assoc_types_order: SourceItemOrderingTraitAssocItemKinds,
     enable_ordering_for_enum: bool,
@@ -534,6 +534,7 @@ fn get_item_name(item: &Item<'_>) -> Option<String> {
 
                         if let Some(of_trait) = im.of_trait {
                             let mut trait_segs: Vec<String> = of_trait
+                                .trait_ref
                                 .path
                                 .segments
                                 .iter()
@@ -549,7 +550,6 @@ fn get_item_name(item: &Item<'_>) -> Option<String> {
                         // This case doesn't exist in the clippy tests codebase.
                         None
                     },
-                    QPath::LangItem(_, _) => None,
                 }
             } else {
                 // Impls for anything that isn't a named type can be skipped.

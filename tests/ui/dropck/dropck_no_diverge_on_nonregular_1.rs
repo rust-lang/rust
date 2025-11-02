@@ -1,5 +1,6 @@
 // Issue 22443: Reject code using non-regular types that would
 // otherwise cause dropck to loop infinitely.
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 
 use std::marker::PhantomData;
 

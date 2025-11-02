@@ -248,6 +248,11 @@ impl SimilarNamesNameVisitor<'_, '_, '_> {
                 continue;
             }
 
+            // Skip similarity check if both names are exactly 3 characters
+            if count == 3 && existing_name.len == 3 {
+                continue;
+            }
+
             let dissimilar = match existing_name.len.cmp(&count) {
                 Ordering::Greater => existing_name.len - count != 1 || levenstein_not_1(interned_name, existing_str),
                 Ordering::Less => count - existing_name.len != 1 || levenstein_not_1(existing_str, interned_name),

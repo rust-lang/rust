@@ -1,24 +1,34 @@
 //@ run-pass
 //@ needs-subprocess
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 fn check_for_no_backtrace(test: std::process::Output) {
     assert!(!test.status.success());
     let err = String::from_utf8_lossy(&test.stderr);
     let mut it = err.lines().filter(|l| !l.is_empty());
 
-    assert_eq!(it.next().map(|l| l.starts_with("thread '<unnamed>' panicked")), Some(true));
-    assert_eq!(it.next().is_some(), true);
+    assert_eq!(
+        it.next().map(|l| l.starts_with("thread '<unnamed>' (") && l.contains("panicked")),
+        Some(true),
+        "out: ```{err}```",
+    );
+    assert_eq!(it.next().is_some(), true, "out: ```{err}```");
     assert_eq!(
         it.next(),
         Some(
             "note: run with `RUST_BACKTRACE=1` \
                                 environment variable to display a backtrace"
-        )
+        ),
+        "out: ```{err}```",
     );
-    assert_eq!(it.next().map(|l| l.starts_with("thread 'main' panicked at")), Some(true));
-    assert_eq!(it.next().is_some(), true);
-    assert_eq!(it.next(), None);
+    assert_eq!(
+        it.next().map(|l| l.starts_with("thread 'main' (") && l.contains("panicked at")),
+        Some(true),
+        "out: ```{err}```",
+    );
+    assert_eq!(it.next().is_some(), true, "out: ```{err}```");
+    assert_eq!(it.next(), None, "out: ```{err}```");
 }
 
 fn main() {

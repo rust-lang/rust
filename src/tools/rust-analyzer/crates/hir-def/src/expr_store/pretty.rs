@@ -183,7 +183,6 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         }
         GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
         GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),
-        GenericDefId::TraitAliasId(id) => format!("unimplemented {id:?}"),
         GenericDefId::TraitId(id) => format!("unimplemented {id:?}"),
         GenericDefId::TypeAliasId(id) => format!("unimplemented {id:?}"),
     }
@@ -900,14 +899,12 @@ impl Printer<'_> {
                         let field_name = arg.name.display(self.db, edition).to_string();
 
                         let mut same_name = false;
-                        if let Pat::Bind { id, subpat: None } = &self.store[arg.pat] {
-                            if let Binding { name, mode: BindingAnnotation::Unannotated, .. } =
+                        if let Pat::Bind { id, subpat: None } = &self.store[arg.pat]
+                            && let Binding { name, mode: BindingAnnotation::Unannotated, .. } =
                                 &self.store.assert_expr_only().bindings[*id]
-                            {
-                                if name.as_str() == field_name {
-                                    same_name = true;
-                                }
-                            }
+                            && name.as_str() == field_name
+                        {
+                            same_name = true;
                         }
 
                         w!(p, "{}", field_name);

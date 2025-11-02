@@ -147,7 +147,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let hir::Node::Item(hir::Item {
                 kind:
                     hir::ItemKind::Impl(hir::Impl {
-                        of_trait: Some(hir::TraitRef { hir_ref_id: id_in_of_trait, .. }),
+                        of_trait:
+                            Some(hir::TraitImplHeader {
+                                trait_ref: hir::TraitRef { hir_ref_id: id_in_of_trait, .. },
+                                ..
+                            }),
                         ..
                     }),
                 ..
@@ -335,8 +339,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             hir::GenericArg::Lifetime(lt) => Some(lt),
             _ => None,
         }) {
-            return std::iter::repeat(lt.to_string())
-                .take(num_params_to_take)
+            return std::iter::repeat_n(lt.to_string(), num_params_to_take)
                 .collect::<Vec<_>>()
                 .join(", ");
         }
@@ -358,8 +361,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     matches!(fn_decl.output, hir::FnRetTy::Return(ty) if ty.hir_id == ty_id);
 
                 if in_arg || (in_ret && fn_decl.lifetime_elision_allowed) {
-                    return std::iter::repeat("'_".to_owned())
-                        .take(num_params_to_take)
+                    return std::iter::repeat_n("'_".to_owned(), num_params_to_take)
                         .collect::<Vec<_>>()
                         .join(", ");
                 }
@@ -384,10 +386,12 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             })
             | hir::Node::AnonConst(..) = node
             {
-                return std::iter::repeat("'static".to_owned())
-                    .take(num_params_to_take.saturating_sub(ret.len()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                return std::iter::repeat_n(
+                    "'static".to_owned(),
+                    num_params_to_take.saturating_sub(ret.len()),
+                )
+                .collect::<Vec<_>>()
+                .join(", ");
             }
 
             let params = if let Some(generics) = node.generics() {

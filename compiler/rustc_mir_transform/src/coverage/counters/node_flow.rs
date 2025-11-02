@@ -7,12 +7,11 @@
 //! (Knuth & Stevenson, 1973).
 
 use rustc_data_structures::graph;
+use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 pub(crate) use rustc_middle::mir::coverage::NodeFlowData;
 use rustc_middle::mir::coverage::Op;
-
-use crate::coverage::counters::union_find::UnionFind;
 
 #[cfg(test)]
 mod tests;

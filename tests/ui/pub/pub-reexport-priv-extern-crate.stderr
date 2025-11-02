@@ -30,7 +30,7 @@ LL | pub use core as reexported_core;
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
-   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
 help: consider making the `extern crate` item publicly accessible
    |
 LL | pub extern crate core;
@@ -49,7 +49,7 @@ LL | pub use core as reexported_core;
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #127909 <https://github.com/rust-lang/rust/issues/127909>
-   = note: `#[deny(pub_use_of_private_extern_crate)]` on by default
+   = note: `#[deny(pub_use_of_private_extern_crate)]` (part of `#[deny(future_incompatible)]`) on by default
 help: consider making the `extern crate` item publicly accessible
    |
 LL | pub extern crate core;

@@ -9,6 +9,7 @@ LL |         move || {
 LL |             let x = var;
    |                     ^^^ move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
    |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
    |
@@ -37,6 +38,11 @@ LL |         move || {
 LL |             let x = var;
    |                     --- variable moved due to use in closure
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/option-content-move3.rs:6:12
+   |
+LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
+   |            ^^^^^^^^^^^^
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
    |
@@ -57,6 +63,7 @@ LL |         move || {
 LL |             let x = var;
    |                     ^^^ move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
    |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
 help: consider borrowing here
    |
 LL |             let x = &var;
@@ -77,6 +84,11 @@ LL |         move || {
 LL |             let x = var;
    |                     --- variable moved due to use in closure
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/option-content-move3.rs:6:12
+   |
+LL | fn func<F: FnMut() -> H, H: FnMut()>(_: F) {}
+   |            ^^^^^^^^^^^^
 help: consider cloning the value before moving it into the closure
    |
 LL ~         {

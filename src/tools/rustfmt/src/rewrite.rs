@@ -3,7 +3,6 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::ptr;
 use rustc_span::Span;
 use thiserror::Error;
 
@@ -24,7 +23,7 @@ pub(crate) trait Rewrite {
     }
 }
 
-impl<T: Rewrite> Rewrite for ptr::P<T> {
+impl<T: Rewrite> Rewrite for Box<T> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         (**self).rewrite(context, shape)
     }

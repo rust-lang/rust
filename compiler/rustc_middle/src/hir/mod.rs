@@ -10,7 +10,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::*;
@@ -18,7 +18,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
-use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
+use crate::ty::TyCtxt;
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -154,13 +154,6 @@ impl<'tcx> TyCtxt<'tcx> {
         LocalModDefId::new_unchecked(id)
     }
 
-    pub fn impl_subject(self, def_id: DefId) -> EarlyBinder<'tcx, ImplSubject<'tcx>> {
-        match self.impl_trait_ref(def_id) {
-            Some(t) => t.map_bound(ImplSubject::Trait),
-            None => self.type_of(def_id).map_bound(ImplSubject::Inherent),
-        }
-    }
-
     /// Returns `true` if this is a foreign item (i.e., linked via `extern { ... }`).
     pub fn is_foreign_item(self, def_id: impl Into<DefId>) -> bool {
         self.opt_parent(def_id.into())
@@ -174,34 +167,64 @@ impl<'tcx> TyCtxt<'tcx> {
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
         delayed_lints: &[DelayedLint],
         define_opaque: Option<&[(Span, LocalDefId)]>,
-    ) -> (Option<Fingerprint>, Option<Fingerprint>, Option<Fingerprint>) {
-        if self.needs_crate_hash() {
-            self.with_stable_hashing_context(|mut hcx| {
-                let mut stable_hasher = StableHasher::new();
-                node.hash_stable(&mut hcx, &mut stable_hasher);
-                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-                bodies.hash_stable(&mut hcx, &mut stable_hasher);
-                let h1 = stable_hasher.finish();
-
-                let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
-
-                // Hash the defined opaque types, which are not present in the attrs.
-                define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
-
-                let h2 = stable_hasher.finish();
-
-                // hash lints emitted during ast lowering
-                let mut stable_hasher = StableHasher::new();
-                delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
-                let h3 = stable_hasher.finish();
-
-                (Some(h1), Some(h2), Some(h3))
-            })
-        } else {
-            (None, None, None)
+    ) -> Hashes {
+        if !self.needs_crate_hash() {
+            return Hashes {
+                opt_hash_including_bodies: None,
+                attrs_hash: None,
+                delayed_lints_hash: None,
+            };
         }
+
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            node.hash_stable(&mut hcx, &mut stable_hasher);
+            // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+            bodies.hash_stable(&mut hcx, &mut stable_hasher);
+            let h1 = stable_hasher.finish();
+
+            let mut stable_hasher = StableHasher::new();
+            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+
+            // Hash the defined opaque types, which are not present in the attrs.
+            define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+
+            let h2 = stable_hasher.finish();
+
+            // hash lints emitted during ast lowering
+            let mut stable_hasher = StableHasher::new();
+            delayed_lints.hash_stable(&mut hcx, &mut stable_hasher);
+            let h3 = stable_hasher.finish();
+
+            Hashes {
+                opt_hash_including_bodies: Some(h1),
+                attrs_hash: Some(h2),
+                delayed_lints_hash: Some(h3),
+            }
+        })
     }
+
+    pub fn qpath_is_lang_item(self, qpath: QPath<'_>, lang_item: LangItem) -> bool {
+        self.qpath_lang_item(qpath) == Some(lang_item)
+    }
+
+    /// This does not use typeck results since this is intended to be used with generated code.
+    pub fn qpath_lang_item(self, qpath: QPath<'_>) -> Option<LangItem> {
+        if let QPath::Resolved(_, path) = qpath
+            && let Res::Def(_, def_id) = path.res
+        {
+            return self.lang_items().from_def_id(def_id);
+        }
+        None
+    }
+}
+
+/// Hashes computed by [`TyCtxt::hash_owner_nodes`] if necessary.
+#[derive(Clone, Copy, Debug)]
+pub struct Hashes {
+    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub attrs_hash: Option<Fingerprint>,
+    pub delayed_lints_hash: Option<Fingerprint>,
 }
 
 pub fn provide(providers: &mut Providers) {

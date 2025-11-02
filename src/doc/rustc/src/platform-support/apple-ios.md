@@ -66,10 +66,36 @@ Rust programs can be built for these targets by specifying `--target`, if
 $ rustc --target aarch64-apple-ios your-code.rs
 ```
 
+Or if using Cargo and `-Zbuild-std`:
+```console
+$ cargo +nightly build -Zbuild-std --target armv7s-apple-ios
+```
+
+The simulator variants can be differentiated from the variants running
+on-device with the `target_env = "sim"` cfg (or `target_abi = "sim"` before
+Rust 1.91.0).
+
+```rust
+if cfg!(all(target_vendor = "apple", target_env = "sim")) {
+    // Do something on the iOS/tvOS/visionOS/watchOS Simulator.
+} else {
+    // Everything else, like Windows and non-Simulator iOS.
+}
+```
+
+This is similar to the `TARGET_OS_SIMULATOR` define in C code.
+
 ## Testing
 
-There is no support for running the Rust or standard library testsuite at the
-moment. Testing has mostly been done manually with builds of static libraries
-embedded into applications called from Xcode or a simulator.
+Running and testing your code naturally requires either an actual device
+running iOS, or the equivalent Xcode simulator environment. There exists
+several tools in the ecosystem for running a Cargo project on one of these.
+One of these tools is [`cargo-dinghy`]. [madsmtm/objc2#459] contains a more
+exhaustive list.
 
-It hopefully will be possible to improve this in the future.
+See also [testing on emulators in the `rustc-dev-guide`][test-sim] for
+instructions on running the standard library's test suite.
+
+[`cargo-dinghy`]: https://github.com/sonos/dinghy
+[madsmtm/objc2#459]: https://github.com/madsmtm/objc2/issues/459
+[test-sim]: https://rustc-dev-guide.rust-lang.org/tests/running.html#testing-on-emulators

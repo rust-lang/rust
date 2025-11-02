@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::qpath_generic_tys;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, QPath, TyKind};
@@ -13,14 +14,11 @@ use super::{REDUNDANT_ALLOCATION, utils};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath: &QPath<'tcx>, def_id: DefId) -> bool {
     let mut applicability = Applicability::MaybeIncorrect;
-    let outer_sym = if Some(def_id) == cx.tcx.lang_items().owned_box() {
-        "Box"
-    } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
-        "Rc"
-    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
-        "Arc"
-    } else {
-        return false;
+    let outer_sym = match cx.tcx.get_diagnostic_name(def_id) {
+        _ if Some(def_id) == cx.tcx.lang_items().owned_box() => "Box",
+        Some(sym::Rc) => "Rc",
+        Some(sym::Arc) => "Arc",
+        _ => return false,
     };
 
     if let Some(span) = utils::match_borrows_parameter(cx, qpath) {
@@ -43,7 +41,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
     let Some(ty) = qpath_generic_tys(qpath).next() else {
         return false;
     };
-    let Some(id) = path_def_id(cx, ty) else { return false };
+    let Some(id) = ty.basic_res().opt_def_id() else {
+        return false;
+    };
     let (inner_sym, ty) = match cx.tcx.get_diagnostic_name(id) {
         Some(sym::Arc) => ("Arc", ty),
         Some(sym::Rc) => ("Rc", ty),

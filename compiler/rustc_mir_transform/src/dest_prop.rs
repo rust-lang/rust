@@ -59,6 +59,12 @@
 //! The first two conditions are simple structural requirements on the `Assign` statements that can
 //! be trivially checked. The third requirement however is more difficult and costly to check.
 //!
+//! ## Current implementation
+//!
+//! The current implementation relies on live range computation to check for conflicts. We only
+//! allow to merge locals that have disjoint live ranges. The live range are defined with
+//! half-statement granularity, so as to make all writes be live for at least a half statement.
+//!
 //! ## Future Improvements
 //!
 //! There are a number of ways in which this pass could be improved in the future:
@@ -117,9 +123,8 @@
 //! - Layout optimizations for coroutines have been added to improve code generation for
 //!   async/await, which are very similar in spirit to what this optimization does.
 //!
-//! Also, rustc now has a simple NRVO pass (see `nrvo.rs`), which handles a subset of the cases that
-//! this destination propagation pass handles, proving that similar optimizations can be performed
-//! on MIR.
+//! [The next approach][attempt 4] computes a conflict matrix between locals by forbidding merging
+//! locals with competing writes or with one write while the other is live.
 //!
 //! ## Pre/Post Optimization
 //!
@@ -130,144 +135,107 @@
 //! [attempt 1]: https://github.com/rust-lang/rust/pull/47954
 //! [attempt 2]: https://github.com/rust-lang/rust/pull/71003
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
+//! [attempt 4]: https://github.com/rust-lang/rust/pull/96451
 
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
+use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_middle::bug;
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    Body, HasLocalDecls, InlineAsmOperand, Local, LocalKind, Location, Operand, PassWhere, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind, dump_mir, traversal,
-};
+use rustc_index::{IndexVec, newtype_index};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
+use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::Analysis;
-use rustc_mir_dataflow::impls::MaybeLiveLocals;
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex, save_as_intervals};
+use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
+use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::{Analysis, EntryStates};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // For now, only run at MIR opt level 3. Two things need to be changed before this can be
-        // turned on by default:
-        //  1. Because of the overeager removal of storage statements, this can cause stack space
-        //     regressions. This opt is not the place to fix this though, it's a more general
-        //     problem in MIR.
-        //  2. Despite being an overall perf improvement, this still causes a 30% regression in
-        //     keccak. We can temporarily fix this by bounding function size, but in the long term
-        //     we should fix this by being smarter about invalidating analysis results.
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 2
     }
 
+    #[tracing::instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
-        let mut candidates = Candidates::default();
-        let mut write_info = WriteInfo::default();
-        trace!(func = ?tcx.def_path_str(def_id));
+        trace!(?def_id);
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
-        let points = DenseLocationMap::new(body);
-        let mut live = save_as_intervals(&points, body, live.analysis, live.results);
-
-        // In order to avoid having to collect data for every single pair of locals in the body, we
-        // do not allow doing more than one merge for places that are derived from the same local at
-        // once. To avoid missed opportunities, we instead iterate to a fixed point - we'll refer to
-        // each of these iterations as a "round."
-        //
-        // Reaching a fixed point could in theory take up to `min(l, s)` rounds - however, we do not
-        // expect to see MIR like that. To verify this, a test was run against `[rust-lang/regex]` -
-        // the average MIR body saw 1.32 full iterations of this loop. The most that was hit were 30
-        // for a single function. Only 80/2801 (2.9%) of functions saw at least 5.
-        //
-        // [rust-lang/regex]:
-        //     https://github.com/rust-lang/regex/tree/b5372864e2df6a2f5e543a556a62197f50ca3650
-        let mut round_count = 0;
-        loop {
-            // PERF: Can we do something smarter than recalculating the candidates and liveness
-            // results?
-            candidates.reset_and_find(body, &borrowed);
-            trace!(?candidates);
-            dest_prop_mir_dump(tcx, body, &points, &live, round_count);
-
-            FilterInformation::filter_liveness(
-                &mut candidates,
-                &points,
-                &live,
-                &mut write_info,
-                body,
-            );
-
-            // Because we only filter once per round, it is unsound to use a local for more than
-            // one merge operation within a single round of optimizations. We store here which ones
-            // we have already used.
-            let mut merged_locals: DenseBitSet<Local> =
-                DenseBitSet::new_empty(body.local_decls.len());
-
-            // This is the set of merges we will apply this round. It is a subset of the candidates.
-            let mut merges = FxIndexMap::default();
-
-            for (src, candidates) in candidates.c.iter() {
-                if merged_locals.contains(*src) {
-                    continue;
-                }
-                let Some(dest) = candidates.iter().find(|dest| !merged_locals.contains(**dest))
-                else {
-                    continue;
-                };
-
-                // Replace `src` by `dest` everywhere.
-                merges.insert(*src, *dest);
-                merged_locals.insert(*src);
-                merged_locals.insert(*dest);
-
-                // Update liveness information based on the merge we just performed.
-                // Every location where `src` was live, `dest` will be live.
-                live.union_rows(*src, *dest);
-            }
-            trace!(merging = ?merges);
-
-            if merges.is_empty() {
-                break;
-            }
-            round_count += 1;
-
-            apply_merges(body, tcx, merges, merged_locals);
+        let candidates = Candidates::find(body, &borrowed);
+        trace!(?candidates);
+        if candidates.c.is_empty() {
+            return;
         }
 
-        trace!(round_count);
+        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
+
+        let points = DenseLocationMap::new(body);
+        let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
+        let mut live = save_as_intervals(&points, body, &relevant, live.entry_states);
+
+        dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
+
+        let mut merged_locals = DenseBitSet::new_empty(body.local_decls.len());
+
+        for (src, dst) in candidates.c.into_iter() {
+            trace!(?src, ?dst);
+
+            let Some(mut src) = relevant.find(src) else { continue };
+            let Some(mut dst) = relevant.find(dst) else { continue };
+            if src == dst {
+                continue;
+            }
+
+            let Some(src_live_ranges) = live.row(src) else { continue };
+            let Some(dst_live_ranges) = live.row(dst) else { continue };
+            trace!(?src, ?src_live_ranges);
+            trace!(?dst, ?dst_live_ranges);
+
+            if src_live_ranges.disjoint(dst_live_ranges) {
+                // We want to replace `src` by `dst`.
+                let mut orig_src = relevant.original[src];
+                let mut orig_dst = relevant.original[dst];
+
+                // The return place and function arguments are required and cannot be renamed.
+                // This check cannot be made during candidate collection, as we may want to
+                // unify the same non-required local with several required locals.
+                match (is_local_required(orig_src, body), is_local_required(orig_dst, body)) {
+                    // Renaming `src` is ok.
+                    (false, _) => {}
+                    // Renaming `src` is wrong, but renaming `dst` is ok.
+                    (true, false) => {
+                        std::mem::swap(&mut src, &mut dst);
+                        std::mem::swap(&mut orig_src, &mut orig_dst);
+                    }
+                    // Neither local can be renamed, so skip this case.
+                    (true, true) => continue,
+                }
+
+                trace!(?src, ?dst, "merge");
+                merged_locals.insert(orig_src);
+                merged_locals.insert(orig_dst);
+
+                // Replace `src` by `dst`.
+                let head = relevant.union(src, dst);
+                live.union_rows(/* read */ src, /* write */ head);
+                live.union_rows(/* read */ dst, /* write */ head);
+            }
+        }
+        trace!(?merged_locals);
+        trace!(?relevant.renames);
+
+        if merged_locals.is_empty() {
+            return;
+        }
+
+        apply_merges(body, tcx, relevant, merged_locals);
     }
 
     fn is_required(&self) -> bool {
         false
     }
-}
-
-#[derive(Debug, Default)]
-struct Candidates {
-    /// The set of candidates we are considering in this optimization.
-    ///
-    /// We will always merge the key into at most one of its values.
-    ///
-    /// Whether a place ends up in the key or the value does not correspond to whether it appears as
-    /// the lhs or rhs of any assignment. As a matter of fact, the places in here might never appear
-    /// in an assignment at all. This happens because if we see an assignment like this:
-    ///
-    /// ```ignore (syntax-highlighting-only)
-    /// _1.0 = _2.0
-    /// ```
-    ///
-    /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
-    /// remove that assignment.
-    c: FxIndexMap<Local, Vec<Local>>,
-
-    /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
-    /// then this contains `b => a`.
-    // PERF: Possibly these should be `SmallVec`s?
-    reverse: FxIndexMap<Local, Vec<Local>>,
 }
 
 //////////////////////////////////////////////////////////
@@ -278,16 +246,16 @@ struct Candidates {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: FxIndexMap<Local, Local>,
+    relevant: RelevantLocals,
     merged_locals: DenseBitSet<Local>,
 ) {
-    let mut merger = Merger { tcx, merges, merged_locals };
+    let mut merger = Merger { tcx, relevant, merged_locals };
     merger.visit_body_preserves_cfg(body);
 }
 
 struct Merger<'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: FxIndexMap<Local, Local>,
+    relevant: RelevantLocals,
     merged_locals: DenseBitSet<Local>,
 }
 
@@ -297,8 +265,8 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
-        if let Some(dest) = self.merges.get(local) {
-            *local = *dest;
+        if let Some(relevant) = self.relevant.find(*local) {
+            *local = self.relevant.original[relevant];
         }
     }
 
@@ -308,8 +276,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
                 if self.merged_locals.contains(*local) =>
             {
-                statement.make_nop();
-                return;
+                statement.make_nop(true);
             }
             _ => (),
         };
@@ -317,13 +284,12 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
-                    Rvalue::CopyForDeref(place)
-                    | Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                         // These might've been turned into self-assignments by the replacement
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
                             debug!("{:?} turned into self-assignment, deleting", location);
-                            statement.make_nop();
+                            statement.make_nop(true);
                         }
                     }
                     _ => {}
@@ -336,17 +302,75 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
 }
 
 //////////////////////////////////////////////////////////
-// Liveness filtering
+// Relevant locals
 //
-// This section enforces bullet point 2
+// Small utility to reduce size of the conflict matrix by only considering locals that appear in
+// the candidates
 
-struct FilterInformation<'a, 'tcx> {
-    body: &'a Body<'tcx>,
-    points: &'a DenseLocationMap,
-    live: &'a SparseIntervalMatrix<Local, PointIndex>,
-    candidates: &'a mut Candidates,
-    write_info: &'a mut WriteInfo,
-    at: Location,
+newtype_index! {
+    /// Represent a subset of locals which appear in candidates.
+    struct RelevantLocal {}
+}
+
+#[derive(Debug)]
+struct RelevantLocals {
+    original: IndexVec<RelevantLocal, Local>,
+    shrink: IndexVec<Local, Option<RelevantLocal>>,
+    renames: UnionFind<RelevantLocal>,
+}
+
+impl RelevantLocals {
+    #[tracing::instrument(level = "trace", skip(candidates, num_locals), ret)]
+    fn compute(candidates: &Candidates, num_locals: usize) -> RelevantLocals {
+        let mut original = IndexVec::with_capacity(candidates.c.len());
+        let mut shrink = IndexVec::from_elem_n(None, num_locals);
+
+        // Mark a local as relevant and record it into the maps.
+        let mut declare = |local| {
+            shrink.get_or_insert_with(local, || original.push(local));
+        };
+
+        for &(src, dest) in candidates.c.iter() {
+            declare(src);
+            declare(dest)
+        }
+
+        let renames = UnionFind::new(original.len());
+        RelevantLocals { original, shrink, renames }
+    }
+
+    fn find(&mut self, src: Local) -> Option<RelevantLocal> {
+        let src = self.shrink[src]?;
+        let src = self.renames.find(src);
+        Some(src)
+    }
+
+    fn union(&mut self, lhs: RelevantLocal, rhs: RelevantLocal) -> RelevantLocal {
+        let head = self.renames.unify(lhs, rhs);
+        // We need to ensure we keep the original local of the RHS, as it may be a required local.
+        self.original[head] = self.original[rhs];
+        head
+    }
+}
+
+/////////////////////////////////////////////////////
+// Candidate accumulation
+
+#[derive(Debug, Default)]
+struct Candidates {
+    /// The set of candidates we are considering in this optimization.
+    ///
+    /// Whether a place ends up in the key or the value does not correspond to whether it appears as
+    /// the lhs or rhs of any assignment. As a matter of fact, the places in here might never appear
+    /// in an assignment at all. This happens because if we see an assignment like this:
+    ///
+    /// ```ignore (syntax-highlighting-only)
+    /// _1.0 = _2.0
+    /// ```
+    ///
+    /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
+    /// remove that assignment.
+    c: Vec<(Local, Local)>,
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
@@ -356,394 +380,17 @@ impl Candidates {
     /// Collects the candidates for merging.
     ///
     /// This is responsible for enforcing the first and third bullet point.
-    fn reset_and_find<'tcx>(&mut self, body: &Body<'tcx>, borrowed: &DenseBitSet<Local>) {
-        self.c.clear();
-        self.reverse.clear();
-        let mut visitor = FindAssignments { body, candidates: &mut self.c, borrowed };
+    fn find(body: &Body<'_>, borrowed: &DenseBitSet<Local>) -> Candidates {
+        let mut visitor = FindAssignments { body, candidates: Default::default(), borrowed };
         visitor.visit_body(body);
-        // Deduplicate candidates.
-        for (_, cands) in self.c.iter_mut() {
-            cands.sort();
-            cands.dedup();
-        }
-        // Generate the reverse map.
-        for (src, cands) in self.c.iter() {
-            for dest in cands.iter().copied() {
-                self.reverse.entry(dest).or_default().push(*src);
-            }
-        }
+
+        Candidates { c: visitor.candidates }
     }
-
-    /// Just `Vec::retain`, but the condition is inverted and we add debugging output
-    fn vec_filter_candidates(
-        src: Local,
-        v: &mut Vec<Local>,
-        mut f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        v.retain(|dest| {
-            let remove = f(*dest);
-            if remove == CandidateFilter::Remove {
-                trace!("eliminating {:?} => {:?} due to conflict at {:?}", src, dest, at);
-            }
-            remove == CandidateFilter::Keep
-        });
-    }
-
-    /// `vec_filter_candidates` but for an `Entry`
-    fn entry_filter_candidates(
-        mut entry: IndexOccupiedEntry<'_, Local, Vec<Local>>,
-        p: Local,
-        f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        let candidates = entry.get_mut();
-        Self::vec_filter_candidates(p, candidates, f, at);
-        if candidates.len() == 0 {
-            // FIXME(#120456) - is `swap_remove` correct?
-            entry.swap_remove();
-        }
-    }
-
-    /// For all candidates `(p, q)` or `(q, p)` removes the candidate if `f(q)` says to do so
-    fn filter_candidates_by(
-        &mut self,
-        p: Local,
-        mut f: impl FnMut(Local) -> CandidateFilter,
-        at: Location,
-    ) {
-        // Cover the cases where `p` appears as a `src`
-        if let IndexEntry::Occupied(entry) = self.c.entry(p) {
-            Self::entry_filter_candidates(entry, p, &mut f, at);
-        }
-        // And the cases where `p` appears as a `dest`
-        let Some(srcs) = self.reverse.get_mut(&p) else {
-            return;
-        };
-        // We use `retain` here to remove the elements from the reverse set if we've removed the
-        // matching candidate in the forward set.
-        srcs.retain(|src| {
-            if f(*src) == CandidateFilter::Keep {
-                return true;
-            }
-            let IndexEntry::Occupied(entry) = self.c.entry(*src) else {
-                return false;
-            };
-            Self::entry_filter_candidates(
-                entry,
-                *src,
-                |dest| {
-                    if dest == p { CandidateFilter::Remove } else { CandidateFilter::Keep }
-                },
-                at,
-            );
-            false
-        });
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum CandidateFilter {
-    Keep,
-    Remove,
-}
-
-impl<'a, 'tcx> FilterInformation<'a, 'tcx> {
-    /// Filters the set of candidates to remove those that conflict.
-    ///
-    /// The steps we take are exactly those that are outlined at the top of the file. For each
-    /// statement/terminator, we collect the set of locals that are written to in that
-    /// statement/terminator, and then we remove all pairs of candidates that contain one such local
-    /// and another one that is live.
-    ///
-    /// We need to be careful about the ordering of operations within each statement/terminator
-    /// here. Many statements might write and read from more than one place, and we need to consider
-    /// them all. The strategy for doing this is as follows: We first gather all the places that are
-    /// written to within the statement/terminator via `WriteInfo`. Then, we use the liveness
-    /// analysis from *before* the statement/terminator (in the control flow sense) to eliminate
-    /// candidates - this is because we want to conservatively treat a pair of locals that is both
-    /// read and written in the statement/terminator to be conflicting, and the liveness analysis
-    /// before the statement/terminator will correctly report locals that are read in the
-    /// statement/terminator to be live. We are additionally conservative by treating all written to
-    /// locals as also being read from.
-    fn filter_liveness(
-        candidates: &mut Candidates,
-        points: &DenseLocationMap,
-        live: &SparseIntervalMatrix<Local, PointIndex>,
-        write_info: &mut WriteInfo,
-        body: &Body<'tcx>,
-    ) {
-        let mut this = FilterInformation {
-            body,
-            points,
-            live,
-            candidates,
-            // We don't actually store anything at this scope, we just keep things here to be able
-            // to reuse the allocation.
-            write_info,
-            // Doesn't matter what we put here, will be overwritten before being used
-            at: Location::START,
-        };
-        this.internal_filter_liveness();
-    }
-
-    fn internal_filter_liveness(&mut self) {
-        for (block, data) in traversal::preorder(self.body) {
-            self.at = Location { block, statement_index: data.statements.len() };
-            self.write_info.for_terminator(&data.terminator().kind);
-            self.apply_conflicts();
-
-            for (i, statement) in data.statements.iter().enumerate().rev() {
-                self.at = Location { block, statement_index: i };
-                self.write_info.for_statement(&statement.kind, self.body);
-                self.apply_conflicts();
-            }
-        }
-    }
-
-    fn apply_conflicts(&mut self) {
-        let writes = &self.write_info.writes;
-        for p in writes {
-            let other_skip = self.write_info.skip_pair.and_then(|(a, b)| {
-                if a == *p {
-                    Some(b)
-                } else if b == *p {
-                    Some(a)
-                } else {
-                    None
-                }
-            });
-            let at = self.points.point_from_location(self.at);
-            self.candidates.filter_candidates_by(
-                *p,
-                |q| {
-                    if Some(q) == other_skip {
-                        return CandidateFilter::Keep;
-                    }
-                    // It is possible that a local may be live for less than the
-                    // duration of a statement This happens in the case of function
-                    // calls or inline asm. Because of this, we also mark locals as
-                    // conflicting when both of them are written to in the same
-                    // statement.
-                    if self.live.contains(q, at) || writes.contains(&q) {
-                        CandidateFilter::Remove
-                    } else {
-                        CandidateFilter::Keep
-                    }
-                },
-                self.at,
-            );
-        }
-    }
-}
-
-/// Describes where a statement/terminator writes to
-#[derive(Default, Debug)]
-struct WriteInfo {
-    writes: Vec<Local>,
-    /// If this pair of locals is a candidate pair, completely skip processing it during this
-    /// statement. All other candidates are unaffected.
-    skip_pair: Option<(Local, Local)>,
-}
-
-impl WriteInfo {
-    fn for_statement<'tcx>(&mut self, statement: &StatementKind<'tcx>, body: &Body<'tcx>) {
-        self.reset();
-        match statement {
-            StatementKind::Assign(box (lhs, rhs)) => {
-                self.add_place(*lhs);
-                match rhs {
-                    Rvalue::Use(op) => {
-                        self.add_operand(op);
-                        self.consider_skipping_for_assign_use(*lhs, op, body);
-                    }
-                    Rvalue::Repeat(op, _) => {
-                        self.add_operand(op);
-                    }
-                    Rvalue::Cast(_, op, _)
-                    | Rvalue::UnaryOp(_, op)
-                    | Rvalue::ShallowInitBox(op, _) => {
-                        self.add_operand(op);
-                    }
-                    Rvalue::BinaryOp(_, ops) => {
-                        for op in [&ops.0, &ops.1] {
-                            self.add_operand(op);
-                        }
-                    }
-                    Rvalue::Aggregate(_, ops) => {
-                        for op in ops {
-                            self.add_operand(op);
-                        }
-                    }
-                    Rvalue::WrapUnsafeBinder(op, _) => {
-                        self.add_operand(op);
-                    }
-                    Rvalue::ThreadLocalRef(_)
-                    | Rvalue::NullaryOp(_, _)
-                    | Rvalue::Ref(_, _, _)
-                    | Rvalue::RawPtr(_, _)
-                    | Rvalue::Len(_)
-                    | Rvalue::Discriminant(_)
-                    | Rvalue::CopyForDeref(_) => {}
-                }
-            }
-            // Retags are technically also reads, but reporting them as a write suffices
-            StatementKind::SetDiscriminant { place, .. }
-            | StatementKind::Deinit(place)
-            | StatementKind::Retag(_, place) => {
-                self.add_place(**place);
-            }
-            StatementKind::Intrinsic(_)
-            | StatementKind::ConstEvalCounter
-            | StatementKind::Nop
-            | StatementKind::Coverage(_)
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
-            | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::PlaceMention(_) => {}
-            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
-                bug!("{:?} not found in this MIR phase", statement)
-            }
-        }
-    }
-
-    fn consider_skipping_for_assign_use<'tcx>(
-        &mut self,
-        lhs: Place<'tcx>,
-        rhs: &Operand<'tcx>,
-        body: &Body<'tcx>,
-    ) {
-        let Some(rhs) = rhs.place() else { return };
-        if let Some(pair) = places_to_candidate_pair(lhs, rhs, body) {
-            self.skip_pair = Some(pair);
-        }
-    }
-
-    fn for_terminator<'tcx>(&mut self, terminator: &TerminatorKind<'tcx>) {
-        self.reset();
-        match terminator {
-            TerminatorKind::SwitchInt { discr: op, .. }
-            | TerminatorKind::Assert { cond: op, .. } => {
-                self.add_operand(op);
-            }
-            TerminatorKind::Call { destination, func, args, .. } => {
-                self.add_place(*destination);
-                self.add_operand(func);
-                for arg in args {
-                    self.add_operand(&arg.node);
-                }
-            }
-            TerminatorKind::TailCall { func, args, .. } => {
-                self.add_operand(func);
-                for arg in args {
-                    self.add_operand(&arg.node);
-                }
-            }
-            TerminatorKind::InlineAsm { operands, .. } => {
-                for asm_operand in operands {
-                    match asm_operand {
-                        InlineAsmOperand::In { value, .. } => {
-                            self.add_operand(value);
-                        }
-                        InlineAsmOperand::Out { place, .. } => {
-                            if let Some(place) = place {
-                                self.add_place(*place);
-                            }
-                        }
-                        // Note that the `late` field in `InOut` is about whether the registers used
-                        // for these things overlap, and is of absolutely no interest to us.
-                        InlineAsmOperand::InOut { in_value, out_place, .. } => {
-                            if let Some(place) = out_place {
-                                self.add_place(*place);
-                            }
-                            self.add_operand(in_value);
-                        }
-                        InlineAsmOperand::Const { .. }
-                        | InlineAsmOperand::SymFn { .. }
-                        | InlineAsmOperand::SymStatic { .. }
-                        | InlineAsmOperand::Label { .. } => {}
-                    }
-                }
-            }
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable { .. } => (),
-            TerminatorKind::Drop { .. } => {
-                // `Drop`s create a `&mut` and so are not considered
-            }
-            TerminatorKind::Yield { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                bug!("{:?} not found in this MIR phase", terminator)
-            }
-        }
-    }
-
-    fn add_place(&mut self, place: Place<'_>) {
-        self.writes.push(place.local);
-    }
-
-    fn add_operand<'tcx>(&mut self, op: &Operand<'tcx>) {
-        match op {
-            // FIXME(JakobDegen): In a previous version, the `Move` case was incorrectly treated as
-            // being a read only. This was unsound, however we cannot add a regression test because
-            // it is not possible to set this off with current MIR. Once we have that ability, a
-            // regression test should be added.
-            Operand::Move(p) => self.add_place(*p),
-            Operand::Copy(_) | Operand::Constant(_) => (),
-        }
-    }
-
-    fn reset(&mut self) {
-        self.writes.clear();
-        self.skip_pair = None;
-    }
-}
-
-/////////////////////////////////////////////////////
-// Candidate accumulation
-
-/// If the pair of places is being considered for merging, returns the candidate which would be
-/// merged in order to accomplish this.
-///
-/// The contract here is in one direction - there is a guarantee that merging the locals that are
-/// outputted by this function would result in an assignment between the inputs becoming a
-/// self-assignment. However, there is no guarantee that the returned pair is actually suitable for
-/// merging - candidate collection must still check this independently.
-///
-/// This output is unique for each unordered pair of input places.
-fn places_to_candidate_pair<'tcx>(
-    a: Place<'tcx>,
-    b: Place<'tcx>,
-    body: &Body<'tcx>,
-) -> Option<(Local, Local)> {
-    let (mut a, mut b) = if a.projection.len() == 0 && b.projection.len() == 0 {
-        (a.local, b.local)
-    } else {
-        return None;
-    };
-
-    // By sorting, we make sure we're input order independent
-    if a > b {
-        std::mem::swap(&mut a, &mut b);
-    }
-
-    // We could now return `(a, b)`, but then we miss some candidates in the case where `a` can't be
-    // used as a `src`.
-    if is_local_required(a, body) {
-        std::mem::swap(&mut a, &mut b);
-    }
-    // We could check `is_local_required` again here, but there's no need - after all, we make no
-    // promise that the candidate pair is actually valid
-    Some((a, b))
 }
 
 struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: &'a mut FxIndexMap<Local, Vec<Local>>,
+    candidates: Vec<(Local, Local)>,
     borrowed: &'a DenseBitSet<Local>,
 }
 
@@ -751,13 +398,11 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
-            Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
+            && let Some(src) = lhs.as_local()
+            && let Some(dest) = rhs.as_local()
         {
-            let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {
-                return;
-            };
-
             // As described at the top of the file, we do not go near things that have
             // their address taken.
             if self.borrowed.contains(src) || self.borrowed.contains(dest) {
@@ -774,13 +419,8 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
                 return;
             }
 
-            // Also, we need to make sure that MIR actually allows the `src` to be removed
-            if is_local_required(src, self.body) {
-                return;
-            }
-
             // We may insert duplicates here, but that's fine
-            self.candidates.entry(src).or_default().push(dest);
+            self.candidates.push((src, dest));
         }
     }
 }
@@ -803,18 +443,165 @@ fn dest_prop_mir_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     points: &DenseLocationMap,
-    live: &SparseIntervalMatrix<Local, PointIndex>,
-    round: usize,
+    live: &SparseIntervalMatrix<RelevantLocal, TwoStepIndex>,
+    relevant: &RelevantLocals,
 ) {
     let locals_live_at = |location| {
-        let location = points.point_from_location(location);
-        live.rows().filter(|&r| live.contains(r, location)).collect::<Vec<_>>()
+        live.rows()
+            .filter(|&r| live.contains(r, location))
+            .map(|rl| relevant.original[rl])
+            .collect::<Vec<_>>()
     };
-    dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
-        if let PassWhere::BeforeLocation(loc) = pass_where {
-            writeln!(w, "        // live: {:?}", locals_live_at(loc))?;
+
+    if let Some(dumper) = MirDumper::new(tcx, "DestinationPropagation-dataflow", body) {
+        let extra_data = &|pass_where, w: &mut dyn std::io::Write| {
+            if let PassWhere::BeforeLocation(loc) = pass_where {
+                let location = TwoStepIndex::new(points, loc, Effect::Before);
+                let live = locals_live_at(location);
+                writeln!(w, "        // before: {:?} => {:?}", location, live)?;
+            }
+            if let PassWhere::AfterLocation(loc) = pass_where {
+                let location = TwoStepIndex::new(points, loc, Effect::After);
+                let live = locals_live_at(location);
+                writeln!(w, "        // after: {:?} => {:?}", location, live)?;
+            }
+            Ok(())
+        };
+
+        dumper.set_extra_data(extra_data).dump_mir(body)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+enum Effect {
+    Before,
+    After,
+}
+
+rustc_index::newtype_index! {
+    /// A reversed `PointIndex` but with the lower bit encoding early/late inside the statement.
+    /// The reversed order allows to use the more efficient `IntervalSet::append` method while we
+    /// iterate on the statements in reverse order.
+    #[orderable]
+    #[debug_format = "TwoStepIndex({})"]
+    struct TwoStepIndex {}
+}
+
+impl TwoStepIndex {
+    fn new(elements: &DenseLocationMap, location: Location, effect: Effect) -> TwoStepIndex {
+        let point = elements.point_from_location(location);
+        let effect = match effect {
+            Effect::Before => 0,
+            Effect::After => 1,
+        };
+        let max_index = 2 * elements.num_points() as u32 - 1;
+        let index = 2 * point.as_u32() + (effect as u32);
+        // Reverse the indexing to use more efficient `IntervalSet::append`.
+        TwoStepIndex::from_u32(max_index - index)
+    }
+}
+
+/// Add points depending on the result of the given dataflow analysis.
+fn save_as_intervals<'tcx>(
+    elements: &DenseLocationMap,
+    body: &Body<'tcx>,
+    relevant: &RelevantLocals,
+    entry_states: EntryStates<DenseBitSet<Local>>,
+) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
+    let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
+    let mut state = MaybeLiveLocals.bottom_value(body);
+    let reachable_blocks = traversal::reachable_as_bitset(body);
+
+    let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
+    let append_at =
+        |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, twostep| {
+            for (relevant, &original) in relevant.original.iter_enumerated() {
+                if state.contains(original) {
+                    values.append(relevant, twostep);
+                }
+            }
+        };
+
+    // Iterate blocks in decreasing order, to visit locations in decreasing order. This
+    // allows to use the more efficient `append` method to interval sets.
+    for block in body.basic_blocks.indices().rev() {
+        if !reachable_blocks.contains(block) {
+            continue;
         }
 
-        Ok(())
-    });
+        state.clone_from(&entry_states[block]);
+
+        let block_data = &body.basic_blocks[block];
+        let loc = Location { block, statement_index: block_data.statements.len() };
+
+        let term = block_data.terminator();
+        let mut twostep = two_step_loc(loc, Effect::After);
+        append_at(&mut values, &state, twostep);
+        // Ensure we have a non-zero live range even for dead stores. This is done by marking all
+        // the written-to locals as live in the second half of the statement.
+        // We also ensure that operands read by terminators conflict with writes by that terminator.
+        // For instance a function call may read args after having written to the destination.
+        VisitPlacesWith(|place: Place<'tcx>, ctxt| {
+            if let Some(relevant) = relevant.shrink[place.local] {
+                match DefUse::for_place(place, ctxt) {
+                    DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
+                        values.insert(relevant, twostep);
+                    }
+                    DefUse::NonUse => {}
+                }
+            }
+        })
+        .visit_terminator(term, loc);
+
+        twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
+        debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
+        MaybeLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
+        MaybeLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
+        append_at(&mut values, &state, twostep);
+
+        for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
+            let loc = Location { block, statement_index };
+            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
+            debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
+            append_at(&mut values, &state, twostep);
+            // Like terminators, ensure we have a non-zero live range even for dead stores.
+            // Some rvalues interleave reads and writes, for instance `Rvalue::Aggregate`, see
+            // https://github.com/rust-lang/rust/issues/146383. By precaution, treat statements
+            // as behaving so by default.
+            // We make an exception for simple assignments `_a.stuff = {copy|move} _b.stuff`,
+            // as marking `_b` live here would prevent unification.
+            let is_simple_assignment = match stmt.kind {
+                StatementKind::Assign(box (
+                    lhs,
+                    Rvalue::CopyForDeref(rhs)
+                    | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+                )) => lhs.projection == rhs.projection,
+                _ => false,
+            };
+            VisitPlacesWith(|place: Place<'tcx>, ctxt| {
+                if let Some(relevant) = relevant.shrink[place.local] {
+                    match DefUse::for_place(place, ctxt) {
+                        DefUse::Def | DefUse::PartialWrite => {
+                            values.insert(relevant, twostep);
+                        }
+                        DefUse::Use if !is_simple_assignment => {
+                            values.insert(relevant, twostep);
+                        }
+                        DefUse::Use | DefUse::NonUse => {}
+                    }
+                }
+            })
+            .visit_statement(stmt, loc);
+
+            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
+            debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
+            MaybeLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
+            MaybeLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
+            // ... but reads from operands are marked as live here so they do not conflict with
+            // the all the writes we manually marked as live in the second half of the statement.
+            append_at(&mut values, &state, twostep);
+        }
+    }
+
+    values
 }

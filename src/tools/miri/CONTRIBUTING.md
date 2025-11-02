@@ -255,6 +255,12 @@ when installing the Miri toolchain. Alternatively, set the `RUSTUP_TOOLCHAIN` en
 
 [`etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_helix.toml
 
+### Zed
+
+Copy [`etc/rust_analyzer_zed.json`] to `.zed/settings.json` in the project root directory.
+
+[`etc/rust_analyzer_zed.json`]: https://github.com/rust-lang/miri/blob/master/etc/rust_analyzer_zed.json
+
 ### Advanced configuration
 
 If you are building Miri with a locally built rustc, set

@@ -16,7 +16,7 @@ use super::param_name::is_argument_similar_to_param_name;
 pub(crate) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, krate): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     node: AnyHasGenericArgs,
 ) -> Option<()> {
     let GenericParameterHints { type_hints, lifetime_hints, const_hints } =
@@ -33,10 +33,10 @@ pub(crate) fn hints(
     let mut args = generic_arg_list.generic_args().peekable();
     let start_with_lifetime = matches!(args.peek()?, ast::GenericArg::LifetimeArg(_));
     let params = generic_def.params(sema.db).into_iter().filter(|p| {
-        if let hir::GenericParam::TypeParam(it) = p {
-            if it.is_implicit(sema.db) {
-                return false;
-            }
+        if let hir::GenericParam::TypeParam(it) = p
+            && it.is_implicit(sema.db)
+        {
+            return false;
         }
         if !start_with_lifetime {
             return !matches!(p, hir::GenericParam::LifetimeParam(_));

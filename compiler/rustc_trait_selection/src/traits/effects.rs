@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, TypingMode};
+use rustc_middle::ty::{self, Ty, TypingMode};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -64,6 +64,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     }
 
     match evaluate_host_effect_from_selection_candidate(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
+    match evaluate_host_effect_from_trait_alias(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -303,12 +309,109 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
+        Some(LangItem::Copy | LangItem::Clone) => {
+            evaluate_host_effect_for_copy_clone_goal(selcx, obligation)
+        }
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
         Some(LangItem::Fn | LangItem::FnMut | LangItem::FnOnce) => {
             evaluate_host_effect_for_fn_goal(selcx, obligation)
         }
         _ => Err(EvaluationFailure::NoSolution),
     }
+}
+
+fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let self_ty = obligation.predicate.self_ty();
+    let constituent_tys = match *self_ty.kind() {
+        // impl Copy/Clone for FnDef, FnPtr
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
+
+        // Implementations are provided in core
+        ty::Uint(_)
+        | ty::Int(_)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Bool
+        | ty::Float(_)
+        | ty::Char
+        | ty::RawPtr(..)
+        | ty::Never
+        | ty::Ref(_, _, ty::Mutability::Not)
+        | ty::Array(..) => Err(EvaluationFailure::NoSolution),
+
+        // Cannot implement in core, as we can't be generic over patterns yet,
+        // so we'd have to list all patterns and type combinations.
+        ty::Pat(ty, ..) => Ok(ty::Binder::dummy(vec![ty])),
+
+        ty::Dynamic(..)
+        | ty::Str
+        | ty::Slice(_)
+        | ty::Foreign(..)
+        | ty::Ref(_, _, ty::Mutability::Mut)
+        | ty::Adt(_, _)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Placeholder(..) => Err(EvaluationFailure::NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+
+        // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
+        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.to_vec())),
+
+        // impl Copy/Clone for Closure where Self::TupledUpvars: Copy/Clone
+        ty::Closure(_, args) => Ok(ty::Binder::dummy(vec![args.as_closure().tupled_upvars_ty()])),
+
+        // impl Copy/Clone for CoroutineClosure where Self::TupledUpvars: Copy/Clone
+        ty::CoroutineClosure(_, args) => {
+            Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
+        }
+
+        // only when `coroutine_clone` is enabled and the coroutine is movable
+        // impl Copy/Clone for Coroutine where T: Copy/Clone forall T in (upvars, witnesses)
+        ty::Coroutine(def_id, args) => {
+            if selcx.should_stall_coroutine(def_id) {
+                return Err(EvaluationFailure::Ambiguous);
+            }
+            match tcx.coroutine_movability(def_id) {
+                ty::Movability::Static => Err(EvaluationFailure::NoSolution),
+                ty::Movability::Movable => {
+                    if tcx.features().coroutine_clone() {
+                        Ok(ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args),
+                        ]))
+                    } else {
+                        Err(EvaluationFailure::NoSolution)
+                    }
+                }
+            }
+        }
+
+        ty::UnsafeBinder(_) => Err(EvaluationFailure::NoSolution),
+
+        // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
+        ty::CoroutineWitness(def_id, args) => Ok(tcx
+            .coroutine_hidden_types(def_id)
+            .instantiate(tcx, args)
+            .map_bound(|bound| bound.types.to_vec())),
+    }?;
+
+    Ok(constituent_tys
+        .iter()
+        .map(|ty| {
+            obligation.with(
+                tcx,
+                ty.map_bound(|ty| ty::TraitRef::new(tcx, obligation.predicate.def_id(), [ty]))
+                    .to_host_effect_clause(tcx, obligation.predicate.constness),
+            )
+        })
+        .collect())
 }
 
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
@@ -458,9 +561,7 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             Err(_) => Err(EvaluationFailure::NoSolution),
             Ok(Some(source)) => match source {
                 ImplSource::UserDefined(impl_) => {
-                    if tcx.impl_trait_header(impl_.impl_def_id).unwrap().constness
-                        != hir::Constness::Const
-                    {
+                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Const {
                         return Err(EvaluationFailure::NoSolution);
                     }
 
@@ -497,4 +598,38 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             },
         }
     })
+}
+
+fn evaluate_host_effect_from_trait_alias<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let def_id = obligation.predicate.def_id();
+    if !tcx.trait_is_alias(def_id) {
+        return Err(EvaluationFailure::NoSolution);
+    }
+
+    Ok(tcx
+        .const_conditions(def_id)
+        .instantiate(tcx, obligation.predicate.trait_ref.args)
+        .into_iter()
+        .map(|(trait_ref, span)| {
+            Obligation::new(
+                tcx,
+                obligation.cause.clone().derived_host_cause(
+                    ty::Binder::dummy(obligation.predicate),
+                    |derived| {
+                        ObligationCauseCode::ImplDerivedHost(Box::new(ImplDerivedHostCause {
+                            derived,
+                            impl_def_id: def_id,
+                            span,
+                        }))
+                    },
+                ),
+                obligation.param_env,
+                trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness),
+            )
+        })
+        .collect())
 }

@@ -6,19 +6,19 @@
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
 #![feature(assert_matches)]
+#![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
-#![feature(format_args_nl)]
+#![feature(formatting_options)]
 #![feature(if_let_guard)]
+#![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
-#![feature(round_char_boundary)]
+#![feature(iter_order_by)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
-
-extern crate thin_vec;
 
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
@@ -28,11 +28,9 @@ extern crate thin_vec;
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
-extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr_data_structures;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -81,6 +79,8 @@ use rustc_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
+use crate::error::Error;
+use crate::formats::cache::Cache;
 
 /// A macro to create a FxHashMap.
 ///
@@ -567,7 +567,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
-            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]",
+            "[toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
@@ -586,7 +586,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "Include the memory layout of types in the docs",
             "",
         ),
-        opt(Unstable, Flag, "", "nocapture", "Don't capture stdout and stderr of tests", ""),
+        opt(Unstable, Flag, "", "no-capture", "Don't capture stdout and stderr of tests", ""),
         opt(
             Unstable,
             Flag,
@@ -664,6 +664,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
             "",
         ),
+        opt(
+            Unstable,
+            Flag,
+            "",
+            "generate-macro-expansion",
+            "Add possibility to expand macros in the HTML source code pages",
+            "",
+        ),
         // deprecated / removed options
         opt(
             Stable,
@@ -727,20 +735,32 @@ pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) {
     }
 }
 
-fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
+fn run_renderer<
+    'tcx,
+    T: formats::FormatRenderer<'tcx>,
+    F: FnOnce(
+        clean::Crate,
+        config::RenderOptions,
+        Cache,
+        TyCtxt<'tcx>,
+    ) -> Result<(T, clean::Crate), Error>,
+>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
     tcx: TyCtxt<'tcx>,
+    init: F,
 ) {
-    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
+    match formats::run_format::<T, F>(krate, renderopts, cache, tcx, init) {
         Ok(_) => tcx.dcx().abort_if_errors(),
         Err(e) => {
             let mut msg =
                 tcx.dcx().struct_fatal(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
-                msg.note(format!("failed to create or modify \"{file}\""));
+                msg.note(format!("failed to create or modify {e}"));
+            } else {
+                msg.note(format!("failed to create or modify file: {e}"));
             }
             msg.emit();
         }
@@ -814,8 +834,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         config::InputMode::NoInputMergeFinalize => {
             return wrap_return(
                 dcx,
-                run_merge_finalize(render_options)
-                    .map_err(|e| format!("could not write merged cross-crate info: {e}")),
+                rustc_span::create_session_globals_then(options.edition, &[], None, || {
+                    run_merge_finalize(render_options)
+                        .map_err(|e| format!("could not write merged cross-crate info: {e}"))
+                }),
             );
         }
     };
@@ -863,6 +885,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
+    let output_format = options.output_format;
     let config = core::create_config(input, options, &render_options);
 
     let registered_lints = config.register_lints.is_some();
@@ -887,9 +910,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
-                core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-            });
+            let (krate, render_opts, mut cache, expanded_macros) = sess
+                .time("run_global_ctxt", || {
+                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+                });
             info!("finished with rustc");
 
             if let Some(options) = scrape_examples_options {
@@ -920,10 +944,24 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             info!("going to format");
             match output_format {
                 config::OutputFormat::Html => sess.time("render_html", || {
-                    run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
+                    run_renderer(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        |krate, render_opts, cache, tcx| {
+                            html::render::Context::init(
+                                krate,
+                                render_opts,
+                                cache,
+                                tcx,
+                                expanded_macros,
+                            )
+                        },
+                    )
                 }),
                 config::OutputFormat::Json => sess.time("render_json", || {
-                    run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
+                    run_renderer(krate, render_opts, cache, tcx, json::JsonRenderer::init)
                 }),
                 // Already handled above with doctest runners.
                 config::OutputFormat::Doctest => unreachable!(),

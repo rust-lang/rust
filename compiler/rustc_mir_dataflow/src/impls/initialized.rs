@@ -108,6 +108,7 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-init:
 ///                                             // {}
 ///     let a = S; let mut b = S; let c; let d; // {a, b}
@@ -197,6 +198,7 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // maybe-uninit:
 ///                                             // {a, b, c, d}
 ///     let a = S; let mut b = S; let c; let d; // {      c, d}
@@ -289,6 +291,7 @@ impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 ///
 /// ```rust
 /// struct S;
+/// #[rustfmt::skip]
 /// fn foo(pred: bool) {                        // ever-init:
 ///                                             // {          }
 ///     let a = S; let mut b = S; let c; let d; // {a, b      }
@@ -373,7 +376,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -397,7 +400,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -426,7 +429,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -445,7 +448,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn get_switch_int_data(
-        &mut self,
+        &self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
     ) -> Option<Self::SwitchIntData> {
@@ -457,7 +460,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_switch_int_edge_effect(
-        &mut self,
+        &self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
@@ -510,7 +513,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -524,7 +527,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -542,7 +545,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
@@ -561,7 +564,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn get_switch_int_data(
-        &mut self,
+        &self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
     ) -> Option<Self::SwitchIntData> {
@@ -577,7 +580,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_switch_int_edge_effect(
-        &mut self,
+        &self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
         value: SwitchTargetValue,
@@ -624,7 +627,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
     #[instrument(skip(self, state), level = "debug")]
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -649,7 +652,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 
     #[instrument(skip(self, state, terminator), level = "debug")]
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
@@ -671,7 +674,7 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         block: mir::BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,

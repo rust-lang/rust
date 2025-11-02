@@ -1,7 +1,6 @@
 pub(crate) mod tags;
 
 mod highlights;
-mod injector;
 
 mod escape;
 mod format;
@@ -16,7 +15,7 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -35,6 +34,7 @@ use crate::{
 };
 
 pub(crate) use html::highlight_as_html;
+pub(crate) use html::highlight_as_html_with_config;
 
 #[derive(Debug, Clone, Copy)]
 pub struct HlRange {
@@ -43,10 +43,12 @@ pub struct HlRange {
     pub binding_hash: Option<u64>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct HighlightConfig {
+#[derive(Copy, Clone, Debug)]
+pub struct HighlightConfig<'a> {
     /// Whether to highlight strings
     pub strings: bool,
+    /// Whether to highlight comments
+    pub comments: bool,
     /// Whether to highlight punctuation
     pub punctuation: bool,
     /// Whether to specialize punctuation highlights
@@ -61,6 +63,7 @@ pub struct HighlightConfig {
     pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
+    pub minicore: MiniCore<'a>,
 }
 
 // Feature: Semantic Syntax Highlighting
@@ -113,7 +116,7 @@ pub struct HighlightConfig {
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
 // |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operatos `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
 //
 // - For punctuation:
 //
@@ -188,7 +191,7 @@ pub struct HighlightConfig {
 // ![Semantic Syntax Highlighting](https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png)
 pub(crate) fn highlight(
     db: &RootDatabase,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
@@ -223,7 +226,7 @@ pub(crate) fn highlight(
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     InRealFile { file_id, value: root }: InRealFile<&SyntaxNode>,
     krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
@@ -434,15 +437,17 @@ fn traverse(
             |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
-                let hl = highlight::name_like(
-                    sema,
-                    krate,
-                    bindings_shadow_count,
-                    &is_unsafe_node,
-                    config.syntactic_name_ref_highlighting,
-                    name_like,
-                    edition,
-                );
+                let hl = hir::attach_db(sema.db, || {
+                    highlight::name_like(
+                        sema,
+                        krate,
+                        bindings_shadow_count,
+                        &is_unsafe_node,
+                        config.syntactic_name_ref_highlighting,
+                        name_like,
+                        edition,
+                    )
+                });
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
                     // as that would potentially overwrite our result
@@ -450,10 +455,10 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => {
+            NodeOrToken::Token(token) => hir::attach_db(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
-            }
+            }),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {
@@ -486,7 +491,7 @@ fn traverse(
 fn string_injections(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    config: HighlightConfig,
+    config: &HighlightConfig<'_>,
     file_id: EditionedFileId,
     krate: Option<hir::Crate>,
     token: SyntaxToken,
@@ -583,9 +588,10 @@ fn descend_token(
     })
 }
 
-fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
+fn filter_by_config(highlight: &mut Highlight, config: &HighlightConfig<'_>) -> bool {
     match &mut highlight.tag {
         HlTag::StringLiteral if !config.strings => return false,
+        HlTag::Comment if !config.comments => return false,
         // If punctuation is disabled, make the macro bang part of the macro call again.
         tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
             if !config.macro_bang {

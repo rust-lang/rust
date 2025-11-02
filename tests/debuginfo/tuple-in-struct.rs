@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // gdb-command:run
 
@@ -28,8 +30,6 @@
 // gdb-check:$10 = tuple_in_struct::MixedPadding {x: ((40, 41, 42), (43, 44)), y: (45, 46, 47, 48)}
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct NoPadding1 {
     x: (i32, i32),

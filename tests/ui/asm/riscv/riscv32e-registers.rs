@@ -11,6 +11,7 @@
 //@ [riscv32em] compile-flags: --target=riscv32em-unknown-none-elf
 //@ [riscv32emc] needs-llvm-components: riscv
 //@ [riscv32emc] compile-flags: --target=riscv32emc-unknown-none-elf
+//@ ignore-backends: gcc
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers
 // usage in assembly code.

@@ -15,6 +15,7 @@ LL |             *y = 0;
    |             ^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> (y, callee:y, caller:y) is foreign to the protected tag <TAG> (callee:x) (i.e., it is not a child)
    = help: this foreign write access would cause the protected tag <TAG> (callee:x) (currently Reserved) to become Disabled
    = help: protected tags must never be Disabled

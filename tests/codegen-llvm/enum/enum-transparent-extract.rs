@@ -9,7 +9,7 @@ pub enum Never {}
 
 #[no_mangle]
 pub fn make_unmake_result_never(x: i32) -> i32 {
-    // CHECK-LABEL: define i32 @make_unmake_result_never(i32 %x)
+    // CHECK-LABEL: define i32 @make_unmake_result_never(i32{{( signext)?}} %x)
     // CHECK: start:
     // CHECK-NEXT: ret i32 %x
 

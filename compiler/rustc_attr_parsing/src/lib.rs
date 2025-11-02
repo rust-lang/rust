@@ -1,13 +1,13 @@
 //! Centralized logic for parsing and attributes.
 //!
 //! ## Architecture
-//! This crate is part of a series of crates that handle attribute processing.
-//! - [rustc_attr_data_structures](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_data_structures/index.html): Defines the data structures that store parsed attributes
+//! This crate is part of a series of crates and modules that handle attribute processing.
+//! - [rustc_hir::attrs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html): Defines the data structures that store parsed attributes
 //! - [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html): This crate, handles the parsing of attributes
-//! - (planned) rustc_attr_validation: Will handle attribute validation
+//! - (planned) rustc_attr_validation: Will handle attribute validation, logic currently handled in `rustc_passes`
 //!
 //! The separation between data structures and parsing follows the principle of separation of concerns.
-//! Data structures (`rustc_attr_data_structures`) define what attributes look like after parsing.
+//! Data structures (`rustc_hir::attrs`) define what attributes look like after parsing.
 //! This crate (`rustc_attr_parsing`) handles how to convert raw tokens into those structures.
 //! This split allows other parts of the compiler to use the data structures without needing
 //! the parsing logic, making the codebase more modular and maintainable.
@@ -62,7 +62,7 @@
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
 //! and `#[unstable()]` syntactic attributes, and at the end produce a single
-//! [`AttributeKind::Stability`](rustc_attr_data_structures::AttributeKind::Stability).
+//! [`AttributeKind::Stability`](rustc_hir::attrs::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:
@@ -79,23 +79,39 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
+#![feature(decl_macro)]
 #![feature(rustdoc_internals)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 #[macro_use]
+/// All the individual attribute parsers for each of rustc's built-in attributes.
 mod attributes;
-pub(crate) mod context;
-mod lints;
-pub mod parser;
-mod session_diagnostics;
 
-pub use attributes::cfg::{CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg_attr};
-pub use attributes::cfg_old::*;
-pub use attributes::util::{
-    find_crate_name, is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version,
+/// All the important types given to attribute parsers when parsing
+pub(crate) mod context;
+
+/// Code that other crates interact with, to actually parse a list (or sometimes single)
+/// attribute.
+mod interface;
+
+/// Despite this entire module called attribute parsing and the term being a little overloaded,
+/// in this module the code lives that actually breaks up tokenstreams into semantic pieces of attributes,
+/// like lists or name-value pairs.
+pub mod parser;
+
+mod lints;
+mod session_diagnostics;
+mod target_checking;
+pub mod validate_attr;
+
+pub use attributes::cfg::{
+    CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr,
 };
-pub use context::{AttributeParser, Early, Late, OmitDoc, ShouldEmit};
+pub use attributes::cfg_old::*;
+pub use attributes::util::{is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version};
+pub use context::{Early, Late, OmitDoc, ShouldEmit};
+pub use interface::AttributeParser;
 pub use lints::emit_attribute_lint;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

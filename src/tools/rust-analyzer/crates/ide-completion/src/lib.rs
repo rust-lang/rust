@@ -187,7 +187,7 @@ pub fn completions(
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Vec<CompletionItem>> {
-    let (ctx, analysis) = &CompletionContext::new(db, position, config)?;
+    let (ctx, analysis) = &CompletionContext::new(db, position, config, trigger_character)?;
     let mut completions = Completions::default();
 
     // prevent `(` from triggering unwanted completion noise
@@ -208,9 +208,9 @@ pub fn completions(
     // when the user types a bare `_` (that is it does not belong to an identifier)
     // the user might just wanted to type a `_` for type inference or pattern discarding
     // so try to suppress completions in those cases
-    if trigger_character == Some('_') && ctx.original_token.kind() == syntax::SyntaxKind::UNDERSCORE
-    {
-        if let CompletionAnalysis::NameRef(NameRefContext {
+    if trigger_character == Some('_')
+        && ctx.original_token.kind() == syntax::SyntaxKind::UNDERSCORE
+        && let CompletionAnalysis::NameRef(NameRefContext {
             kind:
                 NameRefKind::Path(
                     path_ctx @ PathCompletionCtx {
@@ -220,11 +220,9 @@ pub fn completions(
                 ),
             ..
         }) = analysis
-        {
-            if path_ctx.is_trivial_path() {
-                return None;
-            }
-        }
+        && path_ctx.is_trivial_path()
+    {
+        return None;
     }
 
     {
@@ -243,6 +241,7 @@ pub fn completions(
                 completions::extern_abi::complete_extern_abi(acc, ctx, expanded);
                 completions::format_string::format_string(acc, ctx, original, expanded);
                 completions::env_vars::complete_cargo_env_vars(acc, ctx, original, expanded);
+                completions::ra_fixture::complete_ra_fixture(acc, ctx, original, expanded);
             }
             CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,

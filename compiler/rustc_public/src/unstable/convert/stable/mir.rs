@@ -149,9 +149,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                     variant_index: variant_index.stable(tables, cx),
                 }
             }
-            mir::StatementKind::Deinit(place) => {
-                crate::mir::StatementKind::Deinit(place.stable(tables, cx))
-            }
 
             mir::StatementKind::StorageLive(place) => {
                 crate::mir::StatementKind::StorageLive(place.stable(tables, cx))
@@ -215,7 +212,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 mutability.stable(tables, cx),
                 place.stable(tables, cx),
             ),
-            Len(place) => crate::mir::Rvalue::Len(place.stable(tables, cx)),
             Cast(cast_kind, op, ty) => crate::mir::Rvalue::Cast(
                 cast_kind.stable(tables, cx),
                 op.stable(tables, cx),
@@ -327,8 +323,6 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     ) -> Self::T {
         use rustc_middle::mir::NullOp::*;
         match self {
-            SizeOf => crate::mir::NullOp::SizeOf,
-            AlignOf => crate::mir::NullOp::AlignOf,
             OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
             ),
@@ -357,6 +351,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            Subtype => crate::mir::CastKind::Subtype,
         }
     }
 }
@@ -454,7 +449,6 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            Subtype(ty) => crate::mir::ProjectionElem::Subtype(ty.stable(tables, cx)),
             UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }

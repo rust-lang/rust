@@ -37,6 +37,7 @@ pub(crate) enum RegionElement {
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
 /// an interval matrix storing liveness ranges for each region-vid.
+#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct LivenessValues {
     /// The map from locations to points.
     location_map: Rc<DenseLocationMap>,
@@ -194,6 +195,7 @@ impl LivenessValues {
 /// rustc to the internal `PlaceholderIndex` values that are used in
 /// NLL.
 #[derive(Debug, Default)]
+#[derive(Clone)] // FIXME(#146079)
 pub(crate) struct PlaceholderIndices {
     indices: FxIndexSet<ty::PlaceholderRegion>,
 }

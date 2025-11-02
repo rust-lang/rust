@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run
@@ -32,9 +34,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
-
 
 #[no_mangle]
 pub unsafe extern "C" fn fn_with_c_abi(s: *const u8, len: i32) -> i32 {

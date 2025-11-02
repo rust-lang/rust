@@ -1,4 +1,6 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
@@ -48,9 +50,6 @@
 // cdb-check:[...]key              : 6.500000 [Type: double]
 // cdb-check:[...]value            [Type: generic_struct::AGenericStruct<i32,f64>]
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct AGenericStruct<TKey, TValue> {
     key: TKey,

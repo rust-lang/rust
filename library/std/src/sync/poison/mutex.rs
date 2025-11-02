@@ -18,20 +18,69 @@ use crate::sys::sync as sys;
 /// # Poisoning
 ///
 /// The mutexes in this module implement a strategy called "poisoning" where a
-/// mutex is considered poisoned whenever a thread panics while holding the
-/// mutex. Once a mutex is poisoned, all other threads are unable to access the
-/// data by default as it is likely tainted (some invariant is not being
-/// upheld).
+/// mutex becomes poisoned if it recognizes that the thread holding it has
+/// panicked.
 ///
-/// For a mutex, this means that the [`lock`] and [`try_lock`] methods return a
+/// Once a mutex is poisoned, all other threads are unable to access the data by
+/// default as it is likely tainted (some invariant is not being upheld). For a
+/// mutex, this means that the [`lock`] and [`try_lock`] methods return a
 /// [`Result`] which indicates whether a mutex has been poisoned or not. Most
 /// usage of a mutex will simply [`unwrap()`] these results, propagating panics
 /// among threads to ensure that a possibly invalid invariant is not witnessed.
 ///
-/// A poisoned mutex, however, does not prevent all access to the underlying
-/// data. The [`PoisonError`] type has an [`into_inner`] method which will return
-/// the guard that would have otherwise been returned on a successful lock. This
-/// allows access to the data, despite the lock being poisoned.
+/// Poisoning is only advisory: the [`PoisonError`] type has an [`into_inner`]
+/// method which will return the guard that would have otherwise been returned
+/// on a successful lock. This allows access to the data, despite the lock being
+/// poisoned.
+///
+/// In addition, the panic detection is not ideal, so even unpoisoned mutexes
+/// need to be handled with care, since certain panics may have been skipped.
+/// Here is a non-exhaustive list of situations where this might occur:
+///
+/// - If a mutex is locked while a panic is underway, e.g. within a [`Drop`]
+///   implementation or a [panic hook], panicking for the second time while the
+///   lock is held will leave the mutex unpoisoned. Note that while double panic
+///   usually aborts the program, [`catch_unwind`] can prevent this.
+///
+/// - Locking and unlocking the mutex across different panic contexts, e.g. by
+///   storing the guard to a [`Cell`] within [`Drop::drop`] and accessing it
+///   outside, or vice versa, can affect poisoning status in an unexpected way.
+///
+/// - Foreign exceptions do not currently trigger poisoning even in absence of
+///   other panics.
+///
+/// While this rarely happens in realistic code, `unsafe` code cannot rely on
+/// poisoning for soundness, since the behavior of poisoning can depend on
+/// outside context. Here's an example of **incorrect** use of poisoning:
+///
+/// ```rust
+/// use std::sync::Mutex;
+///
+/// struct MutexBox<T> {
+///     data: Mutex<*mut T>,
+/// }
+///
+/// impl<T> MutexBox<T> {
+///     pub fn new(value: T) -> Self {
+///         Self {
+///             data: Mutex::new(Box::into_raw(Box::new(value))),
+///         }
+///     }
+///
+///     pub fn replace_with(&self, f: impl FnOnce(T) -> T) {
+///         let ptr = self.data.lock().expect("poisoned");
+///         // While `f` is running, the data is moved out of `*ptr`. If `f`
+///         // panics, `*ptr` keeps pointing at a dropped value. The intention
+///         // is that this will poison the mutex, so the following calls to
+///         // `replace_with` will panic without reading `*ptr`. But since
+///         // poisoning is not guaranteed to occur if this is run from a panic
+///         // hook, this can lead to use-after-free.
+///         unsafe {
+///             (*ptr).write(f((*ptr).read()));
+///         }
+///     }
+/// }
+/// ```
 ///
 /// [`new`]: Self::new
 /// [`lock`]: Self::lock
@@ -39,6 +88,9 @@ use crate::sys::sync as sys;
 /// [`unwrap()`]: Result::unwrap
 /// [`PoisonError`]: super::PoisonError
 /// [`into_inner`]: super::PoisonError::into_inner
+/// [panic hook]: crate::panic::set_hook
+/// [`catch_unwind`]: crate::panic::catch_unwind
+/// [`Cell`]: crate::cell::Cell
 ///
 /// # Examples
 ///
@@ -227,7 +279,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     poison: poison::Guard,
 }
 
-/// A [`MutexGuard`] is not `Send` to maximize platform portablity.
+/// A [`MutexGuard`] is not `Send` to maximize platform portability.
 ///
 /// On platforms that use POSIX threads (commonly referred to as pthreads) there is a requirement to
 /// release mutex locks on the same thread they were acquired.
@@ -616,7 +668,7 @@ impl<T: ?Sized> Mutex<T> {
     /// are properly synchronized to avoid data races, and that it is not read
     /// or written through after the mutex is dropped.
     #[unstable(feature = "mutex_data_ptr", issue = "140368")]
-    pub fn data_ptr(&self) -> *mut T {
+    pub const fn data_ptr(&self) -> *mut T {
         self.data.get()
     }
 }
@@ -705,11 +757,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
+/// For use in [`nonpoison::condvar`](super::condvar).
+pub(super) fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
 }
 
-pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
+/// For use in [`nonpoison::condvar`](super::condvar).
+pub(super) fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.lock.poison
 }
 

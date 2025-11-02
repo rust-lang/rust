@@ -24,60 +24,78 @@
 
 pub mod common;
 
-cfg_if::cfg_if! {
-    if #[cfg(unix)] {
+cfg_select! {
+    unix => {
         mod unix;
         pub use self::unix::*;
-    } else if #[cfg(windows)] {
+    }
+    windows => {
         mod windows;
         pub use self::windows::*;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "solid_asp3" => {
         mod solid;
         pub use self::solid::*;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         mod hermit;
         pub use self::hermit::*;
-    } else if #[cfg(target_os = "trusty")] {
+    }
+    target_os = "motor" => {
+        mod motor;
+        pub use self::motor::*;
+    }
+    target_os = "trusty" => {
         mod trusty;
         pub use self::trusty::*;
-    } else if #[cfg(all(target_os = "wasi", target_env = "p2"))] {
+    }
+    target_os = "vexos" => {
+        mod vexos;
+        pub use self::vexos::*;
+    }
+    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
         mod wasip2;
         pub use self::wasip2::*;
-    } else if #[cfg(target_os = "wasi")] {
-        mod wasi;
-        pub use self::wasi::*;
-    } else if #[cfg(target_family = "wasm")] {
+    }
+    all(target_os = "wasi", target_env = "p1") => {
+        mod wasip1;
+        pub use self::wasip1::*;
+    }
+    target_family = "wasm" => {
         mod wasm;
         pub use self::wasm::*;
-    } else if #[cfg(target_os = "xous")] {
+    }
+    target_os = "xous" => {
         mod xous;
         pub use self::xous::*;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         pub use self::uefi::*;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+    }
+    all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         pub use self::sgx::*;
-    } else if #[cfg(target_os = "teeos")] {
+    }
+    target_os = "teeos" => {
         mod teeos;
         pub use self::teeos::*;
-    } else if #[cfg(target_os = "zkvm")] {
+    }
+    target_os = "zkvm" => {
         mod zkvm;
         pub use self::zkvm::*;
-    } else {
+    }
+    _ => {
         mod unsupported;
         pub use self::unsupported::*;
     }
 }
 
-cfg_if::cfg_if! {
+pub const FULL_BACKTRACE_DEFAULT: bool = cfg_select! {
     // Fuchsia components default to full backtrace.
-    if #[cfg(target_os = "fuchsia")] {
-        pub const FULL_BACKTRACE_DEFAULT: bool = true;
-    } else {
-        pub const FULL_BACKTRACE_DEFAULT: bool = false;
-    }
-}
+    target_os = "fuchsia" => true,
+    _ => false,
+};
 
 #[cfg(not(target_os = "uefi"))]
 pub type RawOsError = i32;

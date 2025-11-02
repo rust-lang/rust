@@ -8,7 +8,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, PolyTraitRef};
+use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -35,52 +35,6 @@ use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Check for duplicate relaxed bounds and relaxed bounds of non-default traits.
-    pub(crate) fn check_and_report_invalid_relaxed_bounds(
-        &self,
-        relaxed_bounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
-    ) {
-        let tcx = self.tcx();
-
-        let mut grouped_bounds = FxIndexMap::<_, Vec<_>>::default();
-
-        for bound in &relaxed_bounds {
-            if let Res::Def(DefKind::Trait, trait_def_id) = bound.trait_ref.path.res {
-                grouped_bounds.entry(trait_def_id).or_default().push(bound.span);
-            }
-        }
-
-        for (trait_def_id, spans) in grouped_bounds {
-            if spans.len() > 1 {
-                let name = tcx.item_name(trait_def_id);
-                self.dcx()
-                    .struct_span_err(spans, format!("duplicate relaxed `{name}` bounds"))
-                    .with_code(E0203)
-                    .emit();
-            }
-        }
-
-        let sized_def_id = tcx.require_lang_item(hir::LangItem::Sized, DUMMY_SP);
-
-        for bound in relaxed_bounds {
-            if let Res::Def(DefKind::Trait, def_id) = bound.trait_ref.path.res
-                && (def_id == sized_def_id || tcx.is_default_trait(def_id))
-            {
-                continue;
-            }
-            self.dcx().span_err(
-                bound.span,
-                if tcx.sess.opts.unstable_opts.experimental_default_bounds
-                    || tcx.features().more_maybe_bounds()
-                {
-                    "bound modifier `?` can only be applied to default traits like `Sized`"
-                } else {
-                    "bound modifier `?` can only be applied to `Sized`"
-                },
-            );
-        }
-    }
-
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn report_missing_type_params(
@@ -473,7 +427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             // Find all the types that have an `impl` for the trait.
             tcx.all_impls(trait_def_id)
-                .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
+                .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
                     tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
@@ -482,7 +436,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|header| header.trait_ref.instantiate_identity().self_ty())
                 // We don't care about blanket impls.
                 .filter(|self_ty| !self_ty.has_non_region_param())
-                .map(|self_ty| tcx.erase_regions(self_ty).to_string())
+                .map(|self_ty| tcx.erase_and_anonymize_regions(self_ty).to_string())
                 .collect()
         };
         // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
@@ -755,7 +709,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let limit = if candidates.len() == 5 { 5 } else { 4 };
 
         for (index, &item) in candidates.iter().take(limit).enumerate() {
-            let impl_ = tcx.impl_of_assoc(item).unwrap();
+            let impl_ = tcx.parent(item);
 
             let note_span = if item.is_local() {
                 Some(tcx.def_span(item))
@@ -859,7 +813,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
                 }
                 // Point at the trait object that couldn't satisfy the bound.
-                ty::Dynamic(preds, _, _) => {
+                ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
@@ -888,8 +842,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     // `<Foo as Iterator>::Item = String`.
                     let projection_term = pred.projection_term;
-                    let quiet_projection_term =
-                        projection_term.with_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
+                    let quiet_projection_term = projection_term
+                        .with_replaced_self_ty(tcx, Ty::new_var(tcx, ty::TyVid::ZERO));
 
                     let term = pred.term;
                     let obligation = format!("{projection_term} = {term}");

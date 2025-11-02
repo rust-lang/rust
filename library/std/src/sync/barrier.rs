@@ -1,6 +1,6 @@
 use crate::fmt;
-// FIXME(nonpoison_mutex,nonpoison_condvar): switch to nonpoison versions once they are available
-use crate::sync::{Condvar, Mutex};
+use crate::panic::RefUnwindSafe;
+use crate::sync::nonpoison::{Condvar, Mutex};
 
 /// A barrier enables multiple threads to synchronize the beginning
 /// of some computation.
@@ -31,6 +31,9 @@ pub struct Barrier {
     cvar: Condvar,
     num_threads: usize,
 }
+
+#[stable(feature = "unwind_safe_lock_refs", since = "1.12.0")]
+impl RefUnwindSafe for Barrier {}
 
 // The inner state of a double barrier
 struct BarrierState {
@@ -118,12 +121,11 @@ impl Barrier {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait(&self) -> BarrierWaitResult {
-        let mut lock = self.lock.lock().unwrap();
+        let mut lock = self.lock.lock();
         let local_gen = lock.generation_id;
         lock.count += 1;
         if lock.count < self.num_threads {
-            let _guard =
-                self.cvar.wait_while(lock, |state| local_gen == state.generation_id).unwrap();
+            self.cvar.wait_while(&mut lock, |state| local_gen == state.generation_id);
             BarrierWaitResult(false)
         } else {
             lock.count = 0;

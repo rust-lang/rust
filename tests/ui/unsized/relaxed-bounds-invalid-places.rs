@@ -22,10 +22,17 @@ impl<T> S1<T> {
     fn f() where T: ?Sized {} //~ ERROR this relaxed bound is not permitted here
 }
 
+// Test associated type bounds (ATB).
+// issue: <https://github.com/rust-lang/rust/issues/135229>
+struct S6<T>(T) where T: Iterator<Item: ?Sized>; //~ ERROR this relaxed bound is not permitted here
+
 trait Tr: ?Sized {} //~ ERROR relaxed bounds are not permitted in supertrait bounds
 
 // Test that relaxed `Sized` bounds are rejected in trait object types:
 
+type O0 = dyn ?Sized;
+//~^ ERROR relaxed bounds are not permitted in trait object types
+//~| ERROR at least one trait is required for an object type [E0224]
 type O1 = dyn Tr + ?Sized; //~ ERROR relaxed bounds are not permitted in trait object types
 type O2 = dyn ?Sized + ?Sized + Tr;
 //~^ ERROR relaxed bounds are not permitted in trait object types

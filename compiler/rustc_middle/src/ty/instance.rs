@@ -1,6 +1,5 @@
 use std::assert_matches::assert_matches;
 use std::fmt;
-use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
@@ -17,10 +16,10 @@ use tracing::{debug, instrument};
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
+use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -212,7 +211,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_data_structures::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_hir::attrs::InlineAttr::Never
         {
             return None;
         }
@@ -389,59 +388,15 @@ fn type_length<'tcx>(item: impl TypeVisitable<TyCtxt<'tcx>>) -> usize {
     visitor.type_length
 }
 
-pub fn fmt_instance(
-    f: &mut fmt::Formatter<'_>,
-    instance: Instance<'_>,
-    type_length: Option<rustc_session::Limit>,
-) -> fmt::Result {
-    ty::tls::with(|tcx| {
-        let args = tcx.lift(instance.args).expect("could not lift for printing");
-
-        let mut cx = if let Some(type_length) = type_length {
-            FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
-        } else {
-            FmtPrinter::new(tcx, Namespace::ValueNS)
-        };
-        cx.print_def_path(instance.def_id(), args)?;
-        let s = cx.into_buffer();
-        f.write_str(&s)
-    })?;
-
-    match instance.def {
-        InstanceKind::Item(_) => Ok(()),
-        InstanceKind::VTableShim(_) => write!(f, " - shim(vtable)"),
-        InstanceKind::ReifyShim(_, None) => write!(f, " - shim(reify)"),
-        InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => write!(f, " - shim(reify-fnptr)"),
-        InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => write!(f, " - shim(reify-vtable)"),
-        InstanceKind::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
-        InstanceKind::Intrinsic(_) => write!(f, " - intrinsic"),
-        InstanceKind::Virtual(_, num) => write!(f, " - virtual#{num}"),
-        InstanceKind::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceKind::ClosureOnceShim { .. } => write!(f, " - shim"),
-        InstanceKind::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
-        InstanceKind::DropGlue(_, None) => write!(f, " - shim(None)"),
-        InstanceKind::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
-        InstanceKind::CloneShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceKind::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceKind::FutureDropPollShim(_, proxy_ty, impl_ty) => {
-            write!(f, " - dropshim({proxy_ty}-{impl_ty})")
-        }
-        InstanceKind::AsyncDropGlue(_, ty) => write!(f, " - shim({ty})"),
-        InstanceKind::AsyncDropGlueCtorShim(_, ty) => write!(f, " - shim(Some({ty}))"),
-    }
-}
-
-pub struct ShortInstance<'tcx>(pub Instance<'tcx>, pub usize);
-
-impl<'tcx> fmt::Display for ShortInstance<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
-    }
-}
-
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, *self, None)
+        ty::tls::with(|tcx| {
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            let instance = tcx.lift(*self).expect("could not lift for printing");
+            instance.print(&mut p)?;
+            let s = p.into_buffer();
+            f.write_str(&s)
+        })
     }
 }
 
@@ -589,7 +544,9 @@ impl<'tcx> Instance<'tcx> {
 
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance_raw(tcx.erase_regions(typing_env.as_query_input((def_id, args))))
+        tcx.resolve_instance_raw(
+            tcx.erase_and_anonymize_regions(typing_env.as_query_input((def_id, args))),
+        )
     }
 
     pub fn expect_resolve(
@@ -610,23 +567,12 @@ impl<'tcx> Instance<'tcx> {
             Ok(None) => {
                 let type_length = type_length(args);
                 if !tcx.type_length_limit().value_within_limit(type_length) {
-                    let (shrunk, written_to_path) =
-                        shrunk_instance_name(tcx, Instance::new_raw(def_id, args));
-                    let mut path = PathBuf::new();
-                    let was_written = if let Some(path2) = written_to_path {
-                        path = path2;
-                        true
-                    } else {
-                        false
-                    };
                     tcx.dcx().emit_fatal(error::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point
                         // to the crate root during mono instead of to foreign items.
                         // This is arguably better.
                         span: span_or_local_def_span(),
-                        shrunk,
-                        was_written,
-                        path,
+                        instance: Instance::new_raw(def_id, args),
                         type_length,
                     });
                 } else {
@@ -665,26 +611,23 @@ impl<'tcx> Instance<'tcx> {
                     debug!(" => fn pointer created for virtual call");
                     resolved.def = InstanceKind::ReifyShim(def_id, reason);
                 }
-                // Reify `Trait::method` implementations if KCFI is enabled
-                // FIXME(maurer) only reify it if it is a vtable-safe function
-                _ if tcx.sess.is_sanitizer_kcfi_enabled()
-                    && tcx
-                        .opt_associated_item(def_id)
-                        .and_then(|assoc| assoc.trait_item_def_id)
-                        .is_some() =>
-                {
-                    // If this function could also go in a vtable, we need to `ReifyShim` it with
-                    // KCFI because it can only attach one type per function.
-                    resolved.def = InstanceKind::ReifyShim(resolved.def_id(), reason)
-                }
-                // Reify `::call`-like method implementations if KCFI is enabled
-                _ if tcx.sess.is_sanitizer_kcfi_enabled()
-                    && tcx.is_closure_like(resolved.def_id()) =>
-                {
-                    // Reroute through a reify via the *unresolved* instance. The resolved one can't
-                    // be directly reified because it's closure-like. The reify can handle the
-                    // unresolved instance.
-                    resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args }
+                _ if tcx.sess.is_sanitizer_kcfi_enabled() => {
+                    // Reify `::call`-like method implementations
+                    if tcx.is_closure_like(resolved.def_id()) {
+                        // Reroute through a reify via the *unresolved* instance. The resolved one can't
+                        // be directly reified because it's closure-like. The reify can handle the
+                        // unresolved instance.
+                        resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args }
+                    // Reify `Trait::method` implementations if the trait is dyn-compatible.
+                    } else if let Some(assoc) = tcx.opt_associated_item(def_id)
+                        && let AssocContainer::Trait | AssocContainer::TraitImpl(Ok(_)) =
+                            assoc.container
+                        && tcx.is_dyn_compatible(assoc.container_id(tcx))
+                    {
+                        // If this function could also go in a vtable, we need to `ReifyShim` it with
+                        // KCFI because it can only attach one type per function.
+                        resolved.def = InstanceKind::ReifyShim(resolved.def_id(), reason)
+                    }
                 }
                 _ => {}
             }
@@ -737,7 +680,7 @@ impl<'tcx> Instance<'tcx> {
                     && !matches!(
                         tcx.opt_associated_item(def),
                         Some(ty::AssocItem {
-                            container: ty::AssocItemContainer::Trait,
+                            container: ty::AssocContainer::Trait,
                             ..
                         })
                     );

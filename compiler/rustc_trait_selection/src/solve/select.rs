@@ -12,7 +12,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
-use crate::solve::inspect::{self, ProofTreeInferCtxtExt};
+use crate::solve::inspect::{self, InferCtxtProofTreeExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -62,7 +62,7 @@ impl<'tcx> inspect::ProofTreeVisitor<'tcx> for Select {
 
         // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
         // codegen, and only on the good path.
-        if matches!(goal.result().unwrap(), Certainty::Maybe(..)) {
+        if matches!(goal.result().unwrap(), Certainty::Maybe { .. }) {
             return ControlFlow::Break(Ok(None));
         }
 
@@ -95,7 +95,7 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
 ) -> bool {
     // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
     // codegen, and only on the good path.
-    if matches!(other.result().unwrap(), Certainty::Maybe(..)) {
+    if matches!(other.result().unwrap(), Certainty::Maybe { .. }) {
         return false;
     }
 
@@ -126,7 +126,9 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
         (
-            CandidateSource::Impl(_) | CandidateSource::ParamEnv(_) | CandidateSource::AliasBound,
+            CandidateSource::Impl(_)
+            | CandidateSource::ParamEnv(_)
+            | CandidateSource::AliasBound(_),
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
         ) => true,
 
@@ -143,13 +145,13 @@ fn to_selection<'tcx>(
     span: Span,
     cand: inspect::InspectCandidate<'_, 'tcx>,
 ) -> Option<Selection<'tcx>> {
-    if let Certainty::Maybe(..) = cand.shallow_certainty() {
+    if let Certainty::Maybe { .. } = cand.shallow_certainty() {
         return None;
     }
 
     let nested = match cand.result().expect("expected positive result") {
         Certainty::Yes => thin_vec![],
-        Certainty::Maybe(_) => cand
+        Certainty::Maybe { .. } => cand
             .instantiate_nested_goals(span)
             .into_iter()
             .map(|nested| {
@@ -175,7 +177,9 @@ fn to_selection<'tcx>(
                 })
             }
             CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, nested),
-            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => ImplSource::Param(nested),
+            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound(_) => {
+                ImplSource::Param(nested)
+            }
             CandidateSource::CoherenceUnknowable => {
                 span_bug!(span, "didn't expect to select an unknowable candidate")
             }

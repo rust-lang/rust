@@ -1,17 +1,16 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::VecArgs;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{
-    get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
-};
+use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
 use rustc_abi::ExternAbi;
-use rustc_attr_data_structures::{AttributeKind, find_attr};
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{
     self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
 };
@@ -85,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
     let body = if let ExprKind::Closure(c) = expr.kind
         && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(())))
@@ -143,15 +142,14 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         {
             let callee_ty_raw = typeck.expr_ty(callee);
             let callee_ty = callee_ty_raw.peel_refs();
-            if matches!(get_type_diagnostic_name(cx, callee_ty), Some(sym::Arc | sym::Rc))
+            if matches!(callee_ty.opt_diag_name(cx), Some(sym::Arc | sym::Rc))
                 || !check_inputs(typeck, body.params, None, args)
             {
                 return;
             }
-            let callee_ty_adjusted = typeck
-                .expr_adjustments(callee)
-                .last()
-                .map_or(callee_ty, |a| a.target.peel_refs());
+
+            let callee_ty_adjustments = typeck.expr_adjustments(callee);
+            let callee_ty_adjusted = callee_ty_adjustments.last().map_or(callee_ty, |a| a.target);
 
             let sig = match callee_ty_adjusted.kind() {
                 ty::FnDef(def, _) => {
@@ -197,6 +195,18 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 // in a type which is `'static`.
                 // For now ignore all callee types which reference a type parameter.
                 && !generic_args.types().any(|t| matches!(t.kind(), ty::Param(_)))
+                // Rule out `AsyncFn*`s, because while they can be called as `|x| f(x)`,
+                // they can't be passed directly into a place expecting an `Fn*` (#13892)
+                && let Ok((closure_kind, _)) = cx
+                    .tcx
+                    .infer_ctxt()
+                    .build(cx.typing_mode())
+                    .err_ctxt()
+                    .type_implements_fn_trait(
+                        cx.param_env,
+                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                        ty::PredicatePolarity::Positive,
+                    )
             {
                 span_lint_hir_and_then(
                     cx,
@@ -206,34 +216,42 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                     "redundant closure",
                     |diag| {
                         if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                            if path_to_local(callee).is_some_and(|l| {
+                            if callee.res_local_id().is_some_and(|l| {
                                 // FIXME: Do we really need this `local_used_in` check?
                                 // Isn't it checking something like... `callee(callee)`?
                                 // If somehow this check is needed, add some test for it,
                                 // 'cuz currently nothing changes after deleting this check.
                                 local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
                             }) {
-                                match cx
-                                    .tcx
-                                    .infer_ctxt()
-                                    .build(cx.typing_mode())
-                                    .err_ctxt()
-                                    .type_implements_fn_trait(
-                                        cx.param_env,
-                                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                        ty::PredicatePolarity::Positive,
-                                    ) {
+                                match closure_kind {
                                     // Mutable closure is used after current expr; we cannot consume it.
-                                    Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
-                                    Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {
+                                    ClosureKind::FnMut => snippet = format!("&mut {snippet}"),
+                                    ClosureKind::Fn if !callee_ty_raw.is_ref() => {
                                         snippet = format!("&{snippet}");
                                     },
                                     _ => (),
                                 }
+                            } else if let n_refs =
+                                callee_ty_adjustments
+                                    .iter()
+                                    .rev()
+                                    .fold(0, |acc, adjustment| match adjustment.kind {
+                                        Adjust::Deref(Some(_)) => acc + 1,
+                                        Adjust::Deref(_) if acc > 0 => acc + 1,
+                                        _ => acc,
+                                    })
+                                && n_refs > 0
+                            {
+                                snippet = format!("{}{snippet}", "*".repeat(n_refs));
                             }
+
+                            let replace_with = match callee_ty_adjusted.kind() {
+                                ty::FnDef(def, _) => cx.tcx.def_descr(*def),
+                                _ => "function",
+                            };
                             diag.span_suggestion(
                                 expr.span,
-                                "replace the closure with the function itself",
+                                format!("replace the closure with the {replace_with} itself"),
                                 snippet,
                                 Applicability::MachineApplicable,
                             );
@@ -287,7 +305,7 @@ fn check_inputs(
             matches!(
                 p.pat.kind,
                 PatKind::Binding(BindingMode::NONE, id, _, None)
-                if path_to_local_id(arg, id)
+                if arg.res_local_id() == Some(id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
             && typeck

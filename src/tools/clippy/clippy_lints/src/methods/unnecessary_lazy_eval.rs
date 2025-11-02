@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{eager_or_lazy, is_from_proc_macro, usage};
 use hir::FnRetTy;
 use rustc_errors::Applicability;
@@ -19,8 +19,8 @@ pub(super) fn check<'tcx>(
     arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
 ) -> bool {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
+    let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
+    let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
 
     if (is_option || is_result || is_bool)

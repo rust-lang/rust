@@ -900,14 +900,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn linux_solarish_readdir64(
-        &mut self,
-        dirent_type: &str,
-        dirp_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos" | "freebsd") {
             panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
         }
 
@@ -926,6 +922,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let entry = match open_dir.read_dir.next() {
             Some(Ok(dir_entry)) => {
+                // If the host is a Unix system, fill in the inode number with its real value.
+                // If not, use 0 as a fallback value.
+                #[cfg(unix)]
+                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
+                #[cfg(not(unix))]
+                let ino = 0u64;
+
                 // Write the directory entry into a newly allocated buffer.
                 // The name is written with write_bytes, while the rest of the
                 // dirent64 (or dirent) struct is written using write_int_fields.
@@ -947,6 +950,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //     pub d_reclen: c_ushort,
                 //     pub d_name: [c_char; 3],
                 // }
+                //
+                // On FreeBSD:
+                // pub struct dirent{
+                //     pub d_fileno: uint32_t,
+                //     pub d_reclen: uint16_t,
+                //     pub d_type: uint8_t,
+                //     pub d_namlen: uint8_t,
+                //     pub d_name: [c_char; 256]
+                // }
 
                 let mut name = dir_entry.file_name(); // not a Path as there are no separators!
                 name.push("\0"); // Add a NUL terminator
@@ -965,31 +977,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MiriMemoryKind::Runtime.into(),
                     AllocInit::Uninit,
                 )?;
-                let entry: Pointer = entry.into();
+                let entry = this.ptr_to_mplace(entry.into(), dirent_layout);
 
-                // If the host is a Unix system, fill in the inode number with its real value.
-                // If not, use 0 as a fallback value.
-                #[cfg(unix)]
-                let ino = std::os::unix::fs::DirEntryExt::ino(&dir_entry);
-                #[cfg(not(unix))]
-                let ino = 0u64;
-
-                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
+                // Write common fields
+                let ino_name =
+                    if this.tcx.sess.target.os == "freebsd" { "d_fileno" } else { "d_ino" };
                 this.write_int_fields_named(
-                    &[("d_ino", ino.into()), ("d_off", 0), ("d_reclen", size.into())],
-                    &this.ptr_to_mplace(entry, dirent_layout),
+                    &[(ino_name, ino.into()), ("d_reclen", size.into())],
+                    &entry,
                 )?;
 
-                if let Some(d_type) = this
-                    .try_project_field_named(&this.ptr_to_mplace(entry, dirent_layout), "d_type")?
-                {
+                // Write "optional" fields.
+                if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
+                    this.write_null(&d_off)?;
+                }
+
+                if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
+                    this.write_int(name_len.strict_sub(1), &d_namlen)?;
+                }
+
+                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
+                if let Some(d_type) = this.try_project_field_named(&entry, "d_type")? {
                     this.write_int(file_type, &d_type)?;
                 }
 
-                let name_ptr = entry.wrapping_offset(Size::from_bytes(d_name_offset), this);
+                // The name is not a normal field, we already computed the offset above.
+                let name_ptr = entry.ptr().wrapping_offset(Size::from_bytes(d_name_offset), this);
                 this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
 
-                Some(entry)
+                Some(entry.ptr())
             }
             None => {
                 // end of stream: return NULL

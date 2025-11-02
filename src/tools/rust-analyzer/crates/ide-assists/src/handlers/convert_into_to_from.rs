@@ -43,7 +43,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         return None;
     }
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
 
     let src_type_path = {
         let src_type_path = src_type.syntax().descendants().find_map(ast::Path::cast)?;
@@ -65,10 +65,10 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
     };
 
     let into_fn = impl_.assoc_item_list()?.assoc_items().find_map(|item| {
-        if let ast::AssocItem::Fn(f) = item {
-            if f.name()?.text() == "into" {
-                return Some(f);
-            }
+        if let ast::AssocItem::Fn(f) = item
+            && f.name()?.text() == "into"
+        {
+            return Some(f);
         };
         None
     })?;

@@ -13,7 +13,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool, synthetic: bool },
+    Const { has_default: bool },
 }
 
 impl GenericParamDefKind {

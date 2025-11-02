@@ -488,4 +488,27 @@ fn foo((): (), (): ()) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_17233() {
+        check_diagnostics(
+            r#"
+pub trait A {
+    type X: B;
+}
+pub trait B: A {
+    fn confused_name(self, _: i32);
+}
+
+pub struct Foo;
+impl Foo {
+    pub fn confused_name(&self) {}
+}
+
+pub fn repro<T: A>() {
+    Foo.confused_name();
+}
+"#,
+        );
+    }
 }

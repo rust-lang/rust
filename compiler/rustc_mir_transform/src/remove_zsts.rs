@@ -122,8 +122,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             StatementKind::Assign(box (place, ref rvalue)) => {
                 rvalue.is_safe_to_remove().then_some(place)
             }
-            StatementKind::Deinit(box place)
-            | StatementKind::SetDiscriminant { box place, variant_index: _ }
+            StatementKind::SetDiscriminant { box place, variant_index: _ }
             | StatementKind::AscribeUserType(box (place, _), _)
             | StatementKind::Retag(_, box place)
             | StatementKind::PlaceMention(box place)
@@ -141,7 +140,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
             && self.known_to_be_zst(ty)
         {
-            statement.make_nop();
+            statement.make_nop(true);
         } else {
             self.super_statement(statement, loc);
         }

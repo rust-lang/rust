@@ -60,10 +60,14 @@ impl LateLintPass<'_> for IfNotElse {
                 ),
                 // Don't lint on `… != 0`, as these are likely to be bit tests.
                 // For example, `if foo & 0x0F00 != 0 { … } else { … }` is already in the "proper" order.
-                ExprKind::Binary(op, _, rhs) if op.node == BinOpKind::Ne && !is_zero_integer_const(cx, rhs) => (
-                    "unnecessary `!=` operation",
-                    "change to `==` and swap the blocks of the `if`/`else`",
-                ),
+                ExprKind::Binary(op, _, rhs)
+                    if op.node == BinOpKind::Ne && !is_zero_integer_const(cx, rhs, e.span.ctxt()) =>
+                {
+                    (
+                        "unnecessary `!=` operation",
+                        "change to `==` and swap the blocks of the `if`/`else`",
+                    )
+                },
                 _ => return,
             };
 
@@ -81,7 +85,7 @@ impl LateLintPass<'_> for IfNotElse {
                         e.span,
                         msg,
                         "try",
-                        make_sugg(cx, &cond.kind, cond_inner.span, els.span, "..", Some(e.span)).to_string(),
+                        make_sugg(cx, &cond.kind, cond_inner.span, els.span, "..", Some(e.span)),
                         Applicability::MachineApplicable,
                     ),
                     _ => span_lint_and_help(cx, IF_NOT_ELSE, e.span, msg, None, help),

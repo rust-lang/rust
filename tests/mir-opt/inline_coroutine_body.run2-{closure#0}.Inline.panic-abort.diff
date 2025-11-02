@@ -39,16 +39,8 @@
 +                 let mut _28: &mut std::task::Context<'_>;
 +                 let mut _29: ();
 +                 let mut _30: ();
-+                 let mut _31: &mut std::task::Context<'_>;
-+                 let mut _32: u32;
-+                 let mut _33: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _34: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _35: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _36: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _37: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _38: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _39: &mut {async fn body of ActionPermit<'_, T>::perform()};
-+                 let mut _40: &mut {async fn body of ActionPermit<'_, T>::perform()};
++                 let mut _31: u32;
++                 let mut _32: &mut {async fn body of ActionPermit<'_, T>::perform()};
 +                 scope 7 {
 +                     let mut _15: std::future::Ready<()>;
 +                     scope 8 {
@@ -58,39 +50,37 @@
 +                         scope 12 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
 +                         }
 +                         scope 13 (inlined <std::future::Ready<()> as Future>::poll) {
-+                             let mut _42: ();
-+                             let mut _43: std::option::Option<()>;
-+                             let mut _44: &mut std::option::Option<()>;
-+                             let mut _45: &mut std::future::Ready<()>;
-+                             let mut _46: &mut std::pin::Pin<&mut std::future::Ready<()>>;
++                             let mut _34: ();
++                             let mut _35: std::option::Option<()>;
++                             let mut _36: &mut std::option::Option<()>;
++                             let mut _37: &mut std::future::Ready<()>;
++                             let mut _38: &mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                             scope 14 (inlined <Pin<&mut std::future::Ready<()>> as DerefMut>::deref_mut) {
-+                                 scope 15 (inlined Pin::<&mut std::future::Ready<()>>::as_mut) {
-+                                     let mut _47: &mut &mut std::future::Ready<()>;
-+                                     scope 16 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
-+                                     }
-+                                     scope 18 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {
-+                                     }
-+                                 }
-+                                 scope 17 (inlined Pin::<&mut std::future::Ready<()>>::get_mut) {
-+                                 }
-+                             }
-+                             scope 19 (inlined Option::<()>::take) {
-+                                 let mut _48: std::option::Option<()>;
-+                                 scope 20 (inlined std::mem::replace::<Option<()>>) {
-+                                     scope 21 {
++                                 let mut _39: *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>>;
++                                 let mut _40: *mut std::pin::Pin<&mut std::future::Ready<()>>;
++                                 scope 15 (inlined <pin::helper::PinHelper<&mut std::future::Ready<()>> as pin::helper::PinDerefMutHelper>::deref_mut) {
++                                     let mut _41: &mut &mut std::future::Ready<()>;
++                                     scope 16 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {
 +                                     }
 +                                 }
 +                             }
-+                             scope 22 (inlined #[track_caller] Option::<()>::expect) {
-+                                 let mut _49: isize;
-+                                 let mut _50: !;
-+                                 scope 23 {
++                             scope 17 (inlined Option::<()>::take) {
++                                 let mut _42: std::option::Option<()>;
++                                 scope 18 (inlined std::mem::replace::<Option<()>>) {
++                                     scope 19 {
++                                     }
++                                 }
++                             }
++                             scope 20 (inlined #[track_caller] Option::<()>::expect) {
++                                 let mut _43: isize;
++                                 let mut _44: !;
++                                 scope 21 {
 +                                 }
 +                             }
 +                         }
 +                     }
 +                     scope 10 (inlined ready::<()>) {
-+                         let mut _41: std::option::Option<()>;
++                         let mut _33: std::option::Option<()>;
 +                     }
 +                     scope 11 (inlined <std::future::Ready<()> as IntoFuture>::into_future) {
 +                     }
@@ -127,28 +117,17 @@
           StorageLive(_8);
           _8 = move _4;
           StorageLive(_9);
-          _10 = deref_copy (_1.1: &mut std::task::Context<'_>);
+          _10 = copy (_1.1: &mut std::task::Context<'_>);
           _9 = &mut (*_10);
 -         _7 = <{async fn body of ActionPermit<'_, T>::perform()} as Future>::poll(move _8, move _9) -> [return: bb3, unwind unreachable];
-+         StorageLive(_11);
-+         StorageLive(_15);
 +         StorageLive(_16);
 +         StorageLive(_25);
-+         StorageLive(_27);
 +         StorageLive(_30);
 +         StorageLive(_31);
 +         StorageLive(_32);
-+         StorageLive(_33);
-+         StorageLive(_34);
-+         StorageLive(_35);
-+         StorageLive(_36);
-+         StorageLive(_37);
-+         StorageLive(_38);
-+         StorageLive(_39);
-+         StorageLive(_40);
-+         _33 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         _32 = discriminant((*_33));
-+         switchInt(move _32) -> [0: bb3, 1: bb10, 3: bb9, otherwise: bb5];
++         _32 = copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
++         _31 = discriminant((*_32));
++         switchInt(move _31) -> [0: bb3, 1: bb10, 3: bb9, otherwise: bb5];
       }
   
 -     bb3: {
@@ -158,22 +137,11 @@
 +     }
 + 
 +     bb2: {
-+         StorageDead(_40);
-+         StorageDead(_39);
-+         StorageDead(_38);
-+         StorageDead(_37);
-+         StorageDead(_36);
-+         StorageDead(_35);
-+         StorageDead(_34);
-+         StorageDead(_33);
 +         StorageDead(_32);
 +         StorageDead(_31);
 +         StorageDead(_30);
-+         StorageDead(_27);
 +         StorageDead(_25);
 +         StorageDead(_16);
-+         StorageDead(_15);
-+         StorageDead(_11);
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_7);
@@ -186,23 +154,19 @@
       }
   
 +     bb3: {
-+         _31 = move _9;
-+         _34 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         _35 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         (((*_34) as variant#3).0: ActionPermit<'_, T>) = move ((*_35).0: ActionPermit<'_, T>);
++         (((*_32) as variant#3).0: ActionPermit<'_, T>) = move ((*_32).0: ActionPermit<'_, T>);
 +         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);
 +         _14 = ();
-+         StorageLive(_41);
-+         _41 = Option::<()>::Some(copy _14);
-+         _13 = std::future::Ready::<()>(move _41);
-+         StorageDead(_41);
++         StorageLive(_33);
++         _33 = Option::<()>::Some(copy _14);
++         _13 = std::future::Ready::<()>(move _33);
++         StorageDead(_33);
 +         StorageDead(_14);
 +         _12 = move _13;
 +         StorageDead(_13);
-+         _36 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         (((*_36) as variant#3).1: std::future::Ready<()>) = move _12;
++         (((*_32) as variant#3).1: std::future::Ready<()>) = move _12;
 +         goto -> bb4;
 +     }
 + 
@@ -214,39 +178,35 @@
 +         StorageLive(_19);
 +         StorageLive(_20);
 +         StorageLive(_21);
-+         _37 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         _21 = &mut (((*_37) as variant#3).1: std::future::Ready<()>);
++         _21 = &mut (((*_32) as variant#3).1: std::future::Ready<()>);
 +         _20 = &mut (*_21);
 +         _19 = Pin::<&mut std::future::Ready<()>> { pointer: copy _20 };
 +         StorageDead(_20);
 +         StorageLive(_22);
 +         StorageLive(_23);
 +         StorageLive(_24);
-+         _24 = copy _31;
++         _24 = copy _9;
 +         _23 = move _24;
 +         _22 = &mut (*_23);
 +         StorageDead(_24);
-+         StorageLive(_45);
-+         StorageLive(_46);
-+         StorageLive(_50);
-+         StorageLive(_42);
-+         StorageLive(_43);
++         StorageLive(_37);
++         StorageLive(_39);
 +         StorageLive(_44);
-+         _46 = &mut _19;
-+         StorageLive(_47);
-+         _47 = &mut (_19.0: &mut std::future::Ready<()>);
-+         _45 = copy (_19.0: &mut std::future::Ready<()>);
-+         StorageDead(_47);
-+         _44 = &mut ((*_45).0: std::option::Option<()>);
-+         StorageLive(_48);
-+         _48 = Option::<()>::None;
-+         _43 = copy ((*_45).0: std::option::Option<()>);
-+         ((*_45).0: std::option::Option<()>) = copy _48;
-+         StorageDead(_48);
-+         StorageDead(_44);
-+         StorageLive(_49);
-+         _49 = discriminant(_43);
-+         switchInt(move _49) -> [0: bb11, 1: bb12, otherwise: bb5];
++         StorageLive(_34);
++         StorageLive(_35);
++         StorageLive(_40);
++         _40 = &raw mut _19;
++         _39 = copy _40 as *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>> (PtrToPtr);
++         StorageDead(_40);
++         _37 = copy ((*_39).0: &mut std::future::Ready<()>);
++         StorageLive(_42);
++         _42 = Option::<()>::None;
++         _35 = copy ((*_37).0: std::option::Option<()>);
++         ((*_37).0: std::option::Option<()>) = copy _42;
++         StorageDead(_42);
++         StorageLive(_43);
++         _43 = discriminant(_35);
++         switchInt(move _43) -> [0: bb11, 1: bb12, otherwise: bb5];
       }
 + 
 +     bb5: {
@@ -266,8 +226,7 @@
 +         StorageDead(_12);
 +         StorageDead(_28);
 +         StorageDead(_29);
-+         _38 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         discriminant((*_38)) = 3;
++         discriminant((*_32)) = 3;
 +         goto -> bb2;
 +     }
 + 
@@ -281,14 +240,12 @@
 +         StorageDead(_18);
 +         StorageDead(_17);
 +         StorageDead(_12);
-+         _39 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         drop((((*_39) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb8, unwind unreachable];
++         drop((((*_32) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb8, unwind unreachable];
 +     }
 + 
 +     bb8: {
 +         _7 = Poll::<()>::Ready(move _30);
-+         _40 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         discriminant((*_40)) = 1;
++         discriminant((*_32)) = 1;
 +         goto -> bb2;
 +     }
 + 
@@ -298,7 +255,7 @@
 +         StorageLive(_29);
 +         _28 = move _9;
 +         StorageDead(_29);
-+         _31 = move _28;
++         _9 = move _28;
 +         StorageDead(_28);
 +         _16 = const ();
 +         goto -> bb4;
@@ -309,18 +266,18 @@
 +     }
 + 
 +     bb11: {
-+         _50 = option::expect_failed(const "`Ready` polled after completion") -> unwind unreachable;
++         _44 = option::expect_failed(const "`Ready` polled after completion") -> unwind unreachable;
 +     }
 + 
 +     bb12: {
-+         _42 = move ((_43 as Some).0: ());
-+         StorageDead(_49);
++         _34 = move ((_35 as Some).0: ());
 +         StorageDead(_43);
-+         _18 = Poll::<()>::Ready(move _42);
-+         StorageDead(_42);
-+         StorageDead(_50);
-+         StorageDead(_46);
-+         StorageDead(_45);
++         StorageDead(_35);
++         _18 = Poll::<()>::Ready(move _34);
++         StorageDead(_34);
++         StorageDead(_44);
++         StorageDead(_39);
++         StorageDead(_37);
 +         StorageDead(_22);
 +         StorageDead(_19);
 +         _25 = discriminant(_18);

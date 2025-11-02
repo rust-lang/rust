@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 #![allow(unreachable_code)]
+#![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
 
 use builtins_test::*;
@@ -49,6 +50,26 @@ mod float_comparisons {
                 }
             )*
         };
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn cmp_f16() {
+        use compiler_builtins::float::cmp::{
+            __eqhf2, __gehf2, __gthf2, __lehf2, __lthf2, __nehf2, __unordhf2,
+        };
+
+        fuzz_float_2(N, |x: f16, y: f16| {
+            assert_eq!(__unordhf2(x, y) != 0, x.is_nan() || y.is_nan());
+            cmp!(f16, x, y, Half, all(),
+                1, __lthf2;
+                1, __lehf2;
+                1, __eqhf2;
+                -1, __gehf2;
+                -1, __gthf2;
+                1, __nehf2;
+            );
+        });
     }
 
     #[test]

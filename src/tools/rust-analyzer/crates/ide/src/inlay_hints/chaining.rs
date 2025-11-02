@@ -13,7 +13,7 @@ use super::label_of_ty;
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     expr: &ast::Expr,
 ) -> Option<()> {
@@ -51,12 +51,11 @@ pub(super) fn hints(
             if ty.is_unknown() {
                 return None;
             }
-            if matches!(expr, ast::Expr::PathExpr(_)) {
-                if let Some(hir::Adt::Struct(st)) = ty.as_adt() {
-                    if st.fields(sema.db).is_empty() {
-                        return None;
-                    }
-                }
+            if matches!(expr, ast::Expr::PathExpr(_))
+                && let Some(hir::Adt::Struct(st)) = ty.as_adt()
+                && st.fields(sema.db).is_empty()
+            {
+                return None;
             }
             let label = label_of_ty(famous_defs, config, &ty, display_target)?;
             acc.push(InlayHint {
@@ -94,7 +93,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_expect_clear_loc(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {

@@ -11,7 +11,7 @@ note: an unsafe function restricts its caller, but its body is safe by default
    |
 LL | unsafe fn foo() {
    | ^^^^^^^^^^^^^^^
-   = note: `#[warn(unsafe_op_in_unsafe_fn)]` on by default
+   = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 
 warning: 1 warning emitted
 

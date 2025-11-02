@@ -19,6 +19,7 @@
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
+#![allow(clippy::empty_enums)]
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_filter_map)]
 #![allow(clippy::manual_find_map)]
@@ -42,6 +43,7 @@
 #![allow(clippy::overly_complex_bool_expr)]
 #![allow(unexpected_cfgs)]
 #![allow(enum_intrinsics_non_enums)]
+#![allow(clippy::needless_ifs)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::bind_instead_of_map)]
 #![allow(clippy::expect_used)]
@@ -58,6 +60,7 @@
 #![allow(clippy::missing_const_for_thread_local)]
 #![allow(clippy::recursive_format_impl)]
 #![allow(unnecessary_transmutes)]
+#![allow(clippy::unchecked_time_subtraction)]
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
@@ -82,6 +85,7 @@
 #![warn(clippy::drop_bounds)] //~ ERROR: lint `clippy::drop_bounds`
 #![warn(clippy::drop_copy)] //~ ERROR: lint `clippy::drop_copy`
 #![warn(clippy::drop_ref)] //~ ERROR: lint `clippy::drop_ref`
+#![warn(clippy::empty_enum)] //~ ERROR: lint `clippy::empty_enum`
 #![warn(clippy::eval_order_dependence)] //~ ERROR: lint `clippy::eval_order_dependence`
 #![warn(clippy::filter_map)] //~ ERROR: lint `clippy::filter_map`
 #![warn(clippy::find_map)] //~ ERROR: lint `clippy::find_map`
@@ -108,6 +112,7 @@
 #![warn(clippy::maybe_misused_cfg)] //~ ERROR: lint `clippy::maybe_misused_cfg`
 #![warn(clippy::mem_discriminant_non_enum)] //~ ERROR: lint `clippy::mem_discriminant_non_enum`
 #![warn(clippy::mismatched_target_os)] //~ ERROR: lint `clippy::mismatched_target_os`
+#![warn(clippy::needless_if)] //~ ERROR: lint `clippy::needless_if`
 #![warn(clippy::new_without_default_derive)] //~ ERROR: lint `clippy::new_without_default_derive`
 #![warn(clippy::option_and_then_some)] //~ ERROR: lint `clippy::option_and_then_some`
 #![warn(clippy::option_expect_used)] //~ ERROR: lint `clippy::option_expect_used`
@@ -131,6 +136,7 @@
 #![warn(clippy::transmute_int_to_char)] //~ ERROR: lint `clippy::transmute_int_to_char`
 #![warn(clippy::transmute_int_to_float)] //~ ERROR: lint `clippy::transmute_int_to_float`
 #![warn(clippy::transmute_num_to_bytes)] //~ ERROR: lint `clippy::transmute_num_to_bytes`
+#![warn(clippy::unchecked_duration_subtraction)] //~ ERROR: lint `clippy::unchecked_duration_subtraction`
 #![warn(clippy::undropped_manually_drops)] //~ ERROR: lint `clippy::undropped_manually_drops`
 #![warn(clippy::unknown_clippy_lints)] //~ ERROR: lint `clippy::unknown_clippy_lints`
 #![warn(clippy::unused_label)] //~ ERROR: lint `clippy::unused_label`

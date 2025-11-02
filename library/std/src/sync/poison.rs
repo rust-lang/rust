@@ -2,18 +2,19 @@
 //!
 //! # Poisoning
 //!
-//! All synchronization objects in this module implement a strategy called "poisoning"
-//! where if a thread panics while holding the exclusive access granted by the primitive,
-//! the state of the primitive is set to "poisoned".
-//! This information is then propagated to all other threads
+//! All synchronization objects in this module implement a strategy called
+//! "poisoning" where a primitive becomes poisoned if it recognizes that some
+//! thread has panicked while holding the exclusive access granted by the
+//! primitive. This information is then propagated to all other threads
 //! to signify that the data protected by this primitive is likely tainted
 //! (some invariant is not being upheld).
 //!
-//! The specifics of how this "poisoned" state affects other threads
-//! depend on the primitive. See [#Overview] below.
+//! The specifics of how this "poisoned" state affects other threads and whether
+//! the panics are recognized reliably or on a best-effort basis depend on the
+//! primitive. See [Overview](#overview) below.
 //!
-//! For the alternative implementations that do not employ poisoning,
-//! see [`std::sync::nonpoison`].
+//! The synchronization objects in this module have alternative implementations that do not employ
+//! poisoning in the [`std::sync::nonpoison`] module.
 //!
 //! [`std::sync::nonpoison`]: crate::sync::nonpoison
 //!
@@ -36,39 +37,35 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//!   [`Mutex::lock()`] returns a [`LockResult`],
-//!   providing a way to deal with the poisoned state.
-//!   See [`Mutex`'s documentation](Mutex#poisoning) for more.
-//!
-//! - [`Once`]: A thread-safe way to run a piece of code only once.
-//!   Mostly useful for implementing one-time global initialization.
-//!
-//!   [`Once`] is poisoned if the piece of code passed to
-//!   [`Once::call_once()`] or [`Once::call_once_force()`] panics.
-//!   When in poisoned state, subsequent calls to [`Once::call_once()`] will panic too.
-//!   [`Once::call_once_force()`] can be used to clear the poisoned state.
+//!   Panicking while holding the lock typically poisons the mutex, but it is
+//!   not guaranteed to detect this condition in all circumstances.
+//!   [`Mutex::lock()`] returns a [`LockResult`], providing a way to deal with
+//!   the poisoned state. See [`Mutex`'s documentation](Mutex#poisoning) for more.
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
 //!   multiple readers at the same time, while allowing only one
 //!   writer at a time. In some cases, this can be more efficient than
 //!   a mutex.
 //!
-//!   This implementation, like [`Mutex`], will become poisoned on a panic.
+//!   This implementation, like [`Mutex`], usually becomes poisoned on a panic.
 //!   Note, however, that an `RwLock` may only be poisoned if a panic occurs
 //!   while it is locked exclusively (write mode). If a panic occurs in any reader,
 //!   then the lock will not be poisoned.
+//!
+//! Note that the [`Once`] type also employs poisoning, but since it has non-poisoning `force`
+//! methods available on it, there is no separate `nonpoison` and `poison` version.
+//!
+//! [`Once`]: crate::sync::Once
+
+// If we are not unwinding, `PoisonError` is uninhabited.
+#![cfg_attr(not(panic = "unwind"), expect(unreachable_code))]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::condvar::{Condvar, WaitTimeoutResult};
+pub use self::condvar::Condvar;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::mutex::{Mutex, MutexGuard};
-#[stable(feature = "rust1", since = "1.0.0")]
-#[expect(deprecated)]
-pub use self::once::ONCE_INIT;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::once::{Once, OnceState};
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -83,7 +80,6 @@ use crate::thread;
 mod condvar;
 #[stable(feature = "rust1", since = "1.0.0")]
 mod mutex;
-pub(crate) mod once;
 mod rwlock;
 
 pub(crate) struct Flag {
@@ -261,12 +257,7 @@ impl<T> fmt::Display for PoisonError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Error for PoisonError<T> {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "poisoned lock: another task failed inside"
-    }
-}
+impl<T> Error for PoisonError<T> {}
 
 impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
@@ -374,17 +365,6 @@ impl<T> fmt::Display for TryLockError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Error for TryLockError<T> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        match *self {
-            #[cfg(panic = "unwind")]
-            TryLockError::Poisoned(ref p) => p.description(),
-            #[cfg(not(panic = "unwind"))]
-            TryLockError::Poisoned(ref p) => match p._never {},
-            TryLockError::WouldBlock => "try_lock failed because the operation would block",
-        }
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         match *self {

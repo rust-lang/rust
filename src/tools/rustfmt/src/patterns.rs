@@ -1,5 +1,4 @@
 use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
 use crate::comment::{FindUncommented, combine_strs_with_missing_comments};
@@ -77,7 +76,7 @@ fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool 
 }
 
 pub(crate) struct RangeOperand<'a, T> {
-    pub operand: &'a Option<ptr::P<T>>,
+    pub operand: &'a Option<Box<T>>,
     pub span: Span,
 }
 
@@ -135,7 +134,8 @@ impl Rewrite for Pat {
                 let mut_prefix = format_mutability(mutability).trim();
 
                 let (ref_kw, mut_infix) = match by_ref {
-                    ByRef::Yes(rmutbl) => ("ref", format_mutability(rmutbl).trim()),
+                    // FIXME(pin_ergonomics): format the pinnedness
+                    ByRef::Yes(_, rmutbl) => ("ref", format_mutability(rmutbl).trim()),
                     ByRef::No => ("", ""),
                 };
                 let id_str = rewrite_ident(context, ident);
@@ -304,7 +304,7 @@ impl Rewrite for Pat {
                 qself,
                 path,
                 fields,
-                rest == ast::PatFieldsRest::Rest,
+                matches!(rest, ast::PatFieldsRest::Rest(_)),
                 self.span,
                 context,
                 shape,
@@ -329,8 +329,8 @@ impl Rewrite for Pat {
 pub fn rewrite_range_pat<T: Rewrite>(
     context: &RewriteContext<'_>,
     shape: Shape,
-    lhs: &Option<ptr::P<T>>,
-    rhs: &Option<ptr::P<T>>,
+    lhs: &Option<Box<T>>,
+    rhs: &Option<Box<T>>,
     end_kind: &rustc_span::source_map::Spanned<RangeEnd>,
     span: Span,
 ) -> RewriteResult {
@@ -371,7 +371,7 @@ pub fn rewrite_range_pat<T: Rewrite>(
 }
 
 fn rewrite_struct_pat(
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: &Option<Box<ast::QSelf>>,
     path: &ast::Path,
     fields: &[ast::PatField],
     ellipsis: bool,
@@ -505,7 +505,7 @@ impl Rewrite for PatField {
 
 #[derive(Debug)]
 pub(crate) enum TuplePatField<'a> {
-    Pat(&'a ptr::P<ast::Pat>),
+    Pat(&'a ast::Pat),
     Dotdot(Span),
 }
 
@@ -562,7 +562,7 @@ pub(crate) fn can_be_overflowed_pat(
 }
 
 fn rewrite_tuple_pat(
-    pats: &[ptr::P<ast::Pat>],
+    pats: &[ast::Pat],
     path_str: Option<String>,
     span: Span,
     context: &RewriteContext<'_>,

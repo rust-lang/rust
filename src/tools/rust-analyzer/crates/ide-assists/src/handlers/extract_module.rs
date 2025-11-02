@@ -1,6 +1,5 @@
-use std::iter;
+use std::{iter::once, ops::RangeInclusive};
 
-use either::Either;
 use hir::{HasSource, ModuleSource};
 use ide_db::{
     FileId, FxHashMap, FxHashSet,
@@ -64,36 +63,45 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
 
-    //If the selection is inside impl block, we need to place new module outside impl block,
-    //as impl blocks cannot contain modules
-
-    let mut impl_parent: Option<ast::Impl> = None;
-    let mut impl_child_count: usize = 0;
-    if let Some(parent_assoc_list) = node.parent() {
-        if let Some(parent_impl) = parent_assoc_list.parent() {
-            if let Some(impl_) = ast::Impl::cast(parent_impl) {
-                impl_child_count = parent_assoc_list.children().count();
-                impl_parent = Some(impl_);
-            }
-        }
-    }
-
     let mut curr_parent_module: Option<ast::Module> = None;
     if let Some(mod_syn_opt) = node.ancestors().find(|it| ast::Module::can_cast(it.kind())) {
         curr_parent_module = ast::Module::cast(mod_syn_opt);
     }
 
-    let mut module = extract_target(&node, ctx.selection_trimmed())?;
+    let selection_range = ctx.selection_trimmed();
+    let (mut module, module_text_range) = if let Some(item) = ast::Item::cast(node.clone()) {
+        let module = extract_single_target(&item);
+        (module, node.text_range())
+    } else {
+        let (module, range) = extract_child_target(&node, selection_range)?;
+        let module_text_range = range.start().text_range().cover(range.end().text_range());
+        (module, module_text_range)
+    };
     if module.body_items.is_empty() {
         return None;
     }
 
-    let old_item_indent = module.body_items[0].indent_level();
+    let mut old_item_indent = module.body_items[0].indent_level();
+    let old_items: Vec<_> = module.use_items.iter().chain(&module.body_items).cloned().collect();
+
+    // If the selection is inside impl block, we need to place new module outside impl block,
+    // as impl blocks cannot contain modules
+
+    let mut impl_parent: Option<ast::Impl> = None;
+    let mut impl_child_count: usize = 0;
+    if let Some(parent_assoc_list) = module.body_items[0].syntax().parent()
+        && let Some(parent_impl) = parent_assoc_list.parent()
+        && let Some(impl_) = ast::Impl::cast(parent_impl)
+    {
+        impl_child_count = parent_assoc_list.children().count();
+        old_item_indent = impl_.indent_level();
+        impl_parent = Some(impl_);
+    }
 
     acc.add(
         AssistId::refactor_extract("extract_module"),
         "Extract Module",
-        module.text_range,
+        module_text_range,
         |builder| {
             //This takes place in three steps:
             //
@@ -111,17 +119,17 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             //for change_visibility and usages for first point mentioned above in the process
 
             let (usages_to_be_processed, record_fields, use_stmts_to_be_inserted) =
-                module.get_usages_and_record_fields(ctx);
+                module.get_usages_and_record_fields(ctx, module_text_range);
 
             builder.edit_file(ctx.vfs_file_id());
             use_stmts_to_be_inserted.into_iter().for_each(|(_, use_stmt)| {
                 builder.insert(ctx.selection_trimmed().end(), format!("\n{use_stmt}"));
             });
 
-            let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
+            let import_items = module.resolve_imports(curr_parent_module, ctx);
             module.change_visibility(record_fields);
 
-            let module_def = generate_module_def(&impl_parent, &mut module, old_item_indent);
+            let module_def = generate_module_def(&impl_parent, &module).indent(old_item_indent);
 
             let mut usages_to_be_processed_for_cur_file = vec![];
             for (file_id, usages) in usages_to_be_processed {
@@ -143,30 +151,32 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             if let Some(impl_) = impl_parent {
                 // Remove complete impl block if it has only one child (as such it will be empty
                 // after deleting that child)
-                let node_to_be_removed = if impl_child_count == 1 {
-                    impl_.syntax()
+                let nodes_to_be_removed = if impl_child_count == old_items.len() {
+                    vec![impl_.syntax()]
                 } else {
                     //Remove selected node
-                    &node
+                    old_items.iter().map(|it| it.syntax()).collect()
                 };
 
-                builder.delete(node_to_be_removed.text_range());
-                // Remove preceding indentation from node
-                if let Some(range) = indent_range_before_given_node(node_to_be_removed) {
-                    builder.delete(range);
-                }
-
-                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{module_def}"));
-            } else {
-                for import_path_text_range in import_paths_to_be_removed {
-                    if module.text_range.intersect(import_path_text_range).is_some() {
-                        module.text_range = module.text_range.cover(import_path_text_range);
-                    } else {
-                        builder.delete(import_path_text_range);
+                for node_to_be_removed in nodes_to_be_removed {
+                    builder.delete(node_to_be_removed.text_range());
+                    // Remove preceding indentation from node
+                    if let Some(range) = indent_range_before_given_node(node_to_be_removed) {
+                        builder.delete(range);
                     }
                 }
 
-                builder.replace(module.text_range, module_def)
+                builder.insert(
+                    impl_.syntax().text_range().end(),
+                    format!("\n\n{old_item_indent}{module_def}"),
+                );
+            } else {
+                for import_item in import_items {
+                    if !module_text_range.contains_range(import_item) {
+                        builder.delete(import_item);
+                    }
+                }
+                builder.replace(module_text_range, module_def.to_string())
             }
         },
     )
@@ -174,38 +184,51 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
 fn generate_module_def(
     parent_impl: &Option<ast::Impl>,
-    module: &mut Module,
-    old_indent: IndentLevel,
-) -> String {
-    let (items_to_be_processed, new_item_indent) = if parent_impl.is_some() {
-        (Either::Left(module.body_items.iter()), old_indent + 2)
+    Module { name, body_items, use_items }: &Module,
+) -> ast::Module {
+    let items: Vec<_> = if let Some(impl_) = parent_impl.as_ref()
+        && let Some(self_ty) = impl_.self_ty()
+    {
+        let assoc_items = body_items
+            .iter()
+            .map(|item| item.syntax().clone())
+            .filter_map(ast::AssocItem::cast)
+            .map(|it| it.indent(IndentLevel(1)))
+            .collect_vec();
+        let assoc_item_list = make::assoc_item_list(Some(assoc_items)).clone_for_update();
+        let impl_ = impl_.reset_indent();
+        ted::replace(impl_.get_or_create_assoc_item_list().syntax(), assoc_item_list.syntax());
+        // Add the import for enum/struct corresponding to given impl block
+        let use_impl = make_use_stmt_of_node_with_super(self_ty.syntax());
+        once(use_impl)
+            .chain(use_items.iter().cloned())
+            .chain(once(ast::Item::Impl(impl_)))
+            .collect()
     } else {
-        (Either::Right(module.use_items.iter().chain(module.body_items.iter())), old_indent + 1)
+        use_items.iter().chain(body_items).cloned().collect()
     };
 
-    let mut body = items_to_be_processed
-        .map(|item| item.indent(IndentLevel(1)))
-        .map(|item| format!("{new_item_indent}{item}"))
-        .join("\n\n");
+    let items = items.into_iter().map(|it| it.reset_indent().indent(IndentLevel(1))).collect_vec();
+    let module_body = make::item_list(Some(items));
 
-    if let Some(self_ty) = parent_impl.as_ref().and_then(|imp| imp.self_ty()) {
-        let impl_indent = old_indent + 1;
-        body = format!("{impl_indent}impl {self_ty} {{\n{body}\n{impl_indent}}}");
+    let module_name = make::name(name);
+    make::mod_(module_name, Some(module_body))
+}
 
-        // Add the import for enum/struct corresponding to given impl block
-        module.make_use_stmt_of_node_with_super(self_ty.syntax());
-        for item in module.use_items.iter() {
-            body = format!("{impl_indent}{item}\n\n{body}");
-        }
-    }
+fn make_use_stmt_of_node_with_super(node_syntax: &SyntaxNode) -> ast::Item {
+    let super_path = make::ext::ident_path("super");
+    let node_path = make::ext::ident_path(&node_syntax.to_string());
+    let use_ = make::use_(
+        None,
+        None,
+        make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
+    );
 
-    let module_name = module.name;
-    format!("mod {module_name} {{\n{body}\n{old_indent}}}")
+    ast::Item::from(use_)
 }
 
 #[derive(Debug)]
 struct Module {
-    text_range: TextRange,
     name: &'static str,
     /// All items except use items.
     body_items: Vec<ast::Item>,
@@ -215,22 +238,37 @@ struct Module {
     use_items: Vec<ast::Item>,
 }
 
-fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Module> {
+fn extract_single_target(node: &ast::Item) -> Module {
+    let (body_items, use_items) = if matches!(node, ast::Item::Use(_)) {
+        (Vec::new(), vec![node.clone()])
+    } else {
+        (vec![node.clone()], Vec::new())
+    };
+    let name = "modname";
+    Module { name, body_items, use_items }
+}
+
+fn extract_child_target(
+    node: &SyntaxNode,
+    selection_range: TextRange,
+) -> Option<(Module, RangeInclusive<SyntaxNode>)> {
     let selected_nodes = node
         .children()
         .filter(|node| selection_range.contains_range(node.text_range()))
-        .chain(iter::once(node.clone()));
-    let (use_items, body_items) = selected_nodes
         .filter_map(ast::Item::cast)
-        .partition(|item| matches!(item, ast::Item::Use(..)));
-
-    Some(Module { text_range: selection_range, name: "modname", body_items, use_items })
+        .collect_vec();
+    let start = selected_nodes.first()?.syntax().clone();
+    let end = selected_nodes.last()?.syntax().clone();
+    let (use_items, body_items): (Vec<ast::Item>, Vec<ast::Item>) =
+        selected_nodes.into_iter().partition(|item| matches!(item, ast::Item::Use(..)));
+    Some((Module { name: "modname", body_items, use_items }, start..=end))
 }
 
 impl Module {
     fn get_usages_and_record_fields(
         &self,
         ctx: &AssistContext<'_>,
+        replace_range: TextRange,
     ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>, FxHashMap<TextSize, ast::Use>)
     {
         let mut adt_fields = Vec::new();
@@ -248,7 +286,7 @@ impl Module {
                     ast::Adt(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Adt(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx, replace_range,node_def, &mut refs, &mut use_stmts_to_be_inserted);
 
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
                             match it {
@@ -282,30 +320,30 @@ impl Module {
                     ast::TypeAlias(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::TypeAlias(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Const(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Const(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Static(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Static(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Fn(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Function(nod);
-                            self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, node_def, &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     ast::Macro(it) => {
                         if let Some(nod) = ctx.sema.to_def(&it) {
-                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs, &mut use_stmts_to_be_inserted);
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, Definition::Macro(nod), &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
                     _ => (),
@@ -319,6 +357,7 @@ impl Module {
     fn expand_and_group_usages_file_wise(
         &self,
         ctx: &AssistContext<'_>,
+        replace_range: TextRange,
         node_def: Definition,
         refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
         use_stmts_to_be_inserted: &mut FxHashMap<TextSize, ast::Use>,
@@ -328,7 +367,7 @@ impl Module {
             syntax::NodeOrToken::Node(node) => node,
             syntax::NodeOrToken::Token(tok) => tok.parent().unwrap(), // won't panic
         };
-        let out_of_sel = |node: &SyntaxNode| !self.text_range.contains_range(node.text_range());
+        let out_of_sel = |node: &SyntaxNode| !replace_range.contains_range(node.text_range());
         let mut use_stmts_set = FxHashSet::default();
 
         for (file_id, refs) in node_def.usages(&ctx.sema).all() {
@@ -436,10 +475,10 @@ impl Module {
                     }
                 })
                 .for_each(|(node, def)| {
-                    if node_set.insert(node.to_string()) {
-                        if let Some(import) = self.process_def_in_sel(def, &node, &module, ctx) {
-                            check_intersection_and_push(&mut imports_to_remove, import);
-                        }
+                    if node_set.insert(node.to_string())
+                        && let Some(import) = self.process_def_in_sel(def, &node, &module, ctx)
+                    {
+                        check_intersection_and_push(&mut imports_to_remove, import);
                     }
                 })
         }
@@ -528,7 +567,8 @@ impl Module {
                     // mod -> ust_stmt transversal
                     // true  | false -> super import insertion
                     // true  | true -> super import insertion
-                    self.make_use_stmt_of_node_with_super(use_node);
+                    let super_use_node = make_use_stmt_of_node_with_super(use_node);
+                    self.use_items.insert(0, super_use_node);
                 }
                 None => {}
             }
@@ -542,33 +582,34 @@ impl Module {
                     import_path_to_be_removed = Some(text_range);
                 }
 
-                if def_in_mod && def_out_sel {
-                    if let Some(first_path_in_use_tree) = use_tree_str.last() {
-                        let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
-                        if !first_path_in_use_tree_str.contains("super")
-                            && !first_path_in_use_tree_str.contains("crate")
-                        {
-                            let super_path = make::ext::ident_path("super");
-                            use_tree_str.push(super_path);
-                        }
+                if def_in_mod
+                    && def_out_sel
+                    && let Some(first_path_in_use_tree) = use_tree_str.last()
+                {
+                    let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                    if !first_path_in_use_tree_str.contains("super")
+                        && !first_path_in_use_tree_str.contains("crate")
+                    {
+                        let super_path = make::ext::ident_path("super");
+                        use_tree_str.push(super_path);
                     }
                 }
 
                 use_tree_paths = Some(use_tree_str);
             } else if def_in_mod && def_out_sel {
-                self.make_use_stmt_of_node_with_super(use_node);
+                let super_use_node = make_use_stmt_of_node_with_super(use_node);
+                self.use_items.insert(0, super_use_node);
             }
         }
 
         if let Some(mut use_tree_paths) = use_tree_paths {
             use_tree_paths.reverse();
 
-            if uses_exist_out_sel || !uses_exist_in_sel || !def_in_mod || !def_out_sel {
-                if let Some(first_path_in_use_tree) = use_tree_paths.first() {
-                    if first_path_in_use_tree.to_string().contains("super") {
-                        use_tree_paths.insert(0, make::ext::ident_path("super"));
-                    }
-                }
+            if (uses_exist_out_sel || !uses_exist_in_sel || !def_in_mod || !def_out_sel)
+                && let Some(first_path_in_use_tree) = use_tree_paths.first()
+                && first_path_in_use_tree.to_string().contains("super")
+            {
+                use_tree_paths.insert(0, make::ext::ident_path("super"));
             }
 
             let is_item = matches!(
@@ -580,12 +621,12 @@ impl Module {
                     | Definition::Const(_)
                     | Definition::Static(_)
                     | Definition::Trait(_)
-                    | Definition::TraitAlias(_)
                     | Definition::TypeAlias(_)
             );
 
             if (def_out_sel || !is_item) && use_stmt_not_in_sel {
                 let use_ = make::use_(
+                    None,
                     None,
                     make::use_tree(make::join_paths(use_tree_paths), None, None, false),
                 );
@@ -594,19 +635,6 @@ impl Module {
         }
 
         import_path_to_be_removed
-    }
-
-    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> ast::Item {
-        let super_path = make::ext::ident_path("super");
-        let node_path = make::ext::ident_path(&node_syntax.to_string());
-        let use_ = make::use_(
-            None,
-            make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
-        );
-
-        let item = ast::Item::from(use_);
-        self.use_items.insert(0, item.clone());
-        item
     }
 
     fn process_use_stmt_for_import_resolve(
@@ -691,11 +719,9 @@ fn check_def_in_mod_and_out_sel(
                 _ => source.file_id.original_file(ctx.db()).file_id(ctx.db()) == curr_file_id,
             };
 
-            if have_same_parent {
-                if let ModuleSource::Module(module_) = source.value {
-                    let in_sel = !selection_range.contains_range(module_.syntax().text_range());
-                    return (have_same_parent, in_sel);
-                }
+            if have_same_parent && let ModuleSource::Module(module_) = source.value {
+                let in_sel = !selection_range.contains_range(module_.syntax().text_range());
+                return (have_same_parent, in_sel);
             }
 
             return (have_same_parent, false);
@@ -772,12 +798,12 @@ fn get_use_tree_paths_from_path(
         .filter(|x| x.to_string() != path.to_string())
         .filter_map(ast::UseTree::cast)
         .find_map(|use_tree| {
-            if let Some(upper_tree_path) = use_tree.path() {
-                if upper_tree_path.to_string() != path.to_string() {
-                    use_tree_str.push(upper_tree_path.clone());
-                    get_use_tree_paths_from_path(upper_tree_path, use_tree_str);
-                    return Some(use_tree);
-                }
+            if let Some(upper_tree_path) = use_tree.path()
+                && upper_tree_path.to_string() != path.to_string()
+            {
+                use_tree_str.push(upper_tree_path.clone());
+                get_use_tree_paths_from_path(upper_tree_path, use_tree_str);
+                return Some(use_tree);
             }
             None
         })?;
@@ -786,11 +812,11 @@ fn get_use_tree_paths_from_path(
 }
 
 fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax::SyntaxElement>) {
-    if vis.is_none() {
-        if let Some(node_or_token) = node_or_token_opt {
-            let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
-            ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
-        }
+    if vis.is_none()
+        && let Some(node_or_token) = node_or_token_opt
+    {
+        let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
+        ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
     }
 }
 
@@ -1382,28 +1408,54 @@ mod modname {
     fn test_if_inside_impl_block_generate_module_outside() {
         check_assist(
             extract_module,
-            r"
-            struct A {}
+            r"struct A {}
 
             impl A {
-$0fn foo() {}$0
+                $0fn foo() {}$0
                 fn bar() {}
             }
         ",
-            r"
-            struct A {}
+            r"struct A {}
 
             impl A {
                 fn bar() {}
             }
 
-mod modname {
-    use super::A;
+            mod modname {
+                use super::A;
 
-    impl A {
-        pub(crate) fn foo() {}
-    }
-}
+                impl A {
+                    pub(crate) fn foo() {}
+                }
+            }
+        ",
+        );
+
+        check_assist(
+            extract_module,
+            r"struct A {}
+
+            impl A {
+                $0fn foo() {}
+                fn bar() {}$0
+                fn baz() {}
+            }
+        ",
+            r"struct A {}
+
+            impl A {
+                fn baz() {}
+            }
+
+            mod modname {
+                use super::A;
+
+                impl A {
+                    pub(crate) fn foo() {}
+
+                    pub(crate) fn bar() {}
+                }
+            }
         ",
         )
     }
@@ -1412,27 +1464,25 @@ mod modname {
     fn test_if_inside_impl_block_generate_module_outside_but_impl_block_having_one_child() {
         check_assist(
             extract_module,
-            r"
-            struct A {}
+            r"struct A {}
             struct B {}
 
             impl A {
 $0fn foo(x: B) {}$0
             }
         ",
-            r"
-            struct A {}
+            r"struct A {}
             struct B {}
 
-mod modname {
-    use super::B;
+            mod modname {
+                use super::A;
 
-    use super::A;
+                use super::B;
 
-    impl A {
-        pub(crate) fn foo(x: B) {}
-    }
-}
+                impl A {
+                    pub(crate) fn foo(x: B) {}
+                }
+            }
         ",
         )
     }
@@ -1739,5 +1789,28 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_miss_select_item() {
+        check_assist(
+            extract_module,
+            r#"
+mod foo {
+    mod $0bar {
+        fn foo(){}$0
+    }
+}
+"#,
+            r#"
+mod foo {
+    mod modname {
+        pub(crate) mod bar {
+            fn foo(){}
+        }
+    }
+}
+"#,
+        )
     }
 }

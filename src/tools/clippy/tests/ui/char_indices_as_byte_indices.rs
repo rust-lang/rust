@@ -1,4 +1,3 @@
-#![feature(round_char_boundary)]
 #![warn(clippy::char_indices_as_byte_indices)]
 
 trait StrExt {

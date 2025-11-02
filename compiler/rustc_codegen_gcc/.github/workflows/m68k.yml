@@ -82,20 +82,16 @@ jobs:
     - name: Build sample project with target defined as JSON spec
       run: |
         ./y.sh prepare --only-libcore --cross
-        ./y.sh build --sysroot --features compiler-builtins-no-f16-f128 --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
+        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ./y.sh cargo build --manifest-path=./tests/hello-world/Cargo.toml --target ${{ github.workspace }}/target_specs/m68k-unknown-linux-gnu.json
         ./y.sh clean all
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
-        ./y.sh build --sysroot --features compiler-builtins-no-f16-f128 --target-triple m68k-unknown-linux-gnu
+        ./y.sh build --sysroot --target-triple m68k-unknown-linux-gnu
         ./y.sh test --mini-tests --target-triple m68k-unknown-linux-gnu
-        # FIXME: since https://github.com/rust-lang/rust/pull/140809, we cannot run programs for architectures not
-        # supported by the object crate, since this adds a dependency on symbols.o for the panic runtime.
-        # And as such, a wrong order of the object files in the linker command now fails with an undefined reference
-        # to some symbols like __rustc::rust_panic.
-        #CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu ./y.sh test --cargo-tests --target-triple m68k-unknown-linux-gnu
         ./y.sh clean all
 
     - name: Prepare dependencies
@@ -104,23 +100,21 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare --cross
 
-    # FIXME: We cannot run programs for architectures not supported by the object crate. See comment above.
-    #- name: Run tests
-      #run: |
-        #./y.sh test --target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot --sysroot-features compiler-builtins-no-f16-f128 ${{ matrix.commands }}
+    - name: Run tests
+      run: |
+        ./y.sh test --target-triple m68k-unknown-linux-gnu --release --clean --build-sysroot ${{ matrix.commands }}
 
-    # FIXME: We cannot run programs for architectures not supported by the object crate. See comment above.
-    #- name: Run Hello World!
-      #run: |
-        #./y.sh build --target-triple m68k-unknown-linux-gnu
+    - name: Run Hello World!
+      run: |
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
 
-        #vm_dir=$(pwd)/vm
-        #cd tests/hello-world
-        #CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
-        #sudo cp target/m68k-unknown-linux-gnu/debug/hello_world $vm_dir/home/
-        #sudo chroot $vm_dir qemu-m68k-static /home/hello_world > hello_world_stdout
-        #expected_output="40"
-        #test $(cat hello_world_stdout) == $expected_output || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
+        vm_dir=$(pwd)/vm
+        cd tests/hello-world
+        CG_RUSTFLAGS="-Clinker=m68k-unknown-linux-gnu-gcc" ../../y.sh cargo build --target m68k-unknown-linux-gnu
+        sudo cp target/m68k-unknown-linux-gnu/debug/hello_world $vm_dir/home/
+        sudo chroot $vm_dir qemu-m68k-static /home/hello_world > hello_world_stdout
+        expected_output="40"
+        test $(cat hello_world_stdout) == $expected_output || (echo "Output differs. Actual output: $(cat hello_world_stdout)"; exit 1)
 
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!

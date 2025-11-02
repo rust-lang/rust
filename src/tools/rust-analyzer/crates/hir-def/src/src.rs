@@ -71,7 +71,7 @@ impl HasChildSource<la_arena::Idx<ast::UseTree>> for UseId {
 }
 
 impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
-    type Value = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
+    type Value = Either<ast::TypeOrConstParam, ast::Trait>;
     fn child_source(
         &self,
         db: &dyn DefDatabase,
@@ -89,12 +89,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
             GenericDefId::TraitId(id) => {
                 let trait_ref = id.lookup(db).source(db).value;
                 let idx = idx_iter.next().unwrap();
-                params.insert(idx, Either::Right(ast::TraitOrAlias::Trait(trait_ref)));
-            }
-            GenericDefId::TraitAliasId(id) => {
-                let alias = id.lookup(db).source(db).value;
-                let idx = idx_iter.next().unwrap();
-                params.insert(idx, Either::Right(ast::TraitOrAlias::TraitAlias(alias)));
+                params.insert(idx, Either::Right(trait_ref));
             }
             _ => {}
         }

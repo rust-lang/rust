@@ -12,6 +12,7 @@
 #![warn(clippy::regex_macro)] //~ ERROR: lint `clippy::regex_macro`
 #![warn(clippy::replace_consts)] //~ ERROR: lint `clippy::replace_consts`
 #![warn(clippy::should_assert_eq)] //~ ERROR: lint `clippy::should_assert_eq`
+#![warn(clippy::string_to_string)] //~ ERROR: lint `clippy::string_to_string`
 #![warn(clippy::unsafe_vector_initialization)] //~ ERROR: lint `clippy::unsafe_vector_initialization`
 #![warn(clippy::unstable_as_mut_slice)] //~ ERROR: lint `clippy::unstable_as_mut_slice`
 #![warn(clippy::unstable_as_slice)] //~ ERROR: lint `clippy::unstable_as_slice`

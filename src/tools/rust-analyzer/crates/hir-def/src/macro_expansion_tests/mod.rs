@@ -221,46 +221,42 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             _ => None,
         };
 
-        if let Some(src) = src {
-            if let Some(file_id) = src.file_id.macro_file() {
-                if let MacroKind::Derive
-                | MacroKind::DeriveBuiltIn
-                | MacroKind::Attr
-                | MacroKind::AttrBuiltIn = file_id.kind(&db)
-                {
-                    let call = file_id.call_node(&db);
-                    let mut show_spans = false;
-                    let mut show_ctxt = false;
-                    for comment in
-                        call.value.children_with_tokens().filter(|it| it.kind() == COMMENT)
-                    {
-                        show_spans |= comment.to_string().contains("+spans");
-                        show_ctxt |= comment.to_string().contains("+syntaxctxt");
-                    }
-                    let pp = pretty_print_macro_expansion(
-                        src.value,
-                        db.span_map(src.file_id).as_ref(),
-                        show_spans,
-                        show_ctxt,
-                    );
-                    format_to!(expanded_text, "\n{}", pp)
-                }
+        if let Some(src) = src
+            && let Some(file_id) = src.file_id.macro_file()
+            && let MacroKind::Derive
+            | MacroKind::DeriveBuiltIn
+            | MacroKind::Attr
+            | MacroKind::AttrBuiltIn = file_id.kind(&db)
+        {
+            let call = file_id.call_node(&db);
+            let mut show_spans = false;
+            let mut show_ctxt = false;
+            for comment in call.value.children_with_tokens().filter(|it| it.kind() == COMMENT) {
+                show_spans |= comment.to_string().contains("+spans");
+                show_ctxt |= comment.to_string().contains("+syntaxctxt");
             }
+            let pp = pretty_print_macro_expansion(
+                src.value,
+                db.span_map(src.file_id).as_ref(),
+                show_spans,
+                show_ctxt,
+            );
+            format_to!(expanded_text, "\n{}", pp)
         }
     }
 
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
-        if let Some(macro_file) = src.file_id.macro_file() {
-            if let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db) {
-                let pp = pretty_print_macro_expansion(
-                    src.value.syntax().clone(),
-                    db.span_map(macro_file.into()).as_ref(),
-                    false,
-                    false,
-                );
-                format_to!(expanded_text, "\n{}", pp)
-            }
+        if let Some(macro_file) = src.file_id.macro_file()
+            && let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db)
+        {
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(macro_file.into()).as_ref(),
+                false,
+                false,
+            );
+            format_to!(expanded_text, "\n{}", pp)
         }
     }
 

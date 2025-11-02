@@ -1,5 +1,4 @@
 //@ ignore-android
-//@ ignore-aarch64
 //@ min-lldb-version: 1800
 //@ min-gdb-version: 13.0
 

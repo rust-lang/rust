@@ -23,6 +23,10 @@ impl Tra$0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )
@@ -45,6 +49,10 @@ impl Trait for Str$0
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     )

@@ -25,6 +25,14 @@ LL | #[rustc_layout_scalar_valid_range_end(a = "a")]
    | |                                     expected an integer literal here
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_end(end)]`
 
+error: `#[rustc_layout_scalar_valid_range_end]` attribute cannot be used on enums
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:12:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(1)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_layout_scalar_valid_range_end]` can only be applied to structs
+
 error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
   --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:18:1
    |
@@ -33,17 +41,6 @@ LL | #[rustc_layout_scalar_valid_range_start(rustc_layout_scalar_valid_range_sta
    | |                                       |
    | |                                       expected an integer literal here
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
-
-error: attribute should be applied to a struct
-  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:12:1
-   |
-LL |   #[rustc_layout_scalar_valid_range_end(1)]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL | / enum E {
-LL | |     X = 1,
-LL | |     Y = 14,
-LL | | }
-   | |_- not a struct
 
 error: aborting due to 5 previous errors
 

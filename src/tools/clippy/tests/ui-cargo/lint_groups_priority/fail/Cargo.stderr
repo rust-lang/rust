@@ -1,7 +1,7 @@
 error: lint group `rust_2018_idioms` has the same priority (0) as a lint
   --> Cargo.toml:7:1
    |
-7  | rust_2018_idioms = "warn"
+ 7 | rust_2018_idioms = "warn"
    | ^^^^^^^^^^^^^^^^   ------ has an implicit priority of 0
 ...
 12 | unused_attributes = { level = "allow" }
@@ -11,8 +11,8 @@ error: lint group `rust_2018_idioms` has the same priority (0) as a lint
    = note: `#[deny(clippy::lint_groups_priority)]` on by default
 help: to have lints override the group set `rust_2018_idioms` to a lower priority
    |
-7  - rust_2018_idioms = "warn"
-7  + rust_2018_idioms = { level = "warn", priority = -1 }
+ 7 - rust_2018_idioms = "warn"
+ 7 + rust_2018_idioms = { level = "warn", priority = -1 }
    |
 
 error: lint group `unused` has the same priority (0) as a lint

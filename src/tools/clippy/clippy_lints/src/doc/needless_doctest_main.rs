@@ -1,158 +1,63 @@
-use std::ops::Range;
-use std::sync::Arc;
-use std::{io, thread};
-
-use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
-use clippy_utils::diagnostics::span_lint;
-use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
-use rustc_errors::emitter::HumanEmitter;
-use rustc_errors::{Diag, DiagCtxt};
-use rustc_lint::LateContext;
-use rustc_parse::new_parser_from_source_str;
-use rustc_parse::parser::ForceCollect;
-use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
-use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileName, Ident, Pos, sym};
-
 use super::Fragments;
+use crate::doc::NEEDLESS_DOCTEST_MAIN;
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::tokenize_with_text;
+use rustc_lexer::TokenKind;
+use rustc_lint::LateContext;
+use rustc_span::InnerSpan;
 
-fn get_test_spans(item: &Item, ident: Ident, test_attr_spans: &mut Vec<Range<usize>>) {
-    test_attr_spans.extend(
-        item.attrs
-            .iter()
-            .find(|attr| attr.has_name(sym::test))
-            .map(|attr| attr.span.lo().to_usize()..ident.span.hi().to_usize()),
-    );
+fn returns_unit<'a>(mut tokens: impl Iterator<Item = (TokenKind, &'a str, InnerSpan)>) -> bool {
+    let mut next = || tokens.next().map_or(TokenKind::Whitespace, |(kind, ..)| kind);
+
+    match next() {
+        // {
+        TokenKind::OpenBrace => true,
+        // - > ( ) {
+        TokenKind::Minus => {
+            next() == TokenKind::Gt
+                && next() == TokenKind::OpenParen
+                && next() == TokenKind::CloseParen
+                && next() == TokenKind::OpenBrace
+        },
+        _ => false,
+    }
 }
 
-pub fn check(
-    cx: &LateContext<'_>,
-    text: &str,
-    edition: Edition,
-    range: Range<usize>,
-    fragments: Fragments<'_>,
-    ignore: bool,
-) {
-    // return whether the code contains a needless `fn main` plus a vector of byte position ranges
-    // of all `#[test]` attributes in not ignored code examples
-    fn check_code_sample(code: String, edition: Edition, ignore: bool) -> (bool, Vec<Range<usize>>) {
-        rustc_driver::catch_fatal_errors(|| {
-            rustc_span::create_session_globals_then(edition, &[], None, || {
-                let mut test_attr_spans = vec![];
-                let filename = FileName::anon_source_code(&code);
-
-                let translator = rustc_driver::default_translator();
-                let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
-                let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-                #[expect(clippy::arc_with_non_send_sync)] // `Arc` is expected by with_dcx
-                let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-                let psess = ParseSess::with_dcx(dcx, sm);
-
-                let mut parser = match new_parser_from_source_str(&psess, filename, code) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        errs.into_iter().for_each(Diag::cancel);
-                        return (false, test_attr_spans);
-                    },
-                };
-
-                let mut relevant_main_found = false;
-                let mut eligible = true;
-                loop {
-                    match parser.parse_item(ForceCollect::No) {
-                        Ok(Some(item)) => match &item.kind {
-                            ItemKind::Fn(box Fn {
-                                ident,
-                                sig,
-                                body: Some(block),
-                                ..
-                            }) if ident.name == sym::main => {
-                                if !ignore {
-                                    get_test_spans(&item, *ident, &mut test_attr_spans);
-                                }
-
-                                let is_async = matches!(sig.header.coroutine_kind, Some(CoroutineKind::Async { .. }));
-                                let returns_nothing = match &sig.decl.output {
-                                    FnRetTy::Default(..) => true,
-                                    FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                                    FnRetTy::Ty(_) => false,
-                                };
-
-                                if returns_nothing && !is_async && !block.stmts.is_empty() {
-                                    // This main function should be linted, but only if there are no other functions
-                                    relevant_main_found = true;
-                                } else {
-                                    // This main function should not be linted, we're done
-                                    eligible = false;
-                                }
-                            },
-                            // Another function was found; this case is ignored for needless_doctest_main
-                            ItemKind::Fn(fn_) => {
-                                eligible = false;
-                                if ignore {
-                                    // If ignore is active invalidating one lint,
-                                    // and we already found another function thus
-                                    // invalidating the other one, we have no
-                                    // business continuing.
-                                    return (false, test_attr_spans);
-                                }
-                                get_test_spans(&item, fn_.ident, &mut test_attr_spans);
-                            },
-                            // Tests with one of these items are ignored
-                            ItemKind::Static(..)
-                            | ItemKind::Const(..)
-                            | ItemKind::ExternCrate(..)
-                            | ItemKind::ForeignMod(..) => {
-                                eligible = false;
-                            },
-                            _ => {},
-                        },
-                        Ok(None) => break,
-                        Err(e) => {
-                            // See issue #15041. When calling `.cancel()` on the `Diag`, Clippy will unexpectedly panic
-                            // when the `Diag` is unwinded. Meanwhile, we can just call `.emit()`, since the `DiagCtxt`
-                            // is just a sink, nothing will be printed.
-                            e.emit();
-                            return (false, test_attr_spans);
-                        },
-                    }
-                }
-
-                (relevant_main_found & eligible, test_attr_spans)
-            })
-        })
-        .ok()
-        .unwrap_or_default()
-    }
-
-    let trailing_whitespace = text.len() - text.trim_end().len();
-
-    // We currently only test for "fn main". Checking for the real
-    // entrypoint (with tcx.entry_fn(())) in each block would be unnecessarily
-    // expensive, as those are probably intended and relevant. Same goes for
-    // macros and other weird ways of declaring a main function.
-    //
-    // Also, as we only check for attribute names and don't do macro expansion,
-    // we can check only for #[test]
-
-    if !((text.contains("main") && text.contains("fn")) || text.contains("#[test]")) {
+pub fn check(cx: &LateContext<'_>, text: &str, offset: usize, fragments: Fragments<'_>) {
+    if !text.contains("main") {
         return;
     }
 
-    // Because of the global session, we need to create a new session in a different thread with
-    // the edition we need.
-    let text = text.to_owned();
-    let (has_main, test_attr_spans) = thread::spawn(move || check_code_sample(text, edition, ignore))
-        .join()
-        .expect("thread::spawn failed");
-    if has_main && let Some(span) = fragments.span(cx, range.start..range.end - trailing_whitespace) {
-        span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
-    }
-    for span in test_attr_spans {
-        let span = (range.start + span.start)..(range.start + span.end);
-        if let Some(span) = fragments.span(cx, span) {
-            span_lint(cx, TEST_ATTR_IN_DOCTEST, span, "unit tests in doctest are not executed");
+    let mut tokens = tokenize_with_text(text).filter(|&(kind, ..)| {
+        !matches!(
+            kind,
+            TokenKind::Whitespace | TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+        )
+    });
+    if let Some((TokenKind::Ident, "fn", fn_span)) = tokens.next()
+        && let Some((TokenKind::Ident, "main", main_span)) = tokens.next()
+        && let Some((TokenKind::OpenParen, ..)) = tokens.next()
+        && let Some((TokenKind::CloseParen, ..)) = tokens.next()
+        && returns_unit(&mut tokens)
+    {
+        let mut depth = 1;
+        for (kind, ..) in &mut tokens {
+            match kind {
+                TokenKind::OpenBrace => depth += 1,
+                TokenKind::CloseBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                },
+                _ => {},
+            }
+        }
+
+        if tokens.next().is_none()
+            && let Some(span) = fragments.span(cx, fn_span.start + offset..main_span.end + offset)
+        {
+            span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
         }
     }
 }

@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{AtomicOrdering, Instance, Ty};
 use rustc_session::config::OptLevel;
@@ -405,15 +406,41 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 
     /// Returns `-1` if `lhs < rhs`, `0` if `lhs == rhs`, and `1` if `lhs > rhs`.
-    // FIXME: Move the default implementation from `codegen_scalar_binop` into this method and
-    // remove the `Option` return once LLVM 20 is the minimum version.
     fn three_way_compare(
         &mut self,
-        _ty: Ty<'tcx>,
-        _lhs: Self::Value,
-        _rhs: Self::Value,
-    ) -> Option<Self::Value> {
-        None
+        ty: Ty<'tcx>,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> Self::Value {
+        // FIXME: This implementation was designed around LLVM's ability to optimize, but `cg_llvm`
+        // overrides this to just use `@llvm.scmp`/`ucmp` since LLVM 20. This default impl should be
+        // reevaluated with respect to the remaining backends like cg_gcc, whether they might use
+        // specialized implementations as well, or continue to use a generic implementation here.
+        use std::cmp::Ordering;
+        let pred = |op| crate::base::bin_op_to_icmp_predicate(op, ty.is_signed());
+        if self.cx().sess().opts.optimize == OptLevel::No {
+            // This actually generates tighter assembly, and is a classic trick:
+            // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>.
+            // However, as of 2023-11 it optimized worse in LLVM in things like derived
+            // `PartialOrd`, so we were only using it in debug. Since LLVM now uses its own
+            // intrinsics, it may be be worth trying it in optimized builds for other backends.
+            let is_gt = self.icmp(pred(mir::BinOp::Gt), lhs, rhs);
+            let gtext = self.zext(is_gt, self.type_i8());
+            let is_lt = self.icmp(pred(mir::BinOp::Lt), lhs, rhs);
+            let ltext = self.zext(is_lt, self.type_i8());
+            self.unchecked_ssub(gtext, ltext)
+        } else {
+            // These operations were better optimized by LLVM, before `@llvm.scmp`/`ucmp` in 20.
+            // See <https://github.com/rust-lang/rust/pull/63767>.
+            let is_lt = self.icmp(pred(mir::BinOp::Lt), lhs, rhs);
+            let is_ne = self.icmp(pred(mir::BinOp::Ne), lhs, rhs);
+            let ge = self.select(
+                is_ne,
+                self.cx().const_i8(Ordering::Greater as i8),
+                self.cx().const_i8(Ordering::Equal as i8),
+            );
+            self.select(is_lt, self.cx().const_i8(Ordering::Less as i8), ge)
+        }
     }
 
     fn memcpy(
@@ -424,6 +451,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<rustc_ast::expand::typetree::FncTree>,
     );
     fn memmove(
         &mut self,
@@ -480,7 +508,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
+            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
         }
     }
 
@@ -548,12 +576,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (Self::Value, Self::Value);
+    /// `ret_ptr` indicates whether the return type (which is also the type `dst` points to)
+    /// is a pointer or the same type as `src`.
     fn atomic_rmw(
         &mut self,
         op: AtomicRmwBinOp,
         dst: Self::Value,
         src: Self::Value,
         order: AtomicOrdering,
+        ret_ptr: bool,
     ) -> Self::Value;
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn set_invariant_load(&mut self, load: Self::Value);
@@ -595,6 +626,18 @@ pub trait BuilderMethods<'a, 'tcx>:
         funclet: Option<&Self::Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> Self::Value;
+
+    fn tail_call(
+        &mut self,
+        llty: Self::Type,
+        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: Self::Value,
+        args: &[Self::Value],
+        funclet: Option<&Self::Funclet>,
+        instance: Option<Instance<'tcx>>,
+    );
+
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);

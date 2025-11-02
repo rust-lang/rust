@@ -14,11 +14,11 @@ LL |     stack!("overflow");
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `stack! { "overflow" }`
-   = note: to `print! (stack! ("overflow"));`
+   = note: to `print! (stack! ("overflow"))`
    = note: expanding `print! { stack! ("overflow") }`
    = note: to `{ $crate :: io :: _print($crate :: format_args! (stack! ("overflow"))); }`
    = note: expanding `stack! { "overflow" }`
-   = note: to `print! (stack! ("overflow"));`
+   = note: to `print! (stack! ("overflow"))`
    = note: expanding `print! { stack! ("overflow") }`
    = note: to `{ $crate :: io :: _print($crate :: format_args! (stack! ("overflow"))); }`
 
@@ -31,7 +31,7 @@ LL |     stack!("overflow");
    = note: this error originates in the macro `print` which comes from the expansion of the macro `stack` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might be missing a string literal to format with
    |
-LL |             print!("{}", stack!($overflow));
+LL |             print!("{}", stack!($overflow))
    |                    +++++
 
 error: aborting due to 2 previous errors

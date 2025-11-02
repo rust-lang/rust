@@ -89,5 +89,21 @@ LL |     let _ = f32::EPSILON > 1.0 - 2.0;
    |                            |
    |                            help: add `.abs()`: `(1.0 - 2.0).abs()`
 
-error: aborting due to 11 previous errors
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:47:13
+   |
+LL |     let _ = (a as f16 - b as f16) < f16::EPSILON;
+   |             ---------------------^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a as f16 - b as f16).abs()`
+
+error: float equality check without `.abs()`
+  --> tests/ui/float_equality_without_abs.rs:50:13
+   |
+LL |     let _ = (a as f128 - b as f128) < f128::EPSILON;
+   |             -----------------------^^^^^^^^^^^^^^^^
+   |             |
+   |             help: add `.abs()`: `(a as f128 - b as f128).abs()`
+
+error: aborting due to 13 previous errors
 

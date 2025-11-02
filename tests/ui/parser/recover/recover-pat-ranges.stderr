@@ -92,7 +92,7 @@ LL |         ..=1 + 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 2;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -109,7 +109,7 @@ LL |         (-4 + 0).. => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -4 + 0;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -126,7 +126,7 @@ LL |         (1 + 4)...1 * 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 4;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -143,7 +143,7 @@ LL |         (1 + 4)...1 * 2 => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 * 2;
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -160,7 +160,7 @@ LL |         0.x()..="y".z() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.x();
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -177,7 +177,7 @@ LL |         0.x()..="y".z() => (),
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "y".z();
-LL ~     match -1 {
+LL |     match -1 {
 LL |         0..=1 => (),
 ...
 LL |
@@ -192,7 +192,7 @@ LL |         (1 + 4)...1 * 2 => (),
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(ellipsis_inclusive_range_patterns)]` on by default
+   = note: `#[warn(ellipsis_inclusive_range_patterns)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 error: aborting due to 13 previous errors; 1 warning emitted
 

@@ -1,7 +1,7 @@
 #![allow(unused_macros)]
 #![cfg_attr(f128_enabled, feature(f128))]
-#![cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
 
+#[cfg_attr(x86_no_sse, allow(unused))]
 use builtins_test::*;
 
 // This is approximate because of issues related to
@@ -52,6 +52,7 @@ macro_rules! pow {
     };
 }
 
+#[cfg(not(x86_no_sse))] // FIXME(i586): failure for powidf2
 pow! {
     f32, 1e-4, __powisf2, all();
     f64, 1e-12, __powidf2, all();
