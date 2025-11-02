@@ -168,7 +168,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub hidden_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    pub hidden_types: FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

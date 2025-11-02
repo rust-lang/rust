@@ -3,16 +3,14 @@
 use std::fmt::{self, Debug};
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
-use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
+use crate::ty::{self, CoroutineArgsExt, Ty};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
@@ -83,11 +81,6 @@ impl Debug for CoroutineLayout<'_> {
             .finish()
     }
 }
-
-/// All the opaque types that have had their hidden type fully computed.
-/// Unlike the value in `TypeckResults`, this has unerased regions.
-#[derive(Default, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct DefinitionSiteHiddenTypes<'tcx>(pub FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>);
 
 /// The result of the `mir_const_qualif` query.
 ///

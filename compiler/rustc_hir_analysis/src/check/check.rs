@@ -430,7 +430,7 @@ fn best_definition_site_of_opaque<'tcx>(
                 .tcx
                 .mir_borrowck(item_def_id)
                 .ok()
-                .and_then(|opaque_types| opaque_types.0.get(&self.opaque_def_id))
+                .and_then(|opaque_types| opaque_types.get(&self.opaque_def_id))
             {
                 ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
@@ -493,7 +493,7 @@ fn best_definition_site_of_opaque<'tcx>(
 fn sanity_check_found_hidden_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::OpaqueTypeKey<'tcx>,
-    mut ty: ty::OpaqueHiddenType<'tcx>,
+    mut ty: ty::ProvisionalHiddenType<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     if ty.ty.is_ty_var() {
         // Nothing was actually constrained.
@@ -529,7 +529,7 @@ fn sanity_check_found_hidden_type<'tcx>(
         Ok(())
     } else {
         let span = tcx.def_span(key.def_id);
-        let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
+        let other = ty::ProvisionalHiddenType { ty: hidden_ty, span };
         Err(ty.build_mismatch_error(&other, tcx)?.emit())
     }
 }

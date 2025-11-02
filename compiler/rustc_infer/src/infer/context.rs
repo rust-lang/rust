@@ -314,7 +314,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     ) -> Option<Ty<'tcx>> {
         self.register_hidden_type_in_storage(
             opaque_type_key,
-            ty::OpaqueHiddenType { span, ty: hidden_ty },
+            ty::ProvisionalHiddenType { span, ty: hidden_ty },
         )
     }
     fn add_duplicate_opaque_type(
@@ -326,7 +326,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner
             .borrow_mut()
             .opaque_types()
-            .add_duplicate(opaque_type_key, ty::OpaqueHiddenType { span, ty: hidden_ty })
+            .add_duplicate(opaque_type_key, ty::ProvisionalHiddenType { span, ty: hidden_ty })
     }
 
     fn reset_opaque_types(&self) {
