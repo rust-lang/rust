@@ -4,17 +4,27 @@ error: macro requires a cfg-pattern as an argument
 LL |     cfg!();
    |     ^^^^^^ cfg-pattern required
 
-error[E0565]: literal in `cfg` predicate value must be a boolean
-  --> $DIR/cfg.rs:3:10
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/cfg.rs:3:5
    |
 LL |     cfg!(123);
-   |          ^^^
+   |     ^^^^^---^
+   |     |    |
+   |     |    expected a valid identifier here
+   |     help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
-error[E0565]: literal in `cfg` predicate value must be a string
-  --> $DIR/cfg.rs:4:16
+error[E0539]: malformed `cfg` macro input
+  --> $DIR/cfg.rs:4:5
    |
 LL |     cfg!(foo = 123);
-   |                ^^^
+   |     ^^^^^^^^^^^---^
+   |     |          |
+   |     |          expected a string literal here
+   |     help: must be of the form: `cfg(predicate)`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: expected 1 cfg-pattern
   --> $DIR/cfg.rs:5:5
@@ -24,4 +34,4 @@ LL |     cfg!(foo, bar);
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0565`.
+For more information about this error, try `rustc --explain E0539`.

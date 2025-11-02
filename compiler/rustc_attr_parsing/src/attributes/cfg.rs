@@ -12,13 +12,14 @@ use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::{ParseSess, feature_err};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
+    ParsedDescription,
 };
 use crate::{
     AttributeParser, CfgMatchesLintEmitter, fluent_generated, parse_version, session_diagnostics,
@@ -47,20 +48,19 @@ pub fn parse_cfg<'c, S: Stage>(
         cx.expected_single_argument(list.span);
         return None;
     };
-    parse_cfg_entry(cx, single)
+    parse_cfg_entry(cx, single).ok()
 }
 
-pub(crate) fn parse_cfg_entry<S: Stage>(
+pub fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     item: &MetaItemOrLitParser<'_>,
-) -> Option<CfgEntry> {
-    Some(match item {
+) -> Result<CfgEntry, ErrorGuaranteed> {
+    Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
             ArgParser::List(list) => match meta.path().word_sym() {
                 Some(sym::not) => {
                     let Some(single) = list.single() else {
-                        cx.expected_single_argument(list.span);
-                        return None;
+                        return Err(cx.expected_single_argument(list.span));
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }
@@ -75,29 +75,24 @@ pub(crate) fn parse_cfg_entry<S: Stage>(
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
-                    cx.emit_err(session_diagnostics::InvalidPredicate {
+                    return Err(cx.emit_err(session_diagnostics::InvalidPredicate {
                         span: meta.span(),
                         predicate: meta.path().to_string(),
-                    });
-                    return None;
+                    }));
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
                 let Some(name) = meta.path().word_sym() else {
-                    cx.expected_identifier(meta.path().span());
-                    return None;
+                    return Err(cx.expected_identifier(meta.path().span()));
                 };
                 parse_name_value(name, meta.path().span(), a.name_value(), meta.span(), cx)?
             }
         },
         MetaItemOrLitParser::Lit(lit) => match lit.kind {
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
-            _ => {
-                cx.expected_identifier(lit.span);
-                return None;
-            }
+            _ => return Err(cx.expected_identifier(lit.span)),
         },
-        MetaItemOrLitParser::Err(_, _) => return None,
+        MetaItemOrLitParser::Err(_, err) => return Err(*err),
     })
 }
 
@@ -105,19 +100,22 @@ fn parse_cfg_entry_version<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     list: &MetaItemListParser<'_>,
     meta_span: Span,
-) -> Option<CfgEntry> {
+) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
     let Some(version) = list.single() else {
-        cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span });
-        return None;
+        return Err(
+            cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
+        );
     };
     let Some(version_lit) = version.lit() else {
-        cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() });
-        return None;
+        return Err(
+            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() })
+        );
     };
     let Some(version_str) = version_lit.value_str() else {
-        cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span });
-        return None;
+        return Err(
+            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span })
+        );
     };
 
     let min_version = parse_version(version_str).or_else(|| {
@@ -127,14 +125,14 @@ fn parse_cfg_entry_version<S: Stage>(
         None
     });
 
-    Some(CfgEntry::Version(min_version, list.span))
+    Ok(CfgEntry::Version(min_version, list.span))
 }
 
 fn parse_cfg_entry_target<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     list: &MetaItemListParser<'_>,
     meta_span: Span,
-) -> Option<CfgEntry> {
+) -> Result<CfgEntry, ErrorGuaranteed> {
     if let Some(features) = cx.features_option()
         && !features.cfg_target_compact()
     {
@@ -161,17 +159,16 @@ fn parse_cfg_entry_target<S: Stage>(
 
         // Then, parse it as a name-value item
         let Some(name) = sub_item.path().word_sym() else {
-            cx.expected_identifier(sub_item.path().span());
-            return None;
+            return Err(cx.expected_identifier(sub_item.path().span()));
         };
         let name = Symbol::intern(&format!("target_{name}"));
-        if let Some(cfg) =
+        if let Ok(cfg) =
             parse_name_value(name, sub_item.path().span(), Some(nv), sub_item.span(), cx)
         {
             result.push(cfg);
         }
     }
-    Some(CfgEntry::All(result, list.span))
+    Ok(CfgEntry::All(result, list.span))
 }
 
 fn parse_name_value<S: Stage>(
@@ -180,21 +177,22 @@ fn parse_name_value<S: Stage>(
     value: Option<&NameValueParser>,
     span: Span,
     cx: &mut AcceptContext<'_, '_, S>,
-) -> Option<CfgEntry> {
+) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(name, span, cx.sess(), cx.features_option());
 
     let value = match value {
         None => None,
         Some(value) => {
             let Some(value_str) = value.value_as_str() else {
-                cx.expected_string_literal(value.value_span, Some(value.value_as_lit()));
-                return None;
+                return Err(
+                    cx.expected_string_literal(value.value_span, Some(value.value_as_lit()))
+                );
             };
             Some((value_str, value.value_span))
         }
     };
 
-    Some(CfgEntry::NameValue { name, name_span, value, span })
+    Ok(CfgEntry::NameValue { name, name_span, value, span })
 }
 
 pub fn eval_config_entry(
@@ -355,7 +353,8 @@ pub fn parse_cfg_attr(
                 span,
                 attr_span: cfg_attr.span,
                 template: CFG_ATTR_TEMPLATE,
-                attribute: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
+                description: ParsedDescription::Attribute,
                 reason,
                 suggestions: CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr),
             });
@@ -398,6 +397,7 @@ fn parse_cfg_attr_internal<'a>(
                 .into_boxed_slice(),
             span: attribute.span,
         },
+        ParsedDescription::Attribute,
         pred_span,
         CRATE_NODE_ID,
         features,
@@ -406,7 +406,8 @@ fn parse_cfg_attr_internal<'a>(
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,
     )
-    .ok_or_else(|| {
+    .map_err(|_err: ErrorGuaranteed| {
+        // We have an `ErrorGuaranteed` so this delayed bug cannot fail, but we need a `Diag` for the `PResult` so we make one anyways
         let mut diag = sess.dcx().struct_err(
             "cfg_entry parsing failing with `ShouldEmit::ErrorsAndLints` should emit a error.",
         );
