@@ -1,5 +1,5 @@
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
-  --> $DIR/attr-bad-meta-4.rs:11:17
+  --> $DIR/attr-bad-meta-4.rs:13:17
    |
 LL | #[cfg(feature = -1)]
    |                 ^
@@ -10,16 +10,28 @@ LL - #[cfg(feature = -1)]
 LL + #[cfg(feature = 1)]
    |
 
-error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `meta` metavariable
-  --> $DIR/attr-bad-meta-4.rs:3:15
+error: expected one of `(`, `)`, `,`, `::`, or `=`, found `token`
+  --> $DIR/attr-bad-meta-4.rs:8:19
    |
-LL |         #[cfg($attr_item)]
-   |               ^^^^^^^^^^
-...
 LL | mac!(an(arbitrary token stream));
-   | -------------------------------- in this macro invocation
+   |                  -^^^^^ expected one of `(`, `)`, `,`, `::`, or `=`
+   |                  |
+   |                  help: missing `,`
+
+error: expected one of `(`, `)`, `,`, `::`, or `=`, found `stream`
+  --> $DIR/attr-bad-meta-4.rs:8:25
    |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL | mac!(an(arbitrary token stream));
+   |                        -^^^^^^ expected one of `(`, `)`, `,`, `::`, or `=`
+   |                        |
+   |                        help: missing `,`
 
-error: aborting due to 2 previous errors
+error[E0537]: invalid predicate `an`
+  --> $DIR/attr-bad-meta-4.rs:8:6
+   |
+LL | mac!(an(arbitrary token stream));
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0537`.
