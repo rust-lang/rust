@@ -8,4 +8,4 @@ description = """
 crate for integration of crates.io crates into rust-lang/rust standard library workspace
 """
 
-repository = "https://github.com/rust-lang/rust/tree/master/src/rustc-std-workspace"
+repository = "https://github.com/rust-lang/rust/tree/HEAD/src/rustc-std-workspace"

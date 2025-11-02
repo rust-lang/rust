@@ -162,7 +162,7 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
 
-# Main CI jobs that have to be green to merge a commit into master.
+# Main CI jobs that have to be green to merge a commit into the default branch.
 #
 # These jobs automatically inherit envs.auto, to avoid repeating it in each job
 # definition.

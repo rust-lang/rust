@@ -2422,7 +2422,7 @@ See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuri
 ## `single_line_let_else_max_width`
 
 Maximum line length for single line let-else statements.
-See the [let-else statement section of the Rust Style Guide](https://github.com/rust-lang/rust/blob/master/src/doc/style-guide/src/statements.md#else-blocks-let-else-statements) for more details on when a let-else statement may be written on a single line.
+See the [let-else statement section of the Rust Style Guide](https://github.com/rust-lang/rust/blob/HEAD/src/doc/style-guide/src/statements.md#else-blocks-let-else-statements) for more details on when a let-else statement may be written on a single line.
 A value of `0` (zero) means the divergent `else` block will always be formatted over multiple lines.
 Note this occurs when `use_small_heuristics` is set to `Off`.
 

@@ -375,8 +375,8 @@ After the edition team has given the go-ahead, the process for stabilizing an ed
 - Update [`LATEST_STABLE_EDITION`].
 - Update [`Edition::is_stable`].
 - Hunt and find any document that refers to edition by number, and update it:
-    - [`--edition` flag](https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
-    - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/master/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
+    - [`--edition` flag](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
+    - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
 - Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable. Note: Ideally this should be automated, see [#133582].
 - Bless any tests that change.
 - Update `lint-docs` to default to the new edition.

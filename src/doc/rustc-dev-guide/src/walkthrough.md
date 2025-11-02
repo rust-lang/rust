@@ -271,4 +271,4 @@ about the feature.
 
 Steps to stabilize the feature can be found at [Stabilizing Features](./stabilization_guide.md).
 
-[relnotes]: https://github.com/rust-lang/rust/blob/master/RELEASES.md
+[relnotes]: https://github.com/rust-lang/rust/blob/HEAD/RELEASES.md

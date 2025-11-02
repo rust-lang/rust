@@ -12,14 +12,14 @@ the resulting program](#controlling-passfail-expectations) to verify its
 behavior.
 
 For a survey of each subdirectory's purpose under `tests/ui`, consult the
-[SUMMARY.md](https://github.com/rust-lang/rust/tree/master/tests/ui/SUMMARY.md).
+[SUMMARY.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/SUMMARY.md).
 This is useful if you write a new test, and are looking for a category to
 place it in.
 
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/ui`]: https://github.com/rust-lang/rust/blob/master/tests/ui
+[`tests/ui`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui
 
 ## General structure of a test
 
@@ -174,8 +174,8 @@ The corresponding reference file will use the normalized output to test both
 Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`] for a concrete
 usage example.
 
-[mrs]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.rs
-[`main.stderr`]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.stderr
+[mrs]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/transmute/main.rs
+[`main.stderr`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui/transmute/main.stderr
 
 ## Error annotations
 
@@ -548,7 +548,7 @@ For example, if your test is related to closures, you should put it in
 `tests/ui/closures`. When you reach the limit, you could increase it by tweaking
 [here][ui test tidy].
 
-[ui test tidy]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/src/ui_tests.rs
+[ui test tidy]: https://github.com/rust-lang/rust/blob/HEAD/src/tools/tidy/src/ui_tests.rs
 
 ## Rustfix tests
 

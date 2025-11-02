@@ -24,7 +24,7 @@ The [Compiletest chapter][compiletest] goes into detail on how to use this tool.
 > Example: `./x test tests/ui`
 
 [compiletest]: compiletest.md
-[`tests`]: https://github.com/rust-lang/rust/tree/master/tests
+[`tests`]: https://github.com/rust-lang/rust/tree/HEAD/tests
 
 ### Package tests
 
@@ -64,7 +64,7 @@ package tests:
 * `--doc` — Only runs documentation tests in the package.
 * `--no-doc` — Run all tests *except* documentation tests.
 
-[tidy-unit-tests]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/src/unit_tests.rs
+[tidy-unit-tests]: https://github.com/rust-lang/rust/blob/HEAD/src/tools/tidy/src/unit_tests.rs
 
 ### Tidy
 
@@ -74,7 +74,7 @@ conventions, such as rejecting long lines. There is more information in the
 
 > Examples: `./x test tidy`
 
-[Tidy Readme]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/Readme.md
+[Tidy Readme]: https://github.com/rust-lang/rust/blob/HEAD/src/tools/tidy/Readme.md
 
 
 ### Formatting
@@ -142,7 +142,7 @@ In CI, some tools are allowed to fail. Failures send notifications to the
 corresponding teams, and is tracked on the [toolstate website]. More information
 can be found in the [toolstate documentation].
 
-[`src/tools`]: https://github.com/rust-lang/rust/tree/master/src/tools/
+[`src/tools`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/
 [toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 
