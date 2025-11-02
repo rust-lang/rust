@@ -4,6 +4,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{self, DeprecatedSince};
@@ -987,4 +988,56 @@ fn format_integer_type(it: rustc_abi::IntegerType) -> String {
         Fixed(I128, false) => "u128",
     }
     .to_owned()
+}
+
+pub(super) fn target(sess: &rustc_session::Session) -> Target {
+    // Build a set of which features are enabled on this target
+    let globally_enabled_features: FxHashSet<&str> =
+        sess.unstable_target_features.iter().map(|name| name.as_str()).collect();
+
+    // Build a map of target feature stability by feature name
+    use rustc_target::target_features::Stability;
+    let feature_stability: FxHashMap<&str, Stability> = sess
+        .target
+        .rust_target_features()
+        .iter()
+        .copied()
+        .map(|(name, stability, _)| (name, stability))
+        .collect();
+
+    Target {
+        triple: sess.opts.target_triple.tuple().into(),
+        target_features: sess
+            .target
+            .rust_target_features()
+            .iter()
+            .copied()
+            .filter(|(_, stability, _)| {
+                // Describe only target features which the user can toggle
+                stability.toggle_allowed().is_ok()
+            })
+            .map(|(name, stability, implied_features)| {
+                TargetFeature {
+                    name: name.into(),
+                    unstable_feature_gate: match stability {
+                        Stability::Unstable(feature_gate) => Some(feature_gate.as_str().into()),
+                        _ => None,
+                    },
+                    implies_features: implied_features
+                        .iter()
+                        .copied()
+                        .filter(|name| {
+                            // Imply only target features which the user can toggle
+                            feature_stability
+                                .get(name)
+                                .map(|stability| stability.toggle_allowed().is_ok())
+                                .unwrap_or(false)
+                        })
+                        .map(String::from)
+                        .collect(),
+                    globally_enabled: globally_enabled_features.contains(name),
+                }
+            })
+            .collect(),
+    }
 }
