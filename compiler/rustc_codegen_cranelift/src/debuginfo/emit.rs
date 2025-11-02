@@ -93,8 +93,11 @@ impl WriterRelocate {
                         // HACK rust_eh_personality is likely not defined in the same crate,
                         // so get_finalized_function won't work. Use the rust_eh_personality
                         // of cg_clif itself, which is likely ABI compatible.
-                        if jit_module.declarations().get_function_decl(func_id).name.as_deref()
-                            == Some("rust_eh_personality")
+                        if jit_module
+                            .declarations()
+                            .get_function_decl(func_id)
+                            .name
+                            .is_some_and(|name| name.ends_with("rust_eh_personality"))
                         {
                             unsafe extern "C" {
                                 fn rust_eh_personality() -> !;
