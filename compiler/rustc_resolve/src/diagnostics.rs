@@ -576,9 +576,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sugg: None,
                     static_or_const,
                     is_self,
-                    item: inner_item.map(|(span, kind)| errs::GenericParamsFromOuterItemInnerItem {
-                        span,
-                        descr: kind.descr().to_string(),
+                    item: inner_item.as_ref().map(|(span, kind)| {
+                        errs::GenericParamsFromOuterItemInnerItem {
+                            span: *span,
+                            descr: kind.descr().to_string(),
+                        }
                     }),
                 };
 
@@ -613,7 +615,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 };
 
-                if let HasGenericParams::Yes(span) = has_generic_params {
+                if let HasGenericParams::Yes(span) = has_generic_params
+                    && !matches!(inner_item, Some((_, ItemKind::Delegation(..))))
+                {
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{name}>");
