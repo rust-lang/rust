@@ -839,6 +839,34 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         )) {
             diag.downgrade_to_delayed_bug();
         }
+        for candidate in self.find_similar_impl_candidates(trait_ref) {
+            let CandidateSimilarity::Exact { .. } = candidate.similarity else { continue };
+            let impl_did = candidate.impl_def_id;
+            let trait_did = candidate.trait_ref.def_id;
+            let impl_span = self.tcx.def_span(impl_did);
+            let trait_name = self.tcx.item_name(trait_did);
+
+            if self.tcx.is_const_trait(trait_did) && !self.tcx.is_const_trait_impl(impl_did) {
+                if let Some(impl_did) = impl_did.as_local()
+                    && let item = self.tcx.hir_expect_item(impl_did)
+                    && let hir::ItemKind::Impl(item) = item.kind
+                    && let Some(of_trait) = item.of_trait
+                {
+                    // trait is const, impl is local and not const
+                    diag.span_suggestion_verbose(
+                        of_trait.trait_ref.path.span.shrink_to_lo(),
+                        format!("make the `impl` of trait `{trait_name}` `const`"),
+                        "const ".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    diag.span_note(
+                        impl_span,
+                        format!("trait `{trait_name}` is implemented but not `const`"),
+                    );
+                }
+            }
+        }
         diag
     }
 

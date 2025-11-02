@@ -4,6 +4,11 @@ error[E0015]: cannot call non-const function `Y::foo` in statics
 LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: function `foo` is not const
+  --> $DIR/issue-16538.rs:6:5
+   |
+LL |     pub fn foo(value: *const X) -> *const X {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 

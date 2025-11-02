@@ -3,6 +3,11 @@ error[E0277]: the trait bound `(): const Tr` is not satisfied
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: make the `impl` of trait `Tr` `const`
+   |
+LL | impl const Tr for () {
+   |      +++++
 
 error: aborting due to 1 previous error
 

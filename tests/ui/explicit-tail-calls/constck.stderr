@@ -4,6 +4,11 @@ error[E0015]: cannot call non-const function `not_const` in constant functions
 LL |         become not_const();
    |                ^^^^^^^^^^^
    |
+note: function `not_const` is not const
+  --> $DIR/constck.rs:18:1
+   |
+LL | fn not_const() {}
+   | ^^^^^^^^^^^^^^
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const function `not_const` in constant functions
@@ -12,6 +17,11 @@ error[E0015]: cannot call non-const function `not_const` in constant functions
 LL |         become yes_const(not_const());
    |                          ^^^^^^^^^^^
    |
+note: function `not_const` is not const
+  --> $DIR/constck.rs:18:1
+   |
+LL | fn not_const() {}
+   | ^^^^^^^^^^^^^^
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors

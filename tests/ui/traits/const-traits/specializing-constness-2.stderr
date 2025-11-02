@@ -3,6 +3,11 @@ error[E0277]: the trait bound `T: [const] A` is not satisfied
    |
 LL |     <T as A>::a();
    |      ^
+   |
+help: make the `impl` of trait `A` `const`
+   |
+LL | impl<T: Default> const A for T {
+   |                  +++++
 
 error: aborting due to 1 previous error
 
