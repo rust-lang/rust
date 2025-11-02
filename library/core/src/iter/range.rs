@@ -1031,9 +1031,9 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     }
 }
 
-// Safety: See above implementation for `ops::Range<A>`
+// Safety: RangeFrom::next() cannot return None
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: TrustedStep> TrustedLen for ops::RangeFrom<A> {}
+unsafe impl<A: Step> TrustedLen for ops::RangeFrom<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
