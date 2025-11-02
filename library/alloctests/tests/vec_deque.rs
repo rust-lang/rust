@@ -2081,3 +2081,46 @@ fn test_extend_and_prepend_from_within() {
     v.extend_from_within(..);
     assert_eq!(v.iter().map(|s| &**s).collect::<String>(), "123123123123");
 }
+
+#[test]
+fn test_extend_front() {
+    let mut v = VecDeque::new();
+    v.extend_front(0..3);
+    assert_eq!(v, [2, 1, 0]);
+    v.extend_front(3..6);
+    assert_eq!(v, [5, 4, 3, 2, 1, 0]);
+    v.prepend([1; 4]);
+    assert_eq!(v, [1, 1, 1, 1, 5, 4, 3, 2, 1, 0]);
+
+    let mut v = VecDeque::with_capacity(8);
+    let cap = v.capacity();
+    v.extend(0..4);
+    v.truncate_front(2);
+    v.extend_front(4..8);
+    assert_eq!(v.as_slices(), ([7, 6].as_slice(), [5, 4, 2, 3].as_slice()));
+    assert_eq!(v.capacity(), cap);
+
+    let mut v = VecDeque::new();
+    v.extend_front([]);
+    v.extend_front(None);
+    v.extend_front(vec![]);
+    v.prepend([]);
+    v.prepend(None);
+    v.prepend(vec![]);
+    assert_eq!(v.capacity(), 0);
+    v.extend_front(Some(123));
+    assert_eq!(v, [123]);
+}
+
+#[test]
+fn test_extend_front_specialization() {
+    let mut v = VecDeque::with_capacity(4);
+    v.prepend(vec![1, 2, 3]);
+    assert_eq!(v, [1, 2, 3]);
+    v.pop_front();
+    v.prepend((-4..2).collect::<Vec<_>>());
+    assert_eq!(v, (-4..=3).collect::<Vec<_>>());
+    v.clear();
+    v.extend_front(vec![1, 2, 3]);
+    assert_eq!(v, [3, 2, 1]);
+}
