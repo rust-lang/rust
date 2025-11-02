@@ -841,7 +841,8 @@ impl<T> [T] {
     /// Gets a reference to the underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -859,7 +860,8 @@ impl<T> [T] {
     /// Gets a mutable reference to the slice's underlying array.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "core_slice_as_array", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {

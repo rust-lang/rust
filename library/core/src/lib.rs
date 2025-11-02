@@ -121,7 +121,6 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
-#![feature(slice_as_array)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
