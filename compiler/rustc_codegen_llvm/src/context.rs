@@ -984,7 +984,14 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 tcx.sess.pointer_authentication_functions(),
             ),
             _ => {
-                let name = name.unwrap_or("rust_eh_personality");
+                let mangled_symbol;
+                let name = match name {
+                    Some(name) => name,
+                    None => {
+                        mangled_symbol = rustc_symbol_mangling::eh_personality_symbol(tcx);
+                        mangled_symbol.as_str()
+                    }
+                };
                 if let Some(llfn) = self.get_declared_value(name) {
                     llfn
                 } else {
