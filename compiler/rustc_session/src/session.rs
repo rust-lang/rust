@@ -126,6 +126,10 @@ pub struct Session {
     /// drown everything else in noise.
     miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,
 
+    /// Whether the codegen backend supports mangling of the personality.
+    /// See `CodegenBackend::can_mangle_eh_personality`.
+    pub codegen_backend_supports_eh_personality_mangling: bool,
+
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
 
@@ -970,6 +974,7 @@ pub fn build_session(
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
     using_internal_features: &'static AtomicBool,
+    codegen_backend_supports_eh_personality_mangling: bool,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1084,6 +1089,7 @@ pub fn build_session(
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
+        codegen_backend_supports_eh_personality_mangling,
         asm_arch,
         target_features: Default::default(),
         unstable_target_features: Default::default(),

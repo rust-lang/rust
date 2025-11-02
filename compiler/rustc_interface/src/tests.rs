@@ -79,6 +79,7 @@ where
             "",
             None,
             &USING_INTERNAL_FEATURES,
+            true,
         );
         let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
         let cfg = build_configuration(&sess, cfg);
