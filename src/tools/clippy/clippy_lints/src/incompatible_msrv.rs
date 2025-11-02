@@ -81,7 +81,7 @@ pub struct IncompatibleMsrv {
     msrv: Msrv,
     availability_cache: FxHashMap<(DefId, bool), Availability>,
     check_in_tests: bool,
-    core_crate: Option<CrateNum>,
+    stdlib_crates: Vec<CrateNum>,
 
     // The most recently called path. Used to skip checking the path after it's
     // been checked when visiting the call expression.
@@ -96,11 +96,15 @@ impl IncompatibleMsrv {
             msrv: conf.msrv,
             availability_cache: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
-            core_crate: tcx
+            stdlib_crates: tcx
                 .crates(())
                 .iter()
-                .find(|krate| tcx.crate_name(**krate) == sym::core)
-                .copied(),
+                .filter(|krate| {
+                    let name = tcx.crate_name(**krate);
+                    name == sym::core || name == sym::alloc || name == sym::std
+                })
+                .copied()
+                .collect(),
             called_path: None,
         }
     }
@@ -162,10 +166,14 @@ impl IncompatibleMsrv {
             // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
             return;
         }
-        // Functions coming from `core` while expanding a macro such as `assert*!()` get to cheat too: the
-        // macros may have existed prior to the checked MSRV, but their expansion with a recent compiler
-        // might use recent functions or methods. Compiling with an older compiler would not use those.
-        if Some(def_id.krate) == self.core_crate && expn_data.macro_def_id.map(|did| did.krate) == self.core_crate {
+        // Functions coming from standard library crates while expanding a macro such as
+        // `assert*!()` get to cheat too: the macros may have existed prior to the checked MSRV, but
+        // their expansion with a recent compiler might use recent functions or methods. Compiling
+        // with an older compiler would not use those.
+        if self.stdlib_crates.contains(&def_id.krate)
+            && let Some(did) = expn_data.macro_def_id
+            && self.stdlib_crates.contains(&did.krate)
+        {
             return;
         }
 
