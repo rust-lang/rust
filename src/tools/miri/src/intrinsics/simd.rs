@@ -1,5 +1,3 @@
-use rand::Rng;
-use rustc_apfloat::Float;
 use rustc_middle::ty;
 use rustc_middle::ty::FloatTy;
 
@@ -80,62 +78,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         FloatTy::F128 => unimplemented!("f16_f128"),
                     };
 
-                    this.write_scalar(val, &dest)?;
-                }
-            }
-            "fma" | "relaxed_fma" => {
-                let [a, b, c] = check_intrinsic_arg_count(args)?;
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (c, c_len) = this.project_to_simd(c)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, a_len);
-                assert_eq!(dest_len, b_len);
-                assert_eq!(dest_len, c_len);
-
-                for i in 0..dest_len {
-                    let a = this.read_scalar(&this.project_index(&a, i)?)?;
-                    let b = this.read_scalar(&this.project_index(&b, i)?)?;
-                    let c = this.read_scalar(&this.project_index(&c, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let fuse: bool = intrinsic_name == "fma"
-                        || (this.machine.float_nondet && this.machine.rng.get_mut().random());
-
-                    // Works for f32 and f64.
-                    // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
-                    let ty::Float(float_ty) = dest.layout.ty.kind() else {
-                        span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
-                    };
-                    let val = match float_ty {
-                        FloatTy::F16 => unimplemented!("f16_f128"),
-                        FloatTy::F32 => {
-                            let a = a.to_f32()?;
-                            let b = b.to_f32()?;
-                            let c = c.to_f32()?;
-                            let res = if fuse {
-                                a.mul_add(b, c).value
-                            } else {
-                                ((a * b).value + c).value
-                            };
-                            let res = this.adjust_nan(res, &[a, b, c]);
-                            Scalar::from(res)
-                        }
-                        FloatTy::F64 => {
-                            let a = a.to_f64()?;
-                            let b = b.to_f64()?;
-                            let c = c.to_f64()?;
-                            let res = if fuse {
-                                a.mul_add(b, c).value
-                            } else {
-                                ((a * b).value + c).value
-                            };
-                            let res = this.adjust_nan(res, &[a, b, c]);
-                            Scalar::from(res)
-                        }
-                        FloatTy::F128 => unimplemented!("f16_f128"),
-                    };
                     this.write_scalar(val, &dest)?;
                 }
             }
