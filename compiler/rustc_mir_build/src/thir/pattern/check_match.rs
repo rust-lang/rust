@@ -443,18 +443,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
-            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span))
-        } else {
-            let Ok(refutability) = self.is_let_irrefutable(pat, scrut) else { return };
-            if matches!(refutability, Irrefutable) {
-                report_irrefutable_let_patterns(
-                    self.tcx,
-                    self.lint_level,
-                    self.let_source,
-                    1,
-                    span,
-                );
-            }
+            self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
+        } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
+            self.lint_single_let(span);
         }
     }
 
