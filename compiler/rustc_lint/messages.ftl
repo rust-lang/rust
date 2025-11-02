@@ -181,6 +181,16 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
+lint_cargo_cfg_target_family_multivalued_comparison =
+    comparing against `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+    .note = `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+    .suggestion = compare against each family instead
+
+lint_cargo_cfg_target_family_multivalued_match =
+    matching on `CARGO_CFG_TARGET_FAMILY` directly may break in the future
+    .note = `CARGO_CFG_TARGET_FAMILY` can contain multiple comma-separated values
+    .suggestion = compare against each family instead
+
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
