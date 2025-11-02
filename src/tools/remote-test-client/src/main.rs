@@ -11,11 +11,15 @@ use std::io::{self, BufWriter};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{env, thread};
 
 const REMOTE_ADDR_ENV: &str = "TEST_DEVICE_ADDR";
 const DEFAULT_ADDR: &str = "127.0.0.1:12345";
+
+const CONNECT_TIMEOUT_ENV: &str = "TEST_DEVICE_CONNECT_TIMEOUT_SECONDS";
+/// The default timeout is high to not break slow CI or slow device starts.
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_mins(30);
 
 macro_rules! t {
     ($e:expr) => {
@@ -56,6 +60,17 @@ fn main() {
     }
 }
 
+fn connect_timeout() -> Duration {
+    match env::var(CONNECT_TIMEOUT_ENV).ok() {
+        Some(timeout) => timeout.parse().map(Duration::from_secs).unwrap_or_else(|e| {
+            panic!(
+                "error: parsing `{CONNECT_TIMEOUT_ENV}` value \"{timeout}\" as seconds failed: {e}"
+            )
+        }),
+        None => DEFAULT_CONNECT_TIMEOUT,
+    }
+}
+
 fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<PathBuf>) {
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
 
@@ -69,7 +84,10 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
     }
 
     // Wait for the emulator to come online
-    loop {
+    let timeout = connect_timeout();
+    let mut successful_read = false;
+    let start_time = Instant::now();
+    while start_time.elapsed() < timeout {
         let dur = Duration::from_millis(2000);
         if let Ok(mut client) = TcpStream::connect(&device_address) {
             t!(client.set_read_timeout(Some(dur)));
@@ -77,11 +95,16 @@ fn spawn_emulator(target: &str, server: &Path, tmpdir: &Path, rootfs: Option<Pat
             if client.write_all(b"ping").is_ok() {
                 let mut b = [0; 4];
                 if client.read_exact(&mut b).is_ok() {
+                    successful_read = true;
                     break;
                 }
             }
         }
         thread::sleep(dur);
+    }
+
+    if !successful_read {
+        panic!("Gave up trying to connect to test device at {device_address} after {timeout:?}");
     }
 }
 
