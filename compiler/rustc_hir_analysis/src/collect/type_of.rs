@@ -345,7 +345,7 @@ pub(super) fn type_of_opaque(
     def_id: DefId,
 ) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     if let Some(def_id) = def_id.as_local() {
-        Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+        Ok(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
                 opaque::find_opaque_ty_constraints_for_tait(
                     tcx,
@@ -378,7 +378,7 @@ pub(super) fn type_of_opaque(
                     DefiningScopeKind::MirBorrowck,
                 )
             }
-        }))
+        })
     } else {
         // Foreign opaque type will go through the foreign provider
         // and load the type from metadata.
@@ -390,7 +390,7 @@ pub(super) fn type_of_opaque_hir_typeck(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, Ty<'_>> {
-    ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+    match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
         hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
             opaque::find_opaque_ty_constraints_for_tait(tcx, def_id, DefiningScopeKind::HirTypeck)
         }
@@ -419,7 +419,7 @@ pub(super) fn type_of_opaque_hir_typeck(
                 DefiningScopeKind::HirTypeck,
             )
         }
-    })
+    }
 }
 
 fn infer_placeholder_type<'tcx>(

@@ -148,7 +148,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         self.typeck_results
             .hidden_types
             .get(&key.def_id)
-            .map(|x| ty::EarlyBinder::bind(x.ty).instantiate(self.tcx, key.args))
+            .map(|x| x.ty.instantiate(self.tcx, key.args))
     }
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
