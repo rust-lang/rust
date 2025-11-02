@@ -151,6 +151,11 @@ impl System {
 
     // SAFETY: Same as `Allocator::grow`
     #[inline]
+    #[core::contracts::requires(
+        new_layout.size() >= old_layout.size() &&
+        ptr.as_ptr().is_aligned_to(old_layout.align()) &&
+        (old_layout.size() == 0 || old_layout.align() != 0) &&
+        (new_layout.size() == 0 || new_layout.align() != 0))]
     unsafe fn grow_impl(
         &self,
         ptr: NonNull<u8>,
@@ -213,6 +218,7 @@ unsafe impl Allocator for System {
     }
 
     #[inline]
+    #[core::contracts::requires(layout.size() != 0)]
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         if layout.size() != 0 {
             // SAFETY: `layout` is non-zero in size,
@@ -222,6 +228,7 @@ unsafe impl Allocator for System {
     }
 
     #[inline]
+    #[core::contracts::requires(new_layout.size() >= old_layout.size())]
     unsafe fn grow(
         &self,
         ptr: NonNull<u8>,
@@ -233,6 +240,7 @@ unsafe impl Allocator for System {
     }
 
     #[inline]
+    #[core::contracts::requires(new_layout.size() >= old_layout.size())]
     unsafe fn grow_zeroed(
         &self,
         ptr: NonNull<u8>,
@@ -244,6 +252,7 @@ unsafe impl Allocator for System {
     }
 
     #[inline]
+    #[core::contracts::requires(new_layout.size() <= old_layout.size())]
     unsafe fn shrink(
         &self,
         ptr: NonNull<u8>,
@@ -395,6 +404,7 @@ pub mod __default_lib_allocator {
     // ABI
 
     #[rustc_std_internal_symbol]
+    #[core::contracts::requires(align.is_power_of_two())]
     pub unsafe extern "C" fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::alloc`.
@@ -405,6 +415,7 @@ pub mod __default_lib_allocator {
     }
 
     #[rustc_std_internal_symbol]
+    #[core::contracts::requires(align.is_power_of_two())]
     pub unsafe extern "C" fn __rdl_dealloc(ptr: *mut u8, size: usize, align: usize) {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::dealloc`.
@@ -412,6 +423,7 @@ pub mod __default_lib_allocator {
     }
 
     #[rustc_std_internal_symbol]
+    #[core::contracts::requires(align.is_power_of_two())]
     pub unsafe extern "C" fn __rdl_realloc(
         ptr: *mut u8,
         old_size: usize,
@@ -427,6 +439,7 @@ pub mod __default_lib_allocator {
     }
 
     #[rustc_std_internal_symbol]
+    #[core::contracts::requires(align.is_power_of_two())]
     pub unsafe extern "C" fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         // SAFETY: see the guarantees expected by `Layout::from_size_align` and
         // `GlobalAlloc::alloc_zeroed`.

@@ -875,6 +875,7 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[core::contracts::requires(self.is_finite())]
     pub unsafe fn to_int_unchecked<Int>(self) -> Int
     where
         Self: FloatToInt<Int>,

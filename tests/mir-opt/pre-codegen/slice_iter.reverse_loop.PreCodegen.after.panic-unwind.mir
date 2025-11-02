@@ -60,15 +60,23 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                             scope 32 {
                                 scope 35 (inlined NonNull::<T>::sub) {
                                     scope 36 (inlined #[track_caller] core::num::<impl isize>::unchecked_neg) {
-                                        scope 37 (inlined core::ub_checks::check_language_ub) {
-                                            scope 38 (inlined core::ub_checks::check_language_ub::runtime) {
+                                        scope 37 {
+                                            scope 38 {
+                                                scope 39 {
+                                                }
+                                            }
+                                            scope 41 (inlined core::ub_checks::check_language_ub) {
+                                                scope 42 (inlined core::ub_checks::check_language_ub::runtime) {
+                                                }
                                             }
                                         }
+                                        scope 40 (inlined core::contracts::build_check_ensures::<isize, {closure@core::num::<impl isize>::unchecked_neg::{closure#1}}>) {
+                                        }
                                     }
-                                    scope 39 (inlined NonNull::<T>::offset) {
+                                    scope 43 (inlined NonNull::<T>::offset) {
                                         let mut _24: *const T;
                                         let mut _25: *const T;
-                                        scope 40 (inlined NonNull::<T>::as_ptr) {
+                                        scope 44 (inlined NonNull::<T>::as_ptr) {
                                         }
                                     }
                                 }
@@ -79,11 +87,11 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                             }
                         }
                     }
-                    scope 41 (inlined NonNull::<T>::as_ref::<'_>) {
+                    scope 45 (inlined NonNull::<T>::as_ref::<'_>) {
                         let _31: *const T;
-                        scope 42 (inlined NonNull::<T>::as_ptr) {
+                        scope 46 (inlined NonNull::<T>::as_ptr) {
                         }
-                        scope 43 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                        scope 47 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
                         }
                     }
                 }

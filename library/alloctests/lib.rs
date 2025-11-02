@@ -11,6 +11,8 @@
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
+// permit use of experimental feature contracts
+#![allow(incomplete_features)]
 //
 // Library features:
 // tidy-alphabetical-start
@@ -20,6 +22,7 @@
 #![feature(assert_matches)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
+#![feature(contracts)]
 #![feature(core_intrinsics)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]

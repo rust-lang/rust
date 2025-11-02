@@ -138,6 +138,8 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(initialized.start <= initialized.end && initialized.end <= N)]
     pub const unsafe fn new_unchecked(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
@@ -279,6 +281,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     }
 
     #[inline]
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: The caller must provide an idx that is in bound of the remainder.
         let elem_ref = unsafe { self.as_mut_slice().get_unchecked_mut(idx) };

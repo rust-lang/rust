@@ -349,6 +349,14 @@ impl<T: PointeeSized> *mut T {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
+    // Note: It is the caller's responsibility to ensure that `self` is non-null and properly aligned.
+    // These conditions are not verified as part of the preconditions.
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Precondition 1: the computed offset `count * size_of::<T>()` does not overflow `isize`.
+        // Precondition 2: adding the computed offset to `self` does not cause overflow.
+        count.checked_mul(core::mem::size_of::<T>() as isize).is_some_and(
+            |computed_offset| (self as isize).checked_add(computed_offset).is_some()))]
     pub const unsafe fn offset(self, count: isize) -> *mut T
     where
         T: Sized,
@@ -790,6 +798,17 @@ impl<T: PointeeSized> *mut T {
     #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Ensuring that subtracting 'origin' from 'self' doesn't result in an overflow
+        (self as isize).checked_sub(origin as isize).is_some() &&
+        // Ensuring that the distance between 'self' and 'origin' is aligned to `T`
+        (self as isize - origin as isize) % (mem::size_of::<T>() as isize) == 0)]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result|
+    //     core::mem::size_of::<T>() == 0 ||
+    //     (*result == (self as isize - origin as isize) / (mem::size_of::<T>() as isize)))]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
@@ -924,6 +943,16 @@ impl<T: PointeeSized> *mut T {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
+    // Note: It is the caller's responsibility to ensure that `self` is non-null and properly
+    // aligned. These conditions are not verified as part of the preconditions.
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Precondition 1: the computed offset `count * size_of::<T>()` does not overflow `isize`.
+        // Precondition 2: adding the computed offset to `self` does not cause overflow.
+        count.checked_mul(core::mem::size_of::<T>()).is_some_and(
+            |computed_offset|
+            computed_offset <= isize::MAX as usize &&
+            (self as isize).checked_add(computed_offset as isize).is_some()))]
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -1030,6 +1059,16 @@ impl<T: PointeeSized> *mut T {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
     #[track_caller]
+    // Note: It is the caller's responsibility to ensure that `self` is non-null and properly
+    // aligned. These conditions are not verified as part of the preconditions.
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Precondition 1: the computed offset `count * size_of::<T>()` does not overflow `isize`.
+        // Precondition 2: subtracting the computed offset from `self` does not cause overflow.
+        count.checked_mul(core::mem::size_of::<T>()).is_some_and(
+            |computed_offset|
+            computed_offset <= isize::MAX as usize &&
+            (self as isize).checked_sub(computed_offset as isize).is_some()))]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,

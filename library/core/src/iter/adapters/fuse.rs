@@ -109,6 +109,8 @@ where
     }
 
     #[inline]
+    #[core::contracts::requires(
+        self.iter.is_some() && idx < self.iter.as_ref().unwrap().size_hint().0)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,

@@ -4053,6 +4053,25 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     #[must_use]
+    // FIXME: requires `&self` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |(prefix, middle, suffix): &(&[T], &[U], &[T])|
+    //     // The following clause guarantees that middle is of maximum size within self If U or T are
+    //     // ZSTs, then middle has size zero, so we adapt the check in that case
+    //     (((U::IS_ZST || T::IS_ZST) && prefix.len() == self.len()) || (
+    //         prefix.len() * size_of::<T>() < align_of::<U>() &&
+    //         suffix.len() * size_of::<T>() < size_of::<U>()
+    //     )) &&
+    //     // Either align_to just returns self in the prefix, or the 3 returned slices should be
+    //     // sequential, contiguous, and have same total length as self
+    //     prefix.as_ptr() == self.as_ptr() && (
+    //         prefix.len() == self.len() || (
+    //             unsafe { prefix.as_ptr().add(prefix.len()) } as *const u8 ==
+    //                 middle.as_ptr() as *const u8 &&
+    //             unsafe { middle.as_ptr().add(middle.len()) } as *const u8 ==
+    //                 suffix.as_ptr() as *const u8 &&
+    //             unsafe { suffix.as_ptr().add(suffix.len()) } ==
+    //                 unsafe { self.as_ptr().add(self.len()) })))]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
         if U::IS_ZST || T::IS_ZST {

@@ -127,6 +127,9 @@ impl<T: Sized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.36.0")]
     #[must_use]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        |result: &NonNull<T>| !result.pointer.is_null() && result.pointer.is_aligned())]
     pub const fn dangling() -> Self {
         let align = crate::ptr::Alignment::of::<T>();
         NonNull::without_provenance(align.as_nonzero())
@@ -165,6 +168,10 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &&'a MaybeUninit<T>| core::ptr::eq(*result, self.cast().as_ptr()))]
     pub const unsafe fn as_uninit_ref<'a>(self) -> &'a MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -188,6 +195,10 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &&mut MaybeUninit<T>| core::ptr::eq(*result, self.cast().as_ptr()))]
     pub const unsafe fn as_uninit_mut<'a>(self) -> &'a mut MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -230,6 +241,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
     #[inline]
     #[track_caller]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(!ptr.is_null())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(move |result: &Self| result.as_ptr() == ptr)]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
@@ -266,6 +281,12 @@ impl<T: PointeeSized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_new", since = "1.85.0")]
     #[inline]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &Option<Self>|
+    //     result.is_some() == !ptr.is_null() &&
+    //     (result.is_none() || result.expect("ptr is null!").as_ptr() == ptr))]
     pub const fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
             // SAFETY: The pointer is already checked and is not null
@@ -301,6 +322,8 @@ impl<T: PointeeSized> NonNull<T> {
     /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|result: &NonNull<T>| !result.pointer.is_null())]
     pub const fn from_raw_parts(
         data_pointer: NonNull<impl super::Thin>,
         metadata: <T as super::Pointee>::Metadata,
@@ -318,6 +341,12 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |(data_ptr, _): &(NonNull<()>, <T as super::Pointee>::Metadata)|
+    //     !data_ptr.as_ptr().is_null() &&
+    //     self.as_ptr() as *const () == data_ptr.as_ptr() as *const ())]
     pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self.as_ptr()))
     }
@@ -330,6 +359,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use]
     #[inline]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &NonZero<usize>| result.get() == self.as_ptr() as *const() as usize)]
     pub fn addr(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
@@ -358,6 +390,7 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use]
     #[inline]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
+    #[core::contracts::ensures(move |result: &Self| result.addr() == addr)]
     pub fn with_addr(self, addr: NonZero<usize>) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
         unsafe { NonNull::new_unchecked(self.as_ptr().with_addr(addr.get()) as *mut _) }
@@ -398,6 +431,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_never_returns_null_ptr]
     #[must_use]
     #[inline(always)]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |result: &*mut T| *result == self.pointer as *mut T)]
     pub const fn as_ptr(self) -> *mut T {
         // This is a transmute for the same reasons as `NonZero::get`.
 
@@ -437,6 +473,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
     #[inline(always)]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |result: &&T| core::ptr::eq(*result, self.as_ptr()))]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -475,6 +514,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[rustc_const_stable(feature = "const_ptr_as_ref", since = "1.83.0")]
     #[must_use]
     #[inline(always)]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(|result: &&'a mut T| core::ptr::eq(*result, self.as_ptr()))]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
@@ -499,6 +541,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &NonNull<U>| result.as_ptr().addr() == self.as_ptr().addr())]
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
@@ -572,6 +618,14 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>() as isize).is_some() &&
+        (self.as_ptr() as isize).checked_add(
+            count.wrapping_mul(core::mem::size_of::<T>() as isize)).is_some())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &Self| result.as_ptr() == self.as_ptr().wrapping_offset(count))]
     pub const unsafe fn offset(self, count: isize) -> Self
     where
         T: Sized,
@@ -598,6 +652,11 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires((self.as_ptr().addr() as isize).checked_add(count).is_some())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &Self| result.as_ptr() == self.as_ptr().wrapping_byte_offset(count))]
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset` and `byte_offset` has
         // the same safety contract.
@@ -648,6 +707,15 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).is_some() &&
+        count * core::mem::size_of::<T>() <= isize::MAX as usize &&
+        (self.pointer as isize).checked_add(
+            count as isize * core::mem::size_of::<T>() as isize).is_some())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &Self| result.as_ptr() == unsafe { self.as_ptr().offset(count as isize) })]
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -725,6 +793,14 @@ impl<T: PointeeSized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).is_some() &&
+        count * core::mem::size_of::<T>() <= isize::MAX as usize)]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &NonNull<T>|
+    //     result.as_ptr() == unsafe { self.as_ptr().offset(-(count as isize)) })]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -854,6 +930,17 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        self.as_ptr().addr().checked_sub(origin.as_ptr().addr()).is_some_and(
+            |distance| distance % core::mem::size_of::<T>() == 0) ||
+        origin.as_ptr().addr().checked_sub(self.as_ptr().addr()).is_some_and(
+            |distance| distance % core::mem::size_of::<T>() == 0))]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &isize|
+    //     *result == (self.as_ptr() as isize - origin.as_ptr() as isize) /
+    //         core::mem::size_of::<T>() as isize)]
     pub const unsafe fn offset_from(self, origin: NonNull<T>) -> isize
     where
         T: Sized,
@@ -875,6 +962,12 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &isize|
+    //     *result ==
+    //         unsafe { (self.as_ptr() as *const u8).offset_from(origin.as_ptr() as *const u8) })]
     pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: NonNull<U>) -> isize {
         // SAFETY: the caller must uphold the safety contract for `byte_offset_from`.
         unsafe { self.as_ptr().byte_offset_from(origin.as_ptr()) }
@@ -945,6 +1038,15 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
     #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        self.as_ptr().addr().checked_sub(subtracted.as_ptr().addr()).is_some() &&
+        (self.as_ptr().addr()) >= (subtracted.as_ptr().addr()) &&
+        (self.as_ptr().addr() - subtracted.as_ptr().addr()) % core::mem::size_of::<T>() == 0)]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &usize|
+    //     *result == unsafe { self.as_ptr().offset_from(subtracted.as_ptr()) } as usize)]
     pub const unsafe fn offset_from_unsigned(self, subtracted: NonNull<T>) -> usize
     where
         T: Sized,
@@ -1043,6 +1145,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).map_or_else(
+            || false, |size| size <= isize::MAX as usize))]
     pub const unsafe fn copy_to(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1063,6 +1169,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).map_or_else(
+            || false, |size| size <= isize::MAX as usize))]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1083,6 +1193,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).map_or_else(
+            || false, |size| size <= isize::MAX as usize))]
     pub const unsafe fn copy_from(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1103,6 +1217,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>()).map_or_else(
+            || false, |size| size <= isize::MAX as usize))]
     pub const unsafe fn copy_from_nonoverlapping(self, src: NonNull<T>, count: usize)
     where
         T: Sized,
@@ -1156,6 +1274,10 @@ impl<T: PointeeSized> NonNull<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        count.checked_mul(core::mem::size_of::<T>() as usize).is_some_and(
+            |byte_count| byte_count.wrapping_add(self.as_ptr() as usize) <= isize::MAX as usize))]
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1289,6 +1411,38 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(move |result| {
+    //     // Post-condition reference: https://github.com/model-checking/verify-rust-std/pull/69/files
+    //     let stride = crate::mem::size_of::<T>();
+    //     // ZSTs
+    //     if stride == 0 {
+    //         if self.pointer.addr() % align == 0 {
+    //             return *result == 0;
+    //         } else {
+    //             return *result == usize::MAX;
+    //         }
+    //     }
+    //     // In this case, the pointer cannot be aligned
+    //     if (align % stride == 0) && (self.pointer.addr() % stride != 0) {
+    //         return *result == usize::MAX;
+    //     }
+    //     // Checking if the answer should indeed be usize::MAX when a % stride != 0 requires
+    //     // computing gcd(align, stride), which could be done using cttz as the implementation of
+    //     // ptr::align_offset does.
+    //     if align % stride != 0 && *result == usize::MAX {
+    //         return true;
+    //     }
+    //     // If we reach this case, either:
+    //     //  - align % stride == 0 and self.pointer.addr() % stride == 0, so it is definitely
+    //     //    possible to align the pointer
+    //     //  - align % stride != 0 and result != usize::MAX, so align_offset is claiming that it's
+    //     //    possible to align the pointer
+    //     // Check that applying the returned result does indeed produce an aligned address
+    //     let product = usize::wrapping_mul(*result, stride);
+    //     let new_addr = usize::wrapping_add(product, self.pointer.addr());
+    //     *result != usize::MAX && new_addr % align == 0
+    // })]
     pub fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
@@ -1323,6 +1477,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &bool| *result == (self.as_ptr().addr() % core::mem::align_of::<T>() == 0))]
     pub fn is_aligned(self) -> bool
     where
         T: Sized,
@@ -1363,6 +1520,9 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
+    #[core::contracts::requires(align.is_power_of_two())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(move |result: &bool| *result == (self.as_ptr().addr() % align == 0))]
     pub fn is_aligned_to(self, align: usize) -> bool {
         self.as_ptr().is_aligned_to(align)
     }
@@ -1416,6 +1576,13 @@ impl<T> NonNull<[T]> {
     #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     move |result: &NonNull<[T]>|
+    //     !result.pointer.is_null() &&
+    //     result.pointer as *const T == data.pointer &&
+    //     unsafe { result.as_ref() }.len() == len)]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
         // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
         unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), len)) }
@@ -1476,6 +1643,10 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &NonNull<T>| result.as_ptr().addr() == self.as_ptr().addr())]
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         self.cast()
     }
@@ -1495,6 +1666,9 @@ impl<T> NonNull<[T]> {
     #[must_use]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_never_returns_null_ptr]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |result: &*mut T| *result == self.pointer as *mut T)]
     pub const fn as_mut_ptr(self) -> *mut T {
         self.as_non_null_ptr().as_ptr()
     }
@@ -1539,6 +1713,18 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Ensure the pointer is properly aligned
+        self.as_ptr().cast::<T>().align_offset(core::mem::align_of::<T>()) == 0 &&
+        // Ensure the slice size does not exceed isize::MAX
+        self.len().checked_mul(core::mem::size_of::<T>()).is_some() &&
+        self.len() * core::mem::size_of::<T>() <= isize::MAX as usize &&
+        self.as_ptr().addr().checked_add(self.len() * core::mem::size_of::<T>()).is_some())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &&[MaybeUninit<T>]|
+    //     result.len() == self.len() && core::ptr::eq(result.as_ptr(), self.cast().as_ptr()))]
     pub const unsafe fn as_uninit_slice<'a>(self) -> &'a [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice`.
         unsafe { slice::from_raw_parts(self.cast().as_ptr(), self.len()) }
@@ -1603,6 +1789,18 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        // Ensure the pointer is properly aligned
+        self.as_ptr().cast::<T>().align_offset(core::mem::align_of::<T>()) == 0 &&
+        // Ensure the slice size does not exceed isize::MAX
+        self.len().checked_mul(core::mem::size_of::<T>()).is_some() &&
+        self.len() * core::mem::size_of::<T>() <= isize::MAX as usize &&
+        self.as_ptr().addr().checked_add(self.len() * core::mem::size_of::<T>()).is_some())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &&mut [MaybeUninit<T>]|
+    //     result.len() == self.len() && core::ptr::eq(result.as_ptr(), self.cast().as_ptr()))]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> &'a mut [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice_mut`.
         unsafe { slice::from_raw_parts_mut(self.cast().as_ptr(), self.len()) }

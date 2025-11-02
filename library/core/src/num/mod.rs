@@ -505,6 +505,8 @@ impl u8 {
     #[must_use]
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(self.is_ascii())]
     pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
         assert_unsafe_precondition!(
             check_library_ub,

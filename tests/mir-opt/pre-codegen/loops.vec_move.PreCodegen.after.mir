@@ -64,6 +64,14 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                     let mut _20: core::num::niche_types::UsizeNoHighBit;
                                     scope 43 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
                                         debug self => _20;
+                                        scope 44 {
+                                            scope 45 {
+                                                scope 46 {
+                                                }
+                                            }
+                                        }
+                                        scope 47 (inlined core::contracts::build_check_ensures::<usize, {closure@core::num::niche_types::UsizeNoHighBit::as_inner::{closure#0}}>) {
+                                        }
                                     }
                                 }
                             }

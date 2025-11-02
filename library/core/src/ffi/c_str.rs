@@ -250,6 +250,13 @@ impl CStr {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(!ptr.is_null())]
+    #[core::contracts::ensures(
+        |result: &&CStr|
+        !result.inner.is_empty() &&
+        result.inner[result.inner.len() - 1] == 0 &&
+        !result.inner[..result.inner.len() - 1].contains(&0))]
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator less than `isize::MAX` from `ptr`.
@@ -385,6 +392,14 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
     #[rustc_allow_const_fn_unstable(const_eval_select)]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(
+        !bytes.is_empty() && bytes[bytes.len() - 1] == 0 && !bytes[..bytes.len()-1].contains(&0))]
+    #[core::contracts::ensures(
+        |result: &&CStr|
+        !result.inner.is_empty() &&
+        result.inner[result.inner.len() - 1] == 0 &&
+        !result.inner[..result.inner.len() - 1].contains(&0))]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         const_eval_select!(
             @capture { bytes: &[u8] } -> &CStr:
@@ -723,6 +738,12 @@ impl const AsRef<CStr> for CStr {
 #[inline]
 #[unstable(feature = "cstr_internals", issue = "none")]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
+#[rustc_allow_const_fn_unstable(contracts)]
+#[core::contracts::ensures(
+    move |&result|
+    result < isize::MAX as usize &&
+    // SAFETY: result is within isize::MAX
+    unsafe { *ptr.add(result) } == 0)]
 const unsafe fn strlen(ptr: *const c_char) -> usize {
     const_eval_select!(
         @capture { s: *const c_char = ptr } -> usize:

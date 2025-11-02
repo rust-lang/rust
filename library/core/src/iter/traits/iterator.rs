@@ -1710,6 +1710,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+    #[core::contracts::requires(N > 0)]
     fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
     where
         Self: Sized,

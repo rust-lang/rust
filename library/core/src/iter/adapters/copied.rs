@@ -92,6 +92,7 @@ where
         self.it.advance_by(n)
     }
 
+    #[core::contracts::requires(idx < self.it.size_hint().0)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,

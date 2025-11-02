@@ -360,6 +360,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         R::from_output(accum)
     }
 
+    #[core::contracts::requires(i < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,

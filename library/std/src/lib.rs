@@ -253,6 +253,8 @@
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+// permit use of experimental feature contracts
+#![allow(incomplete_features)]
 //
 // Features:
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
@@ -278,6 +280,7 @@
 #![feature(cfi_encoding)]
 #![feature(char_max_len)]
 #![feature(const_trait_impl)]
+#![feature(contracts)]
 #![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]

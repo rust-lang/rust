@@ -61,6 +61,7 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
+    #[core::contracts::requires(idx < self.it.size_hint().0)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,
