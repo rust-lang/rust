@@ -1498,14 +1498,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Prepare getting source provenance.
         let src_bytes = src_alloc.get_bytes_unchecked(src_range).as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
-        // first copy the provenance to a temporary buffer, because
-        // `get_bytes_mut` will clear the provenance, which is correct,
-        // since we don't want to keep any provenance at the target.
-        // This will also error if copying partial provenance is not supported.
-        let provenance = src_alloc
-            .provenance()
-            .prepare_copy(src_range, self)
-            .map_err(|e| e.to_interp_error(src_alloc_id))?;
+        // First copy the provenance to a temporary buffer, because
+        // `get_bytes_unchecked_for_overwrite_ptr` will clear the provenance (in preparation for
+        // inserting the new provenance), and that can overlap with the source range.
+        let provenance = src_alloc.provenance_prepare_copy(src_range, self);
         // Prepare a copy of the initialization mask.
         let init = src_alloc.init_mask().prepare_copy(src_range);
 

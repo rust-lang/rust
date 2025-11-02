@@ -77,9 +77,6 @@ pub trait Provenance: Copy + PartialEq + fmt::Debug + 'static {
     /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
     /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
     fn get_alloc_id(self) -> Option<AllocId>;
-
-    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
-    fn join(left: Self, right: Self) -> Option<Self>;
 }
 
 /// The type of provenance in the compile-time interpreter.
@@ -191,10 +188,6 @@ impl Provenance for CtfeProvenance {
     fn get_alloc_id(self) -> Option<AllocId> {
         Some(self.alloc_id())
     }
-
-    fn join(left: Self, right: Self) -> Option<Self> {
-        if left == right { Some(left) } else { None }
-    }
 }
 
 // We also need this impl so that one can debug-print `Pointer<AllocId>`
@@ -222,10 +215,6 @@ impl Provenance for AllocId {
 
     fn get_alloc_id(self) -> Option<AllocId> {
         Some(self)
-    }
-
-    fn join(_left: Self, _right: Self) -> Option<Self> {
-        unreachable!()
     }
 }
 
