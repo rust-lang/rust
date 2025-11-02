@@ -520,7 +520,7 @@ declare namespace rustdoc {
      * Provided by generated `trait.impl` files.
      */
     type Implementors = {
-        [key: string]: Array<[string, number, Array<string>]>
+        [key: string]: Array<[string, 0|1, number, Array<string>]>
     }
 
     type TypeImpls = {
