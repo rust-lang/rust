@@ -27,13 +27,7 @@ LL |     #[type_const()]
    |     |           didn't expect any arguments here
    |     help: must be of the form: `#[type_const]`
 
-error: `#[type_const]` must only be applied to trait associated constants
-  --> $DIR/bad-type_const-syntax.rs:11:5
-   |
-LL |     #[type_const]
-   |     ^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0565, E0658.
 For more information about an error, try `rustc --explain E0565`.

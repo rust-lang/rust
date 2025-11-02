@@ -356,7 +356,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                expr: le,
+                rhs: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -364,7 +364,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                expr: re,
+                rhs: rb,
                 define_opaque: _,
             }),
         ) => {
@@ -372,7 +372,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && eq_expr_opt(le.as_deref(), re.as_deref())
+                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
         },
         (
             Fn(box ast::Fn {
@@ -610,7 +610,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                expr: le,
+                rhs: lb,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -618,7 +618,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                expr: re,
+                rhs: rb,
                 define_opaque: _,
             }),
         ) => {
@@ -626,7 +626,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && eq_expr_opt(le.as_deref(), re.as_deref())
+                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
         },
         (
             Fn(box ast::Fn {
@@ -782,6 +782,15 @@ pub fn eq_use_tree(l: &UseTree, r: &UseTree) -> bool {
 
 pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
     eq_expr(&l.value, &r.value)
+}
+
+pub fn eq_const_item_rhs(l: &ConstItemRhs, r: &ConstItemRhs) -> bool {
+    use ConstItemRhs::*;
+    match (l, r) {
+        (TypeConst(l), TypeConst(r)) => eq_anon_const(l, r),
+        (Body(l), Body(r)) => eq_expr(l, r),
+        (TypeConst(..), Body(..)) | (Body(..), TypeConst(..)) => false,
+    }
 }
 
 pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {

@@ -1583,13 +1583,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         if let Some(def_id) = opt_def_id
             && let Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Const(_, _, _, body_id),
+                kind: hir::ItemKind::Const(_, _, _, ct_rhs),
                 ..
             })) = self.tcx.hir_get_if_local(def_id)
-            && let hir::Node::Expr(expr) = self.tcx.hir_node(body_id.hir_id)
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(ct_rhs.hir_id())
             && hir::is_range_literal(expr)
         {
-            let span = self.tcx.hir_span(body_id.hir_id);
+            let span = self.tcx.hir_span(ct_rhs.hir_id());
             if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
                 e.span_suggestion_verbose(
                     ident.span,

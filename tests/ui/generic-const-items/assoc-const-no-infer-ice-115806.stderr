@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
-  --> $DIR/assoc-const-no-infer-ice-115806.rs:16:1
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:17:1
    |
 LL | impl<TA> Pins<TA> for NoPin {}
    | --------------------------- first implementation here

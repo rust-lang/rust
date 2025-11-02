@@ -1,7 +1,8 @@
 //@ edition: 2024
 //@ run-pass
 
-#![feature(associated_const_equality, return_type_notation)]
+#![feature(associated_const_equality, min_generic_const_args, return_type_notation)]
+#![expect(incomplete_features)]
 #![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 
 use std::iter;
@@ -188,6 +189,7 @@ trait Tra3 {
 trait Trait {
     type Gat<T>;
 
+    #[type_const]
     const ASSOC: i32;
 
     fn foo() -> impl Sized;
@@ -196,6 +198,7 @@ trait Trait {
 impl Trait for () {
     type Gat<T> = ();
 
+    #[type_const]
     const ASSOC: i32 = 3;
 
     fn foo() {}

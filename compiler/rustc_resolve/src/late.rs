@@ -2747,7 +2747,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     if let Some(expr) = expr {
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
-                        this.resolve_const_body(expr, Some((ident, ConstantItemKind::Static)));
+                        this.resolve_static_body(expr, Some((ident, ConstantItemKind::Static)));
                     }
                 });
                 self.resolve_define_opaques(define_opaque);
@@ -2757,7 +2757,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ident,
                 ref generics,
                 ref ty,
-                ref expr,
+                ref rhs,
                 ref define_opaque,
                 ..
             }) => {
@@ -2782,8 +2782,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |this| this.visit_ty(ty),
                         );
 
-                        if let Some(expr) = expr {
-                            this.resolve_const_body(expr, Some((ident, ConstantItemKind::Const)));
+                        if let Some(rhs) = rhs {
+                            this.resolve_const_item_rhs(
+                                rhs,
+                                Some((ident, ConstantItemKind::Const)),
+                            );
                         }
                     },
                 );
@@ -3101,7 +3104,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 AssocItemKind::Const(box ast::ConstItem {
                     generics,
                     ty,
-                    expr,
+                    rhs,
                     define_opaque,
                     ..
                 }) => {
@@ -3123,13 +3126,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                                     // Only impose the restrictions of `ConstRibKind` for an
                                     // actual constant expression in a provided default.
-                                    if let Some(expr) = expr {
+                                    if let Some(rhs) = rhs {
                                         // We allow arbitrary const expressions inside of associated consts,
                                         // even if they are potentially not const evaluatable.
                                         //
                                         // Type parameters can already be used and as associated consts are
                                         // not used as part of the type system, this is far less surprising.
-                                        this.resolve_const_body(expr, None);
+                                        this.resolve_const_item_rhs(rhs, None);
                                     }
                                 },
                             )
@@ -3306,7 +3309,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ident,
                 generics,
                 ty,
-                expr,
+                rhs,
                 define_opaque,
                 ..
             }) => {
@@ -3348,13 +3351,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                                         this.visit_generics(generics);
                                         this.visit_ty(ty);
-                                        if let Some(expr) = expr {
+                                        if let Some(rhs) = rhs {
                                             // We allow arbitrary const expressions inside of associated consts,
                                             // even if they are potentially not const evaluatable.
                                             //
                                             // Type parameters can already be used and as associated consts are
                                             // not used as part of the type system, this is far less surprising.
-                                            this.resolve_const_body(expr, None);
+                                            this.resolve_const_item_rhs(rhs, None);
                                         }
                                     },
                                 )
@@ -3564,11 +3567,28 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         );
     }
 
-    fn resolve_const_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
+    fn resolve_static_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
         self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
             this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
                 this.visit_expr(expr)
             });
+        })
+    }
+
+    fn resolve_const_item_rhs(
+        &mut self,
+        rhs: &'ast ConstItemRhs,
+        item: Option<(Ident, ConstantItemKind)>,
+    ) {
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| match rhs {
+            ConstItemRhs::TypeConst(anon_const) => {
+                this.resolve_anon_const(anon_const, AnonConstKind::ConstArg(IsRepeatExpr::No));
+            }
+            ConstItemRhs::Body(expr) => {
+                this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
+                    this.visit_expr(expr)
+                });
+            }
         })
     }
 
