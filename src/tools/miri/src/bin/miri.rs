@@ -710,6 +710,8 @@ fn main() {
                 fatal_error!("-Zmiri-force-page-size requires a power of 2: {page_size}");
             };
             miri_config.page_size = Some(page_size);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-user-relevant-crates=") {
+            miri_config.user_relevant_crates.extend(param.split(',').map(|s| s.to_owned()));
         } else {
             // Forward to rustc.
             rustc_args.push(arg);

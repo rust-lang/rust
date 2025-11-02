@@ -16,8 +16,6 @@ help: <TAG> is this argument
    |
 LL |     y.0 = 0;
    |     ^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
