@@ -950,10 +950,8 @@ fn default_emitter(
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => {
-            let short = kind.short();
-
-            if let HumanReadableErrorType::AnnotateSnippet = kind {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -962,11 +960,7 @@ fn default_emitter(
                         .macro_backtrace(macro_backtrace)
                         .track_diagnostics(track_diagnostics)
                         .terminal_url(terminal_url)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                         .ignored_directories_in_source_blocks(
                             sopts
                                 .unstable_opts
@@ -974,7 +968,8 @@ fn default_emitter(
                                 .clone(),
                         );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
-            } else {
+            }
+            HumanReadableErrorType::Default { short } => {
                 let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map)
                     .short_message(short)
@@ -982,17 +977,13 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
+                    .theme(OutputTheme::Ascii)
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
-        }
+        },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
@@ -1499,18 +1490,18 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let translator =
         Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => {
-            let short = kind.short();
-            Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
+        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+                AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .short_message(short),
-            )
-        }
+            ),
+            HumanReadableErrorType::Default { short } => Box::new(
+                HumanEmitter::new(stderr_destination(color_config), translator)
+                    .theme(OutputTheme::Ascii)
+                    .short_message(short),
+            ),
+        },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),

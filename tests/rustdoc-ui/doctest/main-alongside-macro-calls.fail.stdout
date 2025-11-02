@@ -19,6 +19,7 @@ LL | println!();
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL
    |
+   |
   ::: $DIR/main-alongside-macro-calls.rs:30:1
    |
 LL | println!();
@@ -40,6 +41,7 @@ LL | println!();
 
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
    |
   ::: $DIR/main-alongside-macro-calls.rs:34:1
    |

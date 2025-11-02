@@ -389,10 +389,19 @@ impl Options {
         }
 
         let color = config::parse_color(early_dcx, matches);
+        let crate_name = matches.opt_str("crate-name");
+        let unstable_features =
+            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
         let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
-            config::parse_json(early_dcx, matches);
-        let error_format =
-            config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
+            config::parse_json(early_dcx, matches, unstable_features.is_nightly_build());
+        let error_format = config::parse_error_format(
+            early_dcx,
+            matches,
+            color,
+            json_color,
+            json_rendered,
+            unstable_features.is_nightly_build(),
+        );
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
@@ -753,7 +762,6 @@ impl Options {
             }
         };
 
-        let crate_name = matches.opt_str("crate-name");
         let bin_crate = crate_types.contains(&CrateType::Executable);
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
@@ -814,9 +822,6 @@ impl Options {
         let call_locations =
             crate::scrape_examples::load_call_locations(with_examples, dcx, &mut loaded_paths);
         let doctest_build_args = matches.opt_strs("doctest-build-arg");
-
-        let unstable_features =
-            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
 
         let disable_minification = matches.opt_present("disable-minification");
 
