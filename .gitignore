@@ -90,6 +90,10 @@ node_modules
 ## Rustdoc GUI tests
 tests/rustdoc-gui/src/**.lock
 
+## Test dashboard
+.citool-cache/
+test-dashboard/
+
 ## direnv
 /.envrc
 /.direnv/
