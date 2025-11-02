@@ -13,7 +13,7 @@ use syntax::{
     AstNode,
     ast::{
         self, AssocItem, BlockExpr, GenericParam, HasAttrs, HasGenericParams, HasName,
-        HasTypeBounds, HasVisibility, edit_in_place::Indent, make,
+        HasTypeBounds, HasVisibility, edit::AstNodeEdit, make,
     },
     syntax_editor::Position,
 };
@@ -75,7 +75,7 @@ pub(crate) fn generate_blanket_trait_impl(
         |builder| {
             let mut edit = builder.make_editor(traitd.syntax());
             let namety = make::ty_path(make::path_from_text(&name.text()));
-            let trait_where_clause = traitd.where_clause().map(|it| it.clone_for_update());
+            let trait_where_clause = traitd.where_clause().map(|it| it.reset_indent());
             let bounds = traitd.type_bound_list().and_then(exlucde_sized);
             let is_unsafe = traitd.unsafe_token().is_some();
             let thisname = this_name(&traitd);
@@ -89,10 +89,6 @@ pub(crate) fn generate_blanket_trait_impl(
 
             let trait_gen_args =
                 traitd.generic_param_list().map(|param_list| param_list.to_generic_args());
-
-            if let Some(ref where_clause) = trait_where_clause {
-                where_clause.reindent_to(0.into());
-            }
 
             let impl_ = make::impl_trait(
                 cfg_attrs(&traitd),
@@ -112,20 +108,19 @@ pub(crate) fn generate_blanket_trait_impl(
 
             if let Some(trait_assoc_list) = traitd.assoc_item_list() {
                 let assoc_item_list = impl_.get_or_create_assoc_item_list();
-                for method in trait_assoc_list.assoc_items() {
-                    let AssocItem::Fn(method) = method else {
-                        continue;
+                for item in trait_assoc_list.assoc_items() {
+                    let item = match item {
+                        ast::AssocItem::Fn(method) if method.body().is_none() => {
+                            todo_fn(&method, ctx.config).into()
+                        }
+                        ast::AssocItem::Const(_) | ast::AssocItem::TypeAlias(_) => item,
+                        _ => continue,
                     };
-                    if method.body().is_some() {
-                        continue;
-                    }
-                    let f = todo_fn(&method, ctx.config).clone_for_update();
-                    f.indent(1.into());
-                    assoc_item_list.add_item(AssocItem::Fn(f));
+                    assoc_item_list.add_item(item.reset_indent().indent(1.into()));
                 }
             }
 
-            impl_.indent(indent);
+            let impl_ = impl_.indent(indent);
 
             edit.insert_all(
                 Position::after(traitd.syntax()),
@@ -507,6 +502,41 @@ impl<I: Iterator + ?Sized> Foo for $0I {
     }
 
     #[test]
+    fn test_gen_blanket_other_assoc_items() {
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+trait $0Foo {
+    type Item;
+
+    const N: usize;
+
+    fn foo(&self);
+}
+"#,
+            r#"
+trait Foo {
+    type Item;
+
+    const N: usize;
+
+    fn foo(&self);
+}
+
+impl<T: ?Sized> Foo for $0T {
+    type Item;
+
+    const N: usize;
+
+    fn foo(&self) {
+        todo!()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_gen_blanket_indent() {
         check_assist(
             generate_blanket_trait_impl,
@@ -742,6 +772,49 @@ mod foo {
 }
         "#,
         );
+        check_assist(
+            generate_blanket_trait_impl,
+            r#"
+mod foo {
+    mod bar {
+        trait $0Foo {
+            type Item: Bar<
+                Self,
+            >;
+
+            const N: Baz<
+                Self,
+            >;
+        }
+    }
+}
+        "#,
+            r#"
+mod foo {
+    mod bar {
+        trait Foo {
+            type Item: Bar<
+                Self,
+            >;
+
+            const N: Baz<
+                Self,
+            >;
+        }
+
+        impl<T: ?Sized> Foo for $0T {
+            type Item: Bar<
+                Self,
+            >;
+
+            const N: Baz<
+                Self,
+            >;
+        }
+    }
+}
+        "#,
+        );
     }
 
     #[test]
@@ -824,6 +897,8 @@ impl<T: Send, T1: ToOwned + ?Sized> Foo<T> for $0T1
 where
     Self::Owned: Default,
 {
+    type X: Sync;
+
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
@@ -871,6 +946,8 @@ where
     Self: ToOwned,
     Self::Owned: Default,
 {
+    type X: Sync;
+
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
@@ -906,6 +983,8 @@ trait Foo<T: Send> {
 }
 
 impl<T: Send, T1: ?Sized> Foo<T> for $0T1 {
+    type X: Sync;
+
     fn foo(&self, x: Self::X) -> T {
         todo!()
     }
@@ -941,6 +1020,8 @@ trait Foo {
 }
 
 impl<T: ?Sized> Foo for $0T {
+    type X: Sync;
+
     fn foo(&self, x: Self::X) -> i32 {
         todo!()
     }
