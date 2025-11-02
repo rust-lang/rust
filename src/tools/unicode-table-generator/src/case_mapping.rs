@@ -56,29 +56,12 @@ static {case}CASE_TABLE_MULTI: &[[char; 3]; {multis_len}] = &[{multis}];
 
 #[inline]
 pub fn to_{case_lower}(c: char) -> [char; 3] {{
-    const {{
-        let mut i = 0;
-        while i < {case_upper}CASE_TABLE.len() {{
-            let (_, val) = {case_upper}CASE_TABLE[i];
-            if val & (1 << 22) == 0 {{
-                assert!(char::from_u32(val).is_some());
-            }} else {{
-                let index = val & ((1 << 22) - 1);
-                assert!((index as usize) < {case_upper}CASE_TABLE_MULTI.len());
-            }}
-            i += 1;
-        }}
-    }}
-
-    // SAFETY: Just checked that the tables are valid
-    unsafe {{
-        super::case_conversion(
-            c,
-            |c| c.to_ascii_{case_lower}case(),
-            {case_upper}CASE_TABLE,
-            {case_upper}CASE_TABLE_MULTI,
-        )
-    }}
+    super::case_conversion!(
+        c,
+        |c| c.to_ascii_{case_lower}case(),
+        {case_upper}CASE_TABLE,
+        {case_upper}CASE_TABLE_MULTI,
+    )
 }}",
         mappings = fmt_list(&mappings),
         mappings_len = mappings.len(),

@@ -69,6 +69,34 @@ impl ShortOffsetRunHeader {
     }
 }
 
+/// Combination of constant-time verification + unsafe call.
+// FIXME(const-hack): this should really just make the tables generic instead of using a macro to
+//   combine these two; that way, the constant verification can be folded into the function.
+//   but that requires ADT const params, and it felt better to avoid that for now
+pub(super) macro skip_search($needle:expr, $short_offset_runs:expr, $offsets:expr $(,)?) {{
+    const {
+        $crate::unicode::rt::assert_skip_search_valid($short_offset_runs, $offsets);
+    }
+
+    // SAFETY: We verify the precondition above.
+    unsafe { $crate::unicode::rt::skip_search($needle, $short_offset_runs, $offsets) }
+}}
+
+/// Constant-time verification of [`skip_search()`].
+pub(super) const fn assert_skip_search_valid(
+    short_offset_runs: &[ShortOffsetRunHeader],
+    offsets: &[u8],
+) {
+    assert!(short_offset_runs.last().unwrap().0 > char::MAX as u32);
+
+    // FIXME(const-hack): const Iterator
+    let mut i = 0;
+    while i < short_offset_runs.len() {
+        assert!(short_offset_runs[i].start_index() < offsets.len());
+        i += 1;
+    }
+}
+
 /// # Safety
 ///
 /// - The last element of `short_offset_runs` must be greater than `std::char::MAX`.
@@ -127,6 +155,33 @@ pub(super) unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
         offset_idx += 1;
     }
     offset_idx % 2 == 1
+}
+
+/// Combination of constant-time verification + unsafe call.
+// FIXME(const-hack): same as skip_search docs
+pub(super) macro case_conversion($c:expr, $ascii_fn:expr, $table:expr, $multi:expr $(,)?) {{
+    const {
+        $crate::unicode::rt::assert_case_conversion_valid($table, $multi);
+    }
+
+    // SAFETY: We verify the precondition above.
+    unsafe { $crate::unicode::rt::case_conversion($c, $ascii_fn, $table, $multi) }
+}}
+
+/// Constant-time verification of [`case_conversion()`].
+pub(super) const fn assert_case_conversion_valid(table: &[(char, u32)], multi: &[[char; 3]]) {
+    // FIXME(const-hack): const Iterator
+    let mut i = 0;
+    while i < table.len() {
+        let (_, val) = table[i];
+        if val & (1 << 22) == 0 {
+            assert!(char::from_u32(val).is_some());
+        } else {
+            let index = val & ((1 << 22) - 1);
+            assert!((index as usize) < multi.len());
+        }
+        i += 1;
+    }
 }
 
 /// # Safety
