@@ -1,5 +1,7 @@
 //@ run-pass
 //@ ignore-backends: gcc
+//@ ignore-wasm 'tail-call' feature not enabled in target wasm32-wasip1
+//@ ignore-cross-compile
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
