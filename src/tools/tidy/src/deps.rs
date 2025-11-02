@@ -509,6 +509,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "compiler_builtins",
     "dlmalloc",
+    "foldhash",
     "fortanix-sgx-abi",
     "getopts",
     "gimli",
