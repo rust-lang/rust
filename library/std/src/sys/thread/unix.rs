@@ -7,7 +7,7 @@
     target_os = "aix",
 )))]
 use crate::ffi::CStr;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, DropGuard, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
@@ -52,10 +52,13 @@ impl Thread {
         name: Option<&str>,
         f: Box<dyn FnOnce()>,
     ) -> io::Result<Thread> {
-        let data = Box::into_raw(Box::new(ThreadData { name: name.map(Box::from), f }));
-        let mut native: libc::pthread_t = mem::zeroed();
+        let data = Box::new(ThreadData { name: name.map(Box::from), f });
+
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
+        let mut attr = DropGuard::new(&mut attr, |attr| {
+            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0)
+        });
 
         #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
         if stack > 0 {
@@ -90,8 +93,6 @@ impl Thread {
                     // on the stack size, in which case we can only gracefully return
                     // an error here.
                     if libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) != 0 {
-                        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
-                        drop(Box::from_raw(data));
                         return Err(io::const_error!(
                             io::ErrorKind::InvalidInput,
                             "invalid stack size"
@@ -101,19 +102,16 @@ impl Thread {
             };
         }
 
+        let data = Box::into_raw(data);
+        let mut native: libc::pthread_t = mem::zeroed();
         let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, data as *mut _);
-        // Note: if the thread creation fails and this assert fails, then p will
-        // be leaked. However, an alternative design could cause double-free
-        // which is clearly worse.
-        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
-
-        return if ret != 0 {
-            // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to reconstruct the box so that it gets deallocated.
+        return if ret == 0 {
+            Ok(Thread { id: native })
+        } else {
+            // The thread failed to start and as a result `data` was not consumed.
+            // Therefore, it is safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(data));
             Err(io::Error::from_raw_os_error(ret))
-        } else {
-            Ok(Thread { id: native })
         };
 
         extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
