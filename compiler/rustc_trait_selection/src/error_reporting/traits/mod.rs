@@ -20,7 +20,7 @@ use rustc_infer::traits::{
     PredicateObligation, SelectionError,
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
@@ -253,7 +253,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
-                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
+                if !suppressed
+                    && error.obligation.cause.span.from_expansion() == from_expansion
+                    && !error.references_error()
+                {
                     let guar = self.report_fulfillment_error(error);
                     self.infcx.set_tainted_by_errors(guar);
                     reported = Some(guar);
