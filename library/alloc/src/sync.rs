@@ -3878,7 +3878,7 @@ impl From<&mut str> for Arc<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Arc<str> {
-    /// Allocates a reference-counted `str` and copies `v` into it.
+    /// Converts the given [`String`] to a shared reference-counted `str` slice.
     ///
     /// # Example
     ///
@@ -3890,7 +3890,7 @@ impl From<String> for Arc<str> {
     /// ```
     #[inline]
     fn from(v: String) -> Arc<str> {
-        Arc::from(&v[..])
+        Arc::from(v.into_boxed_str())
     }
 }
 
