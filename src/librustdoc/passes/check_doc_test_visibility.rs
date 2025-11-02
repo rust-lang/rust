@@ -73,11 +73,11 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ForeignFunctionItem(..)
                 | clean::ForeignStaticItem(..)
                 | clean::ForeignTypeItem
-                | clean::AssocTypeItem(..)
+                | clean::AssocTypeItem { .. }
                 | clean::RequiredAssocConstItem(..)
                 | clean::ProvidedAssocConstItem(..)
                 | clean::ImplAssocConstItem(..)
-                | clean::RequiredAssocTypeItem(..)
+                | clean::RequiredAssocTypeItem { .. }
                 // check for trait impl
                 | clean::ImplItem(box clean::Impl { trait_: Some(_), .. })
         )
