@@ -2692,24 +2692,30 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    /// Report that longer_fr: shorter_fr, which doesn't hold,
-    /// where longer_fr is a placeholder from `placeholder`.
+    /// Report that `longer_fr: error_vid`, which doesn't hold,
+    /// where `longer_fr` is a placeholder.
     fn report_erroneous_rvid_reaches_placeholder(
         &mut self,
         longer_fr: RegionVid,
-        placeholder: ty::Placeholder<ty::BoundRegion>,
         error_vid: RegionVid,
     ) {
+        use NllRegionVariableOrigin::*;
+
+        let origin_longer = self.regioncx.definitions[longer_fr].origin;
+
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let cause = self
-            .regioncx
-            .best_blame_constraint(
-                longer_fr,
-                NllRegionVariableOrigin::Placeholder(placeholder),
-                error_vid,
-            )
-            .0
-            .cause;
+        let cause =
+            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+
+        let Placeholder(placeholder) = origin_longer else {
+            bug!("Expected {longer_fr:?} to come from placeholder!");
+        };
+
+        // FIXME: Is throwing away the existential region really the best here?
+        let error_region = match self.regioncx.definitions[error_vid].origin {
+            FreeRegion | Existential { .. } => None,
+            Placeholder(other_placeholder) => Some(other_placeholder),
+        };
 
         // FIXME these methods should have better names, and also probably not be this generic.
         // FIXME note that we *throw away* the error element here! We probably want to
@@ -2718,7 +2724,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         self.regioncx.universe_info(placeholder.universe).report_erroneous_element(
             self,
             placeholder,
-            None,
+            error_region,
             cause,
         );
     }

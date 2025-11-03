@@ -56,7 +56,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 )
             };
 
-        let mut scc_annotations = SccAnnotations::init(&definitions);
+        let mut scc_annotations = SccAnnotations::without_checking_placeholders(&definitions);
         let mut constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
 
         let added_constraints = crate::handle_placeholders::rewrite_placeholder_outlives(
@@ -67,7 +67,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
 
         if added_constraints {
-            scc_annotations = SccAnnotations::init(&definitions);
+            scc_annotations = SccAnnotations::without_checking_placeholders(&definitions);
             constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
         }
 

@@ -35,8 +35,16 @@ pub(crate) struct LoweredConstraints<'tcx> {
 }
 
 impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
-    pub(crate) fn init(definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>) -> Self {
-        Self { scc_to_annotation: IndexVec::new(), definitions }
+    pub(crate) fn with_checking_placeholders(
+        definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    ) -> Self {
+        Self { scc_to_annotation: IndexVec::new(), definitions, check_placeholders: true }
+    }
+
+    pub(crate) fn without_checking_placeholders(
+        definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    ) -> Self {
+        Self { scc_to_annotation: IndexVec::new(), definitions, check_placeholders: true }
     }
 }
 
@@ -44,11 +52,14 @@ impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
 pub(crate) struct SccAnnotations<'d, 'tcx, A: scc::Annotation> {
     pub(crate) scc_to_annotation: IndexVec<ConstraintSccIndex, A>,
     definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    /// True if we apply extra validity checking logic to placeholder
+    /// regions, false to skip it. Used only for performance reasons.
+    check_placeholders: bool,
 }
 
 impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
     fn new(&self, element: RegionVid) -> RegionTracker {
-        RegionTracker::new(element, &self.definitions[element])
+        RegionTracker::new(element, &self.definitions[element], self.check_placeholders)
     }
 
     fn annotate_scc(&mut self, scc: ConstraintSccIndex, annotation: RegionTracker) {
@@ -199,7 +210,11 @@ pub(crate) struct RegionTracker {
 }
 
 impl RegionTracker {
-    pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+    pub(crate) fn new(
+        rvid: RegionVid,
+        definition: &RegionDefinition<'_>,
+        check_placeholders: bool,
+    ) -> Self {
         use NllRegionVariableOrigin::*;
         use PlaceholderConstraints::*;
         use PlaceholderReachability::*;
@@ -222,13 +237,13 @@ impl RegionTracker {
                     max_placeholder: rvid,
                 },
                 min_max_nameable_universe,
-                exception: Some(Name(definition.universe)),
+                exception: check_placeholders.then_some(Name(definition.universe)),
                 representative,
             },
             Existential { .. } => Self {
                 reachable_placeholders: NoPlaceholders,
                 min_max_nameable_universe,
-                exception: Some(NameableBy(rvid, definition.universe)),
+                exception: check_placeholders.then_some(NameableBy(rvid, definition.universe)),
                 representative,
             },
         }
@@ -439,7 +454,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
             )
         };
 
-    let mut scc_annotations = SccAnnotations::init(&definitions);
+    let mut scc_annotations = SccAnnotations::with_checking_placeholders(&definitions);
     let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
 
     // This code structure is a bit convoluted because it allows for a planned
@@ -475,7 +490,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     );
 
     let (constraint_sccs, scc_annotations) = if added_constraints {
-        let mut annotations = SccAnnotations::init(&definitions);
+        let mut annotations = SccAnnotations::without_checking_placeholders(&definitions);
 
         // We changed the constraint set and so must recompute SCCs.
         // Optimisation opportunity: if we can add them incrementally (and that's
@@ -583,44 +598,21 @@ fn find_placeholder_mismatch_errors<'tcx>(
 ) {
     use NllRegionVariableOrigin::Placeholder;
     for (rvid, definition) in definitions.iter_enumerated() {
-        let Placeholder(origin_a) = definition.origin else {
+        let Placeholder(_) = definition.origin else {
             continue;
         };
 
         let scc = sccs.scc(rvid);
         let annotation = annotations.scc_to_annotation[scc];
 
-        if let Some(cannot_name_rvid) = annotation.reaches_existential_that_cannot_name_us() {
-            debug!("Existential {cannot_name_rvid:?} lowered our universe...");
-
-            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesExistentialThatCannotNameIt {
+        if let Some(illegally_outlived_r) = annotation
+            .reaches_existential_that_cannot_name_us()
+            .or_else(|| annotation.reaches_other_placeholder(rvid))
+        {
+            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                 longer_fr: rvid,
-                existential_that_cannot_name_longer: cannot_name_rvid,
-                placeholder: origin_a,
+                illegally_outlived_r,
             })
         }
-
-        let Some(other_placeholder) = annotation.reaches_other_placeholder(rvid) else {
-            trace!("{rvid:?} reaches no other placeholders");
-            continue;
-        };
-
-        debug!(
-            "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
-        );
-
-        // FIXME SURELY there is a neater way to do this?
-        let Placeholder(origin_b) = definitions[other_placeholder].origin else {
-            unreachable!(
-                "Region {rvid:?}, {other_placeholder:?} should be placeholders but aren't!"
-            );
-        };
-
-        errors_buffer.push(RegionErrorKind::PlaceholderOutlivesPlaceholder {
-            rvid_a: rvid,
-            rvid_b: other_placeholder,
-            origin_a,
-            origin_b,
-        });
     }
 }

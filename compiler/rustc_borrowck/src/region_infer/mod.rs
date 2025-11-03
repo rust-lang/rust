@@ -1249,7 +1249,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             errors_buffer.push(RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
                 longer_fr,
                 error_element,
-                placeholder,
             });
         } else {
             debug!("check_bound_universal_region: all bounds satisfied");
