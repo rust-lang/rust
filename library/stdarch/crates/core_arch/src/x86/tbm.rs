@@ -30,7 +30,7 @@ unsafe extern "C" {
 #[cfg_attr(test, assert_instr(bextr, CONTROL = 0x0404))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
-pub unsafe fn _bextri_u32<const CONTROL: u32>(a: u32) -> u32 {
+pub fn _bextri_u32<const CONTROL: u32>(a: u32) -> u32 {
     static_assert_uimm_bits!(CONTROL, 16);
     unsafe { bextri_u32(a, CONTROL) }
 }
@@ -42,7 +42,7 @@ pub unsafe fn _bextri_u32<const CONTROL: u32>(a: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blcfill_u32(x: u32) -> u32 {
+pub fn _blcfill_u32(x: u32) -> u32 {
     x & (x.wrapping_add(1))
 }
 
@@ -53,7 +53,7 @@ pub unsafe fn _blcfill_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blci_u32(x: u32) -> u32 {
+pub fn _blci_u32(x: u32) -> u32 {
     x | !x.wrapping_add(1)
 }
 
@@ -64,7 +64,7 @@ pub unsafe fn _blci_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blcic_u32(x: u32) -> u32 {
+pub fn _blcic_u32(x: u32) -> u32 {
     !x & x.wrapping_add(1)
 }
 
@@ -76,7 +76,7 @@ pub unsafe fn _blcic_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
+pub fn _blcmsk_u32(x: u32) -> u32 {
     x ^ x.wrapping_add(1)
 }
 
@@ -87,7 +87,7 @@ pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blcs_u32(x: u32) -> u32 {
+pub fn _blcs_u32(x: u32) -> u32 {
     x | x.wrapping_add(1)
 }
 
@@ -98,7 +98,7 @@ pub unsafe fn _blcs_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blsfill_u32(x: u32) -> u32 {
+pub fn _blsfill_u32(x: u32) -> u32 {
     x | x.wrapping_sub(1)
 }
 
@@ -109,7 +109,7 @@ pub unsafe fn _blsfill_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _blsic_u32(x: u32) -> u32 {
+pub fn _blsic_u32(x: u32) -> u32 {
     !x | x.wrapping_sub(1)
 }
 
@@ -121,7 +121,7 @@ pub unsafe fn _blsic_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
+pub fn _t1mskc_u32(x: u32) -> u32 {
     !x | x.wrapping_add(1)
 }
 
@@ -133,7 +133,7 @@ pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _tzmsk_u32(x: u32) -> u32 {
+pub fn _tzmsk_u32(x: u32) -> u32 {
     !x & x.wrapping_sub(1)
 }
 

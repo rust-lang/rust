@@ -611,6 +611,15 @@ impl dyn Any + Send + Sync {
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
 ///
+/// # Layout
+///
+/// Like other [`Rust`-representation][repr-rust] types, `TypeId`'s size and layout are unstable.
+/// In particular, this means that you cannot rely on the size and layout of `TypeId` remaining the
+/// same between Rust releases; they are subject to change without prior notice between Rust
+/// releases.
+///
+/// [repr-rust]: https://doc.rust-lang.org/reference/type-layout.html#r-layout.repr.rust.unspecified
+///
 /// # Danger of Improper Variance
 ///
 /// You might think that subtyping is impossible between two static types,

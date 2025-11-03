@@ -9,10 +9,5 @@ use std::arch::x86_64::*;
 
 fn main() {
     assert!(!is_x86_feature_detected!("sse2"));
-
-    unsafe {
-        // This is a SSE2 intrinsic, but it behaves as a no-op when SSE2
-        // is not available, so it is always safe to call.
-        _mm_pause();
-    }
+    _mm_pause();
 }
