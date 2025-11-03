@@ -6,7 +6,7 @@
 //@ compile-flags: -Ctarget-feature=-x87
 //@ build-pass
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![no_core]
 

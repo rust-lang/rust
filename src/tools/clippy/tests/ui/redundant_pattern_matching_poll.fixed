@@ -1,7 +1,7 @@
 #![warn(clippy::redundant_pattern_matching)]
 #![allow(
     clippy::needless_bool,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::match_like_matches_macro,
     clippy::equatable_if_let,
     clippy::if_same_then_else

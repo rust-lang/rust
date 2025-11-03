@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type=lib
 //@ compile-flags: --target=aarch64-unknown-none-softfloat
 //@ needs-llvm-components: aarch64
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![no_core]
 #![deny(aarch64_softfloat_neon)]

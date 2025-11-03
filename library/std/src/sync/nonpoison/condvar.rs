@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::ops::DerefMut;
 use crate::sync::WaitTimeoutResult;
 use crate::sync::nonpoison::{MutexGuard, mutex};
 use crate::sys::sync as sys;
@@ -38,7 +39,7 @@ use crate::time::{Duration, Instant};
 /// let (lock, cvar) = &*pair;
 /// let mut started = lock.lock();
 /// while !*started {
-///     started = cvar.wait(started);
+///     cvar.wait(&mut started);
 /// }
 /// ```
 ///
@@ -115,16 +116,15 @@ impl Condvar {
     /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started);
+    ///     cvar.wait(&mut started);
     /// }
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
-    pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
+    pub fn wait<T>(&self, guard: &mut MutexGuard<'_, T>) {
         unsafe {
-            let lock = mutex::guard_lock(&guard);
+            let lock = mutex::guard_lock(guard);
             self.inner.wait(lock);
         }
-        guard
     }
 
     /// Blocks the current thread until the provided condition becomes false.
@@ -167,21 +167,17 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
     /// // As long as the value inside the `Mutex<bool>` is `true`, we wait.
-    /// let _guard = cvar.wait_while(lock.lock(), |pending| { *pending });
+    /// let mut guard = lock.lock();
+    /// cvar.wait_while(&mut guard, |pending| { *pending });
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
-    pub fn wait_while<'a, T, F>(
-        &self,
-        mut guard: MutexGuard<'a, T>,
-        mut condition: F,
-    ) -> MutexGuard<'a, T>
+    pub fn wait_while<T, F>(&self, guard: &mut MutexGuard<'_, T>, mut condition: F)
     where
         F: FnMut(&mut T) -> bool,
     {
-        while condition(&mut *guard) {
-            guard = self.wait(guard);
+        while condition(guard.deref_mut()) {
+            self.wait(guard);
         }
-        guard
     }
 
     /// Waits on this condition variable for a notification, timing out after a
@@ -206,7 +202,7 @@ impl Condvar {
     /// The returned [`WaitTimeoutResult`] value indicates if the timeout is
     /// known to have elapsed.
     ///
-    /// Like [`wait`], the lock specified will be re-acquired when this function
+    /// Like [`wait`], the lock specified will have been re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
     ///
     /// [`wait`]: Self::wait
@@ -239,9 +235,8 @@ impl Condvar {
     /// let mut started = lock.lock();
     /// // as long as the value inside the `Mutex<bool>` is `false`, we wait
     /// loop {
-    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10));
+    ///     let result = cvar.wait_timeout(&mut started, Duration::from_millis(10));
     ///     // 10 milliseconds have passed, or maybe the value changed!
-    ///     started = result.0;
     ///     if *started == true {
     ///         // We received the notification and the value has been updated, we can leave.
     ///         break
@@ -249,16 +244,16 @@ impl Condvar {
     /// }
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
-    pub fn wait_timeout<'a, T>(
+    pub fn wait_timeout<T>(
         &self,
-        guard: MutexGuard<'a, T>,
+        guard: &mut MutexGuard<'_, T>,
         dur: Duration,
-    ) -> (MutexGuard<'a, T>, WaitTimeoutResult) {
+    ) -> WaitTimeoutResult {
         let success = unsafe {
-            let lock = mutex::guard_lock(&guard);
+            let lock = mutex::guard_lock(guard);
             self.inner.wait_timeout(lock, dur)
         };
-        (guard, WaitTimeoutResult(!success))
+        WaitTimeoutResult(!success)
     }
 
     /// Waits on this condition variable for a notification, timing out after a
@@ -277,7 +272,7 @@ impl Condvar {
     /// The returned [`WaitTimeoutResult`] value indicates if the timeout is
     /// known to have elapsed without the condition being met.
     ///
-    /// Like [`wait_while`], the lock specified will be re-acquired when this
+    /// Like [`wait_while`], the lock specified will have been re-acquired when this
     /// function returns, regardless of whether the timeout elapsed or not.
     ///
     /// [`wait_while`]: Self::wait_while
@@ -307,37 +302,39 @@ impl Condvar {
     ///
     /// // wait for the thread to start up
     /// let (lock, cvar) = &*pair;
+    /// let mut guard = lock.lock();
     /// let result = cvar.wait_timeout_while(
-    ///     lock.lock(),
+    ///     &mut guard,
     ///     Duration::from_millis(100),
     ///     |&mut pending| pending,
     /// );
-    /// if result.1.timed_out() {
+    /// if result.timed_out() {
     ///     // timed-out without the condition ever evaluating to false.
     /// }
-    /// // access the locked mutex via result.0
+    /// // access the locked mutex via guard
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
-    pub fn wait_timeout_while<'a, T, F>(
+    pub fn wait_timeout_while<T, F>(
         &self,
-        mut guard: MutexGuard<'a, T>,
+        guard: &mut MutexGuard<'_, T>,
         dur: Duration,
         mut condition: F,
-    ) -> (MutexGuard<'a, T>, WaitTimeoutResult)
+    ) -> WaitTimeoutResult
     where
         F: FnMut(&mut T) -> bool,
     {
         let start = Instant::now();
-        loop {
-            if !condition(&mut *guard) {
-                return (guard, WaitTimeoutResult(false));
-            }
+
+        while condition(guard.deref_mut()) {
             let timeout = match dur.checked_sub(start.elapsed()) {
                 Some(timeout) => timeout,
-                None => return (guard, WaitTimeoutResult(true)),
+                None => return WaitTimeoutResult(true),
             };
-            guard = self.wait_timeout(guard, timeout).0;
+
+            self.wait_timeout(guard, timeout);
         }
+
+        WaitTimeoutResult(false)
     }
 
     /// Wakes up one blocked thread on this condvar.
@@ -378,7 +375,7 @@ impl Condvar {
     /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started);
+    ///     cvar.wait(&mut started);
     /// }
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]
@@ -422,7 +419,7 @@ impl Condvar {
     /// let mut started = lock.lock();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started);
+    ///     cvar.wait(&mut started);
     /// }
     /// ```
     #[unstable(feature = "nonpoison_condvar", issue = "134645")]

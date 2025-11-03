@@ -2,7 +2,7 @@
 
 //@ compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
 //@ needs-llvm-components: amdgpu
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![no_core]
 

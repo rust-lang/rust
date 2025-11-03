@@ -7,7 +7,7 @@
 //@[riscv] compile-flags: --target=riscv32e-unknown-none-elf
 //@[riscv] needs-llvm-components: riscv
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core, riscv_target_feature, x87_target_feature)]
 #![no_core]
 

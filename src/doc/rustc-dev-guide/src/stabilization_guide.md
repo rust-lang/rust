@@ -104,17 +104,17 @@ if something { /* XXX */ }
 
 [rust-lang/rust#32409]: https://github.com/rust-lang/rust/issues/32409
 [std-guide-stabilization]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html
-[src-version]: https://github.com/rust-lang/rust/blob/master/src/version
+[src-version]: https://github.com/rust-lang/rust/blob/HEAD/src/version
 [forge-versions]: https://forge.rust-lang.org/#current-release-versions
 [forge-release-process]: https://forge.rust-lang.org/release/process.html
 [`compiler/rustc_feature`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/index.html
-[`compiler/rustc_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_feature/src/accepted.rs
-[`compiler/rustc_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_feature/src/unstable.rs
+[`compiler/rustc_feature/src/accepted.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_feature/src/accepted.rs
+[`compiler/rustc_feature/src/unstable.rs`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_feature/src/unstable.rs
 [The Reference]: https://github.com/rust-lang/reference
 [The Book]: https://github.com/rust-lang/book
 [Rust by Example]: https://github.com/rust-lang/rust-by-example
 [`Unstable Book`]: https://doc.rust-lang.org/unstable-book/index.html
-[`src/doc/unstable-book`]: https://github.com/rust-lang/rust/tree/master/src/doc/unstable-book
+[`src/doc/unstable-book`]: https://github.com/rust-lang/rust/tree/HEAD/src/doc/unstable-book
 
 ## Team nominations
 

@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
         ref end,
         limits,
         span,
-    }) = higher::Range::hir(arg)
+    }) = higher::Range::hir(cx, arg)
         // the var must be a single name
         && let PatKind::Binding(_, canonical_id, ident, _) = pat.kind
     {
@@ -157,10 +157,7 @@ pub(super) fn check<'tcx>(
                             "consider using an iterator and enumerate()",
                             vec![
                                 (pat.span, format!("({}, <item>)", ident.name)),
-                                (
-                                    span,
-                                    format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
-                                ),
+                                (span, format!("{indexed}.{method}().enumerate(){method_1}{method_2}")),
                             ],
                             Applicability::HasPlaceholders,
                         );

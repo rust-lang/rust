@@ -1,6 +1,6 @@
 // Verifies that "kcfi-arity" module flag is added.
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86_64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86

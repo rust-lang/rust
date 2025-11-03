@@ -1375,22 +1375,21 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
 
 pub(crate) fn format_trait_alias(
     context: &RewriteContext<'_>,
-    ident: symbol::Ident,
+    ta: &ast::TraitAlias,
     vis: &ast::Visibility,
-    generics: &ast::Generics,
-    generic_bounds: &ast::GenericBounds,
     shape: Shape,
 ) -> Option<String> {
-    let alias = rewrite_ident(context, ident);
+    let alias = rewrite_ident(context, ta.ident);
     // 6 = "trait ", 2 = " ="
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
-    let generics_str = rewrite_generics(context, alias, generics, g_shape).ok()?;
+    let generics_str = rewrite_generics(context, alias, &ta.generics, g_shape).ok()?;
     let vis_str = format_visibility(context, vis);
-    let lhs = format!("{vis_str}trait {generics_str} =");
+    let constness = format_constness(ta.constness);
+    let lhs = format!("{vis_str}{constness}trait {generics_str} =");
     // 1 = ";"
     let trait_alias_bounds = TraitAliasBounds {
-        generic_bounds,
-        generics,
+        generic_bounds: &ta.bounds,
+        generics: &ta.generics,
     };
     rewrite_assign_rhs(
         context,

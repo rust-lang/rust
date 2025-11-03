@@ -131,7 +131,7 @@ fn check_index_usage<'tcx>(
 fn index_consumed_at<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
-            Node::Expr(expr) if higher::Range::hir(expr).is_some() => {},
+            Node::Expr(expr) if higher::Range::hir(cx, expr).is_some() => {},
             Node::ExprField(_) => {},
             Node::Expr(expr) => return Some(expr),
             _ => break,

@@ -1156,3 +1156,14 @@ pub(crate) struct ConstContinueBadLabel {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_project_on_non_pin_project_type)]
+pub(crate) struct ProjectOnNonPinProjectType {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub def_span: Option<Span>,
+    #[suggestion(code = "#[pin_v2]\n", applicability = "machine-applicable")]
+    pub sugg_span: Option<Span>,
+}

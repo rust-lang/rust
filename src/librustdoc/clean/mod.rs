@@ -1703,7 +1703,6 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 trait_,
             }))
         }
-        hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
     }
 }
 
@@ -2828,7 +2827,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
-            ItemKind::TraitAlias(_, generics, bounds) => TraitAliasItem(TraitAlias {
+            ItemKind::TraitAlias(_, _, generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),

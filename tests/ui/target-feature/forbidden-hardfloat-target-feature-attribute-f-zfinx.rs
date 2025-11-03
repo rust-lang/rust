@@ -2,7 +2,7 @@
 //@ compile-flags: --target=riscv64gc-unknown-linux-gnu --crate-type=lib
 //@ needs-llvm-components: riscv
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core, riscv_target_feature)]
 #![no_core]
 

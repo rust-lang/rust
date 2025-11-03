@@ -213,7 +213,7 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 ///
 /// Check the current rustc fork of LLVM in the repo at
 /// <https://github.com/rust-lang/llvm-project/>. The commit in use can be found via the
-/// `llvm-project` submodule in <https://github.com/rust-lang/rust/tree/master/src> Though note that
+/// `llvm-project` submodule in <https://github.com/rust-lang/rust/tree/HEAD/src> Though note that
 /// Rust can also be build with an external precompiled version of LLVM which might lead to failures
 /// if the oldest tested / supported LLVM version doesn't yet support the relevant intrinsics.
 pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFeature<'a>> {

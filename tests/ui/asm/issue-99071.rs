@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target thumbv6m-none-eabi
 //@ needs-llvm-components: arm
 //@ ignore-backends: gcc

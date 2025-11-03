@@ -4,7 +4,7 @@
 // For now this is just a warning.
 //@ build-pass
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 
 #![feature(no_core)]
 #![no_core]

@@ -386,7 +386,6 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("amx-movrs", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("amx-tf32", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("amx-tile", Unstable(sym::x86_amx_intrinsics), &[]),
-    ("amx-transpose", Unstable(sym::x86_amx_intrinsics), &["amx-tile"]),
     ("apxf", Unstable(sym::apx_target_feature), &[]),
     ("avx", Stable, &["sse4.2"]),
     ("avx2", Stable, &["avx"]),

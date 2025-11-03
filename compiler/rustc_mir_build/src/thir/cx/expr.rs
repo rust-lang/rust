@@ -425,7 +425,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     None
                                 }
                             }
-                            _ => None,
                         }
                     } else {
                         None

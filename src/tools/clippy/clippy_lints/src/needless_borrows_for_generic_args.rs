@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
 fn path_has_args(p: &QPath<'_>) -> bool {
     match *p {
         QPath::Resolved(_, Path { segments: [.., s], .. }) | QPath::TypeRelative(_, s) => s.args.is_some(),
-        _ => false,
+        QPath::Resolved(..) => false,
     }
 }
 
