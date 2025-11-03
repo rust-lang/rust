@@ -3325,7 +3325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 see documentation for `std::pin::Pin`"
             ));
             err.help("self type must be pinned to call `Future::poll`, \
-                see https://rust-lang.github.io/async-book/04_pinning/01_chapter.html#pinning-in-practice"
+                see https://rust-lang.github.io/async-book/part-reference/pinning.html"
             );
         }
 
