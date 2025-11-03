@@ -183,6 +183,11 @@ impl ReprOptions {
 
     /// Returns the discriminant type, given these `repr` options.
     /// This must only be called on enums!
+    ///
+    /// This is the "typeck type" of the discriminant, which is effectively the maximum size:
+    /// discriminant values will be wrapped to fit (with a lint). Layout can later decide to use a
+    /// smaller type for the tag that stores the discriminant at runtime and that will work just
+    /// fine, it just induces casts when getting/setting the discriminant.
     pub fn discr_type(&self) -> IntegerType {
         self.int.unwrap_or(IntegerType::Pointer(true))
     }
