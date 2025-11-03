@@ -290,7 +290,7 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Determines whether the `fmuladd` intrinsics fuse the multiply-add or use separate operations.
-    fn float_fuse_mul_add(_ecx: &mut InterpCx<'tcx, Self>) -> bool;
+    fn float_fuse_mul_add(_ecx: &InterpCx<'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     #[inline]
@@ -676,7 +676,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn float_fuse_mul_add(_ecx: &mut InterpCx<$tcx, Self>) -> bool {
+    fn float_fuse_mul_add(_ecx: &InterpCx<$tcx, Self>) -> bool {
         true
     }
 
