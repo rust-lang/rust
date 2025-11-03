@@ -435,7 +435,7 @@ declare_clippy_lint! {
     /// to infer a technically correct yet unexpected type.
     ///
     /// ### Example
-    /// ```no_run
+    /// ```
     /// # unsafe {
     /// let mut x: i32 = 0;
     /// // Avoid "naked" calls to `transmute()`!
@@ -450,7 +450,7 @@ declare_clippy_lint! {
     /// # }
     /// ```
     /// Use instead:
-    /// ```no_run
+    /// ```
     /// # unsafe {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     ///
