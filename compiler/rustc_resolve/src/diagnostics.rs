@@ -40,7 +40,7 @@ use crate::errors::{
     MaybeMissingMacroRulesName,
 };
 use crate::imports::{Import, ImportKind};
-use crate::late::{PatternSource, Rib};
+use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
     ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
@@ -553,11 +553,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterItem(
+            ResolutionError::GenericParamsFromOuterItem {
                 outer_res,
                 has_generic_params,
                 def_kind,
-            ) => {
+                inner_item,
+            } => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
                     DefKind::Static { .. } => {
@@ -575,6 +576,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sugg: None,
                     static_or_const,
                     is_self,
+                    item: inner_item.as_ref().map(|(span, kind)| {
+                        errs::GenericParamsFromOuterItemInnerItem {
+                            span: *span,
+                            descr: kind.descr().to_string(),
+                        }
+                    }),
                 };
 
                 let sm = self.tcx.sess.source_map();
@@ -608,7 +615,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 };
 
-                if let HasGenericParams::Yes(span) = has_generic_params {
+                if let HasGenericParams::Yes(span) = has_generic_params
+                    && !matches!(inner_item, Some((_, ItemKind::Delegation(..))))
+                {
                     let name = self.tcx.item_name(def_id);
                     let (span, snippet) = if span.is_empty() {
                         let snippet = format!("<{name}>");
@@ -2401,6 +2410,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         failed_segment_idx: usize,
         ident: Ident,
+        diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> (String, Option<Suggestion>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
@@ -2506,6 +2516,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None,
                         &ribs[ns_to_try],
                         ignore_binding,
+                        diag_metadata,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Some(binding),
@@ -2556,6 +2567,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None,
                     &ribs[ValueNS],
                     ignore_binding,
+                    diag_metadata,
                 )
             } else {
                 None

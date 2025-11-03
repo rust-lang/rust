@@ -670,7 +670,7 @@ pub(crate) struct UnnecessaryQualification<'ra> {
 }
 
 #[derive(Default, Debug)]
-struct DiagMetadata<'ast> {
+pub(crate) struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
     current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
@@ -680,8 +680,8 @@ struct DiagMetadata<'ast> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// The current trait (used to suggest).
-    current_item: Option<&'ast Item>,
+    /// The current item being evaluated (used for suggestions and more detail in errors).
+    pub(crate) current_item: Option<&'ast Item>,
 
     /// When processing generic arguments and encountering an unresolved ident not found,
     /// suggest introducing a type or const param depending on the context.
@@ -1460,6 +1460,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             None,
             &self.ribs[ns],
             None,
+            Some(&self.diag_metadata),
         )
     }
 
@@ -1477,6 +1478,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             finalize,
             &self.ribs[ns],
             ignore_binding,
+            Some(&self.diag_metadata),
         )
     }
 
@@ -1496,6 +1498,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             Some(&self.ribs),
             None,
             None,
+            Some(&self.diag_metadata),
         )
     }
 

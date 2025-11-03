@@ -12,7 +12,9 @@ use tracing::{debug, instrument};
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::imports::{Import, NameResolution};
-use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
+use crate::late::{
+    ConstantHasGenerics, DiagMetadata, NoConstantGenericsReason, PathSource, Rib, RibKind,
+};
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
@@ -295,6 +297,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: Option<Finalize>,
         ribs: &[Rib<'ra>],
         ignore_binding: Option<NameBinding<'ra>>,
+        diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
         assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
@@ -326,6 +329,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.map(|finalize| finalize.path_span),
                     *original_rib_ident_def,
                     ribs,
+                    diag_metadata,
                 )));
             } else if let RibKind::Block(Some(module)) = rib.kind
                 && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
@@ -1193,6 +1197,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: Option<Span>,
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'ra>],
+        diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> Res {
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
@@ -1391,13 +1396,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     };
 
                     if let Some(span) = finalize {
+                        let item = if let Some(diag_metadata) = diag_metadata
+                            && let Some(current_item) = diag_metadata.current_item
+                        {
+                            let span = current_item
+                                .kind
+                                .ident()
+                                .map(|i| i.span)
+                                .unwrap_or(current_item.span);
+                            Some((span, current_item.kind.clone()))
+                        } else {
+                            None
+                        };
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(
-                                res,
+                            ResolutionError::GenericParamsFromOuterItem {
+                                outer_res: res,
                                 has_generic_params,
                                 def_kind,
-                            ),
+                                inner_item: item,
+                            },
                         );
                     }
                     return Res::Err;
@@ -1466,13 +1484,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     // This was an attempt to use a const parameter outside its scope.
                     if let Some(span) = finalize {
+                        let item = if let Some(diag_metadata) = diag_metadata
+                            && let Some(current_item) = diag_metadata.current_item
+                        {
+                            let span = current_item
+                                .kind
+                                .ident()
+                                .map(|i| i.span)
+                                .unwrap_or(current_item.span);
+                            Some((span, current_item.kind.clone()))
+                        } else {
+                            None
+                        };
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(
-                                res,
+                            ResolutionError::GenericParamsFromOuterItem {
+                                outer_res: res,
                                 has_generic_params,
                                 def_kind,
-                            ),
+                                inner_item: item,
+                            },
                         );
                     }
                     return Res::Err;
@@ -1501,6 +1532,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None,
             None,
             ignore_import,
+            None,
         )
     }
     #[instrument(level = "debug", skip(self))]
@@ -1522,6 +1554,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None,
             ignore_binding,
             ignore_import,
+            None,
         )
     }
 
@@ -1535,6 +1568,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ribs: Option<&PerNS<Vec<Rib<'ra>>>>,
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
+        diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {
         let mut module = None;
         let mut module_had_parse_errors = false;
@@ -1675,6 +1709,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize,
                     &ribs[ns],
                     ignore_binding,
+                    diag_metadata,
                 ) {
                     // we found a locally-imported or available item/module
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -1800,6 +1835,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 module,
                                 segment_idx,
                                 ident,
+                                diag_metadata,
                             )
                         },
                     );

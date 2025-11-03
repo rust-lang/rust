@@ -4,7 +4,9 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn outer<T: Tr>() { // outer function
    |          - type parameter from outer item
 LL |     const K: u32 = T::C;
-   |                    ^^^^ use of generic parameter from outer item
+   |           -        ^^^^ use of generic parameter from outer item
+   |           |
+   |           generic parameter used in this inner constant item
    |
    = note: a `const` is a separate item from the item that contains it
 
@@ -15,7 +17,9 @@ LL | impl<T> Tr for T { // outer impl block
    |      - type parameter from outer item
 LL |     const C: u32 = {
 LL |         const I: u32 = T::C;
-   |                        ^^^^ use of generic parameter from outer item
+   |               -        ^^^^ use of generic parameter from outer item
+   |               |
+   |               generic parameter used in this inner constant item
    |
    = note: a `const` is a separate item from the item that contains it
 
@@ -25,7 +29,9 @@ error[E0401]: can't use generic parameters from outer item
 LL | struct S<T: Tr>(U32<{ // outer struct
    |          - type parameter from outer item
 LL |     const _: u32 = T::C;
-   |                    ^^^^ use of generic parameter from outer item
+   |           -        ^^^^ use of generic parameter from outer item
+   |           |
+   |           generic parameter used in this inner constant item
    |
    = note: a `const` is a separate item from the item that contains it
 
