@@ -12,7 +12,7 @@ impl<'a> Trait for &'_ S {
     //~^ ERROR E0207
     //~| NOTE there is a named lifetime specified on the impl block you could use
     //~| NOTE unconstrained lifetime parameter
-    //~| HELP consider using the named lifetime here instead of an implict lifetime
+    //~| HELP consider using the named lifetime here instead of an implicit lifetime
     type Item = &T;
     //~^ ERROR missing lifetime in associated type
     //~| HELP consider using the lifetime from the impl block
