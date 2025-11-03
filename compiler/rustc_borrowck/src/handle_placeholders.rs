@@ -115,6 +115,72 @@ impl PlaceholderReachability {
     }
 }
 
+#[derive(Copy, Debug, Clone)]
+
+enum PlaceholderConstraints {
+    /// The SCC must be able to name this placeholder, in the SCC.
+    Name(UniverseIndex),
+    /// Any placeholder we reach must be nameable from this existential.
+    NameableBy(RegionVid, UniverseIndex),
+    /// Both constraints at the same time.
+    NameAndBeNamed { name: UniverseIndex, nameable_by: (RegionVid, UniverseIndex) },
+}
+
+impl PlaceholderConstraints {
+    fn add_name(self, name: UniverseIndex) -> Self {
+        use PlaceholderConstraints::*;
+
+        match self {
+            Name(universe_index) => Name(universe_index.min(name)),
+            NameableBy(nb_rvid, nb_u) => NameAndBeNamed { name, nameable_by: (nb_rvid, nb_u) },
+            NameAndBeNamed { name: my_name, nameable_by } => {
+                NameAndBeNamed { name: my_name.min(name), nameable_by }
+            }
+        }
+    }
+
+    fn add_nameable_by(self, region_vid: RegionVid, universe: UniverseIndex) -> Self {
+        use PlaceholderConstraints::*;
+
+        match self {
+            Name(universe_index) => {
+                NameAndBeNamed { name: universe_index, nameable_by: (region_vid, universe) }
+            }
+            NameableBy(my_rvid, my_universe_index) => {
+                let (u, rvid) = ((my_universe_index, my_rvid)).min((universe, region_vid));
+                NameableBy(rvid, u)
+            }
+            NameAndBeNamed { name, nameable_by } => {
+                let (u, rvid) = ((nameable_by.1, nameable_by.0)).min((universe, region_vid));
+                NameAndBeNamed { name, nameable_by: (rvid, u) }
+            }
+        }
+    }
+
+    fn merge_scc(self, other: Self) -> Self {
+        use PlaceholderConstraints::*;
+        match other {
+            Name(universe_index) | NameAndBeNamed { name: universe_index, .. } => {
+                self.add_name(universe_index)
+            }
+            _ => self,
+        }
+        .merge_reached(other)
+    }
+
+    #[inline(always)]
+    fn merge_reached(self, reached: Self) -> Self {
+        use PlaceholderConstraints::*;
+        match reached {
+            Name(_) => self,
+            NameableBy(region_vid, universe_index)
+            | NameAndBeNamed { nameable_by: (region_vid, universe_index), .. } => {
+                self.add_nameable_by(region_vid, universe_index)
+            }
+        }
+    }
+}
+
 /// An annotation for region graph SCCs that tracks
 /// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
@@ -125,14 +191,8 @@ pub(crate) struct RegionTracker {
     /// regions reachable from this SCC.
     min_max_nameable_universe: UniverseIndex,
 
-    /// The largest universe of a placeholder in this SCC. Iff
-    /// an existential can name this universe it's allowed to
-    /// reach us.
-    scc_placeholder_largest_universe: Option<UniverseIndex>,
-
-    /// The reached existential region with the smallest universe, if any. This
-    /// is an upper bound on the universe.
-    min_universe_existential: Option<(UniverseIndex, RegionVid)>,
+    /// State tracking for exceptional circumstances.
+    exception: Option<PlaceholderConstraints>,
 
     /// The representative Region Variable Id for this SCC.
     pub(crate) representative: Representative,
@@ -141,6 +201,7 @@ pub(crate) struct RegionTracker {
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         use NllRegionVariableOrigin::*;
+        use PlaceholderConstraints::*;
         use PlaceholderReachability::*;
 
         let min_max_nameable_universe = definition.universe;
@@ -151,8 +212,7 @@ impl RegionTracker {
             FreeRegion => Self {
                 reachable_placeholders: NoPlaceholders,
                 min_max_nameable_universe,
-                scc_placeholder_largest_universe: None,
-                min_universe_existential: None,
+                exception: None,
                 representative,
             },
             Placeholder(_) => Self {
@@ -162,15 +222,13 @@ impl RegionTracker {
                     max_placeholder: rvid,
                 },
                 min_max_nameable_universe,
-                scc_placeholder_largest_universe: Some(definition.universe),
-                min_universe_existential: None,
+                exception: Some(Name(definition.universe)),
                 representative,
             },
             Existential { .. } => Self {
                 reachable_placeholders: NoPlaceholders,
                 min_max_nameable_universe,
-                scc_placeholder_largest_universe: None,
-                min_universe_existential: Some(universe_and_rvid),
+                exception: Some(NameableBy(rvid, definition.universe)),
                 representative,
             },
         }
@@ -211,18 +269,16 @@ impl RegionTracker {
     ///
     /// Returns *a* culprit (there may be more than one).
     fn reaches_existential_that_cannot_name_us(&self) -> Option<RegionVid> {
-        let Some(required_universe) = self.scc_placeholder_largest_universe else {
-            return None;
-        };
-
-        let Some((reachable_lowest_max_u, reachable_lowest_max_u_rvid)) =
-            self.min_universe_existential
-        else {
-            debug!("SCC universe wasn't lowered by an existential; skipping.");
-            return None;
-        };
-
-        (!reachable_lowest_max_u.can_name(required_universe)).then_some(reachable_lowest_max_u_rvid)
+        if let Some(PlaceholderConstraints::NameAndBeNamed {
+            name: p_u,
+            nameable_by: (ex_rv, ex_u),
+        }) = self.exception
+            && ex_u.cannot_name(p_u)
+        {
+            Some(ex_rv)
+        } else {
+            None
+        }
     }
 
     /// Determine if this SCC reaches a placeholder that isn't `placeholder_rvid`,
@@ -262,26 +318,33 @@ impl scc::Annotation for RegionTracker {
 
         Self {
             representative: self.representative.min(other.representative),
-            scc_placeholder_largest_universe: self
-                .scc_placeholder_largest_universe
-                .max(other.scc_placeholder_largest_universe),
+            exception: match (self.exception, other.exception) {
+                (None, other) | (other, None) => other,
+                (Some(ours), Some(theirs)) => Some(ours.merge_scc(theirs)),
+            },
             ..self.merge_reached(other)
         }
     }
 
     #[inline(always)]
     fn merge_reached(self, other: Self) -> Self {
+        use PlaceholderConstraints::*;
         Self {
-            min_universe_existential: self
-                .min_universe_existential
-                .xor(other.min_universe_existential)
-                .or_else(|| self.min_universe_existential.min(other.min_universe_existential)),
+            exception: match (self.exception, other.exception) {
+                // Propagate only reachability (nameable by).
+                (None, None) => None,
+                (None, Some(NameableBy(r, u)))
+                | (None, Some(NameAndBeNamed { nameable_by: (r, u), .. })) => {
+                    Some(NameableBy(r, u))
+                }
+                (Some(_), None) | (None, Some(Name(_))) => self.exception,
+                (Some(this), Some(that)) => Some(this.merge_reached(that)),
+            },
             min_max_nameable_universe: self
                 .min_max_nameable_universe
                 .min(other.min_max_nameable_universe),
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
             representative: self.representative,
-            scc_placeholder_largest_universe: self.scc_placeholder_largest_universe,
         }
     }
 }
@@ -363,7 +426,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut outlives_constraints,
         universe_causes,
         type_tests,
-        placeholder_to_region: _
+        placeholder_to_region: _,
     } = constraints;
 
     let fr_static = universal_regions.fr_static;
