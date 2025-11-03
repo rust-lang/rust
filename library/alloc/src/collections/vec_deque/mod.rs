@@ -520,6 +520,35 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Copies all values from `src` to `dst` in reversed order, wrapping around if needed.
+    /// Assumes capacity is sufficient.
+    /// Equivalent to calling [`VecDeque::copy_slice`] with a [reversed](https://doc.rust-lang.org/std/primitive.slice.html#method.reverse) slice.
+    #[inline]
+    unsafe fn copy_slice_reversed(&mut self, dst: usize, src: &[T]) {
+        /// # Safety
+        ///
+        /// See [`ptr::copy_nonoverlapping`].
+        unsafe fn copy_nonoverlapping_reversed<T>(src: *const T, dst: *mut T, count: usize) {
+            for i in 0..count {
+                unsafe { ptr::copy_nonoverlapping(src.add(count - 1 - i), dst.add(i), 1) };
+            }
+        }
+
+        debug_assert!(src.len() <= self.capacity());
+        let head_room = self.capacity() - dst;
+        if src.len() <= head_room {
+            unsafe {
+                copy_nonoverlapping_reversed(src.as_ptr(), self.ptr().add(dst), src.len());
+            }
+        } else {
+            let (left, right) = src.split_at(src.len() - head_room);
+            unsafe {
+                copy_nonoverlapping_reversed(right.as_ptr(), self.ptr().add(dst), right.len());
+                copy_nonoverlapping_reversed(left.as_ptr(), self.ptr(), left.len());
+            }
+        }
+    }
+
     /// Writes all values from `iter` to `dst`.
     ///
     /// # Safety

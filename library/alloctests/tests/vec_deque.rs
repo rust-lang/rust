@@ -2113,14 +2113,45 @@ fn test_extend_front() {
 }
 
 #[test]
-fn test_extend_front_specialization() {
+fn test_extend_front_specialization_vec_into_iter() {
+    // trigger 4 code paths: all combinations of prepend and extend_front, wrap and no wrap
     let mut v = VecDeque::with_capacity(4);
     v.prepend(vec![1, 2, 3]);
     assert_eq!(v, [1, 2, 3]);
-    v.pop_front();
-    v.prepend((-4..2).collect::<Vec<_>>());
-    assert_eq!(v, (-4..=3).collect::<Vec<_>>());
-    v.clear();
+    v.pop_back();
+    // this should wrap around the physical buffer
+    v.prepend(vec![-1, 0]);
+    // check it really wrapped
+    assert_eq!(v.as_slices(), ([-1].as_slice(), [0, 1, 2].as_slice()));
+
+    let mut v = VecDeque::with_capacity(4);
     v.extend_front(vec![1, 2, 3]);
     assert_eq!(v, [3, 2, 1]);
+    v.pop_back();
+    // this should wrap around the physical buffer
+    v.extend_front(vec![4, 5]);
+    // check it really wrapped
+    assert_eq!(v.as_slices(), ([5].as_slice(), [4, 3, 2].as_slice()));
+}
+
+#[test]
+fn test_extend_front_specialization_copy_slice() {
+    // trigger 4 code paths: all combinations of prepend and extend_front, wrap and no wrap
+    let mut v = VecDeque::with_capacity(4);
+    v.prepend([1, 2, 3].as_slice().iter().copied());
+    assert_eq!(v, [1, 2, 3]);
+    v.pop_back();
+    // this should wrap around the physical buffer
+    v.prepend([-1, 0].as_slice().iter().copied());
+    // check it really wrapped
+    assert_eq!(v.as_slices(), ([-1].as_slice(), [0, 1, 2].as_slice()));
+
+    let mut v = VecDeque::with_capacity(4);
+    v.extend_front([1, 2, 3].as_slice().iter().copied());
+    assert_eq!(v, [3, 2, 1]);
+    v.pop_back();
+    // this should wrap around the physical buffer
+    v.extend_front([4, 5].as_slice().iter().copied());
+    // check it really wrapped
+    assert_eq!(v.as_slices(), ([5].as_slice(), [4, 3, 2].as_slice()));
 }
