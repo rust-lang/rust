@@ -246,6 +246,7 @@ enum ResolutionError<'ra> {
         has_generic_params: HasGenericParams,
         def_kind: DefKind,
         inner_item: Option<(Span, ast::ItemKind)>,
+        current_self_ty: Option<String>,
     },
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
