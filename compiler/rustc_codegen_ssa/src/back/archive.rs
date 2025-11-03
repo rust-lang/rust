@@ -169,6 +169,12 @@ pub trait ArchiveBuilderBuilder {
                 .map_err(|e| ExtractBundledLibsError::ArchiveMember { rlib, error: Box::new(e) })?;
             let name = std::str::from_utf8(entry.name())
                 .map_err(|e| ExtractBundledLibsError::ConvertName { rlib, error: Box::new(e) })?;
+            // PATCH: link.exe stores archive members with their full paths. Extract only the file name.
+            let name = if let Some(file_name) = Path::new(name).file_name() {
+                file_name.to_str().unwrap_or(name)
+            } else {
+                name
+            };
             if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
                 continue; // We need to extract only native libraries.
             }
