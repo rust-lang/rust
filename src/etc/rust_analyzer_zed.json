@@ -1,3 +1,14 @@
+// This config uses a separate build directory for rust-analyzer,
+// so that r-a's checks don't block user `x` commands and vice-verse.
+// R-a's build directory is located in `build-rust-analyzer`.
+//
+// To download rustfmt and proc macro server for r-a run the following command
+// (proc macro server is downloaded automatically with pretty much any command,
+// this specific one also downloads rustfmt):
+// ```
+// x fmt --check
+// ```
+// (if that doesn't work -- do `x clean` first)
 {
   "lsp": {
     "rust-analyzer": {
@@ -55,7 +66,8 @@
         },
         "server": {
           "extraEnv": {
-            "RUSTUP_TOOLCHAIN": "nightly"
+            "RUSTC": "build/host/stage0/bin/rustc",
+            "CARGO": "build/host/stage0/bin/cargo"
           }
         }
       }
