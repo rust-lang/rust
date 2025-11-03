@@ -1950,10 +1950,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn point_at_impl_lifetimes(&mut self, err: &mut Diag<'_>, i: usize, lifetime: Span) {
-        let Some((rib, span)) = self.lifetime_ribs[..i]
-            .iter()
-            .rev()
-            .find_map(|rib| match rib.kind {
+        let Some((rib, span)) =
+            self.lifetime_ribs[..i].iter().rev().find_map(|rib| match rib.kind {
                 LifetimeRibKind::Generics { span, kind: LifetimeBinderKind::ImplBlock, .. } => {
                     Some((rib, span))
                 }
