@@ -2759,9 +2759,10 @@ rustc_queries! {
     }
 
     /// Returns a list of all `externally implementable items` crate.
-    query externally_implementable_items(_: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
+    query externally_implementable_items(cnum: CrateNum) -> &'tcx FxIndexMap<DefId, (EiiDecl, FxIndexMap<DefId, EiiImpl>)> {
         arena_cache
         desc { "looking up the externally implementable items of a crate" }
+        cache_on_disk_if { *cnum == LOCAL_CRATE }
         separate_provide_extern
     }
 }
