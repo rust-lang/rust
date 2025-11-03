@@ -312,13 +312,13 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
     if suggestion.contains("::")
         && suggestion.ends_with(original)
         && suggestion.len() > original.len()
+        && let prefix = &suggestion[..suggestion.len() - original.len()]
+        && prefix.ends_with("::")
+        && suggestion.chars().next() == original.chars().next()
     {
-        let prefix = &suggestion[..suggestion.len() - original.len()];
-        if prefix.ends_with("::") && suggestion.chars().next() == original.chars().next() {
-            return Some((0, prefix, original.len()));
-        }
+        return Some((0, prefix, original.len()));
     }
-
+    
     let common_prefix = original
         .chars()
         .zip(suggestion.chars())
