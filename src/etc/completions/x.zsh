@@ -383,6 +383,7 @@ _arguments "${_arguments_options[@]}" : \
 '--only-modified[only run tests that result has been changed]' \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
+'--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

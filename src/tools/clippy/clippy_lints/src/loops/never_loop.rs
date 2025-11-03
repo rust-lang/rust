@@ -7,7 +7,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Node, Pat, Stmt, StmtKind, StructTailExpr,
+    Block, Destination, Expr, ExprKind, HirId, InlineAsm, InlineAsmOperand, Node, Pat, Stmt, StmtKind, StructTailExpr,
 };
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, Span, sym};
@@ -75,10 +75,17 @@ pub(super) fn check<'tcx>(
 fn contains_any_break_or_continue(block: &Block<'_>) -> bool {
     for_each_expr_without_closures(block, |e| match e.kind {
         ExprKind::Break(..) | ExprKind::Continue(..) => ControlFlow::Break(()),
+        ExprKind::InlineAsm(asm) if contains_label(asm) => ControlFlow::Break(()),
         ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
         _ => ControlFlow::Continue(Descend::Yes),
     })
     .is_some()
+}
+
+fn contains_label(asm: &InlineAsm<'_>) -> bool {
+    asm.operands
+        .iter()
+        .any(|(op, _span)| matches!(op, InlineAsmOperand::Label { .. }))
 }
 
 /// The `never_loop` analysis keeps track of three things:
@@ -378,7 +385,15 @@ fn never_loop_expr<'tcx>(
             InlineAsmOperand::Const { .. } | InlineAsmOperand::SymFn { .. } | InlineAsmOperand::SymStatic { .. } => {
                 NeverLoopResult::Normal
             },
-            InlineAsmOperand::Label { block } => never_loop_block(cx, block, local_labels, main_loop_id),
+            InlineAsmOperand::Label { block } =>
+            // We do not know whether the label will be executed or not, so `Diverging` must be
+            // downgraded to `Normal`.
+            {
+                match never_loop_block(cx, block, local_labels, main_loop_id) {
+                    NeverLoopResult::Diverging { .. } => NeverLoopResult::Normal,
+                    result => result,
+                }
+            },
         })),
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)

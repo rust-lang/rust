@@ -21,7 +21,7 @@ impl Deserialize for () {
 
 trait ImplementedForUnitButNotNever {}
 
-impl ImplementedForUnitButNotNever for () {}
+impl ImplementedForUnitButNotNever for () {} //[fallback]~ HELP trait `ImplementedForUnitButNotNever` is implemented for `()`
 
 fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
 //[fallback]~^ note: required by this bound in `foo`
@@ -29,12 +29,11 @@ fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
 fn smeg() {
     let _x = return;
     foo(_x);
-    //[fallback]~^ error: the trait bound
-    //[fallback]~| note: the trait `ImplementedForUnitButNotNever` is not implemented
-    //[fallback]~| help: trait `ImplementedForUnitButNotNever` is implemented for `()`
-    //[fallback]~| note: this error might have been caused
-    //[fallback]~| note: required by a bound introduced by this call
-    //[fallback]~| help: you might have intended to use the type `()`
+    //[fallback]~^ ERROR the trait bound
+    //[fallback]~| NOTE the trait `ImplementedForUnitButNotNever` is not implemented
+    //[fallback]~| NOTE this error might have been caused
+    //[fallback]~| NOTE required by a bound introduced by this call
+    //[fallback]~| HELP you might have intended to use the type `()`
 }
 
 fn main() {

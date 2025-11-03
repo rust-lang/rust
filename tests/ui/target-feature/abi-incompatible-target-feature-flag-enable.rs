@@ -7,10 +7,10 @@
 //@[x86] needs-llvm-components: x86
 //@[riscv] compile-flags: --target=riscv32e-unknown-none-elf -Ctarget-feature=+d
 // FIXME(#147881): *disable* the feature again for minicore as otherwise that will fail to build.
-//@[riscv] core-stubs-compile-flags: -Ctarget-feature=-d
+//@[riscv] minicore-compile-flags: -Ctarget-feature=-d
 //@[riscv] needs-llvm-components: riscv
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 
 #![feature(no_core, riscv_target_feature)]
 #![no_core]

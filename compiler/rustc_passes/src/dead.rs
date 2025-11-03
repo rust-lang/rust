@@ -125,9 +125,13 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             ) => {
                 self.check_def_id(def_id);
             }
-            _ if self.in_pat => {}
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
+                // Using a variant in patterns should not make the variant live,
+                // since we can just remove the match arm that matches the pattern
+                if self.in_pat {
+                    return;
+                }
                 let variant_id = self.tcx.parent(ctor_def_id);
                 let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
@@ -136,6 +140,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
             }
             Res::Def(DefKind::Variant, variant_id) => {
+                // Using a variant in patterns should not make the variant live,
+                // since we can just remove the match arm that matches the pattern
+                if self.in_pat {
+                    return;
+                }
                 let enum_id = self.tcx.parent(variant_id);
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {

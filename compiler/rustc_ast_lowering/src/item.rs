@@ -415,7 +415,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Trait(constness, *is_auto, safety, ident, generics, bounds, items)
             }
-            ItemKind::TraitAlias(ident, generics, bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+                let constness = self.lower_constness(*constness);
                 let ident = self.lower_ident(*ident);
                 let (generics, bounds) = self.lower_generics(
                     generics,
@@ -429,7 +430,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     },
                 );
-                hir::ItemKind::TraitAlias(ident, generics, bounds)
+                hir::ItemKind::TraitAlias(constness, ident, generics, bounds)
             }
             ItemKind::MacroDef(ident, MacroDef { body, macro_rules }) => {
                 let ident = self.lower_ident(*ident);

@@ -422,6 +422,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Use a different codegen backend when running tests.
         test_codegen_backend: Option<CodegenBackendKind>,
+        #[arg(long)]
+        /// Ignore `//@ ignore-backends` directives.
+        bypass_ignore_backends: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -666,6 +669,13 @@ impl Subcommand {
         match self {
             Subcommand::Test { test_codegen_backend, .. } => test_codegen_backend.as_ref(),
             _ => None,
+        }
+    }
+
+    pub fn bypass_ignore_backends(&self) -> bool {
+        match self {
+            Subcommand::Test { bypass_ignore_backends, .. } => *bypass_ignore_backends,
+            _ => false,
         }
     }
 }

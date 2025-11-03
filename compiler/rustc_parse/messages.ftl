@@ -863,7 +863,6 @@ parse_too_short_hex_escape = numeric character escape is too short
 parse_trailing_vert_not_allowed = a trailing `{$token}` is not allowed in an or-pattern
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
-parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
 
 parse_trait_impl_modifier_in_inherent_impl = inherent impls cannot be {$modifier_name}

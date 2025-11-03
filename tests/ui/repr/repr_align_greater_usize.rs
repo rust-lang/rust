@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: msp430 aarch32
 //@[msp430] needs-llvm-components: msp430
 //@[msp430] compile-flags: --target=msp430-none-elf

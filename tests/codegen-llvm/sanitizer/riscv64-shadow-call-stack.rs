@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Zsanitizer=shadow-call-stack
 //@ needs-llvm-components: riscv
 

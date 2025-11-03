@@ -3,7 +3,7 @@
 #![allow(
     unused,
     clippy::uninlined_format_args,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::redundant_guards,
     clippy::redundant_pattern_matching,
     clippy::manual_unwrap_or_default

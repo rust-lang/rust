@@ -270,9 +270,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn qpath(&self, qpath: &Binding<&QPath<'_>>, hir_id_binding: &str, hir_id: HirId) {
-        if let QPath::LangItem(lang_item, ..) = *qpath.value {
-            chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else if let Some(def_id) = self.cx.qpath_res(qpath.value, hir_id).opt_def_id()
+        if let Some(def_id) = self.cx.qpath_res(qpath.value, hir_id).opt_def_id()
             && !def_id.is_local()
         {
             bind!(self, def_id);
@@ -745,10 +743,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let ann = match ann {
                     BindingMode::NONE => "NONE",
                     BindingMode::REF => "REF",
+                    BindingMode::REF_PIN => "REF_PIN",
                     BindingMode::MUT => "MUT",
                     BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::REF_PIN_MUT => "REF_PIN_MUT",
                     BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_PIN => "MUT_REF_PIN",
                     BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::MUT_REF_PIN_MUT => "MUT_REF_PIN_MUT",
                 };
                 kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);

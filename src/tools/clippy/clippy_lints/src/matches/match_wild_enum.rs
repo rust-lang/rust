@@ -108,7 +108,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     },
                     _,
                 ) => path_prefix.with_prefix(path.segments),
-                _ => (),
+                QPath::TypeRelative(..) => (),
             }
         });
     }

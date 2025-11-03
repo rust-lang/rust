@@ -1,0 +1,17 @@
+error: in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+  --> $DIR/missing-lifetime-in-assoc-type-4.rs:5:17
+   |
+LL | impl IntoIterator for &S {
+   |     - you could add a lifetime on the impl block, if the trait or the self type can have one
+LL |     type Item = &T;
+   |                 ^ this lifetime must come from the implemented type
+
+error[E0195]: lifetime parameters or bounds on associated type `IntoIter` do not match the trait declaration
+  --> $DIR/missing-lifetime-in-assoc-type-4.rs:7:18
+   |
+LL |     type IntoIter<'a> = std::collections::btree_map::Values<'a, i32, T>;
+   |                  ^^^^ lifetimes do not match associated type in trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0195`.

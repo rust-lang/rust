@@ -155,7 +155,7 @@ pub(crate) struct Options {
     /// Whether doctests should emit unused externs
     pub(crate) json_unused_externs: JsonUnusedExterns,
     /// Whether to skip capturing stdout and stderr of tests.
-    pub(crate) nocapture: bool,
+    pub(crate) no_capture: bool,
 
     /// Configuration for scraping examples from the current crate. If this option is Some(..) then
     /// the compiler will scrape examples and not generate documentation.
@@ -211,7 +211,7 @@ impl fmt::Debug for Options {
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
             .field("remap-file-prefix", &self.remap_path_prefix)
-            .field("nocapture", &self.nocapture)
+            .field("no_capture", &self.no_capture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
             .finish()
@@ -783,7 +783,7 @@ impl Options {
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
-        let nocapture = matches.opt_present("nocapture");
+        let no_capture = matches.opt_present("no-capture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
         let generate_macro_expansion = matches.opt_present("generate-macro-expansion");
         let extern_html_root_takes_precedence =
@@ -854,7 +854,7 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
-            nocapture,
+            no_capture,
             crate_name,
             output_format,
             json_unused_externs,

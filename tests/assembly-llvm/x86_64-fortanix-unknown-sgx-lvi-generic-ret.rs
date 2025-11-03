@@ -1,6 +1,6 @@
 // Test LVI ret hardening on generic rust code
 
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target x86_64-fortanix-unknown-sgx
 //@ needs-llvm-components: x86

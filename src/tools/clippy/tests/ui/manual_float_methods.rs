@@ -1,6 +1,6 @@
 //@no-rustfix: overlapping suggestions
 //@aux-build:proc_macros.rs
-#![allow(clippy::needless_if, unused)]
+#![allow(clippy::needless_ifs, unused)]
 #![warn(clippy::manual_is_infinite, clippy::manual_is_finite)]
 
 // FIXME(f16_f128): add tests for these types once constants are available

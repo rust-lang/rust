@@ -237,7 +237,7 @@ fn find_stripping<'tcx>(
             if is_ref_str(self.cx, ex)
                 && let unref = peel_ref(ex)
                 && let ExprKind::Index(indexed, index, _) = &unref.kind
-                && let Some(higher::Range { start, end, .. }) = higher::Range::hir(index)
+                && let Some(higher::Range { start, end, .. }) = higher::Range::hir(self.cx, index)
                 && let ExprKind::Path(path) = &indexed.kind
                 && self.cx.qpath_res(path, ex.hir_id) == self.target
             {

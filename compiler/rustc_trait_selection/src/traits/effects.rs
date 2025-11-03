@@ -69,6 +69,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
+    match evaluate_host_effect_from_trait_alias(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
     Err(EvaluationFailure::NoSolution)
 }
 
@@ -592,4 +598,38 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             },
         }
     })
+}
+
+fn evaluate_host_effect_from_trait_alias<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let def_id = obligation.predicate.def_id();
+    if !tcx.trait_is_alias(def_id) {
+        return Err(EvaluationFailure::NoSolution);
+    }
+
+    Ok(tcx
+        .const_conditions(def_id)
+        .instantiate(tcx, obligation.predicate.trait_ref.args)
+        .into_iter()
+        .map(|(trait_ref, span)| {
+            Obligation::new(
+                tcx,
+                obligation.cause.clone().derived_host_cause(
+                    ty::Binder::dummy(obligation.predicate),
+                    |derived| {
+                        ObligationCauseCode::ImplDerivedHost(Box::new(ImplDerivedHostCause {
+                            derived,
+                            impl_def_id: def_id,
+                            span,
+                        }))
+                    },
+                ),
+                obligation.param_env,
+                trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness),
+            )
+        })
+        .collect())
 }

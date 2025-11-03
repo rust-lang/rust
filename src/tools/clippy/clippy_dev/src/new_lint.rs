@@ -1,4 +1,5 @@
-use crate::utils::{RustSearcher, Token, Version};
+use crate::parse::cursor::{self, Capture, Cursor};
+use crate::utils::Version;
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
 use std::fmt::{self, Write as _};
@@ -516,22 +517,22 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
 // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
 fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     #[allow(clippy::enum_glob_use)]
-    use Token::*;
+    use cursor::Pat::*;
 
     let mut context = None;
     let mut decl_end = None;
-    let mut searcher = RustSearcher::new(contents);
-    while let Some(name) = searcher.find_capture_token(CaptureIdent) {
-        match name {
+    let mut cursor = Cursor::new(contents);
+    let mut captures = [Capture::EMPTY];
+    while let Some(name) = cursor.find_any_ident() {
+        match cursor.get_text(name) {
             "declare_clippy_lint" => {
-                if searcher.match_tokens(&[Bang, OpenBrace], &mut []) && searcher.find_token(CloseBrace) {
-                    decl_end = Some(searcher.pos());
+                if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) {
+                    decl_end = Some(cursor.pos());
                 }
             },
             "impl" => {
-                let mut capture = "";
-                if searcher.match_tokens(&[Lt, Lifetime, Gt, CaptureIdent], &mut [&mut capture]) {
-                    match capture {
+                if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) {
+                    match cursor.get_text(captures[0]) {
                         "LateLintPass" => context = Some("LateContext"),
                         "EarlyLintPass" => context = Some("EarlyContext"),
                         _ => {},

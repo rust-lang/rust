@@ -1,7 +1,6 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -33,8 +32,7 @@ use crate::errors::{
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    analysis: &mut A,
-    results: &Results<A::Domain>,
+    results: &Results<'tcx, A>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where
@@ -81,7 +79,7 @@ where
 
     let mut buf = Vec::new();
 
-    let graphviz = Formatter::new(body, analysis, results, style);
+    let graphviz = Formatter::new(body, results, style);
     let mut render_opts =
         vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
@@ -206,12 +204,7 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir Body<'tcx>,
-    // The `RefCell` is used because `<Formatter as Labeller>::node_label`
-    // takes `&self`, but it needs to modify the analysis. This is also the
-    // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
-    // the operations that involve the mutation, i.e. within the `borrow_mut`.
-    analysis: RefCell<&'mir mut A>,
-    results: &'mir Results<A::Domain>,
+    results: &'mir Results<'tcx, A>,
     style: OutputStyle,
     reachable: DenseBitSet<BasicBlock>,
 }
@@ -220,14 +213,9 @@ impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    fn new(
-        body: &'mir Body<'tcx>,
-        analysis: &'mir mut A,
-        results: &'mir Results<A::Domain>,
-        style: OutputStyle,
-    ) -> Self {
+    fn new(body: &'mir Body<'tcx>, results: &'mir Results<'tcx, A>, style: OutputStyle) -> Self {
         let reachable = traversal::reachable_as_bitset(body);
-        Formatter { body, analysis: analysis.into(), results, style, reachable }
+        Formatter { body, results, style, reachable }
     }
 }
 
@@ -265,12 +253,10 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let analysis = &mut **self.analysis.borrow_mut();
-
-        let diffs = StateDiffCollector::run(self.body, *block, analysis, self.results, self.style);
+        let diffs = StateDiffCollector::run(self.body, *block, self.results, self.style);
 
         let mut fmt = BlockFormatter {
-            cursor: ResultsCursor::new_borrowing(self.body, analysis, self.results),
+            cursor: ResultsCursor::new_borrowing(self.body, self.results),
             style: self.style,
             bg: Background::Light,
         };
@@ -698,8 +684,7 @@ impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &Body<'tcx>,
         block: BasicBlock,
-        analysis: &mut A,
-        results: &Results<A::Domain>,
+        results: &Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self
     where
@@ -707,12 +692,12 @@ impl<D> StateDiffCollector<D> {
         D: DebugWithContext<A>,
     {
         let mut collector = StateDiffCollector {
-            prev_state: analysis.bottom_value(body),
+            prev_state: results.analysis.bottom_value(body),
             after: vec![],
             before: (style == OutputStyle::BeforeAndAfter).then_some(vec![]),
         };
 
-        visit_results(body, std::iter::once(block), analysis, results, &mut collector);
+        visit_results(body, std::iter::once(block), results, &mut collector);
         collector
     }
 }
@@ -736,7 +721,7 @@ where
 
     fn visit_after_early_statement_effect(
         &mut self,
-        analysis: &mut A,
+        analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -749,7 +734,7 @@ where
 
     fn visit_after_primary_statement_effect(
         &mut self,
-        analysis: &mut A,
+        analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -760,7 +745,7 @@ where
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        analysis: &mut A,
+        analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -773,7 +758,7 @@ where
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        analysis: &mut A,
+        analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

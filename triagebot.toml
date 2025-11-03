@@ -38,6 +38,14 @@ allow-unauthenticated = [
     "has-merge-commits",
 ]
 
+[relabel.to-stable]
+add-labels = ["regression-from-stable-to-stable"]
+rem-labels = ["regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
+
+[relabel.to-beta]
+add-labels = ["regression-from-stable-to-beta"]
+rem-labels = ["regression-from-stable-to-stable", "regression-from-stable-to-nightly"]
+
 [review-submitted]
 # This label is added when a "request changes" review is submitted.
 reviewed_label = "S-waiting-on-author"

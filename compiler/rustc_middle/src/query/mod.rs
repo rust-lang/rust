@@ -42,7 +42,7 @@
 //!   Only valid for queries returning `Result<_, ErrorGuaranteed>`.
 //!
 //! For the up-to-date list, see the `QueryModifiers` struct in
-//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/query.rs)
+//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
 //! and for more details in incremental compilation, see the
 //! [Query modifiers in incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html#query-modifiers) section of the rustc-dev-guide.
 //!
@@ -397,7 +397,10 @@ rustc_queries! {
     /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) {
         eval_always
-        desc { "running analysis passes on this crate" }
+        desc { |tcx|
+            "running analysis passes on crate `{}`",
+            tcx.crate_name(LOCAL_CRATE),
+        }
     }
 
     /// This query checks the fulfillment of collected lint expectations.
@@ -1244,7 +1247,10 @@ rustc_queries! {
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
-    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
+    query mir_borrowck(key: LocalDefId) -> Result<
+        &'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+        ErrorGuaranteed
+    > {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
     }
 

@@ -584,8 +584,8 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         value: query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty },
     } = goal;
     for (key, ty) in predefined_opaques_in_body {
-        let prev =
-            infcx.register_hidden_type_in_storage(key, ty::OpaqueHiddenType { span: DUMMY_SP, ty });
+        let prev = infcx
+            .register_hidden_type_in_storage(key, ty::ProvisionalHiddenType { span: DUMMY_SP, ty });
         // It may be possible that two entries in the opaque type storage end up
         // with the same key after resolving contained inference variables.
         //

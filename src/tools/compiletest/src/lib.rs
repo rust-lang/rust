@@ -217,7 +217,8 @@ fn parse_config(args: Vec<String>) -> Config {
             "override-codegen-backend",
             "the codegen backend to use instead of the default one",
             "CODEGEN BACKEND [NAME | PATH]",
-        );
+        )
+        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -484,6 +485,7 @@ fn parse_config(args: Vec<String>) -> Config {
 
         default_codegen_backend,
         override_codegen_backend,
+        bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
     }
 }
 

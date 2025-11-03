@@ -13,7 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::{SourceMap, original_sp};
 use rustc_span::{
-    BytePos, DesugaringKind, DUMMY_SP, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine,
+    BytePos, DUMMY_SP, DesugaringKind, FileNameDisplayPreference, Pos, RelativeBytePos, SourceFile, SourceFileAndLine,
     Span, SpanData, SyntaxContext, hygiene,
 };
 use std::borrow::Cow;
@@ -675,7 +675,7 @@ fn snippet_with_context_sess<'a>(
         return (
             snippet_with_applicability_sess(sess, span, default, applicability),
             false,
-        )
+        );
     }
 
     let (span, is_macro_call) = walk_span_to_context(span, outer).map_or_else(

@@ -22,6 +22,8 @@ use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
+#[cfg(not(no_global_oom_handling))]
+use core::ops::{Residual, Try};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull};
@@ -648,6 +650,93 @@ impl<T> Arc<T> {
                 |layout| Global.allocate_zeroed(layout),
                 <*mut u8>::cast,
             )?))
+        }
+    }
+
+    /// Maps the value in an `Arc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `Arc`, and the result is returned, also in
+    /// an `Arc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Arc::map(a, f)` instead of `r.map(a)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let r = Arc::new(7);
+    /// let new = Arc::map(r, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Arc<U> {
+        if size_of::<T>() == size_of::<U>()
+            && align_of::<T>() == align_of::<U>()
+            && Arc::is_unique(&this)
+        {
+            unsafe {
+                let ptr = Arc::into_raw(this);
+                let value = ptr.read();
+                let mut allocation = Arc::from_raw(ptr.cast::<mem::MaybeUninit<U>>());
+
+                Arc::get_mut_unchecked(&mut allocation).write(f(&value));
+                allocation.assume_init()
+            }
+        } else {
+            Arc::new(f(&*this))
+        }
+    }
+
+    /// Attempts to map the value in an `Arc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `Arc`, and if the operation succeeds, the
+    /// result is returned, also in an `Arc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Arc::try_map(a, f)` instead of `a.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let b = Arc::new(7);
+    /// let new = Arc::try_map(b, |&i| u32::try_from(i)).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(&T) -> R,
+    ) -> <R::Residual as Residual<Arc<R::Output>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<Arc<R::Output>>,
+    {
+        if size_of::<T>() == size_of::<R::Output>()
+            && align_of::<T>() == align_of::<R::Output>()
+            && Arc::is_unique(&this)
+        {
+            unsafe {
+                let ptr = Arc::into_raw(this);
+                let value = ptr.read();
+                let mut allocation = Arc::from_raw(ptr.cast::<mem::MaybeUninit<R::Output>>());
+
+                Arc::get_mut_unchecked(&mut allocation).write(f(&value)?);
+                try { allocation.assume_init() }
+            }
+        } else {
+            try { Arc::new(f(&*this)?) }
         }
     }
 }
@@ -4403,6 +4492,128 @@ impl<T> UniqueArc<T, Global> {
     pub fn new(value: T) -> Self {
         Self::new_in(value, Global)
     }
+
+    /// Maps the value in a `UniqueArc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `UniqueArc`, and the result is returned,
+    /// also in a `UniqueArc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `UniqueArc::map(u, f)` instead of `u.map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::sync::UniqueArc;
+    ///
+    /// let r = UniqueArc::new(7);
+    /// let new = UniqueArc::map(r, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueArc<U> {
+        if size_of::<T>() == size_of::<U>()
+            && align_of::<T>() == align_of::<U>()
+            && UniqueArc::weak_count(&this) == 0
+        {
+            unsafe {
+                let ptr = UniqueArc::into_raw(this);
+                let value = ptr.read();
+                let mut allocation = UniqueArc::from_raw(ptr.cast::<mem::MaybeUninit<U>>());
+
+                allocation.write(f(value));
+                allocation.assume_init()
+            }
+        } else {
+            UniqueArc::new(f(UniqueArc::unwrap(this)))
+        }
+    }
+
+    /// Attempts to map the value in a `UniqueArc`, reusing the allocation if possible.
+    ///
+    /// `f` is called on a reference to the value in the `UniqueArc`, and if the operation succeeds,
+    /// the result is returned, also in a `UniqueArc`.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `UniqueArc::try_map(u, f)` instead of `u.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    /// #![feature(unique_rc_arc)]
+    ///
+    /// use std::sync::UniqueArc;
+    ///
+    /// let b = UniqueArc::new(7);
+    /// let new = UniqueArc::try_map(b, u32::try_from).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(T) -> R,
+    ) -> <R::Residual as Residual<UniqueArc<R::Output>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<UniqueArc<R::Output>>,
+    {
+        if size_of::<T>() == size_of::<R::Output>()
+            && align_of::<T>() == align_of::<R::Output>()
+            && UniqueArc::weak_count(&this) == 0
+        {
+            unsafe {
+                let ptr = UniqueArc::into_raw(this);
+                let value = ptr.read();
+                let mut allocation = UniqueArc::from_raw(ptr.cast::<mem::MaybeUninit<R::Output>>());
+
+                allocation.write(f(value)?);
+                try { allocation.assume_init() }
+            }
+        } else {
+            try { UniqueArc::new(f(UniqueArc::unwrap(this))?) }
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn unwrap(this: Self) -> T {
+        let this = ManuallyDrop::new(this);
+        let val: T = unsafe { ptr::read(&**this) };
+
+        let _weak = Weak { ptr: this.ptr, alloc: Global };
+
+        val
+    }
+}
+
+impl<T: ?Sized> UniqueArc<T> {
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn from_raw(ptr: *const T) -> Self {
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original ArcInner.
+        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut ArcInner<T> };
+
+        Self {
+            ptr: unsafe { NonNull::new_unchecked(rc_ptr) },
+            _marker: PhantomData,
+            _marker2: PhantomData,
+            alloc: Global,
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn into_raw(this: Self) -> *const T {
+        let this = ManuallyDrop::new(this);
+        Self::as_ptr(&*this)
+    }
 }
 
 impl<T, A: Allocator> UniqueArc<T, A> {
@@ -4456,6 +4667,40 @@ impl<T: ?Sized, A: Allocator> UniqueArc<T, A> {
             Arc::from_inner_in(this.ptr, alloc)
         }
     }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn weak_count(this: &Self) -> usize {
+        this.inner().weak.load(Acquire) - 1
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn inner(&self) -> &ArcInner<T> {
+        // SAFETY: while this UniqueArc is alive we're guaranteed that the inner pointer is valid.
+        unsafe { self.ptr.as_ref() }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    fn as_ptr(this: &Self) -> *const T {
+        let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
+
+        // SAFETY: This cannot go through Deref::deref or UniqueArc::inner because
+        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
+        // write through the pointer after the Rc is recovered through `from_raw`.
+        unsafe { &raw mut (*ptr).data }
+    }
+
+    #[inline]
+    #[cfg(not(no_global_oom_handling))]
+    fn into_inner_with_allocator(this: Self) -> (NonNull<ArcInner<T>>, A) {
+        let this = mem::ManuallyDrop::new(this);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn from_inner_in(ptr: NonNull<ArcInner<T>>, alloc: A) -> Self {
+        Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc }
+    }
 }
 
 impl<T: ?Sized, A: Allocator + Clone> UniqueArc<T, A> {
@@ -4483,6 +4728,14 @@ impl<T: ?Sized, A: Allocator + Clone> UniqueArc<T, A> {
         }
 
         Weak { ptr: this.ptr, alloc: this.alloc.clone() }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T, A: Allocator> UniqueArc<mem::MaybeUninit<T>, A> {
+    unsafe fn assume_init(self) -> UniqueArc<T, A> {
+        let (ptr, alloc) = UniqueArc::into_inner_with_allocator(self);
+        unsafe { UniqueArc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 

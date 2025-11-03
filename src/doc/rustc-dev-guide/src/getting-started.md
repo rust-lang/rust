@@ -59,7 +59,7 @@ you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`. Ignore any com
 "Rollup merge" or commits by `@bors` (see [CI contribution procedures](./contributing.md#ci) for
 more information about these commits).
 
-[map]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+[map]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
 ### Etiquette
 

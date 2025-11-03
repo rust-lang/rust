@@ -1,4 +1,4 @@
-#![allow(clippy::needless_if)]
+#![allow(clippy::needless_ifs)]
 
 #[derive(Default)]
 struct A<T> {

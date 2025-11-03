@@ -30,11 +30,17 @@ LL |         n + sum_to(n - 1)
    |           ^ no implementation for `u32 + impl Foo`
    |
    = help: the trait `Add<impl Foo>` is not implemented for `u32`
-   = help: the following other types implement trait `Add<Rhs>`:
-             `&u32` implements `Add<u32>`
-             `&u32` implements `Add`
-             `u32` implements `Add<&u32>`
-             `u32` implements `Add`
+help: the following other types implement trait `Add<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `&u32` implements `Add<u32>`
+   |
+   = note: `&u32` implements `Add`
+   |
+   = note: `u32` implements `Add<&u32>`
+   |
+   = note: `u32` implements `Add`
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

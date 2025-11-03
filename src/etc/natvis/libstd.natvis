@@ -18,8 +18,8 @@
     look/feel at the std type level *anyways*...
 
     References:
-      https://github.com/rust-lang/rust/blob/master/src/libstd/collections/hash/map.rs
-      https://github.com/rust-lang/rust/blob/master/src/libstd/collections/hash/set.rs
+      https://github.com/rust-lang/rust/blob/HEAD/src/libstd/collections/hash/map.rs
+      https://github.com/rust-lang/rust/blob/HEAD/src/libstd/collections/hash/set.rs
       https://github.com/rust-lang/hashbrown/blob/master/src/map.rs
       https://github.com/rust-lang/hashbrown/blob/master/src/set.rs
       https://github.com/rust-lang/hashbrown/blob/master/src/raw/mod.rs

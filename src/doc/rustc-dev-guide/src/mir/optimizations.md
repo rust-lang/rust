@@ -70,8 +70,8 @@ optimizes it, and returns the improved MIR.
 If you have any questions along the way, feel free to ask in
 `#t-compiler/wg-mir-opt` on Zulip.
 
-[mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/README.md
-[`compiler/rustc_mir_transform/src`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src
+[mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/HEAD/tests/mir-opt/README.md
+[`compiler/rustc_mir_transform/src`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_mir_transform/src
 [`remove_storage_markers`]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/remove_storage_markers.rs
 [`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
 
