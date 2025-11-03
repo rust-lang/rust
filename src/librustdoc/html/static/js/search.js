@@ -91,54 +91,55 @@ if (!Promise.withResolvers) {
 // ==================== Core search logic begin ====================
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
-const itemTypes = [
-    "keyword",
-    "primitive",
-    "mod",
-    "externcrate",
-    "import",
-    "struct", // 5
-    "enum",
-    "fn",
-    "type",
-    "static",
-    "trait", // 10
-    "impl",
-    "tymethod",
-    "method",
-    "structfield",
-    "variant", // 15
-    "macro",
-    "associatedtype",
-    "constant",
-    "associatedconstant",
-    "union", // 20
-    "foreigntype",
-    "existential",
-    "attr",
-    "derive",
-    "traitalias", // 25
-    "generic",
-    "attribute",
-];
+const itemTypes = Object.freeze({
+    keyword: 0,
+    primitive: 1,
+    mod: 2,
+    externcrate: 3,
+    import: 4,
+    struct: 5,
+    enum: 6,
+    fn: 7,
+    type: 8,
+    static: 9,
+    trait: 10,
+    impl: 11,
+    tymethod: 12,
+    method: 13,
+    structfield: 14,
+    variant: 15,
+    macro: 16,
+    associatedtype: 17,
+    constant: 18,
+    associatedconstant: 19,
+    union: 20,
+    foreigntype: 21,
+    existential: 22,
+    attr: 23,
+    derive: 24,
+    traitalias: 25,
+    generic: 26,
+    attribute: 27,
+});
+const itemTypesName = Array.from(Object.keys(itemTypes));
 
-// used for special search precedence
-/** @type {rustdoc.ItemType} */
-const TY_PRIMITIVE = 1;
-/** @type {rustdoc.ItemType} */
-const TY_GENERIC = 26;
-/** @type {rustdoc.ItemType} */
-const TY_IMPORT = 4;
-/** @type {rustdoc.ItemType} */
-const TY_TRAIT = 10;
-/** @type {rustdoc.ItemType} */
-const TY_FN = 7;
-/** @type {rustdoc.ItemType} */
-const TY_METHOD = 13;
-/** @type {rustdoc.ItemType} */
-const TY_TYMETHOD = 12;
-/** @type {rustdoc.ItemType} */
-const TY_ASSOCTYPE = 17;
+// When filtering, some types might be included as well. For example, when you filter on `constant`,
+// we also include associated constant items.
+//
+// This map is built as follows: the first item of the array is the type to be included when the
+// second type of the array is used as filter.
+const itemParents = new Map([
+    [itemTypes.associatedconstant, itemTypes.constant],
+    [itemTypes.method, itemTypes.fn],
+    [itemTypes.tymethod, itemTypes.fn],
+    [itemTypes.primitive, itemTypes.type],
+    [itemTypes.associatedtype, itemTypes.type],
+    [itemTypes.traitalias, itemTypes.trait],
+    [itemTypes.attr, itemTypes.macro],
+    [itemTypes.derive, itemTypes.macro],
+    [itemTypes.externcrate, itemTypes.import],
+]);
+
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -302,7 +303,7 @@ function isEndCharacter(c) {
  * @returns
  */
 function isFnLikeTy(ty) {
-    return ty === TY_FN || ty === TY_METHOD || ty === TY_TYMETHOD;
+    return ty === itemTypes.fn || ty === itemTypes.method || ty === itemTypes.tymethod;
 }
 
 /**
@@ -1205,8 +1206,9 @@ function itemTypeFromName(typename) {
     if (typename === null) {
         return NO_TYPE_FILTER;
     }
-    const index = itemTypes.findIndex(i => i === typename);
-    if (index < 0) {
+    // @ts-expect-error
+    const index = itemTypes[typename];
+    if (index === undefined) {
         throw ["Unknown type filter ", typename];
     }
     return index;
@@ -1329,21 +1331,21 @@ class DocSearch {
             }
             return -1;
         };
-        const typeNameIdOfOutput = await first(output, TY_ASSOCTYPE, "");
-        const typeNameIdOfFnPtr = await first(fn, TY_PRIMITIVE, "");
-        const typeNameIdOfFn = await first(fn, TY_TRAIT, "core::ops");
-        const typeNameIdOfFnMut = await first(fnMut, TY_TRAIT, "core::ops");
-        const typeNameIdOfFnOnce = await first(fnOnce, TY_TRAIT, "core::ops");
-        const typeNameIdOfArray = await first(array, TY_PRIMITIVE, "");
-        const typeNameIdOfSlice = await first(slice, TY_PRIMITIVE, "");
-        const typeNameIdOfArrayOrSlice = await first(arrayOrSlice, TY_PRIMITIVE, "");
-        const typeNameIdOfTuple = await first(tuple, TY_PRIMITIVE, "");
-        const typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
-        const typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
-        const typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
-        const typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
-        const typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
-        const typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
+        const typeNameIdOfOutput = await first(output, itemTypes.associatedtype, "");
+        const typeNameIdOfFnPtr = await first(fn, itemTypes.primitive, "");
+        const typeNameIdOfFn = await first(fn, itemTypes.trait, "core::ops");
+        const typeNameIdOfFnMut = await first(fnMut, itemTypes.trait, "core::ops");
+        const typeNameIdOfFnOnce = await first(fnOnce, itemTypes.trait, "core::ops");
+        const typeNameIdOfArray = await first(array, itemTypes.primitive, "");
+        const typeNameIdOfSlice = await first(slice, itemTypes.primitive, "");
+        const typeNameIdOfArrayOrSlice = await first(arrayOrSlice, itemTypes.primitive, "");
+        const typeNameIdOfTuple = await first(tuple, itemTypes.primitive, "");
+        const typeNameIdOfUnit = await first(unit, itemTypes.primitive, "");
+        const typeNameIdOfTupleOrUnit = await first(tupleOrUnit, itemTypes.primitive, "");
+        const typeNameIdOfReference = await first(reference, itemTypes.primitive, "");
+        const typeNameIdOfPointer = await first(pointer, itemTypes.primitive, "");
+        const typeNameIdOfHof = await first(hof, itemTypes.primitive, "");
+        const typeNameIdOfNever = await first(never, itemTypes.primitive, "");
         this.typeNameIds = {
             typeNameIdOfOutput,
             typeNameIdOfFnPtr,
@@ -1520,7 +1522,7 @@ class DocSearch {
             /** @param {rustdoc.ParserQueryElement} elem */
             const checkTypeFilter = elem => {
                 const ty = itemTypeFromName(elem.typeFilter);
-                if (ty === TY_GENERIC && elem.generics.length !== 0) {
+                if (ty === itemTypes.generic && elem.generics.length !== 0) {
                     throw [
                         "Generic type parameter ",
                         elem.name,
@@ -2033,7 +2035,7 @@ class DocSearch {
             result = {
                 id,
                 name: "",
-                ty: TY_GENERIC,
+                ty: itemTypes.generic,
                 path: null,
                 exactPath: null,
                 generics,
@@ -2045,7 +2047,7 @@ class DocSearch {
             result = {
                 id: null,
                 name: "",
-                ty: TY_GENERIC,
+                ty: itemTypes.generic,
                 path: null,
                 exactPath: null,
                 generics,
@@ -2062,7 +2064,7 @@ class DocSearch {
                 return {
                     id: null,
                     name: "",
-                    ty: TY_GENERIC,
+                    ty: itemTypes.generic,
                     path: null,
                     exactPath: null,
                     generics,
@@ -2149,7 +2151,7 @@ class DocSearch {
             let displayPath;
             let href;
             let traitPath = null;
-            const type = itemTypes[item.ty];
+            const type = itemTypesName[item.ty];
             const name = item.name;
             let path = item.modulePath;
             let exactPath = item.exactModulePath;
@@ -2173,7 +2175,7 @@ class DocSearch {
             } else if (item.parent) {
                 const myparent = item.parent;
                 let anchor = type + "." + name;
-                const parentType = itemTypes[myparent.path.ty];
+                const parentType = itemTypesName[myparent.path.ty];
                 let pageType = parentType;
                 let pageName = myparent.name;
                 exactPath = `${myparent.path.exactModulePath}::${myparent.name}`;
@@ -2520,11 +2522,11 @@ class DocSearch {
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
-                    if (fnType.ty === TY_PRIMITIVE) {
+                    if (fnType.ty === itemTypes.primitive) {
                         if (await writeSpecialPrimitive(fnType, result)) {
                             return;
                         }
-                    } else if (fnType.ty === TY_TRAIT && (
+                    } else if (fnType.ty === itemTypes.trait && (
                         fnType.id === typeNameIds.typeNameIdOfFn ||
                         fnType.id === typeNameIds.typeNameIdOfFnMut ||
                         fnType.id === typeNameIds.typeNameIdOfFnOnce ||
@@ -2691,8 +2693,8 @@ class DocSearch {
                     // unlike other items, methods have a different ty when they are
                     // in an impl block vs a trait.  want to normalize this away.
                     let ty = obj.item.ty;
-                    if (ty === TY_TYMETHOD) {
-                        ty = TY_METHOD;
+                    if (ty === itemTypes.tymethod) {
+                        ty = itemTypes.method;
                     }
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath = res[2] + "|" + ty;
@@ -2714,10 +2716,10 @@ class DocSearch {
 
                     // Exports are specifically not shown if the items they point at
                     // are already in the results.
-                    if (obj.item.ty === TY_IMPORT && duplicates.has(res[2])) {
+                    if (obj.item.ty === itemTypes.import && duplicates.has(res[2])) {
                         continue;
                     }
-                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
+                    if (duplicates.has(res[2] + "|" + itemTypes.import)) {
                         continue;
                     }
                     duplicates.add(obj.fullPath);
@@ -3894,24 +3896,8 @@ class DocSearch {
             if (filter <= NO_TYPE_FILTER || filter === type) return true;
 
             // Match related items
-            const name = itemTypes[type];
-            switch (itemTypes[filter]) {
-                case "constant":
-                    return name === "associatedconstant";
-                case "fn":
-                    return name === "method" || name === "tymethod";
-                case "type":
-                    return name === "primitive" || name === "associatedtype";
-                case "trait":
-                    return name === "traitalias";
-                case "macro":
-                    return name === "attr" || name === "derive";
-                case "import":
-                    return name === "externcrate";
-            }
-
-            // No match
-            return false;
+            // @ts-expect-error
+            return filter === itemParents.get(type);
         }
 
         const innerRunNameQuery =
@@ -4246,7 +4232,7 @@ class DocSearch {
                      * ]>[]}
                      * */
                     const typePromises = [];
-                    if (typeFilter !== TY_GENERIC && searchResults) {
+                    if (typeFilter !== itemTypes.generic && searchResults) {
                         for (const id of searchResults.matches().entries()) {
                             typePromises.push(Promise.all([
                                 this.getName(id),
@@ -4262,7 +4248,7 @@ class DocSearch {
                             ty && !ty[polarity].every(bitmap => {
                                 return bitmap.isEmpty();
                             }) &&
-                            path && path.ty !== TY_ASSOCTYPE &&
+                            path && path.ty !== itemTypes.associatedtype &&
                             (elem.pathWithoutLast.length === 0 ||
                                 checkPath(
                                     elem.pathWithoutLast,
@@ -4270,14 +4256,14 @@ class DocSearch {
                                 ) === 0),
                             );
                     if (types.length === 0) {
-                        const areGenericsAllowed = typeFilter === TY_GENERIC || (
+                        const areGenericsAllowed = typeFilter === itemTypes.generic || (
                             typeFilter === -1 &&
                             (parsedQuery.totalElems > 1 || parsedQuery.hasReturnArrow) &&
                             elem.pathWithoutLast.length === 0 &&
                             elem.generics.length === 0 &&
                             elem.bindings.size === 0
                         );
-                        if (typeFilter !== TY_GENERIC &&
+                        if (typeFilter !== itemTypes.generic &&
                             (elem.name.length >= 3 || !areGenericsAllowed)
                         ) {
                             /** @type {string|null} */
@@ -4301,7 +4287,7 @@ class DocSearch {
                                         !ty[polarity].every(bitmap => {
                                             return bitmap.isEmpty();
                                         }) &&
-                                        path.ty !== TY_ASSOCTYPE
+                                        path.ty !== itemTypes.associatedtype
                                     ) {
                                         let dist = editDistance(
                                             name,
@@ -4363,7 +4349,7 @@ class DocSearch {
                                 queryElem: {
                                     name: elem.name,
                                     id: (-genericId) - 1,
-                                    typeFilter: TY_GENERIC,
+                                    typeFilter: itemTypes.generic,
                                     generics: [],
                                     bindings: EMPTY_BINDINGS_MAP,
                                     fullPath: elem.fullPath,
@@ -4930,7 +4916,7 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
         count += 1;
 
         const name = obj.item.name;
-        const type = itemTypes[obj.item.ty];
+        const type = itemTypesName[obj.item.ty];
         const longType = longItemTypes[obj.item.ty];
         const typeName = longType.length !== 0 ? `${longType}` : "?";
 
