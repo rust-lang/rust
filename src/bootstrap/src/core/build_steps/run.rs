@@ -274,6 +274,8 @@ impl Step for GenerateCopyright {
             cache_dir
         };
 
+        let _guard = builder.group("generate-copyright");
+
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("CARGO_MANIFESTS", &cargo_manifests);
         cmd.env("LICENSE_METADATA", &license_metadata);
@@ -372,6 +374,7 @@ impl Step for UnicodeTableGenerator {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
+        cmd.arg(builder.src.join("library/coretests/tests/unicode/test_data.rs"));
         cmd.run(builder);
     }
 }

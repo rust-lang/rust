@@ -945,6 +945,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             None,
             "Span must not be empty and have no suggestion",
         );
+        debug_assert_eq!(
+            parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+            None,
+            "suggestion must not have overlapping parts",
+        );
 
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution { parts }],

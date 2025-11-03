@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "powerpc-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("PowerPC Linux with musl 1.2.3".into()),
+            description: Some("PowerPC Linux with musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

@@ -165,7 +165,7 @@ const PARSED = [
         foundElems: 0,
         userQuery: "_:",
         returned: [],
-        error: "Unexpected `_` (not a valid identifier)",
+        error: "Unexpected `_` in type filter (before `:`)",
     },
     {
         query: "ab:",

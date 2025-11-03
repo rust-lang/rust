@@ -29,6 +29,7 @@ use std::ops::ControlFlow;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
+use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -75,7 +76,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-#[derive(Debug)]
+#[derive(Debug, TypeVisitable)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -107,7 +108,7 @@ impl<'tcx> FulfillmentError<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, TypeVisitable)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
@@ -835,10 +836,7 @@ fn is_impossible_associated_item(
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
-    let impl_trait_ref = tcx
-        .impl_trait_ref(impl_def_id)
-        .expect("expected impl to correspond to trait")
-        .instantiate(tcx, fresh_args);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {

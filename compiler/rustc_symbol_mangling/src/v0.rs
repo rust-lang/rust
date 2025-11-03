@@ -266,6 +266,9 @@ impl<'tcx> V0SymbolMangler<'tcx> {
                 self.print_const(start)?;
                 self.print_const(end)?;
             }
+            ty::PatternKind::NotNull => {
+                self.tcx.types.unit.print(self)?;
+            }
             ty::PatternKind::Or(patterns) => {
                 self.push("O");
                 for pat in patterns {
@@ -311,7 +314,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
         let self_ty = self.tcx.type_of(impl_def_id);
-        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_opt_trait_ref(impl_def_id);
         let generics = self.tcx.generics_of(impl_def_id);
         // We have two cases to worry about here:
         // 1. We're printing a nested item inside of an impl item, like an inner
@@ -874,7 +877,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::ValueNs(_) => 'v',
             DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
-            DefPathData::AnonConst => 'k',
+            DefPathData::AnonConst => 'K',
+            DefPathData::LateAnonConst => 'k',
             DefPathData::OpaqueTy => 'i',
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
@@ -886,6 +890,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
+            | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

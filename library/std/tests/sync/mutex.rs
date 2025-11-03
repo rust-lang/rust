@@ -3,7 +3,7 @@ use std::ops::FnMut;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
+use std::sync::{Arc, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
 use std::{hint, mem, thread};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -421,38 +421,6 @@ fn test_replace_poison() {
 
     inner(|| NonCopy(10), || NonCopy(20));
     inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
-}
-
-#[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn test_arc_condvar_poison() {
-    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
-
-    let packet = Packet(Arc::new((Mutex::new(1), Condvar::new())));
-    let packet2 = Packet(packet.0.clone());
-    let (tx, rx) = channel();
-
-    let _t = thread::spawn(move || -> () {
-        rx.recv().unwrap();
-        let &(ref lock, ref cvar) = &*packet2.0;
-        let _g = lock.lock().unwrap();
-        cvar.notify_one();
-        // Parent should fail when it wakes up.
-        panic!();
-    });
-
-    let &(ref lock, ref cvar) = &*packet.0;
-    let mut lock = lock.lock().unwrap();
-    tx.send(()).unwrap();
-    while *lock == 1 {
-        match cvar.wait(lock) {
-            Ok(l) => {
-                lock = l;
-                assert_eq!(*lock, 1);
-            }
-            Err(..) => break,
-        }
-    }
 }
 
 #[test]

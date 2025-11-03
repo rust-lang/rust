@@ -3,9 +3,6 @@ error: abnormal termination: attempted to lock an os_unfair_lock that is already
    |
 LL |         libc::os_unfair_lock_lock(lock.get());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail-dep/concurrency/apple_os_unfair_lock_reentrant.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

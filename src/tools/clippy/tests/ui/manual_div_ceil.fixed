@@ -100,3 +100,8 @@ fn issue_13950() {
     let _ = (-8 + y) / -7;
     let _ = (y - 8) / -7;
 }
+
+fn issue_15705(size: u64, c: &u64) {
+    let _ = size.div_ceil(*c);
+    //~^ manual_div_ceil
+}

@@ -56,7 +56,7 @@ impl From<Scalar> for IoError {
 }
 
 // This mapping should match `decode_error_kind` in
-// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/unix/mod.rs>.
+// <https://github.com/rust-lang/rust/blob/HEAD/library/std/src/sys/pal/unix/mod.rs>.
 const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
     &[
@@ -103,7 +103,7 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     ]
 };
 // This mapping should match `decode_error_kind` in
-// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/windows/mod.rs>.
+// <https://github.com/rust-lang/rust/blob/HEAD/library/std/src/sys/pal/windows/mod.rs>.
 const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
     // It's common for multiple error codes to map to the same io::ErrorKind. We have all for the

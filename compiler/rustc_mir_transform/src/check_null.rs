@@ -1,3 +1,4 @@
+use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext};
 use rustc_middle::mir::*;
@@ -62,35 +63,23 @@ fn insert_null_check<'tcx>(
             Operand::Constant(Box::new(ConstOperand {
                 span: source_info.span,
                 user_ty: None,
-                const_: Const::Val(ConstValue::from_bool(true), tcx.types.bool),
+                const_: Const::from_bool(tcx, true),
             }))
         }
         // Other usages of null pointers only are UB if the pointee is not a ZST.
         _ => {
-            let rvalue = Rvalue::NullaryOp(NullOp::SizeOf, pointee_ty);
-            let sizeof_pointee =
-                local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-            stmts.push(Statement::new(
-                source_info,
-                StatementKind::Assign(Box::new((sizeof_pointee, rvalue))),
-            ));
+            let size_of = tcx.require_lang_item(LangItem::SizeOf, source_info.span);
+            let size_of =
+                Operand::unevaluated_constant(tcx, size_of, &[pointee_ty.into()], source_info.span);
 
-            // Check that the pointee is not a ZST.
-            let is_pointee_not_zst =
+            let pointee_should_be_checked =
                 local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
+            let rvalue = Rvalue::BinaryOp(BinOp::Ne, Box::new((size_of, zero.clone())));
             stmts.push(Statement::new(
                 source_info,
-                StatementKind::Assign(Box::new((
-                    is_pointee_not_zst,
-                    Rvalue::BinaryOp(
-                        BinOp::Ne,
-                        Box::new((Operand::Copy(sizeof_pointee), zero.clone())),
-                    ),
-                ))),
+                StatementKind::Assign(Box::new((pointee_should_be_checked, rvalue))),
             ));
-
-            // Pointer needs to be checked only if pointee is not a ZST.
-            Operand::Copy(is_pointee_not_zst)
+            Operand::Copy(pointee_should_be_checked.into())
         }
     };
 

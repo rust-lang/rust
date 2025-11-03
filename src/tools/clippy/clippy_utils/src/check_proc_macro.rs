@@ -121,7 +121,6 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
             (start, end)
         },
         QPath::TypeRelative(_, name) => (Pat::Str(""), Pat::Sym(name.ident.name)),
-        QPath::LangItem(..) => (Pat::Str(""), Pat::Str("")),
     }
 }
 
@@ -490,17 +489,14 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
                     None => ident_search_pat(last.ident).1,
                 }
             } else {
-                // this shouldn't be possible, but sure
-                #[allow(
-                    clippy::collapsible_else_if,
-                    reason = "we want to keep these cases together, since they are both impossible"
-                )]
-                if qself_path.is_some() {
-                    // last `>` in `<Vec as IntoIterator>`
-                    Pat::Str(">")
-                } else {
-                    Pat::Str("")
-                }
+                // this shouldn't be possible
+                Pat::Str(
+                    if qself_path.is_some() {
+                        ">"  // last `>` in `<Vec as IntoIterator>`
+                    } else {
+                        ""
+                    }
+                )
             };
             (start, end)
         },

@@ -39,6 +39,10 @@ mod is_terminal {
             mod hermit;
             pub use hermit::*;
         }
+        target_os = "motor" => {
+            mod motor;
+            pub use motor::*;
+        }
         _ => {
             mod unsupported;
             pub use unsupported::*;

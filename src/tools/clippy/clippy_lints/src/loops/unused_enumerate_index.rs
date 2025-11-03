@@ -1,7 +1,7 @@
 use super::UNUSED_ENUMERATE_INDEX;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{pat_is_wild, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, arg: &Expr<'_
         && let ExprKind::MethodCall(_method, self_arg, [], _) = arg.kind
         && let ty = cx.typeck_results().expr_ty(arg)
         && pat_is_wild(cx, &index.kind, body)
-        && is_type_diagnostic_item(cx, ty, sym::Enumerate)
+        && ty.is_diag_item(cx, sym::Enumerate)
         && let Some((DefKind::AssocFn, call_id)) = cx.typeck_results().type_dependent_def(arg.hir_id)
         && cx.tcx.is_diagnostic_item(sym::enumerate_method, call_id)
     {

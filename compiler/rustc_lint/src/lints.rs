@@ -926,6 +926,13 @@ pub(crate) struct BadOptAccessDiag<'a> {
     pub msg: &'a str,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_implicit_sysroot_crate_import)]
+#[help]
+pub(crate) struct ImplicitSysrootCrateImportDiag<'a> {
+    pub name: &'a str,
+}
+
 // let_underscore.rs
 #[derive(LintDiagnostic)]
 pub(crate) enum NonBindingLet {

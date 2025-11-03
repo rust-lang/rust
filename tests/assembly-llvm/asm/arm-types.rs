@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: base d32 neon
 //@ assembly-output: emit-asm
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf

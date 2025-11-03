@@ -376,12 +376,6 @@ pub struct Config {
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
     pub using_internal_features: &'static std::sync::atomic::AtomicBool,
-
-    /// All commandline args used to invoke the compiler, with @file args fully expanded.
-    /// This will only be used within debug info, e.g. in the pdb file on windows
-    /// This is mainly useful for other tools that reads that debuginfo to figure out
-    /// how to call the compiler with the same arguments.
-    pub expanded_args: Vec<String>,
 }
 
 /// Initialize jobserver before getting `jobserver::client` and `build_session`.
@@ -480,7 +474,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,
-                config.expanded_args,
             );
 
             codegen_backend.init(&sess);

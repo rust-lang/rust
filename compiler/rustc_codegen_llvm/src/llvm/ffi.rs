@@ -289,6 +289,7 @@ pub(crate) enum AttributeKind {
     DeadOnUnwind = 43,
     DeadOnReturn = 44,
     CapturesReadOnly = 45,
+    CapturesNone = 46,
 }
 
 /// LLVMIntPredicate
@@ -675,6 +676,15 @@ pub(crate) enum Opcode {
     CatchPad = 63,
     CleanupPad = 64,
     CatchSwitch = 65,
+}
+
+/// Must match the layout of `LLVMRustCompressionKind`.
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub(crate) enum CompressionKind {
+    None = 0,
+    Zlib = 1,
+    Zstd = 2,
 }
 
 unsafe extern "C" {
@@ -1117,6 +1127,7 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
@@ -1146,6 +1157,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
+    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -2325,12 +2338,8 @@ unsafe extern "C" {
         UseInitArray: bool,
         SplitDwarfFile: *const c_char,
         OutputObjFile: *const c_char,
-        DebugInfoCompression: *const c_char,
+        DebugInfoCompression: CompressionKind,
         UseEmulatedTls: bool,
-        Argv0: *const c_uchar, // See "PTR_LEN_STR".
-        Argv0Len: size_t,
-        CommandLineArgs: *const c_uchar, // See "PTR_LEN_STR".
-        CommandLineArgsLen: size_t,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
 
@@ -2517,9 +2526,8 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 
-    pub(crate) fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
-
-    pub(crate) fn LLVMRustLLVMHasZstdCompressionForDebugSymbols() -> bool;
+    pub(crate) safe fn LLVMRustLLVMHasZlibCompression() -> bool;
+    pub(crate) safe fn LLVMRustLLVMHasZstdCompression() -> bool;
 
     pub(crate) fn LLVMRustGetSymbols(
         buf_ptr: *const u8,

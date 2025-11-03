@@ -85,8 +85,8 @@ sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
 be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.
 
-[test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
-[test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitizer
+[test-cg]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-llvm
+[test-ui]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui/sanitizer
 
 ## Enabling sanitizer on a new target
 

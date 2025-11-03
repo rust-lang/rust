@@ -194,10 +194,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(
-            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
-            _,
-        )
+        Rvalue::NullaryOp(NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks, _)
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, cx.tcx);
@@ -232,9 +229,7 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } => {
-            check_place(cx, **place, span, body, msrv)
-        },
+        StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 

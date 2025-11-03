@@ -626,7 +626,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
-        ItemKind::TraitAlias(ident, ref generics, bounds) => {
+        ItemKind::TraitAlias(_constness, ident, ref generics, bounds) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
@@ -725,7 +725,7 @@ pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) 
             try_visit!(visitor.visit_const_arg_unambig(upper_bound));
         }
         TyPatKind::Or(patterns) => walk_list!(visitor, visit_pattern_type_pattern, patterns),
-        TyPatKind::Err(_) => (),
+        TyPatKind::NotNull | TyPatKind::Err(_) => (),
     }
     V::Result::output()
 }
@@ -1416,7 +1416,6 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(qself));
             visitor.visit_path_segment(segment)
         }
-        QPath::LangItem(..) => V::Result::output(),
     }
 }
 

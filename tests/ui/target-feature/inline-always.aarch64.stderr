@@ -1,5 +1,5 @@
 warning: call to `#[inline(always)]`-annotated `target_feature_identity` requires the same target features to be inlined
-  --> $DIR/inline-always.rs:19:5
+  --> $DIR/inline-always.rs:20:5
    |
 LL |     target_feature_identity();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     target_feature_identity();
    = note: function will not be inlined
    = note: the following target features are on `target_feature_identity` but missing from `call_no_target_features`: neon, fp16
 note: `target_feature_identity` is defined here
-  --> $DIR/inline-always.rs:16:1
+  --> $DIR/inline-always.rs:17:1
    |
 LL | pub unsafe fn target_feature_identity() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | unsafe fn call_no_target_features() {
    |
 
 warning: call to `#[inline(always)]`-annotated `multiple_target_features` requires the same target features to be inlined
-  --> $DIR/inline-always.rs:22:5
+  --> $DIR/inline-always.rs:23:5
    |
 LL |     multiple_target_features();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     multiple_target_features();
    = note: function will not be inlined
    = note: the following target features are on `multiple_target_features` but missing from `call_no_target_features`: fp16, sve, rdm
 note: `multiple_target_features` is defined here
-  --> $DIR/inline-always.rs:52:1
+  --> $DIR/inline-always.rs:53:1
    |
 LL | fn multiple_target_features() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | unsafe fn call_no_target_features() {
    |
 
 warning: call to `#[inline(always)]`-annotated `multiple_target_features` requires the same target features to be inlined
-  --> $DIR/inline-always.rs:28:5
+  --> $DIR/inline-always.rs:29:5
    |
 LL |     multiple_target_features();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL |     multiple_target_features();
    = note: function will not be inlined
    = note: the following target features are on `multiple_target_features` but missing from `call_to_first_set`: rdm
 note: `multiple_target_features` is defined here
-  --> $DIR/inline-always.rs:52:1
+  --> $DIR/inline-always.rs:53:1
    |
 LL | fn multiple_target_features() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

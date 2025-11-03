@@ -2,10 +2,11 @@
 //!
 //! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
 //! executable MIR bodies, so we have to do this instead.
-#![allow(clippy::float_cmp)]
+#![expect(clippy::float_cmp)]
 
+use crate::res::MaybeDef;
 use crate::source::{SpanRangeExt, walk_span_to_context};
-use crate::{clip, is_direct_expn_of, paths, sext, sym, unsext};
+use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;
 use rustc_apfloat::Float;
@@ -50,15 +51,15 @@ pub enum Constant {
     /// `true` or `false`.
     Bool(bool),
     /// An array of constants.
-    Vec(Vec<Constant>),
+    Vec(Vec<Self>),
     /// Also an array, but with only one constant, repeated N times.
-    Repeat(Box<Constant>, u64),
+    Repeat(Box<Self>, u64),
     /// A tuple of constants.
-    Tuple(Vec<Constant>),
+    Tuple(Vec<Self>),
     /// A raw pointer.
     RawPtr(u128),
     /// A reference
-    Ref(Box<Constant>),
+    Ref(Box<Self>),
     /// A literal with syntax error.
     Err,
 }
@@ -805,10 +806,10 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                                 | sym::i128_legacy_const_max
                         )
                     ) || self.tcx.opt_parent(did).is_some_and(|parent| {
-                        paths::F16_CONSTS.matches(&self.tcx, parent)
-                            || paths::F32_CONSTS.matches(&self.tcx, parent)
-                            || paths::F64_CONSTS.matches(&self.tcx, parent)
-                            || paths::F128_CONSTS.matches(&self.tcx, parent)
+                        parent.is_diag_item(&self.tcx, sym::f16_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f32_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f64_consts_mod)
+                            || parent.is_diag_item(&self.tcx, sym::f128_consts_mod)
                     })) =>
             {
                 did

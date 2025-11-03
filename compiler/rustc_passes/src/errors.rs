@@ -844,14 +844,6 @@ pub(crate) struct FeaturePreviouslyDeclared<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_attr_only_in_functions)]
-pub(crate) struct AttrOnlyInFunctions {
-    #[primary_span]
-    pub span: Span,
-    pub attr: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_multiple_rustc_main, code = E0137)]
 pub(crate) struct MultipleRustcMain {
     #[primary_span]

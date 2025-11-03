@@ -952,7 +952,7 @@ pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_source_uitls_expected_item)]
+#[diag(builtin_macros_source_utils_expected_item)]
 pub(crate) struct ExpectedItem<'a> {
     #[primary_span]
     pub span: Span,

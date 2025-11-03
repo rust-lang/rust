@@ -72,7 +72,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
 pub struct UnevaluatedConst<I: Interner> {
-    pub def: I::DefId,
+    pub def: I::UnevaluatedConstId,
     pub args: I::GenericArgs,
 }
 
@@ -80,7 +80,7 @@ impl<I: Interner> Eq for UnevaluatedConst<I> {}
 
 impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
-    pub fn new(def: I::DefId, args: I::GenericArgs) -> UnevaluatedConst<I> {
+    pub fn new(def: I::UnevaluatedConstId, args: I::GenericArgs) -> UnevaluatedConst<I> {
         UnevaluatedConst { def, args }
     }
 }

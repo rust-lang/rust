@@ -165,12 +165,11 @@ struct PickDiagHints<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: &'a mut Vec<(
-        ty::Predicate<'tcx>,
-        Option<ty::Predicate<'tcx>>,
-        Option<ObligationCause<'tcx>>,
-    )>,
+    unsatisfied_predicates: &'a mut UnsatisfiedPredicates<'tcx>,
 }
+
+pub(crate) type UnsatisfiedPredicates<'tcx> =
+    Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>;
 
 /// Criteria to apply when searching for a given Pick. This is used during
 /// the search for potentially shadowed methods to ensure we don't search
@@ -585,8 +584,8 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         value: query::MethodAutoderefSteps { predefined_opaques_in_body, self_ty },
     } = goal;
     for (key, ty) in predefined_opaques_in_body {
-        let prev =
-            infcx.register_hidden_type_in_storage(key, ty::OpaqueHiddenType { span: DUMMY_SP, ty });
+        let prev = infcx
+            .register_hidden_type_in_storage(key, ty::ProvisionalHiddenType { span: DUMMY_SP, ty });
         // It may be possible that two entries in the opaque type storage end up
         // with the same key after resolving contained inference variables.
         //
@@ -1176,9 +1175,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
 
-        let span = self.span;
-        let tcx = self.tcx;
-
         self.assemble_extension_candidates_for_all_traits();
 
         let out_of_scope_traits = match self.pick_core(&mut Vec::new()) {
@@ -1187,10 +1183,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 .into_iter()
                 .map(|source| match source {
                     CandidateSource::Trait(id) => id,
-                    CandidateSource::Impl(impl_id) => match tcx.trait_id_of_impl(impl_id) {
-                        Some(id) => id,
-                        None => span_bug!(span, "found inherent method when looking at traits"),
-                    },
+                    CandidateSource::Impl(impl_id) => self.tcx.impl_trait_id(impl_id),
                 })
                 .collect(),
             Some(Err(MethodError::NoMatch(NoMatchData {
@@ -1218,11 +1211,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn pick_core(
         &self,
-        unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> Option<PickResult<'tcx>> {
         // Pick stable methods only first, and consider unstable candidates if not found.
         self.pick_all_method(&mut PickDiagHints {
@@ -1895,11 +1884,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         instantiate_self_ty_obligations: &[PredicateObligation<'tcx>],
         probe: &Candidate<'tcx>,
-        possibly_unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
+        possibly_unsatisfied_predicates: &mut UnsatisfiedPredicates<'tcx>,
     ) -> ProbeResult {
         self.probe(|snapshot| {
             let outer_universe = self.universe();

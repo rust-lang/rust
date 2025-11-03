@@ -38,6 +38,14 @@ allow-unauthenticated = [
     "has-merge-commits",
 ]
 
+[relabel.to-stable]
+add-labels = ["regression-from-stable-to-stable"]
+rem-labels = ["regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
+
+[relabel.to-beta]
+add-labels = ["regression-from-stable-to-beta"]
+rem-labels = ["regression-from-stable-to-stable", "regression-from-stable-to-nightly"]
+
 [review-submitted]
 # This label is added when a "request changes" review is submitted.
 reviewed_label = "S-waiting-on-author"
@@ -644,7 +652,7 @@ trigger_files = [
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
 message_on_add = """\
-@*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
+Issue #{number} has been requested for prioritization.
 
 # [Procedure](https://forge.rust-lang.org/compiler/prioritization.html)
 - Priority?
@@ -741,10 +749,12 @@ zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for beta backport.
+PR #{number} "{title}" fixes a regression and has been nominated for backport.
+{recipients}, what do you think about it?
+This topic will help T-compiler getting context about it.
 """,
     """\
-/poll Approve beta backport of #{number}?
+/poll Should #{number} be beta backported?
 approve
 decline
 don't know
@@ -755,7 +765,7 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-# Put it in the same thread as beta-nominated.
+# Put it in the same Zulip topic as beta-nominated.
 topic = "#{number}: beta-nominated"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
@@ -1047,6 +1057,12 @@ cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
 cc = ["@jieyouxu"]
+
+[mentions."src/tools/compiletest/src/directives"]
+message = """
+`compiletest` directives have been modified. Please add or update docs for the
+new or modified directive in `src/doc/rustc-dev-guide/`.
+"""
 
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
@@ -1362,7 +1378,9 @@ compiler = [
     "@jackh726",
     "@jieyouxu",
     "@jdonszelmann",
+    "@JonathanBrouwer",
     "@lcnr",
+    "@madsmtm",
     "@Nadrieril",
     "@nnethercote",
     "@oli-obk",
@@ -1398,6 +1416,7 @@ docs = [
 ]
 codegen = [
     "@dianqk",
+    "@madsmtm",
     "@saethlin",
     "@workingjubilee",
     "@WaffleLapkin",

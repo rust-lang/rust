@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
-#![cfg_attr(bootstrap, feature(new_zeroed_alloc))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait, test))]
 #![cfg_attr(feature = "nightly", feature(new_range_api))]
@@ -48,5 +47,15 @@ macro_rules! static_assert_size {
         // no effect other than using the statements.
         // struct sizes are not deterministic under randomized layouts
         const _: (usize, usize) = ($size, ::std::mem::size_of::<$ty>());
+    };
+}
+
+#[macro_export]
+macro_rules! indexvec {
+    ($expr:expr; $n:expr) => {
+        IndexVec::from_raw(vec![$expr; $n])
+    };
+    ($($expr:expr),* $(,)?) => {
+        IndexVec::from_raw(vec![$($expr),*])
     };
 }

@@ -368,6 +368,7 @@ macro_rules! common_visitor_and_walkers {
             crate::tokenstream::TokenStream,
             Movability,
             Mutability,
+            Pinnedness,
             Result<(), rustc_span::ErrorGuaranteed>,
             rustc_data_structures::fx::FxHashMap<Symbol, usize>,
             rustc_span::ErrorGuaranteed,
@@ -389,9 +390,9 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<(NodeId, Path)>,
             ThinVec<PathSegment>,
             ThinVec<PreciseCapturingArg>,
-            ThinVec<Box<Pat>>,
+            ThinVec<Pat>,
             ThinVec<Box<Ty>>,
-            ThinVec<Box<TyPat>>,
+            ThinVec<TyPat>,
         );
 
         // This macro generates `impl Visitable` and `impl MutVisitable` that forward to `Walkable`
@@ -471,8 +472,6 @@ macro_rules! common_visitor_and_walkers {
             TraitBoundModifiers,
             TraitObjectSyntax,
             TyAlias,
-            TyAliasWhereClause,
-            TyAliasWhereClauses,
             TyKind,
             TyPatKind,
             UnOp,
@@ -835,8 +834,8 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, impl_),
                     ItemKind::Trait(trait_) =>
                         visit_visitable!($($mut)? vis, trait_),
-                    ItemKind::TraitAlias(ident, generics, bounds) => {
-                        visit_visitable!($($mut)? vis, ident, generics);
+                    ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds}) => {
+                        visit_visitable!($($mut)? vis, constness, ident, generics);
                         visit_visitable_with!($($mut)? vis, bounds, BoundKind::Bound)
                     }
                     ItemKind::MacCall(m) =>

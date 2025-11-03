@@ -60,7 +60,7 @@ As the new implementation has to be able to eagerly handle nested goals for
 candidate selection, always doing so reduces complexity. It may also enable
 us to merge more candidates in the future.
 
-[eval-nested]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_trait_selection/src/traits/select/mod.rs#L1271-L1277
+[eval-nested]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_trait_selection/src/traits/select/mod.rs#L1271-L1277
 [fulfill-nested]: https://github.com/rust-lang/rust/blob/df8ac8f1d74cffb96a93ae702d16e224f5b9ee8c/compiler/rustc_trait_selection/src/traits/fulfill.rs#L708-L712
 
 ### Nested goals are evaluated until reaching a fixpoint

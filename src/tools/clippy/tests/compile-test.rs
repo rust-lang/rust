@@ -291,7 +291,6 @@ fn run_ui_toml(cx: &TestContext) {
 }
 
 // Allow `Default::default` as `OptWithSpan` is not nameable
-#[allow(clippy::default_trait_access)]
 fn run_ui_cargo(cx: &TestContext) {
     if IS_RUSTC_TEST_SUITE {
         return;
@@ -473,7 +472,7 @@ struct DiagnosticCollector {
 }
 
 impl DiagnosticCollector {
-    #[allow(clippy::assertions_on_constants)]
+    #[expect(clippy::assertions_on_constants)]
     fn spawn() -> (Self, thread::JoinHandle<()>) {
         assert!(!IS_RUSTC_TEST_SUITE && !RUN_INTERNAL_TESTS);
 

@@ -6,6 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TypeVisitable};
 use rustc_query_system::cache::Cache;
+use rustc_type_ir::solve::AliasBoundKind;
 
 use self::EvaluationResult::*;
 use super::{SelectionError, SelectionResult};
@@ -116,8 +117,13 @@ pub enum SelectionCandidate<'tcx> {
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index
-    /// into the list returned by `tcx.item_bounds`.
-    ProjectionCandidate(usize),
+    /// into the list returned by `tcx.item_bounds` and the `AliasBoundKind`
+    /// is whether this is candidate from recursion on the self type of a
+    /// projection.
+    ProjectionCandidate {
+        idx: usize,
+        kind: AliasBoundKind,
+    },
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
     /// generated for an `||` expression.
@@ -153,6 +159,9 @@ pub enum SelectionCandidate<'tcx> {
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate,
+
+    /// Builtin impl of the `PointerLike` trait.
+    PointerLikeCandidate,
 
     TraitAliasCandidate,
 

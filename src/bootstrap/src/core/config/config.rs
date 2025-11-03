@@ -1016,6 +1016,15 @@ impl Config {
                 continue;
             }
 
+            // The rust.lld option is global, and not target specific, so if we enable it, it will
+            // be applied to all targets being built.
+            // So we only apply an override if we're building a compiler/host code for the given
+            // override target.
+            // Note: we could also make the LLD config per-target, but that would complicate things
+            if !hosts.contains(&TargetSelection::from_user(&target)) {
+                continue;
+            }
+
             let default_linux_linker_override = match linker_override {
                 DefaultLinuxLinkerOverride::Off => continue,
                 DefaultLinuxLinkerOverride::SelfContainedLldCc => {
@@ -1749,7 +1758,7 @@ impl Config {
         // We do not assume that the sources would change during bootstrap's execution,
         // so we can cache the results here.
         // Note that we do not use a static variable for the cache, because it would cause problems
-        // in tests that create separate `Config` instsances.
+        // in tests that create separate `Config` instances.
         self.path_modification_cache
             .lock()
             .unwrap()
@@ -2217,7 +2226,7 @@ pub fn check_path_modifications_<'a>(
     // We do not assume that the sources would change during bootstrap's execution,
     // so we can cache the results here.
     // Note that we do not use a static variable for the cache, because it would cause problems
-    // in tests that create separate `Config` instsances.
+    // in tests that create separate `Config` instances.
     dwn_ctx
         .path_modification_cache
         .lock()

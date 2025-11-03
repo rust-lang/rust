@@ -75,6 +75,9 @@ pub trait DefIdVisitor<'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'tcx>;
+    /// NOTE: Def-id visiting should be idempotent (or at least produce duplicated errors),
+    /// because `DefIdVisitorSkeleton` will use caching and sometimes avoid visiting duplicate
+    /// def-ids. All the current visitors follow this rule.
     fn visit_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display)
     -> Self::Result;
 
@@ -82,7 +85,7 @@ pub trait DefIdVisitor<'tcx> {
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
-            visited_opaque_tys: Default::default(),
+            visited_tys: Default::default(),
             dummy: Default::default(),
         }
     }
@@ -102,7 +105,7 @@ pub trait DefIdVisitor<'tcx> {
 
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
-    visited_opaque_tys: FxHashSet<DefId>,
+    visited_tys: FxHashSet<Ty<'tcx>>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -183,7 +186,8 @@ where
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
-        match *ty.kind() {
+        let ty_kind = *ty.kind();
+        match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
@@ -197,7 +201,7 @@ where
                 // Default type visitor doesn't visit signatures of fn types.
                 // Something like `fn() -> Priv {my_func}` is considered a private type even if
                 // `my_func` is public, so we need to visit signatures.
-                if let ty::FnDef(..) = ty.kind() {
+                if let ty::FnDef(..) = ty_kind {
                     // FIXME: this should probably use `args` from `FnDef`
                     try_visit!(tcx.fn_sig(def_id).instantiate_identity().visit_with(self));
                 }
@@ -218,6 +222,12 @@ where
                     // as visible/reachable even if `Type` is private.
                     // Ideally, associated types should be instantiated in the same way as
                     // free type aliases, but this isn't done yet.
+                    return V::Result::output();
+                }
+                if !self.visited_tys.insert(ty) {
+                    // Avoid repeatedly visiting alias types (including projections).
+                    // This helps with special cases like #145741, but doesn't introduce
+                    // too much overhead in general case, unlike caching for other types.
                     return V::Result::output();
                 }
 
@@ -259,7 +269,7 @@ where
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
-                if self.visited_opaque_tys.insert(def_id) {
+                if self.visited_tys.insert(ty) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to
                     // `dyn Trait1 + Trait2`. Therefore we ignore def-id of the opaque type itself
                     // (it either has no visibility, or its visibility is insignificant, like
@@ -344,13 +354,14 @@ trait VisibilityLike: Sized {
     // associated types for which we can't determine visibility precisely.
     fn of_impl<const SHALLOW: bool>(
         def_id: LocalDefId,
+        of_trait: bool,
         tcx: TyCtxt<'_>,
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
         find.visit(tcx.type_of(def_id).instantiate_identity());
-        if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-            find.visit_trait(trait_ref.instantiate_identity());
+        if of_trait {
+            find.visit_trait(tcx.impl_trait_ref(def_id).instantiate_identity());
         }
         find.min
     }
@@ -699,13 +710,20 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 // its trait if it exists (which require reaching the `DefId`s in them).
                 let item_ev = EffectiveVisibility::of_impl::<true>(
                     owner_id.def_id,
+                    of_trait,
                     self.tcx,
                     &self.effective_visibilities,
                 );
 
                 self.update_eff_vis(owner_id.def_id, item_ev, None, Level::Direct);
 
-                self.reach(owner_id.def_id, item_ev).generics().predicates().ty().trait_ref();
+                {
+                    let mut reach = self.reach(owner_id.def_id, item_ev);
+                    reach.generics().predicates().ty();
+                    if of_trait {
+                        reach.trait_ref();
+                    }
+                }
 
                 for assoc_item in self.tcx.associated_items(owner_id).in_definition_order() {
                     if assoc_item.is_impl_trait_in_trait() {
@@ -820,9 +838,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn trait_ref(&mut self) -> &mut Self {
-        if let Some(trait_ref) = self.ev.tcx.impl_trait_ref(self.item_def_id) {
-            self.visit_trait(trait_ref.instantiate_identity());
-        }
+        self.visit_trait(self.ev.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
         self
     }
 }
@@ -923,7 +939,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
-        &mut self,
+        &self,
         hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
@@ -941,7 +957,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn emit_unreachable_field_error(
-        &mut self,
+        &self,
         fields: Vec<(Symbol, Span, bool /* field is present */)>,
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         update_syntax: Option<Span>,
@@ -1004,7 +1020,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     }
 
     fn check_expanded_fields(
-        &mut self,
+        &self,
         adt: ty::AdtDef<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &[hir::ExprField<'tcx>],
@@ -1142,7 +1158,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
         result.is_break()
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
             self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
@@ -1252,7 +1268,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 Res::Def(kind, def_id) => Some((kind, def_id)),
                 _ => None,
             },
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
+            hir::QPath::TypeRelative(..) => {
                 match self.maybe_typeck_results {
                     Some(typeck_results) => typeck_results.type_dependent_def(id),
                     // FIXME: Check type-relative associated types in signatures.
@@ -1271,9 +1287,6 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 if let DefKind::Static { .. } = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
-                    hir::QPath::LangItem(it, ..) => {
-                        self.tcx.lang_items().get(it).map(|did| self.tcx.def_path_str(did))
-                    }
                     hir::QPath::Resolved(_, path) => Some(self.tcx.def_path_str(path.res.def_id())),
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
@@ -1395,13 +1408,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn trait_ref(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        if let Some(trait_ref) = self.tcx.impl_trait_ref(self.item_def_id) {
-            let _ = self.visit_trait(trait_ref.instantiate_identity());
-        }
+        let _ = self.visit_trait(self.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
         self
     }
 
-    fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
+    fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
             self.tcx.emit_node_span_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
@@ -1666,7 +1677,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
             DefKind::Impl { of_trait } => {
-                let impl_vis = ty::Visibility::of_impl::<false>(def_id, tcx, &Default::default());
+                let impl_vis =
+                    ty::Visibility::of_impl::<false>(def_id, of_trait, tcx, &Default::default());
 
                 // We are using the non-shallow version here, unlike when building the
                 // effective visisibilities table to avoid large number of false positives.
@@ -1679,8 +1691,12 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 // lints shouldn't be emitted even if `from` effective visibility
                 // is larger than `Priv` nominal visibility and if `Priv` can leak
                 // in some scenarios due to type inference.
-                let impl_ev =
-                    EffectiveVisibility::of_impl::<false>(def_id, tcx, self.effective_visibilities);
+                let impl_ev = EffectiveVisibility::of_impl::<false>(
+                    def_id,
+                    of_trait,
+                    tcx,
+                    self.effective_visibilities,
+                );
 
                 let mut check = self.check(def_id, impl_vis, Some(impl_ev));
 
@@ -1694,7 +1710,10 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 // normalization they produce very ridiculous false positives.
                 // FIXME: Remove this when full normalization is implemented.
                 check.skip_assoc_tys = true;
-                check.ty().trait_ref();
+                check.ty();
+                if of_trait {
+                    check.trait_ref();
+                }
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
                     if assoc_item.is_impl_trait_in_trait() {
@@ -1763,7 +1782,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
 
         if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
-            let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = tcx.impl_trait_ref(def_id);
             let trait_ref = trait_ref.instantiate_identity();
             visitor.span =
                 tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().trait_ref.path.span;

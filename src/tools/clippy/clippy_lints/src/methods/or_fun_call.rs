@@ -4,8 +4,9 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{expr_type_is_certain, implements_trait};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
@@ -113,7 +114,7 @@ fn check_unwrap_or_default(
     let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
 
     // Check MSRV, but only for `Result::unwrap_or_default`
-    if is_type_diagnostic_item(cx, receiver_ty, sym::Result) && !msrv.meets(cx, msrvs::RESULT_UNWRAP_OR_DEFAULT) {
+    if receiver_ty.is_diag_item(cx, sym::Result) && !msrv.meets(cx, msrvs::RESULT_UNWRAP_OR_DEFAULT) {
         return false;
     }
 
@@ -239,7 +240,7 @@ fn check_or_fn_call<'tcx>(
         && let self_ty = cx.typeck_results().expr_ty(self_expr)
         && let Some(&(_, fn_has_arguments, _, suffix)) = KNOW_TYPES
             .iter()
-            .find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0) && i.2.contains(&name))
+            .find(|&&i| self_ty.is_diag_item(cx, i.0) && i.2.contains(&name))
     {
         let ctxt = span.ctxt();
         let mut app = Applicability::HasPlaceholders;

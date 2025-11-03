@@ -12,12 +12,12 @@ only way to build a modern version of `rustc` is with a slightly less modern ver
 This is exactly how [`./x.py`] works: it downloads the current beta release of
 `rustc`, then uses it to compile the new compiler.
 
-[`./x.py`]: https://github.com/rust-lang/rust/blob/master/x.py
+[`./x.py`]: https://github.com/rust-lang/rust/blob/HEAD/x.py
 
 Note that this documentation mostly covers user-facing information. See
 [bootstrap/README.md][bootstrap-internals] to read about bootstrap internals.
 
-[bootstrap-internals]: https://github.com/rust-lang/rust/blob/master/src/bootstrap/README.md
+[bootstrap-internals]: https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/README.md
 
 ## Stages of bootstrapping
 
@@ -74,8 +74,8 @@ build the stage2 compiler.
 There are two concepts at play here: a compiler (with its set of dependencies) and its
 'target' or 'object' libraries (`std` and `rustc`). Both are staged, but in a staggered manner.
 
-[`compiler/rustc`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc
-[`src/bootstrap`]: https://github.com/rust-lang/rust/tree/master/src/bootstrap
+[`compiler/rustc`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc
+[`src/bootstrap`]: https://github.com/rust-lang/rust/tree/HEAD/src/bootstrap
 
 ### Stage 1: from current code, by an earlier compiler
 
@@ -129,7 +129,7 @@ You can always override the stage by passing `--stage N` explicitly.
 For more information about stages, [see
 below](#understanding-stages-of-bootstrap).
 
-[`./x`]: https://github.com/rust-lang/rust/blob/master/x
+[`./x`]: https://github.com/rust-lang/rust/blob/HEAD/x
 
 ## Complications of bootstrapping
 

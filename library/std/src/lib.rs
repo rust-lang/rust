@@ -65,7 +65,7 @@
 //! So for example there is a [page for the primitive type
 //! `char`](primitive::char) that lists all the methods that can be called on
 //! characters (very useful), and there is a [page for the module
-//! `std::char`] that documents iterator and error types created by these methods
+//! `std::char`](crate::char) that documents iterator and error types created by these methods
 //! (rarely useful).
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][prim@slice] (also
@@ -180,9 +180,6 @@
 //!
 //!
 //! [I/O]: io
-//! [`MIN`]: i32::MIN
-//! [`MAX`]: i32::MAX
-//! [page for the module `std::i32`]: crate::i32
 //! [TCP]: net::TcpStream
 //! [The Rust Prelude]: prelude
 //! [UDP]: net::UdpSocket
@@ -293,8 +290,6 @@
 #![feature(ffi_const)]
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
-#![feature(hash_map_internals)]
-#![feature(hash_map_macro)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_advance_by)]

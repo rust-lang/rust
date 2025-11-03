@@ -38,6 +38,8 @@ trait TestableFloat: Sized {
     const MUL_ADD_RESULT: Self;
     /// The result of (-12.3).mul_add(-4.5, -6.7)
     const NEG_MUL_ADD_RESULT: Self;
+    /// Reciprocal of the maximum val
+    const MAX_RECIP: Self;
 }
 
 impl TestableFloat for f16 {
@@ -64,6 +66,7 @@ impl TestableFloat for f16 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xcb20);
     const MUL_ADD_RESULT: Self = 62.031;
     const NEG_MUL_ADD_RESULT: Self = 48.625;
+    const MAX_RECIP: Self = 1.526624e-5;
 }
 
 impl TestableFloat for f32 {
@@ -92,6 +95,7 @@ impl TestableFloat for f32 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc1640000);
     const MUL_ADD_RESULT: Self = 62.05;
     const NEG_MUL_ADD_RESULT: Self = 48.65;
+    const MAX_RECIP: Self = 2.938736e-39;
 }
 
 impl TestableFloat for f64 {
@@ -116,6 +120,7 @@ impl TestableFloat for f64 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc02c800000000000);
     const MUL_ADD_RESULT: Self = 62.050000000000004;
     const NEG_MUL_ADD_RESULT: Self = 48.650000000000006;
+    const MAX_RECIP: Self = 5.562684646268003e-309;
 }
 
 impl TestableFloat for f128 {
@@ -140,6 +145,7 @@ impl TestableFloat for f128 {
     const RAW_MINUS_14_DOT_25: Self = Self::from_bits(0xc002c800000000000000000000000000);
     const MUL_ADD_RESULT: Self = 62.0500000000000000000000000000000037;
     const NEG_MUL_ADD_RESULT: Self = 48.6500000000000000000000000000000049;
+    const MAX_RECIP: Self = 8.40525785778023376565669454330438228902076605e-4933;
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -1425,6 +1431,7 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
+        let max: Float = Float::MAX;
         assert_biteq!((1.0 as Float).recip(), 1.0);
         assert_biteq!((2.0 as Float).recip(), 0.5);
         assert_biteq!((-0.4 as Float).recip(), -2.5);
@@ -1432,6 +1439,7 @@ float_test! {
         assert!(nan.recip().is_nan());
         assert_biteq!(inf.recip(), 0.0);
         assert_biteq!(neg_inf.recip(), -0.0);
+        assert_biteq!(max.recip(), Float::MAX_RECIP);
     }
 }
 

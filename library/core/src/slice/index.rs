@@ -1,6 +1,7 @@
 //! Indexing implementations for `[T]`.
 
 use crate::intrinsics::slice_get_unchecked;
+use crate::marker::Destruct;
 use crate::panic::const_panic;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ops, range};
@@ -564,7 +565,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &*self.get_unchecked(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &*get_offset_len_noubcheck(slice, self.start, new_len)
+        }
     }
 
     #[inline]
@@ -573,7 +577,10 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFrom<usize> {
             slice_index_fail(self.start, slice.len(), slice.len())
         }
         // SAFETY: `self` is checked to be valid and in bounds above.
-        unsafe { &mut *self.get_unchecked_mut(slice) }
+        unsafe {
+            let new_len = crate::intrinsics::unchecked_sub(slice.len(), self.start);
+            &mut *get_offset_len_mut_noubcheck(slice, self.start, new_len)
+        }
     }
 }
 
@@ -893,9 +900,10 @@ unsafe impl<T> const SliceIndex<[T]> for range::RangeToInclusive<usize> {
 #[track_caller]
 #[unstable(feature = "slice_range", issue = "76393")]
 #[must_use]
-pub fn range<R>(range: R, bounds: ops::RangeTo<usize>) -> ops::Range<usize>
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+pub const fn range<R>(range: R, bounds: ops::RangeTo<usize>) -> ops::Range<usize>
 where
-    R: ops::RangeBounds<usize>,
+    R: [const] ops::RangeBounds<usize> + [const] Destruct,
 {
     let len = bounds.end;
 
@@ -978,7 +986,7 @@ where
 
 /// Converts a pair of `ops::Bound`s into `ops::Range` without performing any
 /// bounds checking or (in debug) overflow checking.
-pub(crate) fn into_range_unchecked(
+pub(crate) const fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
@@ -998,7 +1006,8 @@ pub(crate) fn into_range_unchecked(
 
 /// Converts pair of `ops::Bound`s into `ops::Range`.
 /// Returns `None` on overflowing indices.
-pub(crate) fn into_range(
+#[rustc_const_unstable(feature = "const_range", issue = "none")]
+pub(crate) const fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {

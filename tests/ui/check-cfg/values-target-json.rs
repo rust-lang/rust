@@ -1,6 +1,6 @@
 // This test checks that we don't lint values defined by a custom target (target json)
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 //@ no-auto-check-cfg
 //@ needs-llvm-components: x86

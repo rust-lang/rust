@@ -167,12 +167,12 @@ mod expressions {
         let x;
         {
             let _t =
-                match #[lang = "into_iter"](x) {
+                match into_iter(x) {
                     mut iter =>
                         loop {
-                            match #[lang = "next"](&mut iter) {
-                                #[lang = "None"] {} => break,
-                                #[lang = "Some"] {  0: _ } => { }
+                            match next(&mut iter) {
+                                None {} => break,
+                                Some {  0: _ } => { }
                             }
                         },
                 };
@@ -180,12 +180,12 @@ mod expressions {
         };
         {
             let _t =
-                match #[lang = "into_iter"](x) {
+                match into_iter(x) {
                     mut iter =>
                         'a: loop {
-                            match #[lang = "next"](&mut iter) {
-                                #[lang = "None"] {} => break,
-                                #[lang = "Some"] {  0: _ } => { }
+                            match next(&mut iter) {
+                                None {} => break,
+                                Some {  0: _ } => { }
                             }
                         },
                 };
@@ -253,10 +253,7 @@ mod expressions {
     }
 
     /// ExprKind::TryBlock
-    fn expr_try_block() {
-        { #[lang = "from_output"](()) }
-        { return; #[lang = "from_output"](()) }
-    }
+    fn expr_try_block() { { from_output(()) } { return; from_output(()) } }
 
     /// ExprKind::Assign
     fn expr_assign() { let expr; expr = true; }
@@ -273,14 +270,14 @@ mod expressions {
     /// ExprKind::Range
     fn expr_range() {
         let (lo, hi);
-        #[lang = "RangeFull"] {  };
-        #[lang = "RangeTo"] { end: hi };
-        #[lang = "RangeFrom"] { start: lo };
-        #[lang = "Range"] { start: lo, end: hi };
-        #[lang = "Range"] { start: lo, end: hi };
-        #[lang = "RangeToInclusive"] { end: hi };
-        #[lang = "range_inclusive_new"](lo, hi);
-        #[lang = "range_inclusive_new"](-2, -1);
+        RangeFull {  };
+        RangeTo { end: hi };
+        RangeFrom { start: lo };
+        Range { start: lo, end: hi };
+        Range { start: lo, end: hi };
+        RangeToInclusive { end: hi };
+        range_inclusive_new(lo, hi);
+        range_inclusive_new(-2, -1);
     }
 
     /// ExprKind::Underscore
@@ -373,20 +370,17 @@ mod expressions {
     /// ExprKind::Try
     fn expr_try() {
         let expr;
-        match #[lang = "branch"](expr) {
-            #[lang = "Break"] {  0: residual } => #[allow(unreachable_code)]
-                return #[lang = "from_residual"](residual),
-            #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
+        match branch(expr) {
+            Break {  0: residual } => #[allow(unreachable_code)]
+                return from_residual(residual),
+            Continue {  0: val } => #[allow(unreachable_code)]
                 val,
         };
     }
     /// ExprKind::Yield
     fn expr_yield() { yield (); yield true; }
     /// ExprKind::Yeet
-    fn expr_yeet() {
-        return #[lang = "from_yeet"](());
-        return #[lang = "from_yeet"](0);
-    }
+    fn expr_yeet() { return from_yeet(()); return from_yeet(0); }
     /// ExprKind::Become
     fn expr_become() { become true; }
     /// ExprKind::IncludedBytes

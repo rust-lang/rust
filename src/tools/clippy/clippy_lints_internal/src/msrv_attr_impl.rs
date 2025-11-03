@@ -5,7 +5,7 @@ use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, EarlyBinder, GenericArgKind};
+use rustc_middle::ty::{self, GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_tool_lint! {
@@ -26,10 +26,7 @@ impl LateLintPass<'_> for MsrvAttrImpl {
             items,
             ..
         }) = &item.kind
-            && let Some(trait_ref) = cx
-                .tcx
-                .impl_trait_ref(item.owner_id)
-                .map(EarlyBinder::instantiate_identity)
+            && let trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity()
             && internal_paths::EARLY_LINT_PASS.matches(cx, trait_ref.def_id)
             && let ty::Adt(self_ty_def, _) = trait_ref.self_ty().kind()
             && self_ty_def.is_struct()

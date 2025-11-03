@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use genmc_sys::EstimationResult;
+use rustc_log::tracing;
 use rustc_middle::ty::TyCtxt;
 
 use super::GlobalState;

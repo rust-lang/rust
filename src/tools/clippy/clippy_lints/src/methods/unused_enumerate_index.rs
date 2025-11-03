@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{SpanRangeExt, snippet};
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{expr_or_init, is_trait_method, pat_is_wild};
+use clippy_utils::{expr_or_init, pat_is_wild};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, FnDecl, PatKind, TyKind};
 use rustc_lint::LateContext;
@@ -40,9 +40,9 @@ use crate::loops::UNUSED_ENUMERATE_INDEX;
 pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>) {
     let recv_ty = cx.typeck_results().expr_ty(recv);
     // If we call a method on a `std::iter::Enumerate` instance
-    if is_type_diagnostic_item(cx, recv_ty, sym::Enumerate)
+    if recv_ty.is_diag_item(cx, sym::Enumerate)
         // If we are calling a method of the `Iterator` trait
-        && is_trait_method(cx, call_expr, sym::Iterator)
+        && cx.ty_based_def(call_expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // And the map argument is a closure
         && let ExprKind::Closure(closure) = closure_arg.kind
         && let closure_body = cx.tcx.hir_body(closure.body)

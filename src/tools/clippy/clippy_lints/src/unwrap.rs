@@ -1,9 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::ty::get_type_diagnostic_name;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::usage::is_potentially_local_place;
-use clippy_utils::{can_use_if_let_chains, higher, path_to_local, sym};
+use clippy_utils::{can_use_if_let_chains, higher, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
@@ -147,7 +147,7 @@ fn collect_unwrap_info<'tcx>(
     is_entire_condition: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
     fn option_or_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<(UnwrappableKind, bool)> {
-        match (get_type_diagnostic_name(cx, ty)?, method_name) {
+        match (ty.opt_diag_name(cx)?, method_name) {
             (sym::Option, sym::is_some) => Some((UnwrappableKind::Option, true)),
             (sym::Option, sym::is_none) => Some((UnwrappableKind::Option, false)),
             (sym::Result, sym::is_ok) => Some((UnwrappableKind::Result, true)),
@@ -169,7 +169,7 @@ fn collect_unwrap_info<'tcx>(
         },
         ExprKind::Unary(UnOp::Not, expr) => collect_unwrap_info(cx, if_expr, expr, branch, !invert, false),
         ExprKind::MethodCall(method_name, receiver, [], _)
-            if let Some(local_id) = path_to_local(receiver)
+            if let Some(local_id) = receiver.res_local_id()
                 && let ty = cx.typeck_results().expr_ty(receiver)
                 && let name = method_name.ident.name
                 && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
@@ -318,7 +318,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
             // find `unwrap[_err]()` or `expect("...")` calls:
             if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
                 && let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg)
-                && let Some(id) = path_to_local(self_arg)
+                && let Some(id) = self_arg.res_local_id()
                 && matches!(method_name.ident.name, sym::unwrap | sym::expect | sym::unwrap_err)
                 && let call_to_unwrap = matches!(method_name.ident.name, sym::unwrap | sym::expect)
                 && let Some(unwrappable) = self.unwrappables.iter()

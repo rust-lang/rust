@@ -1,6 +1,4 @@
 #![warn(clippy::result_map_unit_fn)]
-#![allow(unused)]
-#![allow(clippy::uninlined_format_args)]
 
 fn do_nothing<T>(_: T) {}
 
@@ -92,7 +90,7 @@ fn result_map_unit_fn() {
     x.field.map(|ref value| { do_nothing(value + captured) });
     //~^ result_map_unit_fn
 
-    x.field.map(|value| println!("{:?}", value));
+    x.field.map(|value| println!("{value:?}"));
     //~^ result_map_unit_fn
 }
 

@@ -649,7 +649,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             if let Some((impl_def_id, DefKind::Impl { of_trait })) = assoc_parent {
                 if of_trait
                     && tcx.sess.opts.incremental.is_some()
-                    && tcx.is_lang_item(tcx.trait_id_of_impl(impl_def_id).unwrap(), LangItem::Drop)
+                    && tcx.is_lang_item(tcx.impl_trait_id(impl_def_id), LangItem::Drop)
                 {
                     // Put `Drop::drop` into the same cgu as `drop_in_place`
                     // since `drop_in_place` is the only thing that can

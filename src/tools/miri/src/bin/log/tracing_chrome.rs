@@ -24,12 +24,9 @@
 #![allow(warnings)]
 #![cfg(feature = "tracing")]
 
-// This is here and not in src/lib.rs since it is a direct dependency of tracing_chrome.rs and
-// should not be included if the "tracing" feature is disabled.
-extern crate tracing_core;
-
-use tracing_core::{field::Field, span, Event, Subscriber};
-use tracing_subscriber::{
+use rustc_log::tracing_core::{field::Field, span, Event, Subscriber};
+use rustc_log::tracing_subscriber::{
+    self,
     layer::Context,
     registry::{LookupSpan, SpanRef},
     Layer,

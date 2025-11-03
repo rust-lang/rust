@@ -3,6 +3,9 @@
 #![stable(feature = "io_safety", since = "1.63.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[cfg(target_os = "motor")]
+use moto_rt::libc;
+
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
@@ -12,7 +15,8 @@ use crate::mem::ManuallyDrop;
     target_arch = "wasm32",
     target_env = "sgx",
     target_os = "hermit",
-    target_os = "trusty"
+    target_os = "trusty",
+    target_os = "motor"
 )))]
 use crate::sys::cvt;
 #[cfg(not(target_os = "trusty"))]
@@ -95,7 +99,12 @@ impl OwnedFd {
 impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
-    #[cfg(not(any(target_arch = "wasm32", target_os = "hermit", target_os = "trusty")))]
+    #[cfg(not(any(
+        target_arch = "wasm32",
+        target_os = "hermit",
+        target_os = "trusty",
+        target_os = "motor"
+    )))]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
         // We want to atomically duplicate this file descriptor and set the
@@ -122,6 +131,15 @@ impl BorrowedFd<'_> {
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
         Err(crate::io::Error::UNSUPPORTED_PLATFORM)
+    }
+
+    /// Creates a new `OwnedFd` instance that shares the same underlying file
+    /// description as the existing `BorrowedFd` instance.
+    #[cfg(target_os = "motor")]
+    #[stable(feature = "io_safety", since = "1.63.0")]
+    pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
+        let fd = moto_rt::fs::duplicate(self.as_raw_fd()).map_err(crate::sys::map_motor_error)?;
+        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 }
 

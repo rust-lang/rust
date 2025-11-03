@@ -5,16 +5,16 @@
 //! intrinsics via stable wrapper functions. Use these instead.
 //!
 //! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
-//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
-//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
-//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
-//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
 //! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
 //! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
-//! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
+//! <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
 //! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
 //! wg-const-eval.
 //!
@@ -55,7 +55,7 @@
 #![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
-use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
 mod bounds;
@@ -477,11 +477,15 @@ pub const fn unlikely(b: bool) -> bool {
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
 #[inline]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+pub const fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
     if b { true_val } else { false_val }
 }
 
@@ -2631,23 +2635,6 @@ pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
     ptr
 }
 
-/// Returns whether we should perform contract-checking at runtime.
-///
-/// This is meant to be similar to the ub_checks intrinsic, in terms
-/// of not prematurely committing at compile-time to whether contract
-/// checking is turned on, so that we can specify contracts in libstd
-/// and let an end user opt into turning them on.
-#[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
-#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
-#[inline(always)]
-#[rustc_intrinsic]
-pub const fn contract_checks() -> bool {
-    // FIXME: should this be `false` or `cfg!(contract_checks)`?
-
-    // cfg!(contract_checks)
-    false
-}
-
 /// Check if the pre-condition `cond` has been met.
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
@@ -2668,7 +2655,7 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
         if const {
                 // Do nothing
         } else {
-            if contract_checks() && !cond() {
+            if !cond() {
                 // Emit no unwind panic in case this was a safety requirement.
                 crate::panicking::panic_nounwind("failed requires check");
             }
@@ -2681,6 +2668,8 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
 ///
+/// If `cond` is `None`, then no postcondition checking is performed.
+///
 /// Note that this function is a no-op during constant evaluation.
 #[unstable(feature = "contracts_internals", issue = "128044")]
 // Similar to `contract_check_requires`, we need to use the user-facing
@@ -2689,16 +2678,24 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_ensures"]
 #[rustc_intrinsic]
-pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, ret: Ret) -> Ret {
+pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
+    cond: Option<C>,
+    ret: Ret,
+) -> Ret {
     const_eval_select!(
-        @capture[C: Fn(&Ret) -> bool + Copy, Ret] { cond: C, ret: Ret } -> Ret :
+        @capture[C: Fn(&Ret) -> bool + Copy, Ret] { cond: Option<C>, ret: Ret } -> Ret :
         if const {
             // Do nothing
             ret
         } else {
-            if contract_checks() && !cond(&ret) {
-                // Emit no unwind panic in case this was a safety requirement.
-                crate::panicking::panic_nounwind("failed ensures check");
+            match cond {
+                crate::option::Option::Some(cond) => {
+                    if !cond(&ret) {
+                        // Emit no unwind panic in case this was a safety requirement.
+                        crate::panicking::panic_nounwind("failed ensures check");
+                    }
+                },
+                crate::option::Option::None => {},
             }
             ret
         }
@@ -2735,6 +2732,11 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 /// More specifically, this is the offset in bytes between successive
 /// items of the same type, including alignment padding.
 ///
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
+///
 /// The stabilized version of this intrinsic is [`core::mem::size_of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -2748,6 +2750,11 @@ pub const fn size_of<T>() -> usize;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
+///
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::mem::align_of`].
 #[rustc_nounwind]

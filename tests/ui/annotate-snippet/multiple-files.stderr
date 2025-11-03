@@ -7,5 +7,8 @@ LL |     other_file::WithPrivateMethod.private_method();
   ::: $DIR/auxiliary/other_file.rs:5:5
    |
 LL |     fn private_method(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ private method defined here
-   |
+   |     ------------------------ private method defined here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0624`.

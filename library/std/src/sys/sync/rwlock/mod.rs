@@ -9,6 +9,7 @@ cfg_select! {
         target_os = "fuchsia",
         all(target_family = "wasm", target_feature = "atomics"),
         target_os = "hermit",
+       target_os = "motor",
     ) => {
         mod futex;
         pub use futex::RwLock;

@@ -2,7 +2,7 @@
 
 #![feature(sync_unsafe_cell)]
 #![allow(unused)]
-#![deny(repr_transparent_external_private_fields)]
+#![deny(repr_transparent_non_zst_fields)]
 
 // https://github.com/rust-lang/rust/issues/129470
 

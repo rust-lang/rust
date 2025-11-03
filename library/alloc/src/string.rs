@@ -2090,6 +2090,67 @@ impl String {
         unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
+    /// Replaces the leftmost occurrence of a pattern with another string, in-place.
+    ///
+    /// This method can be preferred over [`string = string.replacen(..., 1);`][replacen],
+    /// as it can use the `String`'s existing capacity to prevent a reallocation if
+    /// sufficient space is available.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_replace_in_place)]
+    ///
+    /// let mut s = String::from("Test Results: ❌❌❌");
+    ///
+    /// // Replace the leftmost ❌ with a ✅
+    /// s.replace_first('❌', "✅");
+    /// assert_eq!(s, "Test Results: ✅❌❌");
+    /// ```
+    ///
+    /// [replacen]: ../../std/primitive.str.html#method.replacen
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_replace_in_place", issue = "147949")]
+    pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
+        let range = match self.match_indices(from).next() {
+            Some((start, match_str)) => start..start + match_str.len(),
+            None => return,
+        };
+
+        self.replace_range(range, to);
+    }
+
+    /// Replaces the rightmost occurrence of a pattern with another string, in-place.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_replace_in_place)]
+    ///
+    /// let mut s = String::from("Test Results: ❌❌❌");
+    ///
+    /// // Replace the rightmost ❌ with a ✅
+    /// s.replace_last('❌', "✅");
+    /// assert_eq!(s, "Test Results: ❌❌✅");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_replace_in_place", issue = "147949")]
+    pub fn replace_last<P: Pattern>(&mut self, from: P, to: &str)
+    where
+        for<'a> P::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+    {
+        let range = match self.rmatch_indices(from).next() {
+            Some((start, match_str)) => start..start + match_str.len(),
+            None => return,
+        };
+
+        self.replace_range(range, to);
+    }
+
     /// Converts this `String` into a <code>[Box]<[str]></code>.
     ///
     /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
@@ -2375,6 +2436,28 @@ impl<'a> FromIterator<Cow<'a, str>> for String {
                 buf
             }
         }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl FromIterator<core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<&'a core::ascii::Char> for String {
+    fn from_iter<T: IntoIterator<Item = &'a core::ascii::Char>>(iter: T) -> Self {
+        let buf = iter.into_iter().copied().map(core::ascii::Char::to_u8).collect();
+        // SAFETY: `buf` is guaranteed to be valid UTF-8 because the `core::ascii::Char` type
+        // only contains ASCII values (0x00-0x7F), which are valid UTF-8.
+        unsafe { String::from_utf8_unchecked(buf) }
     }
 }
 
@@ -3180,6 +3263,14 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<String> for Cow<'a, str> {
     fn from_iter<I: IntoIterator<Item = String>>(it: I) -> Cow<'a, str> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> FromIterator<core::ascii::Char> for Cow<'a, str> {
+    fn from_iter<T: IntoIterator<Item = core::ascii::Char>>(it: T) -> Self {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }

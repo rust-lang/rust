@@ -62,7 +62,7 @@ fn check_fn_sig<'a>(cx: &LateContext<'a>, decl: &FnDecl<'a>, span: Span, sig: ty
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn check_fn<'a>(
     cx: &LateContext<'a>,
     kind: FnKind<'a>,

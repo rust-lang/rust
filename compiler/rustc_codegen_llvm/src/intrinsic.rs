@@ -1325,6 +1325,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
     }
 
+    let llvm_version = crate::llvm_util::get_version();
+
     /// Converts a vector mask, where each element has a bit width equal to the data elements it is used with,
     /// down to an i1 based mask that can be used by llvm intrinsics.
     ///
@@ -1808,7 +1810,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
+        let alignment = bx.align_of(in_elem).bytes();
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
@@ -1819,11 +1821,23 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
 
-        return Ok(bx.call_intrinsic(
-            "llvm.masked.gather",
-            &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
-            &[args[1].immediate(), alignment, mask, args[0].immediate()],
-        ));
+        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
+            let alignment = bx.const_i32(alignment as i32);
+            &[args[1].immediate(), alignment, mask, args[0].immediate()]
+        } else {
+            &[args[1].immediate(), mask, args[0].immediate()]
+        };
+
+        let call =
+            bx.call_intrinsic("llvm.masked.gather", &[llvm_elem_vec_ty, llvm_pointer_vec_ty], args);
+        if llvm_version >= (22, 0, 0) {
+            crate::attributes::apply_to_callsite(
+                call,
+                crate::llvm::AttributePlace::Argument(0),
+                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+            )
+        }
+        return Ok(call);
     }
 
     if name == sym::simd_masked_load {
@@ -1891,18 +1905,30 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
+        let alignment = bx.align_of(values_elem).bytes();
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        return Ok(bx.call_intrinsic(
-            "llvm.masked.load",
-            &[llvm_elem_vec_ty, llvm_pointer],
-            &[args[1].immediate(), alignment, mask, args[2].immediate()],
-        ));
+        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
+            let alignment = bx.const_i32(alignment as i32);
+
+            &[args[1].immediate(), alignment, mask, args[2].immediate()]
+        } else {
+            &[args[1].immediate(), mask, args[2].immediate()]
+        };
+
+        let call = bx.call_intrinsic("llvm.masked.load", &[llvm_elem_vec_ty, llvm_pointer], args);
+        if llvm_version >= (22, 0, 0) {
+            crate::attributes::apply_to_callsite(
+                call,
+                crate::llvm::AttributePlace::Argument(0),
+                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+            )
+        }
+        return Ok(call);
     }
 
     if name == sym::simd_masked_store {
@@ -1964,18 +1990,29 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
+        let alignment = bx.align_of(values_elem).bytes();
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        return Ok(bx.call_intrinsic(
-            "llvm.masked.store",
-            &[llvm_elem_vec_ty, llvm_pointer],
-            &[args[2].immediate(), args[1].immediate(), alignment, mask],
-        ));
+        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
+            let alignment = bx.const_i32(alignment as i32);
+            &[args[2].immediate(), args[1].immediate(), alignment, mask]
+        } else {
+            &[args[2].immediate(), args[1].immediate(), mask]
+        };
+
+        let call = bx.call_intrinsic("llvm.masked.store", &[llvm_elem_vec_ty, llvm_pointer], args);
+        if llvm_version >= (22, 0, 0) {
+            crate::attributes::apply_to_callsite(
+                call,
+                crate::llvm::AttributePlace::Argument(1),
+                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+            )
+        }
+        return Ok(call);
     }
 
     if name == sym::simd_scatter {
@@ -2040,7 +2077,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
+        let alignment = bx.align_of(in_elem).bytes();
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
@@ -2050,12 +2087,25 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
-
-        return Ok(bx.call_intrinsic(
+        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
+            let alignment = bx.const_i32(alignment as i32);
+            &[args[0].immediate(), args[1].immediate(), alignment, mask]
+        } else {
+            &[args[0].immediate(), args[1].immediate(), mask]
+        };
+        let call = bx.call_intrinsic(
             "llvm.masked.scatter",
             &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
-            &[args[0].immediate(), args[1].immediate(), alignment, mask],
-        ));
+            args,
+        );
+        if llvm_version >= (22, 0, 0) {
+            crate::attributes::apply_to_callsite(
+                call,
+                crate::llvm::AttributePlace::Argument(1),
+                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
+            )
+        }
+        return Ok(call);
     }
 
     macro_rules! arith_red {

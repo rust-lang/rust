@@ -52,9 +52,9 @@ channels: stable, beta, and nightly.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
-- **Nightly**: follows the `master` branch of the repo. This is the only
-  channel where unstable, incomplete, or experimental features are usable with
-  feature gates.
+- **Nightly**: follows the `master` branch of the repo.
+  This is the only channel where unstable features are intended to be used,
+  which happens via opt-in feature gates.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
@@ -145,7 +145,7 @@ when contributing to Rust under [the git section](./git.md).
 [about-pull-requests]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests
 [development-models]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/about-collaborative-development-models#fork-and-pull-model
 [t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
-[triagebot]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+[triagebot]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
 ### Keeping your branch up-to-date
 
@@ -357,8 +357,8 @@ is located in [`src/doc`] in the tree, and standard API documentation is generat
 from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documentation pull requests
 function in the same way as other pull requests.
 
-[`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
-[std-root]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
+[`src/doc`]: https://github.com/rust-lang/rust/tree/HEAD/src/doc
+[std-root]: https://github.com/rust-lang/rust/blob/HEAD/library/std/src/lib.rs#L1
 
 To find documentation-related issues, use the [A-docs label].
 
@@ -461,7 +461,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
 [the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
-### Rfcbot labels
+### rfcbot labels
 
 [rfcbot] uses its own labels for tracking the process of coordinating
 asynchronous decisions, such as approving or rejecting a change.

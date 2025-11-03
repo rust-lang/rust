@@ -9,7 +9,7 @@
 //@ revisions: default_fcw allowed
 //@[allowed] check-pass
 
-#[cfg_attr(allowed, allow(ill_formed_attribute_input))]
+#![cfg_attr(allowed, allow(ill_formed_attribute_input))]
 
 #[link="dl"]
 //[default_fcw]~^ ERROR valid forms for the attribute are

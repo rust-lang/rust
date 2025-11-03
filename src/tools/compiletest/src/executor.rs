@@ -98,32 +98,43 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
 fn spawn_test_thread(
     id: TestId,
     test: &CollectedTest,
-    completion_tx: mpsc::Sender<TestCompletion>,
+    completion_sender: mpsc::Sender<TestCompletion>,
 ) -> Option<thread::JoinHandle<()>> {
     if test.desc.ignore && !test.config.run_ignored {
-        completion_tx
+        completion_sender
             .send(TestCompletion { id, outcome: TestOutcome::Ignored, stdout: None })
             .unwrap();
         return None;
     }
 
-    let runnable_test = RunnableTest::new(test);
-    let should_panic = test.desc.should_panic;
-    let run_test = move || run_test_inner(id, should_panic, runnable_test, completion_tx);
-
+    let args = TestThreadArgs {
+        id,
+        config: Arc::clone(&test.config),
+        testpaths: test.testpaths.clone(),
+        revision: test.revision.clone(),
+        should_fail: test.desc.should_fail,
+        completion_sender,
+    };
     let thread_builder = thread::Builder::new().name(test.desc.name.clone());
-    let join_handle = thread_builder.spawn(run_test).unwrap();
+    let join_handle = thread_builder.spawn(move || test_thread_main(args)).unwrap();
     Some(join_handle)
 }
 
-/// Runs a single test, within the dedicated thread spawned by the caller.
-fn run_test_inner(
+/// All of the owned data needed by `test_thread_main`.
+struct TestThreadArgs {
     id: TestId,
-    should_panic: ShouldPanic,
-    runnable_test: RunnableTest,
+
+    config: Arc<Config>,
+    testpaths: TestPaths,
+    revision: Option<String>,
+    should_fail: ShouldFail,
+
     completion_sender: mpsc::Sender<TestCompletion>,
-) {
-    let capture = CaptureKind::for_config(&runnable_test.config);
+}
+
+/// Runs a single test, within the dedicated thread spawned by the caller.
+fn test_thread_main(args: TestThreadArgs) {
+    let capture = CaptureKind::for_config(&args.config);
 
     // Install a panic-capture buffer for use by the custom panic hook.
     if capture.should_set_panic_hook() {
@@ -133,7 +144,24 @@ fn run_test_inner(
     let stdout = capture.stdout();
     let stderr = capture.stderr();
 
-    let panic_payload = panic::catch_unwind(move || runnable_test.run(stdout, stderr)).err();
+    // Run the test, catching any panics so that we can gracefully report
+    // failure (or success).
+    //
+    // FIXME(Zalathar): Ideally we would report test failures with `Result`,
+    // and use panics only for bugs within compiletest itself, but that would
+    // require a major overhaul of error handling in the test runners.
+    let panic_payload = panic::catch_unwind(|| {
+        __rust_begin_short_backtrace(|| {
+            crate::runtest::run(
+                &args.config,
+                stdout,
+                stderr,
+                &args.testpaths,
+                args.revision.as_deref(),
+            );
+        });
+    })
+    .err();
 
     if let Some(panic_buf) = panic_hook::take_capture_buf() {
         let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
@@ -141,16 +169,17 @@ fn run_test_inner(
         write!(stderr, "{panic_buf}");
     }
 
-    let outcome = match (should_panic, panic_payload) {
-        (ShouldPanic::No, None) | (ShouldPanic::Yes, Some(_)) => TestOutcome::Succeeded,
-        (ShouldPanic::No, Some(_)) => TestOutcome::Failed { message: None },
-        (ShouldPanic::Yes, None) => {
-            TestOutcome::Failed { message: Some("test did not panic as expected") }
+    // Interpret the presence/absence of a panic as test failure/success.
+    let outcome = match (args.should_fail, panic_payload) {
+        (ShouldFail::No, None) | (ShouldFail::Yes, Some(_)) => TestOutcome::Succeeded,
+        (ShouldFail::No, Some(_)) => TestOutcome::Failed { message: None },
+        (ShouldFail::Yes, None) => {
+            TestOutcome::Failed { message: Some("`//@ should-fail` test did not fail as expected") }
         }
     };
 
     let stdout = capture.into_inner();
-    completion_sender.send(TestCompletion { id, outcome, stdout }).unwrap();
+    args.completion_sender.send(TestCompletion { id: args.id, outcome, stdout }).unwrap();
 }
 
 enum CaptureKind {
@@ -206,33 +235,6 @@ impl CaptureKind {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct TestId(usize);
-
-struct RunnableTest {
-    config: Arc<Config>,
-    testpaths: TestPaths,
-    revision: Option<String>,
-}
-
-impl RunnableTest {
-    fn new(test: &CollectedTest) -> Self {
-        let config = Arc::clone(&test.config);
-        let testpaths = test.testpaths.clone();
-        let revision = test.revision.clone();
-        Self { config, testpaths, revision }
-    }
-
-    fn run(&self, stdout: &dyn ConsoleOut, stderr: &dyn ConsoleOut) {
-        __rust_begin_short_backtrace(|| {
-            crate::runtest::run(
-                Arc::clone(&self.config),
-                stdout,
-                stderr,
-                &self.testpaths,
-                self.revision.as_deref(),
-            );
-        });
-    }
-}
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
@@ -336,7 +338,7 @@ pub(crate) struct CollectedTestDesc {
     pub(crate) filterable_path: Utf8PathBuf,
     pub(crate) ignore: bool,
     pub(crate) ignore_message: Option<Cow<'static, str>>,
-    pub(crate) should_panic: ShouldPanic,
+    pub(crate) should_fail: ShouldFail,
 }
 
 /// Whether console output should be colored or not.
@@ -348,9 +350,10 @@ pub enum ColorConfig {
     NeverColor,
 }
 
-/// Whether test is expected to panic or not.
+/// Tests with `//@ should-fail` are tests of compiletest itself, and should
+/// be reported as successful if and only if they would have _failed_.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ShouldPanic {
+pub(crate) enum ShouldFail {
     No,
     Yes,
 }

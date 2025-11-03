@@ -219,6 +219,12 @@ fn typeck_with_inspect<'tcx>(
     // the future.
     fcx.check_repeat_exprs();
 
+    // We need to handle opaque types before emitting ambiguity errors as applying
+    // defining uses may guide type inference.
+    if fcx.next_trait_solver() {
+        fcx.try_handle_opaque_type_uses_next();
+    }
+
     fcx.type_inference_fallback();
 
     // Even though coercion casts provide type hints, we check casts after fallback for
@@ -279,7 +285,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
             let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                 tcx,
                 impl_def_id,

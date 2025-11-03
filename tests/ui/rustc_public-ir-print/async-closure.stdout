@@ -42,10 +42,8 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     let mut _5: ();
     let mut _6: u32;
     let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    let mut _8: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    let mut _9: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
     debug _task_context => _2;
-    debug y => (*((*(_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6})).0: &i32));
+    debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
@@ -54,14 +52,12 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     }
     bb1: {
         StorageLive(_3);
-        _8 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
-        _4 = ((*_8).0: &i32);
+        _4 = ((*_7).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
         _0 = std::task::Poll::Ready(move _5);
-        _9 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
-        discriminant((*_9)) = 1;
+        discriminant((*_7)) = 1;
         return;
     }
     bb2: {
@@ -78,10 +74,8 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     let mut _5: ();
     let mut _6: u32;
     let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    let mut _8: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    let mut _9: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
     debug _task_context => _2;
-    debug y => (*((*(_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6})).0: &i32));
+    debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
@@ -90,14 +84,12 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     }
     bb1: {
         StorageLive(_3);
-        _8 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
-        _4 = ((*_8).0: &i32);
+        _4 = ((*_7).0: &i32);
         _3 = (*_4);
         _5 = ();
         StorageDead(_3);
         _0 = std::task::Poll::Ready(move _5);
-        _9 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
-        discriminant((*_9)) = 1;
+        discriminant((*_7)) = 1;
         return;
     }
     bb2: {

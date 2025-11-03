@@ -8,7 +8,8 @@ use tracing::*;
 
 use crate::common::{CodegenBackend, Config, Debugger, FailMode, PassMode, RunFailMode, TestMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
-use crate::directives::auxiliary::{AuxProps, parse_and_update_aux};
+pub(crate) use crate::directives::auxiliary::AuxProps;
+use crate::directives::auxiliary::parse_and_update_aux;
 use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
@@ -17,11 +18,11 @@ use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
-use crate::executor::{CollectedTestDesc, ShouldPanic};
+use crate::executor::{CollectedTestDesc, ShouldFail};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
-pub(crate) mod auxiliary;
+mod auxiliary;
 mod cfg;
 mod directive_names;
 mod file;
@@ -44,10 +45,6 @@ impl DirectivesCache {
 /// the test.
 #[derive(Default)]
 pub(crate) struct EarlyProps {
-    /// Auxiliary crates that should be built and made available to this test.
-    /// Included in [`EarlyProps`] so that the indicated files can participate
-    /// in up-to-date checking. Building happens via [`TestProps::aux`] instead.
-    pub(crate) aux: AuxProps,
     pub(crate) revisions: Vec<String>,
 }
 
@@ -66,8 +63,7 @@ impl EarlyProps {
             file_directives,
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
-                parse_and_update_aux(config, ln, testfile, &mut props.aux);
-                config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
+                config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
 
@@ -81,11 +77,15 @@ impl EarlyProps {
 }
 
 #[derive(Clone, Debug)]
-pub struct TestProps {
+pub(crate) struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
     // Regexes that should be expected, in order, on standard out
     pub regex_error_patterns: Vec<String>,
+    /// Edition selected by an `//@ edition` directive, if any.
+    ///
+    /// Automatically added to `compile_flags` during directive processing.
+    pub edition: Option<Edition>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -200,9 +200,9 @@ pub struct TestProps {
     pub no_auto_check_cfg: bool,
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
-    pub add_core_stubs: bool,
+    pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
-    pub core_stubs_compile_flags: Vec<String>,
+    pub minicore_compile_flags: Vec<String>,
     /// Whether line annotatins are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
@@ -254,10 +254,8 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
-    pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
-    pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
-    // This isn't a real directive, just one that is probably mistyped often
-    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
+    pub const ADD_MINICORE: &'static str = "add-minicore";
+    pub const MINICORE_COMPILE_FLAGS: &'static str = "minicore-compile-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
@@ -267,6 +265,7 @@ impl TestProps {
         TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
+            edition: None,
             compile_flags: vec![],
             run_flags: vec![],
             doc_flags: vec![],
@@ -312,8 +311,8 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
-            add_core_stubs: false,
-            core_stubs_compile_flags: vec![],
+            add_minicore: false,
+            minicore_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
@@ -355,7 +354,6 @@ impl TestProps {
     /// `//@[foo]`), then the property is ignored unless `test_revision` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Utf8Path, test_revision: Option<&str>, config: &Config) {
-        let mut has_edition = false;
         if !testfile.is_dir() {
             let file_contents = fs::read_to_string(testfile).unwrap();
             let file_directives = FileDirectives::from_file_contents(testfile, &file_contents);
@@ -376,25 +374,17 @@ impl TestProps {
                     config.push_name_value_directive(
                         ln,
                         ERROR_PATTERN,
-                        testfile,
                         &mut self.error_patterns,
                         |r| r,
                     );
                     config.push_name_value_directive(
                         ln,
                         REGEX_ERROR_PATTERN,
-                        testfile,
                         &mut self.regex_error_patterns,
                         |r| r,
                     );
 
-                    config.push_name_value_directive(
-                        ln,
-                        DOC_FLAGS,
-                        testfile,
-                        &mut self.doc_flags,
-                        |r| r,
-                    );
+                    config.push_name_value_directive(ln, DOC_FLAGS, &mut self.doc_flags, |r| r);
 
                     fn split_flags(flags: &str) -> Vec<String> {
                         // Individual flags can be single-quoted to preserve spaces; see
@@ -409,9 +399,7 @@ impl TestProps {
                             .collect::<Vec<_>>()
                     }
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, COMPILE_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                         let flags = split_flags(&flags);
                         for (i, flag) in flags.iter().enumerate() {
                             if flag == "--edition" || flag.starts_with("--edition=") {
@@ -428,32 +416,19 @@ impl TestProps {
                         }
                         self.compile_flags.extend(flags);
                     }
-                    if config
-                        .parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS, testfile)
-                        .is_some()
-                    {
-                        panic!("`compiler-flags` directive should be spelled `compile-flags`");
+
+                    if let Some(range) = parse_edition_range(config, ln) {
+                        self.edition = Some(range.edition_to_test(config.edition));
                     }
 
-                    if let Some(range) = parse_edition_range(config, ln, testfile) {
-                        // The edition is added at the start, since flags from //@compile-flags must
-                        // be passed to rustc last.
-                        self.compile_flags.insert(
-                            0,
-                            format!("--edition={}", range.edition_to_test(config.edition)),
-                        );
-                        has_edition = true;
-                    }
+                    config.parse_and_update_revisions(ln, &mut self.revisions);
 
-                    config.parse_and_update_revisions(testfile, ln, &mut self.revisions);
-
-                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
                         self.run_flags.extend(split_flags(&flags));
                     }
 
                     if self.pp_exact.is_none() {
-                        self.pp_exact = config.parse_pp_exact(ln, testfile);
+                        self.pp_exact = config.parse_pp_exact(ln);
                     }
 
                     config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
@@ -475,7 +450,7 @@ impl TestProps {
                     );
                     config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
 
-                    if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE, testfile) {
+                    if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
                         self.pretty_mode = m;
                     }
 
@@ -486,40 +461,35 @@ impl TestProps {
                     );
 
                     // Call a helper method to deal with aux-related directives.
-                    parse_and_update_aux(config, ln, testfile, &mut self.aux);
+                    parse_and_update_aux(config, ln, &mut self.aux);
 
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
-                        testfile,
                         &mut self.exec_env,
                         Config::parse_env,
                     );
                     config.push_name_value_directive(
                         ln,
                         UNSET_EXEC_ENV,
-                        testfile,
                         &mut self.unset_exec_env,
                         |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
                         RUSTC_ENV,
-                        testfile,
                         &mut self.rustc_env,
                         Config::parse_env,
                     );
                     config.push_name_value_directive(
                         ln,
                         UNSET_RUSTC_ENV,
-                        testfile,
                         &mut self.unset_rustc_env,
                         |r| r.trim().to_owned(),
                     );
                     config.push_name_value_directive(
                         ln,
                         FORBID_OUTPUT,
-                        testfile,
                         &mut self.forbid_output,
                         |r| r,
                     );
@@ -529,7 +499,7 @@ impl TestProps {
                         &mut self.check_test_line_numbers_match,
                     );
 
-                    self.update_pass_mode(ln, test_revision, config);
+                    self.update_pass_mode(ln, config);
                     self.update_fail_mode(ln, config);
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
@@ -555,7 +525,7 @@ impl TestProps {
                     }
 
                     if let Some(code) = config
-                        .parse_name_value_directive(ln, FAILURE_STATUS, testfile)
+                        .parse_name_value_directive(ln, FAILURE_STATUS)
                         .and_then(|code| code.trim().parse::<i32>().ok())
                     {
                         self.failure_status = Some(code);
@@ -576,7 +546,6 @@ impl TestProps {
                     config.set_name_value_directive(
                         ln,
                         ASSEMBLY_OUTPUT,
-                        testfile,
                         &mut self.assembly_output,
                         |r| r.trim().to_string(),
                     );
@@ -589,9 +558,7 @@ impl TestProps {
 
                     // Unlike the other `name_value_directive`s this needs to be handled manually,
                     // because it sets a `bool` flag.
-                    if let Some(known_bug) =
-                        config.parse_name_value_directive(ln, KNOWN_BUG, testfile)
-                    {
+                    if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
                         let known_bug = known_bug.trim();
                         if known_bug == "unknown"
                             || known_bug.split(',').all(|issue_ref| {
@@ -619,30 +586,25 @@ impl TestProps {
                     config.set_name_value_directive(
                         ln,
                         TEST_MIR_PASS,
-                        testfile,
                         &mut self.mir_unit_test,
                         |s| s.trim().to_string(),
                     );
                     config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, LLVM_COV_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
                         self.llvm_cov_flags.extend(split_flags(&flags));
                     }
 
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, FILECHECK_FLAGS, testfile)
-                    {
+                    if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
                         self.filecheck_flags.extend(split_flags(&flags));
                     }
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
 
-                    self.update_add_core_stubs(ln, config);
+                    self.update_add_minicore(ln, config);
 
                     if let Some(flags) =
-                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS, testfile)
+                        config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS)
                     {
                         let flags = split_flags(&flags);
                         for flag in &flags {
@@ -650,11 +612,11 @@ impl TestProps {
                                 panic!("you must use `//@ edition` to configure the edition");
                             }
                         }
-                        self.core_stubs_compile_flags.extend(flags);
+                        self.minicore_compile_flags.extend(flags);
                     }
 
                     if let Some(err_kind) =
-                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS, testfile)
+                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
                     {
                         self.dont_require_annotations
                             .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
@@ -705,10 +667,10 @@ impl TestProps {
             }
         }
 
-        if let (Some(edition), false) = (&config.edition, has_edition) {
+        if let Some(edition) = self.edition.or(config.edition) {
             // The edition is added at the start, since flags from //@compile-flags must be passed
             // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={}", edition));
+            self.compile_flags.insert(0, format!("--edition={edition}"));
         }
     }
 
@@ -719,9 +681,6 @@ impl TestProps {
                 panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
-        if config.mode == TestMode::Ui && config.parse_name_directive(ln, "compile-fail") {
-            panic!("`compile-fail` directive is useless in UI tests");
-        }
         let fail_mode = if config.parse_name_directive(ln, "check-fail") {
             check_ui("check");
             Some(FailMode::Check)
@@ -747,18 +706,15 @@ impl TestProps {
         }
     }
 
-    fn update_pass_mode(
-        &mut self,
-        ln: &DirectiveLine<'_>,
-        revision: Option<&str>,
-        config: &Config,
-    ) {
+    fn update_pass_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
             (TestMode::Crashes, _) => (),
             (TestMode::Codegen, "build-pass") => (),
             (TestMode::Incremental, _) => {
-                if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                // FIXME(Zalathar): This only detects forbidden directives that are
+                // declared _after_ the incompatible `//@ revisions:` directive(s).
+                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
                     panic!("`{s}` directive is only supported in `cfail` incremental tests")
                 }
             }
@@ -797,12 +753,12 @@ impl TestProps {
         self.pass_mode
     }
 
-    fn update_add_core_stubs(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
-        let add_core_stubs = config.parse_name_directive(ln, directives::ADD_CORE_STUBS);
-        if add_core_stubs {
+    fn update_add_minicore(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
+        let add_minicore = config.parse_name_directive(ln, directives::ADD_MINICORE);
+        if add_minicore {
             if !matches!(config.mode, TestMode::Ui | TestMode::Codegen | TestMode::Assembly) {
                 panic!(
-                    "`add-core-stubs` is currently only supported for ui, codegen and assembly test modes"
+                    "`add-minicore` is currently only supported for ui, codegen and assembly test modes"
                 );
             }
 
@@ -811,10 +767,10 @@ impl TestProps {
             if self.local_pass_mode().is_some_and(|pm| pm == PassMode::Run) {
                 // `minicore` can only be used with non-run modes, because it's `core` prelude stubs
                 // and can't run.
-                panic!("`add-core-stubs` cannot be used to run the test binary");
+                panic!("`add-minicore` cannot be used to run the test binary");
             }
 
-            self.add_core_stubs = add_core_stubs;
+            self.add_minicore = add_minicore;
         }
     }
 }
@@ -845,6 +801,11 @@ fn check_directive<'a>(
         .map(|remark| remark.trim_start().split(' ').next().unwrap())
         .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
 
+    // FIXME(Zalathar): Consider emitting specialized error/help messages for
+    // bogus directive names that are similar to real ones, e.g.:
+    // - *`compiler-flags` => `compile-flags`
+    // - *`compile-fail` => `check-fail` or `build-fail`
+
     CheckDirectiveResult { is_known_directive, trailing_directive }
 }
 
@@ -870,7 +831,7 @@ fn iter_directives(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive_str in extra_directives {
-            let directive_line = line_directive(0, directive_str)
+            let directive_line = line_directive(testfile, 0, directive_str)
                 .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
             it(&directive_line);
         }
@@ -911,12 +872,7 @@ fn iter_directives(
 }
 
 impl Config {
-    fn parse_and_update_revisions(
-        &self,
-        testfile: &Utf8Path,
-        line: &DirectiveLine<'_>,
-        existing: &mut Vec<String>,
-    ) {
+    fn parse_and_update_revisions(&self, line: &DirectiveLine<'_>, existing: &mut Vec<String>) {
         const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
             // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
             // weird for the test, since if the test writer wants a cfg of the same revision name
@@ -927,7 +883,9 @@ impl Config {
         const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
-        if let Some(raw) = self.parse_name_value_directive(line, "revisions", testfile) {
+        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            let &DirectiveLine { file_path: testfile, .. } = line;
+
             if self.mode == TestMode::RunMake {
                 panic!("`run-make` mode tests do not support revisions: {}", testfile);
             }
@@ -972,11 +930,11 @@ impl Config {
         (name.to_owned(), value.to_owned())
     }
 
-    fn parse_pp_exact(&self, line: &DirectiveLine<'_>, testfile: &Utf8Path) -> Option<Utf8PathBuf> {
-        if let Some(s) = self.parse_name_value_directive(line, "pp-exact", testfile) {
+    fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
+        if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
             Some(Utf8PathBuf::from(&s))
         } else if self.parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(Utf8PathBuf::from)
+            line.file_path.file_name().map(Utf8PathBuf::from)
         } else {
             None
         }
@@ -1013,9 +971,8 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
     ) -> Option<String> {
-        let &DirectiveLine { line_number, .. } = line;
+        let &DirectiveLine { file_path, line_number, .. } = line;
 
         if line.name != directive {
             return None;
@@ -1029,7 +986,7 @@ impl Config {
         let value = expand_variables(value.to_owned(), self);
 
         if value.is_empty() {
-            error!("{testfile}:{line_number}: empty value for directive `{directive}`");
+            error!("{file_path}:{line_number}: empty value for directive `{directive}`");
             help!("expected syntax is: `{directive}: value`");
             panic!("empty directive value detected");
         }
@@ -1046,12 +1003,11 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
         value: &mut Option<T>,
         parse: impl FnOnce(String) -> T,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive, testfile).map(parse);
+            *value = self.parse_name_value_directive(line, directive).map(parse);
         }
     }
 
@@ -1059,11 +1015,10 @@ impl Config {
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        testfile: &Utf8Path,
         values: &mut Vec<T>,
         parse: impl FnOnce(String) -> T,
     ) {
-        if let Some(value) = self.parse_name_value_directive(line, directive, testfile).map(parse) {
+        if let Some(value) = self.parse_name_value_directive(line, directive).map(parse) {
             values.push(value);
         }
     }
@@ -1343,6 +1298,7 @@ pub(crate) fn make_test_description(
     file_directives: &FileDirectives<'_>,
     test_revision: Option<&str>,
     poisoned: &mut bool,
+    aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
     let mut ignore = false;
     let mut ignore_message = None;
@@ -1359,6 +1315,9 @@ pub(crate) fn make_test_description(
             if !ln.applies_to_test_revision(test_revision) {
                 return;
             }
+
+            // Parse `aux-*` directives, for use by up-to-date checks.
+            parse_and_update_aux(config, ln, aux_props);
 
             macro_rules! decision {
                 ($e:expr) => {
@@ -1380,9 +1339,9 @@ pub(crate) fn make_test_description(
             decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
-            decision!(ignore_llvm(config, path, ln));
-            decision!(ignore_backends(config, path, ln));
-            decision!(needs_backends(config, path, ln));
+            decision!(ignore_llvm(config, ln));
+            decision!(ignore_backends(config, ln));
+            decision!(needs_backends(config, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1407,10 +1366,10 @@ pub(crate) fn make_test_description(
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
-    let should_panic = match config.mode {
-        TestMode::Pretty => ShouldPanic::No,
-        _ if should_fail => ShouldPanic::Yes,
-        _ => ShouldPanic::No,
+    let should_fail = if should_fail && config.mode != TestMode::Pretty {
+        ShouldFail::Yes
+    } else {
+        ShouldFail::No
     };
 
     CollectedTestDesc {
@@ -1418,7 +1377,7 @@ pub(crate) fn make_test_description(
         filterable_path: filterable_path.to_owned(),
         ignore,
         ignore_message,
-        should_panic,
+        should_fail,
     }
 }
 
@@ -1523,10 +1482,9 @@ fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if let Some(backends_to_ignore) =
-        config.parse_name_value_directive(line, "ignore-backends", path)
-    {
+fn ignore_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
+    if let Some(backends_to_ignore) = config.parse_name_value_directive(line, "ignore-backends") {
         for backend in backends_to_ignore.split_whitespace().map(|backend| {
             match CodegenBackend::try_from(backend) {
                 Ok(backend) => backend,
@@ -1535,7 +1493,7 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -
                 }
             }
         }) {
-            if config.default_codegen_backend == backend {
+            if !config.bypass_ignore_backends && config.default_codegen_backend == backend {
                 return IgnoreDecision::Ignore {
                     reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
@@ -1545,8 +1503,9 @@ fn ignore_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -
     IgnoreDecision::Continue
 }
 
-fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends", path) {
+fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
+    if let Some(needed_backends) = config.parse_name_value_directive(line, "needs-backends") {
         if !needed_backends
             .split_whitespace()
             .map(|backend| match CodegenBackend::try_from(backend) {
@@ -1568,9 +1527,10 @@ fn needs_backends(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) ->
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    let path = line.file_path;
     if let Some(needed_components) =
-        config.parse_name_value_directive(line, "needs-llvm-components", path)
+        config.parse_name_value_directive(line, "needs-llvm-components")
     {
         let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
         if let Some(missing_component) = needed_components
@@ -1579,8 +1539,8 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
         {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
-                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
-                    missing_component, path
+                    "missing LLVM component {missing_component}, \
+                    and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {path}",
                 );
             }
             return IgnoreDecision::Ignore {
@@ -1591,9 +1551,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
     if let Some(actual_version) = &config.llvm_version {
         // Note that these `min` versions will check for not just major versions.
 
-        if let Some(version_string) =
-            config.parse_name_value_directive(line, "min-llvm-version", path)
-        {
+        if let Some(version_string) = config.parse_name_value_directive(line, "min-llvm-version") {
             let min_version = extract_llvm_version(&version_string);
             // Ignore if actual version is smaller than the minimum required version.
             if *actual_version < min_version {
@@ -1604,7 +1562,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "max-llvm-major-version", path)
+            config.parse_name_value_directive(line, "max-llvm-major-version")
         {
             let max_version = extract_llvm_version(&version_string);
             // Ignore if actual major version is larger than the maximum required major version.
@@ -1618,7 +1576,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "min-system-llvm-version", path)
+            config.parse_name_value_directive(line, "min-system-llvm-version")
         {
             let min_version = extract_llvm_version(&version_string);
             // Ignore if using system LLVM and actual version
@@ -1631,7 +1589,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 };
             }
         } else if let Some(version_range) =
-            config.parse_name_value_directive(line, "ignore-llvm-version", path)
+            config.parse_name_value_directive(line, "ignore-llvm-version")
         {
             // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
             let (v_min, v_max) =
@@ -1657,7 +1615,7 @@ fn ignore_llvm(config: &Config, path: &Utf8Path, line: &DirectiveLine<'_>) -> Ig
                 }
             }
         } else if let Some(version_string) =
-            config.parse_name_value_directive(line, "exact-llvm-major-version", path)
+            config.parse_name_value_directive(line, "exact-llvm-major-version")
         {
             // Syntax is "exact-llvm-major-version: <version>"
             let version = extract_llvm_version(&version_string);
@@ -1680,13 +1638,9 @@ enum IgnoreDecision {
     Error { message: String },
 }
 
-fn parse_edition_range(
-    config: &Config,
-    line: &DirectiveLine<'_>,
-    testfile: &Utf8Path,
-) -> Option<EditionRange> {
-    let raw = config.parse_name_value_directive(line, "edition", testfile)?;
-    let line_number = line.line_number;
+fn parse_edition_range(config: &Config, line: &DirectiveLine<'_>) -> Option<EditionRange> {
+    let raw = config.parse_name_value_directive(line, "edition")?;
+    let &DirectiveLine { file_path: testfile, line_number, .. } = line;
 
     // Edition range is half-open: `[lower_bound, upper_bound)`
     if let Some((lower_bound, upper_bound)) = raw.split_once("..") {

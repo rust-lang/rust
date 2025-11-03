@@ -33,7 +33,7 @@ miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
 addr2line = { version = "0.25.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.172", default-features = false, features = [
+libc = { version = "0.2.177", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -69,6 +69,9 @@ dlmalloc = { version = "0.2.10", features = ['rustc-dep-of-std'] }
 fortanix-sgx-abi = { version = "0.6.1", features = [
     'rustc-dep-of-std',
 ], public = true }
+
+[target.'cfg(target_os = "motor")'.dependencies]
+moto-rt = { version = "0.15", features = ['rustc-dep-of-std'], public = true }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
 hermit-abi = { version = "0.5.0", features = [

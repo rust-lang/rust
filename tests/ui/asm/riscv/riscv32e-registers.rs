@@ -1,6 +1,6 @@
 // Test that loads into registers x16..=x31 are never generated for riscv32{e,em,emc} targets
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ build-fail
 //@ revisions: riscv32e riscv32em riscv32emc
 //
@@ -11,6 +11,7 @@
 //@ [riscv32em] compile-flags: --target=riscv32em-unknown-none-elf
 //@ [riscv32emc] needs-llvm-components: riscv
 //@ [riscv32emc] compile-flags: --target=riscv32emc-unknown-none-elf
+//@ ignore-backends: gcc
 
 // Unlike bad-reg.rs, this tests if the assembler can reject invalid registers
 // usage in assembly code.
