@@ -4,7 +4,7 @@
 // Cased           :   401 bytes,   4580 codepoints in 156 ranges (U+0000AA - U+01F18A) using skiplist
 // Grapheme_Extend :   899 bytes,   2232 codepoints in 383 ranges (U+000300 - U+0E01F0) using skiplist
 // Lowercase       :   943 bytes,   2569 codepoints in 676 ranges (U+0000AA - U+01E944) using bitset
-// N               :   463 bytes,   1914 codepoints in 145 ranges (U+0000B2 - U+01FBFA) using skiplist
+// Numeric         :   463 bytes,   1914 codepoints in 145 ranges (U+0000B2 - U+01FBFA) using skiplist
 // Uppercase       :   799 bytes,   1980 codepoints in 659 ranges (U+0000C0 - U+01F18A) using bitset
 // White_Space     :   256 bytes,     19 codepoints in   8 ranges (U+000085 - U+003001) using cascading
 // to_lower        : 11708 bytes
@@ -539,7 +539,7 @@ pub mod lowercase {
     }
 }
 
-pub mod n {
+pub mod numeric {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 43] = [

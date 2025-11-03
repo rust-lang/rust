@@ -93,7 +93,7 @@ static PROPERTIES: &[&str] = &[
     "Case_Ignorable",
     "Grapheme_Extend",
     "White_Space",
-    "N",
+    "Numeric",
 ];
 
 struct UnicodeData {
@@ -148,10 +148,13 @@ fn load_data() -> UnicodeData {
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
     ) {
-        let general_category = if ["Nd", "Nl", "No"].contains(&row.general_category.as_str()) {
-            "N"
-        } else {
-            row.general_category.as_str()
+        // FIXME: this used to map `Nd`, `Nl` and `No` to `N`, but the generated
+        // `unicode_data` is `pub`, so the module names can show up in
+        // recommendations (see issue #148387). While that's a rustc issue, we
+        // choose a better name for the `N` property to avoid bad diagnostics.
+        let general_category = match row.general_category.as_str() {
+            "Nd" | "Nl" | "No" => "Numeric",
+            category => category,
         };
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == general_category) {
             properties
@@ -241,7 +244,9 @@ fn main() {
             emit_codepoints(&mut emitter, ranges);
         }
 
-        modules.push((property.to_lowercase().to_string(), emitter.file));
+        let module_name = property.to_lowercase();
+
+        modules.push((module_name, emitter.file));
         writeln!(
             table_file,
             "// {:16}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}",

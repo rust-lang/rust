@@ -73,8 +73,8 @@ fn lowercase() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
-fn n() {
-    test_boolean_property(test_data::N, unicode_data::n::lookup);
+fn numeric() {
+    test_boolean_property(test_data::NUMERIC, unicode_data::numeric::lookup);
 }
 
 #[test]

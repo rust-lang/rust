@@ -777,7 +777,7 @@ pub(super) static LOWERCASE: &[RangeInclusive<char>; 676] = &[
 ];
 
 #[rustfmt::skip]
-pub(super) static N: &[RangeInclusive<char>; 145] = &[
+pub(super) static NUMERIC: &[RangeInclusive<char>; 145] = &[
     '\u{b2}'..='\u{b3}', '\u{b9}'..='\u{b9}', '\u{bc}'..='\u{be}', '\u{660}'..='\u{669}',
     '\u{6f0}'..='\u{6f9}', '\u{7c0}'..='\u{7c9}', '\u{966}'..='\u{96f}', '\u{9e6}'..='\u{9ef}',
     '\u{9f4}'..='\u{9f9}', '\u{a66}'..='\u{a6f}', '\u{ae6}'..='\u{aef}', '\u{b66}'..='\u{b6f}',
