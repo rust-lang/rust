@@ -918,7 +918,7 @@ where
     /// # }
     /// ```
     pub fn num_buckets(&self) -> usize {
-        self.raw.buckets()
+        self.raw.num_buckets()
     }
 
     /// Returns the number of elements the table can hold without reallocating.
