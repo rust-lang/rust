@@ -4,6 +4,6 @@
 #[deprecated(note = concat!("a", "b"))]
 struct X;
 //~^^ ERROR: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found
-//~| NOTE: macros are not allowed here
+//~| NOTE: macro calls are not allowed here
 
 fn main() {}
