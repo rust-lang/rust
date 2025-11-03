@@ -1415,6 +1415,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 has_generic_params,
                                 def_kind,
                                 inner_item: item,
+                                current_self_ty: diag_metadata
+                                    .and_then(|m| m.current_self_type.as_ref())
+                                    .and_then(|ty| {
+                                        self.tcx.sess.source_map().span_to_snippet(ty.span).ok()
+                                    }),
                             },
                         );
                     }
@@ -1503,6 +1508,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 has_generic_params,
                                 def_kind,
                                 inner_item: item,
+                                current_self_ty: diag_metadata
+                                    .and_then(|m| m.current_self_type.as_ref())
+                                    .and_then(|ty| {
+                                        self.tcx.sess.source_map().span_to_snippet(ty.span).ok()
+                                    }),
                             },
                         );
                     }
