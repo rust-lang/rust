@@ -1255,7 +1255,7 @@ impl StmtKind {
             StmtKind::Expr(_) => "expression",
             StmtKind::Semi(_) => "statement",
             StmtKind::Empty => "semicolon",
-            StmtKind::MacCall(_) => "macro",
+            StmtKind::MacCall(_) => "macro call",
         }
     }
 }
