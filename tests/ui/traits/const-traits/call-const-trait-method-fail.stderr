@@ -3,6 +3,11 @@ error[E0277]: the trait bound `u32: [const] Plus` is not satisfied
    |
 LL |     a.plus(b)
    |     ^
+   |
+help: make the `impl` of trait `Plus` `const`
+   |
+LL | impl const Plus for u32 {
+   |      +++++
 
 error: aborting due to 1 previous error
 
