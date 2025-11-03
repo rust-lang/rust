@@ -24,6 +24,16 @@ pub(crate) struct GenericParamsFromOuterItem {
     #[subdiagnostic]
     pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
     pub(crate) is_self: bool,
+    #[subdiagnostic]
+    pub(crate) item: Option<GenericParamsFromOuterItemInnerItem>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(resolve_generic_params_from_outer_item_inner_item)]
+pub(crate) struct GenericParamsFromOuterItemInnerItem {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) descr: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -47,7 +57,12 @@ pub(crate) enum GenericParamsFromOuterItemLabel {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(resolve_suggestion, code = "{snippet}", applicability = "maybe-incorrect")]
+#[suggestion(
+    resolve_suggestion,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
 pub(crate) struct GenericParamsFromOuterItemSugg {
     #[primary_span]
     pub(crate) span: Span,

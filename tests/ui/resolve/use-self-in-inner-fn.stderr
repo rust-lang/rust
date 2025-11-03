@@ -5,10 +5,11 @@ LL | impl A {
    | ---- `Self` type implicitly declared here, by this `impl`
 ...
 LL |         fn peach(this: &Self) {
-   |                         ^^^^
-   |                         |
-   |                         use of `Self` from outer item
-   |                         refer to the type directly here instead
+   |            -----        ^^^^
+   |            |            |
+   |            |            use of `Self` from outer item
+   |            |            refer to the type directly here instead
+   |            `Self` used in this inner function
 
 error: aborting due to 1 previous error
 
