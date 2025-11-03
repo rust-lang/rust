@@ -15,9 +15,8 @@ fn main() {
         .arg(&absolute_path)
         .run_fail();
 
-    // We also double-check that we don't have the panic text in the output.
+    // We check that rustdoc outputs the error correctly...
     output.assert_stdout_contains("Failed to spawn ");
-    output.assert_stderr_not_contains("the compiler unexpectedly panicked. this is a bug.");
-    // Just in case...
-    output.assert_stdout_not_contains("the compiler unexpectedly panicked. this is a bug.");
+    // ... and that we didn't panic.
+    output.assert_not_ice();
 }
