@@ -269,7 +269,7 @@ inline GenmcScalar uninit() {
 inline GenmcScalar from_sval(SVal sval) {
     return GenmcScalar {
         .value = sval.get(),
-        .extra = sval.getExtra(),
+        .extra = sval.getProvenance(),
         .is_init = true,
     };
 }
