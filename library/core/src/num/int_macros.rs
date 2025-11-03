@@ -554,6 +554,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(!self.overflowing_add(rhs).1)]
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -694,6 +696,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(!self.overflowing_sub(rhs).1)]
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -834,6 +838,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(!self.overflowing_mul(rhs).1)]
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -1258,6 +1264,9 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(self != <$SelfT>::MIN)]
+        #[core::contracts::ensures(move |result| *result == -self)]
         pub const unsafe fn unchecked_neg(self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -1378,6 +1387,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(rhs < <$ActualT>::BITS)]
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -1553,6 +1564,8 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         #[track_caller]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(rhs < <$ActualT>::BITS)]
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
@@ -2284,6 +2297,8 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::ensures(move |result| *result == self << (rhs & (Self::BITS - 1)))]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2311,6 +2326,8 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::ensures(move |result| *result == self >> (rhs & (Self::BITS - 1)))]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds

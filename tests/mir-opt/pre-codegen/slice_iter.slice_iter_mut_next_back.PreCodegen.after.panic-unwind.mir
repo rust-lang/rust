@@ -45,15 +45,23 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
                     scope 14 {
                         scope 17 (inlined NonNull::<T>::sub) {
                             scope 18 (inlined #[track_caller] core::num::<impl isize>::unchecked_neg) {
-                                scope 19 (inlined core::ub_checks::check_language_ub) {
-                                    scope 20 (inlined core::ub_checks::check_language_ub::runtime) {
+                                scope 19 {
+                                    scope 20 {
+                                        scope 21 {
+                                        }
+                                    }
+                                    scope 23 (inlined core::ub_checks::check_language_ub) {
+                                        scope 24 (inlined core::ub_checks::check_language_ub::runtime) {
+                                        }
                                     }
                                 }
+                                scope 22 (inlined core::contracts::build_check_ensures::<isize, {closure@core::num::<impl isize>::unchecked_neg::{closure#1}}>) {
+                                }
                             }
-                            scope 21 (inlined NonNull::<T>::offset) {
+                            scope 25 (inlined NonNull::<T>::offset) {
                                 let mut _13: *const T;
                                 let mut _14: *const T;
-                                scope 22 (inlined NonNull::<T>::as_ptr) {
+                                scope 26 (inlined NonNull::<T>::as_ptr) {
                                 }
                             }
                         }
@@ -64,9 +72,9 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
                     }
                 }
             }
-            scope 23 (inlined NonNull::<T>::as_mut::<'_>) {
+            scope 27 (inlined NonNull::<T>::as_mut::<'_>) {
                 let mut _20: *mut T;
-                scope 24 (inlined NonNull::<T>::as_ptr) {
+                scope 28 (inlined NonNull::<T>::as_ptr) {
                 }
             }
         }

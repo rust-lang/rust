@@ -191,6 +191,8 @@ impl Duration {
     #[inline]
     #[must_use]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|duration: &Duration| duration.nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         if nanos < NANOS_PER_SEC {
             // SAFETY: nanos < NANOS_PER_SEC, therefore nanos is within the valid range
@@ -221,6 +223,10 @@ impl Duration {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |duration: &Duration|
+        duration.nanos.as_inner() < NANOS_PER_SEC && duration.secs == secs)]
     pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs, nanos: Nanoseconds::ZERO }
     }
@@ -241,6 +247,8 @@ impl Duration {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|duration: &Duration| duration.nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn from_millis(millis: u64) -> Duration {
         let secs = millis / MILLIS_PER_SEC;
         let subsec_millis = (millis % MILLIS_PER_SEC) as u32;
@@ -267,6 +275,8 @@ impl Duration {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|duration: &Duration| duration.nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
         let subsec_micros = (micros % MICROS_PER_SEC) as u32;
@@ -298,6 +308,8 @@ impl Duration {
     #[must_use]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|duration: &Duration| duration.nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn from_nanos(nanos: u64) -> Duration {
         const NANOS_PER_SEC: u64 = self::NANOS_PER_SEC as u64;
         let secs = nanos / NANOS_PER_SEC;
@@ -504,6 +516,9 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |secs: &u64| *secs == self.secs)]
     pub const fn as_secs(&self) -> u64 {
         self.secs
     }
@@ -527,6 +542,9 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |ms| *ms == self.nanos.as_inner() / NANOS_PER_MILLI)]
     pub const fn subsec_millis(&self) -> u32 {
         self.nanos.as_inner() / NANOS_PER_MILLI
     }
@@ -550,6 +568,9 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(|ms| *ms == self.nanos.as_inner() / NANOS_PER_MICRO)]
     pub const fn subsec_micros(&self) -> u32 {
         self.nanos.as_inner() / NANOS_PER_MICRO
     }
@@ -573,6 +594,9 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(|nanos| *nanos == self.nanos.as_inner())]
     pub const fn subsec_nanos(&self) -> u32 {
         self.nanos.as_inner()
     }
@@ -591,6 +615,12 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     |ms|
+    //     *ms == self.secs as u128 * MILLIS_PER_SEC as u128 +
+    //         (self.nanos.as_inner() / NANOS_PER_MILLI) as u128)]
     pub const fn as_millis(&self) -> u128 {
         self.secs as u128 * MILLIS_PER_SEC as u128
             + (self.nanos.as_inner() / NANOS_PER_MILLI) as u128
@@ -610,6 +640,12 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_as_u128", since = "1.33.0")]
     #[must_use]
     #[inline]
+    // FIXME: requires `&self` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(
+    //     |ms|
+    //     *ms == self.secs as u128 * MICROS_PER_SEC as u128 +
+    //         (self.nanos.as_inner() / NANOS_PER_MICRO) as u128)]
     pub const fn as_micros(&self) -> u128 {
         self.secs as u128 * MICROS_PER_SEC as u128
             + (self.nanos.as_inner() / NANOS_PER_MICRO) as u128
@@ -668,6 +704,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        |duration: &Option<Duration>|
+        duration.is_none() || duration.unwrap().nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
             let mut nanos = self.nanos.as_inner() + rhs.nanos.as_inner();
@@ -726,6 +766,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        |duration: &Option<Duration>|
+        duration.is_none() || duration.unwrap().nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos.as_inner() >= rhs.nanos.as_inner() {
@@ -782,6 +826,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        |duration: &Option<Duration>|
+        duration.is_none() || duration.unwrap().nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
         let total_nanos = self.nanos.as_inner() as u64 * rhs as u64;
@@ -838,6 +886,10 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(
+        move |duration: &Option<Duration>|
+        rhs == 0 || duration.unwrap().nanos.as_inner() < NANOS_PER_SEC)]
     pub const fn checked_div(self, rhs: u32) -> Option<Duration> {
         if rhs != 0 {
             let (secs, extra_secs) = (self.secs / (rhs as u64), self.secs % (rhs as u64));

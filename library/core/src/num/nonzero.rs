@@ -411,6 +411,13 @@ where
     #[must_use]
     #[inline]
     #[track_caller]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires({
+        let size = core::mem::size_of::<T>();
+        let ptr = &n as *const T as *const u8;
+        // SAFETY: to be confirmed
+        let slice = unsafe { core::slice::from_raw_parts(ptr, size) };
+        !slice.iter().all(|&byte| byte == 0) })]
     pub const unsafe fn new_unchecked(n: T) -> Self {
         match Self::new(n) {
             Some(n) => n,
@@ -452,6 +459,12 @@ where
     #[must_use]
     #[inline]
     #[track_caller]
+    #[core::contracts::requires({
+        let size = core::mem::size_of::<T>();
+        let ptr = n as *const T as *const u8;
+        // SAFETY: to be confirmed
+        let slice = unsafe { core::slice::from_raw_parts(ptr, size) };
+        !slice.iter().all(|&byte| byte == 0) })]
     pub unsafe fn from_mut_unchecked(n: &mut T) -> &mut Self {
         match Self::from_mut(n) {
             Some(n) => n,
@@ -771,6 +784,8 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::ensures(|result: &NonZero<u32>| result.get() > 0)]
             pub const fn count_ones(self) -> NonZero<u32> {
                 // SAFETY:
                 // `self` is non-zero, which means it has at least one bit set, which means
@@ -802,6 +817,10 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(let old : NonZero<$Int> = self; true)]
+            #[core::contracts::ensures(
+                move |result: &NonZero<$Int>| result.rotate_right(n).get() == old.get())]
             pub const fn rotate_left(self, n: u32) -> Self {
                 let result = self.get().rotate_left(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
@@ -833,6 +852,10 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(let old : NonZero<$Int> = self; true)]
+            #[core::contracts::ensures(
+                move |result: &NonZero<$Int>| result.rotate_left(n).get() == old.get())]
             pub const fn rotate_right(self, n: u32) -> Self {
                 let result = self.get().rotate_right(n);
                 // SAFETY: Rotating bits preserves the property int > 0.
@@ -1144,6 +1167,11 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
+            #[rustc_allow_const_fn_unstable(contracts)]
+            #[core::contracts::requires(self.get().checked_mul(other.get()).is_some())]
+            #[core::contracts::ensures(
+                move |result: &Self|
+                self.get().checked_mul(other.get()).is_some_and(|product| product == result.get()))]
             pub const unsafe fn unchecked_mul(self, other: Self) -> Self {
                 // SAFETY: The caller ensures there is no overflow.
                 unsafe { Self::new_unchecked(self.get().unchecked_mul(other.get())) }
@@ -1552,6 +1580,11 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[rustc_allow_const_fn_unstable(contracts)]
+        #[core::contracts::requires(self.get().checked_add(other).is_some())]
+        #[core::contracts::ensures(
+            move |result: &Self|
+            self.get().checked_add(other).is_some_and(|sum| sum == result.get()))]
         pub const unsafe fn unchecked_add(self, other: $Int) -> Self {
             // SAFETY: The caller ensures there is no overflow.
             unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }

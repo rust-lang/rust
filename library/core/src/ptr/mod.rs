@@ -2224,6 +2224,41 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
+#[core::contracts::requires(a.is_power_of_two())]
+// FIXME: requires `T` to be `'static`
+// #[core::contracts::ensures(move |result| {
+//     let stride = mem::size_of::<T>();
+//     // ZSTs
+//     if stride == 0 {
+//         if p.addr() % a == 0 {
+//             return *result == 0;
+//         } else {
+//             return *result == usize::MAX;
+//         }
+//     }
+//
+//     // In this case, the pointer cannot be aligned
+//     if (a % stride == 0) && (p.addr() % stride != 0) {
+//         return *result == usize::MAX;
+//     }
+//
+//     // Checking if the answer should indeed be usize::MAX when a % stride != 0
+//     // requires computing gcd(a, stride), which could be done using cttz as the implementation
+//     // does.
+//     if a % stride != 0 && *result == usize::MAX {
+//         return true;
+//     }
+//
+//     // If we reach this case, either:
+//     //  - a % stride == 0 and p.addr() % stride == 0, so it is definitely possible to align the
+//     //    pointer
+//     //  - a % stride != 0 and result != usize::MAX, so align_offset is claiming that it's possible
+//     //    to align the pointer
+//     // Check that applying the returned result does indeed produce an aligned address
+//     let product = usize::wrapping_mul(*result, stride);
+//     let new_addr = usize::wrapping_add(product, p.addr());
+//     *result != usize::MAX && new_addr % a == 0
+// })]
 pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
@@ -2241,6 +2276,9 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     ///
     /// Implementation of this function shall not panic. Ever.
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(m.is_power_of_two() && x < m && x % 2 != 0)]
+    #[core::contracts::ensures(move |result| wrapping_mul(*result, x) % m == 1)]
     const unsafe fn mod_inv(x: usize, m: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2⁴ = 16.
         ///

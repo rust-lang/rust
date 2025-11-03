@@ -106,6 +106,7 @@
 #![feature(const_default)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
+#![feature(contracts)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]

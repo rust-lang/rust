@@ -83,6 +83,10 @@ impl<T: PointeeSized> Unique<T> {
     ///
     /// `ptr` must be non-null.
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::requires(!ptr.is_null())]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(move |result: &Unique<T>| result.as_ptr() == ptr)]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe { Unique { pointer: NonNull::new_unchecked(ptr), _marker: PhantomData } }
@@ -90,6 +94,11 @@ impl<T: PointeeSized> Unique<T> {
 
     /// Creates a new `Unique` if `ptr` is non-null.
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    // FIXME: requires `T` to be `'static`
+    // #[core::contracts::ensures(
+    //     move |result: &Option<Unique<T>>|
+    //     result.is_none() == ptr.is_null() && (result.is_none() || result.unwrap().as_ptr() == ptr))]
     pub const fn new(ptr: *mut T) -> Option<Self> {
         if let Some(pointer) = NonNull::new(ptr) {
             Some(Unique { pointer, _marker: PhantomData })
@@ -107,6 +116,8 @@ impl<T: PointeeSized> Unique<T> {
     /// Acquires the underlying `*mut` pointer.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
+    #[rustc_allow_const_fn_unstable(contracts)]
+    #[core::contracts::ensures(|result: &*mut T| !result.is_null())]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer.as_ptr()
     }
@@ -114,6 +125,9 @@ impl<T: PointeeSized> Unique<T> {
     /// Acquires the underlying `*mut` pointer.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
+    // FIXME: requires `T` to be `'static`
+    // #[rustc_allow_const_fn_unstable(contracts)]
+    // #[core::contracts::ensures(move |result: &NonNull<T>| result.as_ptr() == self.pointer.as_ptr())]
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         self.pointer
     }

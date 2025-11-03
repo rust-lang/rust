@@ -138,6 +138,8 @@ pub const fn from_u32(i: u32) -> Option<char> {
 #[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]
 #[must_use]
 #[inline]
+#[rustc_allow_const_fn_unstable(contracts)]
+#[core::contracts::requires(i <= 0x10FFFF && (i < 0xD800 || i > 0xDFFF))]
 pub const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the safety contract must be upheld by the caller.
     unsafe { self::convert::from_u32_unchecked(i) }
@@ -399,6 +401,7 @@ macro_rules! casemappingiter_impls {
                 self.0.advance_by(n)
             }
 
+            #[core::contracts::requires(idx < self.0.len())]
             unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
                 // SAFETY: just forwarding requirements to caller
                 unsafe { self.0.__iterator_get_unchecked(idx) }
@@ -533,6 +536,7 @@ impl Iterator for CaseMappingIter {
         self.0.advance_by(n)
     }
 
+    #[core::contracts::requires(idx < self.len())]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // SAFETY: just forwarding requirements to caller
         unsafe { self.0.__iterator_get_unchecked(idx) }
