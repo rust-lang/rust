@@ -318,7 +318,7 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
     {
         return Some((0, prefix, original.len()));
     }
-    
+
     let common_prefix = original
         .chars()
         .zip(suggestion.chars())
