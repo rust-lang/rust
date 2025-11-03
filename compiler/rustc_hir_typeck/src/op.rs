@@ -20,8 +20,8 @@ use {rustc_ast as ast, rustc_hir as hir};
 
 use super::FnCtxt;
 use super::method::MethodCallee;
-use crate::Expectation;
 use crate::method::TreatNotYetDefinedOpaques;
+use crate::{Expectation, errors};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -308,23 +308,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut path = None;
                 let lhs_ty_str = self.tcx.short_string(lhs_ty, &mut path);
                 let rhs_ty_str = self.tcx.short_string(rhs_ty, &mut path);
+
                 let (mut err, output_def_id) = match op {
+                    // Try and detect when `+=` was incorrectly
+                    // used instead of `==` in a let-chain
                     Op::AssignOp(assign_op) => {
-                        let s = assign_op.node.as_str();
-                        let mut err = struct_span_code_err!(
-                            self.dcx(),
-                            expr.span,
-                            E0368,
-                            "binary assignment operation `{}` cannot be applied to type `{}`",
-                            s,
-                            lhs_ty_str,
-                        );
-                        err.span_label(
-                            lhs_expr.span,
-                            format!("cannot use `{}` on type `{}`", s, lhs_ty_str),
-                        );
-                        self.note_unmet_impls_on_type(&mut err, &errors, false);
-                        (err, None)
+                        if let Err(e) =
+                            errors::maybe_emit_plus_equals_diagnostic(&self, assign_op, lhs_expr)
+                        {
+                            (e, None)
+                        } else {
+                            let s = assign_op.node.as_str();
+                            let mut err = struct_span_code_err!(
+                                self.dcx(),
+                                expr.span,
+                                E0368,
+                                "binary assignment operation `{}` cannot be applied to type `{}`",
+                                s,
+                                lhs_ty_str,
+                            );
+                            err.span_label(
+                                lhs_expr.span,
+                                format!("cannot use `{}` on type `{}`", s, lhs_ty_str),
+                            );
+                            self.note_unmet_impls_on_type(&mut err, &errors, false);
+                            (err, None)
+                        }
                     }
                     Op::BinOp(bin_op) => {
                         let message = match bin_op.node {
@@ -1081,6 +1090,17 @@ fn lang_item_for_unop(tcx: TyCtxt<'_>, op: hir::UnOp) -> (Symbol, Option<hir::de
         hir::UnOp::Not => (sym::not, lang.not_trait()),
         hir::UnOp::Neg => (sym::neg, lang.neg_trait()),
         hir::UnOp::Deref => bug!("Deref is not overloadable"),
+    }
+}
+
+/// Check if `expr` contains a `let` or `&&`, indicating presence of a let-chain
+pub(crate) fn contains_let_in_chain(expr: &hir::Expr<'_>) -> bool {
+    match &expr.kind {
+        hir::ExprKind::Let(..) => true,
+        hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, left, right) => {
+            contains_let_in_chain(left) || contains_let_in_chain(right)
+        }
+        _ => false,
     }
 }
 
