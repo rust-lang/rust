@@ -25,12 +25,12 @@ LL |         fn inner() {
    |            ----- `Self` used in this inner function
 LL |
 LL |             Self::do_something(move || {});
-   |             ^^^^^^^^^^^^^^^^^^ use of `Self` from outer item
+   |             ^^^^ use of `Self` from outer item
    |
 help: refer to the type directly here instead
    |
 LL -             Self::do_something(move || {});
-LL +             MyEnum(move || {});
+LL +             MyEnum::do_something(move || {});
    |
 
 error: aborting due to 2 previous errors

@@ -7,7 +7,7 @@ LL |     reuse Trait::static_method {
    |                  ------------- generic parameter used in this inner delegated function
 LL |
 LL |         let _ = T::Default();
-   |                 ^^^^^^^^^^ use of generic parameter from outer item
+   |                 ^ use of generic parameter from outer item
 
 error[E0434]: can't capture dynamic environment in a fn item
   --> $DIR/target-expr.rs:26:17

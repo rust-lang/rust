@@ -326,7 +326,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     i,
                     rib_ident,
                     *res,
-                    finalize.map(|finalize| finalize.path_span),
+                    finalize.map(|_| general_span),
                     *original_rib_ident_def,
                     ribs,
                     diag_metadata,
