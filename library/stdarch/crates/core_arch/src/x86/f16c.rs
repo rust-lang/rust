@@ -3,16 +3,13 @@
 //! [F16C intrinsics]: https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=fp16&expand=1769
 
 use crate::core_arch::{simd::*, x86::*};
+use crate::intrinsics::simd::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 unsafe extern "unadjusted" {
-    #[link_name = "llvm.x86.vcvtph2ps.128"]
-    fn llvm_vcvtph2ps_128(a: i16x8) -> f32x4;
-    #[link_name = "llvm.x86.vcvtph2ps.256"]
-    fn llvm_vcvtph2ps_256(a: i16x8) -> f32x8;
     #[link_name = "llvm.x86.vcvtps2ph.128"]
     fn llvm_vcvtps2ph_128(a: f32x4, rounding: i32) -> i16x8;
     #[link_name = "llvm.x86.vcvtps2ph.256"]
@@ -29,7 +26,11 @@ unsafe extern "unadjusted" {
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
 pub fn _mm_cvtph_ps(a: __m128i) -> __m128 {
-    unsafe { transmute(llvm_vcvtph2ps_128(transmute(a))) }
+    unsafe {
+        let a: f16x8 = transmute(a);
+        let a: f16x4 = simd_shuffle!(a, a, [0, 1, 2, 3]);
+        simd_cast(a)
+    }
 }
 
 /// Converts the 8 x 16-bit half-precision float values in the 128-bit vector
@@ -41,7 +42,10 @@ pub fn _mm_cvtph_ps(a: __m128i) -> __m128 {
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 #[stable(feature = "x86_f16c_intrinsics", since = "1.68.0")]
 pub fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
-    unsafe { transmute(llvm_vcvtph2ps_256(transmute(a))) }
+    unsafe {
+        let a: f16x8 = transmute(a);
+        simd_cast(a)
+    }
 }
 
 /// Converts the 4 x 32-bit float values in the 128-bit vector `a` into 4 x

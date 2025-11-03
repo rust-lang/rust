@@ -10,7 +10,7 @@ use stdarch_test::assert_instr;
 #[inline]
 #[cfg_attr(test, assert_instr(bswap))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _bswap(x: i32) -> i32 {
+pub fn _bswap(x: i32) -> i32 {
     x.swap_bytes()
 }
 
@@ -20,9 +20,7 @@ mod tests {
 
     #[test]
     fn test_bswap() {
-        unsafe {
-            assert_eq!(_bswap(0x0EADBE0F), 0x0FBEAD0E);
-            assert_eq!(_bswap(0x00000000), 0x00000000);
-        }
+        assert_eq!(_bswap(0x0EADBE0F), 0x0FBEAD0E);
+        assert_eq!(_bswap(0x00000000), 0x00000000);
     }
 }
