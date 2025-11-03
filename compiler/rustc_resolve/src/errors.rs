@@ -11,14 +11,15 @@ use crate::{Res, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
+#[note]
 pub(crate) struct GenericParamsFromOuterItem {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
     pub(crate) label: Option<GenericParamsFromOuterItemLabel>,
-    #[label(resolve_refer_to_type_directly)]
-    pub(crate) refer_to_type_directly: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) refer_to_type_directly: Option<UseTypeDirectly>,
     #[subdiagnostic]
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
     #[subdiagnostic]
@@ -64,6 +65,18 @@ pub(crate) enum GenericParamsFromOuterItemLabel {
     style = "verbose"
 )]
 pub(crate) struct GenericParamsFromOuterItemSugg {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) snippet: String,
+}
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_refer_to_type_directly,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UseTypeDirectly {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) snippet: String,

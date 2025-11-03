@@ -8,6 +8,7 @@ LL |     enum E { V(Z) }
    |          |
    |          generic parameter used in this inner enum
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     enum E<Z> { V(Z) }

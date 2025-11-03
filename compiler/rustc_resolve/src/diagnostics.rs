@@ -558,6 +558,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 has_generic_params,
                 def_kind,
                 inner_item,
+                current_self_ty,
             } => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
                 let static_or_const = match def_kind {
@@ -595,7 +596,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             sm,
                             self.def_span(def_id),
                         )));
-                        err.refer_to_type_directly = Some(span);
+                        err.refer_to_type_directly =
+                            current_self_ty.map(|snippet| errs::UseTypeDirectly { span, snippet });
                         return self.dcx().create_err(err);
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
