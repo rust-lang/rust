@@ -72,8 +72,9 @@ fn lowercase() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn n() {
-    test_boolean_property(test_data::N, unicode_data::n::lookup);
+    test_boolean_property(test_data::N, unicode_data::number::lookup);
 }
 
 #[test]

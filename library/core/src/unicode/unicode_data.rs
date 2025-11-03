@@ -535,7 +535,7 @@ pub mod lowercase {
     }
 }
 
-pub mod n {
+pub mod number {
     use super::ShortOffsetRunHeader;
 
     static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; 43] = [

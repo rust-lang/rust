@@ -242,7 +242,13 @@ fn main() {
             emit_codepoints(&mut emitter, ranges);
         }
 
-        modules.push((property.to_lowercase().to_string(), emitter.file));
+        // FIXME: the generated `unicode_data` is `pub`, so the module names
+        // can show up in recommendations. While that's a rustc issue, we
+        // choose a better name for the "N" property to avoid bad diagnostics.
+        let module_name =
+            if property == &"N" { "number".to_string() } else { property.to_lowercase() };
+
+        modules.push((module_name, emitter.file));
         writeln!(
             table_file,
             "// {:16}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}",
@@ -280,12 +286,8 @@ fn main() {
 
     std::fs::write(&test_path, test_file).unwrap();
     std::fs::write(&data_path, table_file).unwrap();
-    rustfmt(&data_path);
-    rustfmt(&test_path);
-}
 
-fn rustfmt(path: &str) {
-    std::process::Command::new("rustfmt").arg(path).status().expect("rustfmt failed");
+    eprintln!("Unicode data was generated. Remember to run \"x fmt\"!");
 }
 
 fn version() -> String {
