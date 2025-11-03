@@ -1140,6 +1140,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             exprs.len()
         );
 
+        if prev_ty == new_ty {
+            return Ok(prev_ty);
+        }
+
         let is_force_inline = |ty: Ty<'tcx>| {
             if let ty::FnDef(did, _) = ty.kind() {
                 matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
