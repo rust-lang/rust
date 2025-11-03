@@ -326,7 +326,7 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 1
               LITERAL Str hello bridge 1
               PUNCH   , [alone] 1
-              LITERAL Str suffixedsuffix 1
+              LITERAL Err(()) "suffixed"suffix 1
               PUNCH   , [alone] 1
               LITERAL StrRaw(2) raw 1
               PUNCH   , [alone] 1
@@ -372,7 +372,7 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 42:Root[0000, 0]@27..28#ROOT2024
               LITERAL Str hello bridge 42:Root[0000, 0]@29..43#ROOT2024
               PUNCH   , [alone] 42:Root[0000, 0]@43..44#ROOT2024
-              LITERAL Str suffixedsuffix 42:Root[0000, 0]@45..61#ROOT2024
+              LITERAL Err(()) "suffixed"suffix 42:Root[0000, 0]@45..61#ROOT2024
               PUNCH   , [alone] 42:Root[0000, 0]@61..62#ROOT2024
               LITERAL StrRaw(2) raw 42:Root[0000, 0]@63..73#ROOT2024
               PUNCH   , [alone] 42:Root[0000, 0]@73..74#ROOT2024
