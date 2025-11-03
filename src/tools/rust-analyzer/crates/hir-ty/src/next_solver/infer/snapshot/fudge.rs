@@ -41,9 +41,7 @@ fn const_vars_since_snapshot<'db>(
         range.clone(),
         iter_idx_range(range)
             .map(|index| match table.probe_value(index) {
-                ConstVariableValue::Known { value: _ } => {
-                    ConstVariableOrigin { param_def_id: None }
-                }
+                ConstVariableValue::Known { value: _ } => ConstVariableOrigin {},
                 ConstVariableValue::Unknown { origin, universe: _ } => origin,
             })
             .collect(),
@@ -228,7 +226,6 @@ impl<'a, 'db> TypeFolder<DbInterner<'db>> for InferenceFudger<'a, 'db> {
     fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
         if let RegionKind::ReVar(vid) = r.kind() {
             if self.snapshot_vars.region_vars.contains(&vid) {
-                let idx = vid.index() - self.snapshot_vars.region_vars.start.index();
                 self.infcx.next_region_var()
             } else {
                 r

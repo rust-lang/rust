@@ -1,3 +1,5 @@
+#![expect(dead_code, reason = "this is used by rustc")]
+
 use std::ops::ControlFlow;
 
 use hir_def::{ImplId, TraitId};
@@ -61,7 +63,7 @@ pub enum NotConstEvaluatable {
 ///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub enum EvaluationResult {
+pub(crate) enum EvaluationResult {
     /// Evaluation successful.
     EvaluatedToOk,
     /// Evaluation successful, but there were unevaluated region obligations.
@@ -91,17 +93,17 @@ pub enum EvaluationResult {
 impl EvaluationResult {
     /// Returns `true` if this evaluation result is known to apply, even
     /// considering outlives constraints.
-    pub fn must_apply_considering_regions(self) -> bool {
+    pub(crate) fn must_apply_considering_regions(self) -> bool {
         self == EvaluatedToOk
     }
 
     /// Returns `true` if this evaluation result is known to apply, ignoring
     /// outlives constraints.
-    pub fn must_apply_modulo_regions(self) -> bool {
+    pub(crate) fn must_apply_modulo_regions(self) -> bool {
         self <= EvaluatedToOkModuloRegions
     }
 
-    pub fn may_apply(self) -> bool {
+    pub(crate) fn may_apply(self) -> bool {
         match self {
             EvaluatedToOkModuloOpaqueTypes
             | EvaluatedToOk
@@ -113,7 +115,7 @@ impl EvaluationResult {
         }
     }
 
-    pub fn is_stack_dependent(self) -> bool {
+    pub(crate) fn is_stack_dependent(self) -> bool {
         match self {
             EvaluatedToAmbigStackDependent => true,
 
@@ -135,9 +137,9 @@ pub enum OverflowError {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignatureMismatchData<'db> {
-    pub found_trait_ref: TraitRef<'db>,
-    pub expected_trait_ref: TraitRef<'db>,
-    pub terr: TypeError<'db>,
+    pub(crate) found_trait_ref: TraitRef<'db>,
+    pub(crate) expected_trait_ref: TraitRef<'db>,
+    pub(crate) terr: TypeError<'db>,
 }
 
 /// When performing resolution, it is typically the case that there
@@ -147,7 +149,7 @@ pub struct SignatureMismatchData<'db> {
 /// - `Ok(None)`: could not definitely determine anything, usually due
 ///   to inconclusive type inference.
 /// - `Err(e)`: error `e` occurred
-pub type SelectionResult<'db, T> = Result<Option<T>, SelectionError<'db>>;
+pub(crate) type SelectionResult<'db, T> = Result<Option<T>, SelectionError<'db>>;
 
 /// Given the successful resolution of an obligation, the `ImplSource`
 /// indicates where the impl comes from.
@@ -179,7 +181,7 @@ pub type SelectionResult<'db, T> = Result<Option<T>, SelectionError<'db>>;
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
-pub enum ImplSource<'db, N> {
+pub(crate) enum ImplSource<'db, N> {
     /// ImplSource identifying a particular impl.
     UserDefined(ImplSourceUserDefinedData<'db, N>),
 
@@ -194,28 +196,28 @@ pub enum ImplSource<'db, N> {
 }
 
 impl<'db, N> ImplSource<'db, N> {
-    pub fn nested_obligations(self) -> Vec<N> {
+    pub(crate) fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
-    pub fn borrow_nested_obligations(&self) -> &[N] {
+    pub(crate) fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
-    pub fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
+    pub(crate) fn borrow_nested_obligations_mut(&mut self) -> &mut [N] {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
-    pub fn map<M, F>(self, f: F) -> ImplSource<'db, M>
+    pub(crate) fn map<M, F>(self, f: F) -> ImplSource<'db, M>
     where
         F: FnMut(N) -> M,
     {
@@ -244,15 +246,15 @@ impl<'db, N> ImplSource<'db, N> {
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
-pub struct ImplSourceUserDefinedData<'db, N> {
+pub(crate) struct ImplSourceUserDefinedData<'db, N> {
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub impl_def_id: ImplId,
-    pub args: GenericArgs<'db>,
-    pub nested: Vec<N>,
+    pub(crate) impl_def_id: ImplId,
+    pub(crate) args: GenericArgs<'db>,
+    pub(crate) nested: Vec<N>,
 }
 
-pub type Selection<'db> = ImplSource<'db, PredicateObligation<'db>>;
+pub(crate) type Selection<'db> = ImplSource<'db, PredicateObligation<'db>>;
 
 impl<'db> InferCtxt<'db> {
     pub(crate) fn select(
@@ -351,7 +353,9 @@ fn candidate_should_be_dropped_in_favor_of<'db>(
         // Prefer dyn candidates over non-dyn candidates. This is necessary to
         // handle the unsoundness between `impl<T: ?Sized> Any for T` and `dyn Any: Any`.
         (
-            CandidateSource::Impl(_) | CandidateSource::ParamEnv(_) | CandidateSource::AliasBound,
+            CandidateSource::Impl(_)
+            | CandidateSource::ParamEnv(_)
+            | CandidateSource::AliasBound(_),
             CandidateSource::BuiltinImpl(BuiltinImplSource::Object { .. }),
         ) => true,
 
@@ -397,7 +401,9 @@ fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> 
                 })
             }
             CandidateSource::BuiltinImpl(builtin) => ImplSource::Builtin(builtin, nested),
-            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => ImplSource::Param(nested),
+            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound(_) => {
+                ImplSource::Param(nested)
+            }
             CandidateSource::CoherenceUnknowable => {
                 panic!("didn't expect to select an unknowable candidate")
             }

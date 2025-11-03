@@ -1,3 +1,5 @@
+//@[new] compile-flags: -Znext-solver
+//@ revisions: old new
 //@ run-pass
 
 // regression test for #147964:

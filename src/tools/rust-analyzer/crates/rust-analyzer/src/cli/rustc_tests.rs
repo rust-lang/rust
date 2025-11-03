@@ -78,7 +78,6 @@ impl Tester {
         let loaded_sysroot = sysroot.load_workspace(
             &RustSourceWorkspaceConfig::default_cargo(),
             false,
-            &path,
             &Utf8PathBuf::default(),
             &|_| (),
         );

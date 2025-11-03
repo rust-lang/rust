@@ -2,7 +2,7 @@
 
 mod errors;
 
-use std::{marker::PhantomData, mem, ops::ControlFlow, vec::ExtractIf};
+use std::{mem, ops::ControlFlow};
 
 use rustc_hash::FxHashSet;
 use rustc_next_trait_solver::{
@@ -46,6 +46,7 @@ pub struct FulfillmentCtxt<'db> {
     /// outside of this snapshot leads to subtle bugs if the snapshot
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
+    #[expect(unused)]
     usable_in_snapshot: usize,
 }
 
@@ -67,10 +68,6 @@ impl<'db> ObligationStorage<'db> {
         stalled_on: Option<GoalStalledOn<DbInterner<'db>>>,
     ) {
         self.pending.push((obligation, stalled_on));
-    }
-
-    fn has_pending_obligations(&self) -> bool {
-        !self.pending.is_empty() || !self.overflowed.is_empty()
     }
 
     fn clone_pending(&self) -> PredicateObligations<'db> {
@@ -125,10 +122,10 @@ impl<'db> FulfillmentCtxt<'db> {
 }
 
 impl<'db> FulfillmentCtxt<'db> {
-    #[tracing::instrument(level = "trace", skip(self, infcx))]
+    #[tracing::instrument(level = "trace", skip(self, _infcx))]
     pub(crate) fn register_predicate_obligation(
         &mut self,
-        infcx: &InferCtxt<'db>,
+        _infcx: &InferCtxt<'db>,
         obligation: PredicateObligation<'db>,
     ) {
         // FIXME: See the comment in `try_evaluate_obligations()`.
@@ -138,7 +135,7 @@ impl<'db> FulfillmentCtxt<'db> {
 
     pub(crate) fn register_predicate_obligations(
         &mut self,
-        infcx: &InferCtxt<'db>,
+        _infcx: &InferCtxt<'db>,
         obligations: impl IntoIterator<Item = PredicateObligation<'db>>,
     ) {
         // FIXME: See the comment in `try_evaluate_obligations()`.
@@ -148,7 +145,7 @@ impl<'db> FulfillmentCtxt<'db> {
 
     pub(crate) fn collect_remaining_errors(
         &mut self,
-        infcx: &InferCtxt<'db>,
+        _infcx: &InferCtxt<'db>,
     ) -> Vec<NextSolverError<'db>> {
         self.obligations
             .pending
@@ -233,10 +230,6 @@ impl<'db> FulfillmentCtxt<'db> {
         }
 
         self.collect_remaining_errors(infcx)
-    }
-
-    fn has_pending_obligations(&self) -> bool {
-        self.obligations.has_pending_obligations()
     }
 
     pub(crate) fn pending_obligations(&self) -> PredicateObligations<'db> {

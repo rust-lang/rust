@@ -85,7 +85,7 @@ fn has_drop_glue_impl<'db>(
                     {
                         return DropGlue::None;
                     }
-                    db.field_types_ns(id.into())
+                    db.field_types(id.into())
                         .iter()
                         .map(|(_, field_ty)| {
                             has_drop_glue_impl(
@@ -105,7 +105,7 @@ fn has_drop_glue_impl<'db>(
                     .variants
                     .iter()
                     .map(|&(variant, _, _)| {
-                        db.field_types_ns(variant.into())
+                        db.field_types(variant.into())
                             .iter()
                             .map(|(_, field_ty)| {
                                 has_drop_glue_impl(

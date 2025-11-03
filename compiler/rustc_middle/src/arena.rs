@@ -27,7 +27,10 @@ macro_rules! arena_types {
                     rustc_middle::mir::Body<'tcx>
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-            [decode] borrowck_result: rustc_middle::mir::DefinitionSiteHiddenTypes<'tcx>,
+            [decode] borrowck_result: rustc_data_structures::fx::FxIndexMap<
+                rustc_hir::def_id::LocalDefId,
+                rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
+            >,
             [] resolver: rustc_data_structures::steal::Steal<(
                 rustc_middle::ty::ResolverAstLowering,
                 std::sync::Arc<rustc_ast::Crate>,

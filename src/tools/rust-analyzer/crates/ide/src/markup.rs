@@ -5,6 +5,8 @@
 //! what is used by LSP, so let's keep it simple.
 use std::fmt;
 
+use ide_db::impl_empty_upmap_from_ra_fixture;
+
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Markup {
     text: String,
@@ -39,3 +41,5 @@ impl Markup {
         format!("```text\n{contents}\n```").into()
     }
 }
+
+impl_empty_upmap_from_ra_fixture!(Markup);

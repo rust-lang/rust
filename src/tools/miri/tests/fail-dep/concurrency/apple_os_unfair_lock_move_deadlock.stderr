@@ -3,9 +3,6 @@ error: the evaluated program deadlocked
    |
 LL |     unsafe { libc::os_unfair_lock_lock(lock.get()) };
    |                                                  ^ this thread got stuck here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail-dep/concurrency/apple_os_unfair_lock_move_deadlock.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

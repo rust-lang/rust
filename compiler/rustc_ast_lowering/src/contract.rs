@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use thin_vec::thin_vec;
 
 use crate::LoweringContext;
@@ -18,6 +20,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         body: impl FnOnce(&mut Self) -> rustc_hir::Expr<'hir>,
         contract: &rustc_ast::FnContract,
     ) -> rustc_hir::Expr<'hir> {
+        // The order in which things are lowered is important! I.e to
+        // refer to variables in contract_decls from postcond/precond,
+        // we must lower it first!
+        let contract_decls = self.lower_stmts(&contract.declarations).0;
+
         match (&contract.requires, &contract.ensures) {
             (Some(req), Some(ens)) => {
                 // Lower the fn contract, which turns:
@@ -27,6 +34,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // into:
                 //
                 // let __postcond = if contract_checks {
+                //     CONTRACT_DECLARATIONS;
                 //     contract_check_requires(PRECOND);
                 //     Some(|ret_val| POSTCOND)
                 // } else {
@@ -45,8 +53,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let precond = self.lower_precond(req);
                 let postcond_checker = self.lower_postcond_checker(ens);
 
-                let contract_check =
-                    self.lower_contract_check_with_postcond(Some(precond), postcond_checker);
+                let contract_check = self.lower_contract_check_with_postcond(
+                    contract_decls,
+                    Some(precond),
+                    postcond_checker,
+                );
 
                 let wrapped_body =
                     self.wrap_body_with_contract_check(body, contract_check, postcond_checker.span);
@@ -68,15 +79,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 //     let ret = { body };
                 //
                 //     if contract_checks {
+                //         CONTRACT_DECLARATIONS;
                 //         contract_check_ensures(__postcond, ret)
                 //     } else {
                 //         ret
                 //     }
                 // }
-
                 let postcond_checker = self.lower_postcond_checker(ens);
                 let contract_check =
-                    self.lower_contract_check_with_postcond(None, postcond_checker);
+                    self.lower_contract_check_with_postcond(contract_decls, None, postcond_checker);
 
                 let wrapped_body =
                     self.wrap_body_with_contract_check(body, contract_check, postcond_checker.span);
@@ -91,12 +102,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 //
                 // {
                 //      if contracts_checks {
+                //          CONTRACT_DECLARATIONS;
                 //          contract_requires(PRECOND);
                 //      }
                 //      body
                 // }
                 let precond = self.lower_precond(req);
-                let precond_check = self.lower_contract_check_just_precond(precond);
+                let precond_check = self.lower_contract_check_just_precond(contract_decls, precond);
 
                 let body = self.arena.alloc(body(self));
 
@@ -118,7 +130,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let req_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             lowered_req.span,
-            None,
+            Some(Arc::clone(&self.allow_contracts)),
         );
         let precond = self.expr_call_lang_item_fn_mut(
             req_span,
@@ -133,8 +145,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ens: &Box<rustc_ast::Expr>,
     ) -> &'hir rustc_hir::Expr<'hir> {
         let ens_span = self.lower_span(ens.span);
-        let ens_span =
-            self.mark_span_with_reason(rustc_span::DesugaringKind::Contract, ens_span, None);
+        let ens_span = self.mark_span_with_reason(
+            rustc_span::DesugaringKind::Contract,
+            ens_span,
+            Some(Arc::clone(&self.allow_contracts)),
+        );
         let lowered_ens = self.lower_expr_mut(&ens);
         self.expr_call_lang_item_fn(
             ens_span,
@@ -145,9 +160,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_contract_check_just_precond(
         &mut self,
+        contract_decls: &'hir [rustc_hir::Stmt<'hir>],
         precond: rustc_hir::Stmt<'hir>,
     ) -> rustc_hir::Stmt<'hir> {
-        let stmts = self.arena.alloc_from_iter([precond].into_iter());
+        let stmts = self
+            .arena
+            .alloc_from_iter(contract_decls.into_iter().map(|d| *d).chain([precond].into_iter()));
 
         let then_block_stmts = self.block_all(precond.span, stmts, None);
         let then_block = self.arena.alloc(self.expr_block(&then_block_stmts));
@@ -164,10 +182,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_contract_check_with_postcond(
         &mut self,
+        contract_decls: &'hir [rustc_hir::Stmt<'hir>],
         precond: Option<rustc_hir::Stmt<'hir>>,
         postcond_checker: &'hir rustc_hir::Expr<'hir>,
     ) -> &'hir rustc_hir::Expr<'hir> {
-        let stmts = self.arena.alloc_from_iter(precond.into_iter());
+        let stmts = self
+            .arena
+            .alloc_from_iter(contract_decls.into_iter().map(|d| *d).chain(precond.into_iter()));
         let span = match precond {
             Some(precond) => precond.span,
             None => postcond_checker.span,

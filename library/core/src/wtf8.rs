@@ -565,7 +565,7 @@ impl Iterator for EncodeWide<'_> {
 #[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
 impl FusedIterator for EncodeWide<'_> {}
 
-#[stable(feature = "encode_wide_debug", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "encode_wide_debug", since = "1.92.0")]
 impl fmt::Debug for EncodeWide<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct CodeUnit(u16);

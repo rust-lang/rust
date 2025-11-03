@@ -1,36 +1,30 @@
-error[E0391]: cycle detected when simplifying constant for the type system `IMPL_REF_BAR`
+error[E0391]: cycle detected when checking if `IMPL_REF_BAR` is a trivial const
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:27
+note: ...which requires building MIR for `IMPL_REF_BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
-   |                           ^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires checking if `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR` is a trivial const...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
    |     ^^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
+note: ...which requires building MIR for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |
 LL |     const BAR: u32 = IMPL_REF_BAR;
    |     ^^^^^^^^^^^^^^
-note: ...which requires caching mir of `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR` for CTFE...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
+   = note: ...which again requires checking if `IMPL_REF_BAR` is a trivial const, completing the cycle
+note: cycle used when simplifying constant for the type system `IMPL_REF_BAR`
+  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
-LL |     const BAR: u32 = IMPL_REF_BAR;
-   |     ^^^^^^^^^^^^^^
-note: ...which requires elaborating drops for `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:22
-   |
-LL |     const BAR: u32 = IMPL_REF_BAR;
-   |                      ^^^^^^^^^^^^
-   = note: ...which again requires simplifying constant for the type system `IMPL_REF_BAR`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
+LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

@@ -300,7 +300,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     intravisit::walk_path(self, path);
                 }
             }
-            _ => {}
         }
     }
 

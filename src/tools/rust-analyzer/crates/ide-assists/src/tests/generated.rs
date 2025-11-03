@@ -28,6 +28,25 @@ fn foo(n: i32) -> i32 {
 }
 
 #[test]
+fn doctest_add_braces_1() {
+    check_doc_test(
+        "add_braces",
+        r#####"
+fn foo(n: i32) -> i32 {
+    let x =$0 n + 2;
+}
+"#####,
+        r#####"
+fn foo(n: i32) -> i32 {
+    let x = {
+        n + 2
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_explicit_enum_discriminant() {
     check_doc_test(
         "add_explicit_enum_discriminant",
@@ -1327,6 +1346,40 @@ fn foo() {
         r#####"
 fn foo() {
     let (b | a) = 1;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_flip_range_expr() {
+    check_doc_test(
+        "flip_range_expr",
+        r#####"
+fn main() {
+    let _ = 90..$02;
+}
+"#####,
+        r#####"
+fn main() {
+    let _ = 2..90;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_flip_range_expr_1() {
+    check_doc_test(
+        "flip_range_expr",
+        r#####"
+fn main() {
+    let _ = 90..$0;
+}
+"#####,
+        r#####"
+fn main() {
+    let _ = ..90;
 }
 "#####,
     )
@@ -2858,6 +2911,46 @@ fn main() {
         r#####"
 fn main() {
     let x = 42 * (4 + 2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_else_branches() {
+    check_doc_test(
+        "remove_else_branches",
+        r#####"
+fn main() {
+    if true {
+        let _ = 2;
+    } $0else {
+        unreachable!();
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    if true {
+        let _ = 2;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_else_branches_1() {
+    check_doc_test(
+        "remove_else_branches",
+        r#####"
+fn main() {
+    let _x = 2 $0else { unreachable!() };
+}
+"#####,
+        r#####"
+fn main() {
+    let _x = 2;
 }
 "#####,
     )

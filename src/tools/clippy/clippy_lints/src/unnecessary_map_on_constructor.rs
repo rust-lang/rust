@@ -60,7 +60,6 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                     }
                 },
                 hir::QPath::TypeRelative(_, path) => path.ident.name,
-                hir::QPath::LangItem(..) => return,
             };
             match constructor_symbol {
                 sym::Some | sym::Ok if path.ident.name == sym::map => (),

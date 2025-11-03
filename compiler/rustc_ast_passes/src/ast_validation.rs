@@ -1192,6 +1192,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
             }
+            ItemKind::TraitAlias(box TraitAlias { constness, generics, bounds, .. }) => {
+                let disallowed = matches!(constness, ast::Const::No)
+                    .then(|| TildeConstReason::Trait { span: item.span });
+                self.with_tilde_const(disallowed, |this| {
+                    this.visit_generics(generics);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                });
+            }
             ItemKind::Mod(safety, ident, mod_kind) => {
                 if let &Safety::Unsafe(span) = safety {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });

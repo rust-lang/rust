@@ -15,8 +15,8 @@ use la_arena::{Idx, RawIdx};
 use crate::{
     InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
     db::HirDatabase,
-    lower_nextsolver::path::{PathDiagnosticCallback, PathLoweringContext},
-    lower_nextsolver::{LifetimeElisionKind, TyLoweringContext},
+    lower::path::{PathDiagnosticCallback, PathLoweringContext},
+    lower::{LifetimeElisionKind, TyLoweringContext},
 };
 
 // Unfortunately, this struct needs to use interior mutability (but we encapsulate it)

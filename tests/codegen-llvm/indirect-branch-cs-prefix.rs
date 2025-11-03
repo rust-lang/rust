@@ -1,7 +1,7 @@
 // Test that the `indirect_branch_cs_prefix` module attribute is (not)
 // emitted when the `-Zindirect-branch-cs-prefix` flag is (not) set.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: unset set
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu

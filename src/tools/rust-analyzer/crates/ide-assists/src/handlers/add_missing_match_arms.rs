@@ -8,8 +8,7 @@ use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ToSmolStr;
-use syntax::ast::edit::IndentLevel;
-use syntax::ast::edit_in_place::Indent;
+use syntax::ast::edit::{AstNodeEdit, IndentLevel};
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
 
@@ -261,6 +260,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                         true
                     }
                 })
+                .map(|arm| arm.reset_indent().indent(IndentLevel(1)))
                 .collect();
 
             let first_new_arm_idx = arms.len();
@@ -300,7 +300,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             };
 
             let mut editor = builder.make_editor(&old_place);
-            new_match_arm_list.indent(IndentLevel::from_node(&old_place));
+            let new_match_arm_list = new_match_arm_list.indent(IndentLevel::from_node(&old_place));
             editor.replace(old_place, new_match_arm_list.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
@@ -910,6 +910,39 @@ fn main() {
 fn main() {
     match None {
         None => {}
+        Some(${1:_}) => ${2:todo!()},$0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn partial_fill_option_with_indentation() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- minicore: option
+fn main() {
+    match None$0 {
+        None => {
+            foo(
+                "foo",
+                "bar",
+            );
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match None {
+        None => {
+            foo(
+                "foo",
+                "bar",
+            );
+        }
         Some(${1:_}) => ${2:todo!()},$0
     }
 }

@@ -4,7 +4,7 @@
 use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
-    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
+    FileId, FileRange, FxHashMap, FxHashSet, MiniCore, RootDatabase,
     base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
@@ -184,6 +184,7 @@ impl StaticIndex<'_> {
                     closing_brace_hints_min_lines: Some(25),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: false,
+                    minicore: MiniCore::default(),
                 },
                 file_id,
                 None,
@@ -215,6 +216,7 @@ impl StaticIndex<'_> {
             max_enum_variants_count: Some(5),
             max_subst_ty_len: SubstTyLen::Unlimited,
             show_drop_glue: true,
+            minicore: MiniCore::default(),
         };
         let tokens = tokens.filter(|token| {
             matches!(

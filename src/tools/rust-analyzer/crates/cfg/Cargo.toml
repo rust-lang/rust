@@ -29,5 +29,8 @@ arbitrary = { version = "1.4.1", features = ["derive"] }
 syntax-bridge.workspace = true
 syntax.workspace = true
 
+# tt is needed for testing
+cfg = { path = ".", default-features = false, features = ["tt"] }
+
 [lints]
 workspace = true

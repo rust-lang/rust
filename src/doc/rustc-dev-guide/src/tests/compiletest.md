@@ -54,8 +54,8 @@ incremental compilation. The various suites are defined in
 
 The following test suites are available, with links for more information:
 
-[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
-[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
+[`tests`]: https://github.com/rust-lang/rust/blob/HEAD/tests
+[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/common.rs
 
 ### Compiler-specific test suites
 
@@ -135,7 +135,7 @@ The directives for pretty-printing tests are:
   of the two pretty-printing rounds will be compared to ensure that the
   pretty-printed output converges to a steady state.
 
-[`tests/pretty`]: https://github.com/rust-lang/rust/tree/master/tests/pretty
+[`tests/pretty`]: https://github.com/rust-lang/rust/tree/HEAD/tests/pretty
 
 ### Incremental tests
 
@@ -187,7 +187,7 @@ still pass.
 cause an Internal Compiler Error (ICE). This is a highly specialized directive
 to check that the incremental cache continues to work after an ICE.
 
-[`tests/incremental`]: https://github.com/rust-lang/rust/tree/master/tests/incremental
+[`tests/incremental`]: https://github.com/rust-lang/rust/tree/HEAD/tests/incremental
 
 
 ### Debuginfo tests
@@ -272,7 +272,7 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 > 
 > Otherwise the lldb debuginfo tests can produce crashes in mysterious ways.
 
-[`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/master/tests/debuginfo
+[`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/HEAD/tests/debuginfo
 
 > **Note on acquiring `cdb.exe` on Windows 11**
 >
@@ -299,7 +299,7 @@ See also the [assembly tests](#assembly-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
+[`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-llvm
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
 
@@ -322,7 +322,7 @@ See also the [codegen tests](#codegen-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/assembly-llvm
+[`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/assembly-llvm
 
 
 ### Codegen-units tests
@@ -343,7 +343,7 @@ where `cgu` is a space separated list of the CGU names and the linkage
 information in brackets. For example: `//~ MONO_ITEM static function::FOO @@
 statics[Internal]`
 
-[`tests/codegen-units`]: https://github.com/rust-lang/rust/tree/master/tests/codegen-units
+[`tests/codegen-units`]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-units
 
 
 ### Mir-opt tests
@@ -392,7 +392,7 @@ problematic in the presence of pointers in constants or other bit width
 dependent things. In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to
 your test, causing separate files to be generated for 32bit and 64bit systems.
 
-[`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/master/tests/mir-opt
+[`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/HEAD/tests/mir-opt
 
 
 ### `run-make` tests
@@ -481,9 +481,9 @@ Then add a corresponding entry to `"rust-analyzer.linkedProjects"`
 ],
 ```
 
-[`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
-[`tests/run-make-cargo`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-cargo
-[`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
+[`tests/run-make`]: https://github.com/rust-lang/rust/tree/HEAD/tests/run-make
+[`tests/run-make-cargo`]: https://github.com/rust-lang/rust/tree/HEAD/tests/run-make-cargo
+[`run_make_support`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/run-make-support
 
 ### Coverage tests
 
@@ -553,9 +553,9 @@ The tests in [`tests/coverage-run-rustdoc`] also run instrumented doctests and
 include them in the coverage report. This avoids having to build rustdoc when
 only running the main `coverage` suite.
 
-[`tests/coverage`]: https://github.com/rust-lang/rust/tree/master/tests/coverage
-[`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
-[`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
+[`tests/coverage`]: https://github.com/rust-lang/rust/tree/HEAD/tests/coverage
+[`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/coverage-dump
+[`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/HEAD/tests/coverage-run-rustdoc
 
 ### Crash tests
 
@@ -602,7 +602,7 @@ Make sure that your fix actually fixes the root cause of the issue and not just
 a subset first. The issue numbers can be found in the file name or the `//@
 known-bug` directive inside the test file.
 
-[`tests/crashes`]: https://github.com/rust-lang/rust/tree/master/tests/crashes
+[`tests/crashes`]: https://github.com/rust-lang/rust/tree/HEAD/tests/crashes
 ["untracked" crashes]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+state%3Aopen+label%3AI-ICE%2CI-crash+label%3AT-compiler+label%3AS-has-mcve+-label%3AS-bug-has-test
 [labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 

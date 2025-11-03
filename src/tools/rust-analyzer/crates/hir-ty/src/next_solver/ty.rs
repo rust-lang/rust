@@ -1,41 +1,37 @@
 //! Things related to tys in the next-trait-solver.
 
-use std::iter;
 use std::ops::ControlFlow;
 
 use hir_def::{
-    AdtId, DefWithBodyId, GenericDefId, HasModule, TypeOrConstParamId, TypeParamId,
+    AdtId, HasModule, TypeParamId,
     hir::generics::{TypeOrConstParamData, TypeParamProvenance},
     lang_item::LangItem,
 };
 use hir_def::{TraitId, type_ref::Rawness};
-use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
 use rustc_type_ir::{
-    AliasTyKind, BoundVar, ClosureKind, CollectAndApply, FlagComputation, Flags, FloatTy, FloatVid,
-    InferTy, IntTy, IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
+    AliasTyKind, BoundVar, BoundVarIndexKind, ClosureKind, CoroutineArgs, CoroutineArgsParts,
+    DebruijnIndex, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid, Interner,
+    TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
-        Abi, AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
+        AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
         IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
     walk::TypeWalker,
 };
-use salsa::plumbing::{AsId, FromId};
-use smallvec::SmallVec;
 
 use crate::{
-    FnAbi, ImplTraitId,
-    db::HirDatabase,
-    interner::InternedWrapperNoDebug,
+    ImplTraitId,
+    db::{HirDatabase, InternedCoroutine},
     next_solver::{
-        AdtDef, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
+        AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
         CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
         abi::Safety,
-        mapping::ChalkToNextSolver,
+        interner::InternedWrapperNoDebug,
         util::{CoroutineArgsExt, IntegerTypeExt},
     },
 };
@@ -83,7 +79,7 @@ impl<'db> Ty<'db> {
         Ty::new(interner, TyKind::Adt(AdtDef::new(adt_id, interner), args))
     }
 
-    pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32, name: Symbol) -> Self {
+    pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32) -> Self {
         Ty::new(interner, TyKind::Param(ParamTy { id, index }))
     }
 
@@ -404,10 +400,44 @@ impl<'db> Ty<'db> {
                 Some(interner.fn_sig(callable).instantiate(interner, args))
             }
             TyKind::FnPtr(sig, hdr) => Some(sig.with(hdr)),
-            TyKind::Closure(closure_id, closure_args) => closure_args
+            TyKind::Closure(_, closure_args) => closure_args
                 .split_closure_args_untupled()
                 .closure_sig_as_fn_ptr_ty
                 .callable_sig(interner),
+            TyKind::CoroutineClosure(coroutine_id, args) => {
+                Some(args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+                    let unit_ty = Ty::new_unit(interner);
+                    let return_ty = Ty::new_coroutine(
+                        interner,
+                        coroutine_id,
+                        CoroutineArgs::new(
+                            interner,
+                            CoroutineArgsParts {
+                                parent_args: args.as_coroutine_closure().parent_args(),
+                                kind_ty: unit_ty,
+                                resume_ty: unit_ty,
+                                yield_ty: unit_ty,
+                                return_ty: sig.return_ty,
+                                // FIXME: Deduce this from the coroutine closure's upvars.
+                                tupled_upvars_ty: unit_ty,
+                            },
+                        )
+                        .args,
+                    );
+                    FnSig {
+                        inputs_and_output: Tys::new_from_iter(
+                            interner,
+                            sig.tupled_inputs_ty
+                                .tuple_fields()
+                                .iter()
+                                .chain(std::iter::once(return_ty)),
+                        ),
+                        c_variadic: sig.c_variadic,
+                        safety: sig.safety,
+                        abi: sig.abi,
+                    }
+                }))
+            }
             _ => None,
         }
     }
@@ -535,39 +565,20 @@ impl<'db> Ty<'db> {
             TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => {
                 match db.lookup_intern_impl_trait_id(opaque_ty.def_id.expect_opaque_ty()) {
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        db.return_type_impl_traits_ns(func).map(|it| {
-                            let data = (*it).as_ref().map_bound(|rpit| {
-                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                            });
+                        db.return_type_impl_traits(func).map(|it| {
+                            let data =
+                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                             data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
                                 .collect()
                         })
                     }
                     ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        db.type_alias_impl_traits_ns(alias).map(|it| {
-                            let data = (*it).as_ref().map_bound(|rpit| {
-                                &rpit.impl_traits[idx.to_nextsolver(interner)].predicates
-                            });
+                        db.type_alias_impl_traits(alias).map(|it| {
+                            let data =
+                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
                             data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
                                 .collect()
                         })
-                    }
-                    ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
-                        let krate = def.module(db).krate();
-                        if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
-                            // This is only used by type walking.
-                            // Parameters will be walked outside, and projection predicate is not used.
-                            // So just provide the Future trait.
-                            let impl_bound = TraitRef::new(
-                                interner,
-                                future_trait.into(),
-                                GenericArgs::new_from_iter(interner, []),
-                            )
-                            .upcast(interner);
-                            Some(vec![impl_bound])
-                        } else {
-                            None
-                        }
                     }
                 }
             }
@@ -579,7 +590,7 @@ impl<'db> Ty<'db> {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::ArgumentImplTrait => {
                             let predicates = db
-                                .generic_predicates_ns(param.id.parent())
+                                .generic_predicates(param.id.parent())
                                 .instantiate_identity()
                                 .into_iter()
                                 .flatten()
@@ -596,6 +607,24 @@ impl<'db> Ty<'db> {
                         _ => None,
                     },
                     _ => None,
+                }
+            }
+            TyKind::Coroutine(coroutine_id, _args) => {
+                let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
+                let krate = owner.module(db).krate();
+                if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
+                    // This is only used by type walking.
+                    // Parameters will be walked outside, and projection predicate is not used.
+                    // So just provide the Future trait.
+                    let impl_bound = TraitRef::new(
+                        interner,
+                        future_trait.into(),
+                        GenericArgs::new_from_iter(interner, []),
+                    )
+                    .upcast(interner);
+                    Some(vec![impl_bound])
+                } else {
+                    None
                 }
             }
             _ => None,
@@ -899,27 +928,28 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         Ty::new(interner, TyKind::Placeholder(param))
     }
 
-    fn new_bound(
-        interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: BoundTy,
-    ) -> Self {
-        Ty::new(interner, TyKind::Bound(debruijn, var))
+    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundTy) -> Self {
+        Ty::new(interner, TyKind::Bound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
-    fn new_anon_bound(
-        interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: BoundVar,
-    ) -> Self {
-        Ty::new(interner, TyKind::Bound(debruijn, BoundTy { var, kind: BoundTyKind::Anon }))
+    fn new_anon_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundVar) -> Self {
+        Ty::new(
+            interner,
+            TyKind::Bound(
+                BoundVarIndexKind::Bound(debruijn),
+                BoundTy { var, kind: BoundTyKind::Anon },
+            ),
+        )
     }
 
-    fn new_alias(
-        interner: DbInterner<'db>,
-        kind: rustc_type_ir::AliasTyKind,
-        alias_ty: rustc_type_ir::AliasTy<DbInterner<'db>>,
-    ) -> Self {
+    fn new_canonical_bound(interner: DbInterner<'db>, var: BoundVar) -> Self {
+        Ty::new(
+            interner,
+            TyKind::Bound(BoundVarIndexKind::Canonical, BoundTy { var, kind: BoundTyKind::Anon }),
+        )
+    }
+
+    fn new_alias(interner: DbInterner<'db>, kind: AliasTyKind, alias_ty: AliasTy<'db>) -> Self {
         Ty::new(interner, TyKind::Alias(kind, alias_ty))
     }
 
@@ -929,7 +959,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_adt(
         interner: DbInterner<'db>,
-        adt_def: <DbInterner<'db> as rustc_type_ir::Interner>::AdtDef,
+        adt_def: <DbInterner<'db> as Interner>::AdtDef,
         args: GenericArgs<'db>,
     ) -> Self {
         Ty::new(interner, TyKind::Adt(adt_def, args))
@@ -941,8 +971,8 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_dynamic(
         interner: DbInterner<'db>,
-        preds: <DbInterner<'db> as rustc_type_ir::Interner>::BoundExistentialPredicates,
-        region: <DbInterner<'db> as rustc_type_ir::Interner>::Region,
+        preds: <DbInterner<'db> as Interner>::BoundExistentialPredicates,
+        region: <DbInterner<'db> as Interner>::Region,
     ) -> Self {
         Ty::new(interner, TyKind::Dynamic(preds, region))
     }
@@ -950,7 +980,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_coroutine(
         interner: DbInterner<'db>,
         def_id: CoroutineIdWrapper,
-        args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Coroutine(def_id, args))
     }
@@ -958,7 +988,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_coroutine_closure(
         interner: DbInterner<'db>,
         def_id: CoroutineIdWrapper,
-        args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineClosure(def_id, args))
     }
@@ -966,7 +996,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_closure(
         interner: DbInterner<'db>,
         def_id: ClosureIdWrapper,
-        args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Closure(def_id, args))
     }
@@ -974,7 +1004,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_coroutine_witness(
         interner: DbInterner<'db>,
         def_id: CoroutineIdWrapper,
-        args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineWitness(def_id, args))
     }
@@ -982,7 +1012,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_coroutine_witness_for_coroutine(
         interner: DbInterner<'db>,
         def_id: CoroutineIdWrapper,
-        coroutine_args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        coroutine_args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         // HACK: Coroutine witness types are lifetime erased, so they
         // never reference any lifetime args from the coroutine. We erase
@@ -1010,7 +1040,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_ref(
         interner: DbInterner<'db>,
-        region: <DbInterner<'db> as rustc_type_ir::Interner>::Region,
+        region: <DbInterner<'db> as Interner>::Region,
         ty: Self,
         mutbl: rustc_ast_ir::Mutability,
     ) -> Self {
@@ -1020,7 +1050,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_array_with_const_len(
         interner: DbInterner<'db>,
         ty: Self,
-        len: <DbInterner<'db> as rustc_type_ir::Interner>::Const,
+        len: <DbInterner<'db> as Interner>::Const,
     ) -> Self {
         Ty::new(interner, TyKind::Array(ty, len))
     }
@@ -1029,10 +1059,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         Ty::new(interner, TyKind::Slice(ty))
     }
 
-    fn new_tup(
-        interner: DbInterner<'db>,
-        tys: &[<DbInterner<'db> as rustc_type_ir::Interner>::Ty],
-    ) -> Self {
+    fn new_tup(interner: DbInterner<'db>, tys: &[<DbInterner<'db> as Interner>::Ty]) -> Self {
         Ty::new(interner, TyKind::Tuple(Tys::new_from_iter(interner, tys.iter().cloned())))
     }
 
@@ -1047,7 +1074,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_fn_def(
         interner: DbInterner<'db>,
         def_id: CallableIdWrapper,
-        args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+        args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::FnDef(def_id, args))
     }
@@ -1063,12 +1090,19 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
     fn new_pat(
         interner: DbInterner<'db>,
         ty: Self,
-        pat: <DbInterner<'db> as rustc_type_ir::Interner>::Pat,
+        pat: <DbInterner<'db> as Interner>::Pat,
     ) -> Self {
         Ty::new(interner, TyKind::Pat(ty, pat))
     }
 
-    fn tuple_fields(self) -> <DbInterner<'db> as rustc_type_ir::Interner>::Tys {
+    fn new_unsafe_binder(
+        interner: DbInterner<'db>,
+        ty: rustc_type_ir::Binder<DbInterner<'db>, <DbInterner<'db> as Interner>::Ty>,
+    ) -> Self {
+        Ty::new(interner, TyKind::UnsafeBinder(ty.into()))
+    }
+
+    fn tuple_fields(self) -> <DbInterner<'db> as Interner>::Tys {
         match self.kind() {
             TyKind::Tuple(args) => args,
             _ => panic!("tuple_fields called on non-tuple: {self:?}"),
@@ -1115,10 +1149,11 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         }
     }
 
-    fn discriminant_ty(
-        self,
-        interner: DbInterner<'db>,
-    ) -> <DbInterner<'db> as rustc_type_ir::Interner>::Ty {
+    fn has_unsafe_fields(self) -> bool {
+        false
+    }
+
+    fn discriminant_ty(self, interner: DbInterner<'db>) -> <DbInterner<'db> as Interner>::Ty {
         match self.kind() {
             TyKind::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(interner),
             TyKind::Coroutine(_, args) => args.as_coroutine().discr_ty(interner),
@@ -1172,20 +1207,6 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
             TyKind::UnsafeBinder(..) => unimplemented!(),
         }
     }
-
-    fn new_unsafe_binder(
-        interner: DbInterner<'db>,
-        ty: rustc_type_ir::Binder<
-            DbInterner<'db>,
-            <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
-        >,
-    ) -> Self {
-        Ty::new(interner, TyKind::UnsafeBinder(ty.into()))
-    }
-
-    fn has_unsafe_fields(self) -> bool {
-        false
-    }
 }
 
 interned_vec_db!(Tys, Ty);
@@ -1197,14 +1218,14 @@ impl<'db> Tys<'db> {
 }
 
 impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
-    fn inputs(self) -> <DbInterner<'db> as rustc_type_ir::Interner>::FnInputTys {
+    fn inputs(self) -> <DbInterner<'db> as Interner>::FnInputTys {
         Tys::new_from_iter(
             DbInterner::conjure(),
             self.as_slice().split_last().unwrap().1.iter().copied(),
         )
     }
 
-    fn output(self) -> <DbInterner<'db> as rustc_type_ir::Interner>::Ty {
+    fn output(self) -> <DbInterner<'db> as Interner>::Ty {
         *self.as_slice().split_last().unwrap().0
     }
 }
@@ -1222,7 +1243,7 @@ pub struct ParamTy {
 
 impl ParamTy {
     pub fn to_ty<'db>(self, interner: DbInterner<'db>) -> Ty<'db> {
-        Ty::new_param(interner, self.id, self.index, sym::MISSING_NAME.clone())
+        Ty::new_param(interner, self.id, self.index)
     }
 }
 
@@ -1269,11 +1290,11 @@ impl<'db> TypeVisitable<DbInterner<'db>> for ErrorGuaranteed {
 impl<'db> TypeFoldable<DbInterner<'db>> for ErrorGuaranteed {
     fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
         self,
-        folder: &mut F,
+        _folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(self)
     }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, _folder: &mut F) -> Self {
         self
     }
 }

@@ -362,6 +362,10 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
+    store.register_renamed(
+        "repr_transparent_external_private_fields",
+        "repr_transparent_non_zst_fields",
+    );
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use

@@ -80,7 +80,7 @@ RUSTC_LOG=[typeck{key=.*name_of_item.*}]
 
 Different queries have different arguments. You can find a list of queries and
 their arguments in
-[`rustc_middle/src/query/mod.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/query/mod.rs#L18).
+[`rustc_middle/src/query/mod.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_middle/src/query/mod.rs#L18).
 
 ## Broad module level filters
 

@@ -451,15 +451,15 @@ pkgs.mkShell {
 
 If you use Bash, Zsh, Fish or PowerShell, you can find automatically-generated shell
 completion scripts for `x.py` in
-[`src/etc/completions`](https://github.com/rust-lang/rust/tree/master/src/etc/completions).
+[`src/etc/completions`](https://github.com/rust-lang/rust/tree/HEAD/src/etc/completions).
 
 You can use `source ./src/etc/completions/x.py.<extension>` to load completions
 for your shell of choice, or `& .\src\etc\completions\x.py.ps1` for PowerShell.
 Adding this to your shell's startup script (e.g. `.bashrc`) will automatically
 load this completion.
 
-[`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
-[`src/etc/rust_analyzer_eglot.el`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el
-[`src/etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml
-[`src/etc/rust_analyzer_zed.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_zed.json
-[`src/etc/pre-push.sh`]: https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh
+[`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/rust_analyzer_settings.json
+[`src/etc/rust_analyzer_eglot.el`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/rust_analyzer_eglot.el
+[`src/etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/rust_analyzer_helix.toml
+[`src/etc/rust_analyzer_zed.json`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/rust_analyzer_zed.json
+[`src/etc/pre-push.sh`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/pre-push.sh

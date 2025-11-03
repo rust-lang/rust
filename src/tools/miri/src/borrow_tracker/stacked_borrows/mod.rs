@@ -675,16 +675,22 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
             {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
-                // Still give it the new provenance, it got retagged after all.
+                // Still give it the new provenance, it got retagged after all. If this was a
+                // wildcard pointer, this will fix the AllocId and make future accesses with this
+                // reference to other allocations UB, but that's fine: due to subobject provenance,
+                // *all* future accesses with this reference should be UB!
                 return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
             } else {
                 // This pointer doesn't come with an AllocId. :shrug:
                 log_creation(this, None)?;
-                // Provenance unchanged.
+                // Provenance unchanged. Ideally we'd make this pointer UB to use like above,
+                // but there's no easy way to do that.
                 return interp_ok(place.ptr().provenance);
             }
         }
 
+        // The pointer *must* have a valid AllocId to continue, so we want to resolve this to
+        // a concrete ID even for wildcard pointers.
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr(), 0)?;
         log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
 
@@ -743,7 +749,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                     // Make sure the data race model also knows about this.
                     // FIXME(genmc): Ensure this is still done in GenMC mode. Check for other places where GenMC may need to be informed.
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
-                        data_race.write(
+                        data_race.write_non_atomic(
                             alloc_id,
                             range,
                             NaWriteType::Retag,
@@ -792,7 +798,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         assert_eq!(access, AccessKind::Read);
                         // Make sure the data race model also knows about this.
                         if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
-                            data_race.read(
+                            data_race.read_non_atomic(
                                 alloc_id,
                                 range,
                                 NaReadType::Retag,

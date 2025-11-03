@@ -1,8 +1,8 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, DefiningScopeKind, EarlyBinder, OpaqueHiddenType, OpaqueTypeKey, TypeVisitableExt,
-    TypingMode,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueTypeKey, ProvisionalHiddenType,
+    TypeVisitableExt, TypingMode,
 };
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
@@ -57,9 +57,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 #[derive(Copy, Clone, Debug)]
 enum UsageKind<'tcx> {
     None,
-    NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
-    UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
-    HasDefiningUse(OpaqueHiddenType<'tcx>),
+    NonDefiningUse(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>),
+    UnconstrainedHiddenType(ProvisionalHiddenType<'tcx>),
+    HasDefiningUse(DefinitionSiteHiddenType<'tcx>),
 }
 
 impl<'tcx> UsageKind<'tcx> {
@@ -88,7 +88,7 @@ impl<'tcx> UsageKind<'tcx> {
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn compute_definition_site_hidden_types(
         &mut self,
-        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
+        mut opaque_types: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
         error_on_missing_defining_use: bool,
     ) {
         for entry in opaque_types.iter_mut() {
@@ -131,7 +131,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         continue;
                     }
 
-                    let expected = EarlyBinder::bind(ty.ty).instantiate(tcx, opaque_type_key.args);
+                    let expected = ty.ty.instantiate(tcx, opaque_type_key.args);
                     self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
                 }
 
@@ -191,7 +191,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.typeck_results
                 .borrow_mut()
                 .hidden_types
-                .insert(def_id, OpaqueHiddenType::new_error(tcx, guar));
+                .insert(def_id, DefinitionSiteHiddenType::new_error(tcx, guar));
             self.set_tainted_by_errors(guar);
         }
     }
@@ -200,7 +200,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn consider_opaque_type_use(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        hidden_type: OpaqueHiddenType<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
     ) -> UsageKind<'tcx> {
         if let Err(err) = opaque_type_has_defining_use_args(
             &self,
@@ -210,7 +210,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         ) {
             match err {
                 NonDefiningUseReason::Tainted(guar) => {
-                    return UsageKind::HasDefiningUse(OpaqueHiddenType::new_error(self.tcx, guar));
+                    return UsageKind::HasDefiningUse(DefinitionSiteHiddenType::new_error(
+                        self.tcx, guar,
+                    ));
                 }
                 _ => return UsageKind::NonDefiningUse(opaque_type_key, hidden_type),
             };
@@ -230,7 +232,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             Ok(hidden_type) => hidden_type,
             Err(errors) => {
                 let guar = self.err_ctxt().report_fulfillment_errors(errors);
-                OpaqueHiddenType::new_error(self.tcx, guar)
+                ProvisionalHiddenType::new_error(self.tcx, guar)
             }
         };
         let hidden_type = hidden_type.remap_generic_params_to_declaration_params(

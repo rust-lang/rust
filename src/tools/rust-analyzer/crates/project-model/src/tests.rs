@@ -241,7 +241,6 @@ fn smoke_test_real_sysroot_cargo() {
     let loaded_sysroot = sysroot.load_workspace(
         &RustSourceWorkspaceConfig::default_cargo(),
         false,
-        &cwd,
         &Utf8PathBuf::default(),
         &|_| (),
     );
@@ -249,7 +248,7 @@ fn smoke_test_real_sysroot_cargo() {
         sysroot.set_workspace(loaded_sysroot);
     }
     assert!(
-        matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace(_)),
+        matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace { .. }),
         "got {}",
         sysroot.workspace()
     );

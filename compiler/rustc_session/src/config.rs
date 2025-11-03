@@ -583,17 +583,6 @@ pub enum DebugInfoCompression {
     Zstd,
 }
 
-impl ToString for DebugInfoCompression {
-    fn to_string(&self) -> String {
-        match self {
-            DebugInfoCompression::None => "none",
-            DebugInfoCompression::Zlib => "zlib",
-            DebugInfoCompression::Zstd => "zstd",
-        }
-        .to_owned()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum MirStripDebugInfo {
     None,
@@ -1386,10 +1375,12 @@ bitflags::bitflags! {
         const DIAGNOSTICS = 1 << 1;
         /// Apply remappings to debug information
         const DEBUGINFO = 1 << 3;
+        /// Apply remappings to coverage information
+        const COVERAGE = 1 << 4;
 
-        /// An alias for `macro` and `debuginfo`. This ensures all paths in compiled
-        /// executables or libraries are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits();
+        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries and objects are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
     }
 }
 

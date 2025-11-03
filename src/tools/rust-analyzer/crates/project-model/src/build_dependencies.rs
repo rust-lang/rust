@@ -142,7 +142,7 @@ impl WorkspaceBuildScripts {
                 if let Some(&(package, workspace)) = by_id.get(package) {
                     cb(&workspaces[workspace][package].name, &mut res[workspace].outputs[package]);
                 } else {
-                    never!("Received compiler message for unknown package: {}", package);
+                    tracing::error!("Received compiler message for unknown package: {}", package);
                 }
             },
             progress,

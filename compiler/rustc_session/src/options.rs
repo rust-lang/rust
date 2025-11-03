@@ -869,8 +869,7 @@ mod desc {
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
-    pub(crate) const parse_remap_path_scope: &str =
-        "comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `object`, `all`";
+    pub(crate) const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `debuginfo`, `coverage`, `object`, `all`";
     pub(crate) const parse_inlining_threshold: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
@@ -1705,6 +1704,7 @@ pub mod parse {
                     "macro" => RemapPathScopeComponents::MACRO,
                     "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
                     "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
+                    "coverage" => RemapPathScopeComponents::COVERAGE,
                     "object" => RemapPathScopeComponents::OBJECT,
                     "all" => RemapPathScopeComponents::all(),
                     _ => return false,

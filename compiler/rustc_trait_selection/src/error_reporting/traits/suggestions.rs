@@ -20,7 +20,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
-    expr_needs_parens, is_range_literal,
+    expr_needs_parens,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::middle::privacy::Level;
@@ -364,7 +364,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
@@ -444,7 +444,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 }) if finder.can_suggest_bound(generics) => {
                     // Missing generic type parameter bound.
@@ -668,12 +668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     let derefs = "*".repeat(steps);
-                    let needs_parens = steps > 0
-                        && match expr.kind {
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                            _ if is_range_literal(expr) => true,
-                            _ => false,
-                        };
+                    let needs_parens = steps > 0 && expr_needs_parens(expr);
                     let mut suggestion = if needs_parens {
                         vec![
                             (

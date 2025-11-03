@@ -368,11 +368,11 @@ export TEST_DEVICE_ADDR="127.0.0.1:12345"
 # FIXME(madsmtm): Allow debuginfo tests to work (maybe needs `.dSYM` folder to be copied to the target?).
 ```
 
-[armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
+[armhf-gnu]: https://github.com/rust-lang/rust/tree/HEAD/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
-[remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
-[remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
-[src/bootstrap/src/core/build_steps/test.rs]: https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/core/build_steps/test.rs
+[remote-test-client]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/remote-test-client
+[remote-test-server]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/remote-test-server
+[src/bootstrap/src/core/build_steps/test.rs]: https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/src/core/build_steps/test.rs
 
 ## Testing tests on wasi (wasm32-wasip1)
 
@@ -393,7 +393,7 @@ In my case I git-cloned it next to my rust folder, so it was `../wasi-sdk/build/
 Now, tests should just run, you don't have to set up anything else.
 
 [wasi sdk repository]: https://github.com/WebAssembly/wasi-sdk
-[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
+[wasm32-wasip1 target support page]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support/wasm32-wasip1.md#building-the-target.
 
 
-[`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui
+[`tests/ui`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui

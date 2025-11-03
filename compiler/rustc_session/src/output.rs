@@ -174,7 +174,12 @@ pub fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
     Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
+pub fn collect_crate_types(
+    session: &Session,
+    backend_crate_types: &[CrateType],
+    codegen_backend_name: &'static str,
+    attrs: &[ast::Attribute],
+) -> Vec<CrateType> {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
@@ -223,6 +228,12 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
             session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
+            });
+            false
+        } else if !backend_crate_types.contains(crate_type) {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForCodegenBackend {
+                crate_type: *crate_type,
+                codegen_backend: codegen_backend_name,
             });
             false
         } else {

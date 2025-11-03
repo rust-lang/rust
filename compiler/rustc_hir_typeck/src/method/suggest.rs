@@ -19,7 +19,9 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr};
+use rustc_hir::{
+    self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr, is_range_literal,
+};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
@@ -1594,7 +1596,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Node::Item(hir::Item {
                         kind:
                             hir::ItemKind::Trait(_, _, _, ident, ..)
-                            | hir::ItemKind::TraitAlias(ident, ..),
+                            | hir::ItemKind::TraitAlias(_, ident, ..),
                         ..
                     })
                     // We may also encounter unsatisfied GAT or method bounds
@@ -2412,22 +2414,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let SelfSource::MethodCall(expr) = source {
             for (_, parent) in tcx.hir_parent_iter(expr.hir_id).take(5) {
                 if let Node::Expr(parent_expr) = parent {
+                    if !is_range_literal(parent_expr) {
+                        continue;
+                    }
                     let lang_item = match parent_expr.kind {
-                        ExprKind::Struct(qpath, _, _) => match *qpath {
-                            QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
-                            QPath::LangItem(LangItem::RangeCopy, ..) => Some(LangItem::RangeCopy),
-                            QPath::LangItem(LangItem::RangeInclusiveCopy, ..) => {
-                                Some(LangItem::RangeInclusiveCopy)
-                            }
-                            QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
-                            QPath::LangItem(LangItem::RangeToInclusive, ..) => {
-                                Some(LangItem::RangeToInclusive)
-                            }
+                        ExprKind::Struct(qpath, _, _) => match tcx.qpath_lang_item(*qpath) {
+                            Some(
+                                lang_item @ (LangItem::Range
+                                | LangItem::RangeCopy
+                                | LangItem::RangeInclusiveCopy
+                                | LangItem::RangeTo
+                                | LangItem::RangeToInclusive),
+                            ) => Some(lang_item),
                             _ => None,
                         },
                         ExprKind::Call(func, _) => match func.kind {
                             // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                            ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
+                            ExprKind::Path(qpath)
+                                if tcx.qpath_is_lang_item(qpath, LangItem::RangeInclusiveNew) =>
+                            {
                                 Some(LangItem::RangeInclusiveStruct)
                             }
                             _ => None,
@@ -3046,46 +3051,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         foreign_preds.sort_by_key(|pred: &&ty::TraitPredicate<'_>| pred.trait_ref.to_string());
-        let foreign_def_ids = foreign_preds
-            .iter()
-            .filter_map(|pred| match pred.self_ty().kind() {
-                ty::Adt(def, _) => Some(def.did()),
-                _ => None,
-            })
-            .collect::<FxIndexSet<_>>();
-        let mut foreign_spans: MultiSpan = foreign_def_ids
-            .iter()
-            .filter_map(|def_id| {
-                let span = self.tcx.def_span(*def_id);
-                if span.is_dummy() { None } else { Some(span) }
-            })
-            .collect::<Vec<_>>()
-            .into();
-        for pred in &foreign_preds {
-            if let ty::Adt(def, _) = pred.self_ty().kind() {
-                foreign_spans.push_span_label(
-                    self.tcx.def_span(def.did()),
-                    format!("not implement `{}`", pred.trait_ref.print_trait_sugared()),
-                );
+
+        for pred in foreign_preds {
+            let ty = pred.self_ty();
+            let ty::Adt(def, _) = ty.kind() else { continue };
+            let span = self.tcx.def_span(def.did());
+            if span.is_dummy() {
+                continue;
             }
-        }
-        if foreign_spans.primary_span().is_some() {
-            let msg = if let [foreign_pred] = foreign_preds.as_slice() {
-                format!(
-                    "the foreign item type `{}` doesn't implement `{}`",
-                    foreign_pred.self_ty(),
-                    foreign_pred.trait_ref.print_trait_sugared()
-                )
-            } else {
-                format!(
-                    "the foreign item type{} {} implement required trait{} for this \
-                     operation to be valid",
-                    pluralize!(foreign_def_ids.len()),
-                    if foreign_def_ids.len() > 1 { "don't" } else { "doesn't" },
-                    pluralize!(foreign_preds.len()),
-                )
-            };
-            err.span_note(foreign_spans, msg);
+            let mut mspan: MultiSpan = span.into();
+            mspan.push_span_label(span, format!("`{ty}` is defined in another crate"));
+            err.span_note(
+                mspan,
+                format!("`{ty}` does not implement `{}`", pred.trait_ref.print_trait_sugared()),
+            );
         }
 
         let preds: Vec<_> = errors

@@ -11,29 +11,32 @@ use hir::{
     db::DefDatabase,
 };
 use ide_db::{
-    FileRange, FxIndexSet, Ranker, RootDatabase,
+    FileRange, FxIndexSet, MiniCore, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
+    ra_fixture::UpmapFromRaFixture,
 };
 use itertools::{Itertools, multizip};
-use span::Edition;
+use macros::UpmapFromRaFixture;
+use span::{Edition, TextRange};
 use syntax::{
-    AstNode,
+    AstNode, AstToken,
     SyntaxKind::{self, *},
     SyntaxNode, T, ast,
 };
 
 use crate::{
-    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
+    Analysis, FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
     doc_links::token_as_doc_comment,
     markdown_remove::remove_markdown,
     markup::Markup,
     navigation_target::UpmappingResult,
     runnables::{runnable_fn, runnable_mod},
 };
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HoverConfig {
+
+#[derive(Clone, Debug)]
+pub struct HoverConfig<'a> {
     pub links_in_hover: bool,
     pub memory_layout: Option<MemoryLayoutHoverConfig>,
     pub documentation: bool,
@@ -44,6 +47,7 @@ pub struct HoverConfig {
     pub max_enum_variants_count: Option<usize>,
     pub max_subst_ty_len: SubstTyLen,
     pub show_drop_glue: bool,
+    pub minicore: MiniCore<'a>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,7 +79,7 @@ pub enum HoverDocFormat {
     PlainText,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, UpmapFromRaFixture)]
 pub enum HoverAction {
     Runnable(Runnable),
     Implementation(FilePosition),
@@ -108,14 +112,14 @@ impl HoverAction {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, UpmapFromRaFixture)]
 pub struct HoverGotoTypeData {
     pub mod_path: String,
     pub nav: NavigationTarget,
 }
 
 /// Contains the results when hovering over an item
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, UpmapFromRaFixture)]
 pub struct HoverResult {
     pub markup: Markup,
     pub actions: Vec<HoverAction>,
@@ -130,7 +134,7 @@ pub struct HoverResult {
 pub(crate) fn hover(
     db: &RootDatabase,
     frange @ FileRange { file_id, range }: FileRange,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
@@ -161,7 +165,7 @@ fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
     file: SyntaxNode,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<RangeInfo<HoverResult>> {
@@ -217,6 +221,21 @@ fn hover_offset(
             display_target,
         );
         return Some(RangeInfo::new(range, res));
+    }
+
+    if let Some(literal) = ast::String::cast(original_token.clone())
+        && let Some((analysis, fixture_analysis)) =
+            Analysis::from_ra_fixture(sema, literal.clone(), &literal, config.minicore)
+    {
+        let (virtual_file_id, virtual_offset) = fixture_analysis.map_offset_down(offset)?;
+        return analysis
+            .hover(
+                config,
+                FileRange { file_id: virtual_file_id, range: TextRange::empty(virtual_offset) },
+            )
+            .ok()??
+            .upmap_from_ra_fixture(&fixture_analysis, virtual_file_id, file_id)
+            .ok();
     }
 
     // prefer descending the same token kind in attribute expansions, in normal macros text
@@ -383,9 +402,9 @@ fn hover_offset(
 
 fn hover_ranged(
     sema: &Semantics<'_, RootDatabase>,
-    FileRange { range, .. }: FileRange,
+    FileRange { file_id, range }: FileRange,
     file: SyntaxNode,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Option<RangeInfo<HoverResult>> {
@@ -403,6 +422,20 @@ fn hover_ranged(
             if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
         {
             render::deref_expr(sema, config, prefix_expr, edition, display_target)
+        }
+        Either::Left(ast::Expr::Literal(literal)) => {
+            if let Some(literal) = ast::String::cast(literal.token())
+                && let Some((analysis, fixture_analysis)) =
+                    Analysis::from_ra_fixture(sema, literal.clone(), &literal, config.minicore)
+            {
+                let (virtual_file_id, virtual_range) = fixture_analysis.map_range_down(range)?;
+                return analysis
+                    .hover(config, FileRange { file_id: virtual_file_id, range: virtual_range })
+                    .ok()??
+                    .upmap_from_ra_fixture(&fixture_analysis, virtual_file_id, file_id)
+                    .ok();
+            }
+            None
         }
         _ => None,
     };
@@ -426,7 +459,7 @@ pub(crate) fn hover_for_definition(
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
     render_extras: bool,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> HoverResult {

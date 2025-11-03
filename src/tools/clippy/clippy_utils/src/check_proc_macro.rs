@@ -121,7 +121,6 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
             (start, end)
         },
         QPath::TypeRelative(_, name) => (Pat::Str(""), Pat::Sym(name.ident.name)),
-        QPath::LangItem(..) => (Pat::Str(""), Pat::Str("")),
     }
 }
 

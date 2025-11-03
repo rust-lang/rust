@@ -384,7 +384,7 @@ fn def_to_non_local_moniker(
     })
 }
 
-fn display<T: HirDisplay>(db: &RootDatabase, module: hir::Module, it: T) -> String {
+fn display<'db, T: HirDisplay<'db>>(db: &'db RootDatabase, module: hir::Module, it: T) -> String {
     match it.display_source_code(db, module.into(), true) {
         Ok(result) => result,
         // Fallback on display variant that always succeeds

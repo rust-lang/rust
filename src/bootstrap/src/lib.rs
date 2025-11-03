@@ -1611,7 +1611,7 @@ impl Build {
         // If available, we read the beta revision from that file.
         // This only happens when building from a source tarball when Git should not be used.
         let count = extract_beta_rev_from_file(self.src.join("version")).unwrap_or_else(|| {
-            // Figure out how many merge commits happened since we branched off master.
+            // Figure out how many merge commits happened since we branched off main.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             helpers::git(Some(&self.src))

@@ -454,6 +454,6 @@ fn extend_with_matching(
 fn eq_pre_post(ps1: &[Pat], ps2: &[Pat], idx: usize) -> bool {
     ps1.len() == ps2.len()
         && ps1[idx].is_rest() == ps2[idx].is_rest() // Avoid `[x, ..] | [x, 0]` => `[x, .. | 0]`.
-        && over(&ps1[..idx], &ps2[..idx], |l, r| eq_pat(l, r))
-        && over(&ps1[idx + 1..], &ps2[idx + 1..], |l, r| eq_pat(l, r))
+        && over(&ps1[..idx], &ps2[..idx], eq_pat)
+        && over(&ps1[idx + 1..], &ps2[idx + 1..], eq_pat)
 }

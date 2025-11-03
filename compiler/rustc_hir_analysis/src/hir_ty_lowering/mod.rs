@@ -2240,13 +2240,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
-            hir::ConstArgKind::Path(qpath @ hir::QPath::LangItem(..)) => {
-                ty::Const::new_error_with_message(
-                    tcx,
-                    qpath.span(),
-                    format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
-                )
-            }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
         }
@@ -2560,17 +2553,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .map(|(ty, _, _)| ty)
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
-            }
-            &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
-                let def_id = tcx.require_lang_item(lang_item, span);
-                let (args, _) = self.lower_generic_args_of_path(
-                    span,
-                    def_id,
-                    &[],
-                    &hir::PathSegment::invalid(),
-                    None,
-                );
-                tcx.at(span).type_of(def_id).instantiate(tcx, args)
             }
             hir::TyKind::Array(ty, length) => {
                 let length = self.lower_const_arg(length, FeedConstTy::No);

@@ -383,7 +383,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
                 visit::walk_pat(self, pat);
             }
-            PatKind::Binding { mode: BindingMode(ByRef::Yes(rm), _), ty, .. } => {
+            PatKind::Binding { mode: BindingMode(ByRef::Yes(_, rm), _), ty, .. } => {
                 if self.inside_adt {
                     let ty::Ref(_, ty, _) = ty.kind() else {
                         span_bug!(

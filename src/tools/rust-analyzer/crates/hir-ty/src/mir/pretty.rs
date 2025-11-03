@@ -118,10 +118,10 @@ enum LocalName<'db> {
     Binding(Name, LocalId<'db>),
 }
 
-impl<'db> HirDisplay for LocalName<'db> {
+impl<'db> HirDisplay<'db> for LocalName<'db> {
     fn hir_fmt(
         &self,
-        f: &mut crate::display::HirFormatter<'_>,
+        f: &mut crate::display::HirFormatter<'_, 'db>,
     ) -> Result<(), crate::display::HirDisplayError> {
         match self {
             LocalName::Unknown(l) => write!(f, "_{}", u32::from(l.into_raw())),
@@ -489,7 +489,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         }
     }
 
-    fn hir_display<'b, T: HirDisplay>(&self, ty: &'b T) -> impl Display + use<'a, 'b, 'db, T>
+    fn hir_display<'b, T: HirDisplay<'db>>(&self, ty: &'b T) -> impl Display + use<'a, 'b, 'db, T>
     where
         'db: 'b,
     {

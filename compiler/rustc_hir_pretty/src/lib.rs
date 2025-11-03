@@ -765,8 +765,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span, cb);
             }
-            hir::ItemKind::TraitAlias(ident, generics, bounds) => {
-                let (cb, ib) = self.head("trait");
+            hir::ItemKind::TraitAlias(constness, ident, generics, bounds) => {
+                let (cb, ib) = self.head("");
+                self.print_constness(constness);
+                self.word_nbsp("trait");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
                 self.nbsp();
@@ -1774,11 +1776,6 @@ impl<'a> State<'a> {
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(item_segment.args(), colons_before_params)
             }
-            hir::QPath::LangItem(lang_item, span) => {
-                self.word("#[lang = \"");
-                self.print_ident(Ident::new(lang_item.name(), span));
-                self.word("\"]");
-            }
         }
     }
 
@@ -1928,10 +1925,15 @@ impl<'a> State<'a> {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }
-                if let ByRef::Yes(rmutbl) = by_ref {
+                if let ByRef::Yes(pinnedness, rmutbl) = by_ref {
                     self.word_nbsp("ref");
+                    if pinnedness.is_pinned() {
+                        self.word_nbsp("pin");
+                    }
                     if rmutbl.is_mut() {
                         self.word_nbsp("mut");
+                    } else if pinnedness.is_pinned() {
+                        self.word_nbsp("const");
                     }
                 }
                 self.print_ident(ident);

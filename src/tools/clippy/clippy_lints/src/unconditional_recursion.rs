@@ -106,7 +106,6 @@ fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Op
                 _ => None,
             }
         },
-        QPath::LangItem(..) => None,
     }
 }
 
@@ -291,7 +290,6 @@ fn is_default_method_on_current_ty<'tcx>(tcx: TyCtxt<'tcx>, qpath: QPath<'tcx>, 
             }
             get_hir_ty_def_id(tcx, *ty) == Some(implemented_ty_id)
         },
-        QPath::LangItem(..) => false,
     }
 }
 

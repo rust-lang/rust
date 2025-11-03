@@ -636,16 +636,13 @@ fn main() {
     );
 }
 
-#[ignore = "
-FIXME(next-solver):
-This does not work currently because I replaced homemade selection with selection by the trait solver;
-This will work once we implement `Interner::impl_specializes()` properly.
-"]
 #[test]
 fn specialization_array_clone() {
     check_pass(
         r#"
 //- minicore: copy, derive, slice, index, coerce_unsized, panic
+#![feature(min_specialization)]
+
 impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
     fn clone(&self) -> Self {

@@ -21,7 +21,7 @@ pub(super) fn fn_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: ast::Fn,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -70,7 +70,7 @@ pub(super) fn fn_ptr_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: ast::FnPtrType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -135,7 +135,7 @@ pub(super) fn fn_path_hints(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     fd: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     func: &ast::PathType,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -196,7 +196,7 @@ fn hints_(
     acc: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     FamousDefs(_, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     params: impl Iterator<Item = (Option<ast::Name>, ast::Type)>,
     generic_param_list: Option<ast::GenericParamList>,
     ret_type: Option<ast::RetType>,
