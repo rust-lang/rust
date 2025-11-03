@@ -10,6 +10,7 @@ LL | |
 LL | |     }
    | |_____- generic parameter used in this inner extern block
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error: aborting due to 1 previous error

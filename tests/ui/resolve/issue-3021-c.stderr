@@ -9,6 +9,7 @@ LL |     trait U {
 LL |         fn g(&self, x: T) -> T;
    |                        ^ use of generic parameter from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     trait U<T> {
@@ -25,6 +26,7 @@ LL |     trait U {
 LL |         fn g(&self, x: T) -> T;
    |                              ^ use of generic parameter from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     trait U<T> {

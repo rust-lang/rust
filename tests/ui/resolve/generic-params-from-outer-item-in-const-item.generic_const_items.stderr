@@ -8,6 +8,7 @@ LL |     const K: u32 = T::C;
    |           |
    |           generic parameter used in this inner constant item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
 help: try introducing a local generic parameter here
    |
@@ -25,6 +26,7 @@ LL |         const I: u32 = T::C;
    |               |
    |               generic parameter used in this inner constant item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
 help: try introducing a local generic parameter here
    |
@@ -41,6 +43,7 @@ LL |     const _: u32 = T::C;
    |           |
    |           generic parameter used in this inner constant item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
 help: try introducing a local generic parameter here
    |

@@ -8,6 +8,7 @@ LL |     static a: Bar<T> = Bar::What;
    |            |
    |            generic parameter used in this inner static item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error[E0392]: type parameter `T` is never used

@@ -9,6 +9,7 @@ LL |         fn peach(this: &Self) {
    |            |
    |            `Self` used in this inner function
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: refer to the type directly here instead
    |
 LL -         fn peach(this: &Self) {
@@ -16,7 +17,7 @@ LL +         fn peach(this: &A) {
    |
 
 error[E0401]: can't use `Self` from outer item
-  --> $DIR/use-self-in-inner-fn.rs:26:13
+  --> $DIR/use-self-in-inner-fn.rs:27:13
    |
 LL | impl MyEnum {
    | ---- `Self` type implicitly declared here, by this `impl`
@@ -27,6 +28,7 @@ LL |
 LL |             Self::do_something(move || {});
    |             ^^^^ use of `Self` from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: refer to the type directly here instead
    |
 LL -             Self::do_something(move || {});

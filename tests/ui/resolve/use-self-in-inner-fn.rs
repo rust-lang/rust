@@ -8,6 +8,7 @@ impl A {
         //~| NOTE use of `Self` from outer item
         //~| NOTE `Self` used in this inner function
         //~| HELP refer to the type directly here instead
+        //~| NOTE nested items are independent from their
         }
     }
 }
@@ -27,6 +28,7 @@ impl MyEnum {
             //~^ ERROR can't use `Self` from outer item
             //~| NOTE use of `Self` from outer item
             //~| HELP refer to the type directly here instead
+            //~| NOTE nested items are independent from their
             MyEnum::do_something(move || {});
         }
         inner();

@@ -11,6 +11,7 @@ use crate::{Res, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
+#[note]
 pub(crate) struct GenericParamsFromOuterItem {
     #[primary_span]
     #[label]
