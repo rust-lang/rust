@@ -9,6 +9,7 @@ LL |         enum Foo<B> {
 LL |             Variance(A)
    |                      ^ use of generic parameter from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         enum Foo<A, B> {
@@ -25,6 +26,7 @@ LL |         struct Foo<B>(A);
    |                |
    |                generic parameter used in this inner struct
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         struct Foo<A, B>(A);
@@ -41,6 +43,7 @@ LL |         struct Foo<B> { a: A }
    |                |
    |                generic parameter used in this inner struct
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         struct Foo<A, B> { a: A }
@@ -57,6 +60,7 @@ LL |         fn foo<B>(a: A) { }
    |            |
    |            generic parameter used in this inner function
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         fn foo<A, B>(a: A) { }

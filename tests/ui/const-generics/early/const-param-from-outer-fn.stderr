@@ -8,6 +8,7 @@ LL |     fn bar() -> u32 {
 LL |         X
    |         ^ use of generic parameter from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bar<X>() -> u32 {
