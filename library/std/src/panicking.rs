@@ -215,10 +215,10 @@ pub fn take_hook() -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
 ///
 /// // Equivalent to
 /// // let prev = panic::take_hook();
-/// // panic::set_hook(move |info| {
+/// // panic::set_hook(Box::new(move |info| {
 /// //     println!("...");
 /// //     prev(info);
-/// // );
+/// // }));
 /// panic::update_hook(move |prev, info| {
 ///     println!("Print custom message and execute panic handler as usual");
 ///     prev(info);
