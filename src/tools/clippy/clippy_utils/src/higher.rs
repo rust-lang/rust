@@ -209,39 +209,40 @@ pub struct Range<'a> {
     pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
+    pub span: Span,
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
     #[expect(clippy::similar_names)]
-    pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
+    pub fn hir(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<Range<'a>> {
+        let span = expr.range_span()?;
         match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
-                if matches!(
-                    path.kind,
-                    ExprKind::Path(QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
-                ) =>
+                if let ExprKind::Path(qpath) = path.kind
+                    && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::RangeInclusiveNew) =>
             {
                 Some(Range {
                     start: Some(arg1),
                     end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
+                    span,
                 })
             },
-            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
-                (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
+            ExprKind::Struct(&qpath, fields, StructTailExpr::None) => match (cx.tcx.qpath_lang_item(qpath)?, fields) {
+                (hir::LangItem::RangeFull, []) => Some(Range {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
-                (QPath::LangItem(hir::LangItem::RangeFrom, ..), [field]) if field.ident.name == sym::start => {
-                    Some(Range {
-                        start: Some(field.expr),
-                        end: None,
-                        limits: ast::RangeLimits::HalfOpen,
-                    })
-                },
-                (QPath::LangItem(hir::LangItem::Range, ..), [field1, field2]) => {
+                (hir::LangItem::RangeFrom, [field]) if field.ident.name == sym::start => Some(Range {
+                    start: Some(field.expr),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                    span,
+                }),
+                (hir::LangItem::Range, [field1, field2]) => {
                     let (start, end) = match (field1.ident.name, field2.ident.name) {
                         (sym::start, sym::end) => (field1.expr, field2.expr),
                         (sym::end, sym::start) => (field2.expr, field1.expr),
@@ -251,19 +252,20 @@ impl<'a> Range<'a> {
                         start: Some(start),
                         end: Some(end),
                         limits: ast::RangeLimits::HalfOpen,
+                        span,
                     })
                 },
-                (QPath::LangItem(hir::LangItem::RangeToInclusive, ..), [field]) if field.ident.name == sym::end => {
-                    Some(Range {
-                        start: None,
-                        end: Some(field.expr),
-                        limits: ast::RangeLimits::Closed,
-                    })
-                },
-                (QPath::LangItem(hir::LangItem::RangeTo, ..), [field]) if field.ident.name == sym::end => Some(Range {
+                (hir::LangItem::RangeToInclusive, [field]) if field.ident.name == sym::end => Some(Range {
+                    start: None,
+                    end: Some(field.expr),
+                    limits: ast::RangeLimits::Closed,
+                    span,
+                }),
+                (hir::LangItem::RangeTo, [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
                     end: Some(field.expr),
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
                 _ => None,
             },

@@ -13,7 +13,7 @@ use rustc_ast::{
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
     BoundConstness, BoundPolarity, ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto,
-    MetaItemInner, MetaItemLit, Movability, Mutability, UnOp,
+    MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -23,13 +23,14 @@ use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Ident, Span, Symbol, kw, sym,
+};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use crate::LangItem;
 use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
@@ -2418,9 +2419,6 @@ impl Expr<'_> {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
-            // Lang item paths cannot currently be local variables or statics.
-            ExprKind::Path(QPath::LangItem(..)) => false,
-
             // Suppress errors for bad expressions.
             ExprKind::Err(_guar)
             | ExprKind::Let(&LetExpr { recovered: ast::Recovered::Yes(_guar), .. }) => true,
@@ -2458,6 +2456,12 @@ impl Expr<'_> {
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..) => false,
         }
+    }
+
+    /// If this is a desugared range expression,
+    /// returns the span of the range without desugaring context.
+    pub fn range_span(&self) -> Option<Span> {
+        is_range_literal(self).then(|| self.span.parent_callsite().unwrap())
     }
 
     /// Check if expression is an integer literal that can be used
@@ -2585,111 +2589,26 @@ impl Expr<'_> {
         match (self.kind, other.kind) {
             (ExprKind::Lit(lit1), ExprKind::Lit(lit2)) => lit1.node == lit2.node,
             (
-                ExprKind::Path(QPath::LangItem(item1, _)),
-                ExprKind::Path(QPath::LangItem(item2, _)),
-            ) => item1 == item2,
-            (
                 ExprKind::Path(QPath::Resolved(None, path1)),
                 ExprKind::Path(QPath::Resolved(None, path2)),
             ) => path1.res == path2.res,
             (
                 ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeTo, _),
-                    [val1],
+                    &QPath::Resolved(None, &Path { res: Res::Def(_, path1_def_id), .. }),
+                    args1,
                     StructTailExpr::None,
                 ),
                 ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeTo, _),
-                    [val2],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeToInclusive, _),
-                    [val1],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeToInclusive, _),
-                    [val2],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
-                    [val1],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeToInclusiveCopy, _),
-                    [val2],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeFrom, _),
-                    [val1],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeFrom, _),
-                    [val2],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeFromCopy, _),
-                    [val1],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeFromCopy, _),
-                    [val2],
-                    StructTailExpr::None,
-                ),
-            ) => val1.expr.equivalent_for_indexing(val2.expr),
-            (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::Range, _),
-                    [val1, val3],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::Range, _),
-                    [val2, val4],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeCopy, _),
-                    [val1, val3],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeCopy, _),
-                    [val2, val4],
-                    StructTailExpr::None,
-                ),
-            )
-            | (
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
-                    [val1, val3],
-                    StructTailExpr::None,
-                ),
-                ExprKind::Struct(
-                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
-                    [val2, val4],
+                    &QPath::Resolved(None, &Path { res: Res::Def(_, path2_def_id), .. }),
+                    args2,
                     StructTailExpr::None,
                 ),
             ) => {
-                val1.expr.equivalent_for_indexing(val2.expr)
-                    && val3.expr.equivalent_for_indexing(val4.expr)
+                path2_def_id == path1_def_id
+                    && is_range_literal(self)
+                    && is_range_literal(other)
+                    && std::iter::zip(args1, args2)
+                        .all(|(a, b)| a.expr.equivalent_for_indexing(b.expr))
             }
             _ => false,
         }
@@ -2707,30 +2626,29 @@ impl Expr<'_> {
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
 pub fn is_range_literal(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
-        ExprKind::Struct(ref qpath, _, _) => matches!(
-            **qpath,
-            QPath::LangItem(
-                LangItem::Range
-                    | LangItem::RangeTo
-                    | LangItem::RangeFrom
-                    | LangItem::RangeFull
-                    | LangItem::RangeToInclusive
-                    | LangItem::RangeCopy
-                    | LangItem::RangeFromCopy
-                    | LangItem::RangeInclusiveCopy
-                    | LangItem::RangeToInclusiveCopy,
-                ..
-            )
-        ),
-
-        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-        ExprKind::Call(ref func, _) => {
-            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)))
-        }
-
-        _ => false,
+    if let ExprKind::Struct(QPath::Resolved(None, path), _, StructTailExpr::None) = expr.kind
+        && let [.., segment] = path.segments
+        && let sym::RangeFrom
+        | sym::RangeFull
+        | sym::Range
+        | sym::RangeToInclusive
+        | sym::RangeTo
+        | sym::RangeFromCopy
+        | sym::RangeCopy
+        | sym::RangeInclusiveCopy
+        | sym::RangeToInclusiveCopy = segment.ident.name
+        && expr.span.is_desugaring(DesugaringKind::RangeExpr)
+    {
+        true
+    } else if let ExprKind::Call(func, _) = &expr.kind
+        && let ExprKind::Path(QPath::Resolved(None, path)) = func.kind
+        && let [.., segment] = path.segments
+        && let sym::range_inclusive_new = segment.ident.name
+        && expr.span.is_desugaring(DesugaringKind::RangeExpr)
+    {
+        true
+    } else {
+        false
     }
 }
 
@@ -2924,9 +2842,6 @@ pub enum QPath<'hir> {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
-
-    /// Reference to a `#[lang = "foo"]` item.
-    LangItem(LangItem, Span),
 }
 
 impl<'hir> QPath<'hir> {
@@ -2935,7 +2850,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
-            QPath::LangItem(_, span) => span,
         }
     }
 
@@ -2945,7 +2859,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span) => span,
         }
     }
 }
@@ -2969,8 +2882,7 @@ pub enum LocalSource {
     /// A desugared `<expr>.await`.
     AwaitDesugar,
     /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
-    /// The span is that of the `=` sign.
-    AssignDesugar(Span),
+    AssignDesugar,
     /// A contract `#[ensures(..)]` attribute injects a let binding for the check that runs at point of return.
     Contract,
 }
@@ -4239,8 +4151,8 @@ impl<'hir> Item<'hir> {
             ItemKind::Trait(constness, is_auto, safety, ident, generics, bounds, items),
             (*constness, *is_auto, *safety, *ident, generics, bounds, items);
 
-        expect_trait_alias, (Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
-            ItemKind::TraitAlias(ident, generics, bounds), (*ident, generics, bounds);
+        expect_trait_alias, (Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
+            ItemKind::TraitAlias(constness, ident, generics, bounds), (*constness, *ident, generics, bounds);
 
         expect_impl, &Impl<'hir>, ItemKind::Impl(imp), imp;
     }
@@ -4417,7 +4329,7 @@ pub enum ItemKind<'hir> {
         &'hir [TraitItemId],
     ),
     /// A trait alias.
-    TraitAlias(Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
+    TraitAlias(Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
     Impl(Impl<'hir>),
@@ -4462,7 +4374,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
             | ItemKind::Trait(_, _, _, ident, ..)
-            | ItemKind::TraitAlias(ident, ..) => Some(ident),
+            | ItemKind::TraitAlias(_, ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
             | ItemKind::ForeignMod { .. }
@@ -4480,7 +4392,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
             | ItemKind::Trait(_, _, _, _, generics, _, _)
-            | ItemKind::TraitAlias(_, generics, _)
+            | ItemKind::TraitAlias(_, _, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })
@@ -5007,7 +4919,7 @@ mod size_asserts {
     static_assert_size!(ImplItemKind<'_>, 40);
     static_assert_size!(Item<'_>, 88);
     static_assert_size!(ItemKind<'_>, 64);
-    static_assert_size!(LetStmt<'_>, 72);
+    static_assert_size!(LetStmt<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 80);
     static_assert_size!(PatKind<'_>, 56);

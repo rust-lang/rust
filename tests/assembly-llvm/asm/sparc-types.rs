@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: sparc sparcv8plus sparc64
 //@ assembly-output: emit-asm
 //@[sparc] compile-flags: --target sparc-unknown-none-elf

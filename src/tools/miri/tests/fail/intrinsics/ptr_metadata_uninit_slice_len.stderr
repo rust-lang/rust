@@ -9,8 +9,6 @@ LL |         (*p.as_mut_ptr().cast::<[*const i32; 2]>())[0] = 4 as *const i32;
    = help: to ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
    = help: you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics
    = help: alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/intrinsics/ptr_metadata_uninit_slice_len.rs:LL:CC
 
 error: Undefined Behavior: reading memory at ALLOC[0xX..0xY], but memory is uninitialized at [0xX..0xY], and this operation requires initialized memory
   --> tests/fail/intrinsics/ptr_metadata_uninit_slice_len.rs:LL:CC

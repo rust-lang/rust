@@ -150,7 +150,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();
         // Take care when binding is `ref`
         let sugg = if let PatKind::Binding(
-            BindingMode(ByRef::Yes(ref_mutability), binding_mutability),
+            BindingMode(ByRef::Yes(_,ref_mutability), binding_mutability),
             _hir_id,
             ident,
             subpattern,
@@ -169,7 +169,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
             // Handle subpattern (@ subpattern)
             let maybe_subpattern = match subpattern {
                 Some(Pat {
-                    kind: PatKind::Binding(BindingMode(ByRef::Yes(_), _), _, subident, None),
+                    kind: PatKind::Binding(BindingMode(ByRef::Yes(..), _), _, subident, None),
                     ..
                 }) => {
                     // avoid `&ref`
@@ -504,8 +504,8 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
         let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
         let method_call_str = match by_ref {
-            ByRef::Yes(Mutability::Mut) => ".as_mut()",
-            ByRef::Yes(Mutability::Not) => ".as_ref()",
+            ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
+            ByRef::Yes(_, Mutability::Not) => ".as_ref()",
             ByRef::No => "",
         };
         let sugg = format!(
@@ -530,11 +530,13 @@ impl QuestionMark {
     }
 }
 
-fn is_try_block(bl: &Block<'_>) -> bool {
+fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
         && let ExprKind::Call(callee, [_]) = expr.kind
+        && let ExprKind::Path(qpath) = callee.kind
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitFromOutput)
     {
-        callee.opt_lang_path() == Some(LangItem::TryTraitFromOutput)
+        true
     } else {
         false
     }
@@ -590,8 +592,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_block(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()
@@ -607,8 +609,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()

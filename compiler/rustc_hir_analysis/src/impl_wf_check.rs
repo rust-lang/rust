@@ -12,11 +12,12 @@ use std::assert_matches::debug_assert_matches;
 
 use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::UnconstrainedGenericParameter;
@@ -150,6 +151,27 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                         const_param_note2: false,
                     });
                     diag.code(E0207);
+                    for p in &impl_generics.own_params {
+                        if p.name == kw::UnderscoreLifetime {
+                            let span = tcx.def_span(p.def_id);
+                            let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) else {
+                                continue;
+                            };
+
+                            let (span, sugg) = if &snippet == "'_" {
+                                (span, param.name.to_string())
+                            } else {
+                                (span.shrink_to_hi(), format!("{} ", param.name))
+                            };
+                            diag.span_suggestion_verbose(
+                                span,
+                                "consider using the named lifetime here instead of an implicit \
+                                 lifetime",
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                     res = Err(diag.emit());
                 }
             }

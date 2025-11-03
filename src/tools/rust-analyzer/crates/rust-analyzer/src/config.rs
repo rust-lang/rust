@@ -8,14 +8,14 @@ use std::{env, fmt, iter, ops::Not, sync::OnceLock};
 use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
 use ide::{
-    AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
-    CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, HighlightConfig,
-    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve, InlayHintsConfig,
-    JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope,
-    SourceRootId,
+    AnnotationConfig, AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
+    CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
+    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+    Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
-    SnippetCap,
+    MiniCore, SnippetCap,
     assists::ExprFillDefaultMode,
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
 };
@@ -1454,6 +1454,23 @@ impl LensConfig {
     pub fn references(&self) -> bool {
         self.method_refs || self.refs_adt || self.refs_trait || self.enum_variant_refs
     }
+
+    pub fn into_annotation_config<'a>(
+        self,
+        binary_target: bool,
+        minicore: MiniCore<'a>,
+    ) -> AnnotationConfig<'a> {
+        AnnotationConfig {
+            binary_target,
+            annotate_runnables: self.runnable(),
+            annotate_impls: self.implementations,
+            annotate_references: self.refs_adt,
+            annotate_method_references: self.method_refs,
+            annotate_enum_variant_references: self.enum_variant_refs,
+            location: self.location.into(),
+            minicore,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1688,11 +1705,15 @@ impl Config {
         }
     }
 
-    pub fn call_hierarchy(&self) -> CallHierarchyConfig {
-        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned() }
+    pub fn call_hierarchy<'a>(&self, minicore: MiniCore<'a>) -> CallHierarchyConfig<'a> {
+        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned(), minicore }
     }
 
-    pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig<'_> {
+    pub fn completion<'a>(
+        &'a self,
+        source_root: Option<SourceRootId>,
+        minicore: MiniCore<'a>,
+    ) -> CompletionConfig<'a> {
         let client_capability_fields = self.completion_resolve_support_properties();
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
@@ -1746,6 +1767,7 @@ impl Config {
                 })
                 .collect(),
             exclude_traits: self.completion_excludeTraits(source_root),
+            minicore,
         }
     }
 
@@ -1820,7 +1842,7 @@ impl Config {
         }
     }
 
-    pub fn hover(&self) -> HoverConfig {
+    pub fn hover<'a>(&self, minicore: MiniCore<'a>) -> HoverConfig<'a> {
         let mem_kind = |kind| match kind {
             MemoryLayoutHoverRenderKindDef::Both => MemoryLayoutHoverRenderKind::Both,
             MemoryLayoutHoverRenderKindDef::Decimal => MemoryLayoutHoverRenderKind::Decimal,
@@ -1853,10 +1875,15 @@ impl Config {
                 None => ide::SubstTyLen::Unlimited,
             },
             show_drop_glue: *self.hover_dropGlue_enable(),
+            minicore,
         }
     }
 
-    pub fn inlay_hints(&self) -> InlayHintsConfig {
+    pub fn goto_definition<'a>(&self, minicore: MiniCore<'a>) -> GotoDefinitionConfig<'a> {
+        GotoDefinitionConfig { minicore }
+    }
+
+    pub fn inlay_hints<'a>(&self, minicore: MiniCore<'a>) -> InlayHintsConfig<'a> {
         let client_capability_fields = self.inlay_hint_resolve_support_properties();
 
         InlayHintsConfig {
@@ -1938,6 +1965,7 @@ impl Config {
             ),
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
+            minicore,
         }
     }
 
@@ -1975,7 +2003,7 @@ impl Config {
         self.semanticHighlighting_nonStandardTokens().to_owned()
     }
 
-    pub fn highlighting_config(&self) -> HighlightConfig {
+    pub fn highlighting_config<'a>(&self, minicore: MiniCore<'a>) -> HighlightConfig<'a> {
         HighlightConfig {
             strings: self.semanticHighlighting_strings_enable().to_owned(),
             comments: self.semanticHighlighting_comments_enable().to_owned(),
@@ -1990,6 +2018,7 @@ impl Config {
                 .to_owned(),
             inject_doc_comment: self.semanticHighlighting_doc_comment_inject_enable().to_owned(),
             syntactic_name_ref_highlighting: false,
+            minicore,
         }
     }
 

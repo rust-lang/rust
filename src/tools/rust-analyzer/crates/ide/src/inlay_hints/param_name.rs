@@ -18,7 +18,7 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, krate): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     file_id: EditionedFileId,
     expr: ast::Expr,
 ) -> Option<()> {
@@ -124,12 +124,12 @@ fn should_hide_param_name_hint(
     // hide when:
     // - the parameter name is a suffix of the function's name
     // - the argument is a qualified constructing or call expression where the qualifier is an ADT
-    // - exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
-    //   of argument with _ splitting it off
+    // - exact argument<->parameter match(ignoring leading and trailing underscore) or
+    //   parameter is a prefix/suffix of argument with _ splitting it off
     // - param starts with `ra_fixture`
     // - param is a well known name in a unary function
 
-    let param_name = param_name.trim_start_matches('_');
+    let param_name = param_name.trim_matches('_');
     if param_name.is_empty() {
         return true;
     }
@@ -540,6 +540,8 @@ fn enum_matches_param_name(completion_kind: CompletionKind) {}
 fn foo(param: u32) {}
 fn bar(param_eter: u32) {}
 fn baz(a_d_e: u32) {}
+fn far(loop_: u32) {}
+fn faz(r#loop: u32) {}
 
 enum CompletionKind {
     Keyword,
@@ -590,6 +592,9 @@ fn main() {
     let param_eter2 = 0;
     bar(param_eter2);
       //^^^^^^^^^^^ param_eter
+    let loop_level = 0;
+    far(loop_level);
+    faz(loop_level);
 
     non_ident_pat((0, 0));
 

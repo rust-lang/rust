@@ -54,7 +54,7 @@ Some additional notes about using the interactive mode:
   /bin/bash` where `<CONTAINER>` is the container name like `4ba195e95cef`.
 
 [Docker]: https://www.docker.com/
-[`src/ci/docker`]: https://github.com/rust-lang/rust/tree/master/src/ci/docker
-[`src/ci/docker/run.sh`]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/run.sh
-[`src/ci/run.sh`]: https://github.com/rust-lang/rust/blob/master/src/ci/run.sh
-[`enable-docker-ipv6.sh`]: https://github.com/rust-lang/rust/blob/master/src/ci/scripts/enable-docker-ipv6.sh
+[`src/ci/docker`]: https://github.com/rust-lang/rust/tree/HEAD/src/ci/docker
+[`src/ci/docker/run.sh`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/docker/run.sh
+[`src/ci/run.sh`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/run.sh
+[`enable-docker-ipv6.sh`]: https://github.com/rust-lang/rust/blob/HEAD/src/ci/scripts/enable-docker-ipv6.sh

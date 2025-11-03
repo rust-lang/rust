@@ -5,16 +5,16 @@
 //! intrinsics via stable wrapper functions. Use these instead.
 //!
 //! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
-//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
-//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
-//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
-//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
 //! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
 //! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
-//! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
+//! <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
 //! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
 //! wg-const-eval.
 //!
@@ -55,7 +55,7 @@
 #![allow(missing_docs)]
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
-use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
 use crate::ptr;
 
 mod bounds;
@@ -477,11 +477,15 @@ pub const fn unlikely(b: bool) -> bool {
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
 #[inline]
-pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+pub const fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
     if b { true_val } else { false_val }
 }
 

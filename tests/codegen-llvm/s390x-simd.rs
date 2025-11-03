@@ -1,6 +1,6 @@
 //! test that s390x vector types are passed using `PassMode::Direct`
 //! see also https://github.com/rust-lang/rust/issues/135744
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target s390x-unknown-linux-gnu -Copt-level=3
 //@ needs-llvm-components: systemz
 

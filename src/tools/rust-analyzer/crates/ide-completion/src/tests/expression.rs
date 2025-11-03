@@ -1869,6 +1869,298 @@ fn foo() { let x = if foo {} $0 else if true {} else {}; }
             sn ppd
         "#]],
     );
+    check(
+        r#"
+fn foo() { [if foo {} $0]}
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { [if foo {} el$0]}
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { 2 + if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { -if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { &mut if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { return if foo {} $0 }
+"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0 } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0, } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    check(
+        r#"
+fn foo() { match () { () => if foo {} $0, _ => (), } }
+"#,
+        expect![[r#"
+            kw else
+            kw else if
+            kw mut
+            kw ref
+        "#]],
+    );
+    // FIXME: support else completion after ast::RecordExprField
 }
 
 #[test]
@@ -2937,13 +3229,343 @@ fn foo() {
 }
 
 #[test]
+fn ambiguous_float_literal_in_ambiguous_method_call() {
+    check(
+        r#"
+#![rustc_coherence_is_core]
+
+impl i32 {
+    pub fn int_method(self) {}
+}
+impl f64 {
+    pub fn float_method(self) {}
+}
+
+fn foo() -> (i32, i32) {
+    1.$0
+    (2, 3)
+}
+    "#,
+        expect![[r#"
+            me int_method() fn(self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn const        const {}
+            sn dbg        dbg!(expr)
+            sn dbgr      dbg!(&expr)
+            sn deref           *expr
+            sn let               let
+            sn letm          let mut
+            sn match   match expr {}
+            sn ref             &expr
+            sn refm        &mut expr
+            sn return    return expr
+            sn unsafe      unsafe {}
+        "#]],
+    );
+}
+
+#[test]
 fn let_in_condition() {
     check_edit("let", r#"fn f() { if $0 {} }"#, r#"fn f() { if let $1 = $0 {} }"#);
+    check_edit("let", r#"fn f() { if $0x {} }"#, r#"fn f() { if let $1 = $0x {} }"#);
+    check_edit(
+        "let",
+        r#"fn f() { if $0foo.bar() {} }"#,
+        r#"fn f() { if let $1 = $0foo.bar() {} }"#,
+    );
 }
 
 #[test]
 fn let_in_let_chain() {
     check_edit("let", r#"fn f() { if true && $0 {} }"#, r#"fn f() { if true && let $1 = $0 {} }"#);
+}
+
+#[test]
+fn let_in_previous_line_of_ambiguous_expr() {
+    check_edit(
+        "let",
+        r#"
+        fn f() {
+            $0
+            (1, 2).foo();
+        }"#,
+        r#"
+        fn f() {
+            let $1 = $0;
+            (1, 2).foo();
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() {
+            $0
+            (1, 2)
+        }"#,
+        r#"
+        fn f() {
+            let $1 = $0;
+            (1, 2)
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> i32 {
+            $0
+            -2
+        }"#,
+        r#"
+        fn f() -> i32 {
+            let $1 = $0;
+            -2
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> [i32; 2] {
+            $0
+            [1, 2]
+        }"#,
+        r#"
+        fn f() -> [i32; 2] {
+            let $1 = $0;
+            [1, 2]
+        }"#,
+    );
+
+    check_edit(
+        "let",
+        r#"
+        fn f() -> [u8; 2] {
+            $0
+            *b"01"
+        }"#,
+        r#"
+        fn f() -> [u8; 2] {
+            let $1 = $0;
+            *b"01"
+        }"#,
+    );
+
+    check(
+        r#"
+        fn foo() {
+            $0
+            *b"01"
+        }"#,
+        expect![[r#"
+            fn foo()  fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+
+    check(
+        r#"
+        fn foo() {
+            match $0 {}
+        }"#,
+        expect![[r#"
+            fn foo() fn()
+            bt u32    u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+
+    check(
+        r#"
+        fn foo() {
+            $0 *b"01"
+        }"#,
+        expect![[r#"
+            fn foo() fn()
+            bt u32    u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn field_in_previous_line_of_ambiguous_expr() {
+    check(
+        r#"
+        struct Foo { field: i32 }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: 4 };
+            foo.$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field           i32
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+
+    check(
+        r#"
+        struct Foo { field: i32 }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: 4 };
+            foo.a$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field           i32
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn fn_field_in_previous_line_of_ambiguous_expr() {
+    check(
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            foo.$0
+            (2, 3)
+        }"#,
+        expect![[r#"
+            fd field          fn()
+            me method()  fn(&self)
+            sn box  Box::new(expr)
+            sn call function(expr)
+            sn const      const {}
+            sn dbg      dbg!(expr)
+            sn dbgr    dbg!(&expr)
+            sn deref         *expr
+            sn let             let
+            sn letm        let mut
+            sn match match expr {}
+            sn ref           &expr
+            sn refm      &mut expr
+            sn return  return expr
+            sn unsafe    unsafe {}
+        "#]],
+    );
+
+    check_edit(
+        "field",
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            foo.a$0
+            (2, 3)
+        }"#,
+        r#"
+        struct Foo { field: fn() }
+        impl Foo {
+            fn method(&self) {}
+        }
+        fn foo() -> (i32, i32) {
+            let foo = Foo { field: || () };
+            (foo.field)()
+            (2, 3)
+        }"#,
+    );
 }
 
 #[test]

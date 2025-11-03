@@ -342,7 +342,7 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     match *qpath {
         QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias | DefKind::AssocTy, ..)),
         QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_ty_alias(&qpath),
-        _ => false,
+        QPath::TypeRelative(..) => false,
     }
 }
 
@@ -361,7 +361,6 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, seg) => seg,
-        QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
 }
 
@@ -783,7 +782,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
                 capture = CaptureKind::Value;
             },
-            ByRef::Yes(Mutability::Mut) if capture != CaptureKind::Value => {
+            ByRef::Yes(_, Mutability::Mut) if capture != CaptureKind::Value => {
                 capture = CaptureKind::Ref(Mutability::Mut);
             },
             _ => (),
@@ -1282,7 +1281,7 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 /// If the given `Expr` is not some kind of range, the function returns `false`.
 pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    if let Some(Range { start, end, limits }) = Range::hir(expr) {
+    if let Some(Range { start, end, limits, .. }) = Range::hir(cx, expr) {
         let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
@@ -1831,7 +1830,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
         .typeck_results()
         .pat_binding_modes()
         .get(pat.hir_id)
-        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
+        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(..)))
     {
         // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
         // due to match ergonomics, the inner patterns become references. Don't consider this

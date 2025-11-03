@@ -891,44 +891,53 @@ fn classify_name_ref<'db>(
         return Some(make_res(kind));
     }
 
+    let field_expr_handle = |receiver, node| {
+        let receiver = find_opt_node_in_file(original_file, receiver);
+        let receiver_is_ambiguous_float_literal = match &receiver {
+            Some(ast::Expr::Literal(l)) => matches! {
+                l.kind(),
+                ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
+            },
+            _ => false,
+        };
+
+        let receiver_is_part_of_indivisible_expression = match &receiver {
+            Some(ast::Expr::IfExpr(_)) => {
+                let next_token_kind =
+                    next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
+                next_token_kind == Some(SyntaxKind::ELSE_KW)
+            }
+            _ => false,
+        };
+        if receiver_is_part_of_indivisible_expression {
+            return None;
+        }
+
+        let mut receiver_ty = receiver.as_ref().and_then(|it| sema.type_of_expr(it));
+        if receiver_is_ambiguous_float_literal {
+            // `123.|` is parsed as a float but should actually be an integer.
+            always!(receiver_ty.as_ref().is_none_or(|receiver_ty| receiver_ty.original.is_float()));
+            receiver_ty =
+                Some(TypeInfo { original: hir::BuiltinType::i32().ty(sema.db), adjusted: None });
+        }
+
+        let kind = NameRefKind::DotAccess(DotAccess {
+            receiver_ty,
+            kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
+            receiver,
+            ctx: DotAccessExprCtx {
+                in_block_expr: is_in_block(node),
+                in_breakable: is_in_breakable(node).unzip().0,
+            },
+        });
+        Some(make_res(kind))
+    };
+
     let segment = match_ast! {
         match parent {
             ast::PathSegment(segment) => segment,
             ast::FieldExpr(field) => {
-                let receiver = find_opt_node_in_file(original_file, field.expr());
-                let receiver_is_ambiguous_float_literal = match &receiver {
-                    Some(ast::Expr::Literal(l)) => matches! {
-                        l.kind(),
-                        ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
-                    },
-                    _ => false,
-                };
-
-                let receiver_is_part_of_indivisible_expression = match &receiver {
-                    Some(ast::Expr::IfExpr(_)) => {
-                        let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
-                        next_token_kind == Some(SyntaxKind::ELSE_KW)
-                    },
-                    _ => false
-                };
-                if receiver_is_part_of_indivisible_expression {
-                    return None;
-                }
-
-                let mut receiver_ty = receiver.as_ref().and_then(|it| sema.type_of_expr(it));
-                if receiver_is_ambiguous_float_literal {
-                    // `123.|` is parsed as a float but should actually be an integer.
-                    always!(receiver_ty.as_ref().is_none_or(|receiver_ty| receiver_ty.original.is_float()));
-                    receiver_ty = Some(TypeInfo { original: hir::BuiltinType::i32().ty(sema.db), adjusted: None });
-                }
-
-                let kind = NameRefKind::DotAccess(DotAccess {
-                    receiver_ty,
-                    kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
-                    receiver,
-                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(field.syntax()), in_breakable: is_in_breakable(field.syntax()).unzip().0 }
-                });
-                return Some(make_res(kind));
+                return field_expr_handle(field.expr(), field.syntax());
             },
             ast::ExternCrate(_) => {
                 let kind = NameRefKind::ExternCrate;
@@ -937,9 +946,12 @@ fn classify_name_ref<'db>(
             ast::MethodCallExpr(method) => {
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let has_parens = has_parens(&method);
+                if !has_parens && let Some(res) = field_expr_handle(method.receiver(), method.syntax()) {
+                    return Some(res)
+                }
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
-                    kind: DotAccessKind::Method { has_parens },
+                    kind: DotAccessKind::Method,
                     receiver,
                     ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()).unzip().0 }
                 });
@@ -986,10 +998,6 @@ fn classify_name_ref<'db>(
                 _ => None,
             }
         }
-    };
-    let after_if_expr = |node: SyntaxNode| {
-        let prev_expr = prev_expr(node);
-        matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
     };
     let after_incomplete_let = |node: SyntaxNode| {
         prev_expr(node).and_then(|it| it.syntax().parent()).and_then(ast::LetStmt::cast)
@@ -1230,7 +1238,7 @@ fn classify_name_ref<'db>(
         let it = expr.syntax();
         let in_block_expr = is_in_block(it);
         let (in_loop_body, innermost_breakable) = is_in_breakable(it).unzip();
-        let after_if_expr = after_if_expr(it.clone());
+        let after_if_expr = is_after_if_expr(it.clone());
         let ref_expr_parent =
             path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
         let after_amp = non_trivia_sibling(it.clone().into(), Direction::Prev)
@@ -1751,6 +1759,7 @@ fn pattern_context_for(
         param_ctx,
         has_type_ascription,
         should_suggest_name,
+        after_if_expr: is_after_if_expr(pat.syntax().clone()),
         parent_pat: pat.syntax().parent().and_then(ast::Pat::cast),
         mut_token,
         ref_token,
@@ -1890,9 +1899,47 @@ fn is_in_breakable(node: &SyntaxNode) -> Option<(BreakableKind, SyntaxNode)> {
 }
 
 fn is_in_block(node: &SyntaxNode) -> bool {
+    if has_in_newline_expr_first(node) {
+        return true;
+    };
     node.parent()
         .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
         .unwrap_or(false)
+}
+
+/// Similar to `has_parens`, heuristic sensing incomplete statement before ambiguous `Expr`
+///
+/// Heuristic:
+///
+/// If the `PathExpr` is left part of the `Expr` and there is a newline after the `PathExpr`,
+/// it is considered that the `PathExpr` is not part of the `Expr`.
+fn has_in_newline_expr_first(node: &SyntaxNode) -> bool {
+    if ast::PathExpr::can_cast(node.kind())
+        && let Some(NodeOrToken::Token(next)) = node.next_sibling_or_token()
+        && next.kind() == SyntaxKind::WHITESPACE
+        && next.text().contains('\n')
+        && let Some(stmt_like) = node
+            .ancestors()
+            .take_while(|it| it.text_range().start() == node.text_range().start())
+            .filter_map(Either::<ast::ExprStmt, ast::Expr>::cast)
+            .last()
+    {
+        stmt_like.syntax().parent().and_then(ast::StmtList::cast).is_some()
+    } else {
+        false
+    }
+}
+
+fn is_after_if_expr(node: SyntaxNode) -> bool {
+    let node = match node.parent().and_then(Either::<ast::ExprStmt, ast::MatchArm>::cast) {
+        Some(stmt) => stmt.syntax().clone(),
+        None => node,
+    };
+    let prev_sibling =
+        non_trivia_sibling(node.into(), Direction::Prev).and_then(NodeOrToken::into_node);
+    iter::successors(prev_sibling, |it| it.last_child_or_token()?.into_node())
+        .find_map(ast::IfExpr::cast)
+        .is_some()
 }
 
 fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {

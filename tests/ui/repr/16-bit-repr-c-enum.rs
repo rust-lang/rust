@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ revisions: avr msp430
 //

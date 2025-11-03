@@ -7,10 +7,11 @@ use std::{env, thread};
 
 use rustc_ast as ast;
 use rustc_attr_parsing::{ShouldEmit, validate_attr};
-use rustc_codegen_ssa::back::archive::ArArchiveBuilderBuilder;
+use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
+use rustc_codegen_ssa::target_features::{self, cfg_target_feature};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_codegen_ssa::{CodegenResults, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
@@ -287,7 +288,15 @@ pub(crate) fn run_in_thread_pool_with_globals<
                         pool.install(|| f(current_gcx.into_inner(), proxy))
                     },
                 )
-                .unwrap()
+                .unwrap_or_else(|err| {
+                    let mut diag = thread_builder_diag.early_struct_fatal(format!(
+                        "failed to spawn compiler thread pool: could not create {threads} threads ({err})",
+                    ));
+                    diag.help(
+                        "try lowering `-Z threads` or checking the operating system's resource limits",
+                    );
+                    diag.emit();
+                })
         })
     })
 }
@@ -354,6 +363,41 @@ impl CodegenBackend for DummyCodegenBackend {
         "dummy"
     }
 
+    fn target_config(&self, sess: &Session) -> TargetConfig {
+        let (target_features, unstable_target_features) = cfg_target_feature(sess, |feature| {
+            // This is a standin for the list of features a backend is expected to enable.
+            // It would be better to parse target.features instead and handle implied features,
+            // but target.features is a list of LLVM target features, not Rust target features.
+            // The dummy backend doesn't know the mapping between LLVM and Rust target features.
+            sess.target.abi_required_features().required.contains(&feature)
+        });
+
+        // To report warnings about unknown features
+        target_features::flag_to_backend_features::<0>(
+            sess,
+            true,
+            |_| Default::default(),
+            |_, _| {},
+        );
+
+        TargetConfig {
+            target_features,
+            unstable_target_features,
+            has_reliable_f16: true,
+            has_reliable_f16_math: true,
+            has_reliable_f128: true,
+            has_reliable_f128_math: true,
+        }
+    }
+
+    fn supported_crate_types(&self, _sess: &Session) -> Vec<CrateType> {
+        // This includes bin despite failing on the link step to ensure that you
+        // can still get the frontend handling for binaries. For all library
+        // like crate types cargo will fallback to rlib unless you specifically
+        // say that only a different crate type must be used.
+        vec![CrateType::Rlib, CrateType::Executable]
+    }
+
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         Box::new(CodegenResults {
             modules: vec![],
@@ -380,23 +424,50 @@ impl CodegenBackend for DummyCodegenBackend {
     ) {
         // JUSTIFICATION: TyCtxt no longer available here
         #[allow(rustc::bad_opt_access)]
-        if sess.opts.crate_types.iter().any(|&crate_type| crate_type != CrateType::Rlib) {
+        if let Some(&crate_type) = codegen_results
+            .crate_info
+            .crate_types
+            .iter()
+            .find(|&&crate_type| crate_type != CrateType::Rlib)
+            && outputs.outputs.should_link()
+        {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
             sess.dcx().fatal(format!(
-                "crate type {} not supported by the dummy codegen backend",
-                sess.opts.crate_types[0],
+                "crate type {crate_type} not supported by the dummy codegen backend"
             ));
         }
 
         link_binary(
             sess,
-            &ArArchiveBuilderBuilder,
+            &DummyArchiveBuilderBuilder,
             codegen_results,
             metadata,
             outputs,
             self.name(),
         );
+    }
+}
+
+struct DummyArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for DummyArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(
+        &self,
+        sess: &'a Session,
+    ) -> Box<dyn rustc_codegen_ssa::back::archive::ArchiveBuilder + 'a> {
+        ArArchiveBuilderBuilder.new_archive_builder(sess)
+    }
+
+    fn create_dll_import_lib(
+        &self,
+        sess: &Session,
+        _lib_name: &str,
+        _items: Vec<rustc_codegen_ssa::back::archive::ImportLibraryItem>,
+        output_path: &Path,
+    ) {
+        // Build an empty static library to avoid calling an external dlltool on mingw
+        ArArchiveBuilderBuilder.new_archive_builder(sess).build(output_path);
     }
 }
 

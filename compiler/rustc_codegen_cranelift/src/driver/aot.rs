@@ -671,18 +671,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
     }
     .to_owned();
 
-    let cgus = if tcx.sess.opts.output_types.should_codegen() {
-        tcx.collect_and_partition_mono_items(()).codegen_units
-    } else {
-        // If only `--emit metadata` is used, we shouldn't perform any codegen.
-        // Also `tcx.collect_and_partition_mono_items` may panic in that case.
-        return Box::new(OngoingCodegen {
-            modules: vec![],
-            allocator_module: None,
-            crate_info: CrateInfo::new(tcx, target_cpu),
-            concurrency_limiter: ConcurrencyLimiter::new(0),
-        });
-    };
+    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in cgus {

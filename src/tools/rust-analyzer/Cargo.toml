@@ -37,8 +37,6 @@ debug = 2
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
-# chalk-ir = { path = "../chalk/chalk-ir" }
-# chalk-derive = { path = "../chalk/chalk-derive" }
 # line-index = { path = "lib/line-index" }
 # la-arena = { path = "lib/la-arena" }
 # lsp-server = { path = "lib/lsp-server" }
@@ -88,14 +86,14 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.133", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.133", default-features = false }
-ra-ap-rustc_index = { version = "0.133", default-features = false }
-ra-ap-rustc_abi = { version = "0.133", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.133", default-features = false }
-ra-ap-rustc_ast_ir = { version = "0.133", default-features = false }
-ra-ap-rustc_type_ir = { version = "0.133", default-features = false }
-ra-ap-rustc_next_trait_solver = { version = "0.133", default-features = false }
+ra-ap-rustc_lexer = { version = "0.137", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.137", default-features = false }
+ra-ap-rustc_index = { version = "0.137", default-features = false }
+ra-ap-rustc_abi = { version = "0.137", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.137", default-features = false }
+ra-ap-rustc_ast_ir = { version = "0.137", default-features = false }
+ra-ap-rustc_type_ir = { version = "0.137", default-features = false }
+ra-ap-rustc_next_trait_solver = { version = "0.137", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -110,8 +108,6 @@ arrayvec = "0.7.6"
 bitflags = "2.9.1"
 cargo_metadata = "0.21.0"
 camino = "1.1.10"
-chalk-ir = "0.104.0"
-chalk-derive = "0.104.0"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
 dot = "0.1.4"

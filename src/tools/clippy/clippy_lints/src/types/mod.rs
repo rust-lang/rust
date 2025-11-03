@@ -655,7 +655,6 @@ impl Types {
                             }
                         }
                     },
-                    QPath::LangItem(..) => {},
                 }
             },
             TyKind::Path(ref qpath) => {

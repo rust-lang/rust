@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=0 -Cdebuginfo=0 --target loongarch64-unknown-linux-gnu
 //@ needs-llvm-components: loongarch
 

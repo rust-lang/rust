@@ -5,22 +5,21 @@ use std::mem;
 
 use either::Either;
 use hir_def::{
-    AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
+    AdtId, CallableDefId, DefWithBodyId, FieldId, FunctionId, VariantId,
     expr_store::{Body, path::Path},
     hir::{AsmOperand, Expr, ExprId, ExprOrPatId, InlineAsmKind, Pat, PatId, Statement, UnaryOp},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     signatures::StaticFlags,
     type_ref::Rawness,
 };
+use rustc_type_ir::inherent::IntoKind;
 use span::Edition;
 
-use crate::next_solver::DbInterner;
-use crate::next_solver::mapping::NextSolverToChalk;
-use crate::utils::TargetFeatureIsSafeInTarget;
 use crate::{
-    InferenceResult, Interner, TargetFeatures, TyExt, TyKind,
+    InferenceResult, TargetFeatures,
     db::HirDatabase,
-    utils::{is_fn_unsafe_to_call, target_feature_is_safe_in_target},
+    next_solver::{CallableIdWrapper, TyKind, abi::Safety},
+    utils::{TargetFeatureIsSafeInTarget, is_fn_unsafe_to_call, target_feature_is_safe_in_target},
 };
 
 #[derive(Debug, Default)]
@@ -151,7 +150,6 @@ struct UnsafeVisitor<'db> {
     /// On some targets (WASM), calling safe functions with `#[target_feature]` is always safe, even when
     /// the target feature is not enabled. This flag encodes that.
     target_feature_is_safe: TargetFeatureIsSafeInTarget,
-    interner: DbInterner<'db>,
 }
 
 impl<'db> UnsafeVisitor<'db> {
@@ -186,7 +184,6 @@ impl<'db> UnsafeVisitor<'db> {
             def_target_features,
             edition,
             target_feature_is_safe,
-            interner: DbInterner::new_with(db, None, None),
         }
     }
 
@@ -289,12 +286,14 @@ impl<'db> UnsafeVisitor<'db> {
         let inside_assignment = mem::replace(&mut self.inside_assignment, false);
         match expr {
             &Expr::Call { callee, .. } => {
-                let callee = self.infer[callee].to_chalk(self.interner);
-                if let Some(func) = callee.as_fn_def(self.db) {
+                let callee = self.infer[callee];
+                if let TyKind::FnDef(CallableIdWrapper(CallableDefId::FunctionId(func)), _) =
+                    callee.kind()
+                {
                     self.check_call(current, func);
                 }
-                if let TyKind::Function(fn_ptr) = callee.kind(Interner)
-                    && fn_ptr.sig.safety == chalk_ir::Safety::Unsafe
+                if let TyKind::FnPtr(_, hdr) = callee.kind()
+                    && hdr.safety == Safety::Unsafe
                 {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
                 }
@@ -342,7 +341,7 @@ impl<'db> UnsafeVisitor<'db> {
                 }
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let TyKind::Raw(..) = &self.infer[*expr].to_chalk(self.interner).kind(Interner) {
+                if let TyKind::RawPtr(..) = self.infer[*expr].kind() {
                     self.on_unsafe_op(current.into(), UnsafetyReason::RawPtrDeref);
                 }
             }

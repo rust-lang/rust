@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{DesugaringKind, Span, sym};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -368,7 +368,9 @@ fn can_switch_ranges<'tcx>(
     // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
     if let ExprKind::Call(func, [arg]) = parent_expr.kind
         && arg.hir_id == use_ctxt.child_id
-        && func.opt_lang_path() == Some(LangItem::IntoIterIntoIter)
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
+        && parent_expr.span.is_desugaring(DesugaringKind::ForLoop)
     {
         return true;
     }
@@ -501,17 +503,18 @@ fn check_range_switch<'tcx>(
     msg: &'static str,
     operator: &str,
 ) {
-    if expr.span.can_be_used_for_suggestions()
-        && let Some(higher::Range {
+    if let Some(range) = higher::Range::hir(cx, expr)
+        && let higher::Range {
             start,
             end: Some(end),
             limits,
-        }) = higher::Range::hir(expr)
+            span,
+        } = range
+        && span.can_be_used_for_suggestions()
         && limits == kind
         && let Some(y) = predicate(cx, end)
         && can_switch_ranges(cx, expr, kind, cx.typeck_results().expr_ty(y))
     {
-        let span = expr.span;
         span_lint_and_then(cx, lint, span, msg, |diag| {
             let mut app = Applicability::MachineApplicable;
             let start = start.map_or(String::new(), |x| {
@@ -567,7 +570,8 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::Range::hir(expr)
+        span,
+    }) = higher::Range::hir(cx, expr)
         && let ty = cx.typeck_results().expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
         && let ecx = ConstEvalCtxt::new(cx)
@@ -582,7 +586,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint(
                     cx,
                     REVERSED_EMPTY_RANGES,
-                    expr.span,
+                    span,
                     "this range is reversed and using it to index a slice will panic at run-time",
                 );
             }
@@ -591,7 +595,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_then(
                 cx,
                 REVERSED_EMPTY_RANGES,
-                expr.span,
+                span,
                 "this range is empty so it will yield no values",
                 |diag| {
                     if ordering != Ordering::Equal {
@@ -603,7 +607,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
                         };
 
                         diag.span_suggestion(
-                            expr.span,
+                            span,
                             "consider using the following if you are attempting to iterate over this \
                              range in reverse",
                             format!("({end_snippet}{dots}{start_snippet}).rev()"),

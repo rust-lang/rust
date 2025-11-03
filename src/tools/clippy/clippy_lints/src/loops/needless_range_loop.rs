@@ -30,7 +30,8 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         ref end,
         limits,
-    }) = higher::Range::hir(arg)
+        span,
+    }) = higher::Range::hir(cx, arg)
         // the var must be a single name
         && let PatKind::Binding(_, canonical_id, ident, _) = pat.kind
     {
@@ -149,17 +150,14 @@ pub(super) fn check<'tcx>(
                 span_lint_and_then(
                     cx,
                     NEEDLESS_RANGE_LOOP,
-                    arg.span,
+                    span,
                     format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
                     |diag| {
                         diag.multipart_suggestion(
                             "consider using an iterator and enumerate()",
                             vec![
                                 (pat.span, format!("({}, <item>)", ident.name)),
-                                (
-                                    arg.span,
-                                    format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
-                                ),
+                                (span, format!("{indexed}.{method}().enumerate(){method_1}{method_2}")),
                             ],
                             Applicability::HasPlaceholders,
                         );
@@ -175,12 +173,12 @@ pub(super) fn check<'tcx>(
                 span_lint_and_then(
                     cx,
                     NEEDLESS_RANGE_LOOP,
-                    arg.span,
+                    span,
                     format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
                     |diag| {
                         diag.multipart_suggestion(
                             "consider using an iterator",
-                            vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
+                            vec![(pat.span, "<item>".to_string()), (span, repl)],
                             Applicability::HasPlaceholders,
                         );
                     },

@@ -13,7 +13,7 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
-// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys as jemalloc_sys;
@@ -189,7 +189,7 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/ne
 
 #[expect(clippy::too_many_lines)]
 pub fn main() {
-    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
     // about jemalloc.
     #[cfg(feature = "jemalloc")]
     {

@@ -2,7 +2,7 @@
 //@ compile-flags: -Copt-level=3
 //@ compile-flags: --target x86_64-pc-windows-msvc
 //@ needs-llvm-components: x86
-//@ add-core-stubs
+//@ add-minicore
 
 #![feature(f16, f128)]
 #![feature(no_core)]

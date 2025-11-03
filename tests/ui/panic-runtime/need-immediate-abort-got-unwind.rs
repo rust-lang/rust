@@ -2,8 +2,8 @@
 //@ needs-unwind
 //@ aux-build:needs-immediate-abort.rs
 //@ no-prefer-dynamic
-//@ add-core-stubs
-//@ core-stubs-compile-flags: -Zunstable-options -Cpanic=immediate-abort
+//@ add-minicore
+//@ minicore-compile-flags: -Zunstable-options -Cpanic=immediate-abort
 
 #![feature(no_core)]
 #![no_std]

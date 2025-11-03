@@ -167,7 +167,7 @@ before the PR is merged. They are also not allowed to be broken on master in
 the week leading up to the beta cut.
 
 [git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
-[`.gitmodules`]: https://github.com/rust-lang/rust/blob/master/.gitmodules
+[`.gitmodules`]: https://github.com/rust-lang/rust/blob/HEAD/.gitmodules
 [The Rust Reference]: https://github.com/rust-lang/reference/
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html

@@ -9,8 +9,9 @@
 ## Target maintainers
 
 [@chriswailes](https://github.com/chriswailes)
+[@jfgoog](https://github.com/jfgoog)
 [@maurer](https://github.com/maurer)
-[@mgeisler](https://github.com/mgeisler)
+[@pirama-arumuga-nainar](https://github.com/pirama-arumuga-nainar)
 
 ## Requirements
 

@@ -924,7 +924,7 @@ enum RebaseReason<X: Cx> {
     ///
     /// This either happens in the first evaluation step for the cycle head.
     /// In this case the used provisional result depends on the cycle `PathKind`.
-    /// We store this path kind to check whether the the provisional cache entry
+    /// We store this path kind to check whether the provisional cache entry
     /// we're rebasing relied on the same cycles.
     ///
     /// In later iterations cycles always return `stack_entry.provisional_result`

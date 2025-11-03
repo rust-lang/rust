@@ -7,8 +7,8 @@ use rustc_type_ir::error::TypeError;
 use rustc_type_ir::inherent::{Const as _, IntoKind, Ty as _};
 use rustc_type_ir::relate::VarianceDiagInfo;
 use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, ConstVid, InferConst, InferCtxtLike, InferTy, RegionKind,
-    TermKind, TyVid, UniverseIndex, Variance,
+    AliasRelationDirection, ConstVid, InferConst, InferCtxtLike, InferTy, RegionKind, TermKind,
+    TyVid, UniverseIndex, Variance,
 };
 use rustc_type_ir::{Interner, TypeVisitable, TypeVisitableExt};
 use tracing::{debug, instrument, warn};
@@ -21,9 +21,8 @@ use crate::next_solver::infer::unify_key::ConstVariableValue;
 use crate::next_solver::infer::{InferCtxt, relate};
 use crate::next_solver::util::MaxUniverse;
 use crate::next_solver::{
-    AliasTy, Binder, ClauseKind, Const, ConstKind, DbInterner, GenericArgs, PredicateKind,
-    ProjectionPredicate, Region, SolverDefId, Term, TermVid, Ty, TyKind, TypingMode,
-    UnevaluatedConst,
+    AliasTy, Binder, ClauseKind, Const, ConstKind, DbInterner, GenericArgs, PredicateKind, Region,
+    SolverDefId, Term, TermVid, Ty, TyKind, TypingMode, UnevaluatedConst,
 };
 
 impl<'db> InferCtxt<'db> {

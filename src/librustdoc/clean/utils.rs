@@ -253,7 +253,6 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
         hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
     join_path_idents(segments.iter().map(|seg| seg.ident))

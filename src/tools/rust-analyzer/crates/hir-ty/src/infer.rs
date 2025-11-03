@@ -55,29 +55,24 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    ImplTraitId, IncorrectGenericsLenKind, Interner, PathLoweringDiagnostic, TargetFeatures,
-    TraitEnvironment,
+    ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
     db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
-    generics::Generics,
     infer::{
         coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
         expr::ExprIsRead,
         unify::InferenceTable,
     },
-    lower::diagnostics::TyLoweringDiagnostic,
-    lower_nextsolver::{ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind},
+    lower::{
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
+    },
     mir::MirSpan,
     next_solver::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region, Ty, TyKind,
         Tys,
         abi::Safety,
         fold::fold_tys,
-        infer::{
-            DefineOpaqueTypes,
-            traits::{Obligation, ObligationCause},
-        },
-        mapping::{ChalkToNextSolver, NextSolverToChalk},
+        infer::traits::{Obligation, ObligationCause},
     },
     traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
@@ -164,31 +159,6 @@ pub(crate) fn infer_cycle_result(
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_with(db, None, None), ErrorGuaranteed))
     })
-}
-
-/// Fully normalize all the types found within `ty` in context of `owner` body definition.
-///
-/// This is appropriate to use only after type-check: it assumes
-/// that normalization will succeed, for example.
-#[tracing::instrument(level = "debug", skip(db))]
-pub(crate) fn normalize(
-    db: &dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment<'_>>,
-    ty: crate::Ty,
-) -> crate::Ty {
-    // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
-    // works for the type case, so we check array unconditionally. Remove the array part
-    // when the bug in chalk becomes fixed.
-    if !ty.data(Interner).flags.intersects(crate::TypeFlags::HAS_PROJECTION)
-        && !matches!(ty.kind(Interner), crate::TyKind::Array(..))
-    {
-        return ty;
-    }
-    let mut table = unify::InferenceTable::new(db, trait_env);
-
-    let ty_with_vars = table.normalize_associated_types_in(ty.to_nextsolver(table.interner()));
-    table.select_obligations_where_possible();
-    table.resolve_completely(ty_with_vars).to_chalk(table.interner())
 }
 
 /// Binding modes inferred for patterns.
@@ -789,8 +759,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
     target_features: OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
-    generic_def: GenericDefId,
-    generics: OnceCell<Generics>,
+    pub(crate) generic_def: GenericDefId,
     table: unify::InferenceTable<'db>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
@@ -899,7 +868,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             return_ty: types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
-            generics: OnceCell::new(),
             table,
             tuple_field_accesses_rev: Default::default(),
             resume_yield_tys: None,
@@ -926,10 +894,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             inside_assignment: false,
             diagnostics: Diagnostics::default(),
         }
-    }
-
-    pub(crate) fn generics(&self) -> &Generics {
-        self.generics.get_or_init(|| crate::generics::generics(self.db, self.generic_def))
     }
 
     #[inline]
@@ -1159,7 +1123,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     GenericArgs::for_item_with_defaults(
                         self.interner(),
                         va_list.into(),
-                        |_, _, id, _| self.table.next_var_for_param(id),
+                        |_, id, _| self.table.next_var_for_param(id),
                     ),
                 ),
                 None => self.err_ty(),
@@ -1195,7 +1159,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     },
                 );
                 let return_ty = self.insert_type_vars(return_ty);
-                if let Some(rpits) = self.db.return_type_impl_traits_ns(func) {
+                if let Some(rpits) = self.db.return_type_impl_traits(func) {
                     let mut mode = ImplTraitReplacingMode::ReturnPosition(FxHashSet::default());
                     let result = self.insert_inference_vars_for_impl_trait(return_ty, &mut mode);
                     if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
@@ -1263,14 +1227,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                     if matches!(mode, ImplTraitReplacingMode::TypeAlias) {
                         // RPITs don't have `tait_coercion_table`, so use inserted inference
                         // vars for them.
-                        if let Some(ty) =
-                            self.result.type_of_rpit.get(idx.to_nextsolver(self.interner()))
-                        {
+                        if let Some(ty) = self.result.type_of_rpit.get(idx) {
                             return *ty;
                         }
                         return ty;
                     }
-                    (self.db.return_type_impl_traits_ns(def), idx)
+                    (self.db.return_type_impl_traits(def), idx)
                 }
                 ImplTraitId::TypeAliasImplTrait(def, idx) => {
                     if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
@@ -1279,17 +1241,15 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                         taits.insert(ty);
                         return ty;
                     }
-                    (self.db.type_alias_impl_traits_ns(def), idx)
+                    (self.db.type_alias_impl_traits(def), idx)
                 }
-                _ => unreachable!(),
             };
             let Some(impl_traits) = impl_traits else {
                 return ty;
             };
-            let bounds = (*impl_traits).as_ref().map_bound(|its| {
-                its.impl_traits[idx.to_nextsolver(self.interner())].predicates.as_slice()
-            });
-            let var = match self.result.type_of_rpit.entry(idx.to_nextsolver(self.interner())) {
+            let bounds =
+                (*impl_traits).as_ref().map_bound(|its| its.impl_traits[idx].predicates.as_slice());
+            let var = match self.result.type_of_rpit.entry(idx) {
                 Entry::Occupied(entry) => return *entry.get(),
                 Entry::Vacant(entry) => *entry.insert(self.table.next_ty_var()),
             };
@@ -1640,8 +1600,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             match ty.kind() {
                 TyKind::Adt(adt_def, substs) => match adt_def.def_id().0 {
                     AdtId::StructId(struct_id) => {
-                        match self.db.field_types_ns(struct_id.into()).values().next_back().copied()
-                        {
+                        match self.db.field_types(struct_id.into()).values().next_back().copied() {
                             Some(field) => {
                                 ty = field.instantiate(self.interner(), substs);
                             }
@@ -1702,7 +1661,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             .table
             .infer_ctxt
             .at(&ObligationCause::new(), self.table.trait_env.env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .eq(expected, actual)
             .map(|infer_ok| self.table.register_infer_ok(infer_ok));
         if let Err(_err) = result {
             // FIXME: Emit diagnostic.

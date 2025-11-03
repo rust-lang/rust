@@ -748,6 +748,7 @@ define_Conf! {
         io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
+        len_zero,
         lines_filter_map_ok,
         manual_abs_diff,
         manual_bits,

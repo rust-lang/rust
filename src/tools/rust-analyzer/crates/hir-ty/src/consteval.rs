@@ -5,75 +5,28 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    EnumVariantId, GeneralConstId,
-    expr_store::{Body, HygieneId, path::Path},
+    EnumVariantId, GeneralConstId, HasModule, StaticId,
+    expr_store::Body,
     hir::{Expr, ExprId},
-    resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
 };
-use hir_def::{HasModule, StaticId};
 use hir_expand::Lookup;
-use rustc_type_ir::{UnevaluatedConst, inherent::IntoKind};
-use stdx::never;
+use rustc_type_ir::inherent::IntoKind;
 use triomphe::Arc;
 
 use crate::{
-    MemoryMap, TraitEnvironment,
+    LifetimeElisionKind, MemoryMap, TraitEnvironment, TyLoweringContext,
     db::HirDatabase,
     display::DisplayTarget,
-    generics::Generics,
     infer::InferenceContext,
     mir::{MirEvalError, MirLowerError},
     next_solver::{
         Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
-        ParamConst, SolverDefId, Ty, ValueConst,
+        SolverDefId, Ty, ValueConst,
     },
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16};
-
-pub(crate) fn path_to_const<'a, 'g>(
-    db: &'a dyn HirDatabase,
-    resolver: &Resolver<'a>,
-    path: &Path,
-    args: impl FnOnce() -> &'g Generics,
-    _expected_ty: Ty<'a>,
-) -> Option<Const<'a>> {
-    let interner = DbInterner::new_with(db, Some(resolver.krate()), None);
-    match resolver.resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT) {
-        Some(ValueNs::GenericParam(p)) => {
-            let args = args();
-            match args
-                .type_or_const_param(p.into())
-                .and_then(|(idx, p)| p.const_param().map(|p| (idx, p.clone())))
-            {
-                Some((idx, _param)) => {
-                    Some(Const::new_param(interner, ParamConst { index: idx as u32, id: p }))
-                }
-                None => {
-                    never!(
-                        "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
-                        args,
-                        path,
-                        p
-                    );
-                    None
-                }
-            }
-        }
-        Some(ValueNs::ConstId(c)) => {
-            let args = GenericArgs::new_from_iter(interner, []);
-            Some(Const::new(
-                interner,
-                rustc_type_ir::ConstKind::Unevaluated(UnevaluatedConst::new(
-                    SolverDefId::ConstId(c),
-                    args,
-                )),
-            ))
-        }
-        _ => None,
-    }
-}
 
 pub fn unknown_const<'db>(_ty: Ty<'db>) -> Const<'db> {
     Const::new(DbInterner::conjure(), rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
@@ -280,8 +233,14 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
         return unknown_const(infer[expr]);
     }
     if let Expr::Path(p) = &ctx.body[expr] {
-        let resolver = &ctx.resolver;
-        if let Some(c) = path_to_const(ctx.db, resolver, p, || ctx.generics(), infer[expr]) {
+        let mut ctx = TyLoweringContext::new(
+            ctx.db,
+            &ctx.resolver,
+            ctx.body,
+            ctx.generic_def,
+            LifetimeElisionKind::Infer,
+        );
+        if let Some(c) = ctx.path_to_const(p) {
             return c;
         }
     }

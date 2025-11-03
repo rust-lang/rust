@@ -201,6 +201,7 @@ mod handlers {
     mod qualify_path;
     mod raw_string;
     mod remove_dbg;
+    mod remove_else_branches;
     mod remove_mut;
     mod remove_parentheses;
     mod remove_underscore;
@@ -284,6 +285,7 @@ mod handlers {
             extract_type_alias::extract_type_alias,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
+            flip_binexpr::flip_range_expr,
             flip_comma::flip_comma,
             flip_or_pattern::flip_or_pattern,
             flip_trait_bound::flip_trait_bound,
@@ -342,6 +344,7 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            remove_else_branches::remove_else_branches,
             remove_parentheses::remove_parentheses,
             remove_underscore::remove_underscore,
             remove_unused_imports::remove_unused_imports,

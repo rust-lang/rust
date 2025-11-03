@@ -9,7 +9,7 @@ use clippy_utils::{paths, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -332,12 +332,12 @@ fn parse_iter_usage<'tcx>(
     let (unwrap_kind, span) = if let Some((_, Node::Expr(e))) = iter.next() {
         match e.kind {
             ExprKind::Call(
-                Expr {
-                    kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)),
+                &Expr {
+                    kind: ExprKind::Path(qpath),
                     ..
                 },
                 [_],
-            ) => {
+            ) if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch) => {
                 let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {
                     (Some(UnwrapKind::QuestionMark), parent_span)

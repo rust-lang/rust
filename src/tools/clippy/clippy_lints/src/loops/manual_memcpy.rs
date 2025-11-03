@@ -28,7 +28,8 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::Range::hir(arg)
+        span: _,
+    }) = higher::Range::hir(cx, arg)
         // the var must be a single name
         && let PatKind::Binding(_, canonical_id, _, _) = pat.kind
     {

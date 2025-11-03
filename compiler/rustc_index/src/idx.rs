@@ -135,7 +135,7 @@ impl<I: Idx, T> IntoSliceIdx<I, [T]> for core::range::RangeInclusive<I> {
     }
 }
 
-#[cfg(all(feature = "nightly", not(bootstrap)))]
+#[cfg(feature = "nightly")]
 impl<I: Idx, T> IntoSliceIdx<I, [T]> for core::range::RangeToInclusive<I> {
     type Output = core::range::RangeToInclusive<usize>;
     #[inline]

@@ -1,9 +1,8 @@
 //! Fold impls for the next-trait-solver.
 
 use rustc_type_ir::{
-    BoundVar, DebruijnIndex, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
-    inherent::{IntoKind, Region as _},
+    BoundVarIndexKind, DebruijnIndex, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, inherent::IntoKind,
 };
 
 use crate::next_solver::BoundConst;
@@ -55,7 +54,7 @@ pub(crate) struct BoundVarReplacer<'db, D> {
 }
 
 impl<'db, D: BoundVarReplacerDelegate<'db>> BoundVarReplacer<'db, D> {
-    pub fn new(tcx: DbInterner<'db>, delegate: D) -> Self {
+    pub(crate) fn new(tcx: DbInterner<'db>, delegate: D) -> Self {
         BoundVarReplacer { interner: tcx, current_index: DebruijnIndex::ZERO, delegate }
     }
 }
@@ -80,7 +79,9 @@ where
 
     fn fold_ty(&mut self, t: Ty<'db>) -> Ty<'db> {
         match t.kind() {
-            TyKind::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
+            TyKind::Bound(BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(DebruijnIndex::ZERO));
                 rustc_type_ir::shift_vars(self.interner, ty, self.current_index.as_u32())
@@ -97,9 +98,12 @@ where
 
     fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
         match r.kind() {
-            RegionKind::ReBound(debruijn, br) if debruijn == self.current_index => {
+            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), br)
+                if debruijn == self.current_index =>
+            {
                 let region = self.delegate.replace_region(br);
-                if let RegionKind::ReBound(debruijn1, br) = region.kind() {
+                if let RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn1), br) = region.kind()
+                {
                     // If the callback returns a bound region,
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
@@ -116,7 +120,9 @@ where
 
     fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
         match ct.kind() {
-            ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
+            ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), bound_const)
+                if debruijn == self.current_index =>
+            {
                 let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(DebruijnIndex::ZERO));
                 rustc_type_ir::shift_vars(self.interner, ct, self.current_index.as_u32())

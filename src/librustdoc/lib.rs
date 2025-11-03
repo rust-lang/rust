@@ -60,7 +60,7 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate test;
 
-// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys as jemalloc_sys;
@@ -123,7 +123,7 @@ mod visit_ast;
 mod visit_lib;
 
 pub fn main() {
-    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
     // about jemalloc.
     #[cfg(feature = "jemalloc")]
     {
@@ -567,7 +567,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
-            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]",
+            "[toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
@@ -586,7 +586,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "Include the memory layout of types in the docs",
             "",
         ),
-        opt(Unstable, Flag, "", "nocapture", "Don't capture stdout and stderr of tests", ""),
+        opt(Unstable, Flag, "", "no-capture", "Don't capture stdout and stderr of tests", ""),
         opt(
             Unstable,
             Flag,

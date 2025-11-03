@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x64 x64_win i686 aarch64 arm riscv32 riscv64
 //
 //@ [x64] needs-llvm-components: x86

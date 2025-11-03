@@ -104,4 +104,4 @@ triage.**
 
 [rustbot]: https://github.com/rust-lang/triagebot/
 [`ping`]: https://forge.rust-lang.org/triagebot/pinging.html
-[`triagebot.toml`]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+[`triagebot.toml`]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml

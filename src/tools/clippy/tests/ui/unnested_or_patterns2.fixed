@@ -3,7 +3,7 @@
 #![allow(
     clippy::cognitive_complexity,
     clippy::match_ref_pats,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::manual_range_patterns
 )]
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]

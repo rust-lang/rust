@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("S390x Linux (kernel 3.2, musl 1.2.3)".into()),
+            description: Some("S390x Linux (kernel 3.2, musl 1.2.5)".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

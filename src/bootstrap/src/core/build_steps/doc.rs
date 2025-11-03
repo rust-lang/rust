@@ -709,12 +709,12 @@ impl Step for Std {
             if builder.paths.iter().any(|path| path.ends_with("library")) {
                 // For `x.py doc library --open`, open `std` by default.
                 let index = out.join("std").join("index.html");
-                builder.open_in_browser(index);
+                builder.maybe_open_in_browser::<Self>(index);
             } else {
                 for requested_crate in crates {
                     if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
                         let index = out.join(requested_crate).join("index.html");
-                        builder.open_in_browser(index);
+                        builder.maybe_open_in_browser::<Self>(index);
                         break;
                     }
                 }

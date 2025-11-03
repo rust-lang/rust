@@ -35,7 +35,7 @@ use crate::{
 
 pub(super) fn type_info_of(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
     edition: Edition,
     display_target: DisplayTarget,
@@ -49,7 +49,7 @@ pub(super) fn type_info_of(
 
 pub(super) fn closure_expr(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     c: ast::ClosureExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -60,7 +60,7 @@ pub(super) fn closure_expr(
 
 pub(super) fn try_expr(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     try_expr: &ast::TryExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -155,7 +155,7 @@ pub(super) fn try_expr(
 
 pub(super) fn deref_expr(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     deref_expr: &ast::PrefixExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -219,7 +219,7 @@ pub(super) fn deref_expr(
 
 pub(super) fn underscore(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     token: &SyntaxToken,
     edition: Edition,
     display_target: DisplayTarget,
@@ -263,7 +263,7 @@ pub(super) fn underscore(
 
 pub(super) fn keyword(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     token: &SyntaxToken,
     edition: Edition,
     display_target: DisplayTarget,
@@ -290,7 +290,7 @@ pub(super) fn keyword(
 /// i.e. `let S {a, ..} = S {a: 1, b: 2}`
 pub(super) fn struct_rest_pat(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     pattern: &ast::RecordPat,
     edition: Edition,
     display_target: DisplayTarget,
@@ -371,7 +371,7 @@ pub(super) fn process_markup(
     def: Definition,
     markup: &Markup,
     markup_range_map: Option<DocsRangeMap>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
 ) -> Markup {
     let markup = markup.as_str();
     let markup = if config.links_in_hover {
@@ -481,7 +481,7 @@ pub(super) fn definition(
     macro_arm: Option<u32>,
     render_extras: bool,
     subst_types: Option<&Vec<(Symbol, Type<'_>)>>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> (Markup, Option<DocsRangeMap>) {
@@ -979,7 +979,7 @@ fn render_notable_trait(
 
 fn type_info(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     ty: TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
@@ -1038,7 +1038,7 @@ fn type_info(
 
 fn closure_ty(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     TypeInfo { original, adjusted }: &TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
