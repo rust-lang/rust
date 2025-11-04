@@ -1886,6 +1886,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::Dynamic(_, _) = trait_pred.self_ty().skip_binder().kind() else {
             return false;
         };
+        if let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. }) =
+            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+            && let hir::FnRetTy::Return(ty) = fn_sig.decl.output
+            && let hir::TyKind::Path(qpath) = ty.kind
+            && let hir::QPath::Resolved(None, path) = qpath
+            && let Res::Def(DefKind::TyAlias, def_id) = path.res
+        {
+            // Do not suggest
+            // type T = dyn Trait;
+            // fn foo() -> impl T { .. }
+            err.span_note(self.tcx.def_span(def_id), "this type alias is unsized");
+            return false;
+        }
 
         err.code(E0746);
         err.primary_message("return type cannot be a trait object without pointer indirection");
