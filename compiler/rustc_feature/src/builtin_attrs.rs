@@ -132,28 +132,45 @@ pub struct AttributeTemplate {
     pub docs: Option<&'static str>,
 }
 
+pub enum AttrSuggestionStyle {
+    /// The suggestion is styled for a normal attribute.
+    /// The `AttrStyle` determines whether this is an inner or outer attribute.
+    Attribute(AttrStyle),
+    /// The suggestion is styled for an attribute embedded into another attribute.
+    /// For example, attributes inside `#[cfg_attr(true, attr(...)]`.
+    EmbeddedAttribute,
+    /// The suggestion is styled for macros that are parsed with attribute parsers.
+    /// For example, the `cfg!(predicate)` macro.
+    Macro,
+}
+
 impl AttributeTemplate {
     pub fn suggestions(
         &self,
-        style: Option<AttrStyle>,
+        style: AttrSuggestionStyle,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
-        let mut suggestions = vec![];
-        let (start, end) = match style {
-            Some(AttrStyle::Outer) => ("#[", "]"),
-            Some(AttrStyle::Inner) => ("#![", "]"),
-            None => ("", ""),
+        let (start, macro_call, end) = match style {
+            AttrSuggestionStyle::Attribute(AttrStyle::Outer) => ("#[", "", "]"),
+            AttrSuggestionStyle::Attribute(AttrStyle::Inner) => ("#![", "", "]"),
+            AttrSuggestionStyle::Macro => ("", "!", ""),
+            AttrSuggestionStyle::EmbeddedAttribute => ("", "", ""),
         };
+
+        let mut suggestions = vec![];
+
         if self.word {
+            debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             suggestions.push(format!("{start}{name}{end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!("{start}{name}({descr}){end}"));
+                suggestions.push(format!("{start}{name}{macro_call}({descr}){end}"));
             }
         }
         suggestions.extend(self.one_of.iter().map(|&word| format!("{start}{name}({word}){end}")));
         if let Some(descr) = self.name_value_str {
+            debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
                 suggestions.push(format!("{start}{name} = \"{descr}\"{end}"));
             }

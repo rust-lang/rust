@@ -2,7 +2,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, NodeId, ast, token};
 use rustc_errors::{Applicability, PResult};
-use rustc_feature::{AttributeTemplate, Features, template};
+use rustc_feature::{AttrSuggestionStyle, AttributeTemplate, Features, template};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, RustcVersion};
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -324,8 +324,8 @@ pub fn parse_cfg_attr(
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
-                    let suggestions =
-                        CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr);
+                    let suggestions = CFG_ATTR_TEMPLATE
+                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr);
                     e.with_span_suggestions(
                         cfg_attr.span,
                         "must be of the form",
@@ -356,7 +356,8 @@ pub fn parse_cfg_attr(
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path),
                 description: ParsedDescription::Attribute,
                 reason,
-                suggestions: CFG_ATTR_TEMPLATE.suggestions(Some(cfg_attr.style), sym::cfg_attr),
+                suggestions: CFG_ATTR_TEMPLATE
+                    .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
             });
         }
     }
