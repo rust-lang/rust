@@ -6,10 +6,10 @@ LL |     g(issue_67893::run())
    |     |
    |     required by a bound introduced by this call
    |
-  ::: $DIR/auxiliary/issue_67893.rs:9:1
+  ::: $DIR/auxiliary/issue_67893.rs:9:19
    |
 LL | pub async fn run() {
-   | ------------------ within this `impl Future<Output = ()>`
+   |                   - within this `impl Future<Output = ()>`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `std::sync::MutexGuard<'_, ()>`
 note: required because it's used within this `async` fn body

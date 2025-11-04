@@ -18,10 +18,10 @@ LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^ expected `{async fn body of operation()}`, got `FutNothing<'_>`
    |
 note: previous use here
-  --> $DIR/hkl_forbidden4.rs:12:1
+  --> $DIR/hkl_forbidden4.rs:12:35
    |
 LL | async fn operation(_: &mut ()) -> () {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ^^
 
 error: aborting due to 2 previous errors
 

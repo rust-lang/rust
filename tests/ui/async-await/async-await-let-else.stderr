@@ -22,7 +22,7 @@ error[E0277]: `Rc<()>` cannot be sent between threads safely
   --> $DIR/async-await-let-else.rs:47:13
    |
 LL | async fn foo2(x: Option<bool>) {
-   | ------------------------------ within this `impl Future<Output = ()>`
+   |                               - within this `impl Future<Output = ()>`
 ...
 LL |     is_send(foo2(Some(true)));
    |     ------- ^^^^^^^^^^^^^^^^ `Rc<()>` cannot be sent between threads safely

@@ -8,10 +8,10 @@ LL |     async fn foo(self: &dyn Foo) {
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/inference_var_self_argument.rs:5:5
+  --> $DIR/inference_var_self_argument.rs:5:33
    |
 LL |     async fn foo(self: &dyn Foo) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |                                 ^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
