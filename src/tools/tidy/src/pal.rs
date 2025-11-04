@@ -68,14 +68,20 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/io/error.rs", // Repr unpacked needed for UEFI
 ];
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("pal").path(path));
+pub fn check(library_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("pal").path(library_path));
+
+    let root_path = library_path.parent().unwrap();
+    // Let's double-check that this is the root path by making sure it has `x.py`.
+    assert!(root_path.join("x.py").is_file());
 
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
+    walk(library_path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
+        // We don't want the absolute path to matter, so make it relative.
+        let file = file.strip_prefix(root_path).unwrap();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {
             return;
