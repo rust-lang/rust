@@ -308,10 +308,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             .or_else(|| get_simple_function_f128(self, name))
             .or_else(|| get_simple_function_f128_2args(self, name));
 
-        // FIXME(tempdragon): Re-enable `clippy::suspicious_else_formatting` if the following issue is solved:
-        // https://github.com/rust-lang/rust-clippy/issues/12497
-        // and leave `else if use_integer_compare` to be placed "as is".
-        #[allow(clippy::suspicious_else_formatting)]
         let value = match name {
             _ if simple.is_some() => {
                 let func = simple.expect("simple intrinsic function");

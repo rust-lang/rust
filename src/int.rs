@@ -83,12 +83,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let a_size = a_type.get_size();
                 let b_size = b_type.get_size();
                 match a_size.cmp(&b_size) {
-                    std::cmp::Ordering::Less => {
-                        let a = self.context.new_cast(self.location, a, b_type);
-                        a >> b
-                    }
                     std::cmp::Ordering::Equal => a >> b,
-                    std::cmp::Ordering::Greater => {
+                    _ => {
+                        // NOTE: it is OK to cast even if b has a type bigger than a because b has
+                        // been masked by codegen_ssa before calling Builder::lshr or
+                        // Builder::ashr.
                         let b = self.context.new_cast(self.location, b, a_type);
                         a >> b
                     }
@@ -692,12 +691,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let a_size = a_type.get_size();
                 let b_size = b_type.get_size();
                 match a_size.cmp(&b_size) {
-                    std::cmp::Ordering::Less => {
-                        let a = self.context.new_cast(self.location, a, b_type);
-                        a << b
-                    }
                     std::cmp::Ordering::Equal => a << b,
-                    std::cmp::Ordering::Greater => {
+                    _ => {
+                        // NOTE: it is OK to cast even if b has a type bigger than a because b has
+                        // been masked by codegen_ssa before calling Builder::shl.
                         let b = self.context.new_cast(self.location, b, a_type);
                         a << b
                     }
