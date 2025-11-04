@@ -40,7 +40,7 @@ fn f() {
         asm!("", out("r13") _);
         //~^ ERROR cannot use register `r13`: r13 is a reserved register on this target
         asm!("", out("r29") _);
-        //~^ ERROR invalid register `r29`: r29 is used internally by LLVM and cannot be used as an operand for inline asm
+        //[powerpc]~^ ERROR cannot use register `r29`: r29 is used internally by LLVM and cannot be used as an operand for inline asm
         asm!("", out("r30") _);
         //~^ ERROR invalid register `r30`: r30 is used internally by LLVM and cannot be used as an operand for inline asm
         asm!("", out("fp") _);
