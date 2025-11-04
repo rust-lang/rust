@@ -480,6 +480,7 @@ impl Write for &mut [u8] {
 impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.try_reserve(buf.len())?;
         self.extend_from_slice(buf);
         Ok(buf.len())
     }
@@ -487,7 +488,7 @@ impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let len = bufs.iter().map(|b| b.len()).sum();
-        self.reserve(len);
+        self.try_reserve(len)?;
         for buf in bufs {
             self.extend_from_slice(buf);
         }
@@ -501,6 +502,7 @@ impl<A: Allocator> Write for Vec<u8, A> {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.try_reserve(buf.len())?;
         self.extend_from_slice(buf);
         Ok(())
     }
