@@ -42,7 +42,7 @@ pub fn sockaddr_un(path: &Path) -> io::Result<(c::sockaddr_un, c_int)> {
     Ok((addr, len as _))
 }
 fn sun_path_offset(addr: &c::sockaddr_un) -> usize {
-    offset_of!(c::sockaddr_un, sun_path)
+    offset_of!(c::sockaddr_un, addr.sun_path)
 }
 #[allow(dead_code)]
 pub struct SocketAddr {
