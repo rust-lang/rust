@@ -128,3 +128,4 @@ impl<'tcx> LateLintPass<'tcx> for ImplDefaultZeroSizeNonDefaultArrays {
         }
     }
 }
+}
