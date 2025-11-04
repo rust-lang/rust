@@ -19,18 +19,18 @@ fn main() {
 
     // Call
     string().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+    //~^ ERROR dangling pointer
 
     // MethodCall
     "hello".to_string().as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+    //~^ ERROR dangling pointer
 
     // Tup
     // impossible
 
     // Binary
     (string() + "hello").as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+    //~^ ERROR dangling pointer
 
     // Path
     {
@@ -66,7 +66,7 @@ fn main() {
     // If
     {
         (if true { String::new() } else { "hello".into() }).as_ptr();
-        //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+        //~^ ERROR dangling pointer
     }
 
     // Loop
@@ -75,7 +75,7 @@ fn main() {
             break String::new();
         })
         .as_ptr();
-        //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+        //~^ ERROR dangling pointer
     }
 
     // Match
@@ -84,7 +84,7 @@ fn main() {
             s => s,
         }
         .as_ptr();
-        //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+        //~^ ERROR dangling pointer
     }
 
     // Closure
@@ -92,7 +92,7 @@ fn main() {
 
     // Block
     { string() }.as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `String` will be dropped
+    //~^ ERROR dangling pointer
 
     // Assign, AssignOp
     // impossible
@@ -132,5 +132,5 @@ fn main() {
 
     // Macro
     vec![0u8].as_ptr();
-    //~^ ERROR a dangling pointer will be produced because the temporary `Vec<u8>` will be dropped
+    //~^ ERROR dangling pointer
 }
