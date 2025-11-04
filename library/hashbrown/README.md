@@ -51,6 +51,7 @@ use hashbrown::HashMap;
 let mut map = HashMap::new();
 map.insert(1, "one");
 ```
+
 ## Flags
 This crate has the following Cargo features:
 
