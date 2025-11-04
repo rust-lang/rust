@@ -4,6 +4,8 @@
 // Reference: Clang CSKY lowering code
 // https://github.com/llvm/llvm-project/blob/4a074f32a6914f2a8d7215d78758c24942dddc3d/clang/lib/CodeGen/Targets/CSKY.cpp#L76-L162
 
+use rustc_abi::TyAbiInterface;
+
 use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 
 fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
@@ -27,9 +29,16 @@ fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if !arg.layout.is_sized() {
         // Not touching this...
+        return;
+    }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
         return;
     }
     // For argument type, the first 4*XLen parts of aggregate will be passed
@@ -47,7 +56,10 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }
@@ -56,6 +68,6 @@ pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(arg);
+        classify_arg(cx, arg);
     }
 }

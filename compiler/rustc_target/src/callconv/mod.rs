@@ -677,30 +677,30 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
-            "avr" => avr::compute_abi_info(self),
+            "avr" => avr::compute_abi_info(cx, self),
             "loongarch32" | "loongarch64" => loongarch::compute_abi_info(cx, self),
-            "m68k" => m68k::compute_abi_info(self),
-            "csky" => csky::compute_abi_info(self),
+            "m68k" => m68k::compute_abi_info(cx, self),
+            "csky" => csky::compute_abi_info(cx, self),
             "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
             "mips64" | "mips64r6" => mips64::compute_abi_info(cx, self),
             "powerpc" => powerpc::compute_abi_info(cx, self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
-            "msp430" => msp430::compute_abi_info(self),
+            "msp430" => msp430::compute_abi_info(cx, self),
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
                 if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
-                    nvptx64::compute_abi_info(self)
+                    nvptx64::compute_abi_info(cx, self)
                 }
             }
-            "hexagon" => hexagon::compute_abi_info(self),
+            "hexagon" => hexagon::compute_abi_info(cx, self),
             "xtensa" => xtensa::compute_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => wasm::compute_abi_info(cx, self),
-            "bpf" => bpf::compute_abi_info(self),
+            "bpf" => bpf::compute_abi_info(cx, self),
             arch => panic!("no lowering implemented for {arch}"),
         }
     }
