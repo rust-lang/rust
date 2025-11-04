@@ -19,7 +19,7 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
@@ -605,32 +605,70 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().predicates_of(def_id);
 }
 
-pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
+pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
+    // Some of the logic below relies on `i128` being able to hold all c_int and c_uint values.
+    assert!(tcx.sess.target.c_int_width < 128);
+    let mut min_discr = i128::MAX;
+    let mut max_discr = i128::MIN;
 
     // fill the discriminant values and field types
     for variant in def.variants() {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
-        prev_discr = Some(
-            if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
-                def.eval_explicit_discr(tcx, const_def_id).ok()
-            } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
-                Some(discr)
-            } else {
+        let cur_discr = if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
+            def.eval_explicit_discr(tcx, const_def_id).ok()
+        } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
+            Some(discr)
+        } else {
+            let span = tcx.def_span(variant.def_id);
+            tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+                span,
+                discr: prev_discr.unwrap().to_string(),
+                item_name: tcx.item_ident(variant.def_id),
+                wrapped_discr: wrapped_discr.to_string(),
+            });
+            None
+        }
+        .unwrap_or(wrapped_discr);
+
+        if def.repr().c() {
+            let c_int = Size::from_bits(tcx.sess.target.c_int_width);
+            let c_uint_max = i128::try_from(c_int.unsigned_int_max()).unwrap();
+            // c_int is a signed type, so get a proper signed version of the discriminant
+            let discr_size = cur_discr.ty.int_size_and_signed(tcx).0;
+            let discr_val = discr_size.sign_extend(cur_discr.val);
+            min_discr = min_discr.min(discr_val);
+            max_discr = max_discr.max(discr_val);
+
+            // The discriminant range must either fit into c_int or c_uint.
+            if !(min_discr >= c_int.signed_int_min() && max_discr <= c_int.signed_int_max())
+                && !(min_discr >= 0 && max_discr <= c_uint_max)
+            {
                 let span = tcx.def_span(variant.def_id);
-                tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+                let msg = if discr_val < c_int.signed_int_min() || discr_val > c_uint_max {
+                    "`repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`"
+                } else if discr_val < 0 {
+                    "`repr(C)` enum discriminant does not fit into C `unsigned int`, and a previous discriminant does not fit into C `int`"
+                } else {
+                    "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
+                };
+                tcx.node_span_lint(
+                    rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
+                    tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    discr: prev_discr.unwrap().to_string(),
-                    item_name: tcx.item_ident(variant.def_id),
-                    wrapped_discr: wrapped_discr.to_string(),
-                });
-                None
+                    |d| {
+                        d.primary_message(msg)
+                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
+                    }
+                );
             }
-            .unwrap_or(wrapped_discr),
-        );
+        }
+
+        prev_discr = Some(cur_discr);
 
         for f in &variant.fields {
             tcx.ensure_ok().generics_of(f.did);
