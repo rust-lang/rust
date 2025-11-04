@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplDefaultZeroSizeNonDefaultArrays {
                     let trait_id = binder.skip_binder().trait_ref();
                     if trait_id == default_id {
                         if let ty::GenericArgKind::Type(ty) = binder.skip_binder().trait_ref().args().as_slice()[0].kind() {
-                            if let ty::tyKind::Array(t_ty, len_const) = ty.kind()
+                            if let ty::tyKind::Array(t_ty, len_const) = ty.kind() {
                                 if let Some(0) = len_const.try_eval_usize(cx.tcx, cx.param_env) {
                                     if !cx.tcx.infer_ctxt().type_implements_trait(default_id, [t_ty], cx.param_env)  {
                                         cx.struct_span_lint(ARRAY_TRAIT_BOUND, item.span, |lint| {
