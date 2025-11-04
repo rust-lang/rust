@@ -4,7 +4,7 @@
 
 While bugs are unfortunate, they're a reality in software.
 We can't fix what we don't know about, so please report liberally.
-If you're not sure if something is a bug or not, feel free to file a bug anyway.
+If you're not sure if something is a bug, feel free to open an issue anyway.
 
 **If you believe reporting your bug publicly represents a security risk to Rust users,
 please follow our [instructions for reporting security vulnerabilities][vuln]**.
@@ -77,12 +77,12 @@ Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something, or
 smaller user-facing changes.
 
-**When in doubt, ask on [Zulip].
+**When in doubt, ask [on Zulip].
 It would be a shame to put a lot of work
 into a PR that ends up not getting merged!** [See this document][mcpinfo] for more info on MCPs.
 
 [mcpinfo]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#how-do-i-submit-an-mcp
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[on Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ### Performance
 
@@ -109,10 +109,10 @@ The numbers are reported
 
 Pull requests (or PRs for short) are the primary mechanism we use to change Rust.
 GitHub itself has some [great documentation][about-pull-requests] on using the Pull Request feature.
-We use the "fork and pull" model [described here][development-models],
+We use the ["fork and pull" model][development-models],
 where contributors push changes to their personal fork and create pull requests to
 bring those changes into the source repository.
-We have more info about how to use git when contributing to Rust under [the git section](./git.md).
+We have [a chapter](git.md) on how to use Git when contributing to Rust.
 
 > **Advice for potentially large, complex, cross-cutting and/or very domain-specific changes**
 >
@@ -178,22 +178,19 @@ to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
 can add an `r?` to the pull request description or in a comment.
-For example, if you want to ask a review to @awesome-reviewer, add
+For example, if you want to ask a review by @awesome-reviewer,
+add the following to the end of the pull request description:
 
-    r?
-    @awesome-reviewer
+    r? @awesome-reviewer
 
-to the end of the pull request description, and [@rustbot] will assign
-them instead of a random person.
+[@rustbot] will then assign the PR to that reviewer instead of a random person.
 This is entirely optional.
 
-You can also assign a random reviewer from a specific team by writing `r?
-rust-lang/groupname`.
+You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
 As an example, if you were making a diagnostics change,
-then you could get a reviewer from the diagnostics team by adding:
+you could get a reviewer from the diagnostics team by adding:
 
-    r?
-    rust-lang/diagnostics
+    r? rust-lang/diagnostics
 
 For a full list of possible `groupname`s,
 check the `adhoc_groups` section at the [triagebot.toml config file],
@@ -275,12 +272,12 @@ Depending on the scale of the change, you may see a slightly different form of `
 
 The additional `rollup` tells [@bors] that this change should always be "rolled up".
 Changes that are rolled up are tested and merged alongside other PRs, to speed the process up.
-Typically only small changes that are expected not to conflict
+Typically, only small changes that are expected not to conflict
 with one another are marked as "always roll up".
 
 Be patient;
 this can take a while and the queue can sometimes be long.
-PRs are never merged by hand.
+Also, note that PRs are never merged by hand.
 
 [@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/bors
@@ -302,11 +299,11 @@ We recommend to make this check before every pull request (and every new commit 
 you can add [git hooks] before every push to make sure you never forget to make this check.
 The CI will also run tidy and will fail if tidy fails.
 
-Rust follows a _no merge-commit policy_, meaning, when you encounter merge
-conflicts you are expected to always rebase instead of merging.
-E.g.
-always use rebase when bringing the latest changes from the master branch to your feature
-branch.
+Rust follows a _no merge-commit policy_,
+meaning that when you encounter merge conflicts,
+you are expected to always rebase instead of merging.
+For example,
+always use rebase when bringing the latest changes from the master branch to your feature branch.
 If your PR contains merge commits, it will get marked as `has-merge-commits`.
 Once you have removed the merge commits, e.g., through an interactive rebase, you
 should remove the label again:
@@ -424,7 +421,7 @@ Just a few things to keep in mind:
   and/or a reason so that the reader knows how much to trust the information.
   Aim to provide a reasonable amount of context, possibly including but not limited to:
 
-  - A reason for why the data may be out of date other than "change",
+  - A reason for why the text may be out of date other than "change",
     as change is a constant across the project.
 
   - The date the comment was added, e.g. instead of writing _"Currently, ..."_
