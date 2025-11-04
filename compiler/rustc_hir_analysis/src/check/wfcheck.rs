@@ -1500,7 +1500,8 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        let p = wfcx.normalize(sp, None, p);
+        // FIXME: we should be checking for well-formedness pre-normalization.
+        let p = wfcx.deeply_normalize(sp, None, p);
         traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
