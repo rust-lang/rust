@@ -588,7 +588,7 @@ impl Waker {
     /// Constructs a `Waker` from a function pointer.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_from_fn_ptr", issue = "146055")]
+    #[unstable(feature = "waker_from_fn_ptr", issue = "148457")]
     pub const fn from_fn_ptr(f: fn()) -> Self {
         // SAFETY: Unsafe is used for transmutes, pointer came from `fn()` so it
         //         is sound to transmute it back to `fn()`.
@@ -905,7 +905,7 @@ impl LocalWaker {
     /// Constructs a `LocalWaker` from a function pointer.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_from_fn_ptr", issue = "146055")]
+    #[unstable(feature = "waker_from_fn_ptr", issue = "148457")]
     pub const fn from_fn_ptr(f: fn()) -> Self {
         // SAFETY: Unsafe is used for transmutes, pointer came from `fn()` so it
         //         is sound to transmute it back to `fn()`.
