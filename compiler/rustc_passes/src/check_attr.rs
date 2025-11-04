@@ -284,6 +284,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
+                    | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..),
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
@@ -1767,6 +1768,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::TransparentIncompatible {
                 hint_spans,
+                target: target.to_string(),
+            });
+        }
+        // Error on `#[repr(transparent)]` in combination with
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]`
+        if is_transparent
+            && let Some(&pass_indirectly_span) =
+                find_attr!(attrs, AttributeKind::RustcPassIndirectlyInNonRusticAbis(span) => span)
+        {
+            self.dcx().emit_err(errors::TransparentIncompatible {
+                hint_spans: vec![span, pass_indirectly_span],
                 target: target.to_string(),
             });
         }

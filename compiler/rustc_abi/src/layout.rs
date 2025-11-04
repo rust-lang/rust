@@ -812,7 +812,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let (max, min) = largest_niche
             // We might have no inhabited variants, so pretend there's at least one.
             .unwrap_or((0, 0));
-        let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
+        let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::discr_range_of_repr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
         let mut max_repr_align = repr.align;
