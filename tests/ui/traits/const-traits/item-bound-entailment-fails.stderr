@@ -9,6 +9,10 @@ note: required by a bound in `Foo::Assoc`
    |
 LL |     type Assoc<T>: [const] Bar
    |                    ^^^^^^^^^^^ required by this bound in `Foo::Assoc`
+help: make the `impl` of trait `Bar` `const`
+   |
+LL | impl<T> const Bar for N<T> where T: Bar {}
+   |         +++++
 
 error[E0277]: the trait bound `T: [const] Bar` is not satisfied
   --> $DIR/item-bound-entailment-fails.rs:24:21

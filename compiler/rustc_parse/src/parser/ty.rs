@@ -407,6 +407,10 @@ impl<'a> Parser<'a> {
             // Qualified path
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
+        } else if (self.token.is_keyword(kw::Const) || self.token.is_keyword(kw::Mut))
+            && self.look_ahead(1, |t| *t == token::Star)
+        {
+            self.parse_ty_c_style_pointer()?
         } else if self.check_path() {
             self.parse_path_start_ty(lo, allow_plus, ty_generics)?
         } else if self.can_begin_bound() {
@@ -586,6 +590,41 @@ impl<'a> Parser<'a> {
             bounds.append(&mut self.parse_generic_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
+    }
+
+    /// Parses a raw pointer with a C-style typo
+    fn parse_ty_c_style_pointer(&mut self) -> PResult<'a, TyKind> {
+        let kw_span = self.token.span;
+        let mutbl = self.parse_const_or_mut();
+
+        if let Some(mutbl) = mutbl
+            && self.eat(exp!(Star))
+        {
+            let star_span = self.prev_token.span;
+
+            let mutability = match mutbl {
+                Mutability::Not => "const",
+                Mutability::Mut => "mut",
+            };
+
+            let ty = self.parse_ty_no_question_mark_recover()?;
+
+            self.dcx()
+                .struct_span_err(
+                    kw_span,
+                    format!("raw pointer types must be written as `*{mutability} T`"),
+                )
+                .with_multipart_suggestion(
+                    format!("put the `*` before `{mutability}`"),
+                    vec![(star_span, String::new()), (kw_span.shrink_to_lo(), "*".to_string())],
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+
+            return Ok(TyKind::Ptr(MutTy { ty, mutbl }));
+        }
+        // This is unreachable because we always get into if above and return from it
+        unreachable!("this could never happen")
     }
 
     /// Parses a raw pointer type: `*[const | mut] $type`.

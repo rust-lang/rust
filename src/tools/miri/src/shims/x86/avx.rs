@@ -217,50 +217,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     )?;
                 }
             }
-            // Used to implement the _mm256_permute2f128_ps, _mm256_permute2f128_pd and
-            // _mm256_permute2f128_si256 functions. Regardless of the suffix in the name
-            // thay all can be considered to operate on vectors of 128-bit elements.
-            // For each 128-bit element of `dest`, copies one from `left`, `right` or
-            // zero, according to `imm`.
-            "vperm2f128.ps.256" | "vperm2f128.pd.256" | "vperm2f128.si.256" => {
-                let [left, right, imm] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                assert_eq!(dest.layout, left.layout);
-                assert_eq!(dest.layout, right.layout);
-                assert_eq!(dest.layout.size.bits(), 256);
-
-                // Transmute to `[u128; 2]` to process each 128-bit chunk independently.
-                let u128x2_layout =
-                    this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u128, 2))?;
-                let left = left.transmute(u128x2_layout, this)?;
-                let right = right.transmute(u128x2_layout, this)?;
-                let dest = dest.transmute(u128x2_layout, this)?;
-
-                let imm = this.read_scalar(imm)?.to_u8()?;
-
-                for i in 0..2 {
-                    let dest = this.project_index(&dest, i)?;
-
-                    let imm = match i {
-                        0 => imm & 0xF,
-                        1 => imm >> 4,
-                        _ => unreachable!(),
-                    };
-                    if imm & 0b100 != 0 {
-                        this.write_scalar(Scalar::from_u128(0), &dest)?;
-                    } else {
-                        let src = match imm {
-                            0b00 => this.project_index(&left, 0)?,
-                            0b01 => this.project_index(&left, 1)?,
-                            0b10 => this.project_index(&right, 0)?,
-                            0b11 => this.project_index(&right, 1)?,
-                            _ => unreachable!(),
-                        };
-                        this.copy_op(&src, &dest)?;
-                    }
-                }
-            }
             // Used to implement the _mm_maskload_ps, _mm_maskload_pd, _mm256_maskload_ps
             // and _mm256_maskload_pd functions.
             // For the element `i`, if the high bit of the `i`-th element of `mask`
