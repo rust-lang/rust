@@ -9,16 +9,13 @@ LL | | }
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | async fn f() -> dyn core::fmt::Debug impl {
-   |                                      ++++
+LL - async fn f() -> dyn core::fmt::Debug {
+LL + async fn f() -> impl core::fmt::Debug {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
-LL ~ async fn f() -> dyn core::fmt::Debug Box<dyn {
-LL |
-...
-LL |     loop {}
-LL ~ }>
-   |
+LL | async fn f() -> Box<dyn core::fmt::Debug> {
+   |                 ++++                    +
 
 error: aborting due to 1 previous error
 

@@ -1891,7 +1891,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.primary_message("return type cannot be a trait object without pointer indirection");
         err.children.clear();
 
-        let span = obligation.cause.span;
+        let mut span = obligation.cause.span;
+        if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
+            && let parent = self.tcx.parent(obligation.cause.body_id.into())
+            && let DefKind::Fn = self.tcx.def_kind(parent)
+            && self.tcx.asyncness(parent).is_async()
+            && let Some(parent) = parent.as_local()
+            && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. }) =
+                self.tcx.hir_node_by_def_id(parent)
+        {
+            // Do not suggest (#147894)
+            // async fn foo() -> dyn Display impl { .. }
+            // and
+            // async fn foo() -> dyn Display Box<dyn { .. }>
+            span = fn_sig.decl.output.span();
+        }
         let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();
