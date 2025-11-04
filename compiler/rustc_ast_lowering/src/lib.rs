@@ -1677,7 +1677,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let output = match coro {
             Some(coro) => {
                 let fn_def_id = self.local_def_id(fn_node_id);
-                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind, fn_span)
+                self.lower_coroutine_fn_ret_ty(&decl.output, fn_def_id, coro, kind)
             }
             None => match &decl.output {
                 FnRetTy::Ty(ty) => {
@@ -1762,9 +1762,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_def_id: LocalDefId,
         coro: CoroutineKind,
         fn_kind: FnDeclKind,
-        fn_span: Span,
     ) -> hir::FnRetTy<'hir> {
-        let span = self.lower_span(fn_span);
+        let span = self.lower_span(output.span());
 
         let (opaque_ty_node_id, allowed_features) = match coro {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
