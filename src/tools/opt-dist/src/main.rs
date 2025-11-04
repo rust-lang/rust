@@ -373,6 +373,8 @@ fn execute_pipeline(
         vec![]
     };
 
+    let std = Bootstrap::build_std(env);
+
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
         .rustc_pgo_optimize(&rustc_pgo_profile);
@@ -390,7 +392,10 @@ fn execute_pipeline(
 
     // Final stage: Assemble the dist artifacts
     // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
-    timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
+    timer.section("Stage 5 (final build)", |stage| {
+        std.run(stage)?;
+        dist.run(stage)
+    })?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
     // possible regressions.

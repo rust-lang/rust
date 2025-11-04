@@ -118,6 +118,24 @@ impl Bootstrap {
         Self { cmd, metrics_path }
     }
 
+    pub fn build_std(env: &Environment) -> Self {
+        let metrics_path = env.build_root().join("build").join("metrics.json");
+        let cmd = cmd(&[
+            env.python_binary(),
+            env.checkout_path().join("x.py").as_str(),
+            "build",
+            "--host",
+            &env.host_tuple(),
+            "--stage",
+            "1",
+            "library/std",
+        ])
+        .env("RUST_BACKTRACE", "full");
+        let cmd = add_shared_x_flags(env, cmd);
+
+        Self { cmd, metrics_path }
+    }
+
     pub fn dist(env: &Environment, dist_args: &[String]) -> Self {
         let metrics_path = env.build_root().join("metrics.json");
         let args = dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
