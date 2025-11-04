@@ -68,30 +68,30 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
     let intrinsics_diff_count = intrinsics
         .par_iter()
         .filter_map(|&&intrinsic| {
-            println!("Difference for intrinsic: {intrinsic}");
             let c_output = c_output_map.get(intrinsic).unwrap();
             let rust_output = rust_output_map.get(intrinsic).unwrap();
             let diff = diff::lines(c_output, rust_output);
-            let diff_count = diff
+            let diffs = diff
                 .into_iter()
                 .filter_map(|diff| match diff {
-                    diff::Result::Left(c) => {
-                        println!("C: {c}");
-                        Some(c)
-                    }
-                    diff::Result::Right(rust) => {
-                        println!("Rust: {rust}");
-                        Some(rust)
-                    }
+                    diff::Result::Left(_) | diff::Result::Right(_) => Some(diff),
                     diff::Result::Both(_, _) => None,
                 })
-                .count();
-            println!("****************************************************************");
-            if diff_count > 0 {
-                Some(intrinsic)
+                .collect_vec();
+            if diffs.len() > 0 {
+                Some((intrinsic, diffs))
             } else {
                 None
             }
+        })
+        .inspect(|(intrinsic, diffs)| {
+            println!("Difference for intrinsic: {intrinsic}");
+            diffs.into_iter().for_each(|diff| match diff {
+                diff::Result::Left(c) => println!("C: {c}"),
+                diff::Result::Right(rust) => println!("Rust: {rust}"),
+                _ => (),
+            });
+            println!("****************************************************************");
         })
         .count();
 
