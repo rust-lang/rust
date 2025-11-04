@@ -2,10 +2,10 @@
 
 use std::fmt;
 
-use hir_def::{AdtId, GenericParamId, lang_item::LangItem};
+use hir_def::{AdtId, DefWithBodyId, GenericParamId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     DebruijnIndex, InferConst, InferTy, RegionVid, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, UpcastFrom,
@@ -17,12 +17,12 @@ use triomphe::Arc;
 
 use crate::{
     TraitEnvironment,
-    db::{HirDatabase, InternedOpaqueTyId},
+    db::HirDatabase,
     infer::InferenceContext,
     next_solver::{
         self, AliasTy, Binder, Canonical, ClauseKind, Const, ConstKind, DbInterner,
         ErrorGuaranteed, GenericArg, GenericArgs, Predicate, PredicateKind, Region, RegionKind,
-        SolverDefId, SolverDefIds, TraitRef, Ty, TyKind, TypingMode,
+        SolverDefId, TraitRef, Ty, TyKind, TypingMode,
         fulfill::{FulfillmentCtxt, NextSolverError},
         infer::{
             DbInternerInferExt, InferCtxt, InferOk, InferResult,
@@ -139,10 +139,7 @@ fn could_unify_impl<'db>(
     select: for<'a> fn(&mut ObligationCtxt<'a, 'db>) -> Vec<NextSolverError<'db>>,
 ) -> bool {
     let interner = DbInterner::new_with(db, Some(env.krate), env.block);
-    // FIXME(next-solver): I believe this should use `PostAnalysis` (this is only used for IDE things),
-    // but this causes some bug because of our incorrect impl of `type_of_opaque_hir_typeck()` for TAIT
-    // and async blocks.
-    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
     let at = infcx.at(&cause, env.env);
     let ((ty1_with_vars, ty2_with_vars), _) = infcx.instantiate_canonical(tys);
@@ -158,7 +155,6 @@ fn could_unify_impl<'db>(
 pub(crate) struct InferenceTable<'db> {
     pub(crate) db: &'db dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment<'db>>,
-    pub(crate) tait_coercion_table: Option<FxHashMap<InternedOpaqueTyId, Ty<'db>>>,
     pub(crate) infer_ctxt: InferCtxt<'db>,
     pub(super) fulfillment_cx: FulfillmentCtxt<'db>,
     pub(super) diverging_type_vars: FxHashSet<Ty<'db>>,
@@ -170,15 +166,23 @@ pub(crate) struct InferenceTableSnapshot<'db> {
 }
 
 impl<'db> InferenceTable<'db> {
-    pub(crate) fn new(db: &'db dyn HirDatabase, trait_env: Arc<TraitEnvironment<'db>>) -> Self {
+    /// Inside hir-ty you should use this for inference only, and always pass `owner`.
+    /// Outside it, always pass `owner = None`.
+    pub(crate) fn new(
+        db: &'db dyn HirDatabase,
+        trait_env: Arc<TraitEnvironment<'db>>,
+        owner: Option<DefWithBodyId>,
+    ) -> Self {
         let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
-        let infer_ctxt = interner.infer_ctxt().build(rustc_type_ir::TypingMode::Analysis {
-            defining_opaque_types_and_generators: SolverDefIds::new_from_iter(interner, []),
-        });
+        let typing_mode = match owner {
+            Some(owner) => TypingMode::typeck_for_body(interner, owner.into()),
+            // IDE things wants to reveal opaque types.
+            None => TypingMode::PostAnalysis,
+        };
+        let infer_ctxt = interner.infer_ctxt().build(typing_mode);
         InferenceTable {
             db,
             trait_env,
-            tait_coercion_table: None,
             fulfillment_cx: FulfillmentCtxt::new(&infer_ctxt),
             infer_ctxt,
             diverging_type_vars: FxHashSet::default(),
@@ -698,40 +702,7 @@ impl<'db> InferenceTable<'db> {
     where
         T: TypeFoldable<DbInterner<'db>>,
     {
-        struct Folder<'a, 'db> {
-            table: &'a mut InferenceTable<'db>,
-        }
-        impl<'db> TypeFolder<DbInterner<'db>> for Folder<'_, 'db> {
-            fn cx(&self) -> DbInterner<'db> {
-                self.table.interner()
-            }
-
-            fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
-                if !ty.references_error() {
-                    return ty;
-                }
-
-                if ty.is_ty_error() { self.table.next_ty_var() } else { ty.super_fold_with(self) }
-            }
-
-            fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
-                if !ct.references_error() {
-                    return ct;
-                }
-
-                if ct.is_ct_error() {
-                    self.table.next_const_var()
-                } else {
-                    ct.super_fold_with(self)
-                }
-            }
-
-            fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
-                if r.is_error() { self.table.next_region_var() } else { r }
-            }
-        }
-
-        ty.fold_with(&mut Folder { table: self })
+        self.infer_ctxt.insert_type_vars(ty)
     }
 
     /// Replaces `Ty::Error` by a new type var, so we can maybe still infer it.

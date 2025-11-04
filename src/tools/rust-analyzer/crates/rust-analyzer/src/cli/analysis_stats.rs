@@ -1214,6 +1214,7 @@ impl flags::AnalysisStats {
             annotate_method_references: false,
             annotate_enum_variant_references: false,
             location: ide::AnnotationLocation::AboveName,
+            filter_adjacent_derive_implementations: false,
             minicore: MiniCore::default(),
         };
         for &file_id in file_ids {

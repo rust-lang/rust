@@ -1012,6 +1012,25 @@ fn classify_name_ref<'db>(
             .and_then(|next| next.first_token())
             .is_some_and(|token| token.kind() == SyntaxKind::ELSE_KW)
     };
+    let is_in_value = |it: &SyntaxNode| {
+        let Some(node) = it.parent() else { return false };
+        let kind = node.kind();
+        ast::LetStmt::can_cast(kind)
+            || ast::ArgList::can_cast(kind)
+            || ast::ArrayExpr::can_cast(kind)
+            || ast::ParenExpr::can_cast(kind)
+            || ast::BreakExpr::can_cast(kind)
+            || ast::ReturnExpr::can_cast(kind)
+            || ast::PrefixExpr::can_cast(kind)
+            || ast::FormatArgsArg::can_cast(kind)
+            || ast::RecordExprField::can_cast(kind)
+            || ast::BinExpr::cast(node.clone())
+                .and_then(|expr| expr.rhs())
+                .is_some_and(|expr| expr.syntax() == it)
+            || ast::IndexExpr::cast(node)
+                .and_then(|expr| expr.index())
+                .is_some_and(|expr| expr.syntax() == it)
+    };
 
     // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
     // ex. trait Foo $0 {}
@@ -1307,7 +1326,7 @@ fn classify_name_ref<'db>(
             .and_then(ast::LetStmt::cast)
             .is_some_and(|it| it.semicolon_token().is_none())
             || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true) && !before_else_kw;
-        let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
+        let in_value = is_in_value(it);
         let impl_ = fetch_immediate_impl_or_trait(sema, original_file, expr.syntax())
             .and_then(Either::left);
 
