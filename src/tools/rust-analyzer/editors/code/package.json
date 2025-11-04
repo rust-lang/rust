@@ -1628,6 +1628,16 @@
                 }
             },
             {
+                "title": "Goto Implementations",
+                "properties": {
+                    "rust-analyzer.gotoImplementations.filterAdjacentDerives": {
+                        "markdownDescription": "If this is `true`, when \"Goto Implementations\" and in \"Implementations\" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "Highlight Related",
                 "properties": {
                     "rust-analyzer.highlightRelated.branchExitPoints.enable": {
@@ -2741,6 +2751,19 @@
                 "properties": {
                     "rust-analyzer.procMacro.server": {
                         "markdownDescription": "Internal config, path to proc-macro server executable.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Profiling",
+                "properties": {
+                    "rust-analyzer.profiling.memoryProfile": {
+                        "markdownDescription": "The path where to save memory profiling output.\n\n**Note:** Memory profiling is not enabled by default in rust-analyzer builds, you need to build\nfrom source for it.",
                         "default": null,
                         "type": [
                             "null",

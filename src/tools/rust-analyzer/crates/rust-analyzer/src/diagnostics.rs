@@ -1,5 +1,5 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
-pub(crate) mod to_proto;
+pub(crate) mod flycheck_to_proto;
 
 use std::mem;
 
@@ -8,6 +8,7 @@ use ide::FileId;
 use ide_db::{FxHashMap, base_db::DbPanicContext};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 use stdx::iter_eq_by;
 use triomphe::Arc;
 
@@ -57,7 +58,7 @@ pub(crate) struct DiagnosticCollection {
 #[derive(Debug, Clone)]
 pub(crate) struct Fix {
     // Fixes may be triggerable from multiple ranges.
-    pub(crate) ranges: Vec<lsp_types::Range>,
+    pub(crate) ranges: SmallVec<[lsp_types::Range; 1]>,
     pub(crate) action: lsp_ext::CodeAction,
 }
 

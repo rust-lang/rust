@@ -21,6 +21,7 @@ pub(crate) mod diagnostics;
 mod expr;
 mod fallback;
 mod mutability;
+mod opaques;
 mod pat;
 mod path;
 pub(crate) mod unify;
@@ -31,8 +32,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ImplId, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId,
-    VariantId,
+    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::{LangItem, LangItemTarget, lang_item},
@@ -44,11 +44,11 @@ use hir_def::{
 use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
 use intern::sym;
-use la_arena::{ArenaMap, Entry};
+use la_arena::ArenaMap;
 use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    AliasTyKind, Flags, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    AliasTyKind, TypeFoldable,
     inherent::{AdtDef, IntoKind, Region as _, SliceLike, Ty as _},
 };
 use stdx::never;
@@ -61,7 +61,6 @@ use crate::{
         coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
         expr::ExprIsRead,
-        unify::InferenceTable,
     },
     lower::{
         ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
@@ -69,10 +68,7 @@ use crate::{
     mir::MirSpan,
     next_solver::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region, Ty, TyKind,
-        Tys,
-        abi::Safety,
-        fold::fold_tys,
-        infer::traits::{Obligation, ObligationCause},
+        Tys, abi::Safety, infer::traits::ObligationCause,
     },
     traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
@@ -132,6 +128,8 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
 
     ctx.infer_mut_body();
 
+    ctx.handle_opaque_type_uses();
+
     ctx.type_inference_fallback();
 
     // Comment from rustc:
@@ -147,6 +145,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     ctx.table.select_obligations_where_possible();
 
     ctx.infer_closures();
+
+    ctx.table.select_obligations_where_possible();
+
+    ctx.handle_opaque_type_uses();
 
     Arc::new(ctx.resolve_all())
 }
@@ -454,7 +456,7 @@ pub struct InferenceResult<'db> {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub(crate) type_of_pat: ArenaMap<PatId, Ty<'db>>,
     pub(crate) type_of_binding: ArenaMap<BindingId, Ty<'db>>,
-    pub(crate) type_of_rpit: ArenaMap<ImplTraitIdx<'db>, Ty<'db>>,
+    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch<'db>>,
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
@@ -499,7 +501,7 @@ impl<'db> InferenceResult<'db> {
             type_of_expr: Default::default(),
             type_of_pat: Default::default(),
             type_of_binding: Default::default(),
-            type_of_rpit: Default::default(),
+            type_of_opaque: Default::default(),
             type_mismatches: Default::default(),
             has_errors: Default::default(),
             error_ty,
@@ -640,8 +642,14 @@ impl<'db> InferenceResult<'db> {
     // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
     pub fn return_position_impl_trait_types(
         &self,
+        db: &'db dyn HirDatabase,
     ) -> impl Iterator<Item = (ImplTraitIdx<'db>, Ty<'db>)> {
-        self.type_of_rpit.iter().map(|(k, v)| (k, *v))
+        self.type_of_opaque.iter().filter_map(move |(&id, &ty)| {
+            let ImplTraitId::ReturnTypeImplTrait(_, rpit_idx) = id.loc(db) else {
+                return None;
+            };
+            Some((rpit_idx, ty))
+        })
     }
 }
 
@@ -707,6 +715,7 @@ struct InternedStandardTypes<'db> {
 
     re_static: Region<'db>,
     re_error: Region<'db>,
+    re_erased: Region<'db>,
 
     empty_args: GenericArgs<'db>,
     empty_tys: Tys<'db>,
@@ -742,6 +751,7 @@ impl<'db> InternedStandardTypes<'db> {
 
             re_static,
             re_error: Region::error(interner),
+            re_erased: Region::new_erased(interner),
 
             empty_args: GenericArgs::new_from_iter(interner, []),
             empty_tys: Tys::new_from_iter(interner, []),
@@ -848,11 +858,6 @@ fn find_continuable<'a, 'db>(
     }
 }
 
-enum ImplTraitReplacingMode<'db> {
-    ReturnPosition(FxHashSet<Ty<'db>>),
-    TypeAlias,
-}
-
 impl<'body, 'db> InferenceContext<'body, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
@@ -861,7 +866,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
-        let table = unify::InferenceTable::new(db, trait_env);
+        let table = unify::InferenceTable::new(db, trait_env, Some(owner));
         let types = InternedStandardTypes::new(table.interner());
         InferenceContext {
             result: InferenceResult::new(types.error),
@@ -952,7 +957,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
-    pub(crate) fn resolve_all(self) -> InferenceResult<'db> {
+    fn resolve_all(self) -> InferenceResult<'db> {
         let InferenceContext {
             mut table, mut result, tuple_field_accesses_rev, diagnostics, ..
         } = self;
@@ -967,7 +972,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             type_of_expr,
             type_of_pat,
             type_of_binding,
-            type_of_rpit,
+            type_of_opaque,
             type_mismatches,
             has_errors,
             error_ty: _,
@@ -999,11 +1004,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             *has_errors = *has_errors || ty.references_non_lt_error();
         }
         type_of_binding.shrink_to_fit();
-        for ty in type_of_rpit.values_mut() {
-            *ty = table.resolve_completely(*ty);
-            *has_errors = *has_errors || ty.references_non_lt_error();
-        }
-        type_of_rpit.shrink_to_fit();
+        type_of_opaque.shrink_to_fit();
 
         *has_errors |= !type_mismatches.is_empty();
 
@@ -1084,9 +1085,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             LifetimeElisionKind::for_const(self.interner(), id.loc(self.db).container),
         );
 
-        // Constants might be defining usage sites of TAITs.
-        self.make_tait_coercion_table(iter::once(return_ty));
-
         self.return_ty = return_ty;
     }
 
@@ -1097,9 +1095,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             InferenceTyDiagnosticSource::Signature,
             LifetimeElisionKind::Elided(self.types.re_static),
         );
-
-        // Statics might be defining usage sites of TAITs.
-        self.make_tait_coercion_table(iter::once(return_ty));
 
         self.return_ty = return_ty;
     }
@@ -1138,16 +1133,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             let ty = self.process_user_written_ty(ty);
             self.write_binding_ty(self_param, ty);
         }
-        let mut tait_candidates = FxHashSet::default();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
             let ty = self.process_user_written_ty(ty);
 
             self.infer_top_pat(*pat, ty, None);
-            if ty.flags().intersects(TypeFlags::HAS_TY_OPAQUE.union(TypeFlags::HAS_TY_INFER)) {
-                tait_candidates.insert(ty);
-            }
         }
-        let return_ty = match data.ret_type {
+        self.return_ty = match data.ret_type {
             Some(return_ty) => {
                 let return_ty = self.with_ty_lowering(
                     &data.store,
@@ -1158,237 +1149,17 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                         ctx.lower_ty(return_ty)
                     },
                 );
-                let return_ty = self.insert_type_vars(return_ty);
-                if let Some(rpits) = self.db.return_type_impl_traits(func) {
-                    let mut mode = ImplTraitReplacingMode::ReturnPosition(FxHashSet::default());
-                    let result = self.insert_inference_vars_for_impl_trait(return_ty, &mut mode);
-                    if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
-                        tait_candidates.extend(taits);
-                    }
-                    let rpits = (*rpits).as_ref().skip_binder();
-                    for (id, _) in rpits.impl_traits.iter() {
-                        if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
-                            never!("Missed RPIT in `insert_inference_vars_for_rpit`");
-                            e.insert(self.types.error);
-                        }
-                    }
-                    result
-                } else {
-                    return_ty
-                }
+                self.process_user_written_ty(return_ty)
             }
             None => self.types.unit,
         };
 
-        self.return_ty = self.process_user_written_ty(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty));
-
-        // Functions might be defining usage sites of TAITs.
-        // To define an TAITs, that TAIT must appear in the function's signatures.
-        // So, it suffices to check for params and return types.
-        fold_tys(self.interner(), self.return_ty, |ty| {
-            match ty.kind() {
-                TyKind::Alias(AliasTyKind::Opaque, _) | TyKind::Infer(..) => {
-                    tait_candidates.insert(self.return_ty);
-                }
-                _ => {}
-            }
-            ty
-        });
-
-        self.make_tait_coercion_table(tait_candidates.iter().copied());
     }
 
     #[inline]
     pub(crate) fn interner(&self) -> DbInterner<'db> {
         self.table.interner()
-    }
-
-    fn insert_inference_vars_for_impl_trait<T>(
-        &mut self,
-        t: T,
-        mode: &mut ImplTraitReplacingMode<'db>,
-    ) -> T
-    where
-        T: TypeFoldable<DbInterner<'db>>,
-    {
-        fold_tys(self.interner(), t, |ty| {
-            let ty = self.table.try_structurally_resolve_type(ty);
-            let opaque_ty_id = match ty.kind() {
-                TyKind::Alias(AliasTyKind::Opaque, alias_ty) => alias_ty.def_id.expect_opaque_ty(),
-                _ => return ty,
-            };
-            let (impl_traits, idx) = match self.db.lookup_intern_impl_trait_id(opaque_ty_id) {
-                // We don't replace opaque types from other kind with inference vars
-                // because `insert_inference_vars_for_impl_traits` for each kinds
-                // and unreplaced opaque types of other kind are resolved while
-                // inferencing because of `tait_coercion_table`.
-                ImplTraitId::ReturnTypeImplTrait(def, idx) => {
-                    if matches!(mode, ImplTraitReplacingMode::TypeAlias) {
-                        // RPITs don't have `tait_coercion_table`, so use inserted inference
-                        // vars for them.
-                        if let Some(ty) = self.result.type_of_rpit.get(idx) {
-                            return *ty;
-                        }
-                        return ty;
-                    }
-                    (self.db.return_type_impl_traits(def), idx)
-                }
-                ImplTraitId::TypeAliasImplTrait(def, idx) => {
-                    if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
-                        // Gather TAITs while replacing RPITs because TAITs inside RPITs
-                        // may not visited while replacing TAITs
-                        taits.insert(ty);
-                        return ty;
-                    }
-                    (self.db.type_alias_impl_traits(def), idx)
-                }
-            };
-            let Some(impl_traits) = impl_traits else {
-                return ty;
-            };
-            let bounds =
-                (*impl_traits).as_ref().map_bound(|its| its.impl_traits[idx].predicates.as_slice());
-            let var = match self.result.type_of_rpit.entry(idx) {
-                Entry::Occupied(entry) => return *entry.get(),
-                Entry::Vacant(entry) => *entry.insert(self.table.next_ty_var()),
-            };
-            for clause in bounds.iter_identity_copied() {
-                let clause = self.insert_inference_vars_for_impl_trait(clause, mode);
-                self.table.register_predicate(Obligation::new(
-                    self.interner(),
-                    ObligationCause::new(),
-                    self.table.trait_env.env,
-                    clause,
-                ));
-            }
-            var
-        })
-    }
-
-    /// The coercion of a non-inference var into an opaque type should fail,
-    /// but not in the defining sites of the TAITs.
-    /// In such cases, we insert an proxy inference var for each TAIT,
-    /// and coerce into it instead of TAIT itself.
-    ///
-    /// The inference var stretagy is effective because;
-    ///
-    /// - It can still unify types that coerced into TAITs
-    /// - We are pushing `impl Trait` bounds into it
-    ///
-    /// This function inserts a map that maps the opaque type to that proxy inference var.
-    fn make_tait_coercion_table(&mut self, tait_candidates: impl Iterator<Item = Ty<'db>>) {
-        struct TypeAliasImplTraitCollector<'a, 'db> {
-            db: &'a dyn HirDatabase,
-            table: &'a mut InferenceTable<'db>,
-            assocs: FxHashMap<InternedOpaqueTyId, (ImplId, Ty<'db>)>,
-            non_assocs: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
-        }
-
-        impl<'db> TypeVisitor<DbInterner<'db>> for TypeAliasImplTraitCollector<'_, 'db> {
-            type Result = ();
-
-            fn visit_ty(&mut self, ty: Ty<'db>) {
-                let ty = self.table.try_structurally_resolve_type(ty);
-
-                if let TyKind::Alias(AliasTyKind::Opaque, alias_ty) = ty.kind()
-                    && let id = alias_ty.def_id.expect_opaque_ty()
-                    && let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
-                        self.db.lookup_intern_impl_trait_id(id)
-                {
-                    let loc = self.db.lookup_intern_type_alias(alias_id);
-                    match loc.container {
-                        ItemContainerId::ImplId(impl_id) => {
-                            self.assocs.insert(id, (impl_id, ty));
-                        }
-                        ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
-                            self.non_assocs.insert(id, ty);
-                        }
-                        _ => {}
-                    }
-                }
-
-                ty.super_visit_with(self)
-            }
-        }
-
-        let mut collector = TypeAliasImplTraitCollector {
-            db: self.db,
-            table: &mut self.table,
-            assocs: FxHashMap::default(),
-            non_assocs: FxHashMap::default(),
-        };
-        for ty in tait_candidates {
-            ty.visit_with(&mut collector);
-        }
-
-        // Non-assoc TAITs can be define-used everywhere as long as they are
-        // in function signatures or const types, etc
-        let mut taits = collector.non_assocs;
-
-        // assoc TAITs(ATPITs) can be only define-used inside their impl block.
-        // They cannot be define-used in inner items like in the following;
-        //
-        // ```
-        // impl Trait for Struct {
-        //     type Assoc = impl Default;
-        //
-        //     fn assoc_fn() -> Self::Assoc {
-        //         let foo: Self::Assoc = true; // Allowed here
-        //
-        //         fn inner() -> Self::Assoc {
-        //              false                   // Not allowed here
-        //         }
-        //
-        //         foo
-        //     }
-        // }
-        // ```
-        let impl_id = match self.owner {
-            DefWithBodyId::FunctionId(it) => {
-                let loc = self.db.lookup_intern_function(it);
-                if let ItemContainerId::ImplId(impl_id) = loc.container {
-                    Some(impl_id)
-                } else {
-                    None
-                }
-            }
-            DefWithBodyId::ConstId(it) => {
-                let loc = self.db.lookup_intern_const(it);
-                if let ItemContainerId::ImplId(impl_id) = loc.container {
-                    Some(impl_id)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        };
-
-        if let Some(impl_id) = impl_id {
-            taits.extend(collector.assocs.into_iter().filter_map(|(id, (impl_, ty))| {
-                if impl_ == impl_id { Some((id, ty)) } else { None }
-            }));
-        }
-
-        let tait_coercion_table: FxHashMap<_, _> = taits
-            .into_iter()
-            .filter_map(|(id, ty)| {
-                if let ImplTraitId::TypeAliasImplTrait(..) = self.db.lookup_intern_impl_trait_id(id)
-                {
-                    let ty = self.insert_inference_vars_for_impl_trait(
-                        ty,
-                        &mut ImplTraitReplacingMode::TypeAlias,
-                    );
-                    Some((id, ty))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if !tait_coercion_table.is_empty() {
-            self.table.tait_coercion_table = Some(tait_coercion_table);
-        }
     }
 
     fn infer_body(&mut self) {
@@ -2006,12 +1777,15 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         Some(struct_.into())
     }
 
-    fn get_traits_in_scope(&self) -> Either<FxHashSet<TraitId>, &FxHashSet<TraitId>> {
-        let mut b_traits = self.resolver.traits_in_scope_from_block_scopes().peekable();
+    fn get_traits_in_scope<'a>(
+        resolver: &Resolver<'db>,
+        traits_in_scope: &'a FxHashSet<TraitId>,
+    ) -> Either<FxHashSet<TraitId>, &'a FxHashSet<TraitId>> {
+        let mut b_traits = resolver.traits_in_scope_from_block_scopes().peekable();
         if b_traits.peek().is_some() {
-            Either::Left(self.traits_in_scope.iter().copied().chain(b_traits).collect())
+            Either::Left(traits_in_scope.iter().copied().chain(b_traits).collect())
         } else {
-            Either::Right(&self.traits_in_scope)
+            Either::Right(traits_in_scope)
         }
     }
 }

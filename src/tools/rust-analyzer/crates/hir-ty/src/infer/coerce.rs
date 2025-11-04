@@ -60,8 +60,7 @@ use crate::{
     next_solver::{
         Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, CallableIdWrapper,
         Canonical, ClauseKind, CoercePredicate, Const, ConstKind, DbInterner, ErrorGuaranteed,
-        GenericArgs, PolyFnSig, PredicateKind, Region, RegionKind, SolverDefId, TraitRef, Ty,
-        TyKind,
+        GenericArgs, PolyFnSig, PredicateKind, Region, RegionKind, TraitRef, Ty, TyKind,
         infer::{
             InferCtxt, InferOk, InferResult,
             relate::RelateResult,
@@ -222,24 +221,6 @@ impl<'a, 'b, 'db> Coerce<'a, 'b, 'db> {
                 return self.unify(a, b);
             }
         }
-
-        // If we are coercing into a TAIT, coerce into its proxy inference var, instead.
-        // FIXME(next-solver): This should not be here. This is not how rustc does thing, and it also not allows us
-        // to normalize opaques defined in our scopes. Instead, we should properly register
-        // `TypingMode::Analysis::defining_opaque_types_and_generators`, and rely on the solver to reveal
-        // them for us (we'll also need some global-like registry for the values, something we cannot
-        // really implement, therefore we can really support only RPITs and ITIAT or the new `#[define_opaque]`
-        // TAIT, not the old global TAIT).
-        let mut b = b;
-        if let Some(tait_table) = &self.table.tait_coercion_table
-            && let TyKind::Alias(rustc_type_ir::Opaque, opaque_ty) = b.kind()
-            && let SolverDefId::InternedOpaqueTyId(opaque_ty_id) = opaque_ty.def_id
-            && !matches!(a.kind(), TyKind::Infer(..) | TyKind::Alias(rustc_type_ir::Opaque, _))
-            && let Some(ty) = tait_table.get(&opaque_ty_id)
-        {
-            b = self.table.shallow_resolve(*ty);
-        }
-        let b = b;
 
         // Coercing *from* an unresolved inference variable means that
         // we have no information about the source type. This will always
@@ -1528,7 +1509,7 @@ fn coerce<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
-    let mut table = InferenceTable::new(db, env);
+    let mut table = InferenceTable::new(db, env, None);
     let interner = table.interner();
     let ((ty1_with_vars, ty2_with_vars), vars) = table.infer_ctxt.instantiate_canonical(tys);
 

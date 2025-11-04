@@ -38,7 +38,7 @@ pub fn autoderef<'db>(
     env: Arc<TraitEnvironment<'db>>,
     ty: Canonical<'db, Ty<'db>>,
 ) -> impl Iterator<Item = Ty<'db>> + use<'db> {
-    let mut table = InferenceTable::new(db, env);
+    let mut table = InferenceTable::new(db, env, None);
     let ty = table.instantiate_canonical(ty);
     let mut autoderef = Autoderef::new_no_tracking(&mut table, ty);
     let mut v = Vec::new();

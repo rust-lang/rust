@@ -732,6 +732,29 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_range_for_to_while() {
+    check_doc_test(
+        "convert_range_for_to_while",
+        r#####"
+fn foo() {
+    $0for i in 3..7 {
+        foo(i);
+    }
+}
+"#####,
+        r#####"
+fn foo() {
+    let mut i = 3;
+    while i < 7 {
+        foo(i);
+        i += 1;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",

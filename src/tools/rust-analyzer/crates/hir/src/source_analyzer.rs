@@ -1594,14 +1594,12 @@ fn resolve_hir_path_(
             Some(unresolved) => resolver
                 .generic_def()
                 .and_then(|def| {
-                    hir_ty::attach_db(db, || {
-                        hir_ty::associated_type_shorthand_candidates(
-                            db,
-                            def,
-                            res.in_type_ns()?,
-                            |name, _| name == unresolved.name,
-                        )
-                    })
+                    hir_ty::associated_type_shorthand_candidates(
+                        db,
+                        def,
+                        res.in_type_ns()?,
+                        |name, _| name == unresolved.name,
+                    )
                 })
                 .map(TypeAlias::from)
                 .map(Into::into)
