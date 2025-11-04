@@ -34,14 +34,14 @@ pub fn sockaddr_un(path: &Path) -> io::Result<(c::sockaddr_un, c_int)> {
     // null byte for pathname addresses is already there because we zeroed the
     // struct
 
-    let mut len = sun_path_offset(&addr) + bytes.len();
+    let mut len = sun_path_offset() + bytes.len();
     match bytes.first() {
         Some(&0) | None => {}
         Some(_) => len += 1,
     }
     Ok((addr, len as _))
 }
-fn sun_path_offset(addr: &c::sockaddr_un) -> usize {
+fn sun_path_offset() -> usize {
     offset_of!(c::sockaddr_un, sun_path)
 }
 #[allow(dead_code)]
@@ -65,7 +65,7 @@ impl SocketAddr {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
-            len = sun_path_offset(&addr) as c_int; // i.e. zero-length address
+            len = sun_path_offset() as c_int; // i.e. zero-length address
         } else if addr.sun_family != c::AF_UNIX {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
