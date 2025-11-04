@@ -20,8 +20,9 @@ use crate::attributes::allow_unstable::{
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
-    NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser, SanitizeParser,
-    TargetFeatureParser, TrackCallerParser, UsedParser,
+    NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser,
+    RustcPassIndirectlyInNonRusticAbisParser, SanitizeParser, TargetFeatureParser,
+    TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
@@ -241,6 +242,7 @@ attribute_parsers!(
         Single<WithoutArgs<PubTransparentParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcMainParser>>,
+        Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
