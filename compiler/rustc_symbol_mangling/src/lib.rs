@@ -297,7 +297,7 @@ fn compute_symbol_name<'tcx>(
                 let mangled_name_too_long = {
                     // The PDB debug info format cannot store mangled symbol names for which its
                     // internal record exceeds u16::MAX bytes, a limit multiple Rust projects have been
-                    // hitting due to the verbosity of legacy name manglng. Depending on the linker version
+                    // hitting due to the verbosity of legacy name mangling. Depending on the linker version
                     // in use, such symbol names can lead to linker crashes or incomprehensible linker error
                     // about a limit being hit.
                     // Mangle those symbols with v0 mangling instead, which gives us more room to breathe
