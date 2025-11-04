@@ -6,6 +6,12 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    |
    = help: remove one of these features
 
+error[E0284]: type annotations needed: cannot normalize `<&T as ConstName>::{constant#0}`
+  --> $DIR/issue-88119.rs:21:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot normalize `<&T as ConstName>::{constant#0}`
+
 error[E0275]: overflow evaluating the requirement `&T: [const] ConstName`
   --> $DIR/issue-88119.rs:19:49
    |
@@ -41,6 +47,12 @@ note: required by a bound in `<&T as ConstName>`
    |
 LL |     [(); name_len::<T>()]:,
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
+
+error[E0284]: type annotations needed: cannot normalize `<&mut T as ConstName>::{constant#0}`
+  --> $DIR/issue-88119.rs:28:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot normalize `<&mut T as ConstName>::{constant#0}`
 
 error[E0275]: overflow evaluating the requirement `&mut T: [const] ConstName`
   --> $DIR/issue-88119.rs:26:49
@@ -90,6 +102,7 @@ error[E0275]: overflow evaluating the requirement `&mut &u8: ConstName`
 LL | pub const ICE_2: &'static [u8] = <&mut &u8 as ConstName>::NAME_BYTES;
    |                                   ^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
-For more information about this error, try `rustc --explain E0275`.
+Some errors have detailed explanations: E0275, E0284.
+For more information about an error, try `rustc --explain E0275`.
